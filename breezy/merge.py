@@ -689,6 +689,61 @@ class _InventoryNoneEntry(object):
         return other is self
 
 
+
+def cook_path_conflict(
+        tt, fp, conflict_type, trans_id, file_id, this_parent, this_name,
+        other_parent, other_name):
+    if this_parent is None or this_name is None:
+        this_path = '<deleted>'
+    else:
+        parent_path = fp.get_path(tt.trans_id_file_id(this_parent))
+        this_path = osutils.pathjoin(parent_path, this_name)
+    if other_parent is None or other_name is None:
+        other_path = '<deleted>'
+    else:
+        try:
+            parent_path = fp.get_path(tt.trans_id_file_id(other_parent))
+        except transform.NoFinalPath:
+            # The other entry was in a path that doesn't exist in our tree.
+            # Put it in the root.
+            parent_path = ''
+        other_path = osutils.pathjoin(parent_path, other_name)
+    return _mod_conflicts.Conflict.factory(
+        'path conflict', path=this_path,
+        conflict_path=other_path,
+        file_id=file_id)
+
+
+def cook_content_conflict(tt, fp, conflict_type, trans_ids):
+    for trans_id in trans_ids:
+        file_id = tt.final_file_id(trans_id)
+        if file_id is not None:
+            # Ok we found the relevant file-id
+            break
+    path = fp.get_path(trans_id)
+    for suffix in ('.BASE', '.THIS', '.OTHER'):
+        if path.endswith(suffix):
+            # Here is the raw path
+            path = path[:-len(suffix)]
+            break
+    return _mod_conflicts.Conflict.factory(
+        conflict_type, path=path, file_id=file_id)
+
+
+def cook_text_conflict(tt, fp, conflict_type, trans_id):
+    path = fp.get_path(trans_id)
+    file_id = tt.final_file_id(trans_id)
+    return _mod_conflicts.Conflict.factory(
+        conflict_type, path=path, file_id=file_id)
+
+
+CONFLICT_COOKERS = {
+    'path conflict': cook_path_conflict,
+    'text conflict': cook_text_conflict,
+    'contents conflict': cook_content_conflict,
+}
+
+
 _none_entry = _InventoryNoneEntry()
 
 
@@ -1526,56 +1581,13 @@ class Merge3Merger(object):
         cooked_conflicts = transform.cook_conflicts(fs_conflicts, self.tt)
         fp = transform.FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
-            conflict_type = conflict[0]
-            if conflict_type == 'path conflict':
-                (trans_id, file_id,
-                 this_parent, this_name,
-                 other_parent, other_name) = conflict[1:]
-                if this_parent is None or this_name is None:
-                    this_path = '<deleted>'
-                else:
-                    parent_path = fp.get_path(
-                        self.tt.trans_id_file_id(this_parent))
-                    this_path = osutils.pathjoin(parent_path, this_name)
-                if other_parent is None or other_name is None:
-                    other_path = '<deleted>'
-                else:
-                    if other_parent == self.other_tree.path2id(''):
-                        # The tree transform doesn't know about the other root,
-                        # so we special case here to avoid a NoFinalPath
-                        # exception
-                        parent_path = ''
-                    else:
-                        parent_path = fp.get_path(
-                            self.tt.trans_id_file_id(other_parent))
-                    other_path = osutils.pathjoin(parent_path, other_name)
-                c = _mod_conflicts.Conflict.factory(
-                    'path conflict', path=this_path,
-                    conflict_path=other_path,
-                    file_id=file_id)
-            elif conflict_type == 'contents conflict':
-                for trans_id in conflict[1]:
-                    file_id = self.tt.final_file_id(trans_id)
-                    if file_id is not None:
-                        # Ok we found the relevant file-id
-                        break
-                path = fp.get_path(trans_id)
-                for suffix in ('.BASE', '.THIS', '.OTHER'):
-                    if path.endswith(suffix):
-                        # Here is the raw path
-                        path = path[:-len(suffix)]
-                        break
-                c = _mod_conflicts.Conflict.factory(conflict_type,
-                                                    path=path, file_id=file_id)
-                content_conflict_file_ids.add(file_id)
-            elif conflict_type == 'text conflict':
-                trans_id = conflict[1]
-                path = fp.get_path(trans_id)
-                file_id = self.tt.final_file_id(trans_id)
-                c = _mod_conflicts.Conflict.factory(conflict_type,
-                                                    path=path, file_id=file_id)
-            else:
+            try:
+                cooker = CONFLICT_COOKERS[conflict[0]]
+            except KeyError:
                 raise AssertionError('bad conflict type: %r' % (conflict,))
+            c = cooker(self.tt, fp, *conflict)
+            if conflict[0] == 'contents conflict':
+                content_conflict_file_ids.add(c.file_id)
             cooked_conflicts.append(c)
 
         self.cooked_conflicts = []
