@@ -34,7 +34,6 @@ from . import (
 lazy_import.lazy_import(globals(), """
 from breezy import (
     cleanup,
-    conflicts,
     multiparent,
     revision as _mod_revision,
     ui,
@@ -398,9 +397,9 @@ class TreeTransform(object):
     def new_contents(self, trans_id):
         return (trans_id in self._new_contents)
 
-    def find_conflicts(self):
+    def find_raw_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
-        raise NotImplementedError(self.find_conflicts)
+        raise NotImplementedError(self.find_raw_conflicts)
 
     def new_file(self, name, parent_id, contents, file_id=None,
                  executable=None, sha1=None):
@@ -450,7 +449,7 @@ class TreeTransform(object):
         """Produce output in the same format as Tree.iter_changes.
 
         Will produce nonsensical results if invoked while inventory/filesystem
-        conflicts (as reported by TreeTransform.find_conflicts()) are present.
+        conflicts (as reported by TreeTransform.find_raw_conflicts()) are present.
 
         This reads the Transform, but only reproduces changes involving a
         file_id.  Files that are not versioned in either of the FROM or TO
@@ -1144,7 +1143,7 @@ def resolve_conflicts(tt, pb=None, pass_func=None):
     with ui.ui_factory.nested_progress_bar() as pb:
         for n in range(10):
             pb.update(gettext('Resolution pass'), n + 1, 10)
-            conflicts = tt.find_conflicts()
+            conflicts = tt.find_raw_conflicts()
             if len(conflicts) == 0:
                 return new_conflicts
             new_conflicts.update(pass_func(tt, conflicts))
@@ -1259,27 +1258,6 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'versioning no contents':
             tt.cancel_versioning(conflict[1])
     return new_conflicts
-
-
-def iter_cook_conflicts(raw_conflicts, tt):
-    fp = FinalPaths(tt)
-    for conflict in raw_conflicts:
-        c_type = conflict[0]
-        action = conflict[1]
-        modified_path = fp.get_path(conflict[2])
-        modified_id = tt.final_file_id(conflict[2])
-        if len(conflict) == 3:
-            yield conflicts.Conflict.factory(
-                c_type, action=action, path=modified_path, file_id=modified_id)
-
-        else:
-            conflicting_path = fp.get_path(conflict[3])
-            conflicting_id = tt.final_file_id(conflict[3])
-            yield conflicts.Conflict.factory(
-                c_type, action=action, path=modified_path,
-                file_id=modified_id,
-                conflict_path=conflicting_path,
-                conflict_file_id=conflicting_id)
 
 
 class _FileMover(object):

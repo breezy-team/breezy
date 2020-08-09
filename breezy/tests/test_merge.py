@@ -135,7 +135,7 @@ class TestMerge(TestCaseWithTransport):
                                          this_branch=wt.branch,
                                          do_merge=False)
         with merger.make_preview_transform() as tt:
-            self.assertEqual([], tt.find_conflicts())
+            self.assertEqual([], tt.find_raw_conflicts())
             preview = tt.get_preview_tree()
             self.assertEqual(wt.path2id(''), preview.path2id(''))
 

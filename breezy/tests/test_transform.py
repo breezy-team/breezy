@@ -1425,7 +1425,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         tt.delete_contents(dir_tid)
         tt.unversion_file(dir_tid)
         # There should be a conflict because dir still contain foo
-        raw_conflicts = tt.find_conflicts()
+        raw_conflicts = tt.find_raw_conflicts()
         self.assertLength(1, raw_conflicts)
         self.assertEqual(('missing parent', 'new-1'), raw_conflicts[0])
         return tt, orphan_tid
