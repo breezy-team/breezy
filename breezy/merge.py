@@ -1524,7 +1524,7 @@ class Merge3Merger(object):
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
         content_conflict_file_ids = set()
-        cooked_conflicts = transform.cook_conflicts(fs_conflicts, self.tt)
+        cooked_conflicts = self.tt.cook_conflicts(fs_conflicts)
         fp = transform.FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]

@@ -24,6 +24,7 @@ import time
 
 from .. import (
     annotate,
+    conflicts,
     errors,
     lock,
     multiparent,
@@ -52,6 +53,7 @@ from ..transform import (
     ReusingTransform,
     MalformedTransform,
     PreviewTree,
+    iter_cook_conflicts,
     )
 from . import (
     inventory,
@@ -1009,6 +1011,11 @@ class TreeTransformBase(TreeTransform):
         :param _mover: Supply an alternate FileMover, for testing
         """
         raise NotImplementedError(self.apply)
+
+    def cook_conflicts(self, raw_conflicts):
+        """Generate a list of cooked conflicts, sorted by file path"""
+        conflict_iter = iter_cook_conflicts(raw_conflicts, self)
+        return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
 
 
 class DiskTreeTransform(TreeTransformBase):

@@ -530,6 +530,11 @@ class TreeTransform(object):
         """Cancel the creation of new file contents."""
         raise NotImplementedError(self.cancel_creation)
 
+    def cook_conflicts(self, raw_conflicts):
+        """Cook conflicts.
+        """
+        raise NotImplementedError(self.cook_conflicts)
+
 
 class OrphaningError(errors.BzrError):
 
@@ -774,7 +779,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         raw_conflicts = resolve_conflicts(tt, pass_func=resolver)
         if len(raw_conflicts) > 0:
             precomputed_delta = None
-        conflicts = cook_conflicts(raw_conflicts, tt)
+        conflicts = tt.cook_conflicts(raw_conflicts)
         for conflict in conflicts:
             trace.warning(text_type(conflict))
         try:
@@ -993,7 +998,7 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
     with ui.ui_factory.nested_progress_bar() as child_pb:
         raw_conflicts = resolve_conflicts(
             tt, child_pb, lambda t, c: conflict_pass(t, c, target_tree))
-    conflicts = cook_conflicts(raw_conflicts, tt)
+    conflicts = tt.cook_conflicts(raw_conflicts)
     return conflicts, merge_modified
 
 
@@ -1254,12 +1259,6 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'versioning no contents':
             tt.cancel_versioning(conflict[1])
     return new_conflicts
-
-
-def cook_conflicts(raw_conflicts, tt):
-    """Generate a list of cooked conflicts, sorted by file path"""
-    conflict_iter = iter_cook_conflicts(raw_conflicts, tt)
-    return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
 
 
 def iter_cook_conflicts(raw_conflicts, tt):

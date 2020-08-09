@@ -77,7 +77,6 @@ from .features import (
 from ..transform import (
     build_tree,
     create_from_tree,
-    cook_conflicts,
     _FileMover,
     FinalPaths,
     resolve_conflicts,

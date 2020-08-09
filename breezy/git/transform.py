@@ -22,7 +22,7 @@ import os
 from stat import S_ISREG
 import time
 
-from .. import errors, multiparent, osutils, trace, ui, urlutils
+from .. import conflicts, errors, multiparent, osutils, trace, ui, urlutils
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..sixish import viewitems, viewvalues
@@ -38,6 +38,7 @@ from ..transform import (
     ROOT_PARENT,
     ReusingTransform,
     MalformedTransform,
+    iter_cook_conflicts,
     )
 from ..bzr.inventorytree import InventoryTreeChange
 
@@ -995,6 +996,11 @@ class TreeTransformBase(TreeTransform):
         :param _mover: Supply an alternate FileMover, for testing
         """
         raise NotImplementedError(self.apply)
+
+    def cook_conflicts(self, raw_conflicts):
+        """Generate a list of cooked conflicts, sorted by file path"""
+        conflict_iter = iter_cook_conflicts(raw_conflicts, self)
+        return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
 
 
 class DiskTreeTransform(TreeTransformBase):
