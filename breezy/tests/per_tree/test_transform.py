@@ -511,8 +511,11 @@ class TestTransformPreview(TestCaseWithTree):
             (revid1, b'a\n'),
         ]
         annotation = preview_tree.annotate_iter(
-            'file', default_revision=b'me:')
+            'newname', default_revision=b'me:')
         self.assertEqual(expected, annotation)
+        annotation = preview_tree.annotate_iter(
+            'file', default_revision=b'me:')
+        self.assertIs(None, annotation)
 
     def test_annotate_deleted(self):
         tree = self.make_branch_and_tree('tree')

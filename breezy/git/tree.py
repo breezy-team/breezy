@@ -278,6 +278,27 @@ class GitTree(_mod_tree.Tree):
         """
         raise NotImplementedError(self.snapshot)
 
+    def preview_transform(self, pb=None):
+        from .transform import GitTransformPreview
+        return GitTransformPreview(self, pb=pb)
+
+    def find_related_paths_across_trees(self, paths, trees=[],
+                                        require_versioned=True):
+        if paths is None:
+            return None
+        if require_versioned:
+            trees = [self] + (trees if trees is not None else [])
+            unversioned = set()
+            for p in paths:
+                for t in trees:
+                    if t.is_versioned(p):
+                        break
+                else:
+                    unversioned.add(p)
+            if unversioned:
+                raise errors.PathsNotVersionedError(unversioned)
+        return filter(self.is_versioned, paths)
+
 
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     """Revision tree implementation based on Git objects."""
@@ -661,23 +682,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         else:
             return (kind, None, None, None)
 
-    def find_related_paths_across_trees(self, paths, trees=[],
-                                        require_versioned=True):
-        if paths is None:
-            return None
-        if require_versioned:
-            trees = [self] + (trees if trees is not None else [])
-            unversioned = set()
-            for p in paths:
-                for t in trees:
-                    if t.is_versioned(p):
-                        break
-                else:
-                    unversioned.add(p)
-            if unversioned:
-                raise errors.PathsNotVersionedError(unversioned)
-        return filter(self.is_versioned, paths)
-
     def _iter_tree_contents(self, include_trees=False):
         if self.tree is None:
             return iter([])
@@ -728,10 +732,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                         mode_kind(mode), None,
                         mode_kind(mode)))
             yield path_decoded, children
-
-    def preview_transform(self, pb=None):
-        from .transform import GitTransformPreview
-        return GitTransformPreview(self, pb=pb)
 
 
 def tree_delta_from_git_changes(changes, mappings,
@@ -1578,25 +1578,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             self._versioned_dirs = None
             self.flush()
 
-    def find_related_paths_across_trees(self, paths, trees=[],
-                                        require_versioned=True):
-        if paths is None:
-            return None
-
-        if require_versioned:
-            trees = [self] + (trees if trees is not None else [])
-            unversioned = set()
-            for p in paths:
-                for t in trees:
-                    if t.is_versioned(p):
-                        break
-                else:
-                    unversioned.add(p)
-            if unversioned:
-                raise errors.PathsNotVersionedError(unversioned)
-
-        return filter(self.is_versioned, paths)
-
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         try:
@@ -1650,10 +1631,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
     def transform(self, pb=None):
         from .transform import GitTreeTransform
         return GitTreeTransform(self, pb=pb)
-
-    def preview_transform(self, pb=None):
-        from .transform import GitTransformPreview
-        return GitTransformPreview(self, pb=pb)
 
     def has_changes(self, _from_tree=None):
         """Quickly check that the tree contains at least one commitable change.

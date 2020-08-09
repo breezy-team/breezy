@@ -2071,21 +2071,28 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         file_id = self.path2id(path)
         changes = self._iter_changes_cache.get(file_id)
         if changes is None:
-            get_old = True
+            if file_id is None:
+                old_path = None
+            else:
+                old_path = self._transform._tree.id2path(file_id)
         else:
-            changed_content, versioned, kind = (
-                changes.changed_content, changes.versioned, changes.kind)
-            if kind[1] is None:
+            if changes.kind[1] is None:
                 return None
-            get_old = (kind[0] == 'file' and versioned[0])
-        if get_old:
+            if changes.kind[0] == 'file' and changes.versioned[0]:
+                old_path = changes.path[0]
+            else:
+                old_path = None
+        if old_path is not None:
             old_annotation = self._transform._tree.annotate_iter(
-                path, default_revision=default_revision)
+                old_path, default_revision=default_revision)
         else:
             old_annotation = []
         if changes is None:
-            return old_annotation
-        if not changed_content:
+            if old_path is None:
+                return None
+            else:
+                return old_annotation
+        if not changes.changed_content:
             return old_annotation
         # TODO: This is doing something similar to what WT.annotate_iter is
         #       doing, however it fails slightly because it doesn't know what
@@ -2095,7 +2102,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         #       It would be nice to be able to use the new Annotator based
         #       approach, as well.
         return annotate.reannotate([old_annotation],
-                                   self.get_file(path).readlines(),
+                                   self.get_file_lines(path),
                                    default_revision)
 
     def walkdirs(self, prefix=''):

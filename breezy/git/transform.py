@@ -22,6 +22,7 @@ import os
 from stat import S_IEXEC, S_ISREG
 import time
 
+from .mapping import encode_git_path, mode_kind, mode_is_executable, object_mode
 from .tree import GitTree
 
 from .. import (
@@ -53,6 +54,9 @@ from ..transform import (
     MalformedTransform,
     )
 from ..bzr.inventorytree import InventoryTreeChange
+
+from dulwich.index import commit_tree, blob_from_path_and_stat
+from dulwich.objects import Blob
 
 
 class TreeTransformBase(TreeTransform):
@@ -1048,6 +1052,30 @@ class DiskTreeTransform(TreeTransformBase):
         handle_orphan = conf.get('transform.orphan_policy')
         handle_orphan(self, trans_id, parent_id)
 
+    def final_git_entry(self, trans_id):
+        if trans_id in self._new_contents:
+            path = self._limbo_name(trans_id)
+            st = os.lstat(path)
+            kind = mode_kind(st.t_mode)
+            executable = mode_is_executable(st.st_mode)
+            mode = object_mode(kind, executable)
+            blob = blob_from_path_and_mode(path, mode)
+        elif trans_id in self._removed_contents:
+            return None, None
+        else:
+            orig_path = self.tree_path(trans_id)
+            kind = self._tree.kind(orig_path)
+            executable = self._tree.is_executable(orig_path)
+            mode = object_mode(kind, executable)
+            if kind == 'symlink':
+                contents = self._tree.get_symlink_target(orig_path)
+            elif kind == 'file':
+                contents = self._tree.get_file_text(orig_path)
+            else:
+                raise AssertionError
+            blob = Blob.from_string(contents)
+        return blob, mode
+
 
 class GitTreeTransform(DiskTreeTransform):
     """Represent a tree transformation.
@@ -1514,6 +1542,7 @@ class GitPreviewTree(PreviewTree, GitTree):
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
         self.store = transform._tree.store
+        self.mapping = transform._tree.mapping
         self._final_paths = FinalPaths(transform)
 
     def _supports_executable(self):
@@ -1568,13 +1597,13 @@ class GitPreviewTree(PreviewTree, GitTree):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise errors.NoSuchFile(path)
+        if trans_id in self._transform._new_contents:
+            name = self._transform._limbo_name(trans_id)
+            return open(name, 'rb')
         if trans_id in self._transform._removed_contents:
             raise errors.NoSuchFile(path)
-        if trans_id not in self._transform._new_contents:
-            orig_path = self._transform.tree_path(trans_id)
-            return self._transform._tree.get_file(orig_path)
-        name = self._transform._limbo_name(trans_id)
-        return open(name, 'rb')
+        orig_path = self._transform.tree_path(trans_id)
+        return self._transform._tree.get_file(orig_path)
 
     def get_symlink_target(self, path):
         """See Tree.get_symlink_target"""
@@ -1590,7 +1619,7 @@ class GitPreviewTree(PreviewTree, GitTree):
     def annotate_iter(self, path, default_revision=_mod_revision.CURRENT_REVISION):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            return None
         orig_path = self._transform.tree_path(trans_id)
         if orig_path is not None:
             old_annotation = self._transform._tree.annotate_iter(
@@ -1693,14 +1722,12 @@ class GitPreviewTree(PreviewTree, GitTree):
         # TreeTransform changes onto the tree's iter_entries_by_dir results
         # might be more efficient, but requires tricky inferences about stack
         # position.
-        ordered_ids = self._list_files_by_dir()
-        for trans_id in ordered_ids:
+        for trans_id, path in self._list_files_by_dir():
             entry = None
-            yield self._final_paths.get_path(trans_id), entry
+            yield path, entry
 
     def _list_files_by_dir(self):
         todo = [ROOT_PARENT]
-        ordered_ids = []
         while len(todo) > 0:
             parent = todo.pop()
             children = list(self._all_children(parent))
@@ -1708,8 +1735,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:
-                ordered_ids.append(trans_id)
-        return ordered_ids
+                yield (trans_id, paths.get(trans_id))
 
     def revision_tree(self, revision_id):
         return self._transform._tree.revision_tree(revision_id)
@@ -1719,4 +1745,14 @@ class GitPreviewTree(PreviewTree, GitTree):
         return os.lstat(name)
 
     def git_snapshot(self, want_unversioned=False):
-        raise NotImplementedError(self.git_snapshot)
+        extra = set()
+        os = []
+        for trans_id, path in self._list_files_by_dir():
+            if self._transform.final_is_versioned(trans_id):
+                if not want_unversioned:
+                    continue
+                extra.add(path)
+            o, mode = self._transform.final_git_entry(trans_id)
+            self.store.add_object(o)
+            os.append((encode_git_path(path), o.id, mode))
+        return commit_tree(self.store, os), extra
