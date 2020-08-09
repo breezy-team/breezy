@@ -43,6 +43,7 @@ from breezy.bzr import (
     )
 from breezy.i18n import gettext
 """)
+from breezy.bzr.conflicts import Conflict as BzrConflict
 from . import (
     decorators,
     errors,
@@ -709,7 +710,7 @@ def cook_path_conflict(
             # Put it in the root.
             parent_path = ''
         other_path = osutils.pathjoin(parent_path, other_name)
-    return _mod_conflicts.Conflict.factory(
+    return BzrConflict.factory(
         'path conflict', path=this_path,
         conflict_path=other_path,
         file_id=file_id)
@@ -727,14 +728,14 @@ def cook_content_conflict(tt, fp, conflict_type, trans_ids):
             # Here is the raw path
             path = path[:-len(suffix)]
             break
-    return _mod_conflicts.Conflict.factory(
+    return BzrConflict.factory(
         conflict_type, path=path, file_id=file_id)
 
 
 def cook_text_conflict(tt, fp, conflict_type, trans_id):
     path = fp.get_path(trans_id)
     file_id = tt.final_file_id(trans_id)
-    return _mod_conflicts.Conflict.factory(
+    return BzrConflict.factory(
         conflict_type, path=path, file_id=file_id)
 
 
