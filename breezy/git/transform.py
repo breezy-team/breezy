@@ -27,6 +27,7 @@ from .tree import GitTree
 
 from .. import (
     annotate,
+    conflicts,
     errors,
     multiparent,
     osutils,
@@ -234,7 +235,7 @@ class TreeTransformBase(TreeTransform):
             return None
         return self.mapping.generate_file_id(path)
 
-    def find_conflicts(self):
+    def find_raw_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
         if self._done is True:
             raise ReusingTransform()
@@ -252,7 +253,7 @@ class TreeTransformBase(TreeTransform):
         return conflicts
 
     def _check_malformed(self):
-        conflicts = self.find_conflicts()
+        conflicts = self.find_raw_conflicts()
         if len(conflicts) != 0:
             raise MalformedTransform(conflicts=conflicts)
 
@@ -562,7 +563,7 @@ class TreeTransformBase(TreeTransform):
         """Produce output in the same format as Tree.iter_changes.
 
         Will produce nonsensical results if invoked while inventory/filesystem
-        conflicts (as reported by TreeTransform.find_conflicts()) are present.
+        conflicts (as reported by TreeTransform.find_raw_conflicts()) are present.
 
         This reads the Transform, but only reproduces changes involving a
         file_id.  Files that are not versioned in either of the FROM or TO
@@ -816,6 +817,13 @@ class TreeTransformBase(TreeTransform):
         :param _mover: Supply an alternate FileMover, for testing
         """
         raise NotImplementedError(self.apply)
+
+    def cook_conflicts(self, raw_conflicts):
+        """Generate a list of cooked conflicts, sorted by file path"""
+        if not raw_conflicts:
+            return []
+        # TODO(jelmer): Support cooking git conflicts
+        raise ValueError(raw_conflicts)
 
 
 class DiskTreeTransform(TreeTransformBase):

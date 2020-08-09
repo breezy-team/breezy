@@ -24,7 +24,7 @@ from .. import (
     merge_directive,
     osutils,
     )
-from ..conflicts import (
+from ..bzr.conflicts import (
     ContentsConflict,
     TextConflict,
     PathConflict,

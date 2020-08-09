@@ -37,6 +37,7 @@ from breezy import (
     workingtree,
     )
 from breezy.bzr import (
+    conflicts as _mod_bzr_conflicts,
     generate_ids,
     versionedfile,
     )
@@ -1578,7 +1579,7 @@ class Merge3Merger(object):
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
         content_conflict_file_ids = set()
-        cooked_conflicts = transform.cook_conflicts(fs_conflicts, self.tt)
+        cooked_conflicts = self.tt.cook_conflicts(fs_conflicts)
         fp = transform.FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
             try:
@@ -1600,7 +1601,7 @@ class Merge3Merger(object):
                     and c.file_id in content_conflict_file_ids):
                 continue
             self.cooked_conflicts.append(c)
-        self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
+        self.cooked_conflicts.sort(key=_mod_bzr_conflicts.Conflict.sort_key)
 
 
 class WeaveMerger(Merge3Merger):

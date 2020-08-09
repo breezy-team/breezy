@@ -34,7 +34,6 @@ from . import (
 lazy_import.lazy_import(globals(), """
 from breezy import (
     cleanup,
-    conflicts,
     multiparent,
     revision as _mod_revision,
     ui,
@@ -396,9 +395,9 @@ class TreeTransform(object):
     def new_contents(self, trans_id):
         return (trans_id in self._new_contents)
 
-    def find_conflicts(self):
+    def find_raw_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
-        raise NotImplementedError(self.find_conflicts)
+        raise NotImplementedError(self.find_raw_conflicts)
 
     def new_file(self, name, parent_id, contents, file_id=None,
                  executable=None, sha1=None):
@@ -448,7 +447,7 @@ class TreeTransform(object):
         """Produce output in the same format as Tree.iter_changes.
 
         Will produce nonsensical results if invoked while inventory/filesystem
-        conflicts (as reported by TreeTransform.find_conflicts()) are present.
+        conflicts (as reported by TreeTransform.find_raw_conflicts()) are present.
 
         This reads the Transform, but only reproduces changes involving a
         file_id.  Files that are not versioned in either of the FROM or TO
@@ -527,6 +526,11 @@ class TreeTransform(object):
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
         raise NotImplementedError(self.cancel_creation)
+
+    def cook_conflicts(self, raw_conflicts):
+        """Cook conflicts.
+        """
+        raise NotImplementedError(self.cook_conflicts)
 
 
 class OrphaningError(errors.BzrError):
@@ -772,7 +776,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         raw_conflicts = resolve_conflicts(tt, pass_func=resolver)
         if len(raw_conflicts) > 0:
             precomputed_delta = None
-        conflicts = cook_conflicts(raw_conflicts, tt)
+        conflicts = tt.cook_conflicts(raw_conflicts)
         for conflict in conflicts:
             trace.warning(text_type(conflict))
         try:
@@ -991,7 +995,7 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
     with ui.ui_factory.nested_progress_bar() as child_pb:
         raw_conflicts = resolve_conflicts(
             tt, child_pb, lambda t, c: conflict_pass(t, c, target_tree))
-    conflicts = cook_conflicts(raw_conflicts, tt)
+    conflicts = tt.cook_conflicts(raw_conflicts)
     return conflicts, merge_modified
 
 
@@ -1137,7 +1141,7 @@ def resolve_conflicts(tt, pb=None, pass_func=None):
     with ui.ui_factory.nested_progress_bar() as pb:
         for n in range(10):
             pb.update(gettext('Resolution pass'), n + 1, 10)
-            conflicts = tt.find_conflicts()
+            conflicts = tt.find_raw_conflicts()
             if len(conflicts) == 0:
                 return new_conflicts
             new_conflicts.update(pass_func(tt, conflicts))
@@ -1273,36 +1277,6 @@ def conflict_pass(tt, conflicts, path_tree=None):
             continue
         new_conflicts.update(resolver(tt, path_tree, *conflict))
     return new_conflicts
-
-
-def cook_conflicts(raw_conflicts, tt):
-    """Generate a list of cooked conflicts, sorted by file path"""
-    conflict_iter = iter_cook_conflicts(raw_conflicts, tt)
-    return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
-
-
-def iter_cook_conflicts(raw_conflicts, tt):
-    fp = FinalPaths(tt)
-    for conflict in raw_conflicts:
-        c_type = conflict[0]
-        action = conflict[1]
-        modified_path = fp.get_path(conflict[2])
-        if tt._tree.supports_setting_file_ids():
-            modified_id = tt.final_file_id(conflict[2])
-        else:
-            modified_id = None
-        if len(conflict) == 3:
-            yield conflicts.Conflict.factory(
-                c_type, action=action, path=modified_path, file_id=modified_id)
-
-        else:
-            conflicting_path = fp.get_path(conflict[3])
-            conflicting_id = tt.final_file_id(conflict[3])
-            yield conflicts.Conflict.factory(
-                c_type, action=action, path=modified_path,
-                file_id=modified_id,
-                conflict_path=conflicting_path,
-                conflict_file_id=conflicting_id)
 
 
 class _FileMover(object):

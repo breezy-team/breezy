@@ -26,13 +26,15 @@ from testtools import matchers
 
 from breezy import (
     branch,
-    conflicts,
     controldir,
     merge_directive,
     osutils,
     tests,
     urlutils,
     workingtree,
+    )
+from breezy.bzr import (
+    conflicts,
     )
 from breezy.tests import (
     scenarios,
@@ -328,7 +330,7 @@ class TestMerge(tests.TestCaseWithTransport):
                                               tree_b.get_parent_ids()[0])
         self.assertEqualDiff(testament_a.as_text(),
                              testament_b.as_text())
-        tree_a.set_conflicts(conflicts.ConflictList())
+        tree_a.set_conflicts([])
         tree_a.commit('message')
         # it is legal to attempt to merge an already-merged bundle
         err = self.run_bzr('merge ../bundle', working_dir='branch_a')[1]
@@ -427,8 +429,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('content change')
         self.run_bzr('merge ../tree_a', retcode=1, working_dir='tree_b')
         self.assertEqual(tree_b.conflicts(),
-                         [conflicts.ContentsConflict('file',
-                                                     file_id='file-id')])
+                         [conflicts.ContentsConflict('file', file_id='file-id')])
 
     def test_directive_cherrypick(self):
         source = self.make_branch_and_tree('source')
@@ -632,11 +633,11 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.merge_from_branch(tree_b.branch)
         self.build_tree_contents([('a/file',
                                    b'base-contents\nthis-contents\n')])
-        tree_a.set_conflicts(conflicts.ConflictList())
+        tree_a.set_conflicts([])
         tree_b.merge_from_branch(tree_a.branch)
         self.build_tree_contents([('b/file',
                                    b'base-contents\nother-contents\n')])
-        tree_b.set_conflicts(conflicts.ConflictList())
+        tree_b.set_conflicts([])
         tree_a.commit('', rev_id=b'rev3a')
         tree_b.commit('', rev_id=b'rev3b')
         out, err = self.run_bzr(['merge', '-d', 'a', 'b', '--lca'], retcode=1)

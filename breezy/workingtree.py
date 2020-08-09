@@ -1242,11 +1242,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         into files that have text conflicts.  The corresponding .THIS .BASE and
         .OTHER files are deleted, as per 'resolve'.
 
-        :return: a tuple of ConflictLists: (un_resolved, resolved).
+        :return: a tuple of lists: (un_resolved, resolved).
         """
         with self.lock_tree_write():
-            un_resolved = _mod_conflicts.ConflictList()
-            resolved = _mod_conflicts.ConflictList()
+            un_resolved = []
+            resolved = []
             for conflict in self.conflicts():
                 try:
                     conflict.action_auto(self)

@@ -799,7 +799,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
         try:
-            tree.set_conflicts(ConflictList())
+            tree.set_conflicts([])
         except UnsupportedOperation:
             raise TestSkipped('unsupported operation')
         self.assertEqual(tree.conflicts(), ConflictList())
