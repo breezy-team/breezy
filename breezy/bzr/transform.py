@@ -1015,29 +1015,97 @@ class TreeTransformBase(TreeTransform):
 
     def cook_conflicts(self, raw_conflicts):
         """Generate a list of cooked conflicts, sorted by file path"""
-        conflict_iter = iter_cook_conflicts(raw_conflicts, self)
-        return sorted(conflict_iter, key=Conflict.sort_key)
+        content_conflict_file_ids = set()
+        cooked_conflicts = list(iter_cook_conflicts(raw_conflicts, self))
+        for c in cooked_conflicts:
+            if c.typestring == 'contents conflict':
+                content_conflict_file_ids.add(c.file_id)
+        # We want to get rid of path conflicts when a corresponding contents
+        # conflict exists. This can occur when one branch deletes a file while
+        # the other renames *and* modifies it. In this case, the content
+        # conflict is enough.
+        cooked_conflicts = [
+            c for c in cooked_conflicts
+            if c.typestring != 'path conflict' or
+            c.file_id not in content_conflict_file_ids]
+        return sorted(cooked_conflicts, key=Conflict.sort_key)
 
+
+def cook_path_conflict(
+        tt, fp, conflict_type, trans_id, file_id, this_parent, this_name,
+        other_parent, other_name):
+    if this_parent is None or this_name is None:
+        this_path = '<deleted>'
+    else:
+        parent_path = fp.get_path(tt.trans_id_file_id(this_parent))
+        this_path = osutils.pathjoin(parent_path, this_name)
+    if other_parent is None or other_name is None:
+        other_path = '<deleted>'
+    else:
+        try:
+            parent_path = fp.get_path(tt.trans_id_file_id(other_parent))
+        except NoFinalPath:
+            # The other entry was in a path that doesn't exist in our tree.
+            # Put it in the root.
+            parent_path = ''
+        other_path = osutils.pathjoin(parent_path, other_name)
+    return Conflict.factory(
+        conflict_type, path=this_path,
+        conflict_path=other_path,
+        file_id=file_id)
+
+
+def cook_content_conflict(tt, fp, conflict_type, trans_ids):
+    for trans_id in trans_ids:
+        file_id = tt.final_file_id(trans_id)
+        if file_id is not None:
+            # Ok we found the relevant file-id
+            break
+    path = fp.get_path(trans_id)
+    for suffix in ('.BASE', '.THIS', '.OTHER'):
+        if path.endswith(suffix):
+            # Here is the raw path
+            path = path[:-len(suffix)]
+            break
+    return Conflict.factory(conflict_type, path=path, file_id=file_id)
+
+
+def cook_text_conflict(tt, fp, conflict_type, trans_id):
+    path = fp.get_path(trans_id)
+    file_id = tt.final_file_id(trans_id)
+    return Conflict.factory(conflict_type, path=path, file_id=file_id)
+
+
+CONFLICT_COOKERS = {
+    'path conflict': cook_path_conflict,
+    'text conflict': cook_text_conflict,
+    'contents conflict': cook_content_conflict,
+}
 
 def iter_cook_conflicts(raw_conflicts, tt):
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
-        action = conflict[1]
-        modified_path = fp.get_path(conflict[2])
-        modified_id = tt.final_file_id(conflict[2])
-        if len(conflict) == 3:
-            yield Conflict.factory(
-                c_type, action=action, path=modified_path, file_id=modified_id)
+        try:
+            cooker = CONFLICT_COOKERS[c_type]
+        except KeyError:
+            action = conflict[1]
+            modified_path = fp.get_path(conflict[2])
+            modified_id = tt.final_file_id(conflict[2])
+            if len(conflict) == 3:
+                yield Conflict.factory(
+                    c_type, action=action, path=modified_path, file_id=modified_id)
 
+            else:
+                conflicting_path = fp.get_path(conflict[3])
+                conflicting_id = tt.final_file_id(conflict[3])
+                yield Conflict.factory(
+                    c_type, action=action, path=modified_path,
+                    file_id=modified_id,
+                    conflict_path=conflicting_path,
+                    conflict_file_id=conflicting_id)
         else:
-            conflicting_path = fp.get_path(conflict[3])
-            conflicting_id = tt.final_file_id(conflict[3])
-            yield Conflict.factory(
-                c_type, action=action, path=modified_path,
-                file_id=modified_id,
-                conflict_path=conflicting_path,
-                conflict_file_id=conflicting_id)
+            yield cooker(tt, fp, *conflict)
 
 
 class DiskTreeTransform(TreeTransformBase):
