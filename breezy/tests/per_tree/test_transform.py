@@ -334,7 +334,7 @@ class TestTransformPreview(TestCaseWithTree):
         self.assertEqual(
             'new_name/child',
             find_previous_path(tree, preview_tree, 'old_name/child'))
-        if tree.supports_setting_file_ids:
+        if tree.supports_setting_file_ids():
             self.assertEqual(
                 tree.path2id('old_name/child'),
                 preview_tree.path2id('new_name/child'))

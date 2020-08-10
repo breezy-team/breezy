@@ -19,11 +19,12 @@ from __future__ import absolute_import
 
 import errno
 import os
+import posixpath
 from stat import S_IEXEC, S_ISREG
 import time
 
 from .mapping import encode_git_path, mode_kind, mode_is_executable, object_mode
-from .tree import GitTree
+from .tree import GitTree, GitTreeDirectory, GitTreeSymlink, GitTreeFile
 
 from .. import (
     annotate,
@@ -1072,6 +1073,41 @@ class DiskTreeTransform(TreeTransformBase):
         handle_orphan = conf.get('transform.orphan_policy')
         handle_orphan(self, trans_id, parent_id)
 
+    def final_entry(self, trans_id):
+        if trans_id in self._new_contents:
+            path = self._limbo_name(trans_id)
+            st = os.lstat(path)
+            kind = mode_kind(st.st_mode)
+            if kind == 'directory':
+                return GitTreeDirectory(None, self.final_name(trans_id))
+            executable = mode_is_executable(st.st_mode)
+            mode = object_mode(kind, executable)
+            blob = blob_from_path_and_stat(encode_git_path(path), st)
+        elif trans_id in self._removed_contents:
+            return None
+        else:
+            orig_path = self.tree_path(trans_id)
+            if orig_path is None:
+                return None
+            name = posixpath.basename(orig_path)
+            kind = self._tree.kind(orig_path)
+            executable = self._tree.is_executable(orig_path)
+            mode = object_mode(kind, executable)
+            if kind == 'symlink':
+                return GitTreeSymlink(
+                    None, name, None,
+                    self._tree.get_symlink_target(orig_path))
+            elif kind == 'file':
+                return GitTreeFile(
+                    None, name, executable=executable)
+            elif kind == 'directory':
+                return GitTreeDirectory(None, name)
+            else:
+                raise AssertionError(kind)
+            blob = Blob.from_string(contents)
+        return blob, mode
+
+
     def final_git_entry(self, trans_id):
         if trans_id in self._new_contents:
             path = self._limbo_name(trans_id)
@@ -1781,3 +1817,14 @@ class GitPreviewTree(PreviewTree, GitTree):
                 self.store.add_object(o)
                 os.append((encode_git_path(path), o.id, mode))
         return commit_tree(self.store, os), extra
+
+    def iter_child_entries(self, path):
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
+        todo = [(child_trans_id, trans_id) for child_trans_id in
+                self._all_children(trans_id)]
+        for trans_id in todo:
+            entry = self._transform.final_entry(trans_id)
+            if entry is not None:
+                yield entry
