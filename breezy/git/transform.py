@@ -831,6 +831,9 @@ class TreeTransformBase(TreeTransform):
                 yield TextConflict(fp.get_path(c[2]))
             elif c[0] == 'contents conflict':
                 yield TextConflict(fp.get_path(c[1][0]))
+            elif c[0] == 'missing parent':
+                # TODO(jelmer): This should not make it to here
+                yield TextConflict(fp.get_path(c[2]))
             else:
                 raise AssertionError('unknown conflict %s' % c[0])
 
