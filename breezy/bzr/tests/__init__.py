@@ -63,6 +63,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_bzrdir',
         'test_chk_map',
         'test_chk_serializer',
+        'test_conflicts',
         'test_generate_ids',
         'test_groupcompress',
         'test_index',

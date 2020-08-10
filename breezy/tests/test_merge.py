@@ -33,7 +33,8 @@ from ..bzr import (
     knit,
     versionedfile,
     )
-from ..conflicts import ConflictList, TextConflict
+from ..conflicts import ConflictList
+from ..bzr.conflicts import TextConflict, MissingParent, UnversionedParent, DeletingParent, ContentsConflict
 from ..errors import UnrelatedBranches, NoCommits
 from ..merge import transform_tree, merge_inner, _PlanMerge
 from ..osutils import basename, pathjoin, file_kind
@@ -135,7 +136,7 @@ class TestMerge(TestCaseWithTransport):
                                          this_branch=wt.branch,
                                          do_merge=False)
         with merger.make_preview_transform() as tt:
-            self.assertEqual([], tt.find_conflicts())
+            self.assertEqual([], tt.find_raw_conflicts())
             preview = tt.get_preview_tree()
             self.assertEqual(wt.path2id(''), preview.path2id(''))
 
@@ -198,7 +199,7 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
-        tree_a.set_conflicts(ConflictList([TextConflict('patha')]))
+        tree_a.set_conflicts([TextConflict('patha')])
         merge_inner(tree_a.branch, tree_a, tree_a, this_tree=tree_a)
         self.assertEqual(1, len(tree_a.conflicts()))
 
@@ -220,14 +221,14 @@ class TestMerge(TestCaseWithTransport):
         tree_z.commit('removed b')
         merge_inner(tree_z.branch, tree_a, base_tree, this_tree=tree_z)
         self.assertEqual([
-            conflicts.MissingParent('Created directory', 'b', b'b-id'),
-            conflicts.UnversionedParent('Versioned directory', 'b', b'b-id')],
+            MissingParent('Created directory', 'b', b'b-id'),
+            UnversionedParent('Versioned directory', 'b', b'b-id')],
             tree_z.conflicts())
         merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree,
                     this_tree=tree_a)
         self.assertEqual([
-            conflicts.DeletingParent('Not deleting', 'b', b'b-id'),
-            conflicts.UnversionedParent('Versioned directory', 'b', b'b-id')],
+            DeletingParent('Not deleting', 'b', b'b-id'),
+            UnversionedParent('Versioned directory', 'b', b'b-id')],
             tree_a.conflicts())
 
     def test_nested_merge(self):
@@ -288,8 +289,7 @@ class TestMerge(TestCaseWithTransport):
         tree_b.commit('content change')
         tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual(tree_b.conflicts(),
-                         [conflicts.ContentsConflict('file',
-                                                     file_id=b'file-id')])
+                         [ContentsConflict('file', file_id=b'file-id')])
 
     def test_merge_type_registry(self):
         merge_type_option = option.Option.OPTIONS['merge-type']

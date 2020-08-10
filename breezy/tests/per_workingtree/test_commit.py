@@ -102,7 +102,10 @@ class TestCommit(TestCaseWithWorkingTree):
         # Merging from A should introduce conflicts because 'n' was modified
         # (in A) and removed (in B), so 'a' needs to be restored.
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
-        self.assertEqual(3, num_conflicts)
+        if tree_b.has_versioned_directories():
+            self.assertEqual(3, num_conflicts)
+        else:
+            self.assertEqual(2, num_conflicts)
 
         self.assertThat(
             tree_b, HasPathRelations(
@@ -113,7 +116,7 @@ class TestCommit(TestCaseWithWorkingTree):
         osutils.rmtree('B/a')
         try:
             # bzr resolve --all
-            tree_b.set_conflicts(conflicts.ConflictList())
+            tree_b.set_conflicts([])
         except errors.UnsupportedOperation:
             # On WT2, set_conflicts is unsupported, but the rmtree has the same
             # effect.

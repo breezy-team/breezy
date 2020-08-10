@@ -176,7 +176,10 @@ class TestUnversion(TestCaseWithWorkingTree):
         # and removed, so 'a' needs to be restored. We also have a conflict
         # because 'a' is still an existing directory
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
-        self.assertEqual(4, num_conflicts)
+        if tree_b.has_versioned_directories():
+            self.assertEqual(4, num_conflicts)
+        else:
+            self.assertEqual(3, num_conflicts)
 
         self.assertThat(
             tree_b,

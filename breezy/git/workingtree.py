@@ -46,6 +46,7 @@ from dulwich.objects import (
     )
 import os
 import posixpath
+import re
 import stat
 import sys
 
@@ -85,6 +86,95 @@ from .mapping import (
     decode_git_path,
     mode_kind,
     )
+
+
+CONFLICT_SUFFIXES = ['.BASE', '.OTHER', '.THIS']
+
+
+# TODO: There should be a base revid attribute to better inform the user about
+# how the conflicts were generated.
+class TextConflict(_mod_conflicts.Conflict):
+    """The merge algorithm could not resolve all differences encountered."""
+
+    has_files = True
+
+    typestring = 'text conflict'
+
+    _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
+
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
+
+    def _resolve(self, tt, winner_suffix):
+        """Resolve the conflict by copying one of .THIS or .OTHER into file.
+
+        :param tt: The TreeTransform where the conflict is resolved.
+        :param winner_suffix: Either 'THIS' or 'OTHER'
+
+        The resolution is symmetric, when taking THIS, item.THIS is renamed
+        into item and vice-versa. This takes one of the files as a whole
+        ignoring every difference that could have been merged cleanly.
+        """
+        # To avoid useless copies, we switch item and item.winner_suffix, only
+        # item will exist after the conflict has been resolved anyway.
+        item_tid = tt.trans_id_tree_path(self.path)
+        item_parent_tid = tt.get_tree_parent(item_tid)
+        winner_path = self.path + '.' + winner_suffix
+        winner_tid = tt.trans_id_tree_path(winner_path)
+        winner_parent_tid = tt.get_tree_parent(winner_tid)
+        # Switch the paths to preserve the content
+        tt.adjust_path(osutils.basename(self.path),
+                       winner_parent_tid, winner_tid)
+        tt.adjust_path(osutils.basename(winner_path),
+                       item_parent_tid, item_tid)
+        tt.unversion_file(item_tid)
+        tt.version_file(winner_tid)
+        tt.apply()
+
+    def action_auto(self, tree):
+        # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
+        #                can't be auto resolved does not seem ideal.
+        try:
+            kind = tree.kind(self.path)
+        except errors.NoSuchFile:
+            return
+        if kind != 'file':
+            raise NotImplementedError("Conflict is not a file")
+        conflict_markers_in_line = self._conflict_re.search
+        with tree.get_file(self.path) as f:
+            for line in f:
+                if conflict_markers_in_line(line):
+                    raise NotImplementedError("Conflict markers present")
+
+    def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        with tree.transform() as tt:
+            self._resolve(tt, *args, **kwargs)
+
+    def action_take_this(self, tree):
+        self._resolve_with_cleanups(tree, 'THIS')
+
+    def action_take_other(self, tree):
+        self._resolve_with_cleanups(tree, 'OTHER')
+
+    def do(self, action, tree):
+        """Apply the specified action to the conflict.
+
+        :param action: The method name to call.
+
+        :param tree: The tree passed as a parameter to the method.
+        """
+        meth = getattr(self, 'action_%s' % action, None)
+        if meth is None:
+            raise NotImplementedError(self.__class__.__name__ + '.' + action)
+        meth(tree)
+
+    def action_done(self, tree):
+        """Mark the conflict as solved once it has been handled."""
+        # This method does nothing but simplifies the design of upper levels.
+        pass
+
+    def describe(self):
+        return 'Text conflict in %(path)s' % self.__dict__
 
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
@@ -870,8 +960,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             conflicts = _mod_conflicts.ConflictList()
             for item_path, value in self.index.iteritems():
                 if value.flags & FLAG_STAGEMASK:
-                    conflicts.append(_mod_conflicts.TextConflict(
-                        decode_git_path(item_path)))
+                    conflicts.append(TextConflict(decode_git_path(item_path)))
             return conflicts
 
     def set_conflicts(self, conflicts):
