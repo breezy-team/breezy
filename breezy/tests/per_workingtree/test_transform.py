@@ -28,7 +28,7 @@ from ... import (
     transform,
     urlutils,
     )
-from ...conflicts import (
+from ...bzr.conflicts import (
     DeletingParent,
     DuplicateEntry,
     DuplicateID,
@@ -61,7 +61,6 @@ from ..features import (
     )
 from ...transform import (
     create_from_tree,
-    cook_conflicts,
     FinalPaths,
     resolve_conflicts,
     resolve_checkout,
@@ -92,6 +91,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def transform_for_sha1_test(self):
         trans, root = self.transform()
+        if getattr(self.wt, '_observed_sha1', None) is None:
+            raise tests.TestNotApplicable(
+                'wt format does not use _observed_sha1')
         self.wt.lock_tree_write()
         self.addCleanup(self.wt.unlock)
         contents = [b'just some content\n']
@@ -906,7 +908,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_cook_conflicts(self):
         tt, emerald, oz, old_dorothy, new_dorothy = self.get_conflicted()
         raw_conflicts = resolve_conflicts(tt)
-        cooked_conflicts = cook_conflicts(raw_conflicts, tt)
+        cooked_conflicts = tt.cook_conflicts(raw_conflicts)
         duplicate = DuplicateEntry('Moved existing file to', 'dorothy.moved',
                                    'dorothy', None, b'dorothy-id')
         self.assertEqual(cooked_conflicts[0], duplicate)
@@ -936,7 +938,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_string_conflicts(self):
         tt, emerald, oz, old_dorothy, new_dorothy = self.get_conflicted()
         raw_conflicts = resolve_conflicts(tt)
-        cooked_conflicts = cook_conflicts(raw_conflicts, tt)
+        cooked_conflicts = tt.cook_conflicts(raw_conflicts)
         tt.finalize()
         conflicts_s = [text_type(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
@@ -978,7 +980,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         raw_conflicts = resolve_conflicts(tt)
         self.assertEqual({('non-directory parent', 'Created directory',
                            'new-3')}, raw_conflicts)
-        cooked_conflicts = cook_conflicts(raw_conflicts, tt)
+        cooked_conflicts = tt.cook_conflicts(raw_conflicts)
         if self.wt.supports_setting_file_ids():
             self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
                                                  b'parent-id')], cooked_conflicts)

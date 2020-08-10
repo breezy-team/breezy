@@ -821,9 +821,18 @@ class TreeTransformBase(TreeTransform):
     def cook_conflicts(self, raw_conflicts):
         """Generate a list of cooked conflicts, sorted by file path"""
         if not raw_conflicts:
-            return []
-        # TODO(jelmer): Support cooking git conflicts
-        raise ValueError(raw_conflicts)
+            return
+        fp = FinalPaths(self)
+        from .workingtree import TextConflict
+        for c in raw_conflicts:
+            if c[0] == 'text conflict':
+                yield TextConflict(fp.get_path(c[1]))
+            elif c[0] == 'duplicate':
+                yield TextConflict(fp.get_path(c[2]))
+            elif c[0] == 'contents conflict':
+                yield TextConflict(fp.get_path(c[1][0]))
+            else:
+                raise AssertionError('unknown conflict %s' % c[0])
 
 
 class DiskTreeTransform(TreeTransformBase):
@@ -1064,10 +1073,12 @@ class DiskTreeTransform(TreeTransformBase):
         if trans_id in self._new_contents:
             path = self._limbo_name(trans_id)
             st = os.lstat(path)
-            kind = mode_kind(st.t_mode)
+            kind = mode_kind(st.st_mode)
+            if kind == 'directory':
+                return None, None
             executable = mode_is_executable(st.st_mode)
             mode = object_mode(kind, executable)
-            blob = blob_from_path_and_mode(path, mode)
+            blob = blob_from_path_and_stat(encode_git_path(path), st)
         elif trans_id in self._removed_contents:
             return None, None
         else:
@@ -1079,8 +1090,10 @@ class DiskTreeTransform(TreeTransformBase):
                 contents = self._tree.get_symlink_target(orig_path)
             elif kind == 'file':
                 contents = self._tree.get_file_text(orig_path)
+            elif kind == 'directory':
+                return None, None
             else:
-                raise AssertionError
+                raise AssertionError(kind)
             blob = Blob.from_string(contents)
         return blob, mode
 
@@ -1743,7 +1756,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             children.sort(key=paths.get)
             todo.extend(reversed(children))
             for trans_id in children:
-                yield (trans_id, paths.get(trans_id))
+                yield trans_id, paths[trans_id][0]
 
     def revision_tree(self, revision_id):
         return self._transform._tree.revision_tree(revision_id)
@@ -1756,11 +1769,12 @@ class GitPreviewTree(PreviewTree, GitTree):
         extra = set()
         os = []
         for trans_id, path in self._list_files_by_dir():
-            if self._transform.final_is_versioned(trans_id):
+            if not self._transform.final_is_versioned(trans_id):
                 if not want_unversioned:
                     continue
                 extra.add(path)
             o, mode = self._transform.final_git_entry(trans_id)
-            self.store.add_object(o)
-            os.append((encode_git_path(path), o.id, mode))
+            if o is not None:
+                self.store.add_object(o)
+                os.append((encode_git_path(path), o.id, mode))
         return commit_tree(self.store, os), extra

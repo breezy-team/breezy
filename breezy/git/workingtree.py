@@ -168,8 +168,8 @@ class TextConflict(_mod_conflicts.Conflict):
             raise NotImplementedError(self.__class__.__name__ + '.' + action)
         meth(tree)
 
-    def action_auto(self, tree):
-        raise NotImplementedError(self.action_auto)
+    def describe(self):
+        return 'Text conflict in %(path)s' % self.__dict__
 
     def action_done(self, tree):
         """Mark the conflict as solved once it has been handled."""

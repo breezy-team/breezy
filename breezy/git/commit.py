@@ -120,7 +120,10 @@ class GitCommitBuilder(CommitBuilder):
                 finally:
                     f.close()
                 sha = blob.id
-                entry.text_size = st.st_size
+                if st is not None:
+                    entry.text_size = st.st_size
+                else:
+                    entry.text_size = len(blob.data)
                 entry.git_sha1 = sha
                 self.store.add_object(blob)
             elif change.kind[1] == "symlink":
