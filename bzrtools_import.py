@@ -36,7 +36,7 @@ from ...osutils import (
     )
 from ...trace import warning
 from ...tree import Tree
-from ...transform import resolve_conflicts, cook_conflicts
+from ...transform import resolve_conflicts
 from ...transport import get_transport
 from ...workingtree import WorkingTree
 from .errors import UnknownType
@@ -265,7 +265,13 @@ def _import_archive(
         for path in removed.difference(added):
             tt.unversion_file(tt.trans_id_tree_path(path))
 
-        for conflict in cook_conflicts(resolve_conflicts(tt), tt):
+        if getattr(tt, 'cook_conflicts', None):
+            conflicts = tt.cook_conflicts(resolve_conflicts(tt))
+        else:  # brz < 3.1.1
+            from breezy.transform import cook_conflicts
+            conflicts = cook_conflicts(resolve_conflicts(tt), tt)
+
+        for conflict in conflicts:
             warning('%s', conflict)
         tt.apply()
 
