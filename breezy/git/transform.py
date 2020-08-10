@@ -984,7 +984,7 @@ class TreeTransformBase(TreeTransform):
     def cook_conflicts(self, raw_conflicts):
         """Generate a list of cooked conflicts, sorted by file path"""
         if not raw_conflicts:
-            return []
+            return
         fp = FinalPaths(self)
         from .workingtree import TextConflict
         for c in raw_conflicts:
