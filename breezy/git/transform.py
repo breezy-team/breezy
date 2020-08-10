@@ -291,7 +291,6 @@ class TreeTransformBase(TreeTransform):
         # all children of non-existent parents are known, by definition.
         self._add_tree_children()
         by_parent = self.by_parent()
-        conflicts.extend(self._unversioned_parents(by_parent))
         conflicts.extend(self._parent_loops())
         conflicts.extend(self._duplicate_entries(by_parent))
         conflicts.extend(self._parent_type_conflicts(by_parent))
@@ -384,20 +383,6 @@ class TreeTransformBase(TreeTransform):
                 if parent_id == trans_id:
                     conflicts.append(('parent loop', trans_id))
                 if parent_id in seen:
-                    break
-        return conflicts
-
-    def _unversioned_parents(self, by_parent):
-        """If parent directories are versioned, children must be versioned."""
-        conflicts = []
-        for parent_id, children in viewitems(by_parent):
-            if parent_id == ROOT_PARENT:
-                continue
-            if self.final_is_versioned(parent_id):
-                continue
-            for child_id in children:
-                if self.final_is_versioned(child_id):
-                    conflicts.append(('unversioned parent', parent_id))
                     break
         return conflicts
 
@@ -1000,8 +985,20 @@ class TreeTransformBase(TreeTransform):
         """Generate a list of cooked conflicts, sorted by file path"""
         if not raw_conflicts:
             return []
-        # TODO(jelmer): Support cooking git conflicts
-        raise ValueError(raw_conflicts)
+        fp = FinalPaths(self)
+        from .workingtree import TextConflict
+        for c in raw_conflicts:
+            if c[0] == 'text conflict':
+                yield TextConflict(fp.get_path(c[1]))
+            elif c[0] == 'duplicate':
+                yield TextConflict(fp.get_path(c[2]))
+            elif c[0] == 'contents conflict':
+                yield TextConflict(fp.get_path(c[1][0]))
+            elif c[0] == 'missing parent':
+                # TODO(jelmer): This should not make it to here
+                yield TextConflict(fp.get_path(c[2]))
+            else:
+                raise AssertionError('unknown conflict %s' % c[0])
 
 
 class DiskTreeTransform(TreeTransformBase):

@@ -88,7 +88,7 @@ from .mapping import (
     )
 
 
-CONFLICT_SUFFIXES = ['.BASE', '.OTHER', '.OTHER']
+CONFLICT_SUFFIXES = ['.BASE', '.OTHER', '.THIS']
 
 
 # TODO: There should be a base revid attribute to better inform the user about
@@ -168,13 +168,13 @@ class TextConflict(_mod_conflicts.Conflict):
             raise NotImplementedError(self.__class__.__name__ + '.' + action)
         meth(tree)
 
-    def action_auto(self, tree):
-        raise NotImplementedError(self.action_auto)
-
     def action_done(self, tree):
         """Mark the conflict as solved once it has been handled."""
         # This method does nothing but simplifies the design of upper levels.
         pass
+
+    def describe(self):
+        return 'Text conflict in %(path)s' % self.__dict__
 
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):

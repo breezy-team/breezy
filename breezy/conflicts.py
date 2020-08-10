@@ -340,3 +340,6 @@ class Conflict(object):
         :param tree: The tree passed as a parameter to the method.
         """
         raise NotImplementedError(self.do)
+
+    def describe(self):
+        raise NotImplementedError(self.describe)
