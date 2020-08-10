@@ -31,13 +31,13 @@ from os import mkdir, chdir, rmdir, unlink
 import sys
 
 from ... import (
-    conflicts,
     errors,
     osutils,
     status,
     )
 from breezy.bzr import (
     bzrdir,
+    conflicts,
     )
 import breezy.branch
 from ...osutils import pathjoin
@@ -297,20 +297,17 @@ class BranchStatus(TestCaseWithTransport):
         self.build_tree(['dir2/'])
         tree.add('dir2')
         tree.commit('added dir2')
-        tree.set_conflicts(conflicts.ConflictList(
-            [conflicts.ContentsConflict('foo')]))
+        tree.set_conflicts([conflicts.ContentsConflict('foo')])
         tof = BytesIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff(b'', tof.getvalue())
-        tree.set_conflicts(conflicts.ConflictList(
-            [conflicts.ContentsConflict('dir2')]))
+        tree.set_conflicts([conflicts.ContentsConflict('dir2')])
         tof = StringIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff('conflicts:\n  Contents conflict in dir2\n',
                              tof.getvalue())
 
-        tree.set_conflicts(conflicts.ConflictList(
-            [conflicts.ContentsConflict('dir2/file1')]))
+        tree.set_conflicts([conflicts.ContentsConflict('dir2/file1')])
         tof = StringIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff('conflicts:\n  Contents conflict in dir2/file1\n',

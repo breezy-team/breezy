@@ -24,6 +24,7 @@ import time
 
 from .. import (
     annotate,
+    conflicts,
     errors,
     lock,
     multiparent,
@@ -52,7 +53,8 @@ from ..transform import (
     MalformedTransform,
     PreviewTree,
     )
-from ..tree import TreeChange
+from .conflicts import Conflict
+
 from . import (
     inventory,
     inventorytree,
@@ -296,7 +298,7 @@ class TreeTransformBase(TreeTransform):
             if value == trans_id:
                 return key
 
-    def find_conflicts(self):
+    def find_raw_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
         if self._done is True:
             raise ReusingTransform()
@@ -315,7 +317,7 @@ class TreeTransformBase(TreeTransform):
         return conflicts
 
     def _check_malformed(self):
-        conflicts = self.find_conflicts()
+        conflicts = self.find_raw_conflicts()
         if len(conflicts) != 0:
             raise MalformedTransform(conflicts=conflicts)
 
@@ -703,7 +705,7 @@ class TreeTransformBase(TreeTransform):
         """Produce output in the same format as Tree.iter_changes.
 
         Will produce nonsensical results if invoked while inventory/filesystem
-        conflicts (as reported by TreeTransform.find_conflicts()) are present.
+        conflicts (as reported by TreeTransform.find_raw_conflicts()) are present.
 
         This reads the Transform, but only reproduces changes involving a
         file_id.  Files that are not versioned in either of the FROM or TO
@@ -755,7 +757,7 @@ class TreeTransformBase(TreeTransform):
                     and from_executable == to_executable):
                 continue
             results.append(
-                TreeChange(
+                inventorytree.InventoryTreeChange(
                     file_id, (from_path, to_path), modified,
                     (from_versioned, to_versioned),
                     (from_parent, to_parent),
@@ -1009,6 +1011,100 @@ class TreeTransformBase(TreeTransform):
         :param _mover: Supply an alternate FileMover, for testing
         """
         raise NotImplementedError(self.apply)
+
+    def cook_conflicts(self, raw_conflicts):
+        """Generate a list of cooked conflicts, sorted by file path"""
+        content_conflict_file_ids = set()
+        cooked_conflicts = list(iter_cook_conflicts(raw_conflicts, self))
+        for c in cooked_conflicts:
+            if c.typestring == 'contents conflict':
+                content_conflict_file_ids.add(c.file_id)
+        # We want to get rid of path conflicts when a corresponding contents
+        # conflict exists. This can occur when one branch deletes a file while
+        # the other renames *and* modifies it. In this case, the content
+        # conflict is enough.
+        cooked_conflicts = [
+            c for c in cooked_conflicts
+            if c.typestring != 'path conflict' or
+            c.file_id not in content_conflict_file_ids]
+        return sorted(cooked_conflicts, key=Conflict.sort_key)
+
+
+def cook_path_conflict(
+        tt, fp, conflict_type, trans_id, file_id, this_parent, this_name,
+        other_parent, other_name):
+    if this_parent is None or this_name is None:
+        this_path = '<deleted>'
+    else:
+        parent_path = fp.get_path(tt.trans_id_file_id(this_parent))
+        this_path = osutils.pathjoin(parent_path, this_name)
+    if other_parent is None or other_name is None:
+        other_path = '<deleted>'
+    else:
+        try:
+            parent_path = fp.get_path(tt.trans_id_file_id(other_parent))
+        except NoFinalPath:
+            # The other entry was in a path that doesn't exist in our tree.
+            # Put it in the root.
+            parent_path = ''
+        other_path = osutils.pathjoin(parent_path, other_name)
+    return Conflict.factory(
+        conflict_type, path=this_path,
+        conflict_path=other_path,
+        file_id=file_id)
+
+
+def cook_content_conflict(tt, fp, conflict_type, trans_ids):
+    for trans_id in trans_ids:
+        file_id = tt.final_file_id(trans_id)
+        if file_id is not None:
+            # Ok we found the relevant file-id
+            break
+    path = fp.get_path(trans_id)
+    for suffix in ('.BASE', '.THIS', '.OTHER'):
+        if path.endswith(suffix):
+            # Here is the raw path
+            path = path[:-len(suffix)]
+            break
+    return Conflict.factory(conflict_type, path=path, file_id=file_id)
+
+
+def cook_text_conflict(tt, fp, conflict_type, trans_id):
+    path = fp.get_path(trans_id)
+    file_id = tt.final_file_id(trans_id)
+    return Conflict.factory(conflict_type, path=path, file_id=file_id)
+
+
+CONFLICT_COOKERS = {
+    'path conflict': cook_path_conflict,
+    'text conflict': cook_text_conflict,
+    'contents conflict': cook_content_conflict,
+}
+
+def iter_cook_conflicts(raw_conflicts, tt):
+    fp = FinalPaths(tt)
+    for conflict in raw_conflicts:
+        c_type = conflict[0]
+        try:
+            cooker = CONFLICT_COOKERS[c_type]
+        except KeyError:
+            action = conflict[1]
+            modified_path = fp.get_path(conflict[2])
+            modified_id = tt.final_file_id(conflict[2])
+            if len(conflict) == 3:
+                yield Conflict.factory(
+                    c_type, action=action, path=modified_path, file_id=modified_id)
+
+            else:
+                conflicting_path = fp.get_path(conflict[3])
+                conflicting_id = tt.final_file_id(conflict[3])
+                yield Conflict.factory(
+                    c_type, action=action, path=modified_path,
+                    file_id=modified_id,
+                    conflict_path=conflicting_path,
+                    conflict_file_id=conflicting_id)
+        else:
+            yield cooker(tt, fp, *conflict)
 
 
 class DiskTreeTransform(TreeTransformBase):
@@ -1497,8 +1593,8 @@ class InventoryTreeTransform(DiskTreeTransform):
                 conflicts.append(('duplicate id', old_trans_id, trans_id))
         return conflicts
 
-    def find_conflicts(self):
-        conflicts = super(InventoryTreeTransform, self).find_conflicts()
+    def find_raw_conflicts(self):
+        conflicts = super(InventoryTreeTransform, self).find_raw_conflicts()
         conflicts.extend(self._duplicate_ids())
         return conflicts
 
@@ -2121,10 +2217,10 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
                 if versioned_kind == 'directory':
                     subdirs.append(child_id)
                 children.append((path_from_root, basename, kind, None,
-                                 file_id, versioned_kind))
+                                 versioned_kind))
             children.sort()
             if parent_path.startswith(prefix):
-                yield (parent_path, parent_file_id), children
+                yield parent_path, children
             pending.extend(sorted(subdirs, key=self._final_paths.get_path,
                                   reverse=True))
 

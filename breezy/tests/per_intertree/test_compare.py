@@ -25,7 +25,7 @@ from breezy import (
     tests,
     )
 from breezy.osutils import has_symlinks
-from breezy.tree import TreeChange
+from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
 from breezy.tests import (
     features,
@@ -572,7 +572,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def added(self, tree, path):
         entry = self.get_path_entry(tree, path)
-        return TreeChange(
+        return InventoryTreeChange(
             entry.file_id, (None, path), True, (False, True), (None, entry.parent_id),
             (None, entry.name), (None, entry.kind),
             (None, entry.executable))
@@ -587,7 +587,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def changed_content(self, tree, path):
         entry = self.get_path_entry(tree, path)
-        return TreeChange(
+        return InventoryTreeChange(
             entry.file_id, (path, path), True, (True, True),
             (entry.parent_id, entry.parent_id),
             (entry.name, entry.name), (entry.kind, entry.kind),
@@ -596,7 +596,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def kind_changed(self, from_tree, to_tree, from_path, to_path):
         old_entry = self.get_path_entry(from_tree, from_path)
         new_entry = self.get_path_entry(to_tree, to_path)
-        return TreeChange(
+        return InventoryTreeChange(
             new_entry.file_id, (from_path, to_path), True, (True, True),
             (old_entry.parent_id, new_entry.parent_id),
             (old_entry.name, new_entry.name),
@@ -607,14 +607,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         _, from_basename = os.path.split(from_path)
         _, to_basename = os.path.split(to_path)
         # missing files have both paths, but no kind.
-        return TreeChange(
+        return InventoryTreeChange(
             file_id, (from_path, to_path), True, (True, True),
             (parent_id, parent_id),
             (from_basename, to_basename), (kind, None), (False, False))
 
     def deleted(self, tree, path):
         entry = self.get_path_entry(tree, path)
-        return TreeChange(
+        return InventoryTreeChange(
             entry.file_id, (path, None), True, (True, False), (entry.parent_id, None),
             (entry.name, None), (entry.kind, None),
             (entry.executable, None))
@@ -622,7 +622,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def renamed(self, from_tree, to_tree, from_path, to_path, content_changed):
         from_entry = self.get_path_entry(from_tree, from_path)
         to_entry = self.get_path_entry(to_tree, to_path)
-        return TreeChange(
+        return InventoryTreeChange(
             to_entry.file_id, (from_path, to_path), content_changed, (True, True),
             (from_entry.parent_id, to_entry.parent_id),
             (from_entry.name, to_entry.name),
@@ -635,7 +635,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         name = entry.name
         kind = entry.kind
         executable = entry.executable
-        return TreeChange(
+        return InventoryTreeChange(
             entry.file_id, (path, path), False, (True, True),
             (parent, parent), (name, name), (kind, kind),
             (executable, executable))
@@ -644,7 +644,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """Create an unversioned result."""
         _, basename = os.path.split(path)
         kind = tree._comparison_data(None, path)[0]
-        return TreeChange(
+        return InventoryTreeChange(
             None, (None, path), True, (False, False), (None, None),
             (None, basename), (None, kind),
             (None, False))
@@ -1111,8 +1111,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.not_applicable_if_missing_in('file', tree1)
         root_id = tree1.path2id('')
         expected = [
-            TreeChange(b'file-id', ('file', None), False, (True, False),
-                       (root_id, None), ('file', None), (None, None), (False, None))]
+            InventoryTreeChange(
+                b'file-id', ('file', None), False, (True, False),
+                (root_id, None), ('file', None), (None, None), (False, None))]
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
     def test_only_in_target_and_missing(self):
@@ -1126,8 +1127,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.not_applicable_if_missing_in('file', tree2)
         root_id = tree1.path2id('')
         expected = [
-            TreeChange(b'file-id', (None, 'file'), False, (False, True),
-                       (None, root_id), (None, 'file'), (None, None), (None, False))]
+            InventoryTreeChange(
+                b'file-id', (None, 'file'), False, (False, True),
+                (None, root_id), (None, 'file'), (None, None), (None, False))]
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
     def test_only_in_target_missing_subtree_specific_bug_367632(self):
@@ -1142,10 +1144,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.not_applicable_if_missing_in('a-dir', tree2)
         root_id = tree1.path2id('')
         expected = [
-            TreeChange(
+            InventoryTreeChange(
                 b'dir-id', (None, 'a-dir'), False, (False, True),
                 (None, root_id), (None, 'a-dir'), (None, None), (None, False)),
-            TreeChange(
+            InventoryTreeChange(
                 b'file-id', (None, 'a-dir/a-file'), False, (False, True),
                 (None, b'dir-id'), (None, 'a-file'), (None, None), (None, False))
             ]
@@ -1164,7 +1166,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.assertEqual(sorted([self.unchanged(tree1, ''),
                                  self.unchanged(tree1, 'b'),
-                                 TreeChange(
+                                 InventoryTreeChange(
                                      b'a-id', ('a', 'd'), True, (True, True),
                                      (b'root-id', b'root-id'), ('a', 'd'),
                                      ('file', 'file'),
@@ -1192,7 +1194,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([], list(tree2.iter_changes(tree1)))
         subtree1.commit('commit', rev_id=b'commit-a')
         self.assertEqual([
-            TreeChange(
+            InventoryTreeChange(
                 b'root-id',
                 (u'', u''),
                 False,
@@ -1201,7 +1203,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (u'', u''),
                 ('directory', 'directory'),
                 (False, False)),
-            TreeChange(
+            InventoryTreeChange(
                 b'subtree-id',
                 ('sub', 'sub',),
                 False,

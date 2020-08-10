@@ -38,7 +38,7 @@ from ..errors import (
     BzrError,
     LockContention,
     )
-from ..tree import TreeChange
+from ..bzr.inventorytree import InventoryTreeChange
 from . import (
     TestCase,
     TestCaseWithTransport,
@@ -892,7 +892,7 @@ class FilterExcludedTests(TestCase):
 
     def test_add_file_not_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', (None, 'newpath'),
                 0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
                 ('file', 'file'), (True, True))]
@@ -901,7 +901,7 @@ class FilterExcludedTests(TestCase):
 
     def test_add_file_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', (None, 'newpath'),
                 0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
                 ('file', 'file'), (True, True))]
@@ -909,7 +909,7 @@ class FilterExcludedTests(TestCase):
 
     def test_delete_file_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', ('somepath', None),
                 0, (False, None), ('pid', None), ('newpath', None),
                 ('file', None), (True, None))]
@@ -917,7 +917,7 @@ class FilterExcludedTests(TestCase):
 
     def test_move_from_or_to_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', ('oldpath', 'newpath'),
                 0, (False, False), ('pid', 'pid'), ('oldpath', 'newpath'),
                 ('file', 'file'), (True, True))]

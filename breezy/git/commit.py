@@ -75,11 +75,21 @@ class GitCommitBuilder(CommitBuilder):
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         seen_root = False
         for change in iter_changes:
+            if change.versioned[0] and not change.copied:
+                file_id = self._mapping.generate_file_id(change.path[0])
+            elif change.versioned[1]:
+                file_id = self._mapping.generate_file_id(change.path[1])
+            else:
+                file_id = None
+            if change.path[1]:
+                parent_id_new = self._mapping.generate_file_id(osutils.dirname(change.path[1]))
+            else:
+                parent_id_new = None
             if change.kind[1] in ("directory",):
                 self._inv_delta.append(
-                    (change.path[0], change.path[1], change.file_id,
+                    (change.path[0], change.path[1], file_id,
                      entry_factory[change.kind[1]](
-                         change.file_id, change.name[1], change.parent_id[1])))
+                         file_id, change.name[1], parent_id_new)))
                 if change.kind[0] in ("file", "symlink"):
                     self._blobs[encode_git_path(change.path[0])] = None
                     self._any_changes = True
@@ -88,14 +98,14 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             self._any_changes = True
             if change.path[1] is None:
-                self._inv_delta.append((change.path[0], change.path[1], change.file_id, None))
+                self._inv_delta.append((change.path[0], change.path[1], file_id, None))
                 self._deleted_paths.add(encode_git_path(change.path[0]))
                 continue
             try:
                 entry_kls = entry_factory[change.kind[1]]
             except KeyError:
                 raise KeyError("unknown kind %s" % change.kind[1])
-            entry = entry_kls(change.file_id, change.name[1], change.parent_id[1])
+            entry = entry_kls(file_id, change.name[1], parent_id_new)
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
                 blob = Blob()
@@ -104,10 +114,10 @@ class GitCommitBuilder(CommitBuilder):
                     blob.data = f.read()
                 finally:
                     f.close()
-                entry.text_size = len(blob.data)
-                entry.text_sha1 = osutils.sha_string(blob.data)
-                self.store.add_object(blob)
                 sha = blob.id
+                entry.text_size = st.st_size
+                entry.git_sha1 = sha
+                self.store.add_object(blob)
             elif change.kind[1] == "symlink":
                 symlink_target = workingtree.get_symlink_target(change.path[1])
                 blob = Blob()
@@ -124,12 +134,12 @@ class GitCommitBuilder(CommitBuilder):
             else:
                 raise AssertionError("Unknown kind %r" % change.kind[1])
             mode = object_mode(change.kind[1], change.executable[1])
-            self._inv_delta.append((change.path[0], change.path[1], change.file_id, entry))
+            self._inv_delta.append((change.path[0], change.path[1], file_id, entry))
             if change.path[0] is not None:
                 self._deleted_paths.add(encode_git_path(change.path[0]))
             self._blobs[encode_git_path(change.path[1])] = (mode, sha)
             if st is not None:
-                yield change.path[1], (entry.text_sha1, st)
+                yield change.path[1], (entry.git_sha1, st)
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):

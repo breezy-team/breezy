@@ -653,7 +653,7 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         newwt.unlock()
         with open("new/afile", 'r') as f:
             self.assertEquals("E\n" + "A\n" * 10 + "C\n", f.read())
-        newwt.set_conflicts(ConflictList())
+        newwt.set_conflicts([])
         oldrev = newwt.branch.repository.get_revision(b"E")
         replayer.commit_rebase(oldrev, b"E'")
         newrev = newwt.branch.repository.get_revision(b"E'")

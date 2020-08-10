@@ -60,6 +60,7 @@ from breezy import (
     rio as _mod_rio,
     )
 from breezy.bzr import (
+    conflicts as _mod_bzr_conflicts,
     inventory,
     serializer,
     xml5,
@@ -403,8 +404,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, fileid, kind in file_infos:
+            for parent_path, file_infos in self.walkdirs(directory):
+                for relpath, basename, kind, lstat, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -573,23 +574,24 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return xml7.serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
+        conflict_list = _mod_bzr_conflicts.ConflictList(conflicts)
         with self.lock_tree_write():
-            self._put_rio('conflicts', conflicts.to_stanzas(),
+            self._put_rio('conflicts', conflict_list.to_stanzas(),
                           CONFLICT_HEADER_1)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             conflict_set = set(self.conflicts())
             conflict_set.update(set(list(new_conflicts)))
-            self.set_conflicts(_mod_conflicts.ConflictList(
-                sorted(conflict_set, key=_mod_conflicts.Conflict.sort_key)))
+            self.set_conflicts(
+                sorted(conflict_set, key=_mod_bzr_conflicts.Conflict.sort_key))
 
     def conflicts(self):
         with self.lock_read():
             try:
                 confile = self._transport.get('conflicts')
             except errors.NoSuchFile:
-                return _mod_conflicts.ConflictList()
+                return _mod_bzr_conflicts.ConflictList()
             try:
                 try:
                     if next(confile) != CONFLICT_HEADER_1 + b'\n':
@@ -597,7 +599,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 except StopIteration:
                     raise errors.ConflictFormatError()
                 reader = _mod_rio.RioReader(confile)
-                return _mod_conflicts.ConflictList.from_stanzas(reader)
+                return _mod_bzr_conflicts.ConflictList.from_stanzas(reader)
             finally:
                 confile.close()
 
@@ -1562,8 +1564,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """Walk the directories of this tree.
 
         returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                (current_directory_path,
+                 [(file1_path, file1_name, file1_kind, (lstat),
                    file1_kind), ... ])
 
         This API returns a generator, which is only valid during the current
@@ -1626,20 +1628,20 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
             if direction > 0:
                 # disk is before inventory - unknown
-                dirblock = [(relpath, basename, kind, stat, None, None) for
+                dirblock = [(relpath, basename, kind, stat, None) for
                             relpath, basename, kind, stat, top_path in
                             cur_disk_dir_content]
-                yield (cur_disk_dir_relpath, None), dirblock
+                yield cur_disk_dir_relpath, dirblock
                 try:
                     current_disk = next(disk_iterator)
                 except StopIteration:
                     disk_finished = True
             elif direction < 0:
                 # inventory is before disk - missing.
-                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                dirblock = [(relpath, basename, 'unknown', None, kind)
                             for relpath, basename, dkind, stat, fileid, kind in
                             current_inv[1]]
-                yield (current_inv[0][0], current_inv[0][1]), dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1657,23 +1659,20 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         # versioned, present file
                         dirblock.append((inv_row[0],
                                          inv_row[1], disk_row[2],
-                                         disk_row[3], inv_row[4],
-                                         inv_row[5]))
+                                         disk_row[3], inv_row[5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
-                             path_elements[0][2], path_elements[0][3], None,
-                             None))
+                             path_elements[0][2], path_elements[0][3], None))
                     elif len(path_elements[0]) == 6:
                         # versioned, absent file.
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
-                             'unknown', None, path_elements[0][4],
-                             path_elements[0][5]))
+                             'unknown', None, path_elements[0][5]))
                     else:
                         raise NotImplementedError('unreachable code')
-                yield current_inv[0], dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1817,6 +1816,52 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return self.branch.reference_parent(
             self.path2id(path),
             path, possible_transports=possible_transports)
+
+    def has_changes(self, _from_tree=None):
+        """Quickly check that the tree contains at least one commitable change.
+
+        :param _from_tree: tree to compare against to find changes (default to
+            the basis tree and is intended to be used by tests).
+
+        :return: True if a change is found. False otherwise
+        """
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            if self.supports_symlinks():
+                # Fast path for has_changes.
+                try:
+                    change = next(changes)
+                    # Exclude root (talk about black magic... --vila 20090629)
+                    if change.parent_id == (None, None):
+                        change = next(changes)
+                    return True
+                except StopIteration:
+                    # No changes
+                    return False
+            else:
+                # Slow path for has_changes.
+                # Handle platforms that do not support symlinks in the
+                # conditional below. This is slower than the try/except
+                # approach below that but we don't have a choice as we
+                # need to be sure that all symlinks are removed from the
+                # entire changeset. This is because in platforms that
+                # do not support symlinks, they show up as None in the
+                # working copy as compared to the repository.
+                # Also, exclude root as mention in the above fast path.
+                changes = filter(
+                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
+                    changes)
+                try:
+                    next(iter(changes))
+                except StopIteration:
+                    return False
+                return True
+
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

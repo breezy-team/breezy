@@ -721,7 +721,8 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
@@ -739,7 +740,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 merge_prerequisite=prereq_branch_lp,
                 initial_comment=description.strip(),
                 commit_message=commit_message,
-                needs_review=True,
+                needs_review=(not work_in_progress),
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
                 review_types=[None for reviewer in reviewers])

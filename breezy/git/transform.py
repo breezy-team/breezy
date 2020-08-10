@@ -22,7 +22,7 @@ import os
 from stat import S_ISREG
 import time
 
-from .. import errors, multiparent, osutils, trace, ui, urlutils
+from .. import conflicts, errors, multiparent, osutils, trace, ui, urlutils
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..transform import (
@@ -38,6 +38,7 @@ from ..transform import (
     ReusingTransform,
     MalformedTransform,
     )
+from ..bzr.inventorytree import InventoryTreeChange
 
 from ..bzr import inventory
 from ..bzr.transform import TransformPreview as GitTransformPreview
@@ -280,7 +281,7 @@ class TreeTransformBase(TreeTransform):
             if value == trans_id:
                 return key
 
-    def find_conflicts(self):
+    def find_raw_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
         if self._done is True:
             raise ReusingTransform()
@@ -289,7 +290,6 @@ class TreeTransformBase(TreeTransform):
         # all children of non-existent parents are known, by definition.
         self._add_tree_children()
         by_parent = self.by_parent()
-        conflicts.extend(self._unversioned_parents(by_parent))
         conflicts.extend(self._parent_loops())
         conflicts.extend(self._duplicate_entries(by_parent))
         conflicts.extend(self._parent_type_conflicts(by_parent))
@@ -299,7 +299,7 @@ class TreeTransformBase(TreeTransform):
         return conflicts
 
     def _check_malformed(self):
-        conflicts = self.find_conflicts()
+        conflicts = self.find_raw_conflicts()
         if len(conflicts) != 0:
             raise MalformedTransform(conflicts=conflicts)
 
@@ -382,20 +382,6 @@ class TreeTransformBase(TreeTransform):
                 if parent_id == trans_id:
                     conflicts.append(('parent loop', trans_id))
                 if parent_id in seen:
-                    break
-        return conflicts
-
-    def _unversioned_parents(self, by_parent):
-        """If parent directories are versioned, children must be versioned."""
-        conflicts = []
-        for parent_id, children in by_parent.items():
-            if parent_id == ROOT_PARENT:
-                continue
-            if self.final_is_versioned(parent_id):
-                continue
-            for child_id in children:
-                if self.final_is_versioned(child_id):
-                    conflicts.append(('unversioned parent', parent_id))
                     break
         return conflicts
 
@@ -687,7 +673,7 @@ class TreeTransformBase(TreeTransform):
         """Produce output in the same format as Tree.iter_changes.
 
         Will produce nonsensical results if invoked while inventory/filesystem
-        conflicts (as reported by TreeTransform.find_conflicts()) are present.
+        conflicts (as reported by TreeTransform.find_raw_conflicts()) are present.
 
         This reads the Transform, but only reproduces changes involving a
         file_id.  Files that are not versioned in either of the FROM or TO
@@ -739,7 +725,7 @@ class TreeTransformBase(TreeTransform):
                     and from_executable == to_executable):
                 continue
             results.append(
-                TreeChange(
+                InventoryTreeChange(
                     file_id, (from_path, to_path), modified,
                     (from_versioned, to_versioned),
                     (from_parent, to_parent),
@@ -993,6 +979,25 @@ class TreeTransformBase(TreeTransform):
         :param _mover: Supply an alternate FileMover, for testing
         """
         raise NotImplementedError(self.apply)
+
+    def cook_conflicts(self, raw_conflicts):
+        """Generate a list of cooked conflicts, sorted by file path"""
+        if not raw_conflicts:
+            return
+        fp = FinalPaths(self)
+        from .workingtree import TextConflict
+        for c in raw_conflicts:
+            if c[0] == 'text conflict':
+                yield TextConflict(fp.get_path(c[1]))
+            elif c[0] == 'duplicate':
+                yield TextConflict(fp.get_path(c[2]))
+            elif c[0] == 'contents conflict':
+                yield TextConflict(fp.get_path(c[1][0]))
+            elif c[0] == 'missing parent':
+                # TODO(jelmer): This should not make it to here
+                yield TextConflict(fp.get_path(c[2]))
+            else:
+                raise AssertionError('unknown conflict %s' % c[0])
 
 
 class DiskTreeTransform(TreeTransformBase):

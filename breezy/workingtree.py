@@ -1219,8 +1219,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """Walk the directories of this tree.
 
         returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                (current_directory_path,
+                 [(file1_path, file1_name, file1_kind, (lstat),
                    file1_kind), ... ])
 
         This API returns a generator, which is only valid during the current
@@ -1240,11 +1240,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         into files that have text conflicts.  The corresponding .THIS .BASE and
         .OTHER files are deleted, as per 'resolve'.
 
-        :return: a tuple of ConflictLists: (un_resolved, resolved).
+        :return: a tuple of lists: (un_resolved, resolved).
         """
         with self.lock_tree_write():
-            un_resolved = _mod_conflicts.ConflictList()
-            resolved = _mod_conflicts.ConflictList()
+            un_resolved = []
+            resolved = []
             for conflict in self.conflicts():
                 try:
                     conflict.action_auto(self)

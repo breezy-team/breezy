@@ -30,8 +30,7 @@ from ... import version_info  # noqa: F401
 class MercurialUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Mercurial branches are not yet supported. '
-            'To convert Mercurial branches to Bazaar branches or vice versa, '
-            'use the fastimport format. ')
+            'To interoperate with Mercurial, use the fastimport format.')
 
 
 class LocalHgDirFormat(controldir.ControlDirFormat):
@@ -144,6 +143,9 @@ class SmartHgProber(controldir.Prober):
         resp = transport.request(
             'GET', url, headers={'Accept': 'application/mercurial-0.1'})
         if resp.status == 404:
+            return False
+        if resp.status == 406:
+            # The server told us that it can't handle our Accept header.
             return False
         ct = resp.getheader("Content-Type")
         if ct is None:

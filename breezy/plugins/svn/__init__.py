@@ -34,8 +34,7 @@ from ...revisionspec import (
 class SubversionUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Subversion branches are not yet supported. '
-            'To convert Subversion branches to Bazaar branches or vice versa, '
-            'use the fastimport format.')
+            'To interoperate with Subversion branches, use fastimport.')
 
 
 class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):

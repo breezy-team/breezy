@@ -56,7 +56,7 @@ from ...tree import (
     TreeFile,
     TreeLink,
     )
-from ...conflicts import ConflictList, TextConflict, ContentsConflict
+from ...bzr.conflicts import ConflictList, TextConflict, ContentsConflict
 from ...workingtree import (
     SettingFileIdUnsupported,
     WorkingTree,
@@ -797,7 +797,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
         try:
-            tree.set_conflicts(ConflictList())
+            tree.set_conflicts([])
         except UnsupportedOperation:
             raise TestSkipped('unsupported operation')
         self.assertEqual(tree.conflicts(), ConflictList())
@@ -929,11 +929,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
-                (('', tree.path2id('')),
-                 [('missing', 'missing', 'unknown', None, b'missing-id', 'file'),
+                ('',
+                 [('missing', 'missing', 'unknown', None, 'file'),
                   ('present', 'present', 'file',
-                   present_stat, b'present-id', 'file'),
-                  ('unknown', 'unknown', 'file', unknown_stat, None, None),
+                   present_stat, 'file'),
+                  ('unknown', 'unknown', 'file', unknown_stat, None),
                   ]
                  )]
             self.assertEqual(expected_results, list(tree.walkdirs()))

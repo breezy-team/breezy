@@ -33,7 +33,7 @@ from .errors import (BzrError, NoSuchFile, CommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
 from .trace import warning
-from .transform import resolve_conflicts, cook_conflicts
+from .transform import resolve_conflicts
 from .transport import get_transport
 from .workingtree import WorkingTree
 
@@ -300,7 +300,7 @@ def import_archive_to_transform(tree, archive_file, tt):
     for path in removed.difference(added):
         tt.unversion_file(tt.trans_id_tree_path(path))
 
-    for conflict in cook_conflicts(resolve_conflicts(tt), tt):
+    for conflict in tt.cook_conflicts(resolve_conflicts(tt)):
         warning(conflict)
 
 
