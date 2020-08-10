@@ -176,6 +176,11 @@ def commit_pristine_tar(dest, tarball_path, upstream=None, committer=None):
     if proc.returncode != 0:
         if b'excessively large binary delta' in stderr:
             raise PristineTarDeltaTooLarge(stderr)
+        elif b'No space left on device' in stderr:
+            raise IOError(
+                errno.ENOSPC,
+                'Generating pristine tar delta failed: '
+                'no space left on device')
         else:
             raise PristineTarError(
                 "Generating delta from tar failed: %s" % stderr)
