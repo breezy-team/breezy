@@ -299,6 +299,18 @@ class GitTree(_mod_tree.Tree):
                 raise errors.PathsNotVersionedError(unversioned)
         return filter(self.is_versioned, paths)
 
+    def _submodule_info(self):
+        if self._submodules is None:
+            try:
+                with self.get_file('.gitmodules') as f:
+                    config = GitConfigFile.from_file(f)
+                    self._submodules = {
+                        path: (url, section)
+                        for path, url, section in parse_submodules(config)}
+            except errors.NoSuchFile:
+                self._submodules = {}
+        return self._submodules
+
 
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     """Revision tree implementation based on Git objects."""
@@ -324,18 +336,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
 
     def git_snapshot(self, want_unversioned=False):
         return self.tree, set()
-
-    def _submodule_info(self):
-        if self._submodules is None:
-            try:
-                with self.get_file('.gitmodules') as f:
-                    config = GitConfigFile.from_file(f)
-                    self._submodules = {
-                        path: (url, section)
-                        for path, url, section in parse_submodules(config)}
-            except errors.NoSuchFile:
-                self._submodules = {}
-        return self._submodules
 
     def _get_submodule_repository(self, relpath):
         if not isinstance(relpath, bytes):
@@ -1186,18 +1186,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def _read_submodule_head(self, path):
         raise NotImplementedError(self._read_submodule_head)
-
-    def _submodule_info(self):
-        if self._submodules is None:
-            try:
-                with self.get_file('.gitmodules') as f:
-                    config = GitConfigFile.from_file(f)
-                    self._submodules = {
-                        path: (url, section)
-                        for path, url, section in parse_submodules(config)}
-            except errors.NoSuchFile:
-                self._submodules = {}
-        return self._submodules
 
     def _lookup_index(self, encoded_path):
         if not isinstance(encoded_path, bytes):
