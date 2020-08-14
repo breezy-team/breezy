@@ -167,7 +167,7 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    BZR_DUMMY_FILE = None
+    BZR_DUMMY_FILE = None  # type: Optional[str]
 
     def is_special_file(self, filename):
         return (filename in (self.BZR_DUMMY_FILE, ))
