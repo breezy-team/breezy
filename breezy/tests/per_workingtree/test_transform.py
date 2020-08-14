@@ -980,7 +980,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         raw_conflicts = resolve_conflicts(tt)
         self.assertEqual({('non-directory parent', 'Created directory',
                            'new-3')}, raw_conflicts)
-        cooked_conflicts = tt.cook_conflicts(raw_conflicts)
+        cooked_conflicts = list(tt.cook_conflicts(raw_conflicts))
         if self.wt.supports_setting_file_ids():
             self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
                                                  b'parent-id')], cooked_conflicts)
@@ -1321,6 +1321,16 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         finally:
             transform.finalize()
 
+    def assertTreeChanges(self, tt, expected):
+        # TODO(jelmer): Turn this into a matcher?
+        actual = list(tt.iter_changes())
+        if tt._tree.supports_setting_file_ids():
+            self.assertEqual(expected, actual)
+        else:
+            for c in expected + actual:
+                c.file_id = None
+            self.assertEqual(expected, actual)
+
     def test_iter_changes_modified_bleed(self):
         root_id = self.wt.path2id('')
         """Modified flag should not bleed from one change to another"""
@@ -1336,16 +1346,15 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         try:
             transform.delete_contents(transform.trans_id_tree_path('file1'))
             transform.set_executability(True, transform.trans_id_tree_path('file2'))
-            self.assertEqual(
-                [InventoryTreeChange(
+            self.assertThat(transform, MatchesTreeChanges([
+                InventoryTreeChange(
                  b'id-1', (u'file1', u'file1'), True, (True, True),
                  (root_id, root_id), ('file1', u'file1'),
                  ('file', None), (False, False), False),
                  InventoryTreeChange(
                  b'id-2', (u'file2', u'file2'), False, (True, True),
                  (root_id, root_id), ('file2', u'file2'),
-                 ('file', 'file'), (False, True), False)],
-                list(transform.iter_changes()))
+                 ('file', 'file'), (False, True), False)]))
         finally:
             transform.finalize()
 

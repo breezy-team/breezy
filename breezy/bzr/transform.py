@@ -1913,6 +1913,9 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         self._iter_changes_cache = {
             c.file_id: c for c in self._transform.iter_changes()}
 
+    def supports_setting_file_ids(self):
+        return True
+
     def supports_tree_reference(self):
         # TODO(jelmer): Support tree references in PreviewTree.
         # return self._transform._tree.supports_tree_reference()

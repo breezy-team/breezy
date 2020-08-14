@@ -835,6 +835,8 @@ class TreeTransformBase(TreeTransform):
             elif c[0] == 'missing parent':
                 # TODO(jelmer): This should not make it to here
                 yield TextConflict(fp.get_path(c[2]))
+            elif c[0] == 'non-directory parent':
+                yield TextConflict(fp.get_path(c[2]))
             else:
                 raise AssertionError('unknown conflict %s' % c[0])
 
@@ -1360,7 +1362,7 @@ class GitTreeTransform(DiskTreeTransform):
         """Undo a previous versioning of a file"""
         self._versioned.remove(trans_id)
 
-    def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
+    def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
 
         If filesystem or inventory conflicts are present, MalformedTransform
@@ -1370,8 +1372,6 @@ class GitTreeTransform(DiskTreeTransform):
 
         :param no_conflicts: if True, the caller guarantees there are no
             conflicts, so no check is made.
-        :param precomputed_delta: An inventory delta to use instead of
-            calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
         for hook in MutableTree.hooks['pre_transform']:
@@ -1380,14 +1380,9 @@ class GitTreeTransform(DiskTreeTransform):
             self._check_malformed()
         self.rename_count = 0
         with ui.ui_factory.nested_progress_bar() as child_pb:
-            if precomputed_delta is None:
-                child_pb.update(gettext('Apply phase'), 0, 2)
-                changes = self._generate_transform_changes()
-                offset = 1
-            else:
-                changes = [
-                    (op, np, ie) for (op, np, fid, ie) in precomputed_delta]
-                offset = 0
+            child_pb.update(gettext('Apply phase'), 0, 2)
+            index_changes = self._generate_index_changes()
+            offset = 1
             if _mover is None:
                 mover = _FileMover()
             else:
@@ -1402,7 +1397,7 @@ class GitTreeTransform(DiskTreeTransform):
                 raise
             else:
                 mover.apply_deletions()
-        self._tree._apply_transform_changes(changes)
+        self._tree._apply_transform_changes(index_changes)
         self._done = True
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
@@ -1485,20 +1480,9 @@ class GitTreeTransform(DiskTreeTransform):
         self._new_contents.clear()
         return modified_paths
 
-    def _inventory_altered(self):
-        """Determine which trans_ids need new Inventory entries.
-
-        An new entry is needed when anything that would be reflected by an
-        inventory entry changes, including file name, file_id, parent file_id,
-        file kind, and the execute bit.
-
-        Some care is taken to return entries with real changes, not cases
-        where the value is deleted and then restored to its original value,
-        but some actually unchanged values may be returned.
-
-        :returns: A list of (path, trans_id) for all items requiring an
-            inventory change. Ordered by path.
-        """
+    def _generate_index_changes(self):
+        """Generate an inventory delta for the current transform."""
+        changes = []
         changed_ids = set()
         for id_set in [self._new_name, self._new_parent,
                        self._new_executability]:
@@ -1514,33 +1498,36 @@ class GitTreeTransform(DiskTreeTransform):
                         if self.tree_kind(t) != self.final_kind(t))
         # all kind changes will alter the inventory
         changed_ids.update(changed_kind)
-        return sorted(FinalPaths(self).get_paths(changed_ids))
-
-    def _generate_transform_changes(self):
-        """Generate an inventory delta for the current transform."""
-        changes = []
-        new_paths = self._inventory_altered()
-        total_entries = len(new_paths) + len(self._removed_id)
+        removed_id = set(self._removed_id)
+        for t in changed_kind:
+            if self.final_kind(t) == 'directory':
+                removed_id.add(t)
+                changed_ids.remove(t)
+        new_paths = sorted(FinalPaths(self).get_paths(changed_ids))
+        total_entries = len(new_paths) + len(removed_id)
         with ui.ui_factory.nested_progress_bar() as child_pb:
-            for num, trans_id in enumerate(self._removed_id):
+            for num, trans_id in enumerate(removed_id):
                 if (num % 10) == 0:
                     child_pb.update(gettext('removing file'),
                                     num, total_entries)
                 path = self._tree_id_paths[trans_id]
-                changes.append((path, None, None, None, None, None))
+                changes.append((path, None, None, None, None))
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
                     child_pb.update(gettext('adding file'),
-                                    num + len(self._removed_id), total_entries)
+                                    num + len(removed_id), total_entries)
 
                 kind = self.final_kind(trans_id)
                 if kind is None:
                     kind = self._tree.stored_kind(self.tree_path(trans_id))
+                versioned = self.final_is_versioned(trans_id)
+                if not versioned:
+                    continue
                 executability = self._new_executability.get(trans_id)
                 reference_revision = self._new_reference_revision.get(trans_id)
                 symlink_target = self._symlink_target.get(trans_id)
                 changes.append(
-                    (None, path, kind, executability, reference_revision,
+                    (path, kind, executability, reference_revision,
                      symlink_target))
         return changes
 
@@ -1604,6 +1591,9 @@ class GitPreviewTree(PreviewTree, GitTree):
         self.store = transform._tree.store
         self.mapping = transform._tree.mapping
         self._final_paths = FinalPaths(transform)
+
+    def supports_setting_file_ids(self):
+        return False
 
     def _supports_executable(self):
         return self._transform._limbo_supports_executable()
@@ -1766,6 +1756,8 @@ class GitPreviewTree(PreviewTree, GitTree):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             # It doesn't exist, so it's not versioned.
+            return False
+        if trans_id in self._transform._removed_id:
             return False
         if trans_id in self._transform._versioned:
             return True

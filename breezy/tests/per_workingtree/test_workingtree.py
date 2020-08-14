@@ -1013,6 +1013,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.branch.repository._format.supports_versioned_directories:
             self.assertEqual('directory', tree.stored_kind('b'))
 
+    def test_stored_kind_nonexistent(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.assertRaises(errors.NoSuchFile, tree.stored_kind, 'a')
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a'])
+        self.assertRaises(errors.NoSuchFile, tree.stored_kind, 'a')
+        tree.add(['a'])
+        self.assertIs('file', tree.stored_kind('a'))
+
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""
         tree = self.make_branch_and_tree('.')

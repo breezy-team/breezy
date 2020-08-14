@@ -975,7 +975,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 self._set_conflicted(path, path in by_path)
 
     def _set_conflicted(self, path, conflicted):
-        trace.mutter('change conflict: %r -> %r', path, conflicted)
         value = self.index[path]
         self._index_dirty = True
         if conflicted:

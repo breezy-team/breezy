@@ -32,6 +32,7 @@ from ...tree import (
     find_previous_path,
     )
 
+from breezy.bzr.inventorytree import InventoryTreeChange
 
 from breezy.tests.per_tree import TestCaseWithTree
 
@@ -148,19 +149,29 @@ class TestTransformPreview(TestCaseWithTree):
                            (False, False), False)],
                          list(preview_tree.iter_changes(revision_tree)))
 
+    def assertTreeChanges(self, expected, actual, tree):
+        # TODO(jelmer): Turn this into a matcher?
+        actual = list(actual)
+        if tree.supports_setting_file_ids():
+            self.assertEqual(expected, actual)
+        else:
+            for c in expected + actual:
+                c.file_id = None
+            self.assertEqual(expected, actual)
+
     def test_include_unchanged_succeeds(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             include_unchanged=True)
 
         root_id = revision_tree.path2id('')
-        root_entry = (root_id, ('', ''), False, (True, True), (None, None),
+        root_entry = InventoryTreeChange(root_id, ('', ''), False, (True, True), (None, None),
                       ('', ''), ('directory', 'directory'), (False, False), False)
-        a_entry = (revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
+        a_entry = InventoryTreeChange(revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
                    (root_id, root_id), ('a', 'a'), ('file', 'file'),
                    (False, False), False)
 
-        self.assertEqual([root_entry, a_entry], list(changes))
+        self.assertTreeChanges([root_entry, a_entry], changes, preview_tree)
 
     def test_specific_files(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
@@ -178,9 +189,10 @@ class TestTransformPreview(TestCaseWithTree):
         changes = preview_tree.iter_changes(revision_tree,
                                             want_unversioned=True)
         root_id = revision_tree.path2id('')
-        a_entry = (revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-                   (root_id, root_id), ('a', 'a'), ('file', 'file'),
-                   (False, False), False)
+        a_entry = InventoryTreeChange(
+            revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
+            (root_id, root_id), ('a', 'a'), ('file', 'file'),
+            (False, False), False)
 
         self.assertEqual([a_entry], list(changes))
 

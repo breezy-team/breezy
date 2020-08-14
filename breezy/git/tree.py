@@ -1235,20 +1235,20 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         self._index_dirty = True
 
     def _apply_transform_changes(self, changes):
-        for (old_path, new_path, kind, executability, reference_revision,
+        for (path, kind, executability, reference_revision,
              symlink_target) in changes:
-            if old_path is not None:
-                (index, old_subpath) = self._lookup_index(
-                    encode_git_path(old_path))
+            if kind is None or kind == 'directory':
+                (index, subpath) = self._lookup_index(
+                    encode_git_path(path))
                 try:
-                    self._index_del_entry(index, old_subpath)
+                    self._index_del_entry(index, subpath)
                 except KeyError:
                     pass
                 else:
                     self._versioned_dirs = None
-            if new_path is not None and kind != 'directory':
+            else:
                 self._index_add_entry(
-                    new_path, kind,
+                    path, kind,
                     reference_revision=reference_revision,
                     symlink_target=symlink_target)
         self.flush()
@@ -1259,7 +1259,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         if kind == "directory":
             # Git indexes don't contain directories
             return
-        if kind == "file":
+        elif kind == "file":
             blob = Blob()
             try:
                 file, stat_val = self.get_file_with_stat(path)
@@ -1604,17 +1604,21 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             return (kind, None, None, None)
 
     def stored_kind(self, relpath):
+        if relpath == '':
+            return 'directory'
         (index, index_path) = self._lookup_index(encode_git_path(relpath))
         if index is None:
-            return kind
+            return None
         try:
             mode = index[index_path].mode
         except KeyError:
-            return kind
+            for p in index:
+                if osutils.is_inside(
+                        decode_git_path(index_path), decode_git_path(p)):
+                    return 'directory'
+            return None
         else:
-            if S_ISGITLINK(mode):
-                return 'tree-reference'
-            return 'directory'
+            return mode_kind(mode)
 
     def kind(self, relpath):
         kind = osutils.file_kind(self.abspath(relpath))
