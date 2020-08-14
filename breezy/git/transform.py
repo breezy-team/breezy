@@ -94,7 +94,7 @@ class TreeTransformBase(TreeTransform):
 
     def create_path(self, name, parent):
         """Assign a transaction id to a new path"""
-        trans_id = self._assign_id()
+        trans_id = self.assign_id()
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
         return trans_id
@@ -209,7 +209,7 @@ class TreeTransformBase(TreeTransform):
                 if file_id in self._non_present_ids:
                     return self._non_present_ids[file_id]
                 else:
-                    trans_id = self._assign_id()
+                    trans_id = self.assign_id()
                     self._non_present_ids[file_id] = trans_id
                     return trans_id
             else:
