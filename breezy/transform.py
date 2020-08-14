@@ -249,7 +249,7 @@ class TreeTransform(object):
         """Change the path that is assigned to a transaction id."""
         if parent is None:
             raise ValueError("Parent trans-id may not be None")
-        if trans_id == self._new_root:
+        if trans_id == self.root:
             raise CantMoveRoot
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
@@ -625,7 +625,7 @@ class FinalPaths(object):
         self.transform = transform
 
     def _determine_path(self, trans_id):
-        if (trans_id == self.transform.root or trans_id == ROOT_PARENT):
+        if trans_id == self.transform.root or trans_id == ROOT_PARENT:
             return u""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)
@@ -1385,6 +1385,11 @@ class PreviewTree(object):
         pass
 
     def _path2trans_id(self, path):
+        """Look up the trans id associated with a path.
+
+        :param path: path to look up, None when the path does not exist
+        :return: trans_id
+        """
         # We must not use None here, because that is a valid value to store.
         trans_id = self._path2trans_id_cache.get(path, object)
         if trans_id is not object:
