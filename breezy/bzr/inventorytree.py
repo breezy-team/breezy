@@ -1015,8 +1015,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.kind))
+                dirblock.append((toppath, name, child.kind, None, child.kind))
                 if child.kind == _directory:
                     subdirs.append((toppath, child.file_id))
             yield root, dirblock

@@ -91,6 +91,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def transform_for_sha1_test(self):
         trans, root = self.transform()
+        if getattr(self.wt, '_observed_sha1', None) is None:
+            raise tests.TestNotApplicable(
+                'wt format does not use _observed_sha1')
         self.wt.lock_tree_write()
         self.addCleanup(self.wt.unlock)
         contents = [b'just some content\n']
@@ -133,16 +136,21 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(imaginary_id, imaginary_id2)
         self.assertEqual(root, transform.get_tree_parent(imaginary_id))
         self.assertEqual('directory', transform.final_kind(root))
-        self.assertEqual(self.wt.path2id(''), transform.final_file_id(root))
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.path2id(''), transform.final_file_id(root))
         trans_id = transform.create_path('name', root)
-        self.assertIs(transform.final_file_id(trans_id), None)
+        if self.wt.supports_setting_file_ids():
+            self.assertIs(transform.final_file_id(trans_id), None)
+        self.assertFalse(transform.final_is_versioned(trans_id))
         self.assertIs(None, transform.final_kind(trans_id))
         transform.create_file([b'contents'], trans_id)
         transform.set_executability(True, trans_id)
         transform.version_file(trans_id, file_id=b'my_pretties')
         self.assertRaises(DuplicateKey, transform.version_file,
                           trans_id, file_id=b'my_pretties')
-        self.assertEqual(transform.final_file_id(trans_id), b'my_pretties')
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(transform.final_file_id(trans_id), b'my_pretties')
+        self.assertTrue(transform.final_is_versioned(trans_id))
         self.assertEqual(transform.final_parent(trans_id), root)
         self.assertIs(transform.final_parent(root), ROOT_PARENT)
         self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
@@ -156,14 +164,16 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         modified_paths = transform.apply().modified_paths
         with self.wt.get_file('name') as f:
             self.assertEqual(b'contents', f.read())
-        self.assertEqual(self.wt.path2id('name'), b'my_pretties')
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.path2id('name'), b'my_pretties')
         self.assertIs(self.wt.is_executable('name'), True)
         self.assertIs(self.wt.is_executable('name2'), False)
         self.assertEqual('directory', file_kind(self.wt.abspath('oz')))
         self.assertEqual(len(modified_paths), 3)
-        tree_mod_paths = [self.wt.abspath(self.wt.id2path(f)) for f in
-                          (b'ozzie', b'my_pretties', b'my_pretties2')]
-        self.assertSubset(tree_mod_paths, modified_paths)
+        if self.wt.supports_setting_file_ids():
+            tree_mod_paths = [self.wt.abspath(self.wt.id2path(f)) for f in
+                              (b'ozzie', b'my_pretties', b'my_pretties2')]
+            self.assertSubset(tree_mod_paths, modified_paths)
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
@@ -303,7 +313,10 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         with tt:
             tt.new_directory('', ROOT_PARENT, b'new-root-id')
             tt.fixup_new_roots()
-            self.assertNotEqual(b'new-root-id', tt.final_file_id(tt.root))
+            if self.wt.has_versioned_directories():
+                self.assertTrue(tt.final_is_versioned(tt.root))
+            if self.wt.supports_setting_file_ids():
+                self.assertNotEqual(b'new-root-id', tt.final_file_id(tt.root))
 
     def test_retain_existing_root_added_file(self):
         tt, root = self.transform()
@@ -340,7 +353,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         transform.unversion_file(root)
         transform.fixup_new_roots()
         self.assertIs(None, transform.final_kind(root))
-        self.assertIs(None, transform.final_file_id(root))
+        if self.wt.supports_setting_file_ids():
+            self.assertIs(None, transform.final_file_id(root))
 
     def test_apply_retains_root_directory(self):
         # Do not attempt to delete the physical root directory, because that
@@ -355,6 +369,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def test_apply_retains_file_id(self):
         transform, root = self.transform()
+        if not self.wt.supports_setting_file_ids():
+            self.skipTest('format does not support file ids')
         old_root_id = transform.tree_file_id(root)
         transform.unversion_file(root)
         transform.apply()
@@ -390,14 +406,19 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertRaises(ReusingTransform, transform.find_raw_conflicts)
         with open(self.wt.abspath('name'), 'r') as f:
             self.assertEqual('contents', f.read())
-        self.assertEqual(self.wt.path2id('name'), b'my_pretties')
         self.assertIs(self.wt.is_executable('name'), True)
-        self.assertEqual(self.wt.path2id('oz'), b'oz-id')
-        self.assertEqual(self.wt.path2id('oz/dorothy'), b'dorothy-id')
-        self.assertEqual(self.wt.path2id('oz/dorothy/toto'), b'toto-id')
+        self.assertTrue(self.wt.is_versioned('name'))
+        self.assertTrue(self.wt.is_versioned('oz'))
+        self.assertTrue(self.wt.is_versioned('oz/dorothy'))
+        self.assertTrue(self.wt.is_versioned('oz/dorothy/toto'))
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.path2id('name'), b'my_pretties')
+            self.assertEqual(self.wt.path2id('oz'), b'oz-id')
+            self.assertEqual(self.wt.path2id('oz/dorothy'), b'dorothy-id')
+            self.assertEqual(self.wt.path2id('oz/dorothy/toto'), b'toto-id')
 
-        self.assertEqual(b'toto-contents',
-                         self.wt.get_file('oz/dorothy/toto').read())
+        with self.wt.get_file('oz/dorothy/toto') as f:
+            self.assertEqual(b'toto-contents', f.read())
         self.assertIs(self.wt.is_executable('oz/dorothy/toto'), False)
 
     def test_tree_reference(self):
@@ -464,7 +485,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         transform.set_executability(None, oz_id)
         tip_id = transform.new_file('tip', oz_id, [b'ozma'], b'tip-id')
         transform.apply()
-        self.assertEqual(self.wt.path2id('name'), b'my_pretties')
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.path2id('name'), b'my_pretties')
         with open(self.wt.abspath('name'), 'rb') as f:
             self.assertEqual(b'contents', f.read())
         transform2, root = self.transform()
@@ -629,8 +651,11 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.addCleanup(unversion.finalize)
         parent = unversion.trans_id_tree_path('parent')
         unversion.unversion_file(parent)
-        self.assertEqual(unversion.find_raw_conflicts(),
-                         [('unversioned parent', parent_id)])
+        if self.wt.has_versioned_directories():
+            self.assertEqual(unversion.find_raw_conflicts(),
+                             [('unversioned parent', parent_id)])
+        else:
+            self.assertEqual(unversion.find_raw_conflicts(), [])
         file_id = unversion.trans_id_tree_path('parent/child')
         unversion.unversion_file(file_id)
         unversion.apply()
@@ -669,9 +694,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         mfile2 = mangle_tree.trans_id_tree_path('moving_file2')
         mangle_tree.adjust_path('mfile2', newdir, mfile2)
         mangle_tree.new_file('newfile', newdir, [b'hello3'], b'dfile')
-        self.assertEqual(mangle_tree.final_file_id(mfile2), b'mfile2')
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(mangle_tree.final_file_id(mfile2), b'mfile2')
         self.assertEqual(mangle_tree.final_parent(mfile2), newdir)
-        self.assertEqual(mangle_tree.final_file_id(mfile2), b'mfile2')
         mangle_tree.apply()
         with open(self.wt.abspath('name1'), 'r') as f:
             self.assertEqual(f.read(), 'hello2')
@@ -681,13 +706,15 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(mangle_tree.final_parent(mfile2), newdir)
         with open(mfile2_path, 'r') as f:
             self.assertEqual(f.read(), 'later2')
-        self.assertEqual(self.wt.id2path(b'mfile2'), 'new_directory/mfile2')
-        self.assertEqual(self.wt.path2id('new_directory/mfile2'), b'mfile2')
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.id2path(b'mfile2'), 'new_directory/mfile2')
+            self.assertEqual(self.wt.path2id('new_directory/mfile2'), b'mfile2')
         newfile_path = self.wt.abspath(pathjoin('new_directory', 'newfile'))
         with open(newfile_path, 'r') as f:
             self.assertEqual(f.read(), 'hello3')
-        self.assertEqual(self.wt.path2id('dying_directory'), b'ddir')
-        self.assertIs(self.wt.path2id('dying_directory/dying_file'), None)
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.path2id('dying_directory'), b'ddir')
+            self.assertIs(self.wt.path2id('dying_directory/dying_file'), None)
         mfile2_path = self.wt.abspath(pathjoin('new_directory', 'mfile2'))
 
     def test_both_rename(self):
@@ -770,7 +797,10 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         name2 = replace.new_file('name2', root, [b'hello2'], b'name1')
         conflicts = replace.find_raw_conflicts()
         name1 = replace.trans_id_tree_path('name1')
-        self.assertEqual(conflicts, [('duplicate id', name1, name2)])
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(conflicts, [('duplicate id', name1, name2)])
+        else:
+            self.assertEqual(conflicts, [])
         resolve_conflicts(replace)
         replace.apply()
 
@@ -792,7 +822,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                          [('non-file executability', wiz_id)])
         transform.set_executability(None, wiz_id)
         transform.apply()
-        self.assertEqual(self.wt.path2id(ozpath(link_name1)), b'wizard-id')
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.path2id(ozpath(link_name1)), b'wizard-id')
         self.assertEqual('symlink',
                          file_kind(self.wt.abspath(ozpath(link_name1))))
         self.assertEqual(link_target2,
@@ -923,7 +954,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         tt.new_file('parent', root, [b'contents'], b'parent-id')
         tt.apply()
         tt, root = self.transform()
-        parent_id = tt.trans_id_file_id(b'parent-id')
+        parent_id = tt.trans_id_tree_path('parent')
         tt.new_file('child,', parent_id, [b'contents2'], b'file-id')
         return tt
 
@@ -937,11 +968,17 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual({('non-directory parent', 'Created directory',
                            'new-3')}, raw_conflicts)
         cooked_conflicts = tt.cook_conflicts(raw_conflicts)
-        self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
-                                             b'parent-id')], cooked_conflicts)
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
+                                                 b'parent-id')], cooked_conflicts)
+        else:
+            self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
+                                                 None)], cooked_conflicts)
         tt.apply()
-        self.assertFalse(self.wt.is_versioned('parent'))
-        self.assertEqual(b'parent-id', self.wt.path2id('parent.new'))
+        if self.wt.has_versioned_directories():
+            self.assertFalse(self.wt.is_versioned('parent'))
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(b'parent-id', self.wt.path2id('parent.new'))
 
     def test_resolve_conflicts_wrong_new_parent_kind(self):
         tt, root = self.transform()
@@ -949,15 +986,18 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         tt.new_file('child,', parent_id, [b'contents2'], b'file-id')
         tt.apply()
         tt, root = self.transform()
-        parent_id = tt.trans_id_file_id(b'parent-id')
+        parent_id = tt.trans_id_tree_path('parent')
         tt.delete_contents(parent_id)
         tt.create_file([b'contents'], parent_id)
         raw_conflicts = resolve_conflicts(tt)
         self.assertEqual({('non-directory parent', 'Created directory',
                            'new-3')}, raw_conflicts)
         tt.apply()
-        self.assertFalse(self.wt.is_versioned('parent'))
-        self.assertEqual(b'parent-id', self.wt.path2id('parent.new'))
+        if self.wt.has_versioned_directories():
+            self.assertFalse(self.wt.is_versioned('parent'))
+            self.assertTrue(self.wt.is_versioned('parent.new'))
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(b'parent-id', self.wt.path2id('parent.new'))
 
     def test_resolve_conflicts_wrong_parent_kind_unversioned(self):
         tt, root = self.transform()
@@ -970,14 +1010,15 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         tt.create_file([b'contents'], parent_id)
         resolve_conflicts(tt)
         tt.apply()
-        self.assertFalse(self.wt.is_versioned('parent'))
-        self.assertFalse(self.wt.is_versioned('parent.new'))
+        if self.wt.has_versioned_directories():
+            self.assertFalse(self.wt.is_versioned('parent'))
+            self.assertFalse(self.wt.is_versioned('parent.new'))
 
     def test_resolve_conflicts_missing_parent(self):
         wt = self.make_branch_and_tree('.')
         tt = wt.transform()
         self.addCleanup(tt.finalize)
-        parent = tt.trans_id_file_id(b'parent-id')
+        parent = tt.assign_id()
         tt.new_file('file', parent, [b'Contents'])
         raw_conflicts = resolve_conflicts(tt)
         # Since the directory doesn't exist it's seen as 'missing'.  So
@@ -1020,9 +1061,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                                  b'myfile-id')
         create.apply()
         rename, root = self.transform()
-        old = rename.trans_id_file_id(b'old-id')
+        old = rename.trans_id_tree_path('old-parent')
         rename.adjust_path('new', root, old)
-        myfile = rename.trans_id_file_id(b'myfile-id')
+        myfile = rename.trans_id_tree_path('old-parent/intermediate/myfile')
         rename.set_executability(True, myfile)
         rename.apply()
 
@@ -1043,8 +1084,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             self.skipTest("Can't force a permissions error on rename")
         # now transform to rename
         rename_transform, root_id = self.transform()
-        file_trans_id = rename_transform.trans_id_file_id(b'myfile-id')
-        dir_id = rename_transform.trans_id_file_id(b'first-id')
+        file_trans_id = rename_transform.trans_id_tree_path('myfile')
+        dir_id = rename_transform.trans_id_tree_path('first-dir')
         rename_transform.adjust_path('newname', dir_id, file_trans_id)
         e = self.assertRaises(TransformRenameFailed,
                               rename_transform.apply)
@@ -1418,7 +1459,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_noname_contents(self):
         """TreeTransform should permit deferring naming files."""
         transform, root = self.transform()
-        parent = transform.trans_id_file_id(b'parent-id')
+        parent = transform.trans_id_tree_path('parent')
         try:
             transform.create_directory(parent)
         except KeyError:
@@ -1428,7 +1469,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_noname_contents_nested(self):
         """TreeTransform should permit deferring naming files."""
         transform, root = self.transform()
-        parent = transform.trans_id_file_id(b'parent-id')
+        parent = transform.trans_id_tree_path('parent-early')
         try:
             transform.create_directory(parent)
         except KeyError:
@@ -1653,7 +1694,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def test_no_final_path(self):
         transform, root = self.transform()
-        trans_id = transform.trans_id_file_id(b'foo')
+        trans_id = transform.trans_id_tree_path('foo')
         transform.create_file([b'bar'], trans_id)
         transform.cancel_creation(trans_id)
         transform.apply()
