@@ -65,7 +65,7 @@ BRZ_LOG
 ~~~~~~~
 
 Location of the Breezy log file. You can check the current location by
-running ``bzr version``.
+running ``brz version``.
 
 The log file contains debug information that is useful for diagnosing or
 reporting problems with Breezy.
@@ -87,15 +87,15 @@ If not set, Breezy will search for plugins in:
 * the site specific plugin directory if applicable (containing
   the ``site`` plugins).
 
-If ``BZR_PLUGIN_PATH`` is set in any fashion, it will change the
+If ``BRZ_PLUGIN_PATH`` is set in any fashion, it will change the
 the way the plugin are searched. 
 
 As for the ``PATH`` variables, if multiple directories are
-specified in ``BZR_PLUGIN_PATH`` they should be separated by the
+specified in ``BRZ_PLUGIN_PATH`` they should be separated by the
 platform specific appropriate character (':' on Unix,
 ';' on windows)
 
-By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
+By default if ``BRZ_PLUGIN_PATH`` is set, it replaces searching
 in ``user``.  However it will continue to search in ``core`` and
 ``site`` unless they are explicitly removed.
 
@@ -118,19 +118,19 @@ should use ';'.
 
 Overriding the default user plugin directory::
 
-  BZR_PLUGIN_PATH='/path/to/my/other/plugins'
+  BRZ_PLUGIN_PATH='/path/to/my/other/plugins'
 
 Disabling the site directory while retaining the user directory::
 
-  BZR_PLUGIN_PATH='-site:+user'
+  BRZ_PLUGIN_PATH='-site:+user'
 
 Disabling all plugins (better achieved with --no-plugins)::
 
-  BZR_PLUGIN_PATH='-user:-core:-site'
+  BRZ_PLUGIN_PATH='-user:-core:-site'
 
 Overriding the default site plugin directory::
 
-  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user
+  BRZ_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user
 
 BRZ_DISABLE_PLUGINS
 ~~~~~~~~~~~~~~~~~~~
@@ -138,15 +138,15 @@ BRZ_DISABLE_PLUGINS
 Under special circumstances (mostly when trying to diagnose a
 bug), it's better to disable a plugin (or several) rather than
 uninstalling them completely. Such plugins can be specified in
-the ``BZR_DISABLE_PLUGINS`` environment variable.
+the ``BRZ_DISABLE_PLUGINS`` environment variable.
 
-In that case, ``bzr`` will stop loading the specified plugins and
+In that case, ``brz`` will stop loading the specified plugins and
 will raise an import error if they are explicitly imported (by
 another plugin that depends on them for example).
 
 Disabling ``myplugin`` and ``yourplugin`` is achieved by::
 
-  BZR_DISABLE_PLUGINS='myplugin:yourplugin'
+  BRZ_DISABLE_PLUGINS='myplugin:yourplugin'
 
 BRZ_PLUGINS_AT
 ~~~~~~~~~~~~~~
@@ -156,11 +156,11 @@ developers often need to use a specific version of a given
 plugin. Since python requires that the directory containing the
 code is named like the plugin itself this make it impossible to
 use arbitrary directory names (using a two-level directory scheme
-is inconvenient). ``BZR_PLUGINS_AT`` allows such directories even
-if they don't appear in ``BZR_PLUGIN_PATH`` .
+is inconvenient). ``BRZ_PLUGINS_AT`` allows such directories even
+if they don't appear in ``BRZ_PLUGIN_PATH`` .
 
 Plugins specified in this environment variable takes precedence
-over the ones in ``BZR_PLUGIN_PATH``.
+over the ones in ``BRZ_PLUGIN_PATH``.
 
 The variable specified a list of ``plugin_name@plugin path``,
 ``plugin_name`` being the name of the plugin as it appears in
@@ -173,7 +173,7 @@ Example:
 ~~~~~~~~
 
 Using a specific version of ``myplugin``:
-``BZR_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``
+``BRZ_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``
 
 BRZPATH
 ~~~~~~~
@@ -199,7 +199,7 @@ Location
 Configuration files are located in ``$HOME/.bazaar`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0`` on
 Windows. (You can check the location for your system by using
-``bzr version``.)
+``brz version``.)
 
 There are three primary configuration files in this location:
 
@@ -315,7 +315,7 @@ Using ``relpath`` to achieve the same result is done like this::
 In both cases, when used in a directory like
 ``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::
 
-   $ bzr config mypush
+   $ brz config mypush
    lp:~vila/bzr/832013-expand-in-stack
 
 Another such option is ``basename`` which can be used like this::
@@ -326,7 +326,7 @@ Another such option is ``basename`` which can be used like this::
 When used in a directory like
 ``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::
 
-   $ bzr config mypush
+   $ brz config mypush
    lp:~vila/bzr/832013-expand-in-stack
 
 Note that ``basename`` here refers to the base name of ``relpath`` which
@@ -342,7 +342,7 @@ like this::
 
 When used with a colocated branch named ``832013-expand-in-stack``, we'll get::
 
-  bzr config mypush
+  brz config mypush
   lp:~vila/bzr/832013-expand-in-stack
 
 When an option is local to a Section, it cannot be referred to from option
@@ -386,7 +386,7 @@ The authentication configuration file, authentication.conf
 
 ``authentication.conf`` allows one to specify credentials for
 remote servers. This can be used for all the supported transports and any part
-of bzr that requires authentication (smtp for example).
+of brz that requires authentication (smtp for example).
 
 The syntax of the file obeys the same rules as the others except for the
 option policies which don't apply.
@@ -422,9 +422,9 @@ of::
 editor
 ~~~~~~
 
-The path of the editor that you wish to use if *bzr commit* is run without
+The path of the editor that you wish to use if *brz commit* is run without
 a commit message. This setting is trumped by the environment variable
-``BZR_EDITOR``, and overrides the ``VISUAL`` and ``EDITOR`` environment
+``BRZ_EDITOR``, and overrides the ``VISUAL`` and ``EDITOR`` environment
 variables.
 
 log_format
@@ -454,7 +454,7 @@ check-available
 create_signatures
 ~~~~~~~~~~~~~~~~~
 
-Defines the behaviour of signing revisions on commits.  By default bzr will not
+Defines the behaviour of signing revisions on commits.  By default brz will not
 sign new commits.
 
 always
@@ -514,7 +514,7 @@ smtp_server
 ~~~~~~~~~~~
 
 (Default: "localhost"). SMTP server to use when Breezy needs to send
-email, eg. with ``merge-directive --mail-to``, or the bzr-email plugin.
+email, eg. with ``merge-directive --mail-to``, or the email plugin.
 
 smtp_username, smtp_password
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -527,7 +527,7 @@ to send mail.
 locks.steal_dead
 ~~~~~~~~~~~~~~~~
 
-By default, bzr will automatically break locks held by processes from
+By default, brz will automatically break locks held by processes from
 the same machine and user that are no longer alive.  If disabled, it will
 print a message and you can break the lock manually, if you are satisfied
 the object is no longer in use.
@@ -536,7 +536,7 @@ mail_client
 ~~~~~~~~~~~
 
 A mail client to use for sending merge requests.
-By default, bzr will try to use ``mapi`` on Windows.  On other platforms, it
+By default, brz will try to use ``mapi`` on Windows.  On other platforms, it
 will try ``xdg-email``. If either of these fails, it will fall back to
 ``editor``.
 
@@ -553,7 +553,7 @@ Supported generic values are:
 
 :default: See above.
 :editor: Use your editor to compose the merge request.  This also uses
-    your commit id, (see ``bzr whoami``), smtp_server and (optionally)
+    your commit id, (see ``brz whoami``), smtp_server and (optionally)
     smtp_username and smtp_password.
 :mapi: Use your preferred e-mail client on Windows.
 :xdg-email: Use xdg-email to run your preferred mail program
@@ -569,20 +569,20 @@ submit_branch
 ~~~~~~~~~~~~~
 
 The branch you intend to submit your current work to.  This is automatically
-set by ``bzr send``, and is also used by the ``submit:`` revision spec.  This
+set by ``brz send``, and is also used by the ``submit:`` revision spec.  This
 should usually be set on a per-branch or per-location basis.
 
 public_branch
 ~~~~~~~~~~~~~
 
 A publically-accessible version of this branch (implying that this version is
-not publically-accessible).  Used (and set) by ``bzr send``.
+not publically-accessible).  Used (and set) by ``brz send``.
 
 suppress_warnings
 ~~~~~~~~~~~~~~~~~
 
 A list of strings, each string represent a warning that can be emitted by
-bzr. Mentioning a warning in this list tells bzr to not emit it.
+brz. Mentioning a warning in this list tells bzr to not emit it.
 
 Valid values:
 
@@ -597,7 +597,7 @@ Valid values:
 default_format
 ~~~~~~~~~~~~~~
 
-A format name for the default format used when creating branches.  See ``bzr
+A format name for the default format used when creating branches.  See ``brz
 help formats`` for possible values.
 
 
@@ -626,9 +626,9 @@ append_revisions_only
 If set to "True" then revisions can only be appended to the log, not
 removed.  A branch with this setting enabled can only pull from another
 branch if the other branch's log is a longer version of its own.  This is
-normally set by ``bzr init --append-revisions-only``. If you set it
+normally set by ``brz init --append-revisions-only``. If you set it
 manually, use either 'True' or 'False' (case-sensitive) to maintain
-compatibility with previous bzr versions (older than 2.2).
+compatibility with previous brz versions (older than 2.2).
 
 parent_location
 ~~~~~~~~~~~~~~~
@@ -705,13 +705,13 @@ interpolation markers, trying to display the mergetool line results in the
 following problem::
 
 
-  $ bzr config bzr.mergetool.kdiff3='kdiff3 {base} {this} {other} -o {result}'
-  $ bzr config bzr.mergetool.kdiff3
-  bzr: ERROR: Option base is not defined while expanding "kdiff3 {base} {this} {other} -o {result}".
+  $ brz config bzr.mergetool.kdiff3='kdiff3 {base} {this} {other} -o {result}'
+  $ brz config bzr.mergetool.kdiff3
+  brz: ERROR: Option base is not defined while expanding "kdiff3 {base} {this} {other} -o {result}".
 
 To avoid this, ``config`` can be instructed not to try expanding variables::
 
-  $ bzr config --all bzr.mergetool.kdiff3
+  $ brz config --all bzr.mergetool.kdiff3
   branch:
     bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
 
@@ -720,7 +720,7 @@ bzr.default_mergetool
 ~~~~~~~~~~~~~~~~~~~~~
 
 Specifies which external merge tool (as defined above) should be selected by
-default in tools such as ``bzr qconflicts``.
+default in tools such as ``brz qconflicts``.
 
 For example::
 
