@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 from dulwich.index import (
     commit_tree,
+    read_submodule_head,
     )
 import stat
 
@@ -47,7 +48,6 @@ from dulwich.objects import (
     Blob,
     Commit,
     )
-from dulwich.index import read_submodule_head
 
 
 from .mapping import (
@@ -120,7 +120,10 @@ class GitCommitBuilder(CommitBuilder):
                 finally:
                     f.close()
                 sha = blob.id
-                entry.text_size = st.st_size
+                if st is not None:
+                    entry.text_size = st.st_size
+                else:
+                    entry.text_size = len(blob.data)
                 entry.git_sha1 = sha
                 self.store.add_object(blob)
             elif change.kind[1] == "symlink":
