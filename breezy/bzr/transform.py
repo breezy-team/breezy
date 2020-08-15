@@ -1917,7 +1917,9 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         return True
 
     def supports_tree_reference(self):
-        return self._transform._tree.supports_tree_reference()
+        # TODO(jelmer): Support tree references in PreviewTree.
+        # return self._transform._tree.supports_tree_reference()
+        return False
 
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
