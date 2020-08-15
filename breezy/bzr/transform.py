@@ -2125,6 +2125,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             limbo_name = tt._limbo_name(trans_id)
             if trans_id in tt._new_reference_revision:
                 kind = 'tree-reference'
+                link_or_sha1 = tt._new_reference_revision
             if kind == 'file':
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
