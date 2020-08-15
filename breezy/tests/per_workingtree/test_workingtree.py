@@ -216,13 +216,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_lock_locks_branch(self):
         tree = self.make_branch_and_tree('.')
         self.assertEqual(None, tree.branch.peek_lock_mode())
-        tree.lock_read()
-        self.assertEqual('r', tree.branch.peek_lock_mode())
-        tree.unlock()
+        with tree.lock_read():
+            self.assertEqual('r', tree.branch.peek_lock_mode())
         self.assertEqual(None, tree.branch.peek_lock_mode())
-        tree.lock_write()
-        self.assertEqual('w', tree.branch.peek_lock_mode())
-        tree.unlock()
+        with tree.lock_write():
+            self.assertEqual('w', tree.branch.peek_lock_mode())
         self.assertEqual(None, tree.branch.peek_lock_mode())
 
     def test_revert(self):

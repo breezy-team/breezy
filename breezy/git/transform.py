@@ -565,17 +565,11 @@ class TreeTransformBase(TreeTransform):
 
         Will produce nonsensical results if invoked while inventory/filesystem
         conflicts (as reported by TreeTransform.find_raw_conflicts()) are present.
-
-        This reads the Transform, but only reproduces changes involving a
-        file_id.  Files that are not versioned in either of the FROM or TO
-        states are not reflected.
         """
         final_paths = FinalPaths(self)
         trans_ids = self._affected_ids()
         from_trans_ids = {}
         to_trans_ids = {}
-        # Build up two dicts: trans_ids associated with file ids in the
-        # FROM state, vs the TO state.
         for trans_id in trans_ids:
             from_path = self.tree_path(trans_id)
             if from_path is not None:
@@ -593,7 +587,7 @@ class TreeTransformBase(TreeTransform):
                 from_versioned = False
                 from_trans_id = to_trans_ids[path]
             else:
-                from_versioned = True
+                from_versioned = (from_trans_id in self._versioned)
             to_trans_id = to_trans_ids.get(path)
             if to_trans_id is None:
                 to_versioned = False
@@ -1084,7 +1078,14 @@ class DiskTreeTransform(TreeTransformBase):
                 return GitTreeDirectory(None, self.final_name(trans_id))
             executable = mode_is_executable(st.st_mode)
             mode = object_mode(kind, executable)
-            blob = blob_from_path_and_stat(encode_git_path(path), st)
+            if kind == 'symlink':
+                blob = blob_from_path_and_stat(encode_git_path(path), st)
+                return GitTreeSymlink(
+                    None, name, None,
+                    decode_git_path(blob.data))
+            elif kind == 'file':
+                return GitTreeFile(
+                    None, name, executable=executable)
         elif trans_id in self._removed_contents:
             return None
         else:
@@ -1106,9 +1107,6 @@ class DiskTreeTransform(TreeTransformBase):
                 return GitTreeDirectory(None, name)
             else:
                 raise AssertionError(kind)
-            blob = Blob.from_string(contents)
-        return blob, mode
-
 
     def final_git_entry(self, trans_id):
         if trans_id in self._new_contents:
@@ -1397,7 +1395,7 @@ class GitTreeTransform(DiskTreeTransform):
                 raise
             else:
                 mover.apply_deletions()
-        self._tree._apply_transform_changes(index_changes)
+        self._tree._apply_index_changes(index_changes)
         self._done = True
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
@@ -1487,18 +1485,16 @@ class GitTreeTransform(DiskTreeTransform):
         for id_set in [self._new_name, self._new_parent,
                        self._new_executability]:
             changed_ids.update(id_set)
-        # removing implies a kind change
-        changed_kind = set(self._removed_contents)
         # so does adding
-        changed_kind.intersection_update(self._new_contents)
+        changed_kind = set(self._new_contents)
         # Ignore entries that are already known to have changed.
         changed_kind.difference_update(changed_ids)
         #  to keep only the truly changed ones
         changed_kind = (t for t in changed_kind
                         if self.tree_kind(t) != self.final_kind(t))
-        # all kind changes will alter the inventory
         changed_ids.update(changed_kind)
         removed_id = set(self._removed_id)
+        removed_id.update(self._removed_contents)
         for t in changed_kind:
             if self.final_kind(t) == 'directory':
                 removed_id.add(t)
@@ -1519,7 +1515,7 @@ class GitTreeTransform(DiskTreeTransform):
 
                 kind = self.final_kind(trans_id)
                 if kind is None:
-                    kind = self._tree.stored_kind(self.tree_path(trans_id))
+                    continue
                 versioned = self.final_is_versioned(trans_id)
                 if not versioned:
                     continue
@@ -1775,8 +1771,9 @@ class GitPreviewTree(PreviewTree, GitTree):
         # might be more efficient, but requires tricky inferences about stack
         # position.
         for trans_id, path in self._list_files_by_dir():
-            entry = None
-            yield path, entry
+            entry = self._transform.final_entry(path)
+            if entry is not None:
+                yield path, entry
 
     def _list_files_by_dir(self):
         todo = [ROOT_PARENT]

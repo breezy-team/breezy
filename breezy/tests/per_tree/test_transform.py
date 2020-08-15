@@ -165,11 +165,13 @@ class TestTransformPreview(TestCaseWithTree):
                                             include_unchanged=True)
 
         root_id = revision_tree.path2id('')
-        root_entry = InventoryTreeChange(root_id, ('', ''), False, (True, True), (None, None),
-                      ('', ''), ('directory', 'directory'), (False, False), False)
-        a_entry = InventoryTreeChange(revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-                   (root_id, root_id), ('a', 'a'), ('file', 'file'),
-                   (False, False), False)
+        root_entry = InventoryTreeChange(
+            root_id, ('', ''), False, (True, True), (None, None),
+            ('', ''), ('directory', 'directory'), (False, False), False)
+        a_entry = InventoryTreeChange(
+            revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
+            (root_id, root_id), ('a', 'a'), ('file', 'file'),
+            (False, False), False)
 
         self.assertTreeChanges([root_entry, a_entry], changes, preview_tree)
 

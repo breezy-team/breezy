@@ -957,10 +957,10 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             else:
                 newparentpath, newname = osutils.split(newpath_decoded)
                 newparent = mapping.generate_file_id(newparentpath)
-        if (not include_unchanged and
-                oldkind == 'directory' and newkind == 'directory' and
-                oldpath_decoded == newpath_decoded):
-            continue
+#        if (not include_unchanged and
+#                oldkind == 'directory' and newkind == 'directory' and
+#                oldpath_decoded == newpath_decoded):
+#            continue
         if oldversioned and change_type != 'copy':
             fileid = mapping.generate_file_id(oldpath_decoded)
         elif newversioned:
@@ -1222,7 +1222,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         # TODO(jelmer): Keep track of dirty per index
         self._index_dirty = True
 
-    def _apply_transform_changes(self, changes):
+    def _apply_index_changes(self, changes):
         for (path, kind, executability, reference_revision,
              symlink_target) in changes:
             if kind is None or kind == 'directory':

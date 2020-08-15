@@ -80,6 +80,9 @@ class GitCommitBuilder(CommitBuilder):
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         seen_root = False
         for change in iter_changes:
+            if change.kind == (None, None):
+                # Ephemeral
+                continue
             if change.versioned[0] and not change.copied:
                 file_id = self._mapping.generate_file_id(change.path[0])
             elif change.versioned[1]:

@@ -1316,7 +1316,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def get_reference_revision(self, path, branch=None):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
-            return _mod_revision.NULL_REVISION
+            (index, subpath) = self._lookup_index(
+                encode_git_path(path))
+            if subpath is None:
+                raise errors.NoSuchFile(path)
+            hexsha = index[subpath].sha
         return self.branch.lookup_foreign_revision_id(hexsha)
 
     def get_nested_tree(self, path):

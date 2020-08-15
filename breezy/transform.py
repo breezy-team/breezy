@@ -355,6 +355,8 @@ class TreeTransform(object):
             contents insertion command)
         """
         if trans_id in self._new_contents:
+            if trans_id in self._new_reference_revision:
+                return 'tree-reference'
             return self._new_contents[trans_id]
         elif trans_id in self._removed_contents:
             return None
