@@ -435,7 +435,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.assertEqual(
             b'subtree-revision',
-            tree.root_inventory.get_entry(b'subtree-id').reference_revision)
+            tree.get_reference_revision('reference'))
 
     def test_conflicts(self):
         transform, root = self.transform()

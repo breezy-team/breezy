@@ -1914,9 +1914,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             c.file_id: c for c in self._transform.iter_changes()}
 
     def supports_tree_reference(self):
-        # TODO(jelmer): Support tree references in PreviewTree.
-        # return self._transform._tree.supports_tree_reference()
-        return False
+        return self._transform._tree.supports_tree_reference()
 
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
@@ -2125,6 +2123,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             limbo_name = tt._limbo_name(trans_id)
             if trans_id in tt._new_reference_revision:
                 kind = 'tree-reference'
+                link_or_sha1 = tt._new_reference_revision
             if kind == 'file':
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
