@@ -954,7 +954,6 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return self._path2ie(path).symlink_target
 
     def get_reference_revision(self, path):
-        import pdb; pdb.set_trace()
         return self._path2ie(path).reference_revision
 
     def _get_nested_tree(self, path, file_id, reference_revision):
