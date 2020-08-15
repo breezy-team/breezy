@@ -28,6 +28,7 @@ from ... import (
     transform,
     urlutils,
     )
+from ...tree import TreeChange
 from ...bzr.conflicts import (
     DeletingParent,
     DuplicateEntry,
@@ -180,6 +181,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def test_apply_informs_tree_of_observed_sha1(self):
         trans, root, contents, sha1 = self.transform_for_sha1_test()
+        from ...bzr.workingtree import InventoryWorkingTree
+        if not isinstance(self.wt, InventoryWorkingTree):
+            self.skipTest('not a bzr working tree')
         trans_id = trans.new_file('file1', root, contents, file_id=b'file1-id',
                                   sha1=sha1)
         calls = []
@@ -906,40 +910,46 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             self.get_conflicted()
         resolve_conflicts(conflicts)
         self.assertEqual(conflicts.final_name(old_dorothy), 'dorothy.moved')
-        self.assertIs(conflicts.final_file_id(old_dorothy), None)
+        if self.wt.supports_setting_file_ids():
+            self.assertIs(conflicts.final_file_id(old_dorothy), None)
+            self.assertEqual(conflicts.final_file_id(new_dorothy), b'dorothy-id')
         self.assertEqual(conflicts.final_name(new_dorothy), 'dorothy')
-        self.assertEqual(conflicts.final_file_id(new_dorothy), b'dorothy-id')
         self.assertEqual(conflicts.final_parent(emerald), oz)
         conflicts.apply()
 
     def test_cook_conflicts(self):
         tt, emerald, oz, old_dorothy, new_dorothy, munchkincity = self.get_conflicted()
         raw_conflicts = resolve_conflicts(tt)
-        cooked_conflicts = tt.cook_conflicts(raw_conflicts)
-        duplicate = DuplicateEntry('Moved existing file to', 'dorothy.moved',
-                                   'dorothy', None, b'dorothy-id')
-        self.assertEqual(cooked_conflicts[0], duplicate)
-        duplicate_id = DuplicateID('Unversioned existing file',
-                                   'dorothy.moved', 'dorothy', None,
-                                   b'dorothy-id')
-        self.assertEqual(cooked_conflicts[1], duplicate_id)
-        missing_parent = MissingParent('Created directory', 'munchkincity',
-                                       b'munchkincity-id')
-        deleted_parent = DeletingParent('Not deleting', 'oz', b'oz-id')
-        self.assertEqual(cooked_conflicts[2], missing_parent)
-        unversioned_parent = UnversionedParent('Versioned directory',
-                                               'munchkincity',
-                                               b'munchkincity-id')
-        unversioned_parent2 = UnversionedParent('Versioned directory', 'oz',
-                                                b'oz-id')
-        self.assertEqual(cooked_conflicts[3], unversioned_parent)
-        parent_loop = ParentLoop(
-            'Cancelled move', 'oz/emeraldcity',
-            'oz/emeraldcity', b'emerald-id', b'emerald-id')
-        self.assertEqual(cooked_conflicts[4], deleted_parent)
-        self.assertEqual(cooked_conflicts[5], unversioned_parent2)
-        self.assertEqual(cooked_conflicts[6], parent_loop)
-        self.assertEqual(len(cooked_conflicts), 7)
+        cooked_conflicts = list(tt.cook_conflicts(raw_conflicts))
+        if self.wt.supports_setting_file_ids():
+            duplicate = DuplicateEntry('Moved existing file to', 'dorothy.moved',
+                                       'dorothy', None, b'dorothy-id')
+            self.assertEqual(cooked_conflicts[0], duplicate)
+            duplicate_id = DuplicateID('Unversioned existing file',
+                                       'dorothy.moved', 'dorothy', None,
+                                       b'dorothy-id')
+            self.assertEqual(cooked_conflicts[1], duplicate_id)
+            missing_parent = MissingParent('Created directory', 'munchkincity',
+                                           b'munchkincity-id')
+            deleted_parent = DeletingParent('Not deleting', 'oz', b'oz-id')
+            self.assertEqual(cooked_conflicts[2], missing_parent)
+            unversioned_parent = UnversionedParent('Versioned directory',
+                                                   'munchkincity',
+                                                   b'munchkincity-id')
+            unversioned_parent2 = UnversionedParent('Versioned directory', 'oz',
+                                                    b'oz-id')
+            self.assertEqual(cooked_conflicts[3], unversioned_parent)
+            parent_loop = ParentLoop(
+                'Cancelled move', 'oz/emeraldcity',
+                'oz/emeraldcity', b'emerald-id', b'emerald-id')
+            self.assertEqual(cooked_conflicts[4], deleted_parent)
+            self.assertEqual(cooked_conflicts[5], unversioned_parent2)
+            self.assertEqual(cooked_conflicts[6], parent_loop)
+            self.assertEqual(len(cooked_conflicts), 7)
+        else:
+            self.assertEqual(
+                set([c.path for c in cooked_conflicts]),
+                set(['oz/emeraldcity', 'oz', 'munchkincity', 'dorothy.moved']))
         tt.finalize()
 
     def test_string_conflicts(self):
@@ -1210,7 +1220,6 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             self.assertTreeChanges(transform, [])
             old = transform.trans_id_tree_path('old')
             transform.unversion_file(old)
-            import pdb; pdb.set_trace()
             self.assertTreeChanges(
                 transform, [
                     InventoryTreeChange(
@@ -1352,8 +1361,16 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         if tt._tree.supports_setting_file_ids():
             self.assertEqual(expected, actual)
         else:
-            for c in expected + actual:
-                c.file_id = None
+            expected = [
+                TreeChange(path=c.path, changed_content=c.changed_content,
+                           versioned=c.versioned, name=c.name,
+                           kind=c.kind, executable=c.executable,
+                           copied=c.copied) for c in expected]
+            actual = [
+                TreeChange(path=c.path, changed_content=c.changed_content,
+                           versioned=c.versioned, name=c.name,
+                           kind=c.kind, executable=c.executable,
+                           copied=c.copied) for c in actual]
             self.assertEqual(expected, actual)
 
     def test_iter_changes_modified_bleed(self):
@@ -1397,14 +1414,17 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         floater = transform.trans_id_tree_path('floater')
         try:
             transform.adjust_path('flitter', root, floater)
-            self.assertTreeChanges(
-                transform,
-                [InventoryTreeChange(
-                    b'floater-id', ('floater', 'flitter'), False,
-                    (True, True),
-                    (root_id, root_id),
-                    ('floater', 'flitter'),
-                    (None, None), (False, False), False)])
+            if self.wt.has_versioned_directories():
+                self.assertTreeChanges(
+                    transform,
+                    [InventoryTreeChange(
+                        b'floater-id', ('floater', 'flitter'), False,
+                        (True, True),
+                        (root_id, root_id),
+                        ('floater', 'flitter'),
+                        (None, None), (False, False), False)])
+            else:
+                self.assertTreeChanges(transform, [])
         finally:
             transform.finalize()
 

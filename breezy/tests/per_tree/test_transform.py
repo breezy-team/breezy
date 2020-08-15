@@ -30,6 +30,7 @@ from ...transform import (
     )
 from ...tree import (
     find_previous_path,
+    TreeChange,
     )
 
 from breezy.bzr.inventorytree import InventoryTreeChange
@@ -155,8 +156,16 @@ class TestTransformPreview(TestCaseWithTree):
         if tree.supports_setting_file_ids():
             self.assertEqual(expected, actual)
         else:
-            for c in expected + actual:
-                c.file_id = None
+            expected = [
+                TreeChange(path=c.path, changed_content=c.changed_content,
+                           versioned=c.versioned, name=c.name,
+                           kind=c.kind, executable=c.executable,
+                           copied=c.copied) for c in expected]
+            actual = [
+                TreeChange(path=c.path, changed_content=c.changed_content,
+                           versioned=c.versioned, name=c.name,
+                           kind=c.kind, executable=c.executable,
+                           copied=c.copied) for c in actual]
             self.assertEqual(expected, actual)
 
     def test_include_unchanged_succeeds(self):

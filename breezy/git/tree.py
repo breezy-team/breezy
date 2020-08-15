@@ -957,10 +957,10 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             else:
                 newparentpath, newname = osutils.split(newpath_decoded)
                 newparent = mapping.generate_file_id(newparentpath)
-#        if (not include_unchanged and
-#                oldkind == 'directory' and newkind == 'directory' and
-#                oldpath_decoded == newpath_decoded):
-#            continue
+        if (not include_unchanged and
+                oldkind == 'directory' and newkind == 'directory' and
+                oldpath_decoded == newpath_decoded):
+            continue
         if oldversioned and change_type != 'copy':
             fileid = mapping.generate_file_id(oldpath_decoded)
         elif newversioned:
