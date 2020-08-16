@@ -176,6 +176,12 @@ class TextConflict(_mod_conflicts.Conflict):
     def describe(self):
         return 'Text conflict in %(path)s' % self.__dict__
 
+    def __str__(self):
+        return self.describe()
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.path)
+
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""

@@ -593,7 +593,7 @@ class TreeTransformBase(TreeTransform):
             else:
                 to_executable = from_executable
 
-            if from_kind != to_kind:
+            if from_versioned and from_kind != to_kind:
                 modified = True
             elif to_kind in ('file', 'symlink') and (
                     trans_id in self._new_contents):
@@ -1055,8 +1055,11 @@ class DiskTreeTransform(TreeTransformBase):
             orig_path = self.tree_path(trans_id)
             if orig_path is None:
                 return None
-            return next(self._tree.iter_entries_by_dir(
-                specific_files=[orig_path]))[1]
+            try:
+                return next(self._tree.iter_entries_by_dir(
+                    specific_files=[orig_path]))[1]
+            except StopIteration:
+                return None
 
     def final_git_entry(self, trans_id):
         if trans_id in self._new_contents:

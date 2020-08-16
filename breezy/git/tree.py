@@ -967,8 +967,13 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             fileid = mapping.generate_file_id(newpath_decoded)
         else:
             fileid = None
+        if oldkind == 'directory' and newkind == 'directory':
+            modified = False
+        else:
+            modified = (oldsha != newsha) or (oldmode != newmode)
         yield InventoryTreeChange(
-            fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
+            fileid, (oldpath_decoded, newpath_decoded),
+            modified,
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
             (oldkind, newkind), (oldexe, newexe),
