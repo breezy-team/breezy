@@ -355,6 +355,8 @@ class TreeTransform(object):
             contents insertion command)
         """
         if trans_id in self._new_contents:
+            if trans_id in self._new_reference_revision:
+                return 'tree-reference'
             return self._new_contents[trans_id]
         elif trans_id in self._removed_contents:
             return None
@@ -1238,7 +1240,11 @@ def resolve_unversioned_parent(tt, path_tree, c_type, trans_id):
 def resolve_non_directory_parent(tt, path_tree, c_type, parent_id):
     parent_parent = tt.final_parent(parent_id)
     parent_name = tt.final_name(parent_id)
-    parent_file_id = tt.final_file_id(parent_id)
+    # TODO(jelmer): Make this code transform-specific
+    if tt._tree.supports_setting_file_ids():
+        parent_file_id = tt.final_file_id(parent_id)
+    else:
+        parent_file_id = b'DUMMY'
     new_parent_id = tt.new_directory(parent_name + '.new',
                                      parent_parent, parent_file_id)
     _reparent_transform_children(tt, parent_id, new_parent_id)
@@ -1358,6 +1364,9 @@ class PreviewTree(object):
         self._path2trans_id_cache = {}
         self._all_children_cache = {}
         self._final_name_cache = {}
+
+    def supports_setting_file_ids(self):
+        raise NotImplementedError(self.supports_setting_file_ids)
 
     @property
     def _by_parent(self):

@@ -101,7 +101,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
         changes = list(tree_a.iter_changes(tree_a.basis_tree()))
-        self.assertEqual(1, len(changes))
+        self.assertEqual(1, len(changes), changes)
 
     def test_merge_type(self):
         this = self.make_branch_and_tree('this')

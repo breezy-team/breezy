@@ -176,6 +176,12 @@ class TextConflict(_mod_conflicts.Conflict):
     def describe(self):
         return 'Text conflict in %(path)s' % self.__dict__
 
+    def __str__(self):
+        return self.describe()
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.path)
+
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
@@ -975,7 +981,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 self._set_conflicted(path, path in by_path)
 
     def _set_conflicted(self, path, conflicted):
-        trace.mutter('change conflict: %r -> %r', path, conflicted)
         value = self.index[path]
         self._index_dirty = True
         if conflicted:
@@ -1159,26 +1164,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
 
-    def _apply_transform_delta(self, changes):
-        for (old_path, new_path, ie) in changes:
-            if old_path is not None:
-                (index, old_subpath) = self._lookup_index(
-                    encode_git_path(old_path))
-                try:
-                    self._index_del_entry(index, old_subpath)
-                except KeyError:
-                    pass
-                else:
-                    self._versioned_dirs = None
-            if new_path is not None and ie.kind != 'directory':
-                if ie.kind == 'tree-reference':
-                    self._index_add_entry(
-                        new_path, ie.kind,
-                        reference_revision=ie.reference_revision)
-                else:
-                    self._index_add_entry(new_path, ie.kind)
-        self.flush()
-
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter
@@ -1337,7 +1322,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def get_reference_revision(self, path, branch=None):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
-            return _mod_revision.NULL_REVISION
+            (index, subpath) = self._lookup_index(
+                encode_git_path(path))
+            if subpath is None:
+                raise errors.NoSuchFile(path)
+            hexsha = index[subpath].sha
         return self.branch.lookup_foreign_revision_id(hexsha)
 
     def get_nested_tree(self, path):

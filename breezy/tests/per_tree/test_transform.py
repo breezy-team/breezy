@@ -30,8 +30,10 @@ from ...transform import (
     )
 from ...tree import (
     find_previous_path,
+    TreeChange,
     )
 
+from breezy.bzr.inventorytree import InventoryTreeChange
 
 from breezy.tests.per_tree import TestCaseWithTree
 
@@ -45,11 +47,6 @@ from ..features import (
 
 
 class TestTransformPreview(TestCaseWithTree):
-
-    def setUp(self):
-        super(TestTransformPreview, self).setUp()
-        if not self.workingtree_format.supports_setting_file_ids:
-            self.skipTest('test not compatible with non-file-id trees yet')
 
     def create_tree(self):
         tree = self.make_branch_and_tree('.')
@@ -153,20 +150,39 @@ class TestTransformPreview(TestCaseWithTree):
                            (False, False), False)],
                          list(preview_tree.iter_changes(revision_tree)))
 
+    def assertTreeChanges(self, expected, actual, tree):
+        # TODO(jelmer): Turn this into a matcher?
+        actual = list(actual)
+        if tree.supports_setting_file_ids():
+            self.assertEqual(expected, actual)
+        else:
+            expected = [
+                TreeChange(path=c.path, changed_content=c.changed_content,
+                           versioned=c.versioned, name=c.name,
+                           kind=c.kind, executable=c.executable,
+                           copied=c.copied) for c in expected]
+            actual = [
+                TreeChange(path=c.path, changed_content=c.changed_content,
+                           versioned=c.versioned, name=c.name,
+                           kind=c.kind, executable=c.executable,
+                           copied=c.copied) for c in actual]
+            self.assertEqual(expected, actual)
+
     def test_include_unchanged_succeeds(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             include_unchanged=True)
 
         root_id = revision_tree.path2id('')
-        root_entry = (root_id, ('', ''), False, (True, True), (None, None),
-                      ('', ''), ('directory', 'directory'), (False, False), False)
-        a_entry = (revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-                   (root_id, root_id), ('a', 'a'), ('file', 'file'),
-                   (False, False), False)
+        root_entry = InventoryTreeChange(
+            root_id, ('', ''), False, (True, True), (None, None),
+            ('', ''), ('directory', 'directory'), (False, False), False)
+        a_entry = InventoryTreeChange(
+            revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
+            (root_id, root_id), ('a', 'a'), ('file', 'file'),
+            (False, False), False)
 
- 
-        self.assertEqual([root_entry, a_entry], list(changes))
+        self.assertTreeChanges([root_entry, a_entry], changes, preview_tree)
 
     def test_specific_files(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
@@ -177,7 +193,6 @@ class TestTransformPreview(TestCaseWithTree):
                    (root_id, root_id), ('a', 'a'), ('file', 'file'),
                    (False, False), False)
 
- 
         self.assertEqual([a_entry], list(changes))
 
     def test_want_unversioned(self):
@@ -185,9 +200,10 @@ class TestTransformPreview(TestCaseWithTree):
         changes = preview_tree.iter_changes(revision_tree,
                                             want_unversioned=True)
         root_id = revision_tree.path2id('')
-        a_entry = (revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-                   (root_id, root_id), ('a', 'a'), ('file', 'file'),
-                   (False, False), False)
+        a_entry = InventoryTreeChange(
+            revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
+            (root_id, root_id), ('a', 'a'), ('file', 'file'),
+            (False, False), False)
 
         self.assertEqual([a_entry], list(changes))
 
@@ -304,7 +320,9 @@ class TestTransformPreview(TestCaseWithTree):
         preview.new_file('new', preview.trans_id_tree_path('unchanged'),
                          [b'contents'], b'new-id')
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(b'new-id', preview_tree.path2id('unchanged/new'))
+        self.assertTrue(preview_tree.is_versioned('unchanged/new'))
+        if self.workingtree_format.supports_setting_file_ids:
+            self.assertEqual(b'new-id', preview_tree.path2id('unchanged/new'))
 
     def test_path2id_moved(self):
         tree = self.make_branch_and_tree('tree')
@@ -339,7 +357,7 @@ class TestTransformPreview(TestCaseWithTree):
         self.assertEqual(
             'new_name/child',
             find_previous_path(tree, preview_tree, 'old_name/child'))
-        if tree.supports_setting_file_ids:
+        if tree.supports_setting_file_ids():
             self.assertEqual(
                 tree.path2id('old_name/child'),
                 preview_tree.path2id('new_name/child'))
@@ -516,8 +534,11 @@ class TestTransformPreview(TestCaseWithTree):
             (revid1, b'a\n'),
         ]
         annotation = preview_tree.annotate_iter(
-            'file', default_revision=b'me:')
+            'newname', default_revision=b'me:')
         self.assertEqual(expected, annotation)
+        annotation = preview_tree.annotate_iter(
+            'file', default_revision=b'me:')
+        self.assertIs(None, annotation)
 
     def test_annotate_deleted(self):
         tree = self.make_branch_and_tree('tree')
@@ -542,8 +563,8 @@ class TestTransformPreview(TestCaseWithTree):
 
     def test_is_executable(self):
         preview = self.get_empty_preview()
-        preview.new_file('file', preview.root, [b'a\nb\nc\n'], b'file-id')
-        preview.set_executability(True, preview.trans_id_file_id(b'file-id'))
+        trans_id = preview.new_file('file', preview.root, [b'a\nb\nc\n'], b'file-id')
+        preview.set_executability(True, trans_id)
         preview_tree = preview.get_preview_tree()
         self.assertEqual(True, preview_tree.is_executable('file'))
 
@@ -568,6 +589,8 @@ class TestTransformPreview(TestCaseWithTree):
         preview.create_file([b'b\nc\nd\ne\n'], trans_id)
         self.build_tree_contents([('wtb/file', b'a\nc\nd\nf\n')])
         tree_a = preview.get_preview_tree()
+        if not getattr(tree_a, 'plan_file_merge', None):
+            self.skipTest('tree does not support file merge planning')
         tree_a.set_parent_ids([base_id])
         self.addCleanup(tree_b.lock_read().unlock)
         self.assertEqual([
@@ -592,6 +615,8 @@ class TestTransformPreview(TestCaseWithTree):
         preview.create_file([b'b\nc\nd\ne\n'], trans_id)
         self.build_tree_contents([('wtb/file', b'a\nc\nd\nf\n')])
         tree_a = preview.get_preview_tree()
+        if not getattr(tree_a, 'plan_file_merge', None):
+            self.skipTest('tree does not support file merge planning')
         tree_a.set_parent_ids([base_id])
         self.addCleanup(tree_b.lock_read().unlock)
         self.assertEqual([
@@ -624,6 +649,7 @@ class TestTransformPreview(TestCaseWithTree):
         preview.new_file('new-versioned-file', preview.root, [b'contents'],
                          b'new-versioned-id')
         tree = preview.get_preview_tree()
+        self.assertEquals({'existing-file'}, set(work_tree.extras()))
         preview.unversion_file(preview.trans_id_tree_path('removed-file'))
         self.assertEqual({'new-file', 'removed-file', 'existing-file'},
                          set(tree.extras()))

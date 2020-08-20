@@ -711,8 +711,12 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     def get_symlink_target(self, path):
         abspath = self.abspath(path)
-        target = osutils.readlink(abspath)
-        return target
+        try:
+            return osutils.readlink(abspath)
+        except OSError as e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                raise errors.NoSuchFile(path)
+            raise
 
     def subsume(self, other_tree):
         raise NotImplementedError(self.subsume)
