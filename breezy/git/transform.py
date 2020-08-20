@@ -599,6 +599,7 @@ class TreeTransformBase(TreeTransform):
                     trans_id in self._new_contents):
                 modified = True
             if (not modified and from_versioned == to_versioned
+                and from_path == to_path
                 and from_name == to_name
                     and from_executable == to_executable):
                 continue

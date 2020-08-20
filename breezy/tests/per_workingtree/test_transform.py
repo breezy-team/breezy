@@ -1235,13 +1235,25 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                         (root_id, root_id), ('old', 'old'), ('file', 'file'),
                         (True, True), False)])
             transform.new_directory('new', root, b'id-1')
-            self.assertTreeChanges(
-                transform,
-                [InventoryTreeChange(
-                    b'id-1', ('old', 'new'), True, (True, True),
-                    (root_id, root_id), ('old', 'new'),
-                    ('file', 'directory'),
-                    (True, False), False)])
+            if transform._tree.supports_setting_file_ids():
+                self.assertTreeChanges(
+                    transform,
+                    [InventoryTreeChange(
+                        b'id-1', ('old', 'new'), True, (True, True),
+                        (root_id, root_id), ('old', 'new'),
+                        ('file', 'directory'),
+                        (True, False), False)])
+            else:
+                self.assertTreeChanges(
+                    transform,
+                    [TreeChange(
+                        (None, 'new'), False, (False, True),
+                        (None, 'new'), (None, 'directory'),
+                        (False, False), False),
+                     TreeChange(
+                        ('old', None), False, (True, False),
+                        ('old', 'old'), ('file', 'file'),
+                        (True, True), False)])
         finally:
             transform.finalize()
 
@@ -1314,13 +1326,24 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.unversion_file(old)
             transform.version_file(new, file_id=b'id-1')
             transform.adjust_path('old', root, new)
-            self.assertTreeChanges(
-                transform,
-                [InventoryTreeChange(
-                    b'id-1', ('old', 'old'), True, (True, True),
-                    (root_id, root_id),
-                    ('old', 'old'), ('file', 'file'),
-                    (False, False), False)])
+            if transform._tree.supports_setting_file_ids():
+                self.assertTreeChanges(
+                    transform,
+                    [InventoryTreeChange(
+                        b'id-1', ('old', 'old'), True, (True, True),
+                        (root_id, root_id),
+                        ('old', 'old'), ('file', 'file'),
+                        (False, False), False)])
+            else:
+                self.assertTreeChanges(
+                    transform,
+                    [TreeChange(
+                        (None, 'old'), False, (False, True),
+                        (None, 'old'), (None, 'file'), (False, False), False),
+                     TreeChange(
+                         ('old', None), False, (True, False), ('old', 'old'),
+                         ('file', 'file'), (False, False), False)])
+
             transform.cancel_versioning(new)
             transform._removed_id = set()
 
