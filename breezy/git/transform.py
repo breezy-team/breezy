@@ -1747,7 +1747,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             entry, is_versioned = self._transform.final_entry(trans_id)
             if entry is None:
                 continue
-            if not is_versioned:
+            if not is_versioned and entry.kind != 'directory':
                 continue
             if specific_files is not None and path not in specific_files:
                 continue
