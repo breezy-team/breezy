@@ -201,11 +201,11 @@ def upstream_version_add_revision(
         gitdate = osutils.format_date(
             rev.timestamp, rev.timezone, date_fmt='%Y%m%d', show_offset=False)
 
-    m = re.match(r"^(.*)([\+~])git(\d{8})\.([a-f0-9]{7})$", version_string)
+    m = re.match(r"^(.*)([\+~-])git(\d{8})\.([a-f0-9]{7})$", version_string)
     if m and gitid:
         return "%s%sgit%s.%s" % (m.group(1), m.group(2), gitdate, gitid)
 
-    m = re.match(r"^(.*)([\+~])git(\d{8})\.(\d+)\.([a-f0-9]{7})$",
+    m = re.match(r"^(.*)([\+~-])git(\d{8})\.(\d+)\.([a-f0-9]{7})$",
                  version_string)
     if m and gitid:
         if gitdate == m.group(3):
@@ -215,7 +215,7 @@ def upstream_version_add_revision(
         return "%s%sgit%s.%d.%s" % (
             m.group(1), m.group(2), gitdate, snapshot, gitid)
 
-    m = re.match(r"^(.*)([\+~])git(\d{8})$", version_string)
+    m = re.match(r"^(.*)([\+~-])git(\d{8})$", version_string)
     if m and gitid:
         return "%s%sgit%s" % (m.group(1), m.group(2), gitdate)
 
@@ -325,13 +325,13 @@ def get_export_upstream_revision(config=None, version=None):
 def git_snapshot_data_from_version(version):
     git_id = None
     date = None
-    if "+git" in version or "~git" in version:
+    if "+git" in version or "~git" in version or "-git" in version:
         m = re.match(
-            ".*[~+]git([0-9]{4})([0-9]{2})([0-9]{2})\\.([0-9a-f]{7}).*",
+            ".*[~+-]git([0-9]{4})([0-9]{2})([0-9]{2})\\.([0-9a-f]{7}).*",
             version)
         if not m:
             m = re.match(
-                ".*[~+]git([0-9]{4})([0-9]{2})([0-9]{2})\\.[0-9+]\\.([0-9a-f]{7}).*",
+                ".*[~+-]git([0-9]{4})([0-9]{2})([0-9]{2})\\.[0-9+]\\.([0-9a-f]{7}).*",
                 version)
         if m:
             git_id = m.group(4)

@@ -83,7 +83,7 @@ def upstream_merge_changelog_line(upstream_version):
     :param upstream_version: Upstream version string
     :return: Line string for use in changelog
     """
-    vcs_suffixes = ["~bzr", "+bzr", "~svn", "+svn", "~git", "+git"]
+    vcs_suffixes = ["~bzr", "+bzr", "~svn", "+svn", "~git", "+git", "-git"]
     for vcs_suffix in vcs_suffixes:
         if vcs_suffix in str(upstream_version):
             entry_description = "New upstream snapshot."
