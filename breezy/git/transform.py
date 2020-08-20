@@ -1024,42 +1024,58 @@ class DiskTreeTransform(TreeTransformBase):
         handle_orphan(self, trans_id, parent_id)
 
     def final_entry(self, trans_id):
+        is_versioned = self.final_is_versioned(trans_id)
+        fp = FinalPaths(self)
+        tree_path = fp.get_path(trans_id)
         if trans_id in self._new_contents:
             path = self._limbo_name(trans_id)
             st = os.lstat(path)
             kind = mode_kind(st.st_mode)
-            fp = FinalPaths(self)
             name = self.final_name(trans_id)
-            tree_path = fp.get_path(trans_id)
             file_id = self._tree.mapping.generate_file_id(tree_path)
             parent_id = self._tree.mapping.generate_file_id(os.path.dirname(tree_path))
             if kind == 'directory':
                 return GitTreeDirectory(
-                    file_id, self.final_name(trans_id), parent_id=parent_id)
+                    file_id, self.final_name(trans_id), parent_id=parent_id), is_versioned
             executable = mode_is_executable(st.st_mode)
             mode = object_mode(kind, executable)
             blob = blob_from_path_and_stat(encode_git_path(path), st)
             if kind == 'symlink':
                 return GitTreeSymlink(
                     file_id, name, parent_id,
-                    decode_git_path(blob.data))
+                    decode_git_path(blob.data)), is_versioned
             elif kind == 'file':
                 return GitTreeFile(
                     file_id, name, executable=executable, parent_id=parent_id,
-                    git_sha1=blob.id, text_size=len(blob.data))
+                    git_sha1=blob.id, text_size=len(blob.data)), is_versioned
             else:
                 raise AssertionError(kind)
         elif trans_id in self._removed_contents:
-            return None
+            return None, None
         else:
             orig_path = self.tree_path(trans_id)
             if orig_path is None:
-                return None
+                return None, None
+            file_id = self._tree.mapping.generate_file_id(tree_path)
+            if tree_path == '':
+                parent_id = None
+            else:
+                parent_id = self._tree.mapping.generate_file_id(os.path.dirname(tree_path))
             try:
-                return next(self._tree.iter_entries_by_dir(
+                ie = next(self._tree.iter_entries_by_dir(
                     specific_files=[orig_path]))[1]
+                ie.file_id = file_id
+                ie.parent_id = parent_id
+                return ie, is_versioned
             except StopIteration:
-                return None
+                try:
+                    if self.tree_kind(trans_id) == 'directory':
+                        return GitTreeDirectory(
+                            file_id, self.final_name(trans_id), parent_id=parent_id), is_versioned
+                except OSError as e:
+                    if e.errno != errno.ENOTDIR:
+                        raise
+                return None, None
 
     def final_git_entry(self, trans_id):
         if trans_id in self._new_contents:
@@ -1728,8 +1744,10 @@ class GitPreviewTree(PreviewTree, GitTree):
         # might be more efficient, but requires tricky inferences about stack
         # position.
         for trans_id, path in self._list_files_by_dir():
-            entry = self._transform.final_entry(trans_id)
-            if not self._transform.final_is_versioned(trans_id):
+            entry, is_versioned = self._transform.final_entry(trans_id)
+            if entry is None:
+                continue
+            if not is_versioned:
                 continue
             if specific_files is not None and path not in specific_files:
                 continue
@@ -1774,9 +1792,9 @@ class GitPreviewTree(PreviewTree, GitTree):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
             raise errors.NoSuchFile(path)
-        todo = [(child_trans_id, trans_id) for child_trans_id in
-                self._all_children(trans_id)]
-        for trans_id in todo:
-            entry = self._transform.final_entry(trans_id)
+        for child_trans_id in self._all_children(trans_id):
+            entry, is_versioned = self._transform.final_entry(trans_id)
+            if not is_versioned:
+                continue
             if entry is not None:
                 yield entry
