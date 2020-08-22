@@ -1054,6 +1054,8 @@ class Merge3Merger(object):
                             other_ie.name, this_ie.name),
                            ((base_ie.executable, lca_executable),
                             other_ie.executable, this_ie.executable),
+                           # Copy detection is not yet supported, so nothing is
+                           # a copy:
                            False
                            )
 
