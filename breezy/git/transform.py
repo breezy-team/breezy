@@ -786,6 +786,8 @@ class TreeTransformBase(TreeTransform):
             elif c[0] == 'parent loop':
                 # TODO(jelmer): This should not make it to here
                 yield TextConflict(fp.get_path(c[2]))
+            elif c[0] == 'path conflict':
+                yield TextConflict(fp.get_path(c[1]))
             else:
                 raise AssertionError('unknown conflict %s' % c[0])
 
