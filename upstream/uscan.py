@@ -56,6 +56,17 @@ class WatchLineWithoutMatches(BzrError):
         BzrError.__init__(self, line=line)
 
 
+class WatchLineWithoutMatchingHrefs(PackageVersionNotPresent):
+
+    _fmt = ("No match for %(mangled_version)s was not found "
+            "for %(line)r in %(upstream)s.")
+
+    def __init__(self, mangled_version, line, package, version, upstream):
+        BzrError.__init__(self, package=package, version=version,
+                          upstream=upstream, mangled_version=mangled_version,
+                          line=line)
+
+
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
@@ -142,6 +153,13 @@ class UScanSource(UpstreamSource):
             orig_files = _xml_report_extract_target_paths(text)
             if not orig_files:
                 for w in _xml_report_extract_warnings(text):
+                    m = re.match(
+                        'In (.*) no matching hrefs for version (.*) in watch line',
+                        w.splitlines()[0])
+                    if m:
+                        raise WatchLineWithoutMatchingHrefs(
+                            m.group(1), w.splitlines()[1],
+                            package, version, self)
                     raise UScanError(w)
                 raise PackageVersionNotPresent(package, version, self)
             _xml_report_print_warnings(text)

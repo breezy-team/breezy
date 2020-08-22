@@ -839,15 +839,17 @@ class cmd_merge_upstream(Command):
                     if upstream_branch_source is None:
                         raise BzrCommandError(gettext(
                             "--snapshot requires an upstream branch source"))
-                try:
-                    primary_upstream_source = UScanSource.from_tree(
-                        tree, subpath, top_level)
-                except NoWatchFile:
-                    if upstream_branch_source is None:
-                        raise BzrCommandError(gettext(
-                            "no upstream source location known; "
-                            "add watch file or specify upstream repository?"))
                     primary_upstream_source = upstream_branch_source
+                else:
+                    try:
+                        primary_upstream_source = UScanSource.from_tree(
+                            tree, subpath, top_level)
+                    except NoWatchFile:
+                        if upstream_branch_source is None:
+                            raise BzrCommandError(gettext(
+                                "no upstream source location known; "
+                                "add watch file or specify upstream repository?"))
+                        primary_upstream_source = upstream_branch_source
 
             if revision is not None:
                 if upstream_branch is None:
