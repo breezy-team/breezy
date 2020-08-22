@@ -159,12 +159,12 @@ def _import_archive(
             archive_file, prefix, implied_parents, exclude=exclude)
         renames = {}
 
-        if tree.supports_setting_file_ids():
+        if not tree.supports_setting_file_ids():
             file_ids_from = []
 
         # First we find the renames
         other_trees = file_ids_from[:]
-        if target_tree is not None:
+        if target_tree is not None and tree.supports_setting_file_ids():
             other_trees.insert(0, target_tree)
         for other_tree in other_trees:
             for relative_path, member in to_process:
