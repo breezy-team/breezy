@@ -339,4 +339,5 @@ class Conflict(object):
         raise NotImplementedError(self.do)
 
     def describe(self):
+        """Return a string description of this conflict."""
         raise NotImplementedError(self.describe)

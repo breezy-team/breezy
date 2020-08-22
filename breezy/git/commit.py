@@ -19,6 +19,7 @@
 
 from dulwich.index import (
     commit_tree,
+    read_submodule_head,
     )
 import stat
 
@@ -42,7 +43,6 @@ from dulwich.objects import (
     Blob,
     Commit,
     )
-from dulwich.index import read_submodule_head
 
 
 from .mapping import (
@@ -75,6 +75,9 @@ class GitCommitBuilder(CommitBuilder):
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         seen_root = False
         for change in iter_changes:
+            if change.kind == (None, None):
+                # Ephemeral
+                continue
             if change.versioned[0] and not change.copied:
                 file_id = self._mapping.generate_file_id(change.path[0])
             elif change.versioned[1]:
@@ -115,7 +118,10 @@ class GitCommitBuilder(CommitBuilder):
                 finally:
                     f.close()
                 sha = blob.id
-                entry.text_size = st.st_size
+                if st is not None:
+                    entry.text_size = st.st_size
+                else:
+                    entry.text_size = len(blob.data)
                 entry.git_sha1 = sha
                 self.store.add_object(blob)
             elif change.kind[1] == "symlink":

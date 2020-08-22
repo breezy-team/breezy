@@ -1,5 +1,5 @@
 =======================
-Notes on bzr-fastimport
+Notes on brz-fastimport
 =======================
 
 ..contents::

@@ -272,6 +272,39 @@ class GitTree(_mod_tree.Tree):
         """
         raise NotImplementedError(self.snapshot)
 
+    def preview_transform(self, pb=None):
+        from .transform import GitTransformPreview
+        return GitTransformPreview(self, pb=pb)
+
+    def find_related_paths_across_trees(self, paths, trees=[],
+                                        require_versioned=True):
+        if paths is None:
+            return None
+        if require_versioned:
+            trees = [self] + (trees if trees is not None else [])
+            unversioned = set()
+            for p in paths:
+                for t in trees:
+                    if t.is_versioned(p):
+                        break
+                else:
+                    unversioned.add(p)
+            if unversioned:
+                raise errors.PathsNotVersionedError(unversioned)
+        return filter(self.is_versioned, paths)
+
+    def _submodule_info(self):
+        if self._submodules is None:
+            try:
+                with self.get_file('.gitmodules') as f:
+                    config = GitConfigFile.from_file(f)
+                    self._submodules = {
+                        path: (url, section)
+                        for path, url, section in parse_submodules(config)}
+            except errors.NoSuchFile:
+                self._submodules = {}
+        return self._submodules
+
 
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     """Revision tree implementation based on Git objects."""
@@ -297,18 +330,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
 
     def git_snapshot(self, want_unversioned=False):
         return self.tree, set()
-
-    def _submodule_info(self):
-        if self._submodules is None:
-            try:
-                with self.get_file('.gitmodules') as f:
-                    config = GitConfigFile.from_file(f)
-                    self._submodules = {
-                        path: (url, section)
-                        for path, url, section in parse_submodules(config)}
-            except errors.NoSuchFile:
-                self._submodules = {}
-        return self._submodules
 
     def _get_submodule_repository(self, relpath):
         if not isinstance(relpath, bytes):
@@ -439,18 +460,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             return False
         else:
             return True
-
-    def _submodule_info(self):
-        if self._submodules is None:
-            try:
-                with self.get_file('.gitmodules') as f:
-                    config = GitConfigFile.from_file(f)
-                    self._submodules = {
-                        path: (url, section)
-                        for path, url, section in parse_submodules(config)}
-            except errors.NoSuchFile:
-                self._submodules = {}
-        return self._submodules
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
                    recurse_nested=False):
@@ -667,23 +676,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         else:
             return (kind, None, None, None)
 
-    def find_related_paths_across_trees(self, paths, trees=[],
-                                        require_versioned=True):
-        if paths is None:
-            return None
-        if require_versioned:
-            trees = [self] + (trees if trees is not None else [])
-            unversioned = set()
-            for p in paths:
-                for t in trees:
-                    if t.is_versioned(p):
-                        break
-                else:
-                    unversioned.add(p)
-            if unversioned:
-                raise errors.PathsNotVersionedError(unversioned)
-        return filter(self.is_versioned, paths)
-
     def _iter_tree_contents(self, include_trees=False):
         if self.tree is None:
             return iter([])
@@ -734,10 +726,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                         mode_kind(mode), None,
                         mode_kind(mode)))
             yield path_decoded, children
-
-    def preview_transform(self, pb=None):
-        from .transform import GitTransformPreview
-        return GitTransformPreview(self, pb=pb)
 
 
 def tree_delta_from_git_changes(changes, mappings,
@@ -973,8 +961,13 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             fileid = mapping.generate_file_id(newpath_decoded)
         else:
             fileid = None
+        if oldkind == 'directory' and newkind == 'directory':
+            modified = False
+        else:
+            modified = (oldsha != newsha) or (oldmode != newmode)
         yield InventoryTreeChange(
-            fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
+            fileid, (oldpath_decoded, newpath_decoded),
+            modified,
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
             (oldkind, newkind), (oldexe, newexe),
@@ -1193,18 +1186,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
     def _read_submodule_head(self, path):
         raise NotImplementedError(self._read_submodule_head)
 
-    def _submodule_info(self):
-        if self._submodules is None:
-            try:
-                with self.get_file('.gitmodules') as f:
-                    config = GitConfigFile.from_file(f)
-                    self._submodules = {
-                        path: (url, section)
-                        for path, url, section in parse_submodules(config)}
-            except errors.NoSuchFile:
-                self._submodules = {}
-        return self._submodules
-
     def _lookup_index(self, encoded_path):
         if not isinstance(encoded_path, bytes):
             raise TypeError(encoded_path)
@@ -1240,11 +1221,32 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         # TODO(jelmer): Keep track of dirty per index
         self._index_dirty = True
 
-    def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
+    def _apply_index_changes(self, changes):
+        for (path, kind, executability, reference_revision,
+             symlink_target) in changes:
+            if kind is None or kind == 'directory':
+                (index, subpath) = self._lookup_index(
+                    encode_git_path(path))
+                try:
+                    self._index_del_entry(index, subpath)
+                except KeyError:
+                    pass
+                else:
+                    self._versioned_dirs = None
+            else:
+                self._index_add_entry(
+                    path, kind,
+                    reference_revision=reference_revision,
+                    symlink_target=symlink_target)
+        self.flush()
+
+    def _index_add_entry(
+            self, path, kind, flags=0, reference_revision=None,
+            symlink_target=None):
         if kind == "directory":
             # Git indexes don't contain directories
             return
-        if kind == "file":
+        elif kind == "file":
             blob = Blob()
             try:
                 file, stat_val = self.get_file_with_stat(path)
@@ -1269,7 +1271,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 # old index
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            blob.set_raw_string(encode_git_path(self.get_symlink_target(path)))
+            if symlink_target is None:
+                symlink_target = self.get_symlink_target(path)
+            blob.set_raw_string(encode_git_path(symlink_target))
             # Add object to the repository if it didn't exist yet
             if blob.id not in self.store:
                 self.store.add_object(blob)
@@ -1561,25 +1565,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             self._versioned_dirs = None
             self.flush()
 
-    def find_related_paths_across_trees(self, paths, trees=[],
-                                        require_versioned=True):
-        if paths is None:
-            return None
-
-        if require_versioned:
-            trees = [self] + (trees if trees is not None else [])
-            unversioned = set()
-            for p in paths:
-                for t in trees:
-                    if t.is_versioned(p):
-                        break
-                else:
-                    unversioned.add(p)
-            if unversioned:
-                raise errors.PathsNotVersionedError(unversioned)
-
-        return filter(self.is_versioned, paths)
-
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
         try:
@@ -1606,17 +1591,21 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             return (kind, None, None, None)
 
     def stored_kind(self, relpath):
+        if relpath == '':
+            return 'directory'
         (index, index_path) = self._lookup_index(encode_git_path(relpath))
         if index is None:
-            return kind
+            return None
         try:
             mode = index[index_path].mode
         except KeyError:
-            return kind
+            for p in index:
+                if osutils.is_inside(
+                        decode_git_path(index_path), decode_git_path(p)):
+                    return 'directory'
+            return None
         else:
-            if S_ISGITLINK(mode):
-                return 'tree-reference'
-            return 'directory'
+            return mode_kind(mode)
 
     def kind(self, relpath):
         kind = osutils.file_kind(self.abspath(relpath))
@@ -1633,10 +1622,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
     def transform(self, pb=None):
         from .transform import GitTreeTransform
         return GitTreeTransform(self, pb=pb)
-
-    def preview_transform(self, pb=None):
-        from .transform import GitTransformPreview
-        return GitTransformPreview(self, pb=pb)
 
     def has_changes(self, _from_tree=None):
         """Quickly check that the tree contains at least one commitable change.

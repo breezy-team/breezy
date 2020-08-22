@@ -790,7 +790,15 @@ class Merge3Merger(object):
         self.active_hooks = [hook for hook in hooks if hook is not None]
         with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (file_id, changed, paths3, parents3, names3,
-                      executable3) in enumerate(entries):
+                      executable3, copied) in enumerate(entries):
+                if copied:
+                    # Treat copies as simple adds for now
+                    paths3 = (None, paths3[1], None)
+                    parents3 = (None, parents3[1], None)
+                    names3 = (None, names3[1], None)
+                    executable3 = (None, executable3[1], None)
+                    changed = True
+                    copied = False
                 trans_id = self.tt.trans_id_file_id(file_id)
                 # Try merging each entry
                 child_pb.update(gettext('Preparing file merge'),
@@ -861,7 +869,7 @@ class Merge3Merger(object):
             executable3 = change.executable + (this_executable,)
             yield (
                 (change.file_id, change.changed_content, paths3,
-                 parents3, names3, executable3))
+                 parents3, names3, executable3, change.copied))
 
     def _entries_lca(self):
         """Gather data about files modified between multiple trees.
@@ -871,7 +879,7 @@ class Merge3Merger(object):
 
         For the multi-valued entries, the format will be (BASE, [lca1, lca2])
 
-        :return: [(file_id, changed, paths, parents, names, executable)], where:
+        :return: [(file_id, changed, paths, parents, names, executable, copied)], where:
 
             * file_id: Simple file_id of the entry
             * changed: Boolean, True if the kind or contents changed else False
@@ -1041,7 +1049,10 @@ class Merge3Merger(object):
                            ((base_ie.name, lca_names),
                             other_ie.name, this_ie.name),
                            ((base_ie.executable, lca_executable),
-                            other_ie.executable, this_ie.executable)
+                            other_ie.executable, this_ie.executable),
+                           # Copy detection is not yet supported, so nothing is
+                           # a copy:
+                           False
                            )
 
     def write_modified(self, results):
@@ -1465,7 +1476,6 @@ class Merge3Merger(object):
         if self.this_tree.supports_content_filtering():
             filter_tree_path = this_path
         else:
-            # Skip the id2path lookup for older formats
             filter_tree_path = None
 
         file_group = []

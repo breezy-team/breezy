@@ -1432,7 +1432,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_not_in_base(self):
@@ -1478,7 +1479,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
                            ((None, [root_id, root_id]), root_id, root_id),
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
-                           ((None, [False, False]), False, False)),
+                           ((None, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_not_in_this(self):
@@ -1511,7 +1513,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'a', None),
                            ((root_id, [root_id, root_id]), root_id, None),
                            ((u'a', [u'a', u'a']), u'a', None),
-                           ((False, [False, False]), False, None)),
+                           ((False, [False, False]), False, None),
+                           False),
                           ], entries)
 
     def test_file_not_in_one_lca(self):
@@ -1562,7 +1565,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), None, u'a'),
                            ((root_id, [root_id, root_id]), None, root_id),
                            ((u'a', [u'a', u'a']), None, u'a'),
-                           ((False, [False, False]), None, False)),
+                           ((False, [False, False]), None, False),
+                           False),
                           ], entries)
 
     def test_not_in_other_or_lca(self):
@@ -1628,7 +1632,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'foo', [u'foo', None]), None, u'foo'),
                            ((root_id, [root_id, None]), None, root_id),
                            ((u'foo', [u'foo', None]), None, 'foo'),
-                           ((False, [False, None]), None, False)),
+                           ((False, [False, None]), None, False),
+                           False),
                           ], entries)
 
     def test_only_in_one_lca(self):
@@ -1683,7 +1688,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [None, None]), u'a', None),
                            ((None, [None, None]), root_id, None),
                            ((None, [None, None]), u'a', None),
-                           ((None, [None, None]), False, None)),
+                           ((None, [None, None]), False, None),
+                           False),
                           ], entries)
 
     def test_one_lca_supersedes(self):
@@ -1814,7 +1820,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            [(b'foo-id', False,
                              ((root_id, [root_id, root_id]), root_id, root_id),
                                ((u'foo', [u'bar', u'foo']), u'bar', u'bing'),
-                               ((False, [False, False]), False, False)),
+                               ((False, [False, False]), False, False),
+                             False),
                             ], entries)
 
     def test_both_sides_revert(self):
@@ -1846,7 +1853,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_different_lca_resolve_one_side_updates_content(self):
@@ -1884,7 +1892,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_same_lca_resolution_one_side_updates_content(self):
@@ -1946,7 +1955,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'b', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'b', u'a'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_kind_changed(self):
@@ -1972,7 +1982,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_this_changed_kind(self):
@@ -2018,7 +2029,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_file_in_this(self):
@@ -2046,7 +2058,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'b', u'b']), u'b', u'c'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'c'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_file_in_base(self):
@@ -2076,7 +2089,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'c', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'c', [u'b', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_file_in_lca(self):
@@ -2104,7 +2118,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'c', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'c', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_files(self):
@@ -2129,7 +2144,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
 
@@ -2439,7 +2455,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'foo', [u'barry', u'foo']), u'blah', u'barry'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'barry', u'foo']), u'blah', u'barry'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
         self.assertEqual(0, conflicts)
@@ -2544,7 +2561,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((None, [u'foo', None]), u'foo', u'foo'),
                            ((None, [root_id, None]), root_id, root_id),
                            ((None, [u'foo', None]), u'foo', u'foo'),
-                           ((None, [False, None]), False, False)),
+                           ((None, [False, None]), False, False),
+                           False),
                           ], entries)
 
     def test_symlink_all_wt(self):
@@ -2606,7 +2624,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_other_reverted_path_to_base(self):
@@ -2733,12 +2752,14 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'a', [u'a', u'b']), u'c', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'b']), u'c', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           (b'foo-id', True,
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_nested_tree_unmodified(self):
@@ -2853,7 +2874,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_nested_tree_subtree_renamed_and_modified(self):
@@ -2898,7 +2920,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
 

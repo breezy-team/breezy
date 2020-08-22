@@ -179,7 +179,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         if tree_b.has_versioned_directories():
             self.assertEqual(4, num_conflicts)
         else:
-            self.assertEqual(3, num_conflicts)
+            self.assertEqual(1, num_conflicts)
 
         self.assertThat(
             tree_b,

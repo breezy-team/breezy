@@ -465,7 +465,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def get_reference_revision(self, path):
         # referenced tree's revision is whatever's currently there
-        return self.get_nested_tree(path).last_revision()
+        try:
+            return self.get_nested_tree(path).last_revision()
+        except errors.NotBranchError:
+            entry = self._get_entry(path=path)
+            if entry == (None, None):
+                return False
+            return entry[1][0][1]
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))

@@ -104,6 +104,14 @@ class InventoryTreeChange(TreeChange):
     def is_reparented(self):
         return self.parent_id[0] != self.parent_id[1]
 
+    @property
+    def renamed(self):
+        return (
+            not self.copied and
+            None not in self.name and
+            None not in self.parent_id and
+            (self.name[0] != self.name[1] or self.parent_id[0] != self.parent_id[1]))
+
     def discard_new(self):
         return self.__class__(
             self.file_id, (self.path[0], None), self.changed_content,
@@ -1010,8 +1018,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.kind))
+                dirblock.append((toppath, name, child.kind, None, child.kind))
                 if child.kind == _directory:
                     subdirs.append((toppath, child.file_id))
             yield root, dirblock

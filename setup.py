@@ -19,8 +19,8 @@ if sys.version_info < (3, 5):
 
 try:
     import setuptools
-except ImportError:
-    sys.stderr.write("[ERROR] Please install setuptools\n")
+except ImportError as e:
+    sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
 

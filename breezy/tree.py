@@ -152,6 +152,13 @@ class TreeChange(object):
             return (self.executable[0] != self.executable[1])
         return False
 
+    @property
+    def renamed(self):
+        return (
+            not self.copied and
+            None not in self.name and
+            self.path[0] != self.path[1])
+
     def is_reparented(self):
         return os.path.dirname(self.path[0]) != os.path.dirname(self.path[1])
 
