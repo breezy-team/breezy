@@ -48,6 +48,14 @@ class NoWatchFile(BzrError):
         BzrError.__init__(self, tree=tree, path=path)
 
 
+class WatchLineWithoutMatches(BzrError):
+
+    _fmt = "No matching files for watch line %(line)r."
+
+    def __init__(self, line):
+        BzrError.__init__(self, line=line)
+
+
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
@@ -100,6 +108,10 @@ class UScanSource(UpstreamSource):
         version = _xml_report_extract_upstream_version(text)
         if version is None:
             for w in _xml_report_extract_warnings(text):
+                if re.match(
+                        'In (.*)/watch no matching files for watch line',
+                        w.splitlines()[0]):
+                    raise WatchLineWithoutMatches(w.splitlines()[1])
                 raise UScanError(w)
             return
         return version
