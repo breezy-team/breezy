@@ -1,10 +1,10 @@
-breezy-debian (2.8.41) UNRELEASED; urgency=medium
+breezy-debian (2.8.41) unstable; urgency=medium
 
   * Fix pristine-tar checkouts for git repositories.
   * Add support for kali linux.
   * Properly export debian directories when running uscan in subpath.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 17:16:58 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 14:28:06 +0000
 
 breezy-debian (2.8.40) unstable; urgency=medium
 
