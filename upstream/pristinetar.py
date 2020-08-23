@@ -94,6 +94,9 @@ class PristineTarDeltaTooLarge(PristineTarError):
 class PristineTarDeltaAbsent(PristineTarError):
     _fmt = 'There is not delta present for %(version)s.'
 
+    def __init__(self, version):
+        BzrError.__init__(self, version=version)
+
 
 class PristineTarDeltaExists(PristineTarError):
     _fmt = 'An existing pristine tar entry exists for %(filename)s'
