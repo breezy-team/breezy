@@ -148,7 +148,7 @@ class TestConflictList(tests.TestCase):
         for text, o in zip(
                 bzr_conflicts.ConflictList(example_conflicts).to_strings(),
                 example_conflicts):
-            self.assertEqual(text, text_type(o))
+            self.assertEqual(text, str(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
