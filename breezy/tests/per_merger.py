@@ -18,7 +18,7 @@
 
 import os
 
-from ..conflicts import TextConflict
+from ..bzr.conflicts import TextConflict
 from .. import (
     errors,
     merge as _mod_merge,

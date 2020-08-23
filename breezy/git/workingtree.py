@@ -44,6 +44,7 @@ from dulwich.objects import (
     )
 import os
 import posixpath
+import re
 import stat
 import sys
 
@@ -82,6 +83,101 @@ from .mapping import (
     decode_git_path,
     mode_kind,
     )
+
+
+CONFLICT_SUFFIXES = ['.BASE', '.OTHER', '.THIS']
+
+
+# TODO: There should be a base revid attribute to better inform the user about
+# how the conflicts were generated.
+class TextConflict(_mod_conflicts.Conflict):
+    """The merge algorithm could not resolve all differences encountered."""
+
+    has_files = True
+
+    typestring = 'text conflict'
+
+    _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
+
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
+
+    def _resolve(self, tt, winner_suffix):
+        """Resolve the conflict by copying one of .THIS or .OTHER into file.
+
+        :param tt: The TreeTransform where the conflict is resolved.
+        :param winner_suffix: Either 'THIS' or 'OTHER'
+
+        The resolution is symmetric, when taking THIS, item.THIS is renamed
+        into item and vice-versa. This takes one of the files as a whole
+        ignoring every difference that could have been merged cleanly.
+        """
+        # To avoid useless copies, we switch item and item.winner_suffix, only
+        # item will exist after the conflict has been resolved anyway.
+        item_tid = tt.trans_id_tree_path(self.path)
+        item_parent_tid = tt.get_tree_parent(item_tid)
+        winner_path = self.path + '.' + winner_suffix
+        winner_tid = tt.trans_id_tree_path(winner_path)
+        winner_parent_tid = tt.get_tree_parent(winner_tid)
+        # Switch the paths to preserve the content
+        tt.adjust_path(osutils.basename(self.path),
+                       winner_parent_tid, winner_tid)
+        tt.adjust_path(osutils.basename(winner_path),
+                       item_parent_tid, item_tid)
+        tt.unversion_file(item_tid)
+        tt.version_file(winner_tid)
+        tt.apply()
+
+    def action_auto(self, tree):
+        # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
+        #                can't be auto resolved does not seem ideal.
+        try:
+            kind = tree.kind(self.path)
+        except errors.NoSuchFile:
+            return
+        if kind != 'file':
+            raise NotImplementedError("Conflict is not a file")
+        conflict_markers_in_line = self._conflict_re.search
+        with tree.get_file(self.path) as f:
+            for line in f:
+                if conflict_markers_in_line(line):
+                    raise NotImplementedError("Conflict markers present")
+
+    def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        with tree.transform() as tt:
+            self._resolve(tt, *args, **kwargs)
+
+    def action_take_this(self, tree):
+        self._resolve_with_cleanups(tree, 'THIS')
+
+    def action_take_other(self, tree):
+        self._resolve_with_cleanups(tree, 'OTHER')
+
+    def do(self, action, tree):
+        """Apply the specified action to the conflict.
+
+        :param action: The method name to call.
+
+        :param tree: The tree passed as a parameter to the method.
+        """
+        meth = getattr(self, 'action_%s' % action, None)
+        if meth is None:
+            raise NotImplementedError(self.__class__.__name__ + '.' + action)
+        meth(tree)
+
+    def action_done(self, tree):
+        """Mark the conflict as solved once it has been handled."""
+        # This method does nothing but simplifies the design of upper levels.
+        pass
+
+    def describe(self):
+        return 'Text conflict in %(path)s' % self.__dict__
+
+    def __str__(self):
+        return self.describe()
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
@@ -330,8 +426,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, fileid, kind in file_infos:
+            for parent_path, file_infos in self.walkdirs(directory):
+                for relpath, basename, kind, lstat, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -569,7 +665,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         with self.lock_read():
             index_paths = set(
-                [decode_git_path(p) for p, i in self._recurse_index_entries()])
+                [decode_git_path(p) for p, sha, mode in self.iter_git_objects()])
             all_paths = set(self._iter_files_recursive(include_dirs=False))
             return iter(all_paths - index_paths)
 
@@ -867,8 +963,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             conflicts = _mod_conflicts.ConflictList()
             for item_path, value in self.index.iteritems():
                 if value.flags & FLAG_STAGEMASK:
-                    conflicts.append(_mod_conflicts.TextConflict(
-                        decode_git_path(item_path)))
+                    conflicts.append(TextConflict(decode_git_path(item_path)))
             return conflicts
 
     def set_conflicts(self, conflicts):
@@ -883,7 +978,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 self._set_conflicted(path, path in by_path)
 
     def _set_conflicted(self, path, conflicted):
-        trace.mutter('change conflict: %r -> %r', path, conflicted)
         value = self.index[path]
         self._index_dirty = True
         if conflicted:
@@ -909,8 +1003,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Walk the directories of this tree.
 
         returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                (current_directory_path,
+                 [(file1_path, file1_name, file1_kind, (lstat),
                    file1_kind), ... ])
 
         This API returns a generator, which is only valid during the current
@@ -974,20 +1068,20 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                              - (current_inv[0][0] < cur_disk_dir_relpath))
             if direction > 0:
                 # disk is before inventory - unknown
-                dirblock = [(relpath, basename, kind, stat, None, None) for
+                dirblock = [(relpath, basename, kind, stat, None) for
                             relpath, basename, kind, stat, top_path in
                             cur_disk_dir_content]
-                yield (cur_disk_dir_relpath, None), dirblock
+                yield cur_disk_dir_relpath, dirblock
                 try:
                     current_disk = next(disk_iterator)
                 except StopIteration:
                     disk_finished = True
             elif direction < 0:
                 # inventory is before disk - missing.
-                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                dirblock = [(relpath, basename, 'unknown', None, kind)
                             for relpath, basename, dkind, stat, fileid, kind in
                             current_inv[1]]
-                yield (current_inv[0][0], current_inv[0][1]), dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1005,23 +1099,22 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         # versioned, present file
                         dirblock.append((inv_row[0],
                                          inv_row[1], disk_row[2],
-                                         disk_row[3], inv_row[4],
-                                         inv_row[5]))
+                                         disk_row[3], inv_row[5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
                                 path_elements[0][2], path_elements[0][3],
-                                None, None))
+                                None))
                     elif len(path_elements[0]) == 6:
                         # versioned, absent file.
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
-                                'unknown', None, path_elements[0][4],
+                                'unknown', None,
                                 path_elements[0][5]))
                     else:
                         raise NotImplementedError('unreachable code')
-                yield current_inv[0], dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1067,26 +1160,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
-
-    def _apply_transform_delta(self, changes):
-        for (old_path, new_path, ie) in changes:
-            if old_path is not None:
-                (index, old_subpath) = self._lookup_index(
-                    encode_git_path(old_path))
-                try:
-                    self._index_del_entry(index, old_subpath)
-                except KeyError:
-                    pass
-                else:
-                    self._versioned_dirs = None
-            if new_path is not None and ie.kind != 'directory':
-                if ie.kind == 'tree-reference':
-                    self._index_add_entry(
-                        new_path, ie.kind,
-                        reference_revision=ie.reference_revision)
-                else:
-                    self._index_add_entry(new_path, ie.kind)
-        self.flush()
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
@@ -1246,7 +1319,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def get_reference_revision(self, path, branch=None):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
-            return _mod_revision.NULL_REVISION
+            (index, subpath) = self._lookup_index(
+                encode_git_path(path))
+            if subpath is None:
+                raise errors.NoSuchFile(path)
+            hexsha = index[subpath].sha
         return self.branch.lookup_foreign_revision_id(hexsha)
 
     def get_nested_tree(self, path):

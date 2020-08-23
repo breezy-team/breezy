@@ -61,7 +61,6 @@ from breezy import (
     views,
     )
 from breezy.branch import Branch
-from breezy.conflicts import ConflictList
 from breezy.transport import memory
 from breezy.smtp_connection import SMTPConnection
 from breezy.workingtree import WorkingTree
@@ -4820,7 +4819,7 @@ class cmd_remerge(Command):
             restore_files = [c.path for c in conflicts
                              if c.typestring in allowed_conflicts]
         _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_files)
-        tree.set_conflicts(ConflictList(new_conflicts))
+        tree.set_conflicts(new_conflicts)
         if file_list is not None:
             restore_files = file_list
         for filename in restore_files:

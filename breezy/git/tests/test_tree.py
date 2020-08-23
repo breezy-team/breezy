@@ -25,7 +25,7 @@ from unittest import TestCase
 from dulwich.objects import Tree, Blob
 
 from breezy.delta import TreeDelta
-from breezy.tree import TreeChange
+from breezy.bzr.inventorytree import InventoryTreeChange as TreeChange
 from breezy.git.tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,

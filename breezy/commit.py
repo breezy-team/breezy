@@ -67,7 +67,6 @@ from .osutils import (get_user_encoding,
                       minimum_path_selection,
                       )
 from .trace import mutter, note, is_quiet
-from .tree import TreeChange
 from .urlutils import unescape_for_display
 from .i18n import gettext
 

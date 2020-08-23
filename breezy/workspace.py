@@ -37,8 +37,8 @@ from .workingtree import WorkingTree
 class WorkspaceDirty(BzrError):
     _fmt = "The directory %(path)s has pending changes."
 
-    def __init__(self, tree):
-        BzrError(self, path=tree.abspath('.'))
+    def __init__(self, path):
+        BzrError.__init__(self, path=path)
 
 
 # TODO(jelmer): Move to .clean_tree?
@@ -69,12 +69,12 @@ def check_clean_tree(local_tree):
     """
     # Just check there are no changes to begin with
     if local_tree.has_changes():
-        raise WorkspaceDirty(local_tree)
+        raise WorkspaceDirty(local_tree.abspath('.'))
     if list(local_tree.unknowns()):
-        raise WorkspaceDirty(local_tree)
+        raise WorkspaceDirty(local_tree.abspath('.'))
 
 
-def delete_items(deletables, dry_run: bool = False):
+def delete_items(deletables, dry_run=False):
     """Delete files in the deletables iterable"""
     def onerror(function, path, excinfo):
         """Show warning for errors seen by rmtree.
