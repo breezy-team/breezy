@@ -164,6 +164,7 @@ class cmd_propose_merge(Command):
                help='Allow collaboration from target branch maintainer(s)'),
         Option('allow-empty',
                help='Do not prevent empty merge proposals.'),
+        Option('overwrite', help="Overwrite existing commits."),
         ]
     takes_args = ['submit_branch?']
 
@@ -172,7 +173,7 @@ class cmd_propose_merge(Command):
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
-            allow_collaboration=False, allow_empty=False):
+            allow_collaboration=False, allow_empty=False, overwrite=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -192,7 +193,8 @@ class cmd_propose_merge(Command):
         if name is None:
             name = branch_name(branch)
         remote_branch, public_branch_url = hoster.publish_derived(
-            branch, target, name=name, allow_lossy=not no_allow_lossy)
+            branch, target, name=name, allow_lossy=not no_allow_lossy,
+            overwrite=overwrite)
         branch.set_push_location(remote_branch.user_url)
         branch.set_submit_branch(target.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
