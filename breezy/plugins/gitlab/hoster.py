@@ -343,6 +343,17 @@ class GitLab(Hoster):
     def base_hostname(self):
         return urlutils.parse_url(self.base_url)[3]
 
+    def _find_correct_project_name(self, path):
+        try:
+            resp = self.transport.request(
+                'GET', urlutils.join(self.base_url, path),
+                headers=self.headers)
+        except errors.RedirectRequested as e:
+            return urlutils.parse_url(e.target)[-1].strip('/')
+        if resp.status != 200:
+            _unexpected_status(path, resp)
+        return None
+
     def _api_request(self, method, path, fields=None, body=None):
         return self.transport.request(
             method, urlutils.join(self.base_url, 'api', 'v4', path),
@@ -374,10 +385,14 @@ class GitLab(Hoster):
             return ret[0]
         _unexpected_status(path, response)
 
-    def _get_project(self, project_name):
+    def _get_project(self, project_name, _redirect_checked=False):
         path = 'projects/%s' % urlutils.quote(str(project_name), '')
         response = self._api_request('GET', path)
         if response.status == 404:
+            if not _redirect_checked:
+                project_name = self._find_correct_project_name(project_name)
+                if project_name is not None:
+                    return self._get_project(project_name, _redirect_checked=True)
             raise NoSuchProject(project_name)
         if response.status == 200:
             return json.loads(response.data)
@@ -519,15 +534,17 @@ class GitLab(Hoster):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
-        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
+        (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self.get_current_user()
+        base_project = self._get_project(base_project_name)
         if project is None:
-            project = self._get_project(base_project)['path']
+            project = base_project['path']
         try:
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
-            target_project = self._fork_project(base_project, owner=owner)
+            target_project = self._fork_project(
+                base_project['path_with_namespace'], owner=owner)
         remote_repo_url = git_url_to_bzr_url(target_project['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
