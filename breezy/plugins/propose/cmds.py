@@ -269,18 +269,28 @@ class cmd_my_merge_proposals(Command):
             all='All merge proposals',
             open='Open merge proposals',
             merged='Merged merge proposals',
-            closed='Closed merge proposals')]
+            closed='Closed merge proposals'),
+        Option('hoster', type=str, help='Base hoster URL.'),
+        ]
 
-    def run(self, status='open', verbose=False):
+    def run(self, status='open', verbose=False, hoster=None):
         for instance in _mod_propose.iter_hoster_instances():
+            if hoster is not None and instance.base_url != hoster:
+                continue
             try:
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
                     if verbose:
-                        self.outf.write(
-                            '(Merging %s into %s)\n' %
-                            (mp.get_source_branch_url(),
-                             mp.get_target_branch_url()))
+                        source_branch_url = mp.get_source_branch_url()
+                        if source_branch_url:
+                            self.outf.write(
+                                '(Merging %s into %s)\n' %
+                                (source_branch_url,
+                                 mp.get_target_branch_url()))
+                        else:
+                            self.outf.write(
+                                '(Merging into %s)\n' %
+                                mp.get_target_branch_url())
                         description = mp.get_description()
                         if description:
                             self.outf.writelines(
