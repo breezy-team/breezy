@@ -412,12 +412,16 @@ def get_hoster(branch, possible_hosters=None):
     raise UnsupportedHoster(branch)
 
 
-def iter_hoster_instances():
+def iter_hoster_instances(hoster=None):
     """Iterate over all known hoster instances.
 
     :return: Iterator over Hoster instances
     """
-    for name, hoster_cls in hosters.items():
+    if hoster is None:
+        hoster_clses = [hoster_cls for name, hoster_cls in hosters.items()]
+    else:
+        hoster_clses = [hoster]
+    for hoster_cls in hoster_clses:
         for instance in hoster_cls.iter_instances():
             yield instance
 
