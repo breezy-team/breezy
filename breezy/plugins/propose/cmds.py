@@ -146,7 +146,7 @@ class cmd_propose_merge(Command):
         RegistryOption(
             'hoster',
             help='Use the hoster.',
-            lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
+            lazy_registry=('breezy.propose', 'hosters')),
         ListOption('reviewers', short_name='R', type=text_type,
                    help='Requested reviewers.'),
         Option('name', help='Name of the new remote branch.', type=str),
@@ -258,6 +258,7 @@ class cmd_my_merge_proposals(Command):
 
     hidden = True
 
+    takes_args = ['base-url?']
     takes_options = [
         'verbose',
         RegistryOption.from_kwargs(
@@ -270,12 +271,16 @@ class cmd_my_merge_proposals(Command):
             open='Open merge proposals',
             merged='Merged merge proposals',
             closed='Closed merge proposals'),
-        Option('hoster', type=str, help='Base hoster URL.'),
+        RegistryOption(
+            'hoster',
+            help='Use the hoster.',
+            lazy_registry=('breezy.propose', 'hosters')),
         ]
 
-    def run(self, status='open', verbose=False, hoster=None):
-        for instance in _mod_propose.iter_hoster_instances():
-            if hoster is not None and instance.base_url != hoster:
+    def run(self, status='open', verbose=False, hoster=None, base_url=None):
+
+        for instance in _mod_propose.iter_hoster_instances(hoster=hoster):
+            if base_url is not None and instance.base_url != base_url:
                 continue
             try:
                 for mp in instance.iter_my_proposals(status=status):
@@ -322,10 +327,17 @@ class cmd_hosters(Command):
         for instance in _mod_propose.iter_hoster_instances():
             current_user = instance.get_current_user()
             if current_user is not None:
-                self.outf.write(
-                    gettext('%s (%s) - user: %s (%s)\n') % (
-                        instance.name, instance.base_url,
-                        current_user, instance.get_user_url(current_user)))
+                current_user_url = instance.get_user_url(current_user)
+                if current_user_url is not None:
+                    self.outf.write(
+                        gettext('%s (%s) - user: %s (%s)\n') % (
+                            instance.name, instance.base_url,
+                            current_user, current_user_url))
+                else:
+                    self.outf.write(
+                        gettext('%s (%s) - user: %s\n') % (
+                            instance.name, instance.base_url,
+                            current_user))
             else:
                 self.outf.write(
                     gettext('%s (%s) - not logged in\n') % (
