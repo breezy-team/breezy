@@ -301,7 +301,6 @@ class TreeTransformBase(TreeTransform):
 
     def _parent_loops(self):
         """No entry should be its own ancestor"""
-        conflicts = []
         for trans_id in self._new_parent:
             seen = set()
             parent_id = trans_id
@@ -312,28 +311,25 @@ class TreeTransformBase(TreeTransform):
                 except KeyError:
                     break
                 if parent_id == trans_id:
-                    conflicts.append(('parent loop', trans_id))
+                    yield ('parent loop', trans_id)
                 if parent_id in seen:
                     break
-        return conflicts
 
     def _improper_versioning(self):
         """Cannot version a file with no contents, or a bad type.
 
         However, existing entries with no contents are okay.
         """
-        conflicts = []
         for trans_id in self._versioned:
             kind = self.final_kind(trans_id)
             if kind == 'symlink' and not self._tree.supports_symlinks():
                 # Ignore symlinks as they are not supported on this platform
                 continue
             if kind is None:
-                conflicts.append(('versioning no contents', trans_id))
+                yield ('versioning no contents', trans_id)
                 continue
             if not self._tree.versionable_kind(kind):
-                conflicts.append(('versioning bad kind', trans_id, kind))
-        return conflicts
+                yield ('versioning bad kind', trans_id, kind)
 
     def _executability_conflicts(self):
         """Check for bad executability changes.
@@ -343,31 +339,25 @@ class TreeTransformBase(TreeTransform):
         2. only files can be executable.  (The execute bit on a directory
            does not indicate searchability)
         """
-        conflicts = []
         for trans_id in self._new_executability:
             if not self.final_is_versioned(trans_id):
-                conflicts.append(('unversioned executability', trans_id))
+                yield ('unversioned executability', trans_id)
             else:
                 if self.final_kind(trans_id) != "file":
-                    conflicts.append(('non-file executability', trans_id))
-        return conflicts
+                    yield ('non-file executability', trans_id)
 
     def _overwrite_conflicts(self):
         """Check for overwrites (not permitted on Win32)"""
-        conflicts = []
         for trans_id in self._new_contents:
             if self.tree_kind(trans_id) is None:
                 continue
             if trans_id not in self._removed_contents:
-                conflicts.append(('overwrite', trans_id,
-                                  self.final_name(trans_id)))
-        return conflicts
+                yield ('overwrite', trans_id, self.final_name(trans_id))
 
     def _duplicate_entries(self, by_parent):
         """No directory may have two entries with the same name."""
-        conflicts = []
         if (self._new_name, self._new_parent) == ({}, {}):
-            return conflicts
+            return
         for children in viewvalues(by_parent):
             name_ids = []
             for child_tid in children:
@@ -385,15 +375,12 @@ class TreeTransformBase(TreeTransform):
                 if kind is None and not self.final_is_versioned(trans_id):
                     continue
                 if name == last_name:
-                    conflicts.append(('duplicate', last_trans_id, trans_id,
-                                      name))
+                    yield ('duplicate', last_trans_id, trans_id, name)
                 last_name = name
                 last_trans_id = trans_id
-        return conflicts
 
     def _parent_type_conflicts(self, by_parent):
         """Children must have a directory parent"""
-        conflicts = []
         for parent_id, children in viewitems(by_parent):
             if parent_id == ROOT_PARENT:
                 continue
@@ -409,11 +396,10 @@ class TreeTransformBase(TreeTransform):
             kind = self.final_kind(parent_id)
             if kind is None:
                 # The directory will be deleted
-                conflicts.append(('missing parent', parent_id))
+                yield ('missing parent', parent_id)
             elif kind != "directory":
                 # Meh, we need a *directory* to put something in it
-                conflicts.append(('non-directory parent', parent_id))
-        return conflicts
+                yield ('non-directory parent', parent_id)
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
@@ -746,7 +732,7 @@ class TreeTransformBase(TreeTransform):
         """Cancel the creation of new file contents."""
         raise NotImplementedError(self.cancel_creation)
 
-    def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
+    def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
 
         If filesystem or inventory conflicts are present, MalformedTransform
@@ -756,8 +742,6 @@ class TreeTransformBase(TreeTransform):
 
         :param no_conflicts: if True, the caller guarantees there are no
             conflicts, so no check is made.
-        :param precomputed_delta: An inventory delta to use instead of
-            calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
         raise NotImplementedError(self.apply)
