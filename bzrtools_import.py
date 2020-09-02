@@ -17,7 +17,6 @@ from ...upstream_import import (
     do_directory,
     names_of_files,
     DirWrapper,
-    ZipFileWrapper,
     )
 from ...bzr import generate_ids
 
@@ -42,14 +41,6 @@ from ...workingtree import WorkingTree
 from .errors import UnknownType
 
 
-def open_from_url(location: str):
-    location = urlutils.normalize_url(location)
-    dirname, basename = urlutils.split(location)
-    if location.endswith('/') and not basename.endswith('/'):
-        basename += '/'
-    return get_transport(dirname).get(basename)
-
-
 files_to_ignore = set(
     ['.shelf', '.bzr', '.bzr.backup', '.bzrtags',
      '.bzr-builddeb'])
@@ -66,47 +57,19 @@ def should_ignore(relative_path: str) -> bool:
             return True
 
 
-def import_tar(
-        tree: Tree, tar_input: BinaryIO,
-        file_ids_from=None,
-        target_tree: Optional[Tree] = None) -> None:
-    """Replace the contents of a working directory with tarfile contents.
-    The tarfile may be a gzipped stream.  File ids will be updated.
-    """
-    tar_file = tarfile.open('lala', 'r', tar_input)
-    import_archive(
-        tree, tar_file, file_ids_from=file_ids_from,
-        target_tree=target_tree)
-
-
-def import_zip(
-        tree: Tree, zip_input: BinaryIO, file_ids_from=None, target_tree=None):
-    zip_file = ZipFileWrapper(zip_input, 'r')
-    import_archive(
-        tree, zip_file, file_ids_from=file_ids_from,
-        target_tree=target_tree)
-
-
 def import_dir(
         tree: Tree, dir: str, file_ids_from=None, target_tree=None,
         exclude=None):
     dir_input = BytesIO(dir.encode('utf-8'))
     dir_input.seek(0)
     dir_file = DirWrapper(dir_input)
-    import_archive(
-        tree, dir_file, file_ids_from=file_ids_from, target_tree=target_tree,
-        exclude=exclude)
-
-
-def import_archive(tree, archive_file, file_ids_from=None, target_tree=None,
-                   exclude=None):
     if file_ids_from is None:
         file_ids_from = []
     with ExitStack() as es:
         for other_tree in file_ids_from:
             es.enter_context(other_tree.lock_read())
         return _import_archive(
-            tree, archive_file, file_ids_from, target_tree=target_tree,
+            tree, dir_file, file_ids_from, target_tree=target_tree,
             exclude=exclude)
 
 
@@ -186,44 +149,47 @@ def _import_archive(
             # and failing that we will allocate one. In this importer we want
             # the target_tree to be authoritative about id2path, which is why
             # we consult it first.
-            existing_file_id = tt.tree_file_id(trans_id)
-            # If we find an id that we know we are going to assign to
-            # different path as it has been renamed in one of the
-            # file_ids_from trees then we ignore the one in this tree.
-            if existing_file_id in renames:
-                if relative_path != renames[existing_file_id]:
-                    existing_file_id = None
-            found_file_id = None
-            if target_tree is not None:
-                found_file_id = target_tree.path2id(relative_path)
-                if found_file_id in renames:
-                    if renames[found_file_id] != relative_path:
-                        found_file_id = None
-            if found_file_id is None and existing_file_id is None:
-                for other_tree in file_ids_from:
-                    found_file_id = other_tree.path2id(relative_path)
-                    if found_file_id is not None:
-                        if found_file_id in renames:
-                            if renames[found_file_id] != relative_path:
-                                found_file_id = None
-                                continue
-                        break
-            if found_file_id is not None and found_file_id != existing_file_id:
-                # Found a specific file id in one of the source trees
-                tt.version_file(trans_id=trans_id, file_id=found_file_id)
-                if existing_file_id is not None:
-                    # We need to remove the existing file so it can be
-                    # replaced by the file (and file id) from the
-                    # file_ids_from tree.
-                    tt.delete_versioned(trans_id)
-                trans_id = tt.trans_id_file_id(found_file_id)
+            if tree.supports_setting_file_ids():
+                existing_file_id = tt.tree_file_id(trans_id)
+                # If we find an id that we know we are going to assign to
+                # different path as it has been renamed in one of the
+                # file_ids_from trees then we ignore the one in this tree.
+                if existing_file_id in renames:
+                    if relative_path != renames[existing_file_id]:
+                        existing_file_id = None
+                found_file_id = None
+                if target_tree is not None:
+                    found_file_id = target_tree.path2id(relative_path)
+                    if found_file_id in renames:
+                        if renames[found_file_id] != relative_path:
+                            found_file_id = None
+                if found_file_id is None and existing_file_id is None:
+                    for other_tree in file_ids_from:
+                        found_file_id = other_tree.path2id(relative_path)
+                        if found_file_id is not None:
+                            if found_file_id in renames:
+                                if renames[found_file_id] != relative_path:
+                                    found_file_id = None
+                                    continue
+                            break
+                if found_file_id is not None and found_file_id != existing_file_id:
+                    # Found a specific file id in one of the source trees
+                    tt.version_file(trans_id=trans_id, file_id=found_file_id)
+                    if existing_file_id is not None:
+                        # We need to remove the existing file so it can be
+                        # replaced by the file (and file id) from the
+                        # file_ids_from tree.
+                        tt.delete_versioned(trans_id)
+                    trans_id = tt.trans_id_file_id(found_file_id)
+                if not found_file_id and not existing_file_id:
+                    # No file_id in any of the source trees and no file id in the
+                    # base tree.
+                    name = basename(member.name.rstrip('/'))
+                    file_id = generate_ids.gen_file_id(name)
+                    tt.version_file(file_id=file_id, trans_id=trans_id)
+            else:
+                tt.version_file(trans_id=trans_id)
 
-            if not found_file_id and not existing_file_id:
-                # No file_id in any of the source trees and no file id in the
-                # base tree.
-                name = basename(member.name.rstrip('/'))
-                file_id = generate_ids.gen_file_id(name)
-                tt.version_file(file_id=file_id, trans_id=trans_id)
             path = tree.abspath(relative_path)
             if member.name in seen:
                 if tt.final_kind(trans_id) == 'file':
@@ -277,40 +243,3 @@ def _import_archive(
         for conflict in conflicts:
             warning('%s', conflict)
         tt.apply()
-
-
-def do_import(source: str, tree_directory: Optional[str] = None) -> None:
-    """Implementation of import command.  Intended for UI only"""
-    if tree_directory is not None:
-        try:
-            tree = WorkingTree.open(tree_directory)
-        except NotBranchError:
-            if not os.path.exists(tree_directory):
-                os.mkdir(tree_directory)
-            branch = ControlDir.create_branch_convenience(tree_directory)
-            tree = branch.controldir.open_workingtree()
-    else:
-        tree = WorkingTree.open_containing('.')[0]
-    with tree.lock_write():
-        if tree.changes_from(tree.basis_tree()).has_changed():
-            raise BzrCommandError("Working tree has uncommitted changes.")
-
-        if (source.endswith('.tar') or source.endswith('.tar.gz') or
-                source.endswith('.tar.bz2')) or source.endswith('.tgz'):
-            try:
-                tar_input = open_from_url(source)
-                if source.endswith('.bz2'):
-                    tar_input = BytesIO(tar_input.read().decode('bz2'))
-            except IOError as e:
-                if e.errno == errno.ENOENT:
-                    raise NoSuchFile(source)
-            try:
-                import_tar(tree, tar_input)
-            finally:
-                tar_input.close()
-        elif source.endswith('.zip'):
-            import_zip(tree, open_from_url(source))
-        elif file_kind(source) == 'directory':
-            import_dir(tree, source)
-        else:
-            raise BzrCommandError('Unhandled import source')
