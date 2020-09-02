@@ -57,6 +57,7 @@ from .. import (
     controldir as _mod_controldir,
     globbing,
     lock,
+    merge,
     osutils,
     revision as _mod_revision,
     trace,
