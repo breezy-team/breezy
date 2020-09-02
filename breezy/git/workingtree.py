@@ -1451,6 +1451,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         config.write_to_path(path)
         self.add('.gitmodules')
 
+    _marker = object()
+
     def update(self, change_reporter=None, possible_transports=None,
                revision=None, old_tip=_marker, show_base=False):
         """Update a working tree along its branch.

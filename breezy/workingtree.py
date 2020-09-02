@@ -1077,10 +1077,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         raise NotImplementedError(self.unlock)
 
-    _marker = object()
-
     def update(self, change_reporter=None, possible_transports=None,
-               revision=None, old_tip=_marker, show_base=False):
+               revision=None, old_tip=None, show_base=False):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
