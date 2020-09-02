@@ -57,7 +57,6 @@ from .. import (
     controldir as _mod_controldir,
     globbing,
     lock,
-    merge,
     osutils,
     revision as _mod_revision,
     trace,
@@ -1521,6 +1520,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         # local work is unreferenced and will appear to have been lost.
         #
         with self.lock_tree_write():
+            from .. import merge
             nb_conflicts = 0
             try:
                 last_rev = self.get_parent_ids()[0]
