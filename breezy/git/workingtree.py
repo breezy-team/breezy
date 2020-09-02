@@ -1451,6 +1451,130 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         config.write_to_path(path)
         self.add('.gitmodules')
 
+    def update(self, change_reporter=None, possible_transports=None,
+               revision=None, old_tip=_marker, show_base=False):
+        """Update a working tree along its branch.
+
+        This will update the branch if its bound too, which means we have
+        multiple trees involved:
+
+        - The new basis tree of the master.
+        - The old basis tree of the branch.
+        - The old basis tree of the working tree.
+        - The current working tree state.
+
+        Pathologically, all three may be different, and non-ancestors of each
+        other.  Conceptually we want to:
+
+        - Preserve the wt.basis->wt.state changes
+        - Transform the wt.basis to the new master basis.
+        - Apply a merge of the old branch basis to get any 'local' changes from
+          it into the tree.
+        - Restore the wt.basis->wt.state changes.
+
+        There isn't a single operation at the moment to do that, so we:
+
+        - Merge current state -> basis tree of the master w.r.t. the old tree
+          basis.
+        - Do a 'normal' merge of the old branch basis if it is relevant.
+
+        :param revision: The target revision to update to. Must be in the
+            revision history.
+        :param old_tip: If branch.update() has already been run, the value it
+            returned (old tip of the branch or None). _marker is used
+            otherwise.
+        """
+        if self.branch.get_bound_location() is not None:
+            self.lock_write()
+            update_branch = (old_tip is self._marker)
+        else:
+            self.lock_tree_write()
+            update_branch = False
+        try:
+            if update_branch:
+                old_tip = self.branch.update(possible_transports)
+            else:
+                if old_tip is self._marker:
+                    old_tip = None
+            return self._update_tree(old_tip, change_reporter, revision, show_base)
+        finally:
+            self.unlock()
+
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
+                     show_base=False):
+        """Update a tree to the master branch.
+
+        :param old_tip: if supplied, the previous tip revision the branch,
+            before it was changed to the master branch's tip.
+        """
+        # here if old_tip is not None, it is the old tip of the branch before
+        # it was updated from the master branch. This should become a pending
+        # merge in the working tree to preserve the user existing work.  we
+        # cant set that until we update the working trees last revision to be
+        # one from the new branch, because it will just get absorbed by the
+        # parent de-duplication logic.
+        #
+        # We MUST save it even if an error occurs, because otherwise the users
+        # local work is unreferenced and will appear to have been lost.
+        #
+        with self.lock_tree_write():
+            nb_conflicts = 0
+            try:
+                last_rev = self.get_parent_ids()[0]
+            except IndexError:
+                last_rev = _mod_revision.NULL_REVISION
+            if revision is None:
+                revision = self.branch.last_revision()
+
+            old_tip = old_tip or _mod_revision.NULL_REVISION
+
+            if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
+                # the branch we are bound to was updated
+                # merge those changes in first
+                base_tree = self.basis_tree()
+                other_tree = self.branch.repository.revision_tree(old_tip)
+                nb_conflicts = merge.merge_inner(self.branch, other_tree,
+                                                 base_tree, this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                if nb_conflicts:
+                    self.add_parent_tree((old_tip, other_tree))
+                    note(gettext('Rerun update after fixing the conflicts.'))
+                    return nb_conflicts
+
+            if last_rev != _mod_revision.ensure_null(revision):
+                to_tree = self.branch.repository.revision_tree(revision)
+
+                # determine the branch point
+                graph = self.branch.repository.get_graph()
+                base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                    last_rev)
+                base_tree = self.branch.repository.revision_tree(base_rev_id)
+
+                nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
+                                                 this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                self.set_last_revision(revision)
+                # TODO - dedup parents list with things merged by pull ?
+                # reuse the tree we've updated to to set the basis:
+                parent_trees = [(revision, to_tree)]
+                merges = self.get_parent_ids()[1:]
+                # Ideally we ask the tree for the trees here, that way the working
+                # tree can decide whether to give us the entire tree or give us a
+                # lazy initialised tree. dirstate for instance will have the trees
+                # in ram already, whereas a last-revision + basis-inventory tree
+                # will not, but also does not need them when setting parents.
+                for parent in merges:
+                    parent_trees.append(
+                        (parent, self.branch.repository.revision_tree(parent)))
+                if not _mod_revision.is_null(old_tip):
+                    parent_trees.append(
+                        (old_tip, self.branch.repository.revision_tree(old_tip)))
+                self.set_parent_trees(parent_trees)
+                last_rev = parent_trees[0][0]
+            return nb_conflicts
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
