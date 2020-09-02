@@ -43,12 +43,12 @@ from breezy import (
     revision as _mod_revision,
     revisiontree,
     trace,
-    transform,
     views,
     )
 from breezy.bzr import (
     dirstate,
     generate_ids,
+    transform as bzr_transform,
     )
 """)
 
@@ -1577,9 +1577,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 # delta_from_tree is safe even for DirStateRevisionTrees,
                 # because wt4.apply_inventory_delta does not mutate the input
                 # inventory entries.
-                transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink,
-                                     delta_from_tree=delta_from_tree)
+                bzr_transform.build_tree(
+                    basis, wt, accelerator_tree,
+                    hardlink=hardlink,
+                    delta_from_tree=delta_from_tree)
                 for hook in MutableTree.hooks['post_build_tree']:
                     hook(wt)
         finally:

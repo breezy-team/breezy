@@ -25,6 +25,7 @@ import errno
 from . import (
     bzrdir,
     inventory,
+    transform as bzr_transform,
     )
 
 from .. import (
@@ -33,7 +34,6 @@ from .. import (
     osutils,
     revision as _mod_revision,
     trace,
-    transform,
     )
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
@@ -230,7 +230,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
-            transform.build_tree(basis_tree, wt)
+            bzr_transform.build_tree(basis_tree, wt)
             for hook in MutableTree.hooks['post_build_tree']:
                 hook(wt)
         finally:

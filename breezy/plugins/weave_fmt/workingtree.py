@@ -25,11 +25,11 @@ from ... import (
     lock,
     osutils,
     revision as _mod_revision,
-    transform,
     )
 from ...bzr import (
     conflicts as _mod_bzr_conflicts,
     inventory,
+    transform as bzr_transform,
     xml5,
     )
 from ...mutabletree import MutableTree
@@ -117,7 +117,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         else:
             parent_trees = [(revision_id, basis_tree)]
         wt.set_parent_trees(parent_trees)
-        transform.build_tree(basis_tree, wt)
+        bzr_transform.build_tree(basis_tree, wt)
         for hook in MutableTree.hooks['post_build_tree']:
             hook(wt)
         return wt
