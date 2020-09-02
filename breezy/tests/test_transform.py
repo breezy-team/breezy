@@ -79,7 +79,6 @@ from ..transform import (
     _FileMover,
     FinalPaths,
     resolve_conflicts,
-    resolve_checkout,
     ROOT_PARENT,
     ImmortalLimbo,
     MalformedTransform,

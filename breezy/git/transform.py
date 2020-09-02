@@ -732,7 +732,7 @@ class TreeTransformBase(TreeTransform):
         """Cancel the creation of new file contents."""
         raise NotImplementedError(self.cancel_creation)
 
-    def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
+    def apply(self, no_conflicts=False, _mover=None):
         """Apply all changes to the inventory and filesystem.
 
         If filesystem or inventory conflicts are present, MalformedTransform
@@ -742,8 +742,6 @@ class TreeTransformBase(TreeTransform):
 
         :param no_conflicts: if True, the caller guarantees there are no
             conflicts, so no check is made.
-        :param precomputed_delta: An inventory delta to use instead of
-            calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
         raise NotImplementedError(self.apply)

@@ -674,36 +674,6 @@ def _content_match(tree, entry, tree_path, kind, target_path):
     return False
 
 
-def resolve_checkout(tt, conflicts, divert):
-    new_conflicts = set()
-    for c_type, conflict in ((c[0], c) for c in conflicts):
-        # Anything but a 'duplicate' would indicate programmer error
-        if c_type != 'duplicate':
-            raise AssertionError(c_type)
-        # Now figure out which is new and which is old
-        if tt.new_contents(conflict[1]):
-            new_file = conflict[1]
-            old_file = conflict[2]
-        else:
-            new_file = conflict[2]
-            old_file = conflict[1]
-
-        # We should only get here if the conflict wasn't completely
-        # resolved
-        final_parent = tt.final_parent(old_file)
-        if new_file in divert:
-            new_name = tt.final_name(old_file) + '.diverted'
-            tt.adjust_path(new_name, final_parent, new_file)
-            new_conflicts.add((c_type, 'Diverted to',
-                               new_file, old_file))
-        else:
-            new_name = tt.final_name(old_file) + '.moved'
-            tt.adjust_path(new_name, final_parent, old_file)
-            new_conflicts.add((c_type, 'Moved existing file to',
-                               old_file, new_file))
-    return new_conflicts
-
-
 def new_by_entry(path, tt, entry, parent_id, tree):
     """Create a new file according to its inventory entry"""
     name = entry.name
@@ -830,8 +800,11 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
         target_executable, wt_executable = change.executable
         if skip_root and wt_path == '':
             continue
-        trans_id = tt.trans_id_file_id(change.file_id)
         mode_id = None
+        if wt_path is not None:
+            trans_id = tt.trans_id_tree_path(wt_path)
+        else:
+            trans_id = tt.assign_id()
         if change.changed_content:
             keep_content = False
             if wt_kind == 'file' and (backups or target_kind is None):
@@ -963,9 +936,17 @@ def resolve_duplicate(tt, path_tree, c_type, last_trans_id, trans_id, name):
         existing_file, new_file = trans_id, last_trans_id
     else:
         existing_file, new_file = last_trans_id, trans_id
-    new_name = tt.final_name(existing_file) + '.moved'
-    tt.adjust_path(new_name, final_parent, existing_file)
-    yield (c_type, 'Moved existing file to', existing_file, new_file)
+    if (not tt._tree.has_versioned_directories() and
+            tt.final_kind(trans_id) == 'directory' and
+            tt.final_kind(last_trans_id) == 'directory'):
+        _reparent_transform_children(tt, existing_file, new_file)
+        tt.delete_contents(existing_file)
+        tt.unversion_file(existing_file)
+        tt.cancel_creation(existing_file)
+    else:
+        new_name = tt.final_name(existing_file) + '.moved'
+        tt.adjust_path(new_name, final_parent, existing_file)
+        yield (c_type, 'Moved existing file to', existing_file, new_file)
 
 
 def resolve_parent_loop(tt, path_tree, c_type, cur):
