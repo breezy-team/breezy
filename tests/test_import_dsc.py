@@ -1455,7 +1455,7 @@ class DistributionBranchTests(BuilddebTestCase):
 
     def test_import_to_native_and_back_new_upstream(self):
         """Non-native to native and back with a new upstream version.
-           
+
         As the native version was on the same upstream as a non-native
         version we assume that it was accidental, and so don't include
         the native revision in the upstream branch's history.
@@ -1486,8 +1486,6 @@ class DistributionBranchTests(BuilddebTestCase):
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
         rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[2])
         rev_tree3 = self.tree1.branch.repository.revision_tree(rh1[3])
-        up_rev_tree1 = \
-                self.up_tree1.branch.repository.revision_tree(up_rh1[0])
         up_rev_tree2 = \
                 self.up_tree1.branch.repository.revision_tree(up_rh1[1])
         self.assertEqual(rev_tree1.get_parent_ids(), [up_rh1[0]])
@@ -1513,7 +1511,7 @@ class DistributionBranchTests(BuilddebTestCase):
 
     def test_import_to_native_and_back_all_different_upstreams(self):
         """Non-native to native and back with all different upstreams.
-           
+
         In this case we want to assume the package was "intended" to
         be native, and so we include the native version in the upstream
         history (i.e. the upstream part of the last version has
@@ -1543,8 +1541,6 @@ class DistributionBranchTests(BuilddebTestCase):
         rev_tree1 = self.tree1.branch.repository.revision_tree(rh1[1])
         rev_tree2 = self.tree1.branch.repository.revision_tree(rh1[2])
         rev_tree3 = self.tree1.branch.repository.revision_tree(rh1[3])
-        up_rev_tree1 = \
-                self.up_tree1.branch.repository.revision_tree(up_rh1[0])
         up_rev_tree2 = \
                 self.up_tree1.branch.repository.revision_tree(up_rh1[1])
         self.assertEqual(rev_tree1.get_parent_ids(), [up_rh1[0]])
@@ -1618,7 +1614,7 @@ class DistributionBranchTests(BuilddebTestCase):
         cl = self.make_changelog(version="0.1-1")
         self.write_changelog(cl, 'work/debian/changelog')
         tree.add(['debian/', 'debian/changelog'])
-        orig_debian_rev = tree.commit("two")
+        tree.commit("two")
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
@@ -1682,7 +1678,7 @@ class DistributionBranchTests(BuilddebTestCase):
         tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
         cl.add_change('  * something else')
         self.write_changelog(cl, 'work/debian/changelog')
-        orig_debian_rev = tree.commit("two")
+        tree.commit("two")
         self.build_tree(['upstream/a'])
         shutil.rmtree('upstream/debian')
         upstream_rev = upstream_tree.commit("three")
@@ -1766,7 +1762,7 @@ class DistributionBranchTests(BuilddebTestCase):
         cl = self.make_changelog(version="0.1-1")
         self.write_changelog(cl, 'work/debian/changelog')
         tree.add(['debian/', 'debian/changelog'])
-        orig_debian_rev = tree.commit("two")
+        tree.commit("two")
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
@@ -1778,8 +1774,8 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([(tarball_filename, None)], "package", "0.2-1",
-            "0.1")
+        db.merge_upstream(
+            [(tarball_filename, None)], "package", "0.2-1", "0.1")
         # Check that we tagged wiht the dash version
         self.assertTrue(tree.branch.tags.has_tag('upstream-0.2-1'))
 
@@ -1806,8 +1802,8 @@ class DistributionBranchTests(BuilddebTestCase):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.commit("add packaging")
-        tree.branch.tags.set_tag("upstream-%s" % version1.upstream_version,
-                upstream_rev1)
+        tree.branch.tags.set_tag(
+            "upstream-%s" % version1.upstream_version, upstream_rev1)
         builder = SourcePackageBuilder("package", version2)
         builder.add_default_control()
         builder.add_upstream_file("a", "New a")
@@ -1817,7 +1813,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # We don't add the new file upstream, as the new file id would
         # be picked up from there.
         upstream_rev2 = upstream_tree.commit("two")
-        db.merge_upstream([(builder.tar_name(), None)], "package",
+        db.merge_upstream(
+            [(builder.tar_name(), None)], "package",
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
@@ -1842,8 +1839,8 @@ class DistributionBranchTests(BuilddebTestCase):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.commit("add packaging")
-        tree.branch.tags.set_tag("upstream-%s" % version1.upstream_version,
-                upstream_rev1)
+        tree.branch.tags.set_tag(
+            "upstream-%s" % version1.upstream_version, upstream_rev1)
         builder = SourcePackageBuilder("package", version2)
         builder.add_default_control()
         builder.add_upstream_file("b", "Renamed a")
@@ -1854,7 +1851,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # We don't add the new file upstream, as the new file id would
         # be picked up from there.
         upstream_rev2 = upstream_tree.commit("two")
-        db.merge_upstream([(builder.tar_name(), None)], "package",
+        db.merge_upstream(
+            [(builder.tar_name(), None)], "package",
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
@@ -1872,7 +1870,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.build_tree(['packaging/a'])
         packaging_tree.add(['a'], [b'a-id'])
         upstream_rev1 = packaging_tree.commit("one")
-        db = DistributionBranch(packaging_tree.branch, packaging_tree.branch,
+        db = DistributionBranch(
+            packaging_tree.branch, packaging_tree.branch,
             tree=packaging_tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
@@ -1880,8 +1879,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.build_tree(['packaging/a'])
         packaging_tree.add(['a'], [b'other-a-id'])
         packaging_tree.commit("add packaging")
-        packaging_tree.branch.tags.set_tag("upstream-%s" % version1.upstream_version,
-                upstream_rev1)
+        packaging_tree.branch.tags.set_tag(
+            "upstream-%s" % version1.upstream_version, upstream_rev1)
         builder = SourcePackageBuilder("package", version2)
         builder.add_default_control()
         builder.add_upstream_file("a", "New a")
@@ -1912,4 +1911,4 @@ package (1.0-1) UNRELEASED; urgency=low
 
  -- Jo\xe9 Master <joe@example.com>  Thu,  2 Dec 2004 16:59:43 +0100
 '''.encode('latin_1'))])
-        cl = get_changelog_from_source(self.db1.tree.basedir)
+        get_changelog_from_source(self.db1.tree.basedir)

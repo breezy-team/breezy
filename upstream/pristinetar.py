@@ -884,7 +884,11 @@ class GitPristineTarSource(BasePristineTarSource):
                 basename = filename[:-len('.delta')]
                 if package is None and not filename.startswith(package + '_'):
                     continue
-                rest = basename.split('_', 1)[1]
+                try:
+                    rest = basename.split('_', 1)[1]
+                except IndexError:
+                    mutter('Unable to parse filename %r', basename)
+                    continue
                 for suffix in self.SUFFIXES:
                     if rest.endswith(suffix):
                         rest = rest[:-len(suffix)]
