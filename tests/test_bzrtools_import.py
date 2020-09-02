@@ -20,11 +20,26 @@
 
 from __future__ import absolute_import
 
+from breezy.tests.scenarios import (
+    load_tests_apply_scenarios,
+    multiply_scenarios,
+    )
+
 from ..bzrtools_import import import_dir
 from .. import tests
 
+load_tests = load_tests_apply_scenarios
+
 
 class ImportArchiveTests(tests.TestCaseWithTransport):
+
+    scenarios = multiply_scenarios([
+#        ('git', dict(_format='git')),
+        ('bzr', dict(_format='bzr'))])
+
+    def make_branch_and_tree(self, path):
+        return super(ImportArchiveTests, self).make_branch_and_tree(
+            path, format=self._format)
 
     def test_strips_common_prefix(self):
         tree = self.make_branch_and_tree(".")
