@@ -658,22 +658,6 @@ def _reparent_transform_children(tt, old_parent, new_parent):
     return by_parent[old_parent]
 
 
-def _content_match(tree, entry, tree_path, kind, target_path):
-    if entry.kind != kind:
-        return False
-    if entry.kind == "directory":
-        return True
-    if entry.kind == "file":
-        with open(target_path, 'rb') as f1, \
-                tree.get_file(tree_path) as f2:
-            if osutils.compare_files(f1, f2):
-                return True
-    elif entry.kind == "symlink":
-        if tree.get_symlink_target(tree_path) == os.readlink(target_path):
-            return True
-    return False
-
-
 def new_by_entry(path, tt, entry, parent_id, tree):
     """Create a new file according to its inventory entry"""
     name = entry.name

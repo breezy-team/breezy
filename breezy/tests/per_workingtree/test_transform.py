@@ -64,7 +64,6 @@ from ...transform import (
     create_from_tree,
     FinalPaths,
     resolve_conflicts,
-    resolve_checkout,
     ROOT_PARENT,
     ImmortalLimbo,
     MalformedTransform,
@@ -74,6 +73,7 @@ from ...transform import (
 )
 
 from breezy.bzr.inventorytree import InventoryTreeChange
+from breezy.bzr.transform import resolve_checkout
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
