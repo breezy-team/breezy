@@ -177,6 +177,20 @@ class TestGitBlackBox(ExternalBase):
             error,
             'Pushed up to revision id git(.*).\n')
 
+    def test_merge(self):
+        self.run_bzr(['init', '--git', 'orig'])
+        self.build_tree_contents([('orig/a', 'orig contents\n')])
+        self.run_bzr(['add', 'orig/a'])
+        self.run_bzr(['commit', '-m', 'add orig', 'orig'])
+        self.run_bzr(['clone', 'orig', 'other'])
+        self.build_tree_contents([('other/a', 'new contents\n')])
+        self.run_bzr(['commit', '-m', 'modify', 'other'])
+        self.build_tree_contents([('orig/b', 'more\n')])
+        self.run_bzr(['add', 'orig/b'])
+        self.build_tree_contents([('orig/a', 'new contents\n')])
+        self.run_bzr(['commit', '-m', 'more', 'orig'])
+        self.run_bzr(['merge', '-d', 'orig', 'other'])
+
     def test_push_lossy_non_mainline(self):
         self.run_bzr(['init', '--git', 'bla'])
         self.run_bzr(['init', 'foo'])
