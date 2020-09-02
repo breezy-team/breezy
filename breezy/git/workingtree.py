@@ -1541,7 +1541,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                                  show_base=show_base)
                 if nb_conflicts:
                     self.add_parent_tree((old_tip, other_tree))
-                    note(gettext('Rerun update after fixing the conflicts.'))
                     return nb_conflicts
 
             if last_rev != _mod_revision.ensure_null(revision):

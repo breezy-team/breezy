@@ -766,38 +766,13 @@ def create_entry_executability(tt, entry, trans_id):
         tt.set_executability(entry.executable, trans_id)
 
 
-def revert(working_tree, target_tree, filenames, backups=False,
-           pb=None, change_reporter=None):
-    """Revert a working tree's contents to those of a target tree."""
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
-        with target_tree.lock_read(), working_tree.transform(pb) as tt:
-            pp = ProgressPhase("Revert phase", 3, pb)
-            conflicts, merge_modified = _prepare_revert_transform(
-                working_tree, target_tree, tt, filenames, backups, pp)
-            if change_reporter:
-                from . import delta
-                change_reporter = delta._ChangeReporter(
-                    unversioned_filter=working_tree.is_ignored)
-                delta.report_changes(tt.iter_changes(), change_reporter)
-            for conflict in conflicts:
-                trace.warning(text_type(conflict))
-            pp.next_phase()
-            tt.apply()
-            if working_tree.supports_merge_modified():
-                working_tree.set_merge_modified(merge_modified)
-    finally:
-        pb.clear()
-    return conflicts
-
-
-def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
+def _prepare_revert_transform(es, working_tree, target_tree, tt, filenames,
                               backups, pp, basis_tree=None,
                               merge_modified=None):
     with ui.ui_factory.nested_progress_bar() as child_pb:
         if merge_modified is None:
             merge_modified = working_tree.merge_modified()
-        merge_modified = _alter_files(working_tree, target_tree, tt,
+        merge_modified = _alter_files(es, working_tree, target_tree, tt,
                                       child_pb, filenames, backups,
                                       merge_modified, basis_tree)
     with ui.ui_factory.nested_progress_bar() as child_pb:
@@ -807,10 +782,34 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
     return conflicts, merge_modified
 
 
-def _alter_files(working_tree, target_tree, tt, pb, specific_files,
+def revert(working_tree, target_tree, filenames, backups=False,
+           pb=None, change_reporter=None, merge_modified=None, basis_tree=None):
+    """Revert a working tree's contents to those of a target tree."""
+    with cleanup.ExitStack() as es:
+        pb = es.enter_context(ui.ui_factory.nested_progress_bar())
+        es.enter_context(target_tree.lock_read())
+        tt = es.enter_context(working_tree.transform(pb))
+        pp = ProgressPhase("Revert phase", 3, pb)
+        conflicts, merge_modified = _prepare_revert_transform(
+            es, working_tree, target_tree, tt, filenames, backups, pp)
+        if change_reporter:
+            from . import delta
+            change_reporter = delta._ChangeReporter(
+                unversioned_filter=working_tree.is_ignored)
+            delta.report_changes(tt.iter_changes(), change_reporter)
+        for conflict in conflicts:
+            trace.warning(text_type(conflict))
+        pp.next_phase()
+        tt.apply()
+        if working_tree.supports_merge_modified():
+            working_tree.set_merge_modified(merge_modified)
+    return conflicts
+
+
+def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
                  backups, merge_modified, basis_tree=None):
     if basis_tree is not None:
-        basis_tree.lock_read()
+        es.enter_context(basis_tree.lock_read())
     # We ask the working_tree for its changes relative to the target, rather
     # than the target changes relative to the working tree. Because WT4 has an
     # optimizer to compare itself to a target, but no optimizer for the
@@ -821,123 +820,119 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         skip_root = True
     else:
         skip_root = False
-    try:
-        deferred_files = []
-        for id_num, change in enumerate(change_list):
-            target_path, wt_path = change.path
-            target_versioned, wt_versioned = change.versioned
-            target_parent = change.parent_id[0]
-            target_name, wt_name = change.name
-            target_kind, wt_kind = change.kind
-            target_executable, wt_executable = change.executable
-            if skip_root and wt_path == '':
-                continue
-            trans_id = tt.trans_id_file_id(change.file_id)
-            mode_id = None
-            if change.changed_content:
-                keep_content = False
-                if wt_kind == 'file' and (backups or target_kind is None):
-                    wt_sha1 = working_tree.get_file_sha1(wt_path)
-                    if merge_modified.get(wt_path) != wt_sha1:
-                        # acquire the basis tree lazily to prevent the
-                        # expense of accessing it when it's not needed ?
-                        # (Guessing, RBC, 200702)
-                        if basis_tree is None:
-                            basis_tree = working_tree.basis_tree()
-                            basis_tree.lock_read()
-                        basis_inter = InterTree.get(basis_tree, working_tree)
-                        basis_path = basis_inter.find_source_path(wt_path)
-                        if basis_path is None:
-                            if target_kind is None and not target_versioned:
-                                keep_content = True
-                        else:
-                            if wt_sha1 != basis_tree.get_file_sha1(basis_path):
-                                keep_content = True
-                if wt_kind is not None:
-                    if not keep_content:
-                        tt.delete_contents(trans_id)
-                    elif target_kind is not None:
-                        parent_trans_id = tt.trans_id_tree_path(osutils.dirname(wt_path))
-                        backup_name = tt._available_backup_name(
-                            wt_name, parent_trans_id)
-                        tt.adjust_path(backup_name, parent_trans_id, trans_id)
-                        new_trans_id = tt.create_path(wt_name, parent_trans_id)
-                        if wt_versioned and target_versioned:
-                            tt.unversion_file(trans_id)
-                            tt.version_file(
-                                new_trans_id, file_id=getattr(change, 'file_id', None))
-                        # New contents should have the same unix perms as old
-                        # contents
-                        mode_id = trans_id
-                        trans_id = new_trans_id
-                if target_kind in ('directory', 'tree-reference'):
-                    tt.create_directory(trans_id)
-                    if target_kind == 'tree-reference':
-                        revision = target_tree.get_reference_revision(
-                            target_path)
-                        tt.set_tree_reference(revision, trans_id)
-                elif target_kind == 'symlink':
-                    tt.create_symlink(target_tree.get_symlink_target(
-                        target_path), trans_id)
-                elif target_kind == 'file':
-                    deferred_files.append(
-                        (target_path, (trans_id, mode_id, target_path)))
+    deferred_files = []
+    for id_num, change in enumerate(change_list):
+        target_path, wt_path = change.path
+        target_versioned, wt_versioned = change.versioned
+        target_parent = change.parent_id[0]
+        target_name, wt_name = change.name
+        target_kind, wt_kind = change.kind
+        target_executable, wt_executable = change.executable
+        if skip_root and wt_path == '':
+            continue
+        trans_id = tt.trans_id_file_id(change.file_id)
+        mode_id = None
+        if change.changed_content:
+            keep_content = False
+            if wt_kind == 'file' and (backups or target_kind is None):
+                wt_sha1 = working_tree.get_file_sha1(wt_path)
+                if merge_modified.get(wt_path) != wt_sha1:
+                    # acquire the basis tree lazily to prevent the
+                    # expense of accessing it when it's not needed ?
+                    # (Guessing, RBC, 200702)
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
-                        basis_tree.lock_read()
-                    new_sha1 = target_tree.get_file_sha1(target_path)
-                    basis_inter = InterTree.get(basis_tree, target_tree)
-                    basis_path = basis_inter.find_source_path(target_path)
-                    if (basis_path is not None and
-                            new_sha1 == basis_tree.get_file_sha1(basis_path)):
-                        # If the new contents of the file match what is in basis,
-                        # then there is no need to store in merge_modified.
-                        if basis_path in merge_modified:
-                            del merge_modified[basis_path]
+                        es.enter_context(basis_tree.lock_read())
+                    basis_inter = InterTree.get(basis_tree, working_tree)
+                    basis_path = basis_inter.find_source_path(wt_path)
+                    if basis_path is None:
+                        if target_kind is None and not target_versioned:
+                            keep_content = True
                     else:
-                        merge_modified[target_path] = new_sha1
-
-                    # preserve the execute bit when backing up
-                    if keep_content and wt_executable == target_executable:
-                        tt.set_executability(target_executable, trans_id)
+                        if wt_sha1 != basis_tree.get_file_sha1(basis_path):
+                            keep_content = True
+            if wt_kind is not None:
+                if not keep_content:
+                    tt.delete_contents(trans_id)
                 elif target_kind is not None:
-                    raise AssertionError(target_kind)
-            if not wt_versioned and target_versioned:
-                tt.version_file(
-                    trans_id, file_id=getattr(change, 'file_id', None))
-            if wt_versioned and not target_versioned:
-                tt.unversion_file(trans_id)
-            if (target_name is not None
-                    and (wt_name != target_name or change.is_reparented())):
-                if target_path == '':
-                    parent_trans = ROOT_PARENT
+                    parent_trans_id = tt.trans_id_tree_path(osutils.dirname(wt_path))
+                    backup_name = tt._available_backup_name(
+                        wt_name, parent_trans_id)
+                    tt.adjust_path(backup_name, parent_trans_id, trans_id)
+                    new_trans_id = tt.create_path(wt_name, parent_trans_id)
+                    if wt_versioned and target_versioned:
+                        tt.unversion_file(trans_id)
+                        tt.version_file(
+                            new_trans_id, file_id=getattr(change, 'file_id', None))
+                    # New contents should have the same unix perms as old
+                    # contents
+                    mode_id = trans_id
+                    trans_id = new_trans_id
+            if target_kind in ('directory', 'tree-reference'):
+                tt.create_directory(trans_id)
+                if target_kind == 'tree-reference':
+                    revision = target_tree.get_reference_revision(
+                        target_path)
+                    tt.set_tree_reference(revision, trans_id)
+            elif target_kind == 'symlink':
+                tt.create_symlink(target_tree.get_symlink_target(
+                    target_path), trans_id)
+            elif target_kind == 'file':
+                deferred_files.append(
+                    (target_path, (trans_id, mode_id, target_path)))
+                if basis_tree is None:
+                    basis_tree = working_tree.basis_tree()
+                    es.enter_context(basis_tree.lock_read())
+                new_sha1 = target_tree.get_file_sha1(target_path)
+                basis_inter = InterTree.get(basis_tree, target_tree)
+                basis_path = basis_inter.find_source_path(target_path)
+                if (basis_path is not None and
+                        new_sha1 == basis_tree.get_file_sha1(basis_path)):
+                    # If the new contents of the file match what is in basis,
+                    # then there is no need to store in merge_modified.
+                    if basis_path in merge_modified:
+                        del merge_modified[basis_path]
                 else:
-                    parent_trans = tt.trans_id_file_id(target_parent)
-                if wt_path == '' and wt_versioned:
-                    tt.adjust_root_path(target_name, parent_trans)
-                else:
-                    tt.adjust_path(target_name, parent_trans, trans_id)
-            if wt_executable != target_executable and target_kind == "file":
-                tt.set_executability(target_executable, trans_id)
-        if working_tree.supports_content_filtering():
-            for (trans_id, mode_id, target_path), bytes in (
-                    target_tree.iter_files_bytes(deferred_files)):
-                # We're reverting a tree to the target tree so using the
-                # target tree to find the file path seems the best choice
-                # here IMO - Ian C 27/Oct/2009
-                filters = working_tree._content_filter_stack(target_path)
-                bytes = filtered_output_bytes(
-                    bytes, filters,
-                    ContentFilterContext(target_path, working_tree))
-                tt.create_file(bytes, trans_id, mode_id)
-        else:
-            for (trans_id, mode_id, target_path), bytes in target_tree.iter_files_bytes(
-                    deferred_files):
-                tt.create_file(bytes, trans_id, mode_id)
-        tt.fixup_new_roots()
-    finally:
-        if basis_tree is not None:
-            basis_tree.unlock()
+                    merge_modified[target_path] = new_sha1
+
+                # preserve the execute bit when backing up
+                if keep_content and wt_executable == target_executable:
+                    tt.set_executability(target_executable, trans_id)
+            elif target_kind is not None:
+                raise AssertionError(target_kind)
+        if not wt_versioned and target_versioned:
+            tt.version_file(
+                trans_id, file_id=getattr(change, 'file_id', None))
+        if wt_versioned and not target_versioned:
+            tt.unversion_file(trans_id)
+        if (target_name is not None
+                and (wt_name != target_name or change.is_reparented())):
+            if target_path == '':
+                parent_trans = ROOT_PARENT
+            else:
+                parent_trans = tt.trans_id_file_id(target_parent)
+            if wt_path == '' and wt_versioned:
+                tt.adjust_root_path(target_name, parent_trans)
+            else:
+                tt.adjust_path(target_name, parent_trans, trans_id)
+        if wt_executable != target_executable and target_kind == "file":
+            tt.set_executability(target_executable, trans_id)
+    if working_tree.supports_content_filtering():
+        for (trans_id, mode_id, target_path), bytes in (
+                target_tree.iter_files_bytes(deferred_files)):
+            # We're reverting a tree to the target tree so using the
+            # target tree to find the file path seems the best choice
+            # here IMO - Ian C 27/Oct/2009
+            filters = working_tree._content_filter_stack(target_path)
+            bytes = filtered_output_bytes(
+                bytes, filters,
+                ContentFilterContext(target_path, working_tree))
+            tt.create_file(bytes, trans_id, mode_id)
+    else:
+        for (trans_id, mode_id, target_path), bytes in target_tree.iter_files_bytes(
+                deferred_files):
+            tt.create_file(bytes, trans_id, mode_id)
+    tt.fixup_new_roots()
     return merge_modified
 
 
