@@ -61,6 +61,8 @@ class SvnBuildPackageMappedConfig(object):
 class UpstreamMetadataSyntaxError(BzrError):
     """There is a syntax error in the debian/upstream/metadata file."""
 
+    _fmt = 'Unable to parse upstream metadata file %(path)s: %(error)s'
+
     def __init__(self, path, error):
         self.path = path
         self.error = error
@@ -78,6 +80,9 @@ class UpstreamMetadataConfig(object):
         except (yaml.scanner.ScannerError, yaml.parser.ParserError) as e:
             raise UpstreamMetadataSyntaxError('debian/upstream/metadata', e)
         if isinstance(self.metadata, str):
+            raise UpstreamMetadataSyntaxError(
+              'debian/upstream/metadata', TypeError(self.metadata))
+        if isinstance(self.metadata, list):
             raise UpstreamMetadataSyntaxError(
               'debian/upstream/metadata', TypeError(self.metadata))
 
