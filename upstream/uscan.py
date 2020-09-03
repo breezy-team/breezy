@@ -206,8 +206,12 @@ def _run_dehs_uscan(args, cwd):
     (stdout, stderr) = p.communicate()
     if b'</dehs>' not in stdout:
         error = stderr.decode()
-        if error.startswith('uscan error '):
-            error = error[len('uscan error '):]
+        for line in error.splitlines():
+            if line.startswith('uscan warn: '):
+                continue
+            if line.startswith('uscan error '):
+                line = line[len('uscan error '):]
+            raise UScanError(line)
         raise UScanError(error)
     sys.stderr.write(stderr.decode())
     return stdout, p.returncode
