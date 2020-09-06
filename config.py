@@ -77,7 +77,8 @@ class UpstreamMetadataConfig(object):
     def __init__(self, text):
         try:
             self.metadata = yaml.safe_load(text)
-        except (yaml.scanner.ScannerError, yaml.parser.ParserError) as e:
+        except (yaml.scanner.ScannerError, yaml.composer.ComposerError,
+                yaml.parser.ParserError) as e:
             raise UpstreamMetadataSyntaxError('debian/upstream/metadata', e)
         if isinstance(self.metadata, str):
             raise UpstreamMetadataSyntaxError(
