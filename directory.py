@@ -121,6 +121,10 @@ def vcs_mtn_url_to_bzr_url(url):
     return url
 
 
+def vcs_arch_url_to_bzr_url(url):
+    return url
+
+
 def vcs_cvs_url_to_bzr_url(location):
     from breezy.location import cvs_to_url
     return cvs_to_url(location)
@@ -151,6 +155,7 @@ vcs_field_to_bzr_url_converters = [
     ("Hg", vcs_hg_url_to_bzr_url),
     ("Cvs", vcs_cvs_url_to_bzr_url),
     ("Mtn", vcs_mtn_url_to_bzr_url),
+    ("Arch", vcs_arch_url_to_bzr_url),
 ]
 
 

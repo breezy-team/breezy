@@ -4,6 +4,7 @@ breezy-debian (2.8.42) UNRELEASED; urgency=medium
     snapshots).
   * Add support for Vcs-Cvs URLs.
   * Add support for Vcs-Mtn fields.
+  * Add support for Vcs-Arch fields.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 23:52:54 +0000
 
