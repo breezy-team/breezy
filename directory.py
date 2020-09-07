@@ -117,6 +117,11 @@ def vcs_darcs_url_to_bzr_url(url):
     return url
 
 
+def vcs_cvs_url_to_bzr_url(location):
+    from breezy.location import cvs_to_url
+    return cvs_to_url(location)
+
+
 def vcs_hg_url_to_bzr_url(url):
     if ' -b ' in url:
         (url, branch) = url.split(' -b ', 1)
@@ -139,7 +144,8 @@ vcs_field_to_bzr_url_converters = [
     ("Darcs", vcs_darcs_url_to_bzr_url),
     ("Svn", vcs_svn_url_to_bzr_url),
     ("Git", vcs_git_url_to_bzr_url),
-    ("Hg", vcs_hg_url_to_bzr_url)
+    ("Hg", vcs_hg_url_to_bzr_url),
+    ("Cvs", vcs_cvs_url_to_bzr_url),
 ]
 
 

@@ -2,6 +2,7 @@ breezy-debian (2.8.42) UNRELEASED; urgency=medium
 
   * Cope with versions being missing in watch file (e.g. because they're
     snapshots).
+  * Add support for Vcs-Cvs URLs.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 22 Aug 2020 23:52:54 +0000
 

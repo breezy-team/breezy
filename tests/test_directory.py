@@ -26,6 +26,7 @@ from ..directory import (
     fixup_broken_git_url,
     vcs_git_url_to_bzr_url,
     vcs_hg_url_to_bzr_url,
+    vcs_cvs_url_to_bzr_url,
     )
 
 
@@ -86,3 +87,17 @@ class VcsHgUrlToBzrUrlTests(TestCase):
         self.assertEqual(
             'https://bitbucket.org/jelmer/dulwich,branch=foo',
             vcs_hg_url_to_bzr_url('https://bitbucket.org/jelmer/dulwich -b foo'))
+
+
+class VcsCvsUrlToBzrUrlTests(TestCase):
+
+    def test_pserver(self):
+        import breezy
+        if breezy.version_info < (3, 1, 1):
+            self.skipTest('version of breezy too old')
+        self.assertEqual(
+            'cvs+pserver://anonymous@cvs.savannah.nongnu.org'
+            '/cvsroot/fkt%20debian/unstable',
+            vcs_cvs_url_to_bzr_url(
+                ':pserver:anonymous@cvs.savannah.nongnu.org:'
+                '/cvsroot/fkt debian/unstable'))
