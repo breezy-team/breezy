@@ -127,7 +127,15 @@ def vcs_arch_url_to_bzr_url(url):
 
 def vcs_cvs_url_to_bzr_url(location):
     from breezy.location import cvs_to_url
-    return cvs_to_url(location)
+    try:
+        (loc, module) = location.split(' ', 1)
+    except ValueError:
+        loc = location
+        module = None
+    url = cvs_to_url(loc)
+    if module is not None:
+        url = url + '?module=' + urlutils.quote(module)
+    return url
 
 
 def vcs_hg_url_to_bzr_url(url):

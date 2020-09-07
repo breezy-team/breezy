@@ -91,13 +91,22 @@ class VcsHgUrlToBzrUrlTests(TestCase):
 
 class VcsCvsUrlToBzrUrlTests(TestCase):
 
-    def test_pserver(self):
+    def setUp(self):
+        super(VcsCvsUrlToBzrUrlTests, self).setUp()
         import breezy
         if breezy.version_info < (3, 1, 1):
             self.skipTest('version of breezy too old')
+
+    def test_pserver(self):
         self.assertEqual(
             'cvs+pserver://anonymous@cvs.savannah.nongnu.org'
-            '/cvsroot/fkt%20debian/unstable',
+            '/cvsroot/fkt?module=debian/unstable',
             vcs_cvs_url_to_bzr_url(
                 ':pserver:anonymous@cvs.savannah.nongnu.org:'
                 '/cvsroot/fkt debian/unstable'))
+        self.assertEqual(
+            'cvs+pserver://anonymous@cvs.savannah.nongnu.org'
+            '/cvsroot/fkt',
+            vcs_cvs_url_to_bzr_url(
+                ':pserver:anonymous@cvs.savannah.nongnu.org:'
+                '/cvsroot/fkt'))
