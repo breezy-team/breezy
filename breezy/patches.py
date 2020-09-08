@@ -419,7 +419,12 @@ def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
 
     for line in iter_lines:
         if line.startswith(b'=== '):
-            if len(saved_lines) > 0:
+            if allow_dirty and beginning:
+                # Patches can have "junk" at the beginning
+                # Stripping junk from the end of patches is handled when we
+                # parse the patch
+                pass
+            elif len(saved_lines) > 0:
                 if keep_dirty and len(dirty_head) > 0:
                     yield {'saved_lines': saved_lines,
                            'dirty_head': dirty_head}
