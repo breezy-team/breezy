@@ -340,20 +340,22 @@ class Hoster(object):
         """Create a Hoster object if this hoster knows about a URL."""
         raise NotImplementedError(cls.probe_from_url)
 
-    def iter_my_proposals(self, status='open'):
+    def iter_my_proposals(self, status='open', author=None):
         """Iterate over the proposals created by the currently logged in user.
 
         :param status: Only yield proposals with this status
             (one of: 'open', 'closed', 'merged', 'all')
+        :param author: Name of author to query (defaults to current user)
         :return: Iterator over MergeProposal objects
         :raise HosterLoginRequired: Action requires a hoster login, but none is
             known.
         """
         raise NotImplementedError(self.iter_my_proposals)
 
-    def iter_my_forks(self):
+    def iter_my_forks(self, owner=None):
         """Iterate over the currently logged in users' forks.
 
+        :param owner: Name of owner to query (defaults to current user)
         :return: Iterator over project_name
         """
         raise NotImplementedError(self.iter_my_forks)

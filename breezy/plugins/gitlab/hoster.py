@@ -451,7 +451,7 @@ class GitLab(Hoster):
             for entry in json.loads(response.data):
                 yield entry
 
-    def _list_merge_requests(self, owner=None, project=None, state=None):
+    def _list_merge_requests(self, author=None, project=None, state=None):
         if project is not None:
             path = 'projects/%s/merge_requests' % urlutils.quote(str(project), '')
         else:
@@ -459,8 +459,8 @@ class GitLab(Hoster):
         parameters = {}
         if state:
             parameters['state'] = state
-        if owner:
-            parameters['owner_id'] = urlutils.quote(owner, '')
+        if author:
+            parameters['author_username'] = urlutils.quote(owner, '')
         return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
     def _get_merge_request(self, project, merge_id):
@@ -535,6 +535,8 @@ class GitLab(Hoster):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
         (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(base_branch)
+        if owner is None:
+            owner = base_branch.get_config_stack().get('fork-namespace')
         if owner is None:
             owner = self.get_current_user()
         base_project = self._get_project(base_project_name)
@@ -637,14 +639,17 @@ class GitLab(Hoster):
                 get_transport(credentials['url']),
                 private_token=credentials.get('private_token'))
 
-    def iter_my_proposals(self, status='open'):
+    def iter_my_proposals(self, status='open', author=None):
+        if author is None:
+            author = self.get_current_user()
         state = mp_status_to_status(status)
-        for mp in self._list_merge_requests(
-                owner=self.get_current_user(), state=state):
+        for mp in self._list_merge_requests(author=author, state=state):
             yield GitLabMergeProposal(self, mp)
 
-    def iter_my_forks(self):
-        for project in self._list_projects(owner=self.get_current_user()):
+    def iter_my_forks(self, owner=None):
+        if owner is not None:
+            owner = self.get_current_user()
+        for project in self._list_projects(owner=owner):
             base_project = project.get('forked_from_project')
             if not base_project:
                 continue
