@@ -529,7 +529,7 @@ class GitHub(Hoster):
     def iter_instances(cls):
         yield cls(get_transport(API_GITHUB_URL))
 
-    def iter_my_proposals(self, status='open'):
+    def iter_my_proposals(self, status='open', author=None):
         query = ['is:pr']
         if status == 'open':
             query.append('is:open')
@@ -540,7 +540,9 @@ class GitHub(Hoster):
             query.append('is:closed')
         elif status == 'merged':
             query.append('is:merged')
-        query.append('author:%s' % self.current_user['login'])
+        if author is None:
+            author = self.current_user['login']
+        query.append('author:%s' % author)
         for issue in self._search_issues(query=' '.join(query)):
             url = issue['pull_request']['url']
             response = self._api_request('GET', url)
@@ -551,8 +553,12 @@ class GitHub(Hoster):
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)
 
-    def iter_my_forks(self):
-        response = self._api_request('GET', '/user/repos')
+    def iter_my_forks(self, owner=None):
+        if owner:
+            path = '/users/%s/repos' % owner
+        else:
+            path = '/user/repos'
+        response = self._api_request('GET', path)
         if response.status != 200:
             raise UnexpectedHttpStatus(self.transport.user_url, response.status)
         for project in json.loads(response.text):
