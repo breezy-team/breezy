@@ -480,7 +480,7 @@ class Launchpad(Hoster):
 
     def iter_my_proposals(self, status='open', author=None):
         statuses = status_to_lp_mp_statuses(status)
-        if author_obj is None:
+        if author is None:
             author_obj = self.launchpad.me
         else:
             author_obj = self._getPerson(author)
