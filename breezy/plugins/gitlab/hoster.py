@@ -460,7 +460,7 @@ class GitLab(Hoster):
         if state:
             parameters['state'] = state
         if author:
-            parameters['author_username'] = urlutils.quote(owner, '')
+            parameters['author_username'] = urlutils.quote(author, '')
         return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
     def _get_merge_request(self, project, merge_id):
