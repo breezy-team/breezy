@@ -26,6 +26,8 @@ import sys
 import tarfile
 import tempfile
 
+from debian.changelog import Version
+
 from ....errors import BzrError, DependencyNotPresent, NoSuchFile
 from .... import osutils
 from ....export import export
@@ -508,3 +510,31 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         versions = list(self._all_versions())
         versions.sort()
         return versions[-1][1]
+
+
+class DirectoryScanSource(UpstreamSource):
+    """Source that scans a local directory for sources."""
+
+    def __init__(self, path):
+        self.path = os.path.abspath(path)
+
+    def fetch_tarballs(self, package, version, target_dir, components=None):
+        v = Version(version)
+        v.epoch = None
+        prefix = '%s_%s.orig' % (package, v)
+        ret = []
+        for entry in os.scandir(self.path):
+            if entry.name.startswith(prefix):
+                component = (entry.name[len(prefix):].split('.')[0] or None)
+                shutil.copy(entry.path, target_dir)
+                if components is None or component in components:
+                    ret.append(os.path.join(target_dir, entry.name))
+        if ret:
+            return ret
+        raise PackageVersionNotPresent(package, version, self)
+
+    def get_recent_versions(self, package, since_version=None):
+        return []
+
+    def get_latest_version(self, package, version):
+        return None

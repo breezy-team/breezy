@@ -192,6 +192,7 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
     from .upstream import (
         AptSource,
         SelfSplitSource,
+        DirectoryScanSource,
         )
     from .upstream.uscan import (
         UScanSource,
@@ -217,6 +218,8 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
 
     if build_type == BUILD_TYPE_SPLIT:
         yield SelfSplitSource(local_tree)
+
+    yield DirectoryScanSource('..')
 
 
 def _get_distiller(
