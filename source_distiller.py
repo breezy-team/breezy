@@ -19,8 +19,11 @@
 
 from __future__ import absolute_import
 
+from debian.changelog import Changelog
+
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -183,3 +186,49 @@ class MergeModeDistiller(SourceDistiller):
                     tempdir, target, symlinks=True, dirs_exist_ok=True)
             else:
                 recursive_copy(tempdir, target)
+
+
+class DebcargoDistiller(SourceDistiller):
+    """A SourceDistiller for unpacking a debcargo package."""
+
+    def __init__(self, tree, subpath, top_level=False, use_existing=False):
+        """Create a SourceDistiller to distill from the specified tree.
+
+        :param tree: The tree to use as the source.
+        :param subpath: subpath in the tree where the package lives
+        """
+        super(DebcargoDistiller, self).__init__(tree, subpath)
+        self.top_level = top_level
+        self.use_existing = use_existing
+
+    def distill(self, target):
+        """Extract the source to a tree rooted at the given location.
+
+        The passed location cannot already exist. If it does then
+        FileExists will be raised.
+
+        :param target: a string containing the location at which to
+            place the tree containing the buildable source.
+        """
+        if os.path.exists(target):
+            raise bzr_errors.FileExists(target)
+        with self.tree.get_file(os.path.join(
+                self.subpath,
+                'debian/changelog' if not self.top_level else
+                'changelog'), 'r') as f:
+            cl = Changelog(f, max_blocks=1)
+            package = cl.package
+
+        if not package.startswith('rust-'):
+            raise NotImplementedError
+
+        crate = package[len('rust-'):]
+
+        debcargo_path = [self.subpath]
+        if not self.top_level:
+            debcargo_path.append('debian')
+        debcargo_path.append('debcargo.toml')
+        subprocess.check_call([
+            'debcargo', 'package',
+            '--config', self.tree.abspath(os.path.join(*debcargo_path)),
+            '--directory', target, crate])

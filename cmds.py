@@ -237,6 +237,7 @@ def _get_distiller(
         FullSourceDistiller,
         MergeModeDistiller,
         NativeSourceDistiller,
+        DebcargoDistiller,
         )
 
     if build_type is None:
@@ -257,6 +258,11 @@ def _get_distiller(
         changelog.package, changelog.version.upstream_version, orig_dir,
         upstream_sources)
 
+    # Turn this into a build type?
+    if tree.has_filename(os.path.join(subpath, 'debian/debcargo.toml')):
+        return DebcargoDistiller(
+            tree, subpath, top_level=top_level,
+            use_existing=use_existing)
     if build_type == BUILD_TYPE_MERGE:
         return MergeModeDistiller(
             tree, subpath, upstream_provider, top_level=top_level,
