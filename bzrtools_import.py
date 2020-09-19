@@ -182,13 +182,18 @@ def _import_archive(
                         tt.delete_versioned(trans_id)
                     trans_id = tt.trans_id_file_id(found_file_id)
                 if not found_file_id and not existing_file_id:
-                    # No file_id in any of the source trees and no file id in the
-                    # base tree.
+                    # No file_id in any of the source trees and no file id in
+                    # the base tree.
                     name = basename(member.name.rstrip('/'))
                     file_id = generate_ids.gen_file_id(name)
                     tt.version_file(file_id=file_id, trans_id=trans_id)
             else:
-                tt.version_file(trans_id=trans_id)
+                try:
+                    tt.version_file(trans_id=trans_id)
+                except TypeError:  # brz < 3.1.1
+                    name = basename(member.name.rstrip('/'))
+                    file_id = generate_ids.gen_file_id(name)
+                    tt.version_file(trans_id=trans_id, file_id=file_id)
 
             path = tree.abspath(relative_path)
             if member.name in seen:
