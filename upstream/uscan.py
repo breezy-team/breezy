@@ -147,15 +147,15 @@ class UScanSource(UpstreamSource):
             args = ["--force-download", "--rename",
                     "--check-dirname-level=0",
                     "--download", '--destdir=%s' % container,
-                    "--download-version=%s" % version]
+                    "--download-debversion=%s" % version]
             text, r = _run_dehs_uscan(args, cwd=container)
             _xml_report_extract_errors(text)
             orig_files = _xml_report_extract_target_paths(text)
             if not orig_files:
                 for w in _xml_report_extract_warnings(text):
                     m = re.match(
-                        'In (.*) no matching hrefs for version (.*) in watch line',
-                        w.splitlines()[0])
+                        'In (.*) no matching hrefs for version (.*) in watch '
+                        'line', w.splitlines()[0])
                     if m:
                         raise WatchLineWithoutMatchingHrefs(
                             m.group(1), w.splitlines()[1],
@@ -186,7 +186,7 @@ def _xml_report_extract_upstream_version(text):
     from xml.sax.saxutils import unescape
     # uscan --dehs's output isn't well-formed XML, so let's fall back to
     # regexes instead..
-    m = re.search(b'<upstream-version>(.*)</upstream-version>', text)
+    m = re.search(b'<debian-uversion>(.*)</debian-uversion>', text)
     if not m:
         return None
     return unescape(m.group(1).decode())
