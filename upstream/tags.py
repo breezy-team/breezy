@@ -24,6 +24,7 @@ from ....errors import (
     BzrError,
     NotBranchError,
     )
+from ....revision import NULL_REVISION
 from ....trace import note
 
 
@@ -175,20 +176,7 @@ def _rev_is_upstream_merge(revision, package, version):
     return False
 
 
-def search_for_upstream_version(
-        branch, package, version, component=None, md5=None, scan_depth=None):
-    """Find possible upstream revisions that don't have appropriate tags."""
-    start_revids = []
-    sources = []
-    try:
-        upstream_branch = branch.controldir.open_branch('upstream')
-    except NotBranchError:
-        pass
-    else:
-        sources.append('branch upstream')
-        start_revids.append(upstream_branch.last_revision())
-    sources.append('main branch')
-    start_revids.append(branch.last_revision())
+def upstream_version_tag_start_revids(tag_dict, package, version):
     candidate_tag_start = [
         'debian/%s-' % mangle_version_for_git(version),
         'debian-%s' % version,
@@ -197,26 +185,29 @@ def search_for_upstream_version(
         # as DEP-14 suggests.
         'debian/%s-' % mangle_version_for_git(version.replace(':', '_')),
         ]
-    for tag_name, revid in branch.tags.get_tag_dict().items():
+    for tag_name, revid in tag_dict.items():
         if any([tag_name.startswith(tag_start)
                 for tag_start in candidate_tag_start]):
-            sources.append('tag %s' % tag_name)
-            start_revids.append(revid)
-    note('Searching for revision importing %s version %s on %s.',
-         package, version, ', '.join(sources))
+            yield (tag_name, revid)
+
+
+def search_for_upstream_version(
+        repository, start_revids, package, version, component=None, md5=None,
+        scan_depth=None):
+    """Find possible upstream revisions that don't have appropriate tags."""
     todo = []
-    graph = branch.repository.get_graph()
+    graph = repository.get_graph()
     for revid, parents in islice(
             graph.iter_ancestry(start_revids), scan_depth):
         todo.append(revid)
-    for revid, rev in branch.repository.iter_revisions(todo):
+    for revid, rev in repository.iter_revisions(todo):
         if rev is None:
             continue
         if _rev_is_upstream_import(rev, package, version):
             return revid
 
     # Try again, but this time search for merge revisions
-    for revid, rev in branch.repository.iter_revisions(todo):
+    for revid, rev in repository.iter_revisions(todo):
         if rev is None:
             continue
         if _rev_is_upstream_merge(rev, package, version):

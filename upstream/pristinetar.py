@@ -57,6 +57,7 @@ from ....errors import (
     NoSuchFile,
     NotBranchError,
     )
+from ....revision import NULL_REVISION
 from ....trace import (
     mutter,
     note,
@@ -76,6 +77,7 @@ from .tags import (
     is_upstream_tag,
     possible_upstream_tag_names,
     search_for_upstream_version,
+    upstream_version_tag_start_revids,
     upstream_tag_version,
     )
 
@@ -361,8 +363,7 @@ class BasePristineTarSource(UpstreamSource):
                     return RevisionSpec.from_string('git:%s' % git_id).as_revision_id(self.branch)
                 except (InvalidRevisionSpec, NoSuchTag):
                     pass
-            revid = search_for_upstream_version(
-                self.branch, package, version, component, md5)
+            revid = self._search_for_upstream_version(package, version, component, md5)
             tag_name = self.tag_name(version, component=component)
             if revid is not None:
                 warning(
@@ -374,6 +375,9 @@ class BasePristineTarSource(UpstreamSource):
                 return self.branch.tags.lookup_tag(tag_name)
             except NoSuchTag:
                 raise PackageVersionNotPresent(package, version, self)
+
+    def _search_for_upstream_version(self, package, version, component, md5=None):
+        raise NotImplementedError(self._search_for_upstream_version)
 
     def has_version_component(self, package, version, component, md5=None):
         for tag_name in self.possible_tag_names(package, version, component=component):
@@ -578,6 +582,22 @@ class BzrPristineTarSource(BasePristineTarSource):
                 package, version, component, target_dir)
             for component in components]
 
+    def _search_for_upstream_version(self, package, version, component, md5=None):
+        start_revids = []
+        sources = []
+        sources.append('main branch')
+        start_revids.append(self.branch.last_revision())
+        for tag_name, revid in upstream_version_tag_start_revids(
+                self.branch.tags.get_tag_dict(), package, version):
+            sources.append('tag %s' % tag_name)
+            start_revids.append(revid)
+        note('Searching for revision importing %s version %s on %s.',
+             package, version, ', '.join(sources))
+        revid = search_for_upstream_version(
+            self.branch.repository, start_revids,
+            package, version, component, md5)
+        return revid
+
 
 def get_pristine_tar_source(packaging_tree, packaging_branch):
     git = getattr(packaging_branch.repository, '_git', None)
@@ -625,10 +645,12 @@ class GitPristineTarSource(BasePristineTarSource):
 
     SUFFIXES = ['tar.gz', 'tar.lzma', 'tar.xz', 'tar.bz2']
 
-    def __init__(self, branch, gbp_tag_format=None, pristine_tar=None):
+    def __init__(self, branch, gbp_tag_format=None, pristine_tar=None,
+                 packaging_branch=None):
         self.branch = branch
         self.gbp_tag_format = gbp_tag_format
         self.pristine_tar = pristine_tar
+        self.packaging_branch = packaging_branch
 
     def __repr__(self):
         return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
@@ -673,7 +695,8 @@ class GitPristineTarSource(BasePristineTarSource):
             branch = tree.controldir.open_branch(upstream_branch)
         except NotBranchError:
             branch = tree.controldir.create_branch(upstream_branch)
-        return cls(branch, gbp_tag_format, pristine_tar)
+        return cls(branch, gbp_tag_format, pristine_tar,
+                   packaging_branch=getattr(tree, 'branch', None))
 
     def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
@@ -922,3 +945,24 @@ class GitPristineTarSource(BasePristineTarSource):
             self.fetch_component_tarball(
                 package, version, component, target_dir)
             for component in components]
+
+    def _search_for_upstream_version(self, package, version, component, md5=None):
+        start_revids = []
+        sources = []
+        if self.branch.last_revision() != NULL_REVISION:
+            sources.append('branch upstream')
+            start_revids.append(self.branch.last_revision())
+        if self.packaging_branch is not None:
+            sources.append('packaging branch')
+            start_revids.append(self.packaging_branch.last_revision())
+        for tag_name, revid in upstream_version_tag_start_revids(
+                self.branch.tags.get_tag_dict(), package, version):
+            sources.append('tag %s' % tag_name)
+            start_revids.append(revid)
+
+        note('Searching for revision importing %s version %s on %s.',
+             package, version, ', '.join(sources))
+        revid = search_for_upstream_version(
+            self.branch.repository, start_revids, package, version, component,
+            md5)
+        return revid
