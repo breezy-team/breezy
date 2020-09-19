@@ -457,6 +457,7 @@ class cmd_builddeb(Command):
             NoPreviousUpload,
             )
         from .hooks import run_hook
+        from .source_distiller import DebcargoError
         from .util import (
             dget_changes,
             find_changelog,
@@ -528,7 +529,10 @@ class cmd_builddeb(Command):
                 use_existing=use_existing)
             builder.prepare()
             run_hook(tree, 'pre-export', config)
-            builder.export()
+            try:
+                builder.export()
+            except DebcargoError as e:
+                raise BzrCommandError(str(e))
             if not export_only:
                 run_hook(tree, 'pre-build', config, wd=build_source_dir)
                 builder.build()

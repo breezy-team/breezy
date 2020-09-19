@@ -169,7 +169,8 @@ class MergeModeDistiller(SourceDistiller):
                 os.mkdir(target)
             extract_orig_tarballs(tarballs, target)
         # Now export the tree to provide the debian dir
-        with tempfile.TemporaryDirectory(prefix='builddeb-merge-debian-') as basetempdir:
+        with tempfile.TemporaryDirectory(
+                prefix='builddeb-merge-debian-') as basetempdir:
             tempdir = os.path.join(basetempdir, "export")
             if self.top_level:
                 os.makedirs(tempdir)
@@ -186,6 +187,11 @@ class MergeModeDistiller(SourceDistiller):
                     tempdir, target, symlinks=True, dirs_exist_ok=True)
             else:
                 recursive_copy(tempdir, target)
+
+
+class DebcargoError(bzr_errors.BzrError):
+
+    _fmt = "Debcargo failed to run."
 
 
 class DebcargoDistiller(SourceDistiller):
@@ -228,7 +234,10 @@ class DebcargoDistiller(SourceDistiller):
         if not self.top_level:
             debcargo_path.append('debian')
         debcargo_path.append('debcargo.toml')
-        subprocess.check_call([
-            'debcargo', 'package',
-            '--config', self.tree.abspath(os.path.join(*debcargo_path)),
-            '--directory', target, crate])
+        try:
+            subprocess.check_call([
+                'debcargo', 'package',
+                '--config', self.tree.abspath(os.path.join(*debcargo_path)),
+                '--directory', target, crate])
+        except subprocess.CalledProcessError:
+            raise DebcargoError()
