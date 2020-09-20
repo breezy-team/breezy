@@ -167,28 +167,31 @@ def _get_changelog_info(tree, subpath, last_version=None, package=None,
 
 def _get_upstream_branch_source(
         export_upstream, export_upstream_revision, config, version,
-        other_repository=None):
+        other_repository=None, guess_upstream_url=None):
     if export_upstream is None and config.upstream_branch:
         export_upstream = config.upstream_branch
     if export_upstream is None:
-        return None
+        if guess_upstream_url is None:
+            return None
+        export_upstream = guess_upstream_url
     from .upstream.branch import (
         LazyUpstreamBranchSource,
         )
     upstream_revision_map = {}
     if export_upstream_revision:
         upstream_revision_map[version] = export_upstream_revision
-    upstream_source = LazyUpstreamBranchSource(
+    return LazyUpstreamBranchSource(
         export_upstream, config=config,
         upstream_revision_map=upstream_revision_map,
         other_repository=other_repository)
-    return upstream_source
 
 
 def _get_upstream_sources(local_tree, subpath, packaging_branch,
                           build_type, config, upstream_version, top_level,
                           export_upstream=None,
-                          export_upstream_revision=None):
+                          export_upstream_revision=None,
+                          trust_package=True,
+                          guess_upstream_branch_url=False):
     from .upstream import (
         AptSource,
         SelfSplitSource,
@@ -201,18 +204,33 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
     from .upstream.pristinetar import (
         get_pristine_tar_source,
         )
-    from .upstream.branch import (
-        LazyUpstreamBranchSource,
-        )
     yield get_pristine_tar_source(local_tree, packaging_branch)
     yield AptSource()
     try:
         yield UScanSource.from_tree(local_tree, subpath, top_level)
     except NoWatchFile:
         pass
+
+    if guess_upstream_branch_url:
+        try:
+            from lintian_brush.upstream_metadata import (
+                guess_upstream_metadata,
+                )
+        except ModuleNotFoundError:
+            guess_upstream_url = None
+        else:
+            def guess_upstream_url():
+                guessed_upstream_metadata = guess_upstream_metadata(
+                    local_tree.abspath(subpath), trust_package=trust_package,
+                    net_access=True, consult_external_directory=False)
+                return guessed_upstream_metadata.get('Repository')
+    else:
+        guess_upstream_url = None
+
     upstream_branch_source = _get_upstream_branch_source(
         export_upstream, export_upstream_revision, config,
-        upstream_version, other_repository=packaging_branch.repository)
+        upstream_version, other_repository=packaging_branch.repository,
+        guess_upstream_url=guess_upstream_url)
     if upstream_branch_source:
         yield upstream_branch_source
 
@@ -226,7 +244,8 @@ def _get_distiller(
         tree, subpath, packaging_branch, changelog, build_type, config,
         contains_upstream_source=True, top_level=False,
         orig_dir=default_orig_dir, use_existing=False,
-        export_upstream=None, export_upstream_revision=None):
+        export_upstream=None, export_upstream_revision=None,
+        guess_upstream_branch_url=False):
     from .util import (
         guess_build_type,
         )
@@ -252,7 +271,8 @@ def _get_distiller(
         tree, subpath, packaging_branch, build_type=build_type,
         config=config, upstream_version=changelog.version.upstream_version,
         top_level=top_level, export_upstream=export_upstream,
-        export_upstream_revision=export_upstream_revision))
+        export_upstream_revision=export_upstream_revision,
+        guess_upstream_branch_url=guess_upstream_branch_url))
 
     upstream_provider = UpstreamProvider(
         changelog.package, changelog.version.upstream_version, orig_dir,
@@ -335,6 +355,10 @@ class cmd_builddeb(Command):
         'package-merge', help="Build using the "
         "appropriate -v and -sa options for merging in the changes from "
         "another source.")
+    guess_upstream_branch_url_opt = Option(
+        'guess-upstream-branch-url', help=(
+            'Guess upstream branch URL if unknown '
+            '(requires lintian-brush)'))
     takes_args = ['branch_or_build_options*']
     aliases = ['bd', 'debuild']
     takes_options = [
@@ -342,7 +366,7 @@ class cmd_builddeb(Command):
         builder_opt, merge_opt, build_dir_opt, orig_dir_opt, split_opt,
         export_upstream_opt, export_upstream_revision_opt, quick_opt,
         reuse_opt, native_opt, source_opt, 'revision', strict_opt,
-        package_merge_opt]
+        package_merge_opt, guess_upstream_branch_url_opt]
 
     def _get_tree_and_branch(self, location):
         if location is None:
@@ -450,7 +474,7 @@ class cmd_builddeb(Command):
             orig_dir=None, split=None,
             quick=False, reuse=False, native=None,
             source=False, revision=None, package_merge=None,
-            strict=False):
+            strict=False, guess_upstream_branch_url=False):
         from .builder import DebBuild
         from .config import UpstreamMetadataSyntaxError
         from .errors import (
@@ -517,7 +541,8 @@ class cmd_builddeb(Command):
                 contains_upstream_source=contains_upstream_source,
                 orig_dir=orig_dir, use_existing=use_existing,
                 top_level=top_level, export_upstream=export_upstream,
-                export_upstream_revision=export_upstream_revision)
+                export_upstream_revision=export_upstream_revision,
+                guess_upstream_branch_url=guess_upstream_branch_url)
 
             build_source_dir = os.path.join(
                 build_dir,
@@ -1584,7 +1609,9 @@ class LocalTree(object):
         return False
 
 
-def _build_helper(local_tree, subpath, packaging_branch, target_dir, builder):
+def _build_helper(
+        local_tree, subpath, packaging_branch, target_dir, builder,
+        guess_upstream_branch_url=False):
     # TODO(jelmer): Integrate this with cmd_builddeb
     from .builder import (
         do_build,
@@ -1605,7 +1632,8 @@ def _build_helper(local_tree, subpath, packaging_branch, target_dir, builder):
             local_tree, subpath, packaging_branch, build_type=None,
             config=config, changelog=changelog,
             contains_upstream_source=contains_upstream_source,
-            top_level=top_level)
+            top_level=top_level,
+            guess_upstream_branch_url=guess_upstream_branch_url)
 
     return do_build(changelog.package, changelog.version, distiller,
                     local_tree, config, builder, target_dir)

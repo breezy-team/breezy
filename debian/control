@@ -14,7 +14,7 @@ Package: brz-debian
 Architecture: all
 Depends: brz (>= 3.1~), python3-breezy (>= 3.1~), python3-debian, python3-apt, ${python3:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}, python3-yaml, python3-debmutate (>= 0.3)
 Recommends: python3-launchpadlib, libalgorithm-merge-perl, python3-distro-info, python3-dulwich (>= 0.19.9)
-Suggests: python3-lzma
+Suggests: python3-lzma, lintian-brush
 Provides: brz-buildpackage
 Breaks: silver-platter (<= 0.1.0)
 Enhances: brz
