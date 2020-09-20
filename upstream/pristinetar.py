@@ -602,7 +602,7 @@ class BzrPristineTarSource(BasePristineTarSource):
 def get_pristine_tar_source(packaging_tree, packaging_branch):
     git = getattr(packaging_branch.repository, '_git', None)
     if git:
-        return GitPristineTarSource.from_tree(packaging_tree)
+        return GitPristineTarSource.from_tree(packaging_tree, packaging_branch)
     return BzrPristineTarSource(packaging_branch)
 
 
@@ -656,7 +656,7 @@ class GitPristineTarSource(BasePristineTarSource):
         return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
 
     @classmethod
-    def from_tree(cls, tree):
+    def from_tree(cls, tree, packaging_branch=None):
         if tree and tree.has_filename('debian/gbp.conf'):
             parser = configparser.ConfigParser(defaults={
                 'pristine-tar': 'false',
@@ -696,7 +696,7 @@ class GitPristineTarSource(BasePristineTarSource):
         except NotBranchError:
             branch = tree.controldir.create_branch(upstream_branch)
         return cls(branch, gbp_tag_format, pristine_tar,
-                   packaging_branch=getattr(tree, 'branch', None))
+                   packaging_branch=packaging_branch)
 
     def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
