@@ -610,6 +610,8 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
     @property
     def upstream_branch(self):
         if self._upstream_branch is None:
+            if callable(self.upstream_branch_url):
+                self.upstream_branch_url = self.upstream_branch_url()
             self._upstream_branch = Branch.open(self.upstream_branch_url)
         return self._upstream_branch
 
