@@ -237,6 +237,7 @@ class DebcargoDistiller(SourceDistiller):
         try:
             subprocess.check_call([
                 'debcargo', 'package',
+                '--changelog-ready',
                 '--config', self.tree.abspath(os.path.join(*debcargo_path)),
                 '--directory', target, crate])
         except subprocess.CalledProcessError:

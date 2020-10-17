@@ -1,3 +1,9 @@
+breezy-debian (2.8.43) UNRELEASED; urgency=medium
+
+  * When building debcargo packages, don't bump the changelog version.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Oct 2020 18:17:26 +0000
+
 breezy-debian (2.8.42) unstable; urgency=medium
 
   * Cope with versions being missing in watch file (e.g. because they're
