@@ -187,8 +187,12 @@ class DebBuildConfig(object):
             except ImportError:
                 pass  # No svn, apparently
             try:
-                upstream_metadata_text = tree.get_file_text(
-                    UpstreamMetadataConfig.filename)
+                try:
+                    upstream_metadata_text = tree.get_file_text(
+                        UpstreamMetadataConfig.filename)
+                except IsADirectoryError:
+                    upstream_metadata_text = tree.get_file_text(
+                        'debian/upstream')
             except NoSuchFile:
                 pass
             else:

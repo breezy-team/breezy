@@ -1,6 +1,7 @@
 breezy-debian (2.8.43) UNRELEASED; urgency=medium
 
   * When building debcargo packages, don't bump the changelog version.
+  * Support old metadata path.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Oct 2020 18:17:26 +0000
 
