@@ -131,10 +131,12 @@ class MergeRequestExists(Exception):
 
 class ProjectCreationTimeout(errors.BzrError):
 
-    _fmt = ("Timeout while waiting for project %(project)s to be created.")
+    _fmt = ("Timeout (%(timeout)ds) while waiting for project "
+            "%(project)s to be created.")
 
-    def __init__(self, project):
+    def __init__(self, project, timeout):
         self.project = project
+        self.timeout = timeout
 
 
 def default_config_path():
@@ -427,7 +429,8 @@ class GitLab(Hoster):
         while project['import_status'] not in ('finished', 'none'):
             mutter('import status is %s', project['import_status'])
             if time.time() > deadline:
-                raise ProjectCreationTimeout(project['path_with_namespace'])
+                raise ProjectCreationTimeout(
+                    project['path_with_namespace'], timeout)
             time.sleep(interval)
             project = self._get_project(project['path_with_namespace'])
         return project
