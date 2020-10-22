@@ -129,6 +129,14 @@ class MergeRequestExists(Exception):
     """Raised when a merge requests already exists."""
 
 
+class ProjectCreationTimeout(errors.BzrError):
+
+    _fmt = ("Timeout while waiting for project %(project)s to be created.")
+
+    def __init__(self, project):
+        self.project = project
+
+
 def default_config_path():
     return os.path.join(bedding.config_dir(), 'gitlab.conf')
 
@@ -419,7 +427,7 @@ class GitLab(Hoster):
         while project['import_status'] not in ('finished', 'none'):
             mutter('import status is %s', project['import_status'])
             if time.time() > deadline:
-                raise Exception('timeout waiting for project to become available')
+                raise ProjectCreationTimeout(project['path_with_namespace'])
             time.sleep(interval)
             project = self._get_project(project['path_with_namespace'])
         return project
