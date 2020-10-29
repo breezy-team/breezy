@@ -311,7 +311,7 @@ class UpstreamProvider(object):
         """
         self.package = package
         self.version = version
-        self.store_dir = store_dir
+        self.store_dir = os.path.abspath(store_dir)
         self.source = StackedUpstreamSource(sources)
 
     def provide(self, target_dir):
