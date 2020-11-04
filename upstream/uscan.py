@@ -133,6 +133,8 @@ class UScanSource(UpstreamSource):
                     raise WatchLineWithoutMatches(w.splitlines()[1])
                 raise UScanError(w)
             return
+        if uversionmangle is None:
+            return version
         return uversionmangle(version)
 
     def get_recent_versions(self, package, since_version=None):

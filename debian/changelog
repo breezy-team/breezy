@@ -1,3 +1,9 @@
+breezy-debian (2.8.45) UNRELEASED; urgency=medium
+
+  * Fix compatibility with older versions of debmutate.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 04 Nov 2020 02:50:21 +0000
+
 breezy-debian (2.8.44) unstable; urgency=medium
 
   * Add support for uversionmangle in debian/watch.
