@@ -1,3 +1,9 @@
+breezy-debian (2.8.44) UNRELEASED; urgency=medium
+
+  * Add support for uversionmangle in debian/watch.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 04 Nov 2020 02:28:00 +0000
+
 breezy-debian (2.8.43) unstable; urgency=medium
 
   * When building debcargo packages, don't bump the changelog version.

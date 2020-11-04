@@ -25,6 +25,8 @@ import shutil
 import sys
 import tempfile
 
+from debmutate.watch import parse_watch_file
+
 from ....errors import BzrError, NoSuchFile
 from .... import osutils
 from ....export import export
@@ -116,6 +118,12 @@ class UScanSource(UpstreamSource):
                     "--no-download",
                     "--upstream-version=%s" % current_version]
             text, retcode = _run_dehs_uscan(args, cwd=tmpdir)
+            uversionmangle = None
+            with open(watch_tempfilename, 'r') as f:
+                wf = parse_watch_file(f)
+                if len(wf.entries) == 1:
+                    uversionmangle = getattr(
+                        wf.entries[0], 'uversionmangle', None)
         version = _xml_report_extract_upstream_version(text)
         if version is None:
             for w in _xml_report_extract_warnings(text):
@@ -125,7 +133,7 @@ class UScanSource(UpstreamSource):
                     raise WatchLineWithoutMatches(w.splitlines()[1])
                 raise UScanError(w)
             return
-        return version
+        return uversionmangle(version)
 
     def get_recent_versions(self, package, since_version=None):
         raise NotImplementedError(self.get_recent_versions)
@@ -186,7 +194,7 @@ def _xml_report_extract_upstream_version(text):
     from xml.sax.saxutils import unescape
     # uscan --dehs's output isn't well-formed XML, so let's fall back to
     # regexes instead..
-    m = re.search(b'<debian-uversion>(.*)</debian-uversion>', text)
+    m = re.search(b'<upstream-version>(.*)</upstream-version>', text)
     if not m:
         return None
     return unescape(m.group(1).decode())
