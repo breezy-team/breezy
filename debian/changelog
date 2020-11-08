@@ -1,6 +1,8 @@
 breezy (3.1.0-6) UNRELEASED; urgency=medium
 
   * Set upstream metadata fields: Bug-Submit.
+  * Add patch 18_dulwich_compat, fixing compatibility with newer
+    versions of Dulwich. Closes: #972682
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Nov 2020 02:07:30 -0000
 

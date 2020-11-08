@@ -3,3 +3,4 @@
 08_disable_sphinx_epytext
 16_generate_ids
 17_remote_bzr_warning
+18_dulwich_compat
