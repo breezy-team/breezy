@@ -1,3 +1,9 @@
+breezy-debian (2.8.46) UNRELEASED; urgency=medium
+
+  * When looking for debian versions, mangle when on Git.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Nov 2020 01:51:00 +0000
+
 breezy-debian (2.8.45) unstable; urgency=medium
 
   * Fix compatibility with older versions of debmutate.

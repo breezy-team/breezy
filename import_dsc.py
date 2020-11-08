@@ -73,6 +73,7 @@ from .util import (
     open_file_via_transport,
     open_transport,
     safe_decode,
+    mangle_version_for_git,
     )
 from .upstream import (
     PackageVersionNotPresent,
@@ -322,6 +323,7 @@ class DistributionBranch(object):
         :return: True if this branch contains the specified version of the
             package. False otherwise.
         """
+        version = mangle_version(self.branch, str(version))
         if branch_has_debian_version(self.branch, str(version), md5=md5):
             return True
         # TODO(jelmer): There is some overlap here with revid_of_version
@@ -330,6 +332,9 @@ class DistributionBranch(object):
                 return True
         for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
             if branch_has_debian_version(self.branch, ubuntu_tag_name, md5=md5):
+                return True
+        for other_tag_name in ["v%s" % version]:
+            if branch_has_debian_version(self.branch, other_tag_name, md5=md5):
                 return True
         return False
 
@@ -410,12 +415,16 @@ class DistributionBranch(object):
         """
         if branch_has_debian_version(self.branch, str(version)):
             return self.branch.tags.lookup_tag(str(version))
+        version = mangle_version(self.branch, str(version))
         for debian_tag_name in ["debian-%s" % version, "debian/%s" % version]:
             if branch_has_debian_version(self.branch, debian_tag_name):
                 return self.branch.tags.lookup_tag(debian_tag_name)
         for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
             if branch_has_debian_version(self.branch, ubuntu_tag_name):
                 return self.branch.tags.lookup_tag(ubuntu_tag_name)
+        for other_tag_name in ["v%s" % version]:
+            if branch_has_debian_version(self.branch, other_tag_name):
+                return self.branch.tags.lookup_tag(other_tag_name)
         return self.branch.tags.lookup_tag(str(version))
 
     def tag_version(self, version, revid=None, vendor=None):
@@ -1415,6 +1424,13 @@ def _default_config_for_tree(tree):
         except KeyError:
             config['BUILDDEB'] = {}
     return fileid, path, config
+
+
+def mangle_version(branch, version):
+    git = getattr(branch.repository, '_git', None)
+    if git:
+        return mangle_version_for_git(version)
+    return version
 
 
 def branch_has_debian_version(branch, tag_name, md5=None):

@@ -883,3 +883,14 @@ def get_files_excluded(tree, subpath='', top_level=False):
             return copyright.header["Files-Excluded"].split()
         except KeyError:
             return []
+
+
+def mangle_version_for_git(version):
+    # See https://dep-team.pages.debian.net/deps/dep14/
+    manipulated = (
+        version.replace("~", "_").replace(':', '%').replace('..', '.#.'))
+    if manipulated.endswith('.'):
+        manipulated += '#'
+    if manipulated.endswith('.lock'):
+        manipulated = manipulated[:-4] + '#lock'
+    return manipulated

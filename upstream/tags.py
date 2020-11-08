@@ -22,10 +22,10 @@ import re
 
 from ....errors import (
     BzrError,
-    NotBranchError,
     )
-from ....revision import NULL_REVISION
-from ....trace import note
+
+
+from ..util import mangle_version_for_git
 
 
 class GbpTagFormatError(BzrError):
@@ -76,17 +76,6 @@ def upstream_tag_name(version, component=None, distro=None, git_style=False):
     if component is not None:
         name += "/%s" % component
     return name
-
-
-def mangle_version_for_git(version):
-    # See https://dep-team.pages.debian.net/deps/dep14/
-    manipulated = (
-        version.replace("~", "_").replace(':', '%').replace('..', '.#.'))
-    if manipulated.endswith('.'):
-        manipulated += '#'
-    if manipulated.endswith('.lock'):
-        manipulated = manipulated[:-4] + '#lock'
-    return manipulated
 
 
 def possible_upstream_tag_names(package, version, component=None):
