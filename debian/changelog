@@ -1,3 +1,9 @@
+breezy (3.1.0-6) UNRELEASED; urgency=medium
+
+  * Set upstream metadata fields: Bug-Submit.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Nov 2020 02:07:30 -0000
+
 breezy (3.1.0-5) unstable; urgency=medium
 
   * Add Conflicts/Provides on git-remote-bzr and bzr-git. Closes: #963029
