@@ -1,11 +1,11 @@
-breezy (3.1.0-6) UNRELEASED; urgency=medium
+breezy (3.1.0-6) unstable; urgency=medium
 
   * Set upstream metadata fields: Bug-Submit.
   * Add patch 18_dulwich_compat, fixing compatibility with newer
     versions of Dulwich. Closes: #972682
   * Add patch meliae: fix support with meliae on Python 3.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Nov 2020 02:07:30 -0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Nov 2020 03:56:58 +0000
 
 breezy (3.1.0-5) unstable; urgency=medium
 
