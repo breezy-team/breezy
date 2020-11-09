@@ -18,7 +18,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import os
 import subprocess
+
+from debmutate.changelog import release, ChangelogEditor
 
 from ... import osutils
 
@@ -39,12 +42,13 @@ def release(local_tree, subpath):
             changelog_path = 'changelog'
         else:
             changelog_path = 'debian/changelog'
+        changelog_abspath = local_tree.abspath(
+            os.path.join(subpath, changelog_path))
+        with ChangelogEditor(changelog_abspath) as e:
+            release(e.changelog)
         changelog_arg = "--changelog=%s" % changelog_path
         # TODO(jelmer): don't send output to stderr
         cwd = osutils.pathjoin(local_tree.basedir, subpath)
-        subprocess.check_call(
-            ["dch", changelog_arg, "--release", ""],
-            cwd=cwd)
         subprocess.check_call(
             ["debcommit", changelog_arg, "-ar"],
             cwd=cwd)
