@@ -21,7 +21,7 @@
 import os
 import subprocess
 
-from debmutate.changelog import release, ChangelogEditor
+from debmutate.changelog import release as mark_for_release, ChangelogEditor
 
 from ... import osutils
 
@@ -45,7 +45,7 @@ def release(local_tree, subpath):
         changelog_abspath = local_tree.abspath(
             os.path.join(subpath, changelog_path))
         with ChangelogEditor(changelog_abspath) as e:
-            release(e.changelog)
+            mark_for_release(e.changelog)
         changelog_arg = "--changelog=%s" % changelog_path
         # TODO(jelmer): don't send output to stderr
         cwd = osutils.pathjoin(local_tree.basedir, subpath)
