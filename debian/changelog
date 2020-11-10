@@ -2,6 +2,7 @@ breezy-debian (2.8.46) UNRELEASED; urgency=medium
 
   * When looking for debian versions, mangle when on Git.
   * Suggest debcargo, for building debcargo-based packages.
+  * Require debmutate 0.14.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Nov 2020 01:51:00 +0000
 
