@@ -1626,7 +1626,8 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1")
+        conflicts, imported_revids = db.merge_upstream(
+            [(tarball_filename, None)], "foo", "0.2", "0.1")
         self.assertEqual(0,  conflicts)
 
     def test_merge_upstream_initial_with_branch(self):
@@ -1642,7 +1643,7 @@ class DistributionBranchTests(BuilddebTestCase):
         cl = self.make_changelog(version="0.1-1")
         self.write_changelog(cl, 'work/debian/changelog')
         tree.add(['debian/', 'debian/changelog'])
-        orig_debian_rev = tree.commit("two")
+        tree.commit("two")
         self.build_tree(['upstream/a'])
         upstream_rev = upstream_tree.commit("three")
         tree.lock_write()
@@ -1660,7 +1661,8 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1",
+        conflicts, imported_revids = db.merge_upstream(
+            [(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: upstream_rev})
         self.assertEqual(0,  conflicts)
@@ -1697,7 +1699,8 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream([(tarball_filename, None)], "foo", "0.2", "0.1",
+        conflicts, imported_revids = db.merge_upstream(
+            [(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: upstream_rev})
         # ./debian conflicts.
@@ -1738,7 +1741,8 @@ class DistributionBranchTests(BuilddebTestCase):
         dbs.add_branch(db)
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        db.merge_upstream([(builder.tar_name(), None)], "package", str(version2),
+        db.merge_upstream(
+            [(builder.tar_name(), None)], "package", str(version2),
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: upstream_rev})
@@ -1856,7 +1860,7 @@ class DistributionBranchTests(BuilddebTestCase):
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
-            upstream_revisions={None:upstream_rev2})
+            upstream_revisions={None: upstream_rev2})
         self.assertEqual(b"a-id", tree.path2id("b"))
 
     def test_merge_upstream_rename_in_packaging_branch(self):
@@ -1886,7 +1890,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_upstream_file("a", "New a")
         builder.add_upstream_file("b", "Renamed a")
         builder.build()
-        db.merge_upstream([(builder.tar_name(), None)], "packaging",
+        db.merge_upstream(
+            [(builder.tar_name(), None)], "packaging",
             version2.upstream_version, version1.upstream_version)
         self.assertEqual(b"a-id", packaging_tree.path2id("b"))
         self.assertEqual(b"other-a-id", packaging_tree.path2id("a"))

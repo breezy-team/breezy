@@ -78,8 +78,7 @@ def _get_tarballs(tree, subpath, tarball, package_name, version):
     return ret
 
 
-def import_upstream(tarball, package_name, version,
-                    use_pristine_tar=True):
+def import_upstream(tarball, package_name, version, use_pristine_tar=True):
     tree = _get_tree(package_name)
     if tree.branch.last_revision() != mod_revision.NULL_REVISION:
         parents = {None: [tree.branch.last_revision()]}

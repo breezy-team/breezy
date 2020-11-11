@@ -472,6 +472,7 @@ class BzrPristineTarSource(BasePristineTarSource):
             else:
                 warning('Not setting pristine tar revision properties '
                         'since the repository does not support it.')
+                delta = None
         else:
             delta = None
         if author is not None:
@@ -504,7 +505,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         mutter(
             'imported %s version %s component %r as revid %s, tagged %s',
             package, version, component, revid, tag_name)
-        return tag_name, revid
+        return tag_name, revid, delta is not None
 
     def fetch_component_tarball(self, package, version, component, target_dir):
         revid = self.version_component_as_revision(package, version, component)
@@ -810,10 +811,13 @@ class GitPristineTarSource(BasePristineTarSource):
             else:
                 note('Imported %s with pristine-tar.',
                      os.path.basename(tarball))
+                pristine_tar_imported = True
+        else:
+            pristine_tar_imported = False
         mutter(
             'imported %s version %s component %r as revid %s, tagged %s',
             package, version, component, revid, tag_name)
-        return tag_name, revid
+        return tag_name, revid, pristine_tar_imported
 
     def fetch_component_tarball(self, package, version, component, target_dir):
         note("Using pristine-tar to reconstruct %s/%s.", package, version)

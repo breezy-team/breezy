@@ -959,7 +959,7 @@ class cmd_merge_upstream(Command):
                         "file, or use it as the argument to import."
                         % e.path)
                 try:
-                    conflicts = do_merge(
+                    conflicts, imported_revids = do_merge(
                         tree, subpath, tarball_filenames, package, version,
                         current_version, upstream_branch, upstream_revisions,
                         merge_type, force=force,
@@ -1218,7 +1218,8 @@ class cmd_import_upstream(Command):
                 'bzr import-upstream --revision takes exactly'
                 ' one revision specifier.'))
         tarballs = [(location, None, md5sum_filename(location))]
-        for (component, tag_name, revid) in db.import_upstream_tarballs(
+        for (component, tag_name, revid,
+             pristine_tar_imported) in db.import_upstream_tarballs(
                 tarballs, None, version, parents, upstream_branch=upstream,
                 upstream_revisions={None: upstream_revid},
                 force_pristine_tar=force_pristine_tar):

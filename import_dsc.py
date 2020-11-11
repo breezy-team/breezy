@@ -758,7 +758,7 @@ class DistributionBranch(object):
         # Make sure we see any revisions added by the upstream branch
         # since self.tree was locked.
         self.branch.repository.refresh_data()
-        for (component, tag, revid) in imported_revids:
+        for (component, tag, revid, pristine_tar_imported) in imported_revids:
             self.branch.fetch(self.pristine_upstream_branch, revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
@@ -779,7 +779,8 @@ class DistributionBranch(object):
         :param upstream_parents: the parents to give the upstream revision
         :param timestamp: a tuple of (timestamp, timezone) to use for
             the commit, or None to use the current time.
-        :return: list with (component, tag, revid) tuples
+        :return:
+            list with (component, tag, revid, pristine_tar_imported) tuples
         """
         # Should we just dump the upstream part on whatever is currently
         # there, or try and pull all of the other upstream versions
@@ -849,14 +850,14 @@ class DistributionBranch(object):
                     tb[1] for tb in upstream_tarballs if tb[1] is not None]
             else:
                 exclude = []
-            (tag, revid) = self.pristine_upstream_source.import_component_tarball(
+            (tag, revid, pristine_tar_imported) = self.pristine_upstream_source.import_component_tarball(
                 package, version, self.pristine_upstream_tree, parents,
                 component, md5, tarball, author=author, timestamp=timestamp,
                 exclude=exclude, force_pristine_tar=force_pristine_tar,
                 committer=committer, files_excluded=files_excluded,
                 reuse_existing=True)
             self.pristine_upstream_branch.generate_revision_history(revid)
-            ret.append((component, tag, revid))
+            ret.append((component, tag, revid, pristine_tar_imported))
             self.branch.fetch(self.pristine_upstream_branch)
             self.branch.tags.set_tag(tag, revid)
         return ret
@@ -876,7 +877,8 @@ class DistributionBranch(object):
             tarball.
         :param upstream_revisions: Upstream revision ids dictionary
         :param md5sum: hex digest of the md5sum of the tarball, if known.
-        :return: list with (component, tag, revid) tuples
+        :return: list with (component, tag, revid, pristine_tar_imported)
+            tuples
         """
         with _extract_tarballs_to_tempdir(tarballs) as tarball_dir:
             return self.import_upstream(
@@ -1362,7 +1364,7 @@ class DistributionBranch(object):
                 conflicts = 0
                 self.tree.pull(self.pristine_upstream_branch)
             self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
-            return conflicts
+            return conflicts, imported_revids
 
 
 @contextmanager
