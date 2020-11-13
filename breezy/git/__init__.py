@@ -178,9 +178,6 @@ class RemoteGitProber(Prober):
             # GitHub requires we lie.
             # https://github.com/dulwich/dulwich/issues/562
             headers["User-Agent"] = user_agent_for_github()
-        elif host == "bazaar.launchpad.net":
-            # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
-            raise brz_errors.NotBranchError(transport.base)
         resp = transport.request('GET', url, headers=headers)
         if resp.status in (404, 405):
             raise brz_errors.NotBranchError(transport.base)
