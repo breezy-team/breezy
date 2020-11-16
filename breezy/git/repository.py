@@ -107,6 +107,7 @@ class GitCheck(check.Check):
 for optimiser in ['InterRemoteGitNonGitRepository',
                   'InterLocalGitNonGitRepository',
                   'InterLocalGitLocalGitRepository',
+                  'InterLocalGitRemoteGitRepository',
                   'InterRemoteGitLocalGitRepository',
                   'InterToLocalGitRepository',
                   'InterToRemoteGitRepository',
