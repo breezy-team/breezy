@@ -420,7 +420,7 @@ def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,
 def loggerhead_git_hook(branch_app, environ):
     branch = branch_app.branch
     config_stack = branch.get_config_stack()
-    if config_stack.get('http_git'):
+    if not config_stack.get('git.http'):
         return None
     from .server import git_http_hook
     return git_http_hook(branch, environ['REQUEST_METHOD'],
