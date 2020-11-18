@@ -143,7 +143,7 @@ class cmd_propose_merge(Command):
         RegistryOption(
             'hoster',
             help='Use the hoster.',
-            lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
+            lazy_registry=('breezy.propose', 'hosters')),
         ListOption('reviewers', short_name='R', type=str,
                    help='Requested reviewers.'),
         Option('name', help='Name of the new remote branch.', type=str),
@@ -161,6 +161,7 @@ class cmd_propose_merge(Command):
                help='Allow collaboration from target branch maintainer(s)'),
         Option('allow-empty',
                help='Do not prevent empty merge proposals.'),
+        Option('overwrite', help="Overwrite existing commits."),
         ]
     takes_args = ['submit_branch?']
 
@@ -169,7 +170,7 @@ class cmd_propose_merge(Command):
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
-            allow_collaboration=False, allow_empty=False):
+            allow_collaboration=False, allow_empty=False, overwrite=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -189,7 +190,8 @@ class cmd_propose_merge(Command):
         if name is None:
             name = branch_name(branch)
         remote_branch, public_branch_url = hoster.publish_derived(
-            branch, target, name=name, allow_lossy=not no_allow_lossy)
+            branch, target, name=name, allow_lossy=not no_allow_lossy,
+            overwrite=overwrite)
         branch.set_push_location(remote_branch.user_url)
         branch.set_submit_branch(target.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
@@ -253,6 +255,7 @@ class cmd_my_merge_proposals(Command):
 
     hidden = True
 
+    takes_args = ['base-url?']
     takes_options = [
         'verbose',
         RegistryOption.from_kwargs(
@@ -264,18 +267,32 @@ class cmd_my_merge_proposals(Command):
             all='All merge proposals',
             open='Open merge proposals',
             merged='Merged merge proposals',
-            closed='Closed merge proposals')]
+            closed='Closed merge proposals'),
+        RegistryOption(
+            'hoster',
+            help='Use the hoster.',
+            lazy_registry=('breezy.propose', 'hosters')),
+        ]
 
-    def run(self, status='open', verbose=False):
-        for instance in _mod_propose.iter_hoster_instances():
+    def run(self, status='open', verbose=False, hoster=None, base_url=None):
+
+        for instance in _mod_propose.iter_hoster_instances(hoster=hoster):
+            if base_url is not None and instance.base_url != base_url:
+                continue
             try:
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
                     if verbose:
-                        self.outf.write(
-                            '(Merging %s into %s)\n' %
-                            (mp.get_source_branch_url(),
-                             mp.get_target_branch_url()))
+                        source_branch_url = mp.get_source_branch_url()
+                        if source_branch_url:
+                            self.outf.write(
+                                '(Merging %s into %s)\n' %
+                                (source_branch_url,
+                                 mp.get_target_branch_url()))
+                        else:
+                            self.outf.write(
+                                '(Merging into %s)\n' %
+                                mp.get_target_branch_url())
                         description = mp.get_description()
                         if description:
                             self.outf.writelines(
@@ -307,10 +324,17 @@ class cmd_hosters(Command):
         for instance in _mod_propose.iter_hoster_instances():
             current_user = instance.get_current_user()
             if current_user is not None:
-                self.outf.write(
-                    gettext('%s (%s) - user: %s (%s)\n') % (
-                        instance.name, instance.base_url,
-                        current_user, instance.get_user_url(current_user)))
+                current_user_url = instance.get_user_url(current_user)
+                if current_user_url is not None:
+                    self.outf.write(
+                        gettext('%s (%s) - user: %s (%s)\n') % (
+                            instance.name, instance.base_url,
+                            current_user, current_user_url))
+                else:
+                    self.outf.write(
+                        gettext('%s (%s) - user: %s\n') % (
+                            instance.name, instance.base_url,
+                            current_user))
             else:
                 self.outf.write(
                     gettext('%s (%s) - not logged in\n') % (

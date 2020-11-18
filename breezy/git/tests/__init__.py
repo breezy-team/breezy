@@ -227,6 +227,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_revspec',
         'test_roundtrip',
         'test_server',
+        'test_transform',
         'test_transportgit',
         'test_tree',
         'test_unpeel_map',

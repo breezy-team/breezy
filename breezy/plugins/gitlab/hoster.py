@@ -18,6 +18,7 @@
 
 import json
 import os
+import re
 import time
 
 from ... import (
@@ -122,8 +123,21 @@ class ForkingDisabled(errors.BzrError):
         self.project = project
 
 
-class MergeRequestExists(Exception):
-    """Raised when a merge requests already exists."""
+class MergeRequestConflict(Exception):
+    """Raised when a merge requests conflicts."""
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
+class ProjectCreationTimeout(errors.BzrError):
+
+    _fmt = ("Timeout (%(timeout)ds) while waiting for project "
+            "%(project)s to be created.")
+
+    def __init__(self, project, timeout):
+        self.project = project
+        self.timeout = timeout
 
 
 def default_config_path():
@@ -338,6 +352,17 @@ class GitLab(Hoster):
     def base_hostname(self):
         return urlutils.parse_url(self.base_url)[3]
 
+    def _find_correct_project_name(self, path):
+        try:
+            resp = self.transport.request(
+                'GET', urlutils.join(self.base_url, path),
+                headers=self.headers)
+        except errors.RedirectRequested as e:
+            return urlutils.parse_url(e.target)[-1].strip('/')
+        if resp.status != 200:
+            _unexpected_status(path, resp)
+        return None
+
     def _api_request(self, method, path, fields=None, body=None):
         return self.transport.request(
             method, urlutils.join(self.base_url, 'api', 'v4', path),
@@ -369,10 +394,14 @@ class GitLab(Hoster):
             return ret[0]
         _unexpected_status(path, response)
 
-    def _get_project(self, project_name):
+    def _get_project(self, project_name, _redirect_checked=False):
         path = 'projects/%s' % urlutils.quote(str(project_name), '')
         response = self._api_request('GET', path)
         if response.status == 404:
+            if not _redirect_checked:
+                project_name = self._find_correct_project_name(project_name)
+                if project_name is not None:
+                    return self._get_project(project_name, _redirect_checked=True)
             raise NoSuchProject(project_name)
         if response.status == 200:
             return json.loads(response.data)
@@ -399,7 +428,8 @@ class GitLab(Hoster):
         while project['import_status'] not in ('finished', 'none'):
             mutter('import status is %s', project['import_status'])
             if time.time() > deadline:
-                raise Exception('timeout waiting for project to become available')
+                raise ProjectCreationTimeout(
+                    project['path_with_namespace'], timeout)
             time.sleep(interval)
             project = self._get_project(project['path_with_namespace'])
         return project
@@ -431,7 +461,7 @@ class GitLab(Hoster):
             for entry in json.loads(response.data):
                 yield entry
 
-    def _list_merge_requests(self, owner=None, project=None, state=None):
+    def _list_merge_requests(self, author=None, project=None, state=None):
         if project is not None:
             path = 'projects/%s/merge_requests' % urlutils.quote(str(project), '')
         else:
@@ -439,8 +469,8 @@ class GitLab(Hoster):
         parameters = {}
         if state:
             parameters['state'] = state
-        if owner:
-            parameters['owner_id'] = urlutils.quote(owner, '')
+        if author:
+            parameters['author_username'] = urlutils.quote(author, '')
         return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
     def _get_merge_request(self, project, merge_id):
@@ -497,7 +527,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
-            raise MergeRequestExists()
+            raise MergeRequestConflict(json.loads(response.data))
         if response.status == 422:
             data = json.loads(response.data)
             raise GitLabUnprocessable(data['error'])
@@ -514,15 +544,19 @@ class GitLab(Hoster):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
-        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
+        (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(base_branch)
+        if owner is None:
+            owner = base_branch.get_config_stack().get('fork-namespace')
         if owner is None:
             owner = self.get_current_user()
+        base_project = self._get_project(base_project_name)
         if project is None:
-            project = self._get_project(base_project)['path']
+            project = base_project['path']
         try:
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
-            target_project = self._fork_project(base_project, owner=owner)
+            target_project = self._fork_project(
+                base_project['path_with_namespace'], owner=owner)
         remote_repo_url = git_url_to_bzr_url(target_project['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
@@ -615,14 +649,17 @@ class GitLab(Hoster):
                 get_transport(credentials['url']),
                 private_token=credentials.get('private_token'))
 
-    def iter_my_proposals(self, status='open'):
+    def iter_my_proposals(self, status='open', author=None):
+        if author is None:
+            author = self.get_current_user()
         state = mp_status_to_status(status)
-        for mp in self._list_merge_requests(
-                owner=self.get_current_user(), state=state):
+        for mp in self._list_merge_requests(author=author, state=state):
             yield GitLabMergeProposal(self, mp)
 
-    def iter_my_forks(self):
-        for project in self._list_projects(owner=self.get_current_user()):
+    def iter_my_forks(self, owner=None):
+        if owner is not None:
+            owner = self.get_current_user()
+        for project in self._list_projects(owner=owner):
             base_project = project.get('forked_from_project')
             if not base_project:
                 continue
@@ -717,8 +754,18 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
                 kwargs['assignee_ids'].append(user['id'])
         try:
             merge_request = self.gl._create_mergerequest(**kwargs)
-        except MergeRequestExists:
-            raise MergeProposalExists(self.source_branch.user_url)
+        except MergeRequestConflict as e:
+            m = re.fullmatch(
+                r'Another open merge request already exists for '
+                r'this source branch: \!([0-9]+)',
+                e.reason['message'][0])
+            if m:
+                merge_id = int(m.group(1))
+                mr = self.gl._get_merge_request(
+                    target_project['path_with_namespace'], merge_id)
+                raise MergeProposalExists(
+                    self.source_branch.user_url, GitLabMergeProposal(self.gl, mr))
+            raise Exception('conflict: %r' % e.reason)
         except GitLabUnprocessable as e:
             if e.error == [
                     "Source project is not a fork of the target project"]:

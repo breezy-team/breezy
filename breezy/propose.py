@@ -16,6 +16,8 @@
 
 """Helper functions for proposing merges."""
 
+import re
+
 from . import (
     errors,
     hooks,
@@ -37,9 +39,10 @@ class MergeProposalExists(errors.BzrError):
 
     _fmt = "A merge proposal already exists: %(url)s."
 
-    def __init__(self, url):
+    def __init__(self, url, existing_proposal=None):
         errors.BzrError.__init__(self)
         self.url = url
+        self.existing_proposal = existing_proposal
 
 
 class UnsupportedHoster(errors.BzrError):
@@ -338,20 +341,22 @@ class Hoster(object):
         """Create a Hoster object if this hoster knows about a URL."""
         raise NotImplementedError(cls.probe_from_url)
 
-    def iter_my_proposals(self, status='open'):
+    def iter_my_proposals(self, status='open', author=None):
         """Iterate over the proposals created by the currently logged in user.
 
         :param status: Only yield proposals with this status
             (one of: 'open', 'closed', 'merged', 'all')
+        :param author: Name of author to query (defaults to current user)
         :return: Iterator over MergeProposal objects
         :raise HosterLoginRequired: Action requires a hoster login, but none is
             known.
         """
         raise NotImplementedError(self.iter_my_proposals)
 
-    def iter_my_forks(self):
+    def iter_my_forks(self, owner=None):
         """Iterate over the currently logged in users' forks.
 
+        :param owner: Name of owner to query (defaults to current user)
         :return: Iterator over project_name
         """
         raise NotImplementedError(self.iter_my_forks)
@@ -383,7 +388,13 @@ class Hoster(object):
 
 def determine_title(description):
     """Determine the title for a merge proposal based on full description."""
-    return description.splitlines()[0].split('.')[0]
+    firstline = description.splitlines()[0]
+    try:
+        i = firstline.index('. ')
+    except ValueError:
+        return firstline.rstrip('.')
+    else:
+        return firstline[:i]
 
 
 def get_hoster(branch, possible_hosters=None):
@@ -410,12 +421,16 @@ def get_hoster(branch, possible_hosters=None):
     raise UnsupportedHoster(branch)
 
 
-def iter_hoster_instances():
+def iter_hoster_instances(hoster=None):
     """Iterate over all known hoster instances.
 
     :return: Iterator over Hoster instances
     """
-    for name, hoster_cls in hosters.items():
+    if hoster is None:
+        hoster_clses = [hoster_cls for name, hoster_cls in hosters.items()]
+    else:
+        hoster_clses = [hoster]
+    for hoster_cls in hoster_clses:
         for instance in hoster_cls.iter_instances():
             yield instance
 
