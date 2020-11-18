@@ -25,8 +25,9 @@ Specific tests for individual variations are in other places such as:
  - tests/test_workingtree.py
 """
 
+import contextlib
+
 from breezy import (
-    cleanup,
     errors,
     tests,
     transform,
@@ -84,7 +85,7 @@ def preview_tree_post(testcase, tree):
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
     pp = None
-    es = cleanup.ExitStack()
+    es = contextlib.ExitStack()
     testcase.addCleanup(es.close)
     transform._prepare_revert_transform(es, basis, tree, tt, None, False, None,
                                         basis, {})

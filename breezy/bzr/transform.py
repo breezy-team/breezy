@@ -17,6 +17,7 @@
 
 from __future__ import absolute_import
 
+import contextlib
 import errno
 import os
 from stat import S_IEXEC, S_ISREG
@@ -24,7 +25,6 @@ import time
 
 from .. import (
     annotate,
-    cleanup,
     conflicts,
     controldir,
     errors,
@@ -2289,7 +2289,7 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
     :param delta_from_tree: If true, build_tree may use the input Tree to
         generate the inventory delta.
     """
-    with cleanup.ExitStack() as exit_stack:
+    with contextlib.ExitStack() as exit_stack:
         exit_stack.enter_context(wt.lock_tree_write())
         exit_stack.enter_context(tree.lock_read())
         if accelerator_tree is not None:

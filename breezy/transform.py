@@ -732,7 +732,7 @@ def _prepare_revert_transform(es, working_tree, target_tree, tt, filenames,
 def revert(working_tree, target_tree, filenames, backups=False,
            pb=None, change_reporter=None, merge_modified=None, basis_tree=None):
     """Revert a working tree's contents to those of a target tree."""
-    with cleanup.ExitStack() as es:
+    with contextlib.ExitStack() as es:
         pb = es.enter_context(ui.ui_factory.nested_progress_bar())
         es.enter_context(target_tree.lock_read())
         tt = es.enter_context(working_tree.transform(pb))
