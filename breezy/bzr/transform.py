@@ -42,7 +42,6 @@ from ..filters import filtered_output_bytes, ContentFilterContext
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..progress import ProgressPhase
-from ..sixish import viewvalues, viewitems
 from ..transform import (
     ROOT_PARENT,
     _FileMover,
