@@ -356,6 +356,7 @@ class TreeTransformBase(TreeTransform):
     def _duplicate_entries(self, by_parent):
         """No directory may have two entries with the same name."""
         if (self._new_name, self._new_parent) == ({}, {}):
+            return
         for children in by_parent.values():
             name_ids = []
             for child_tid in children:
