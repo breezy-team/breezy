@@ -745,7 +745,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
-            trace.warning(text_type(conflict))
+            trace.warning(str(conflict))
         pp.next_phase()
         tt.apply()
         if working_tree.supports_merge_modified():
