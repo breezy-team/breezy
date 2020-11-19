@@ -788,3 +788,36 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
         """Be compatible with GitRepository."""
         return (isinstance(source, RemoteGitRepository) and
                 isinstance(target, LocalGitRepository))
+
+
+
+class InterLocalGitRemoteGitRepository(InterToGitRepository):
+
+    def fetch_refs(self, update_refs, lossy=False, overwrite=False):
+        """Import the gist of the ancestry of a particular revision."""
+        if lossy:
+            raise LossyPushToSameVCS(self.source, self.target)
+
+        def git_update_refs(old_refs):
+            ret = {}
+            self.old_refs = {
+                k: (v, None) for (k, v) in viewitems(old_refs)}
+            new_refs = update_refs(self.old_refs)
+            for name, (gitid, revid) in viewitems(new_refs):
+                if gitid is None:
+                    gitid = self.source_store._lookup_revision_sha1(revid)
+                if not overwrite:
+                    if remote_divergence(
+                            old_refs.get(name), gitid, self.source_store):
+                        raise DivergedBranches(self.source, self.target)
+                ret[name] = gitid
+            return ret
+        new_refs = self.target.send_pack(
+            git_update_refs,
+            self.source._git.generate_pack_data)
+        return None, self.old_refs, new_refs
+
+    @staticmethod
+    def is_compatible(source, target):
+        return (isinstance(source, LocalGitRepository) and
+                isinstance(target, RemoteGitRepository))
