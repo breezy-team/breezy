@@ -33,7 +33,10 @@ from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError
 from debian.copyright import Copyright, NotMachineReadableError
 
-from debmutate.changelog import strip_changelog_message
+from debmutate.changelog import (
+    strip_changelog_message,
+    changes_by_author,
+    )
 
 from ... import (
     bugtracker,
@@ -432,10 +435,10 @@ def find_bugs_fixed(changes, branch, _lplib=None):
     if _lplib is None:
         from . import launchpad as _lplib
     bugs = []
-    for change in changes:
+    for new_author, linenos, lines in changes_by_author(changes):
         for match in re.finditer(
                 "closes:\\s*(?:bug)?\\#?\\s?\\d+"
-                "(?:,\\s*(?:bug)?\\#?\\s?\\d+)*", change,
+                "(?:,\\s*(?:bug)?\\#?\\s?\\d+)*", ''.join(lines),
                 re.IGNORECASE):
             closes_list = match.group(0)
             for match in re.finditer("\\d+", closes_list):
@@ -446,7 +449,8 @@ def find_bugs_fixed(changes, branch, _lplib=None):
                     bug_url = bugtracker.get_bug_url("lp", branch, lp_bugs[0])
                     bugs.append(bug_url + " fixed")
         for match in re.finditer(
-                "lp:\\s+\\#\\d+(?:,\\s*\\#\\d+)*", change, re.IGNORECASE):
+                "lp:\\s+\\#\\d+(?:,\\s*\\#\\d+)*",
+                ''.join(lines), re.IGNORECASE):
             closes_list = match.group(0)
             for match in re.finditer("\\d+", closes_list):
                 bug_url = bugtracker.get_bug_url("lp", branch, match.group(0))
@@ -464,20 +468,17 @@ def find_extra_authors(changes):
 
     :return: List of fullnames of additional authors, without e-mail address.
     """
-    extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*")
     authors = []
-    for change in changes:
-        # Parse out any extra authors.
-        match = extra_author_re.match(change)
-        if match is not None:
-            new_author = safe_decode(match.group(1).strip())
-            already_included = False
-            for author in authors:
-                if author.startswith(new_author):
-                    already_included = True
-                    break
-            if not already_included:
-                authors.append(new_author)
+    for new_author, linenos, lines in changes_by_author(changes):
+        if new_author is None:
+            continue
+        already_included = False
+        for author in authors:
+            if author.startswith(new_author):
+                already_included = True
+                break
+        if not already_included:
+            authors.append(new_author)
     return authors
 
 
@@ -493,13 +494,13 @@ def find_thanks(changes):
         "(?:\\s+<[^@>]+@[^@>]+>)?)",
         re.UNICODE)
     thanks = []
-    changes_str = safe_decode(" ".join(changes))
-    for match in thanks_re.finditer(changes_str):
-        if thanks is None:
-            thanks = []
-        thanks_str = match.group(1).strip()
-        thanks_str = re.sub(r"\s+", " ", thanks_str)
-        thanks.append(thanks_str)
+    for new_author, linenos, lines in changes_by_author(changes):
+        for match in thanks_re.finditer(''.join(lines)):
+            if thanks is None:
+                thanks = []
+            thanks_str = match.group(1).strip()
+            thanks_str = re.sub(r"\s+", " ", thanks_str)
+            thanks.append(thanks_str)
     return thanks
 
 
@@ -525,26 +526,29 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
     if changelog._blocks:
         block = changelog._blocks[0]
         authors = [safe_decode(block.author)]
+        authors += find_extra_authors(block.changes())
         changes = strip_changelog_message(block.changes())
-        authors += find_extra_authors(changes)
-        bugs = find_bugs_fixed(changes, branch, _lplib=_lplib)
-        thanks = find_thanks(changes)
+        bugs = find_bugs_fixed(block.changes(), branch, _lplib=_lplib)
+        thanks = find_thanks(block.changes())
         message = safe_decode("\n".join(changes).replace("\r", ""))
     return (message, authors, thanks, bugs)
 
 
-def find_last_distribution(changelog):
-    """Find the last changelog that was used in a changelog.
+try:
+    from debmutate.changelog import find_last_distribution
+except ImportError:
+    def find_last_distribution(changelog):
+        """Find the last changelog that was used in a changelog.
 
-    This will skip stanzas with the 'UNRELEASED' distribution.
+        This will skip stanzas with the 'UNRELEASED' distribution.
 
-    :param changelog: Changelog to analyze
-    """
-    for block in changelog._blocks:
-        distribution = block.distributions.split(" ")[0]
-        if distribution != "UNRELEASED":
-            return distribution
-    return None
+        :param changelog: Changelog to analyze
+        """
+        for block in changelog._blocks:
+            distribution = block.distributions.split(" ")[0]
+            if distribution != "UNRELEASED":
+                return distribution
+        return None
 
 
 def subprocess_setup():
