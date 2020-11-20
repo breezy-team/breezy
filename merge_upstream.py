@@ -229,8 +229,8 @@ def fetch_tarball(package, version, orig_dir, locations, v3):
     return ret
 
 
-def get_tarballs(orig_dir, tree, package, version, upstream_branch,
-                 upstream_revision, locations):
+def get_tarballs(orig_dir, tree, package, version, locations):
+    """Retrieve upstream tarballs."""
     source_format = tree_get_source_format(tree)
     v3 = (source_format in [FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
     orig_dir = os.path.join(tree.basedir, orig_dir)

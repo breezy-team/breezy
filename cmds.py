@@ -949,8 +949,7 @@ class cmd_merge_upstream(Command):
                 orig_dir = config.orig_dir or default_orig_dir
                 try:
                     tarball_filenames = get_tarballs(
-                        orig_dir, tree, package, version, upstream_branch,
-                        upstream_revisions, locations)
+                        orig_dir, tree, package, version, locations)
                 except FileExists as e:
                     raise BzrCommandError(
                         "The target file %s already exists, and is either "
