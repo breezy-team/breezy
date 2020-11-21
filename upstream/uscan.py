@@ -121,7 +121,7 @@ class UScanSource(UpstreamSource):
             uversionmangle = None
             with open(watch_tempfilename, 'r') as f:
                 wf = parse_watch_file(f)
-                if wf.entries and len(wf.entries) == 1:
+                if wf and wf.entries and len(wf.entries) == 1:
                     uversionmangle = getattr(
                         wf.entries[0], 'uversionmangle', None)
         version = _xml_report_extract_upstream_version(text)
