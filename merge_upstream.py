@@ -38,13 +38,13 @@ from ... import osutils
 from ...revision import NULL_REVISION
 
 from .errors import (
-    DchError,
-    UpstreamAlreadyImported,
+    BzrError,
     )
 from .import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
     PreviousVersionTagMissing,
+    UpstreamAlreadyImported,
     )
 from .repack_tarball import repack_tarball
 from .util import (
@@ -57,6 +57,13 @@ from .util import (
 
 
 TAG_PREFIX = "upstream-"
+
+
+class DchError(BzrError):
+    _fmt = 'There was an error using dch: %(error)s.'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)
 
 
 def package_version(upstream_version, distribution_name, epoch=None):

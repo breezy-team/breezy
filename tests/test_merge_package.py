@@ -26,8 +26,6 @@ import string
 from debian.changelog import Version
 
 from .. import merge_package as MP
-from ..errors import (
-    SharedUpstreamConflictsWithTargetPackaging)
 from ..import_dsc import DistributionBranch
 
 from . import TestCaseWithTransport
@@ -172,7 +170,7 @@ class MergePackageTests(TestCaseWithTransport):
         ubup, debp, ubuu, debu = self._setup_debian_upstream_conflicts()
 
         self.assertRaises(
-            SharedUpstreamConflictsWithTargetPackaging,
+            MP.SharedUpstreamConflictsWithTargetPackaging,
             MP.fix_ancestry_as_needed, ubup, debp.branch)
 
         conflict_paths = sorted([c.path for c in ubup.conflicts()])

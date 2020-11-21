@@ -31,11 +31,9 @@ from ....revisionspec import RevisionSpec
 from ....tests.test_revisionspec import TestRevisionSpec
 
 from . import Version, Changelog
-from ..errors import (
+from ..revspec import (
     UnknownVersion,
     VersionNotSpecified,
-    )
-from ..revspec import (
     RevisionSpec_package,
     RevisionSpec_upstream,
     )

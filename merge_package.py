@@ -28,11 +28,24 @@ import tempfile
 from debian.changelog import Version
 
 from .errors import (
+    BzrError,
     MultipleUpstreamTarballsNotSupported,
-    SharedUpstreamConflictsWithTargetPackaging,
     )
 from .import_dsc import DistributionBranch
 from .util import find_changelog
+
+
+class SharedUpstreamConflictsWithTargetPackaging(BzrError):
+
+    _fmt = ('The upstream branches for the merge source and target have '
+            'diverged. Unfortunately, the attempt to fix this problem '
+            'resulted in conflicts. Please resolve these, commit and '
+            're-run the "%(cmd)s" command to finish. '
+            'Alternatively, until you commit you can use "bzr revert" to '
+            'restore the state of the unmerged branch.')
+
+    def __init__(self, cmd):
+        self.cmd = cmd
 
 
 def _upstream_version_data(branch, revid):

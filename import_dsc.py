@@ -62,8 +62,6 @@ from ...transport import (
 from .bzrtools_import import import_dir
 from .errors import (
     MultipleUpstreamTarballsNotSupported,
-    UpstreamAlreadyImported,
-    UpstreamBranchAlreadyMerged,
     )
 from .extract import extract
 from .util import (
@@ -81,6 +79,17 @@ from .upstream import (
 from .upstream.pristinetar import (
     get_pristine_tar_source,
     )
+
+
+class UpstreamBranchAlreadyMerged(BzrError):
+    _fmt = 'That revision of the upstream branch has already been merged.'
+
+
+class UpstreamAlreadyImported(BzrError):
+    _fmt = 'Upstream version "%(version)s" has already been imported.'
+
+    def __init__(self, version):
+        BzrError.__init__(self, version=str(version))
 
 
 class PreviousVersionTagMissing(BzrError):

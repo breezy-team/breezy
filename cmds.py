@@ -35,6 +35,7 @@ from ...branch import Branch
 from ...controldir import ControlDir
 from ...commands import Command
 from ...errors import (
+    BzrError,
     BzrCommandError,
     FileExists,
     NotBranchError,
@@ -102,10 +103,15 @@ export_upstream_revision_opt = Option(
     type=str, argname="REVISION")
 
 
+class StrictBuildFailed(BzrCommandError):
+
+    _fmt = ("Build refused because there are unknown files in the tree. "
+            "To list all known files, run 'bzr unknowns'.")
+
+
 def _check_tree(tree, subpath, strict=False):
     if strict:
         for unknown in tree.unknowns():
-            from .errors import StrictBuildFailed
             raise StrictBuildFailed()
 
     if len(tree.conflicts()) > 0:
@@ -477,12 +483,10 @@ class cmd_builddeb(Command):
             strict=False, guess_upstream_branch_url=False):
         from .builder import DebBuild
         from .config import UpstreamMetadataSyntaxError
-        from .errors import (
-            NoPreviousUpload,
-            )
         from .hooks import run_hook
         from .source_distiller import DebcargoError
         from .util import (
+            NoPreviousUpload,
             dget_changes,
             find_changelog,
             find_previous_upload,
@@ -744,10 +748,8 @@ class cmd_merge_upstream(Command):
     def _add_changelog_entry(self, tree, subpath, package, version,
                              distribution_name, changelog):
         from .merge_upstream import (
-            changelog_add_new_version)
-        from .errors import (
             DchError,
-            )
+            changelog_add_new_version)
         try:
             changelog_add_new_version(
                 tree, subpath, version, distribution_name, changelog, package)

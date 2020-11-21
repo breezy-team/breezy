@@ -27,13 +27,21 @@ except ImportError:  # breezy < 3.2
 
 from ...errors import (
     NoSuchTag,
+    BzrError,
     )
 from ...revisionspec import RevisionSpec, RevisionInfo
 
-from .errors import (
-    UnknownVersion,
-    VersionNotSpecified,
-    )
+
+class UnknownVersion(BzrError):
+    _fmt = ('No tag exists in this branch indicating that version '
+            '"%(version)s" has been uploaded.')
+
+    def __init__(self, version):
+        BzrError.__init__(self, version=version)
+
+
+class VersionNotSpecified(BzrError):
+    _fmt = "You did not specify a package version."
 
 
 class RevisionSpec_package(RevisionSpec):

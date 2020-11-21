@@ -64,11 +64,6 @@ from .config import (
     )
 from .errors import (
     BzrError,
-    AddChangelogError,
-    InconsistentSourceFormatError,
-    NoPreviousUpload,
-    UnableToFindPreviousUpload,
-    UnparseableChangelog,
     )
 
 BUILDDEB_DIR = '.bzr-builddeb'
@@ -165,6 +160,13 @@ def recursive_copy(fromdir, todir):
                 shutil.copy(path, todir)
 
 
+class AddChangelogError(BzrError):
+    _fmt = 'Please add "%(changelog)s" to the branch using bzr add.'
+
+    def __init__(self, changelog):
+        BzrError.__init__(self, changelog=changelog)
+
+
 def find_changelog(t, subpath='', merge=False, max_blocks=1):
     """Find the changelog in the given tree.
 
@@ -222,11 +224,8 @@ def find_changelog(t, subpath='', merge=False, max_blocks=1):
             raise AddChangelogError(changelog_file)
         contents = t.get_file_text(changelog_file)
     changelog = Changelog()
-    try:
-        changelog.parse_changelog(
-            contents, max_blocks=max_blocks, allow_empty_author=True)
-    except ChangelogParseError as e:
-        raise UnparseableChangelog(str(e))
+    changelog.parse_changelog(
+        contents, max_blocks=max_blocks, allow_empty_author=True)
     return changelog, top_level
 
 
@@ -599,6 +598,11 @@ def debuild_config(tree, subpath):
     return config
 
 
+class UnableToFindPreviousUpload(BzrError):
+
+    _fmt = ("Unable to determine the previous upload for --package-merge.")
+
+
 def find_previous_upload(tree, subpath, merge=False):
     """Given a tree, find the previous upload to the distribution.
 
@@ -618,9 +622,17 @@ def find_previous_upload(tree, subpath, merge=False):
     """
     try:
         cl, top_level = find_changelog(tree, subpath, merge, max_blocks=None)
-    except UnparseableChangelog:
+    except ChangelogParseError:
         raise UnableToFindPreviousUpload()
     return changelog_find_previous_upload(cl)
+
+
+class NoPreviousUpload(BzrError):
+
+    _fmt = ("There was no previous upload to %(distribution)s.")
+
+    def __init__(self, distribution):
+        BzrError.__init__(self, distribution=distribution)
 
 
 def changelog_find_previous_upload(cl):
@@ -692,6 +704,24 @@ FORMAT_3_0_NATIVE = "3.0 (native)"
 
 NATIVE_SOURCE_FORMATS = [FORMAT_3_0_NATIVE]
 NORMAL_SOURCE_FORMATS = [FORMAT_3_0_QUILT]
+
+
+class InconsistentSourceFormatError(BzrError):
+
+    _fmt = ("Inconsistency between source format and version: version is "
+            "%(version_bool)snative, format is %(format_bool)snative.")
+
+    def __init__(self, version_native, format_native):
+        if version_native:
+            version_bool = ""
+        else:
+            version_bool = "not "
+        if format_native:
+            format_bool = ""
+        else:
+            format_bool = "not "
+        BzrError.__init__(
+            self, version_bool=version_bool, format_bool=format_bool)
 
 
 def guess_build_type(tree, version, subpath='', contains_upstream_source=True):

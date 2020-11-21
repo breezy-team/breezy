@@ -35,11 +35,6 @@ from ..config import (
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_NORMAL,
     )
-from ..errors import (
-    AddChangelogError,
-    InconsistentSourceFormatError,
-    NoPreviousUpload,
-    )
 from . import (
     LzmaFeature,
     SourcePackageBuilder,
@@ -47,6 +42,9 @@ from . import (
     TestCaseWithTransport,
     )
 from ..util import (
+    AddChangelogError,
+    InconsistentSourceFormatError,
+    NoPreviousUpload,
     changelog_find_previous_upload,
     component_from_orig_tarball,
     dget,

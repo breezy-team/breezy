@@ -24,7 +24,7 @@ from contextlib import ExitStack
 
 from ... import urlutils
 from ...controldir import ControlDir
-from ...errors import NoSuchFile, BzrCommandError, NotBranchError
+from ...errors import NoSuchFile, BzrCommandError, NotBranchError, BzrError
 from ...osutils import (
     file_iterator,
     basename,
@@ -38,7 +38,13 @@ from ...tree import Tree
 from ...transform import resolve_conflicts
 from ...transport import get_transport
 from ...workingtree import WorkingTree
-from .errors import UnknownType
+
+
+class UnknownType(BzrError):
+    _fmt = 'Cannot extract "%(path)s" from archive as it is an unknown type.'
+
+    def __init__(self, path):
+        BzrError.__init__(self, path=path)
 
 
 files_to_ignore = set(
