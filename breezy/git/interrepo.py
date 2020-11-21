@@ -268,7 +268,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         with self.source_store.lock_read():
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
-            revidmap = self.fetch_objects(
+            revidmap = self.fetch_revs(
                 [(git_sha, bzr_revid)
                  for (git_sha, bzr_revid) in new_refs.values()
                  if git_sha is None or not git_sha.startswith(SYMREF)],
@@ -292,7 +292,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                     result_refs[name] = (gitid, revid if not lossy else self.mapping.revision_id_foreign_to_bzr(gitid))
         return revidmap, old_refs, result_refs
 
-    def fetch_objects(self, revs, lossy, limit=None):
+    def fetch_revs(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
             for git_sha, bzr_revid in revs:
                 if (bzr_revid is not None and
@@ -338,7 +338,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                               for revid in self.source.all_revision_ids()]
         self._warn_slow()
         try:
-            revidmap = self.fetch_objects(stop_revisions, lossy=lossy)
+            revidmap = self.fetch_revs(stop_revisions, lossy=lossy)
         except NoPushSupport:
             raise NoRoundtrippingSupport(self.source, self.target)
         return FetchResult(revidmap)

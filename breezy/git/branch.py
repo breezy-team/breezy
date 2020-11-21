@@ -1456,7 +1456,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 ret.append((None, v))
         ret.append((None, stop_revision))
         try:
-            revidmap = self.interrepo.fetch_objects(ret, lossy=lossy, limit=limit)
+            revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
         except NoPushSupport:
             raise errors.NoRoundtrippingSupport(self.source, self.target)
         return _mod_repository.FetchResult(revidmap={
