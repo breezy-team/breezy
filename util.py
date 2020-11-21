@@ -462,45 +462,48 @@ def find_bugs_fixed(changes, branch, _lplib=None):
     return bugs
 
 
-def find_extra_authors(changes):
-    """Find additional authors from a changelog entry.
+try:
+    from debmutate import find_extra_authors, find_thanks
+except ImportError:
+    def find_extra_authors(changes):
+        """Find additional authors from a changelog entry.
 
-    :return: List of fullnames of additional authors, without e-mail address.
-    """
-    authors = []
-    for new_author, linenos, lines in changes_by_author(changes):
-        if new_author is None:
-            continue
-        already_included = False
-        for author in authors:
-            if author.startswith(new_author):
-                already_included = True
-                break
-        if not already_included:
-            authors.append(new_author)
-    return authors
+        :return: List of fullnames of additional authors, without e-mail address.
+        """
+        authors = []
+        for new_author, linenos, lines in changes_by_author(changes):
+            if new_author is None:
+                continue
+            already_included = False
+            for author in authors:
+                if author.startswith(new_author):
+                    already_included = True
+                    break
+            if not already_included:
+                authors.append(new_author)
+        return authors
 
 
-def find_thanks(changes):
-    """Find all people thanked in a changelog entry.
+    def find_thanks(changes):
+        """Find all people thanked in a changelog entry.
 
-    :param changes: String with the contents of the changelog entry
-    :return: List of people thanked, optionally including email address.
-    """
-    thanks_re = re.compile(
-        r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
-        "((?:\\s+(?:(?:\\w\\.)|(?:\\w+(?:-\\w+)*)))+"
-        "(?:\\s+<[^@>]+@[^@>]+>)?)",
-        re.UNICODE)
-    thanks = []
-    for new_author, linenos, lines in changes_by_author(changes):
-        for match in thanks_re.finditer(''.join(lines)):
-            if thanks is None:
-                thanks = []
-            thanks_str = match.group(1).strip()
-            thanks_str = re.sub(r"\s+", " ", thanks_str)
-            thanks.append(thanks_str)
-    return thanks
+        :param changes: String with the contents of the changelog entry
+        :return: List of people thanked, optionally including email address.
+        """
+        thanks_re = re.compile(
+            r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
+            "((?:\\s+(?:(?:\\w\\.)|(?:\\w+(?:-\\w+)*)))+"
+            "(?:\\s+<[^@>]+@[^@>]+>)?)",
+            re.UNICODE)
+        thanks = []
+        for new_author, linenos, lines in changes_by_author(changes):
+            for match in thanks_re.finditer(''.join(lines)):
+                if thanks is None:
+                    thanks = []
+                thanks_str = match.group(1).strip()
+                thanks_str = re.sub(r"\s+", " ", thanks_str)
+                thanks.append(thanks_str)
+        return thanks
 
 
 def get_commit_info_from_changelog(changelog, branch, _lplib=None):
