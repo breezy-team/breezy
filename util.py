@@ -888,13 +888,15 @@ def get_files_excluded(tree, subpath='', top_level=False):
         except KeyError:
             return []
 
-
-def mangle_version_for_git(version):
-    # See https://dep-team.pages.debian.net/deps/dep14/
-    manipulated = (
-        version.replace("~", "_").replace(':', '%').replace('..', '.#.'))
-    if manipulated.endswith('.'):
-        manipulated += '#'
-    if manipulated.endswith('.lock'):
-        manipulated = manipulated[:-4] + '#lock'
-    return manipulated
+try:
+    from debmutate.versions import mangle_version_for_git
+except ImportError:
+    def mangle_version_for_git(version):
+        # See https://dep-team.pages.debian.net/deps/dep14/
+        manipulated = (
+            version.replace("~", "_").replace(':', '%').replace('..', '.#.'))
+        if manipulated.endswith('.'):
+            manipulated += '#'
+        if manipulated.endswith('.lock'):
+            manipulated = manipulated[:-4] + '#lock'
+        return manipulated
