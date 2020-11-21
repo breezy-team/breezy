@@ -36,6 +36,9 @@ from debian.copyright import Copyright, NotMachineReadableError
 from debmutate.changelog import (
     strip_changelog_message,
     changes_by_author,
+    find_thanks,
+    find_extra_authors,
+    find_last_distribution,
     )
 
 from ... import (
@@ -462,50 +465,6 @@ def find_bugs_fixed(changes, branch, _lplib=None):
     return bugs
 
 
-try:
-    from debmutate import find_extra_authors, find_thanks
-except ImportError:
-    def find_extra_authors(changes):
-        """Find additional authors from a changelog entry.
-
-        :return: List of fullnames of additional authors, without e-mail address.
-        """
-        authors = []
-        for new_author, linenos, lines in changes_by_author(changes):
-            if new_author is None:
-                continue
-            already_included = False
-            for author in authors:
-                if author.startswith(new_author):
-                    already_included = True
-                    break
-            if not already_included:
-                authors.append(new_author)
-        return authors
-
-
-    def find_thanks(changes):
-        """Find all people thanked in a changelog entry.
-
-        :param changes: String with the contents of the changelog entry
-        :return: List of people thanked, optionally including email address.
-        """
-        thanks_re = re.compile(
-            r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
-            "((?:\\s+(?:(?:\\w\\.)|(?:\\w+(?:-\\w+)*)))+"
-            "(?:\\s+<[^@>]+@[^@>]+>)?)",
-            re.UNICODE)
-        thanks = []
-        for new_author, linenos, lines in changes_by_author(changes):
-            for match in thanks_re.finditer(''.join(lines)):
-                if thanks is None:
-                    thanks = []
-                thanks_str = match.group(1).strip()
-                thanks_str = re.sub(r"\s+", " ", thanks_str)
-                thanks.append(thanks_str)
-        return thanks
-
-
 def get_commit_info_from_changelog(changelog, branch, _lplib=None):
     """Retrieves the messages from the last section of debian/changelog.
 
@@ -534,23 +493,6 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
         thanks = find_thanks(block.changes())
         message = safe_decode("\n".join(changes).replace("\r", ""))
     return (message, authors, thanks, bugs)
-
-
-try:
-    from debmutate.changelog import find_last_distribution
-except ImportError:
-    def find_last_distribution(changelog):
-        """Find the last changelog that was used in a changelog.
-
-        This will skip stanzas with the 'UNRELEASED' distribution.
-
-        :param changelog: Changelog to analyze
-        """
-        for block in changelog._blocks:
-            distribution = block.distributions.split(" ")[0]
-            if distribution != "UNRELEASED":
-                return distribution
-        return None
 
 
 def subprocess_setup():
@@ -920,16 +862,3 @@ def get_files_excluded(tree, subpath='', top_level=False):
             return copyright.header["Files-Excluded"].split()
         except KeyError:
             return []
-
-try:
-    from debmutate.versions import mangle_version_for_git
-except ImportError:
-    def mangle_version_for_git(version):
-        # See https://dep-team.pages.debian.net/deps/dep14/
-        manipulated = (
-            version.replace("~", "_").replace(':', '%').replace('..', '.#.'))
-        if manipulated.endswith('.'):
-            manipulated += '#'
-        if manipulated.endswith('.lock'):
-            manipulated = manipulated[:-4] + '#lock'
-        return manipulated

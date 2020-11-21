@@ -24,6 +24,8 @@ import re
 import subprocess
 import tempfile
 
+from debmutate.versions import git_snapshot_data_from_version
+
 from .... import osutils
 from ....branch import (
     Branch,
@@ -320,30 +322,6 @@ def get_export_upstream_revision(config=None, version=None):
         if rev is not None and version is not None:
             rev = rev.replace('$UPSTREAM_VERSION', version)
     return rev
-
-
-try:
-    from debmutate.versions import git_snapshot_data_from_version
-except ImportError:
-    def git_snapshot_data_from_version(version):
-        git_id = None
-        date = None
-        if "+git" in version or "~git" in version or "-git" in version:
-            m = re.match(
-                ".*[~+-]git([0-9]{4})([0-9]{2})([0-9]{2})\\.([0-9a-f]{7}).*",
-                version)
-            if not m:
-                m = re.match(
-                    ".*[~+-]git([0-9]{4})([0-9]{2})([0-9]{2})\\.[0-9+]\\.([0-9a-f]{7}).*",
-                    version)
-            if m:
-                git_id = m.group(4)
-                date = "%s-%s-%s" % (m.group(1), m.group(2), m.group(3))
-            else:
-                m = re.match(".*[~+]git([0-9]{4})([0-9]{2})([0-9]{2}).*", version)
-                if m:
-                    date = "%s-%s-%s" % (m.group(1), m.group(2), m.group(3))
-        return (git_id, date)
 
 
 def guess_upstream_revspec(package, version):

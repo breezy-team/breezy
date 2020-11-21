@@ -25,7 +25,7 @@ from ....errors import (
     )
 
 
-from ..util import mangle_version_for_git
+from debmutate.versions import mangle_version_for_git
 
 
 class GbpTagFormatError(BzrError):

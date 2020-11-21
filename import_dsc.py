@@ -30,12 +30,12 @@ from __future__ import absolute_import
 import calendar
 from contextlib import contextmanager, ExitStack
 import os
-import shutil
 import stat
 import tempfile
 
 from debian import deb822
 from debian.changelog import Version, Changelog, VersionError
+from debmutate.versions import mangle_version_for_git
 
 from ... import (
     controldir,
@@ -71,7 +71,6 @@ from .util import (
     open_file_via_transport,
     open_transport,
     safe_decode,
-    mangle_version_for_git,
     )
 from .upstream import (
     PackageVersionNotPresent,

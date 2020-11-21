@@ -72,7 +72,6 @@ from .branch import (
 from .tags import (
     GbpTagFormatError,
     gbp_expand_tag_name,
-    mangle_version_for_git,
     upstream_tag_name,
     is_upstream_tag,
     possible_upstream_tag_names,
@@ -80,6 +79,7 @@ from .tags import (
     upstream_version_tag_start_revids,
     upstream_tag_version,
     )
+from debmutate.versions import mangle_version_for_git
 
 
 class PristineTarError(BzrError):
