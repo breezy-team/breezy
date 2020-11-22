@@ -1,0 +1,28 @@
+=== modified file 'breezy/bzr/smart/server.py'
+--- old/breezy/bzr/smart/server.py	2018-11-11 04:08:32 +0000
++++ new/breezy/bzr/smart/server.py	2020-06-08 21:31:03 +0000
+@@ -267,7 +267,7 @@
+         still_active = []
+         for handler, thread in self._active_connections:
+             thread.join(timeout)
+-            if thread.isAlive():
++            if thread.is_alive():
+                 still_active.append((handler, thread))
+         self._active_connections = still_active
+ 
+
+=== modified file 'breezy/tests/test_server.py'
+--- old/breezy/tests/test_server.py	2019-11-18 01:30:13 +0000
++++ new/breezy/tests/test_server.py	2020-06-08 21:31:03 +0000
+@@ -249,10 +249,6 @@
+ 
+ class TestThread(cethread.CatchingExceptionThread):
+ 
+-    if not getattr(cethread.CatchingExceptionThread, 'is_alive', None):
+-        def is_alive(self):
+-            return self.isAlive()
+-
+     def join(self, timeout=5):
+         """Overrides to use a default timeout.
+ 
+

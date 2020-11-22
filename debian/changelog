@@ -1,3 +1,10 @@
+breezy (3.1.0-7) UNRELEASED; urgency=medium
+
+  * Add patch 19_is_alive: avoid Thread.isAlive, not available in Python
+    3.9. Closes: #975463
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 22 Nov 2020 16:37:41 +0000
+
 breezy (3.1.0-6) unstable; urgency=medium
 
   * Set upstream metadata fields: Bug-Submit.
