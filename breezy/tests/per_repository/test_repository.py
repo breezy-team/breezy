@@ -87,6 +87,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_nesting_repositories',
                                    (True, False))
 
+    def test_attribute_supports_multiple_authors(self):
+        """Test the format.supports_multiple_authors."""
+        self.assertFormatAttribute('supports_multiple_authors',
+                                   (True, False))
+
     def test_attribute_supports_unreferenced_revisions(self):
         """Test the format.supports_unreferenced_revisions."""
         self.assertFormatAttribute('supports_unreferenced_revisions',
