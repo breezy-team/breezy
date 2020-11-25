@@ -1,3 +1,9 @@
+breezy-debian (2.8.48) UNRELEASED; urgency=medium
+
+  * Prevent merging old versions.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 25 Nov 2020 23:52:43 +0000
+
 breezy-debian (2.8.47) unstable; urgency=medium
 
   * Require newer debmutate.
