@@ -508,21 +508,23 @@ class UpstreamBranchSource(UpstreamSource):
     def get_recent_versions(self, package, since_version=None):
         versions = []
         tags = self.upstream_branch.tags.get_tag_dict()
-        graph = self.upstream_branch.repository.get_graph()
-        if since_version is not None:
-            since_revision = self.version_as_revision(package, since_version)
-        else:
-            since_revision = None
-        for tag, revision in tags.items():
-            version = upstream_tag_to_version(tag, package)
-            if version is None:
-                continue
-            if since_version is not None and version <= since_version:
-                continue
-            if since_revision and not graph.is_ancestor(
-                    since_revision, revision):
-                continue
-            versions.append(version)
+        with self.upstream_branch.repository.lock_read():
+            graph = self.upstream_branch.repository.get_graph()
+            if since_version is not None:
+                since_revision = self.version_as_revision(
+                    package, since_version)
+            else:
+                since_revision = None
+            for tag, revision in tags.items():
+                version = upstream_tag_to_version(tag, package)
+                if version is None:
+                    continue
+                if since_version is not None and version <= since_version:
+                    continue
+                if since_revision and not graph.is_ancestor(
+                        since_revision, revision):
+                    continue
+                versions.append(version)
         return sorted(versions)
 
     def get_version(self, package, current_version, revision):
