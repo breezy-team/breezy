@@ -325,7 +325,14 @@ class TestSource(TestSourceHelper):
             self.fail('\n\n'.join(problems))
 
     def test_flake8(self):
-        self.requireFeature(features.flake8)
+        try:
+            self.requireFeature(features.flake8)
+        except NameError:
+            # importlib_metadata uses ModuleNotFoundError, which is
+            # python 3.6 only
+            if sys.version_info[:2] <= (3, 5):
+                self.skipTest('python version too old')
+            raise
         # Older versions of flake8 don't support the 'paths'
         # variable
         new_path = list(sys.path)
