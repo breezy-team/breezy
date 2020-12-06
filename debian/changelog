@@ -1,8 +1,8 @@
-breezy (3.1.0-8) UNRELEASED; urgency=medium
+breezy (3.1.0-8) unstable; urgency=medium
 
   * Add patch 21_extssh: add support for extssh URLs.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 06 Dec 2020 15:02:04 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 06 Dec 2020 15:06:43 +0000
 
 breezy (3.1.0-7) unstable; urgency=medium
 
