@@ -1,0 +1,118 @@
+=== modified file 'breezy/location.py'
+--- old/breezy/location.py	2019-11-17 03:58:40 +0000
++++ new/breezy/location.py	2020-06-28 23:13:22 +0000
+@@ -45,12 +45,11 @@
+ 
+ hooks = LocationHooks()
+ 
+-
+-def rcp_location_to_url(location, scheme='ssh'):
++def parse_rcp_location(location):
+     """Convert a rcp-style location to a URL.
+ 
+     :param location: Location to convert, e.g. "foo:bar"
+-    :param schenme: URL scheme to return, defaults to "ssh"
++    :param scheme: URL scheme to return, defaults to "ssh"
+     :return: A URL, e.g. "ssh://foo/bar"
+     :raises ValueError: if this is not a RCP-style URL
+     """
+@@ -59,36 +58,57 @@
+         raise ValueError("Not a RCP URL")
+     if m.group('path').startswith('//'):
+         raise ValueError("Not a RCP URL: already looks like a URL")
+-    quoted_user = urlutils.quote(m.group('user')[:-1]) if m.group('user') else None
++    return (m.group('host'),
++            m.group('user')[:-1] if m.group('user') else None,
++            m.group('path'))
++
++
++def rcp_location_to_url(location, scheme='ssh'):
++    """Convert a rcp-style location to a URL.
++
++    :param location: Location to convert, e.g. "foo:bar"
++    :param scheme: URL scheme to return, defaults to "ssh"
++    :return: A URL, e.g. "ssh://foo/bar"
++    :raises ValueError: if this is not a RCP-style URL
++    """
++    (host, user, path) = parse_rcp_location(location)
++    quoted_user = urlutils.quote(user) if user else None
+     url = urlutils.URL(
+         scheme=scheme, quoted_user=quoted_user,
+         port=None, quoted_password=None,
+-        quoted_host=urlutils.quote(m.group('host')),
+-        quoted_path=urlutils.quote(m.group('path')))
++        quoted_host=urlutils.quote(host),
++        quoted_path=urlutils.quote(path))
+     return str(url)
+ 
+ 
+-def pserver_to_url(location):
+-    """Convert a CVS pserver location string to a URL.
+-
+-    :param location: pserver URL
+-    :return: A cvs+pserver URL
+-    """
++def parse_cvs_location(location):
+     parts = location.split(':')
+-    if parts[0] or parts[1] != 'pserver':
++    if parts[0] or parts[1] not in ('pserver', 'ssh'):
+         raise ValueError('not a valid pserver location string')
+     try:
+         (username, hostname) = parts[2].split('@', 1)
+     except IndexError:
+         hostname = parts[2]
+         username = None
++    scheme = parts[1]
++    path = parts[3]
++    return (scheme, hostname, username, path)
++
++
++def cvs_to_url(location):
++    """Convert a CVS pserver location string to a URL.
++
++    :param location: pserver URL
++    :return: A cvs+pserver URL
++    """
++    (scheme, host, user, path) = parse_cvs_location(location)
+     return str(urlutils.URL(
+-        scheme='cvs+pserver',
+-        quoted_user=urlutils.quote(username) if username else None,
+-        quoted_host=urlutils.quote(hostname),
++        scheme='cvs+' + scheme,
++        quoted_user=urlutils.quote(user) if user else None,
++        quoted_host=urlutils.quote(host),
+         quoted_password=None,
+         port=None,
+-        quoted_path=urlutils.quote(parts[3])))
++        quoted_path=urlutils.quote(path)))
+ 
+ 
+ def location_to_url(location, purpose=None):
+@@ -106,7 +126,7 @@
+         raise AssertionError("location not a byte or unicode string")
+ 
+     if location.startswith(':pserver:'):
+-        return pserver_to_url(location)
++        return cvs_to_url(location)
+ 
+     from .directory_service import directories
+     location = directories.dereference(location, purpose)
+
+=== modified file 'breezy/tests/test_location.py'
+--- old/breezy/tests/test_location.py	2019-11-17 03:58:40 +0000
++++ new/breezy/tests/test_location.py	2020-06-28 23:13:22 +0000
+@@ -83,6 +83,13 @@
+                 ':pserver:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
+         self.assertRaises(ValueError, location_to_url, ':pserver:blah')
+ 
++    def test_missing_scheme(self):
++        self.skipTest('need clever guessing of scheme')
++        self.assertEqual(
++            'cvs+pserver://anonymous@savi.cvs.sourceforge.net:/cvsroot/savi',
++            location_to_url(
++                'anonymous@savi.cvs.sourceforge.net:/cvsroot/savi'))
++
+     def test_rcp_url(self):
+         self.assertEqual(
+             "ssh://example.com/srv/git/bar",
+
