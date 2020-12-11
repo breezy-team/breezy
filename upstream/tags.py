@@ -37,6 +37,7 @@ class GbpTagFormatError(BzrError):
 
 
 def gbp_expand_tag_name(tag_format, version):
+    version = str(version)
     # See gbp/pkg/pkgpolicy.py in gbp-buildpackage
     version_mangle_re = (
         r'%\(version'
