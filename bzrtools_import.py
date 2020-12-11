@@ -5,11 +5,7 @@
 
 from __future__ import absolute_import
 
-import errno
-import os
 from io import BytesIO
-import tarfile
-from typing import BinaryIO, Optional
 
 from ...upstream_import import (
     add_implied_parents,
@@ -36,8 +32,6 @@ from ...osutils import (
 from ...trace import warning
 from ...tree import Tree
 from ...transform import resolve_conflicts
-from ...transport import get_transport
-from ...workingtree import WorkingTree
 
 
 class UnknownType(BzrError):
@@ -80,7 +74,7 @@ def import_dir(
 
 
 def _get_paths_to_process(
-        archive_file: str, prefix: Optional[str],
+        archive_file: str, prefix,
         implied_parents, exclude=None):
     to_process = set()
     for member in archive_file.getmembers():
@@ -106,7 +100,7 @@ def _get_paths_to_process(
 
 def _import_archive(
         tree: Tree, archive_file: str, file_ids_from,
-        target_tree: Optional[Tree] = None, exclude=None):
+        target_tree = None, exclude=None):
     prefix = common_directory(names_of_files(archive_file))
     try:
         transform = tree.transform
