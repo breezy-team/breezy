@@ -327,7 +327,7 @@ class TestSource(TestSourceHelper):
     def test_flake8(self):
         try:
             self.requireFeature(features.flake8)
-        except NameError:
+        except (SyntaxError, NameError):
             # importlib_metadata uses ModuleNotFoundError, which is
             # python 3.6 only
             if sys.version_info[:2] <= (3, 5):
