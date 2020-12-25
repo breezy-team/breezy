@@ -326,6 +326,8 @@ def get_export_upstream_revision(config=None, version=None):
 
 def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
+    if version.endswith('+ds'):
+        version = str(version)[:-len('+ds')]
     if "+bzr" in version or "~bzr" in version:
         yield "revno:%s" % re.match(".*[~+]bzr(\\d+).*", version).group(1)
     (git_id, git_date) = git_snapshot_data_from_version(version)
