@@ -692,7 +692,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 
     def test_get_readonly_url_http(self):
         from .http_server import HttpServer
-        from ..transport.http import HttpTransport
+        from ..transport.http.urllib import HttpTransport
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.

@@ -59,12 +59,12 @@ from ...sixish import (
     int2byte,
     )
 from ...transport import (
-    http,
     local,
     memory,
     remote,
     ssh,
     )
+from ...transport.http import urllib
 from . import (
     test_smart,
     )
@@ -4276,7 +4276,7 @@ class HTTPTunnellingSmokeTest(tests.TestCase):
 
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()
-        request = http.SmartClientHTTPMediumRequest(medium)
+        request = urllib.SmartClientHTTPMediumRequest(medium)
         request.accept_bytes(b'abc')
         request.accept_bytes(b'def')
         self.assertEqual(None, medium.written_request)
