@@ -40,6 +40,7 @@ from ..transport import (
     pathfilter,
     readonly,
     )
+from ..transport.http import urllib
 import breezy.transport.trace
 from . import (
     features,
@@ -1104,6 +1105,6 @@ class TestUnhtml(tests.TestCase):
 
     def test_truncation(self):
         fake_html = "<p>something!\n" * 1000
-        result = http.unhtml_roughly(fake_html)
+        result = urllib.unhtml_roughly(fake_html)
         self.assertEqual(len(result), 1000)
         self.assertStartsWith(result, " something!")
