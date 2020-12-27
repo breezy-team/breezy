@@ -64,6 +64,7 @@ from .scenarios import (
 from ..transport import (
     remote,
     )
+from ..transport.http import urllib
 from ..transport.http.urllib import (
     AbstractAuthHandler,
     BasicAuthHandler,
@@ -1350,7 +1351,7 @@ class RedirectedRequest(Request):
 
 
 def install_redirected_request(test):
-    test.overrideAttr(http, 'Request', RedirectedRequest)
+    test.overrideAttr(urllib, 'Request', RedirectedRequest)
 
 
 def cleanup_http_redirection_connections(test):
