@@ -89,6 +89,10 @@ def get_patch_names(iter_lines):
             raise MalformedPatchHeader("No orig name", line)
         else:
             orig_name = line[4:].rstrip(b"\n")
+            try:
+                (orig_name, orig_ts) = orig_name.split(b'\t')
+            except ValueError:
+                orig_ts = None
     except StopIteration:
         raise MalformedPatchHeader("No orig line", "")
     try:
@@ -97,9 +101,13 @@ def get_patch_names(iter_lines):
             raise PatchSyntax("No mod name")
         else:
             mod_name = line[4:].rstrip(b"\n")
+            try:
+                (mod_name, mod_ts) = mod_name.split(b'\t')
+            except ValueError:
+                mod_ts = None
     except StopIteration:
         raise MalformedPatchHeader("No mod line", "")
-    return (orig_name, mod_name)
+    return ((orig_name, orig_ts), (mod_name, mod_ts))
 
 
 def parse_range(textrange):
@@ -320,13 +328,16 @@ class BinaryPatch(object):
         self.newname = newname
 
     def as_bytes(self):
-        return b'Binary files %s and %s differ\n' % (self.oldname, self.newname)
+        return b'Binary files %s and %s differ\n' % (
+            self.oldname, self.newname)
 
 
 class Patch(BinaryPatch):
 
-    def __init__(self, oldname, newname):
+    def __init__(self, oldname, newname, oldts=None, newts=None):
         BinaryPatch.__init__(self, oldname, newname)
+        self.oldts = oldts
+        self.newts = newts
         self.hunks = []
 
     def as_bytes(self):
@@ -334,8 +345,18 @@ class Patch(BinaryPatch):
         ret += b"".join([h.as_bytes() for h in self.hunks])
         return ret
 
+    @classmethod
+    def _headerline(cls, start, name, ts):
+        l = start + b' ' + name
+        if ts is not None:
+            l += b'\t%s' % ts
+        l += b'\n'
+        return l
+
     def get_header(self):
-        return b"--- %s\n+++ %s\n" % (self.oldname, self.newname)
+        return (
+            self._headerline(b'---', self.oldname, self.oldts) +
+            self._headerline(b'+++', self.newname, self.newts))
 
     def stats_values(self):
         """Calculate the number of inserts and removes."""
@@ -387,11 +408,12 @@ def parse_patch(iter_lines, allow_dirty=False):
     '''
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
-        (orig_name, mod_name) = get_patch_names(iter_lines)
+        ((orig_name, orig_ts), (mod_name, mod_ts)) = get_patch_names(
+            iter_lines)
     except BinaryFiles as e:
         return BinaryPatch(e.orig_name, e.mod_name)
     else:
-        patch = Patch(orig_name, mod_name)
+        patch = Patch(orig_name, mod_name, orig_ts, mod_ts)
         for hunk in iter_hunks(iter_lines, allow_dirty):
             patch.hunks.append(hunk)
         return patch
