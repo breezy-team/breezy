@@ -1650,5 +1650,10 @@ class cmd_debrelease(Command):
                         target_dir=(td if not skip_upload else None),
                         builder=builder)
                 if not skip_upload:
-                    dput_changes(changes_files['source'])
+                    try:
+                        source_path = changes_files['source']
+                    except KeyError:
+                        raise BzrCommandError(
+                            'No source package was created by build command')
+                    dput_changes(source_path)
             local_tree.branch.push(branch)
