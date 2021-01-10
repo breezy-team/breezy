@@ -73,11 +73,6 @@ from ... import (
     urlutils,
 )
 from ...bzr.smart import medium
-from ...sixish import (
-    PY3,
-    reraise,
-    text_type,
-)
 from ...trace import mutter
 from ...transport import (
     ConnectedTransport,
@@ -189,11 +184,10 @@ class Response(http_client.HTTPResponse):
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
-    if PY3:
-        def __init__(self, sock, debuglevel=0, method=None, url=None):
-            self.url = url
-            super(Response, self).__init__(
-                sock, debuglevel=debuglevel, method=method, url=url)
+    def __init__(self, sock, debuglevel=0, method=None, url=None):
+        self.url = url
+        super(Response, self).__init__(
+            sock, debuglevel=debuglevel, method=method, url=url)
 
     def begin(self):
         """Begin to read the response from the server.
@@ -329,11 +323,7 @@ class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):
     def __init__(self, host, port=None, proxied_host=None,
                  report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
-        if PY3:
-            http_client.HTTPConnection.__init__(self, host, port)
-        else:
-            # Use strict=True since we don't support HTTP/0.9
-            http_client.HTTPConnection.__init__(self, host, port, strict=True)
+        http_client.HTTPConnection.__init__(self, host, port)
         self.proxied_host = proxied_host
         # ca_certs is ignored, it's only relevant for https
 
@@ -350,13 +340,8 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
                  proxied_host=None,
                  report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
-        if PY3:
-            http_client.HTTPSConnection.__init__(
-                self, host, port, key_file, cert_file)
-        else:
-            # Use strict=True since we don't support HTTP/0.9
-            http_client.HTTPSConnection.__init__(self, host, port,
-                                                 key_file, cert_file, strict=True)
+        http_client.HTTPSConnection.__init__(
+            self, host, port, key_file, cert_file)
         self.proxied_host = proxied_host
         self.ca_certs = ca_certs
 
@@ -452,10 +437,7 @@ class Request(urllib_request.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        if PY3:
-            host, port = splitport(self.host)
-        else:
-            host, port = splitport(self.get_host())
+        host, port = splitport(self.host)
         if port is None:
             # We need to set the default port ourselves way before it gets set
             # in the HTTP[S]Connection object at build time.
@@ -627,17 +609,14 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
         exc_type, exc_val, exc_tb = sys.exc_info()
         if exc_type == socket.gaierror:
             # No need to retry, that will not help
-            if PY3:
-                origin_req_host = request.origin_req_host
-            else:
-                origin_req_host = request.get_origin_req_host()
+            origin_req_host = request.origin_req_host
             raise errors.ConnectionError("Couldn't resolve host '%s'"
                                          % origin_req_host,
                                          orig_error=exc_val)
         elif isinstance(exc_val, http_client.ImproperConnectionState):
             # The http_client pipeline is in incorrect state, it's a bug in our
             # implementation.
-            reraise(exc_type, exc_val, exc_tb)
+            raise exc_val.with_traceback(exc_tb)
         else:
             if first_try:
                 if self._debuglevel >= 2:
@@ -676,10 +655,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                     # far outside our scope, so closing the
                     # connection and retrying is the best we can
                     # do.
-                    if PY3:
-                        selector = request.selector
-                    else:
-                        selector = request.get_selector()
+                    selector = request.selector
                     my_exception = errors.ConnectionError(
                         msg='while sending %s %s:' % (request.get_method(),
                                                       selector),
@@ -691,7 +667,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                     url = request.get_full_url()
                     print('  Failed again, %s %r' % (method, url))
                     print('  Will raise: [%r]' % my_exception)
-                reraise(type(my_exception), my_exception, exc_tb)
+                raise my_exception.with_traceback(exc_tb)
         return response
 
     def do_open(self, http_class, request, first_try=True):
@@ -718,10 +694,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
 
         try:
             method = request.get_method()
-            if PY3:
-                url = request.selector
-            else:
-                url = request.get_selector()
+            url = request.selector
             if sys.version_info[:2] >= (3, 6):
                 connection._send_request(method, url,
                                          # FIXME: implements 100-continue
@@ -758,9 +731,8 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
             response = self.retry_or_raise(http_class, request, first_try)
             convert_to_addinfourl = False
 
-        if PY3:
-            response.msg = response.reason
-            return response
+        response.msg = response.reason
+        return response
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)
@@ -902,10 +874,7 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
         # and that we MAY avoid following the redirections. But
         # if we want to be sure, we MUST follow them.
 
-        if PY3:
-            origin_req_host = req.origin_req_host
-        else:
-            origin_req_host = req.get_origin_req_host()
+        origin_req_host = req.origin_req_host
 
         if code in (301, 302, 303, 307, 308):
             return Request(req.get_method(), newurl,
@@ -1090,10 +1059,7 @@ class ProxyHandler(urllib_request.ProxyHandler):
         return None
 
     def set_proxy(self, request, type):
-        if PY3:
-            host = request.host
-        else:
-            host = request.get_host()
+        host = request.host
         if self.proxy_bypass(host):
             return request
 
@@ -1228,10 +1194,7 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
                 # Let's be ready for next round
                 self._retry_count = None
                 return None
-        if PY3:
-            server_headers = headers.get_all(self.auth_required_header)
-        else:
-            server_headers = headers.getheaders(self.auth_required_header)
+        server_headers = headers.get_all(self.auth_required_header)
         if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
@@ -1590,10 +1553,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
-        if PY3:
-            selector = request.selector
-        else:
-            selector = request.get_selector()
+        selector = request.selector
         url_scheme, url_selector = splittype(selector)
         sel_host, uri = splithost(url_selector)
 
@@ -1917,10 +1877,7 @@ class HttpTransport(ConnectedTransport):
             def getheader(self, name, default=None):
                 if self._actual.headers is None:
                     raise http_client.ResponseNotReady()
-                if PY3:
-                    return self._actual.headers.get(name, default)
-                else:
-                    return self._actual.headers.getheader(name, default)
+                return self._actual.headers.get(name, default)
 
             def getheaders(self):
                 if self._actual.headers is None:
