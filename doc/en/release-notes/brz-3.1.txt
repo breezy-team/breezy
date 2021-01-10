@@ -70,6 +70,12 @@ Bug Fixes
    such as is the case on Launchpad repositories.
    (Jelmer Vernooĳ)
 
+ * Fix compatibility with reference counting in Python 3.10.
+   (Victor Stinner, #1904868)
+
+ * Remove shebangs from non-executable files, add executable bits where
+   needed. (Miro Hrončok)
+
 Documentation
 *************
 

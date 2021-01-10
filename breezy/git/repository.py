@@ -575,6 +575,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_overriding_transport = False
     supports_custom_revision_properties = False
     records_per_file_revision = False
+    supports_multiple_authors = False
 
     @property
     def _matchingcontroldir(self):

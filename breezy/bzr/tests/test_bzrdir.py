@@ -68,7 +68,7 @@ from ...transport import (
     memory,
     pathfilter,
     )
-from ...transport.http import HttpTransport
+from ...transport.http.urllib import HttpTransport
 from ...transport.nosmart import NoSmartTransportDecorator
 from ...transport.readonly import ReadonlyTransportDecorator
 from .. import knitrepo, knitpack_repo

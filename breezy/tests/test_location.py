@@ -83,6 +83,12 @@ class TestLocationToUrl(tests.TestCase):
                 ':pserver:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
         self.assertRaises(ValueError, location_to_url, ':pserver:blah')
 
+    def test_extssh(self):
+        self.assertEqual(
+            'cvs+ssh://anonymous@odessa.cvs.sourceforge.net/cvsroot/odess',
+            location_to_url(
+                ':extssh:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
+
     def test_missing_scheme(self):
         self.skipTest('need clever guessing of scheme')
         self.assertEqual(

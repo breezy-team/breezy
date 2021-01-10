@@ -218,7 +218,7 @@ displaying the information from our revision maps as we go::
       rev = revision_map[revision_id]
       revno = revno_map[revision_id]
       revno_string = '.'.join(str(i) for i in revno)
-      print "%s, %s: %s" % (revno_string, rev.committer, text)
+      print("%s, %s: %s" % (revno_string, rev.committer, text))
 
 
 Working with branches
