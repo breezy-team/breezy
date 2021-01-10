@@ -251,6 +251,8 @@ class GPGStrategy(object):
                     }[mode])
         except gpg.errors.GPGMEError as error:
             raise SigningFailed(str(error))
+        except gpg.errors.InvalidSigners as error:
+            raise SigningFailed(str(error))
 
         return output
 

@@ -77,14 +77,16 @@ def rcp_location_to_url(location, scheme='ssh'):
 
 def parse_cvs_location(location):
     parts = location.split(':')
-    if parts[0] or parts[1] not in ('pserver', 'ssh'):
-        raise ValueError('not a valid pserver location string')
+    if parts[0] or parts[1] not in ('pserver', 'ssh', 'extssh'):
+        raise ValueError('not a valid CVS location string')
     try:
         (username, hostname) = parts[2].split('@', 1)
     except IndexError:
         hostname = parts[2]
         username = None
     scheme = parts[1]
+    if scheme == 'extssh':
+        scheme = 'ssh'
     path = parts[3]
     return (scheme, hostname, username, path)
 
@@ -119,7 +121,7 @@ def location_to_url(location, purpose=None):
     if not isinstance(location, str):
         raise AssertionError("location not a byte or unicode string")
 
-    if location.startswith(':pserver:'):
+    if location.startswith(':pserver:') or location.startswith(':extssh:'):
         return cvs_to_url(location)
 
     from .directory_service import directories
