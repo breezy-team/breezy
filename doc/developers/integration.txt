@@ -48,6 +48,16 @@ To run command-line commands in-process::
 This will send output through the current UIFactory; you can redirect this
 elsewhere through the parameters to `breezy.initialize`.
 
+Load the ``bzr`` and/or ``git`` module(s)
+=========================================
+The code below have the prerequitiset that you have imported either of
+the ``bzr`` or ``git`` module, or both::
+
+  import breezy.bzr
+  import breezy.git
+
+If the correct module is not imported before, some of the code will not work.
+and cause errors like ``breezy.errors.NotBranchError``.
 
 Manipulating the Working Tree
 =============================
