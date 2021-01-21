@@ -18,6 +18,7 @@ import contextlib
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import merge3
 import patiencediff
 
 from breezy import (
@@ -25,7 +26,6 @@ from breezy import (
     conflicts as _mod_conflicts,
     debug,
     graph as _mod_graph,
-    merge3,
     osutils,
     revision as _mod_revision,
     textfile,

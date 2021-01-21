@@ -65,6 +65,7 @@ META_INFO = {
     'install_requires': [
         'configobj',
         'patiencediff',
+        'merge3',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'dulwich>=0.19.12;python_version>="3.5"',
