@@ -1455,13 +1455,26 @@ class InterToGitBranch(branch.GenericInterBranch):
             for k, v in viewitems(self.source.tags.get_tag_dict()):
                 ret.append((None, v))
         ret.append((None, stop_revision))
-        try:
-            revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
-        except NoPushSupport:
-            raise errors.NoRoundtrippingSupport(self.source, self.target)
-        return _mod_repository.FetchResult(revidmap={
-            old_revid: new_revid
-            for (old_revid, (new_sha, new_revid)) in revidmap.items()})
+        if getattr(self.interrepo, 'fetch_revs', None):
+            try:
+                revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
+            except NoPushSupport:
+                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            return _mod_repository.FetchResult(revidmap={
+                old_revid: new_revid
+                for (old_revid, (new_sha, new_revid)) in revidmap.items()})
+        else:
+            def determine_wants(refs):
+                wants = []
+                for git_sha, revid in ret:
+                    if git_sha is None:
+                        git_sha, mapping = self.target.lookup_bzr_revision_id(revid)
+                    wants.append(git_sha)
+                return wants
+
+            self.interrepo.fetch_objects(
+                determine_wants, lossy=lossy, limit=limit)
+            return _mod_repository.FetchResult()
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True, _stop_revno=None,
