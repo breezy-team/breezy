@@ -363,7 +363,8 @@ class BasePristineTarSource(UpstreamSource):
                     return RevisionSpec.from_string('git:%s' % git_id).as_revision_id(self.branch)
                 except (InvalidRevisionSpec, NoSuchTag):
                     pass
-            revid = self._search_for_upstream_version(package, version, component, md5)
+            revid = self._search_for_upstream_version(
+                package, version, component, md5)
             tag_name = self.tag_name(version, component=component)
             if revid is not None:
                 warning(
@@ -376,7 +377,8 @@ class BasePristineTarSource(UpstreamSource):
             except NoSuchTag:
                 raise PackageVersionNotPresent(package, version, self)
 
-    def _search_for_upstream_version(self, package, version, component, md5=None):
+    def _search_for_upstream_version(
+            self, package, version, component, md5=None):
         raise NotImplementedError(self._search_for_upstream_version)
 
     def has_version_component(self, package, version, component, md5=None):
@@ -583,7 +585,8 @@ class BzrPristineTarSource(BasePristineTarSource):
                 package, version, component, target_dir)
             for component in components]
 
-    def _search_for_upstream_version(self, package, version, component, md5=None):
+    def _search_for_upstream_version(
+            self, package, version, component, md5=None):
         start_revids = []
         sources = []
         sources.append('main branch')
