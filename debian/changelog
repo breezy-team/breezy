@@ -1,3 +1,10 @@
+breezy-debian (2.8.49) UNRELEASED; urgency=medium
+
+  * Rely on upstream ontologist rather than lintian-brush for upstream
+    metadata.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Jan 2021 17:02:24 +0000
+
 breezy-debian (2.8.48) unstable; urgency=medium
 
   * Prevent merging old versions.

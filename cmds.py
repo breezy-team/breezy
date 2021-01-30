@@ -219,7 +219,7 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
 
     if guess_upstream_branch_url:
         try:
-            from lintian_brush.upstream_metadata import (
+            from upstream_ontologist.guess import (
                 guess_upstream_metadata,
                 )
         except ModuleNotFoundError:
@@ -364,7 +364,7 @@ class cmd_builddeb(Command):
     guess_upstream_branch_url_opt = Option(
         'guess-upstream-branch-url', help=(
             'Guess upstream branch URL if unknown '
-            '(requires lintian-brush)'))
+            '(requires upstream-ontologist)'))
     takes_args = ['branch_or_build_options*']
     aliases = ['bd', 'debuild']
     takes_options = [

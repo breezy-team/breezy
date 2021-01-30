@@ -48,8 +48,9 @@ Depends: brz (>= 3.1~),
 Recommends: libalgorithm-merge-perl,
             python3-distro-info,
             python3-dulwich (>= 0.19.9),
-            python3-launchpadlib
-Suggests: debcargo, lintian-brush, python3-lzma
+            python3-launchpadlib,
+            python3-upstream-ontologist
+Suggests: debcargo, python3-lzma
 Provides: brz-buildpackage
 Breaks: silver-platter (<= 0.1.0)
 Enhances: brz
