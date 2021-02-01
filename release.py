@@ -19,6 +19,7 @@
 #
 
 import os
+import shlex
 import subprocess
 
 from debmutate.changelog import release as mark_for_release, ChangelogEditor
@@ -49,6 +50,17 @@ def release(local_tree, subpath):
         changelog_arg = "--changelog=%s" % changelog_path
         # TODO(jelmer): don't send output to stderr
         cwd = osutils.pathjoin(local_tree.basedir, subpath)
-        subprocess.check_call(
+        output = subprocess.check_output(
             ["debcommit", changelog_arg, "-ar"],
             cwd=cwd)
+        tag_name = None
+        print(output)
+        for line in output.splitlines():
+            if line.startswith(b'git tag '):
+                tag_args = shlex.split(line.decode())
+                tag_name = tag_args[-1]
+            elif line.startswith(b'bzr tag '):
+                tag_args = shlex.split(line.decode())
+                tag_name = tag_args[-1]
+        return tag_name
+    return None
