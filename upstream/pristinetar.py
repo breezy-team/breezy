@@ -52,6 +52,7 @@ from .... import (
 from ....commit import NullCommitReporter
 from ....errors import (
     BzrError,
+    DivergedBranches,
     NoSuchRevision,
     NoSuchTag,
     NoSuchFile,
@@ -784,7 +785,20 @@ class GitPristineTarSource(BasePristineTarSource):
             tree.branch.tags.set_tag(tag_name, revid)
             tree.update_basis_by_delta(revid, builder.get_basis_delta())
         revtree = tree.branch.repository.revision_tree(revid)
-        self.branch.pull(tree.branch, stop_revision=revid)
+        try:
+            self.branch.pull(tree.branch, stop_revision=revid)
+        except DivergedBranches:
+            warning('Upstream version %s (%s) is older than current tip.',
+                    version, tag_name)
+            with tree.lock_write():
+                builder = tree.branch.get_commit_builder(
+                    parents=[tree.branch.last_revision(), revid],
+                    committer=committer)
+                list(builder.record_iter_changes(
+                    tree, tree.branch.last_revision(), []))
+                builder.finish_inventory()
+                builder.commit('Merge %s.' % version)
+
         tree_id = revtree._lookup_path(u'')[2]
         try:
             pristine_tar_branch = self.branch.controldir.open_branch(
@@ -809,7 +823,7 @@ class GitPristineTarSource(BasePristineTarSource):
             except PristineTarDeltaExists:
                 if reuse_existing:
                     note('Reusing existing tarball, since delta exists.')
-                    return tag_name, revid
+                    return tag_name, revid, True
                 raise
             else:
                 note('Imported %s with pristine-tar.',
