@@ -412,6 +412,14 @@ class GitLab(Hoster):
             return json.loads(response.data)
         _unexpected_status(path, response)
 
+    def create_project(self, project_name):
+        fields = {'name': project_name}
+        response = self._api_request('POST', 'projects', fields=fields)
+        if response.status not in (200, 201):
+            _unexpected_status('projects', response)
+        project = json.loads(response.data)
+        return project
+
     def _fork_project(self, project_name, timeout=50, interval=5, owner=None):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         fields = {}
