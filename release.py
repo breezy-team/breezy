@@ -27,6 +27,8 @@ from debmutate.changelog import release as mark_for_release, ChangelogEditor
 
 from ... import osutils
 
+from .changelog import debcommit_release
+
 from .util import (
     find_changelog,
     )
@@ -48,20 +50,5 @@ def release(local_tree, subpath):
             os.path.join(subpath, changelog_path))
         with ChangelogEditor(changelog_abspath) as e:
             mark_for_release(e.changelog)
-        changelog_arg = "--changelog=%s" % changelog_path
-        # TODO(jelmer): don't send output to stderr
-        cwd = osutils.pathjoin(local_tree.basedir, subpath)
-        output = subprocess.check_output(
-            ["debcommit", changelog_arg, "-ar"],
-            cwd=cwd)
-        tag_name = None
-        sys.stderr.write(output.decode())
-        for line in output.splitlines():
-            if line.startswith(b'git tag '):
-                tag_args = shlex.split(line.decode())
-                tag_name = tag_args[-1]
-            elif line.startswith(b'bzr tag '):
-                tag_args = shlex.split(line.decode())
-                tag_name = tag_args[-1]
-        return tag_name
+        return debcommit_release(local_tree, subpath=subpath)
     return None

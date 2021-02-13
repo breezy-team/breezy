@@ -175,18 +175,16 @@ def changelog_merge_hook_factory(merger):
     return merge_changelog.ChangeLogFileMerge(merger)
 
 
-def debian_tag_name(branch, revid):
+def tree_debian_tag_name(tree, branch, subpath=''):
     from .config import BUILD_TYPE_MERGE
     from .import_dsc import (
         DistributionBranch, DistributionBranchSet)
     from .util import (
         debuild_config, find_changelog, MissingChangelogError)
-    t = branch.repository.revision_tree(revid)
-    subpath = ''
-    config = debuild_config(t, subpath=subpath)
+    config = debuild_config(tree, subpath=subpath)
     try:
         (changelog, top_level) = find_changelog(
-            t, subpath=subpath,
+            tree, subpath=subpath,
             merge=(config.build_type == BUILD_TYPE_MERGE))
     except MissingChangelogError:
         # Not a debian package
@@ -199,6 +197,12 @@ def debian_tag_name(branch, revid):
     dbs = DistributionBranchSet()
     dbs.add_branch(db)
     return db.tag_name(changelog.version)
+
+
+def debian_tag_name(branch, revid):
+    subpath = ''
+    t = branch.repository.revision_tree(revid)
+    return tree_debian_tag_name(t, branch, subpath)
 
 
 def pre_merge_fix_ancestry(merger):

@@ -34,11 +34,11 @@ from debian.changelog import Changelog, ChangelogParseError
 from debian.copyright import Copyright, NotMachineReadableError
 
 from debmutate.changelog import (
-    strip_changelog_message,
     changes_by_author,
     find_thanks,
     find_extra_authors,
     find_last_distribution,
+    strip_changelog_message,
     )
 
 from ... import (

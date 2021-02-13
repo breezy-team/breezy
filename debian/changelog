@@ -1,3 +1,9 @@
+breezy-debian (2.8.50) UNRELEASED; urgency=medium
+
+  * Add tree_debian_tag_name function for getting tag names.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 13 Feb 2021 03:14:26 +0000
+
 breezy-debian (2.8.49) unstable; urgency=medium
 
   * Rely on upstream ontologist rather than lintian-brush for upstream

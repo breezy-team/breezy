@@ -18,10 +18,24 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import posixpath
 from typing import List, Optional
 
+from breezy.errors import BzrError
 from breezy.tree import Tree
-from debmutate.changelog import new_changelog_entries
+from debian.changelog import Changelog
+from debmutate.changelog import new_changelog_entries, strip_changelog_message
+
+from . import tree_debian_tag_name
+
+
+class UnreleasedChanges(BzrError):
+
+    _fmt = "%(path)s says it's UNRELEASED."
+
+    def __init__(self, path):
+        BzrError.__init__(self)
+        self.path = path
 
 
 def changelog_changes(
@@ -57,5 +71,33 @@ def changelog_commit_message(
     if not changes:
         return None
 
-    from .util import strip_changelog_message
     return ''.join(strip_changelog_message(changes))
+
+
+def debcommit(tree, committer=None, subpath="", paths=None):
+    message = changelog_commit_message(
+        tree, tree.basis_tree(),
+        path=posixpath.join(subpath, "debian/changelog")
+    )
+    if paths:
+        specific_files = [posixpath.join(subpath, p) for p in paths]
+    elif subpath:
+        specific_files = [subpath]
+    else:
+        specific_files = None
+    tree.commit(
+        committer=committer, message=message, specific_files=specific_files)
+
+
+def debcommit_release(tree, committer=None, subpath="", message=None):
+    tag_name = tree_debian_tag_name(tree, tree.branch, subpath=subpath)
+    cl_path = posixpath.join(subpath, "debian/changelog")
+    if tag_name is None:
+        raise UnreleasedChanges(cl_path)
+    if message is None:
+        cl = Changelog(tree.get_file(cl_path), max_blocks=1)
+        message = "releasing package %s version %s" % (
+                cl[0].package, cl[0].version)
+    revid = tree.commit(committer=committer, message=message)
+    tree.branch.tags.set_tag(tag_name, revid)
+    return tag_name
