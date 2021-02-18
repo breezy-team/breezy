@@ -94,38 +94,3 @@ def import_upstream(tarball, package_name, version, use_pristine_tar=True):
         tarball_filenames, package_name, version, parents,
         force_pristine_tar=use_pristine_tar)
     return tree
-
-
-def run_dh_make(tree, package_name, version):
-    if not tree.has_filename("debian"):
-        tree.mkdir("debian")
-    # FIXME: give a nice error on 'debian is not a directory'
-    if not tree.is_versioned("debian"):
-        tree.add("debian")
-    command = ["dh_make", "--addmissing", "--packagename",
-               "%s_%s" % (package_name, version)]
-    if getattr(sys.stdin, 'fileno', None) is None:
-        # running in a test or something
-        stdin = subprocess.PIPE
-        input = "s\n\n"
-    else:
-        stdin = sys.stdin
-        input = None
-    try:
-        proc = subprocess.Popen(
-            command, cwd=tree.basedir,
-            preexec_fn=util.subprocess_setup, stdin=stdin)
-    except OSError:
-        raise bzr_errors.BzrCommandError("The dh_make command was not found. "
-                                         "Please install the dh-make package "
-                                         "or use the '--bzr-only' flag and "
-                                         "create the debian/ manually.")
-    if input is not None:
-        proc.stdin.write(input)
-        proc.stdin.close()
-    retcode = proc.wait()
-    if retcode != 0:
-        raise bzr_errors.BzrCommandError("dh_make failed.")
-    for fn in os.listdir(tree.abspath("debian")):
-        if not fn.endswith(".ex") and not fn.endswith(".EX"):
-            tree.add(os.path.join("debian", fn))

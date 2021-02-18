@@ -831,7 +831,7 @@ class DistributionBranch(object):
                 upstream_trees = file_ids_from + upstream_trees
             if self.tree:
                 self_tree = self.tree
-                self_tree.lock_write()  # might also be upstream tree for dh_make
+                self_tree.lock_write()
             else:
                 self_tree = self.branch.basis_tree()
                 self_tree.lock_read()

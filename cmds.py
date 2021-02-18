@@ -1432,54 +1432,6 @@ class cmd_mark_uploaded(Command):
             self.outf.write(gettext("Tag '%s' created.\n") % tag_name)
 
 
-class cmd_dh_make(Command):
-    """Helps you create a new package.
-
-    This code wraps dh_make to do the Bazaar setup for you, ensuring that
-    your branches have all the necessary information and are correctly
-    linked to the upstream branches where necessary.
-
-    The basic use case is satisfied by
-
-        bzr dh-make project 0.1 http://project.org/project-0.1.tar.gz
-
-    which will import the tarball with the correct tags etc. and then
-    run dh_make for you in order to start the packaging.
-
-    If there upstream is available in bzr then run the command from the
-    root of a branch of that corresponding to the 0.1 release.
-
-    If there is no upstream available in bzr then run the command from
-    outside a branch and it will create a branch for you in a directory
-    named the same as the package name you specify as the second argument.
-
-    If you do not wish to use dh_make, but just take advantage of the
-    Bazaar specific parts then use the --bzr-only option.
-    """
-
-    aliases = ['dh_make']
-
-    takes_args = ['package_name', 'version', 'tarball']
-
-    bzr_only_opt = Option('bzr-only', help="Don't run dh_make.")
-    use_pristine_tar_opt = Option(
-        'use-pristine-tar', help='Whether to use pristine-tar.')
-
-    takes_options = [bzr_only_opt]
-
-    def run(self, package_name, version, tarball, bzr_only=None,
-            use_pristine_tar=True):
-        from . import dh_make
-        tree = dh_make.import_upstream(
-            tarball, package_name, version,
-            use_pristine_tar=use_pristine_tar)
-        if not bzr_only:
-            with tree.lock_write():
-                dh_make.run_dh_make(tree, package_name, version)
-        note(gettext('Package prepared in %s'),
-             urlutils.unescape_for_display(tree.basedir, self.outf.encoding))
-
-
 class cmd_dep3_patch(Command):
     """Format the changes in a branch as a DEP-3 patch.
 
