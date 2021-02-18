@@ -1,8 +1,8 @@
-breezy-debian (2.8.51) UNRELEASED; urgency=medium
+breezy-debian (2.8.51) unstable; urgency=medium
 
   * Drop the dh-make subcommand.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 18 Feb 2021 12:59:24 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 18 Feb 2021 13:02:55 +0000
 
 breezy-debian (2.8.50) unstable; urgency=medium
 
