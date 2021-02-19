@@ -19,11 +19,6 @@
 
 from __future__ import absolute_import
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy.i18n import gettext
-""")
-
 from . import (
     errors,
     lock,
@@ -128,16 +123,14 @@ class TreeReference(TreeEntry):
 class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
-    __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
+    __slots__ = ['path', 'changed_content', 'versioned',
                  'name', 'kind', 'executable', 'copied']
 
-    def __init__(self, file_id, path, changed_content, versioned, parent_id,
+    def __init__(self, path, changed_content, versioned,
                  name, kind, executable, copied=False):
-        self.file_id = file_id
         self.path = path
         self.changed_content = changed_content
         self.versioned = versioned
-        self.parent_id = parent_id
         self.name = name
         self.kind = kind
         self.executable = executable
@@ -146,12 +139,9 @@ class TreeChange(object):
     def __repr__(self):
         return "%s%r" % (self.__class__.__name__, self._as_tuple())
 
-    def __len__(self):
-        return len(self.__slots__)
-
     def _as_tuple(self):
-        return (self.file_id, self.path, self.changed_content, self.versioned,
-                self.parent_id, self.name, self.kind, self.executable, self.copied)
+        return (self.path, self.changed_content, self.versioned,
+                self.name, self.kind, self.executable, self.copied)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
@@ -168,13 +158,20 @@ class TreeChange(object):
             return (self.executable[0] != self.executable[1])
         return False
 
+    @property
+    def renamed(self):
+        return (
+            not self.copied and
+            None not in self.name and
+            self.path[0] != self.path[1])
+
     def is_reparented(self):
-        return self.parent_id[0] != self.parent_id[1]
+        return os.path.dirname(self.path[0]) != os.path.dirname(self.path[1])
 
     def discard_new(self):
         return self.__class__(
-            self.file_id, (self.path[0], None), self.changed_content,
-            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.path[0], None), self.changed_content,
+            (self.versioned[0], None),
             (self.name[0], None), (self.kind[0], None),
             (self.executable[0], None),
             copied=False)
@@ -643,12 +640,10 @@ class Tree(object):
         list to exclude some directories, they are then not descended into.
 
         The data yielded is of the form:
-        ((directory-relpath, directory-path-from-root, directory-fileid),
-        [(relpath, basename, kind, lstat, path_from_tree_root, file_id,
+        (directory-relpath,
+        [(relpath, basename, kind, lstat, path_from_tree_root,
           versioned_kind), ...]),
-         - directory-relpath is the containing dirs relpath from prefix
          - directory-path-from-root is the containing dirs path from /
-         - directory-fileid is the id of the directory if it is versioned.
          - relpath is the relative path within the subtree being walked.
          - basename is the basename
          - kind is the kind of the file now. If unknonwn then the file is not
@@ -656,7 +651,6 @@ class Tree(object):
            versioned_kind.
          - lstat is the stat data *if* the file was statted.
          - path_from_tree_root is the path from the root of the tree.
-         - file_id is the file_id if the entry is versioned.
          - versioned_kind is the kind of the file as last recorded in the
            versioning system. If 'unknown' the file is not versioned.
         One of 'kind' and 'versioned_kind' must not be 'unknown'.
@@ -689,8 +683,7 @@ class Tree(object):
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note(
-                gettext("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk))
+            trace.note("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk)
         return stk
 
     def _content_filter_stack_provider(self):

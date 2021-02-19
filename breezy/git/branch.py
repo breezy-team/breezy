@@ -1180,7 +1180,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
-        from .remote import RemoteGitError
+        from .remote import parse_git_error
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1218,11 +1218,10 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
         if dw_result is not None and not isinstance(dw_result, dict):
             error = dw_result.ref_status.get(self.target.ref)
             if error:
-                raise RemoteGitError(error)
+                raise parse_git_error(self.target.user_url, error)
             for ref, error in dw_result.ref_status.items():
                 if error:
-                    trace.warning('unable to open ref %s: %s',
-                                  ref, error)
+                    trace.warning('unable to open ref %s: %s', ref, error)
         return result
 
 
@@ -1394,7 +1393,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                old_refs, new_refs)
         result.tag_updates = {}
         result.tag_conflicts = []
-        ret = dict(old_refs)
+        ret = {}
 
         def ref_equals(refs, ref, git_sha, revid):
             try:
@@ -1456,13 +1455,26 @@ class InterToGitBranch(branch.GenericInterBranch):
             for k, v in viewitems(self.source.tags.get_tag_dict()):
                 ret.append((None, v))
         ret.append((None, stop_revision))
-        try:
-            revidmap = self.interrepo.fetch_objects(ret, lossy=lossy, limit=limit)
-        except NoPushSupport:
-            raise errors.NoRoundtrippingSupport(self.source, self.target)
-        return _mod_repository.FetchResult(revidmap={
-            old_revid: new_revid
-            for (old_revid, (new_sha, new_revid)) in revidmap.items()})
+        if getattr(self.interrepo, 'fetch_revs', None):
+            try:
+                revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
+            except NoPushSupport:
+                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            return _mod_repository.FetchResult(revidmap={
+                old_revid: new_revid
+                for (old_revid, (new_sha, new_revid)) in revidmap.items()})
+        else:
+            def determine_wants(refs):
+                wants = []
+                for git_sha, revid in ret:
+                    if git_sha is None:
+                        git_sha, mapping = self.target.lookup_bzr_revision_id(revid)
+                    wants.append(git_sha)
+                return wants
+
+            self.interrepo.fetch_objects(
+                determine_wants, lossy=lossy, limit=limit)
+            return _mod_repository.FetchResult()
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True, _stop_revno=None,

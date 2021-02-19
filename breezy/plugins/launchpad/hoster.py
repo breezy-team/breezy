@@ -224,21 +224,34 @@ class Launchpad(Hoster):
 
     merge_proposal_description_format = 'plain'
 
-    def __init__(self, staging=False):
-        self._staging = staging
-        if staging:
-            lp_base_url = uris.STAGING_SERVICE_ROOT
-        else:
-            lp_base_url = uris.LPNET_SERVICE_ROOT
-        self.launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
+    def __init__(self, service_root):
+        self._api_base_url = service_root
+        self._launchpad = None
+
+    @property
+    def name(self):
+        if self._api_base_url == uris.LPNET_SERVICE_ROOT:
+            return 'Launchpad'
+        return 'Launchpad at %s' % self.base_url
+
+    @property
+    def launchpad(self):
+        if self._launchpad is None:
+            self._launchpad = lp_api.connect_launchpad(self._api_base_url, version='devel')
+        return self._launchpad
 
     @property
     def base_url(self):
-        return lp_api.uris.web_root_for_service_root(
-            str(self.launchpad._root_uri))
+        return lp_api.uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
-        return "Launchpad(staging=%s)" % self._staging
+        return "Launchpad(service_root=%s)" % self._api_base_url
+
+    def get_current_user(self):
+        return self.launchpad.me.name
+
+    def get_user_url(self, username):
+        return self.launchpad.people[username].web_link
 
     def hosts(self, branch):
         # TODO(jelmer): staging vs non-staging?
@@ -247,7 +260,7 @@ class Launchpad(Hoster):
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
-            return Launchpad()
+            return Launchpad(uris.LPNET_SERVICE_ROOT)
         raise UnsupportedHoster(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
@@ -458,16 +471,31 @@ class Launchpad(Hoster):
 
     @classmethod
     def iter_instances(cls):
-        yield cls()
+        credential_store = lp_api.get_credential_store()
+        for service_root in set(uris.service_roots.values()):
+            auth_engine = lp_api.get_auth_engine(service_root)
+            creds = credential_store.load(auth_engine.unique_consumer_id)
+            if creds is not None:
+                yield cls(service_root)
 
-    def iter_my_proposals(self, status='open'):
+    def iter_my_proposals(self, status='open', author=None):
         statuses = status_to_lp_mp_statuses(status)
-        for mp in self.launchpad.me.getMergeProposals(status=statuses):
+        if author is None:
+            author_obj = self.launchpad.me
+        else:
+            author_obj = self._getPerson(author)
+        for mp in author_obj.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 
-    def iter_my_forks(self):
+    def iter_my_forks(self, owner=None):
         # Launchpad doesn't really have the concept of "forks"
         return iter([])
+
+    def _getPerson(self, person):
+        if '@' in name:
+            return self.launchpad.people.getByEmail(email=name)
+        else:
+            return self.launchpad.people[name]
 
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.
@@ -586,11 +614,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             reviewer_objs = []
             for reviewer in reviewers:
-                if '@' in reviewer:
-                    reviewer_obj = self.launchpad.people.getByEmail(email=reviewer)
-                else:
-                    reviewer_obj = self.launchpad.people[reviewer]
-                reviewer_objs.append(reviewer_obj)
+                reviewer_objs.append(self.lp_host._getPerson(reviewer))
         try:
             mp = _call_webservice(
                 self.source_branch_lp.createMergeProposal,
@@ -705,7 +729,8 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
@@ -723,7 +748,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 merge_prerequisite=prereq_branch_lp,
                 initial_comment=description.strip(),
                 commit_message=commit_message,
-                needs_review=True,
+                needs_review=(not work_in_progress),
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
                 review_types=[None for reviewer in reviewers])

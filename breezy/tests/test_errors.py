@@ -515,12 +515,6 @@ class TestErrorFormatting(tests.TestCase):
             str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
 
-    def test_transform_rename_failed(self):
-        e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
-        self.assertEqual(
-            u"Failed to rename from to to: readonly file",
-            str(e))
-
 
 class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
     """Tests for errors that need to use a branch or repo."""

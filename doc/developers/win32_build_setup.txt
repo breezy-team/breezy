@@ -23,8 +23,8 @@ Install Packages
    At present the current version is 1.5.25-15. This is used primarily to
    install the build scripts and gcc-mingw. Note that we explicitly *don't*
    install cygwin's python or Breezy package. As we are only interested in
-   running the native version of bzr. For information on running the cygwin
-   port of bzr, look elsewhere.
+   running the native version of brz. For information on running the cygwin
+   port of brz, look elsewhere.
 
    Probably not all of these packages are necessary, but they make life easier.
 
@@ -120,7 +120,7 @@ Install Packages
    http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
 
    Note that you probably want to set the environment variable
-   ``BZR_SSH=paramiko`` at this time. Otherwise it will try to use the
+   ``BRZ_SSH=paramiko`` at this time. Otherwise it will try to use the
    ``ssh.exe`` that it finds on your PATH (as configured in step 3), and
    cygwin's openssh does *not* know how to access Pageant.
 
@@ -136,8 +136,8 @@ Install Packages
    them. They seem to be owned by ``Administrator`` rather than by
    ``Administrators``.
 
-6) Install bzr. Usually it is easiest to just get the latest all-in-one
-   installer from https://launchpad.net/bzr/+download
+6) Install brz. Usually it is easiest to just get the latest all-in-one
+   installer from https://launchpad.net/brz/+download
 
 7) Install INNOSetup from:
    http://www.jrsoftware.org/isdl.php

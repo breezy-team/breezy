@@ -27,10 +27,10 @@ from breezy import (
     tests,
     )
 from breezy.sixish import PY3
-from breezy.tree import TreeChange
 from breezy.bzr import (
     inventorytree,
     )
+from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests import per_repository
 from breezy.tests import (
     features,
@@ -197,7 +197,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                delete_change = TreeChange(
+                delete_change = InventoryTreeChange(
                     foo_id, ('foo', None), True, (True, False),
                     (tree.path2id(''), None),
                     ('foo', None), ('file', None),
@@ -528,8 +528,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqual(delta_entry.name, new_entry.name)
                 self.assertEqual(delta_entry.parent_id, new_entry.parent_id)
                 if delta_entry.kind == 'file':
-                    self.assertEqual(delta_entry.text_size, new_entry.text_size)
-                    self.assertEqual(delta_entry.text_sha1, new_entry.text_sha1)
+                    self.assertEqual(delta_entry.text_size, revtree.get_file_size(new_name))
+                    if getattr(delta_entry, 'text_sha1', None):
+                        self.assertEqual(delta_entry.text_sha1, revtree.get_file_sha1(new_name))
                 elif delta_entry.kind == 'symlink':
                     self.assertEqual(delta_entry.symlink_target, new_entry.symlink_target)
             else:

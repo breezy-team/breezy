@@ -729,8 +729,6 @@ class TestUrlToPath(TestCase):
 
         if not PY3:
             self.assertRaises(urlutils.InvalidURL, urlutils.unescape, u'\xe5')
-        self.assertRaises((TypeError, urlutils.InvalidURL),
-                          urlutils.unescape, b'\xe5')
         if not PY3:
             self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '%E5')
         else:

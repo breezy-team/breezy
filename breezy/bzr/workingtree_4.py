@@ -43,12 +43,12 @@ from breezy import (
     revision as _mod_revision,
     revisiontree,
     trace,
-    transform,
     views,
     )
 from breezy.bzr import (
     dirstate,
     generate_ids,
+    transform as bzr_transform,
     )
 """)
 
@@ -470,7 +470,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def get_reference_revision(self, path):
         # referenced tree's revision is whatever's currently there
-        return self.get_nested_tree(path).last_revision()
+        try:
+            return self.get_nested_tree(path).last_revision()
+        except errors.NotBranchError:
+            entry = self._get_entry(path=path)
+            if entry == (None, None):
+                return False
+            return entry[1][0][1]
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
@@ -1571,9 +1577,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 # delta_from_tree is safe even for DirStateRevisionTrees,
                 # because wt4.apply_inventory_delta does not mutate the input
                 # inventory entries.
-                transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink,
-                                     delta_from_tree=delta_from_tree)
+                bzr_transform.build_tree(
+                    basis, wt, accelerator_tree,
+                    hardlink=hardlink,
+                    delta_from_tree=delta_from_tree)
                 for hook in MutableTree.hooks['post_build_tree']:
                     hook(wt)
         finally:
@@ -2162,16 +2169,15 @@ class DirStateRevisionTree(InventoryTree):
                 relroot = ""
             # FIXME: stash the node in pending
             entry = inv.get_entry(file_id)
+            subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.file_id, child.kind
-                                 ))
-            yield (relpath, entry.file_id), dirblock
+                dirblock.append((toppath, name, child.kind, None, child.kind))
+                if child.kind == _directory:
+                    subdirs.append((toppath, child.file_id))
+            yield relpath, dirblock
             # push the user specified dirs from dirblock
-            for dir in reversed(dirblock):
-                if dir[2] == _directory:
-                    pending.append((dir[0], dir[4]))
+            pending.extend(reversed(subdirs))
 
 
 class InterDirStateTree(InterInventoryTree):

@@ -137,6 +137,14 @@ class ParseGitErrorTests(TestCase):
         self.assertEqual(e.path, 'porridge/gaduhistory.git')
         self.assertEqual(e.extra, ': denied to jelmer')
 
+    def test_pre_receive_hook_declined(self):
+        e = parse_git_error(
+            "url",
+            'pre-receive hook declined')
+        self.assertIsInstance(e, PermissionDenied)
+        self.assertEqual(e.path, "url")
+        self.assertEqual(e.extra, ': pre-receive hook declined')
+
     def test_invalid_repo_name(self):
         e = parse_git_error(
             "url",
@@ -144,6 +152,18 @@ class ParseGitErrorTests(TestCase):
 Email support@github.com for help
 """)
         self.assertIsInstance(e, NotBranchError)
+
+    def test_invalid_git_error(self):
+        self.assertEqual(
+            PermissionDenied(
+                'url',
+                'GitLab: You are not allowed to push code to protected '
+                'branches on this project.'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'GitLab: You are not allowed to push code to '
+                    'protected branches on this project.')))
 
 
 class ParseHangupTests(TestCase):

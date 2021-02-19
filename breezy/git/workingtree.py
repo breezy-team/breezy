@@ -46,6 +46,7 @@ from dulwich.objects import (
     )
 import os
 import posixpath
+import re
 import stat
 import sys
 
@@ -85,6 +86,101 @@ from .mapping import (
     decode_git_path,
     mode_kind,
     )
+
+
+CONFLICT_SUFFIXES = ['.BASE', '.OTHER', '.THIS']
+
+
+# TODO: There should be a base revid attribute to better inform the user about
+# how the conflicts were generated.
+class TextConflict(_mod_conflicts.Conflict):
+    """The merge algorithm could not resolve all differences encountered."""
+
+    has_files = True
+
+    typestring = 'text conflict'
+
+    _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
+
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
+
+    def _resolve(self, tt, winner_suffix):
+        """Resolve the conflict by copying one of .THIS or .OTHER into file.
+
+        :param tt: The TreeTransform where the conflict is resolved.
+        :param winner_suffix: Either 'THIS' or 'OTHER'
+
+        The resolution is symmetric, when taking THIS, item.THIS is renamed
+        into item and vice-versa. This takes one of the files as a whole
+        ignoring every difference that could have been merged cleanly.
+        """
+        # To avoid useless copies, we switch item and item.winner_suffix, only
+        # item will exist after the conflict has been resolved anyway.
+        item_tid = tt.trans_id_tree_path(self.path)
+        item_parent_tid = tt.get_tree_parent(item_tid)
+        winner_path = self.path + '.' + winner_suffix
+        winner_tid = tt.trans_id_tree_path(winner_path)
+        winner_parent_tid = tt.get_tree_parent(winner_tid)
+        # Switch the paths to preserve the content
+        tt.adjust_path(osutils.basename(self.path),
+                       winner_parent_tid, winner_tid)
+        tt.adjust_path(osutils.basename(winner_path),
+                       item_parent_tid, item_tid)
+        tt.unversion_file(item_tid)
+        tt.version_file(winner_tid)
+        tt.apply()
+
+    def action_auto(self, tree):
+        # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
+        #                can't be auto resolved does not seem ideal.
+        try:
+            kind = tree.kind(self.path)
+        except errors.NoSuchFile:
+            return
+        if kind != 'file':
+            raise NotImplementedError("Conflict is not a file")
+        conflict_markers_in_line = self._conflict_re.search
+        with tree.get_file(self.path) as f:
+            for line in f:
+                if conflict_markers_in_line(line):
+                    raise NotImplementedError("Conflict markers present")
+
+    def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        with tree.transform() as tt:
+            self._resolve(tt, *args, **kwargs)
+
+    def action_take_this(self, tree):
+        self._resolve_with_cleanups(tree, 'THIS')
+
+    def action_take_other(self, tree):
+        self._resolve_with_cleanups(tree, 'OTHER')
+
+    def do(self, action, tree):
+        """Apply the specified action to the conflict.
+
+        :param action: The method name to call.
+
+        :param tree: The tree passed as a parameter to the method.
+        """
+        meth = getattr(self, 'action_%s' % action, None)
+        if meth is None:
+            raise NotImplementedError(self.__class__.__name__ + '.' + action)
+        meth(tree)
+
+    def action_done(self, tree):
+        """Mark the conflict as solved once it has been handled."""
+        # This method does nothing but simplifies the design of upper levels.
+        pass
+
+    def describe(self):
+        return 'Text conflict in %(path)s' % self.__dict__
+
+    def __str__(self):
+        return self.describe()
+
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self.path)
 
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
@@ -224,10 +320,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         else:
             self.case_sensitive = False
 
-    def transform(self, pb=None):
-        from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb)
-
     def merge_modified(self):
         return {}
 
@@ -337,8 +429,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, fileid, kind in file_infos:
+            for parent_path, file_infos in self.walkdirs(directory):
+                for relpath, basename, kind, lstat, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -576,7 +668,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         with self.lock_read():
             index_paths = set(
-                [decode_git_path(p) for p, i in self._recurse_index_entries()])
+                [decode_git_path(p) for p, sha, mode in self.iter_git_objects()])
             all_paths = set(self._iter_files_recursive(include_dirs=False))
             return iter(all_paths - index_paths)
 
@@ -874,8 +966,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             conflicts = _mod_conflicts.ConflictList()
             for item_path, value in self.index.iteritems():
                 if value.flags & FLAG_STAGEMASK:
-                    conflicts.append(_mod_conflicts.TextConflict(
-                        decode_git_path(item_path)))
+                    conflicts.append(TextConflict(decode_git_path(item_path)))
             return conflicts
 
     def set_conflicts(self, conflicts):
@@ -890,7 +981,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 self._set_conflicted(path, path in by_path)
 
     def _set_conflicted(self, path, conflicted):
-        trace.mutter('change conflict: %r -> %r', path, conflicted)
         value = self.index[path]
         self._index_dirty = True
         if conflicted:
@@ -916,8 +1006,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Walk the directories of this tree.
 
         returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                (current_directory_path,
+                 [(file1_path, file1_name, file1_kind, (lstat),
                    file1_kind), ... ])
 
         This API returns a generator, which is only valid during the current
@@ -981,20 +1071,20 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                              - (current_inv[0][0] < cur_disk_dir_relpath))
             if direction > 0:
                 # disk is before inventory - unknown
-                dirblock = [(relpath, basename, kind, stat, None, None) for
+                dirblock = [(relpath, basename, kind, stat, None) for
                             relpath, basename, kind, stat, top_path in
                             cur_disk_dir_content]
-                yield (cur_disk_dir_relpath, None), dirblock
+                yield cur_disk_dir_relpath, dirblock
                 try:
                     current_disk = next(disk_iterator)
                 except StopIteration:
                     disk_finished = True
             elif direction < 0:
                 # inventory is before disk - missing.
-                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                dirblock = [(relpath, basename, 'unknown', None, kind)
                             for relpath, basename, dkind, stat, fileid, kind in
                             current_inv[1]]
-                yield (current_inv[0][0], current_inv[0][1]), dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1012,23 +1102,22 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         # versioned, present file
                         dirblock.append((inv_row[0],
                                          inv_row[1], disk_row[2],
-                                         disk_row[3], inv_row[4],
-                                         inv_row[5]))
+                                         disk_row[3], inv_row[5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
                                 path_elements[0][2], path_elements[0][3],
-                                None, None))
+                                None))
                     elif len(path_elements[0]) == 6:
                         # versioned, absent file.
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
-                                'unknown', None, path_elements[0][4],
+                                'unknown', None,
                                 path_elements[0][5]))
                     else:
                         raise NotImplementedError('unreachable code')
-                yield current_inv[0], dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1074,26 +1163,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
-
-    def apply_inventory_delta(self, changes):
-        for (old_path, new_path, file_id, ie) in changes:
-            if old_path is not None:
-                (index, old_subpath) = self._lookup_index(
-                    encode_git_path(old_path))
-                try:
-                    self._index_del_entry(index, old_subpath)
-                except KeyError:
-                    pass
-                else:
-                    self._versioned_dirs = None
-            if new_path is not None and ie.kind != 'directory':
-                if ie.kind == 'tree-reference':
-                    self._index_add_entry(
-                        new_path, ie.kind,
-                        reference_revision=ie.reference_revision)
-                else:
-                    self._index_add_entry(new_path, ie.kind)
-        self.flush()
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
@@ -1253,7 +1322,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def get_reference_revision(self, path, branch=None):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
-            return _mod_revision.NULL_REVISION
+            (index, subpath) = self._lookup_index(
+                encode_git_path(path))
+            if subpath is None:
+                raise errors.NoSuchFile(path)
+            hexsha = index[subpath].sha
         return self.branch.lookup_foreign_revision_id(hexsha)
 
     def get_nested_tree(self, path):
@@ -1377,6 +1450,132 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 b'url', branch_location.encode('utf-8'))
         config.write_to_path(path)
         self.add('.gitmodules')
+
+    _marker = object()
+
+    def update(self, change_reporter=None, possible_transports=None,
+               revision=None, old_tip=_marker, show_base=False):
+        """Update a working tree along its branch.
+
+        This will update the branch if its bound too, which means we have
+        multiple trees involved:
+
+        - The new basis tree of the master.
+        - The old basis tree of the branch.
+        - The old basis tree of the working tree.
+        - The current working tree state.
+
+        Pathologically, all three may be different, and non-ancestors of each
+        other.  Conceptually we want to:
+
+        - Preserve the wt.basis->wt.state changes
+        - Transform the wt.basis to the new master basis.
+        - Apply a merge of the old branch basis to get any 'local' changes from
+          it into the tree.
+        - Restore the wt.basis->wt.state changes.
+
+        There isn't a single operation at the moment to do that, so we:
+
+        - Merge current state -> basis tree of the master w.r.t. the old tree
+          basis.
+        - Do a 'normal' merge of the old branch basis if it is relevant.
+
+        :param revision: The target revision to update to. Must be in the
+            revision history.
+        :param old_tip: If branch.update() has already been run, the value it
+            returned (old tip of the branch or None). _marker is used
+            otherwise.
+        """
+        if self.branch.get_bound_location() is not None:
+            self.lock_write()
+            update_branch = (old_tip is self._marker)
+        else:
+            self.lock_tree_write()
+            update_branch = False
+        try:
+            if update_branch:
+                old_tip = self.branch.update(possible_transports)
+            else:
+                if old_tip is self._marker:
+                    old_tip = None
+            return self._update_tree(old_tip, change_reporter, revision, show_base)
+        finally:
+            self.unlock()
+
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
+                     show_base=False):
+        """Update a tree to the master branch.
+
+        :param old_tip: if supplied, the previous tip revision the branch,
+            before it was changed to the master branch's tip.
+        """
+        # here if old_tip is not None, it is the old tip of the branch before
+        # it was updated from the master branch. This should become a pending
+        # merge in the working tree to preserve the user existing work.  we
+        # cant set that until we update the working trees last revision to be
+        # one from the new branch, because it will just get absorbed by the
+        # parent de-duplication logic.
+        #
+        # We MUST save it even if an error occurs, because otherwise the users
+        # local work is unreferenced and will appear to have been lost.
+        #
+        with self.lock_tree_write():
+            from .. import merge
+            nb_conflicts = 0
+            try:
+                last_rev = self.get_parent_ids()[0]
+            except IndexError:
+                last_rev = _mod_revision.NULL_REVISION
+            if revision is None:
+                revision = self.branch.last_revision()
+
+            old_tip = old_tip or _mod_revision.NULL_REVISION
+
+            if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
+                # the branch we are bound to was updated
+                # merge those changes in first
+                base_tree = self.basis_tree()
+                other_tree = self.branch.repository.revision_tree(old_tip)
+                nb_conflicts = merge.merge_inner(self.branch, other_tree,
+                                                 base_tree, this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                if nb_conflicts:
+                    self.add_parent_tree((old_tip, other_tree))
+                    return nb_conflicts
+
+            if last_rev != _mod_revision.ensure_null(revision):
+                to_tree = self.branch.repository.revision_tree(revision)
+
+                # determine the branch point
+                graph = self.branch.repository.get_graph()
+                base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                    last_rev)
+                base_tree = self.branch.repository.revision_tree(base_rev_id)
+
+                nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
+                                                 this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                self.set_last_revision(revision)
+                # TODO - dedup parents list with things merged by pull ?
+                # reuse the tree we've updated to to set the basis:
+                parent_trees = [(revision, to_tree)]
+                merges = self.get_parent_ids()[1:]
+                # Ideally we ask the tree for the trees here, that way the working
+                # tree can decide whether to give us the entire tree or give us a
+                # lazy initialised tree. dirstate for instance will have the trees
+                # in ram already, whereas a last-revision + basis-inventory tree
+                # will not, but also does not need them when setting parents.
+                for parent in merges:
+                    parent_trees.append(
+                        (parent, self.branch.repository.revision_tree(parent)))
+                if not _mod_revision.is_null(old_tip):
+                    parent_trees.append(
+                        (old_tip, self.branch.repository.revision_tree(old_tip)))
+                self.set_parent_trees(parent_trees)
+                last_rev = parent_trees[0][0]
+            return nb_conflicts
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

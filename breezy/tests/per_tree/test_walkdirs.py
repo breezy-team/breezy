@@ -33,48 +33,42 @@ class TestWalkdirs(TestCaseWithTree):
         dirblocks = {}
 
         dirblocks[''] = [
-            ('0file', '0file', 'file', None,
-                tree.path2id('0file'), 'file'),
-            ('1top-dir', '1top-dir', 'directory', None,
-                tree.path2id('1top-dir'), 'directory'),
-            (u'2utf\u1234file', u'2utf\u1234file', 'file', None,
-                tree.path2id(u'2utf\u1234file'), 'file')]
+            ('0file', '0file', 'file', None, 'file'),
+            ('1top-dir', '1top-dir', 'directory', None, 'directory'),
+            (u'2utf\u1234file', u'2utf\u1234file', 'file', None, 'file')]
 
         dirblocks['1top-dir'] = [
             ('1top-dir/0file-in-1topdir', '0file-in-1topdir',
-             'file', None, tree.path2id('1top-dir/0file-in-1topdir'), 'file')]
+             'file', None, 'file')]
         if empty_dirs_present:
             dirblocks['1top-dir'].append(
                 ('1top-dir/1dir-in-1topdir', '1dir-in-1topdir', 'directory',
                  None if empty_dirs_are_versioned else os.stat(
                      tree.abspath('1top-dir/1dir-in-1topdir')),
-                 tree.path2id('1top-dir/1dir-in-1topdir'),
                  'directory' if empty_dirs_are_versioned else None))
             dirblocks['1top-dir/1dir-in-1topdir'] = []
         if symlinks:
             dirblocks[''].append(
-                ('symlink', 'symlink', 'symlink', None,
-                 tree.path2id('symlink'), 'symlink'))
-        return [((path, tree.path2id(path)), list(sorted(entries)))
+                ('symlink', 'symlink', 'symlink', None, 'symlink'))
+        return [(path, list(sorted(entries)))
                 for (path, entries) in sorted(dirblocks.items())]
 
     def test_walkdir_root(self):
         tree = self.get_tree_with_subdirs_and_all_supported_content_types(
             has_symlinks())
-        tree.lock_read()
-        expected_dirblocks = self.get_all_subdirs_expected(
-            tree, has_symlinks())
-        # test that its iterable by iterating
-        result = []
-        for dirinfo, block in tree.walkdirs():
-            newblock = []
-            for row in block:
-                if row[4] is not None:
-                    newblock.append(row[0:3] + (None,) + row[4:])
-                else:
-                    newblock.append(row)
-            result.append((dirinfo, newblock))
-        tree.unlock()
+        with tree.lock_read():
+            expected_dirblocks = self.get_all_subdirs_expected(
+                tree, has_symlinks())
+            # test that its iterable by iterating
+            result = []
+            for dirinfo, block in tree.walkdirs():
+                newblock = []
+                for row in block:
+                    if row[4] is not None:
+                        newblock.append(row[0:3] + (None,) + row[4:])
+                    else:
+                        newblock.append(row)
+                result.append((dirinfo, newblock))
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
@@ -85,18 +79,17 @@ class TestWalkdirs(TestCaseWithTree):
             has_symlinks())
         # test that its iterable by iterating
         result = []
-        tree.lock_read()
-        expected_dirblocks = self.get_all_subdirs_expected(
-            tree, has_symlinks())[1:]
-        for dirinfo, block in tree.walkdirs('1top-dir'):
-            newblock = []
-            for row in block:
-                if row[4] is not None:
-                    newblock.append(row[0:3] + (None,) + row[4:])
-                else:
-                    newblock.append(row)
-            result.append((dirinfo, newblock))
-        tree.unlock()
+        with tree.lock_read():
+            expected_dirblocks = self.get_all_subdirs_expected(
+                tree, has_symlinks())[1:]
+            for dirinfo, block in tree.walkdirs('1top-dir'):
+                newblock = []
+                for row in block:
+                    if row[4] is not None:
+                        newblock.append(row[0:3] + (None,) + row[4:])
+                    else:
+                        newblock.append(row)
+                result.append((dirinfo, newblock))
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
@@ -106,8 +99,6 @@ class TestWalkdirs(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file', 'tree/dir/'])
         work_tree.add(['file', 'dir'])
-        file_id = work_tree.path2id('file')
-        dir_id = work_tree.path2id('dir')
         os.unlink('tree/file')
         os.rmdir('tree/dir')
         tree = self._convert_tree(work_tree)
@@ -116,10 +107,10 @@ class TestWalkdirs(TestCaseWithTree):
         if tree.path2id('file') is None:
             raise tests.TestNotApplicable(
                 'Tree type cannot represent dangling ids.')
-        expected = [(('', work_tree.path2id('')), ([
-            ('dir', 'dir', 'unknown', None, dir_id, 'directory')]
+        expected = [('', ([
+            ('dir', 'dir', 'unknown', None, 'directory')]
             if tree.has_versioned_directories() else []) +
-            [('file', 'file', 'unknown', None, file_id, 'file')])]
+            [('file', 'file', 'unknown', None, 'file')])]
         if tree.has_versioned_directories():
-            expected.append((('dir', dir_id), []))
+            expected.append(('dir', []))
         self.assertEqual(expected, list(tree.walkdirs()))

@@ -119,4 +119,8 @@ inline PyObject* PyBytes_InternFromStringAndSize(const char *v, Py_ssize_t len)
 #define strtoull _strtoui64
 #endif
 
+#if PY_VERSION_HEX < 0x030900A4
+#  define Py_SET_REFCNT(obj, refcnt) ((Py_REFCNT(obj) = (refcnt)), (void)0)
+#endif
+
 #endif /* _BZR_PYTHON_COMPAT_H */

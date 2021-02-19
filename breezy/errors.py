@@ -583,15 +583,6 @@ class UnknownFormatError(BzrError):
         self.format = format
 
 
-class LineEndingError(BzrError):
-
-    _fmt = ("Line ending corrupted for file: %(file)s; "
-            "Maybe your files got corrupted in transport?")
-
-    def __init__(self, file):
-        self.file = file
-
-
 class IncompatibleFormat(BzrError):
 
     _fmt = "Format %(format)s is not compatible with .bzr version %(controldir)s."
@@ -959,20 +950,6 @@ class NoSuchRevisionInTree(NoSuchRevision):
         self.revision_id = revision_id
 
 
-class InvalidRevisionSpec(BzrError):
-
-    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch_url)s%(extra)s")
-
-    def __init__(self, spec, branch, extra=None):
-        BzrError.__init__(self, branch=branch, spec=spec)
-        self.branch_url = getattr(branch, 'user_url', str(branch))
-        if extra:
-            self.extra = '\n' + str(extra)
-        else:
-            self.extra = ''
-
-
 class AppendRevisionsOnlyViolation(BzrError):
 
     _fmt = ('Operation denied because it would change the main history,'
@@ -1323,6 +1300,31 @@ class InvalidHttpResponse(TransportError):
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
+class UnexpectedHttpStatus(InvalidHttpResponse):
+
+    _fmt = "Unexpected HTTP status %(code)d for %(path)s: %(extra)s"
+
+    def __init__(self, path, code, extra=None):
+        self.path = path
+        self.code = code
+        self.extra = extra or ''
+        full_msg = 'status code %d unexpected' % code
+        if extra is not None:
+            full_msg += ': ' + extra
+        InvalidHttpResponse.__init__(
+            self, path, full_msg)
+
+
+class BadHttpRequest(UnexpectedHttpStatus):
+
+    _fmt = "Bad http request for %(path)s: %(reason)s"
+
+    def __init__(self, path, reason):
+        self.path = path
+        self.reason = reason
+        TransportError.__init__(self, reason)
+
+
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
@@ -1506,22 +1508,6 @@ class BzrBadParameter(InternalBzrError):
 class BzrBadParameterNotUnicode(BzrBadParameter):
 
     _fmt = "Parameter %(param)s is neither unicode nor utf8."
-
-
-class CantMoveRoot(BzrError):
-
-    _fmt = "Moving the root directory is not supported at this time"
-
-
-class TransformRenameFailed(BzrError):
-
-    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
-
-    def __init__(self, from_path, to_path, why, errno):
-        self.from_path = from_path
-        self.to_path = to_path
-        self.why = why
-        self.errno = errno
 
 
 class BzrMoveFailedError(BzrError):

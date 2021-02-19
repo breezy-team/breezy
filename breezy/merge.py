@@ -31,23 +31,25 @@ from breezy import (
     revision as _mod_revision,
     textfile,
     trace,
-    transform,
     tree as _mod_tree,
     tsort,
     ui,
     workingtree,
     )
 from breezy.bzr import (
+    conflicts as _mod_bzr_conflicts,
     generate_ids,
     versionedfile,
     )
 from breezy.i18n import gettext
 """)
+from breezy.bzr.conflicts import Conflict as BzrConflict
 from . import (
     decorators,
     errors,
     hooks,
     registry,
+    transform,
     )
 from .sixish import (
     viewitems,
@@ -780,10 +782,10 @@ class Merge3Merger(object):
 
     def _compute_transform(self):
         if self._lca_trees is None:
-            entries = self._entries3()
+            entries = list(self._entries3())
             resolver = self._three_way
         else:
-            entries = self._entries_lca()
+            entries = list(self._entries_lca())
             resolver = self._lca_multi_way
         # Prepare merge hooks
         factories = Merger.hooks['merge_file_content']
@@ -792,9 +794,16 @@ class Merge3Merger(object):
         self.active_hooks = [hook for hook in hooks if hook is not None]
         with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (file_id, changed, paths3, parents3, names3,
-                      executable3) in enumerate(entries):
+                      executable3, copied) in enumerate(entries):
+                if copied:
+                    # Treat copies as simple adds for now
+                    paths3 = (None, paths3[1], None)
+                    parents3 = (None, parents3[1], None)
+                    names3 = (None, names3[1], None)
+                    executable3 = (None, executable3[1], None)
+                    changed = True
+                    copied = False
                 trans_id = self.tt.trans_id_file_id(file_id)
-
                 # Try merging each entry
                 child_pb.update(gettext('Preparing file merge'),
                                 num, len(entries))
@@ -835,7 +844,6 @@ class Merge3Merger(object):
         other and this.  names3 is a tuple of names for base, other and this.
         executable3 is a tuple of execute-bit values for base, other and this.
         """
-        result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
                                                 specific_files=self.interesting_files,
                                                 extra_trees=[self.this_tree])
@@ -863,10 +871,9 @@ class Merge3Merger(object):
             names3 = change.name + (this_name,)
             paths3 = change.path + (this_path, )
             executable3 = change.executable + (this_executable,)
-            result.append(
+            yield (
                 (change.file_id, change.changed_content, paths3,
-                 parents3, names3, executable3))
-        return result
+                 parents3, names3, executable3, change.copied))
 
     def _entries_lca(self):
         """Gather data about files modified between multiple trees.
@@ -876,7 +883,7 @@ class Merge3Merger(object):
 
         For the multi-valued entries, the format will be (BASE, [lca1, lca2])
 
-        :return: [(file_id, changed, paths, parents, names, executable)], where:
+        :return: [(file_id, changed, paths, parents, names, executable, copied)], where:
 
             * file_id: Simple file_id of the entry
             * changed: Boolean, True if the kind or contents changed else False
@@ -895,7 +902,6 @@ class Merge3Merger(object):
                 self.interesting_files, lookup_trees)
         else:
             interesting_files = None
-        result = []
         from .multiwalker import MultiWalker
         walker = MultiWalker(self.other_tree, self._lca_trees)
 
@@ -1039,7 +1045,7 @@ class Merge3Merger(object):
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
 
             # If we have gotten this far, that means something has changed
-            result.append((file_id, content_changed,
+            yield (file_id, content_changed,
                            ((base_path, lca_paths),
                             other_path, this_path),
                            ((base_ie.parent_id, lca_parent_ids),
@@ -1047,9 +1053,11 @@ class Merge3Merger(object):
                            ((base_ie.name, lca_names),
                             other_ie.name, this_ie.name),
                            ((base_ie.executable, lca_executable),
-                            other_ie.executable, this_ie.executable)
-                           ))
-        return result
+                            other_ie.executable, this_ie.executable),
+                           # Copy detection is not yet supported, so nothing is
+                           # a copy:
+                           False
+                           )
 
     def write_modified(self, results):
         if not self.working_tree.supports_merge_modified():
@@ -1311,8 +1319,10 @@ class Merge3Merger(object):
                 # This is a contents conflict, because none of the available
                 # functions could merge it.
                 file_group = self._dump_conflicts(
-                    name, (base_path, other_path, this_path), parent_id,
-                    file_id, set_version=True)
+                    name, (base_path, other_path, this_path), parent_id)
+                for tid in file_group:
+                    self.tt.version_file(tid, file_id=file_id)
+                    break
                 self._raw_conflicts.append(('contents conflict', file_group))
         elif hook_status == 'success':
             self.tt.create_file(lines, trans_id)
@@ -1324,7 +1334,7 @@ class Merge3Merger(object):
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             self._dump_conflicts(
-                name, (base_path, other_path, this_path), parent_id, file_id)
+                name, (base_path, other_path, this_path), parent_id)
         elif hook_status == 'delete':
             self.tt.unversion_file(trans_id)
             result = "deleted"
@@ -1430,10 +1440,9 @@ class Merge3Merger(object):
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            file_id = self.tt.final_file_id(trans_id)
-            file_group = self._dump_conflicts(name, paths, parent_id, file_id,
-                                              this_lines, base_lines,
-                                              other_lines)
+            file_group = self._dump_conflicts(
+                name, paths, parent_id,
+                lines=(base_lines, other_lines, this_lines))
             file_group.append(trans_id)
 
     def _get_filter_tree_path(self, path):
@@ -1450,8 +1459,7 @@ class Merge3Merger(object):
         # Skip the lookup for older formats
         return None
 
-    def _dump_conflicts(self, name, paths, parent_id, file_id, this_lines=None,
-                        base_lines=None, other_lines=None, set_version=False,
+    def _dump_conflicts(self, name, paths, parent_id, lines=None,
                         no_base=False):
         """Emit conflict files.
         If this_lines, base_lines, or other_lines are omitted, they will be
@@ -1459,25 +1467,21 @@ class Merge3Merger(object):
         or .BASE (in that order) will be created as versioned files.
         """
         base_path, other_path, this_path = paths
+        if lines:
+            base_lines, other_lines, this_lines = lines
+        else:
+            base_lines = other_lines = this_lines = None
         data = [('OTHER', self.other_tree, other_path, other_lines),
                 ('THIS', self.this_tree, this_path, this_lines)]
         if not no_base:
             data.append(('BASE', self.base_tree, base_path, base_lines))
 
         # We need to use the actual path in the working tree of the file here,
-        # ignoring the conflict suffixes
-        wt = self.this_tree
-        if wt.supports_content_filtering():
-            try:
-                filter_tree_path = wt.id2path(file_id)
-            except errors.NoSuchId:
-                # file has been deleted
-                filter_tree_path = None
+        if self.this_tree.supports_content_filtering():
+            filter_tree_path = this_path
         else:
-            # Skip the id2path lookup for older formats
             filter_tree_path = None
 
-        versioned = False
         file_group = []
         for suffix, tree, path, lines in data:
             if path is not None:
@@ -1485,9 +1489,6 @@ class Merge3Merger(object):
                     name, parent_id, path, tree, suffix, lines,
                     filter_tree_path)
                 file_group.append(trans_id)
-                if set_version and not versioned:
-                    self.tt.version_file(trans_id, file_id=file_id)
-                    versioned = True
         return file_group
 
     def _conflict_file(self, name, parent_id, path, tree, suffix,
@@ -1534,73 +1535,8 @@ class Merge3Merger(object):
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
-        content_conflict_file_ids = set()
-        cooked_conflicts = transform.cook_conflicts(fs_conflicts, self.tt)
-        fp = transform.FinalPaths(self.tt)
-        for conflict in self._raw_conflicts:
-            conflict_type = conflict[0]
-            if conflict_type == 'path conflict':
-                (trans_id, file_id,
-                 this_parent, this_name,
-                 other_parent, other_name) = conflict[1:]
-                if this_parent is None or this_name is None:
-                    this_path = '<deleted>'
-                else:
-                    parent_path = fp.get_path(
-                        self.tt.trans_id_file_id(this_parent))
-                    this_path = osutils.pathjoin(parent_path, this_name)
-                if other_parent is None or other_name is None:
-                    other_path = '<deleted>'
-                else:
-                    if other_parent == self.other_tree.path2id(''):
-                        # The tree transform doesn't know about the other root,
-                        # so we special case here to avoid a NoFinalPath
-                        # exception
-                        parent_path = ''
-                    else:
-                        parent_path = fp.get_path(
-                            self.tt.trans_id_file_id(other_parent))
-                    other_path = osutils.pathjoin(parent_path, other_name)
-                c = _mod_conflicts.Conflict.factory(
-                    'path conflict', path=this_path,
-                    conflict_path=other_path,
-                    file_id=file_id)
-            elif conflict_type == 'contents conflict':
-                for trans_id in conflict[1]:
-                    file_id = self.tt.final_file_id(trans_id)
-                    if file_id is not None:
-                        # Ok we found the relevant file-id
-                        break
-                path = fp.get_path(trans_id)
-                for suffix in ('.BASE', '.THIS', '.OTHER'):
-                    if path.endswith(suffix):
-                        # Here is the raw path
-                        path = path[:-len(suffix)]
-                        break
-                c = _mod_conflicts.Conflict.factory(conflict_type,
-                                                    path=path, file_id=file_id)
-                content_conflict_file_ids.add(file_id)
-            elif conflict_type == 'text conflict':
-                trans_id = conflict[1]
-                path = fp.get_path(trans_id)
-                file_id = self.tt.final_file_id(trans_id)
-                c = _mod_conflicts.Conflict.factory(conflict_type,
-                                                    path=path, file_id=file_id)
-            else:
-                raise AssertionError('bad conflict type: %r' % (conflict,))
-            cooked_conflicts.append(c)
-
-        self.cooked_conflicts = []
-        # We want to get rid of path conflicts when a corresponding contents
-        # conflict exists. This can occur when one branch deletes a file while
-        # the other renames *and* modifies it. In this case, the content
-        # conflict is enough.
-        for c in cooked_conflicts:
-            if (c.typestring == 'path conflict'
-                    and c.file_id in content_conflict_file_ids):
-                continue
-            self.cooked_conflicts.append(c)
-        self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
+        self.cooked_conflicts = list(self.tt.cook_conflicts(
+            list(fs_conflicts) + self._raw_conflicts))
 
 
 class WeaveMerger(Merge3Merger):
@@ -1657,10 +1593,9 @@ class WeaveMerger(Merge3Merger):
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            file_id = self.tt.final_file_id(trans_id)
-            file_group = self._dump_conflicts(name, paths, parent_id, file_id,
-                                              no_base=False,
-                                              base_lines=base_lines)
+            file_group = self._dump_conflicts(name, paths, parent_id,
+                                              (base_lines, None, None),
+                                              no_base=False)
             file_group.append(trans_id)
 
 
@@ -1710,8 +1645,7 @@ class Diff3Merger(Merge3Merger):
             if status == 1:
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
-                file_id = self.tt.final_file_id(trans_id)
-                self._dump_conflicts(name, paths, parent_id, file_id)
+                self._dump_conflicts(name, paths, parent_id)
                 self._raw_conflicts.append(('text conflict', trans_id))
         finally:
             osutils.rmtree(temp_dir)

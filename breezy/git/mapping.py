@@ -167,7 +167,7 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    BZR_DUMMY_FILE = None
+    BZR_DUMMY_FILE = None  # type: Optional[str]
 
     def is_special_file(self, filename):
         return (filename in (self.BZR_DUMMY_FILE, ))
@@ -209,14 +209,6 @@ class BzrGitMapping(foreign.VcsMapping):
         if not file_id.startswith(FILE_ID_PREFIX):
             raise ValueError
         return decode_git_path(unescape_file_id(file_id[len(FILE_ID_PREFIX):]))
-
-    def revid_as_refname(self, revid):
-        if not isinstance(revid, bytes):
-            raise TypeError(revid)
-        if PY3:
-            revid = revid.decode('utf-8')
-        quoted_revid = urlutils.quote(revid)
-        return b"refs/bzr/" + quoted_revid.encode('utf-8')
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
@@ -426,9 +418,11 @@ class BzrGitMapping(foreign.VcsMapping):
                 rev.properties[u'author'] = commit.author.decode(encoding)
             rev.message, rev.git_metadata = self._decode_commit_message(
                 rev, commit.message, encoding)
+
         if commit.encoding is not None:
             rev.properties[u'git-explicit-encoding'] = commit.encoding.decode(
                 'ascii')
+        if commit.encoding is not None and commit.encoding != b'false':
             decode_using_encoding(rev, commit, commit.encoding.decode('ascii'))
         else:
             for encoding in ('utf-8', 'latin1'):

@@ -101,7 +101,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
         changes = list(tree_a.iter_changes(tree_a.basis_tree()))
-        self.assertEqual(1, len(changes))
+        self.assertEqual(1, len(changes), changes)
 
     def test_merge_type(self):
         this = self.make_branch_and_tree('this')
@@ -265,7 +265,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         else:
             self.assertEqual(0, nb_conflicts)
         try:
-            outer.set_conflicts(conflicts.ConflictList())
+            outer.set_conflicts([])
         except errors.UnsupportedOperation:
             # WT2 doesn't have a separate list of conflicts to clear. It
             # actually says there is a conflict, but happily forgets all about
@@ -284,7 +284,10 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
                                    'foo'],
                                   outer)
         else:
-            self.assertEqual(2, nb_conflicts)
+            if outer.has_versioned_directories():
+                self.assertEqual(2, nb_conflicts)
+            else:
+                self.assertEqual(1, nb_conflicts)
             self.assertTreeLayout(['dir',
                                    'dir-outer',
                                    'dir-outer/dir',

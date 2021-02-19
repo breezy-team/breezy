@@ -26,6 +26,7 @@ Specific tests for individual variations are in other places such as:
 """
 
 from breezy import (
+    cleanup,
     errors,
     tests,
     transform,
@@ -83,7 +84,9 @@ def preview_tree_post(testcase, tree):
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
     pp = None
-    transform._prepare_revert_transform(basis, tree, tt, None, False, None,
+    es = cleanup.ExitStack()
+    testcase.addCleanup(es.close)
+    transform._prepare_revert_transform(es, basis, tree, tt, None, False, None,
                                         basis, {})
     preview_tree = tt.get_preview_tree()
     preview_tree.set_parent_ids(tree.get_parent_ids())
@@ -354,6 +357,7 @@ def load_tests(loader, standard_tests, pattern):
         'revision_tree',
         'symlinks',
         'test_trees',
+        'transform',
         'tree',
         'walkdirs',
         ]

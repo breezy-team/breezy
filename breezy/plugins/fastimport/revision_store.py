@@ -25,7 +25,7 @@ from ... import (
     osutils,
     revision as _mod_revision,
     )
-from ...tree import TreeChange
+from ...bzr.inventorytree import InventoryTreeChange
 from ...bzr import (
     inventory,
     )
@@ -119,7 +119,7 @@ class _TreeShim(object):
                 old_ie = None
                 if ie is None:
                     raise AssertionError('How is both old and new None?')
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         False,
@@ -129,7 +129,7 @@ class _TreeShim(object):
                         (None, None),
                         (None, None),
                         )
-                change = TreeChange(
+                change = InventoryTreeChange(
                     file_id,
                     (old_path, new_path),
                     True,
@@ -141,7 +141,7 @@ class _TreeShim(object):
                     )
             else:
                 if ie is None:
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         True,
@@ -156,7 +156,7 @@ class _TreeShim(object):
                                         ie.text_size != old_ie.text_size)
                     # TODO: ie.kind != old_ie.kind
                     # TODO: symlinks changing targets, content_modified?
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         content_modified,

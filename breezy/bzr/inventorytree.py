@@ -72,6 +72,60 @@ from ..tree import (
     )
 
 
+class InventoryTreeChange(TreeChange):
+
+    __slots__ = TreeChange.__slots__ + ['file_id', 'parent_id']
+
+    def __init__(self, file_id, path, changed_content, versioned, parent_id,
+                 name, kind, executable, copied=False):
+        self.file_id = file_id
+        self.parent_id = parent_id
+        super(InventoryTreeChange, self).__init__(
+            path=path, changed_content=changed_content, versioned=versioned,
+            name=name, kind=kind, executable=executable, copied=copied)
+
+    def __repr__(self):
+        return "%s%r" % (self.__class__.__name__, self._as_tuple())
+
+    def _as_tuple(self):
+        return (self.file_id, self.path, self.changed_content, self.versioned,
+                self.parent_id, self.name, self.kind, self.executable, self.copied)
+
+    def __eq__(self, other):
+        if isinstance(other, TreeChange):
+            return self._as_tuple() == other._as_tuple()
+        if isinstance(other, tuple):
+            return self._as_tuple() == other
+        return False
+
+    def __lt__(self, other):
+        return self._as_tuple() < other._as_tuple()
+
+    def meta_modified(self):
+        if self.versioned == (True, True):
+            return (self.executable[0] != self.executable[1])
+        return False
+
+    def is_reparented(self):
+        return self.parent_id[0] != self.parent_id[1]
+
+    @property
+    def renamed(self):
+        return (
+            not self.copied and
+            None not in self.name and
+            None not in self.parent_id and
+            (self.name[0] != self.name[1] or self.parent_id[0] != self.parent_id[1]))
+
+    def discard_new(self):
+        return self.__class__(
+            self.file_id, (self.path[0], None), self.changed_content,
+            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.name[0], None), (self.kind[0], None),
+            (self.executable[0], None),
+            copied=False)
+
+
 class InventoryTree(Tree):
     """A tree that relies on an inventory for its metadata.
 
@@ -325,7 +379,7 @@ class InventoryTree(Tree):
         return last_revision
 
     def preview_transform(self, pb=None):
-        from ..transform import TransformPreview
+        from .transform import TransformPreview
         return TransformPreview(self, pb=pb)
 
 
@@ -423,6 +477,51 @@ class MutableInventoryTree(MutableTree, InventoryTree):
             inv.apply_delta(changes)
             self._write_inventory(inv)
 
+    def has_changes(self, _from_tree=None):
+        """Quickly check that the tree contains at least one commitable change.
+
+        :param _from_tree: tree to compare against to find changes (default to
+            the basis tree and is intended to be used by tests).
+
+        :return: True if a change is found. False otherwise
+        """
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            if self.supports_symlinks():
+                # Fast path for has_changes.
+                try:
+                    change = next(changes)
+                    # Exclude root (talk about black magic... --vila 20090629)
+                    if change.parent_id == (None, None):
+                        change = next(changes)
+                    return True
+                except StopIteration:
+                    # No changes
+                    return False
+            else:
+                # Slow path for has_changes.
+                # Handle platforms that do not support symlinks in the
+                # conditional below. This is slower than the try/except
+                # approach below that but we don't have a choice as we
+                # need to be sure that all symlinks are removed from the
+                # entire changeset. This is because in platforms that
+                # do not support symlinks, they show up as None in the
+                # working copy as compared to the repository.
+                # Also, exclude root as mention in the above fast path.
+                changes = filter(
+                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
+                    changes)
+                try:
+                    next(iter(changes))
+                except StopIteration:
+                    return False
+                return True
+
     def _fix_case_of_inventory_path(self, path):
         """If our tree isn't case sensitive, return the canonical path"""
         if not self.case_sensitive:
@@ -510,8 +609,8 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         self.set_parent_trees([(new_revid, rev_tree)])
 
     def transform(self, pb=None):
-        from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb)
+        from .transform import InventoryTreeTransform
+        return InventoryTreeTransform(self, pb=pb)
 
 
 class _SmartAddHelper(object):
@@ -911,27 +1010,25 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         if top_id is None:
             pending = []
         else:
-            pending = [(prefix, '', _directory, None, top_id, None)]
+            pending = [(prefix, top_id)]
         while pending:
             dirblock = []
-            currentdir = pending.pop()
-            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
-            if currentdir[0]:
-                relroot = currentdir[0] + '/'
+            root, file_id = pending.pop()
+            if root:
+                relroot = root + '/'
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv.get_entry(currentdir[4])
+            entry = inv.get_entry(file_id)
+            subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.file_id, child.kind
-                                 ))
-            yield (currentdir[0], entry.file_id), dirblock
+                dirblock.append((toppath, name, child.kind, None, child.kind))
+                if child.kind == _directory:
+                    subdirs.append((toppath, child.file_id))
+            yield root, dirblock
             # push the user specified dirs from dirblock
-            for dir in reversed(dirblock):
-                if dir[2] == _directory:
-                    pending.append(dir)
+            pending.extend(reversed(subdirs))
 
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
@@ -1052,7 +1149,7 @@ class InterInventoryTree(InterTree):
             changes = True
         else:
             changes = False
-        return TreeChange(
+        return InventoryTreeChange(
             file_id, (source_path, target_path), changed_content,
             versioned, parent, name, kind, executable), changes
 
@@ -1146,7 +1243,7 @@ class InterInventoryTree(InterTree):
                 target_kind, target_executable, target_stat = \
                     self.target._comparison_data(
                         fake_entry, unversioned_path[1])
-                yield TreeChange(
+                yield InventoryTreeChange(
                     None, (None, unversioned_path[1]), True, (False, False),
                     (None, None),
                     (None, unversioned_path[0][-1]),
@@ -1183,7 +1280,7 @@ class InterInventoryTree(InterTree):
             unversioned_path = all_unversioned.popleft()
             to_kind, to_executable, to_stat = \
                 self.target._comparison_data(fake_entry, unversioned_path[1])
-            yield TreeChange(
+            yield InventoryTreeChange(
                 None, (None, unversioned_path[1]), True, (False, False),
                 (None, None),
                 (None, unversioned_path[0][-1]),
@@ -1209,7 +1306,7 @@ class InterInventoryTree(InterTree):
             changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             changed_file_ids.append(file_id)
-            yield TreeChange(
+            yield InventoryTreeChange(
                 file_id, (path, to_path), changed_content, versioned, parent,
                 name, kind, executable)
         changed_file_ids = set(changed_file_ids)
@@ -1395,7 +1492,7 @@ class InterCHKRevisionTree(InterInventoryTree):
         # FIXME: nested tree support
         for result in self.target.root_inventory.iter_changes(
                 self.source.root_inventory):
-            result = TreeChange(*result)
+            result = InventoryTreeChange(*result)
             if specific_file_ids is not None:
                 if result.file_id not in specific_file_ids:
                     # A change from the whole tree that we don't want to show yet.
@@ -1422,7 +1519,7 @@ class InterCHKRevisionTree(InterInventoryTree):
                         entry.file_id not in specific_file_ids):
                     continue
                 if entry.file_id not in changed_file_ids:
-                    yield TreeChange(
+                    yield InventoryTreeChange(
                         entry.file_id,
                         (relpath, relpath),  # Not renamed
                         False,  # Not modified
