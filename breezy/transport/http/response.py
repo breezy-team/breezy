@@ -91,6 +91,11 @@ class ResponseFile(object):
         self._pos += len(data)
         return data
 
+    def readlines(self, size=None):
+        data = self._file.readlines()
+        self._pos += sum(map(len, data))
+        return data
+
     def __iter__(self):
         while True:
             line = self.readline()
@@ -405,7 +410,6 @@ def handle_response(url, code, getheader, data):
                     url, 'Missing the Content-Range header in a 206 range response')
             rfile.set_range_from_header(content_range)
     else:
-        raise errors.InvalidHttpResponse(url,
-                                         'Unknown response code %s' % code)
+        raise errors.UnexpectedHttpStatus(url, code)
 
     return rfile

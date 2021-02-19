@@ -270,8 +270,6 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
 class RepositoryFormatKnitPack5(RepositoryFormatPack):
     """Repository that supports external references to allow stacking.
 
-    New in release 1.6.
-
     Supports external lookups, which results in non-truncated ghosts after
     reconcile compared to pack-0.92 formats.
     """
@@ -308,8 +306,6 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
 class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     """A repository with rich roots and stacking.
-
-    New in release 1.6.1.
 
     Supports stacking on other repositories, allowing data to be accessed
     without being stored locally.
@@ -349,8 +345,6 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
 
 class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     """A repository with rich roots and external references.
-
-    New in release 1.6.
 
     Supports external lookups, which results in non-truncated ghosts after
     reconcile compared to pack-0.92 formats.
@@ -687,7 +681,7 @@ class KnitPacker(Packer):
                 else:
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
-                pos, size = writer.add_bytes_record(raw_data, names)
+                pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" % (pos, size))
                 pb.update("Copied record", record_index)
                 record_index += 1
@@ -739,7 +733,7 @@ class KnitPacker(Packer):
                     # check the header only
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
-                pos, size = writer.add_bytes_record(raw_data, names)
+                pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" %
                                      (pos, size), references)
                 pb.update("Copied record", record_index)

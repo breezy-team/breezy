@@ -34,8 +34,6 @@ from breezy.tests import (
 from breezy.tests.features import UnicodeFilenameFeature
 from breezy.directory_service import directories
 
-from breezy.tests.matchers import ContainsNoVfsCalls
-
 
 class TestSwitch(TestCaseWithTransport):
 
@@ -207,7 +205,7 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr(['switch', '-b', 'anotherbranch'])
         self.assertEqual(
             {'', 'anotherbranch'},
-            set(tree.branch.controldir.get_branches().keys()))
+            set(tree.branch.controldir.branch_names()))
 
     def test_switch_into_unrelated_colocated(self):
         # Create a new colocated branch from an existing non-colocated branch.
@@ -474,27 +472,6 @@ class TestSwitchDoesntOpenMasterBranch(TestCaseWithTransport):
         # This test should be cleaner to write, but see bug:
         #  https://bugs.launchpad.net/bzr/+bug/812295
         self.assertEqual(1, opened.count('master'))
-
-
-class TestSmartServerSwitch(TestCaseWithTransport):
-
-    def test_switch_lightweight(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
-                                 'target'])
-        self.reset_smart_call_log()
-        self.run_bzr(['switch', self.get_url('from')], working_dir='target')
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(21, self.hpss_calls)
-        self.assertLength(3, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
 
 class TestSwitchUncommitted(TestCaseWithTransport):

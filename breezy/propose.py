@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+import re
+
 from . import (
     errors,
     hooks,
@@ -39,9 +41,10 @@ class MergeProposalExists(errors.BzrError):
 
     _fmt = "A merge proposal already exists: %(url)s."
 
-    def __init__(self, url):
+    def __init__(self, url, existing_proposal=None):
         errors.BzrError.__init__(self)
         self.url = url
+        self.existing_proposal = existing_proposal
 
 
 class UnsupportedHoster(errors.BzrError):
@@ -99,6 +102,18 @@ class HosterLoginRequired(errors.BzrError):
         self.hoster = hoster
 
 
+class SourceNotDerivedFromTarget(errors.BzrError):
+    """Source branch is not derived from target branch."""
+
+    _fmt = ("Source %(source_branch)r not derived from "
+            "target %(target_branch)r.")
+
+    def __init__(self, source_branch, target_branch):
+        errors.BzrError.__init__(
+            self, source_branch=source_branch,
+            target_branch=target_branch)
+
+
 class MergeProposal(object):
     """A merge proposal.
 
@@ -127,6 +142,10 @@ class MergeProposal(object):
     def get_source_branch_url(self):
         """Return the source branch."""
         raise NotImplementedError(self.get_source_branch_url)
+
+    def get_source_revision(self):
+        """Return the latest revision for the source branch."""
+        raise NotImplementedError(self.get_source_revision)
 
     def get_target_branch_url(self):
         """Return the target branch."""
@@ -174,6 +193,14 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.get_merged_at)
 
+    def post_comment(self, body):
+        """Post a comment on the merge proposal.
+
+        Args:
+          body: Body of the comment
+        """
+        raise NotImplementedError(self.post_comment)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.
@@ -202,7 +229,7 @@ class MergeProposalBuilder(object):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
@@ -212,6 +239,9 @@ class MergeProposalBuilder(object):
         :param commit_message: Optional commit message
         :param work_in_progress:
             Whether this merge proposal is still a work-in-progress
+        :param allow_collaboration:
+            Whether to allow changes to the branch from the target branch
+            maintainer(s)
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
@@ -225,6 +255,11 @@ class Hoster(object):
     # proposals?
     supports_merge_proposal_labels = None
 
+    @property
+    def name(self):
+        """Name of this instance."""
+        return "%s at %s" % (type(self).__name__, self.base_url)
+
     # Does this hoster support suggesting a commit message in the
     # merge proposal?
     supports_merge_proposal_commit_message = None
@@ -237,9 +272,12 @@ class Hoster(object):
     # Common values: 'plain', 'markdown'
     merge_proposal_description_format = None
 
+    # Does this hoster support the allow_collaboration flag?
+    supports_allow_collaboration = False
+
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
@@ -248,7 +286,7 @@ class Hoster(object):
         :raise HosterLoginRequired: Action requires a hoster login, but none is
             known.
         """
-        raise NotImplementedError(self.publish)
+        raise NotImplementedError(self.publish_derived)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         """Get a derived branch ('a fork').
@@ -305,20 +343,22 @@ class Hoster(object):
         """Create a Hoster object if this hoster knows about a URL."""
         raise NotImplementedError(cls.probe_from_url)
 
-    def iter_my_proposals(self, status='open'):
+    def iter_my_proposals(self, status='open', author=None):
         """Iterate over the proposals created by the currently logged in user.
 
         :param status: Only yield proposals with this status
             (one of: 'open', 'closed', 'merged', 'all')
+        :param author: Name of author to query (defaults to current user)
         :return: Iterator over MergeProposal objects
         :raise HosterLoginRequired: Action requires a hoster login, but none is
             known.
         """
         raise NotImplementedError(self.iter_my_proposals)
 
-    def iter_my_forks(self):
+    def iter_my_forks(self, owner=None):
         """Iterate over the currently logged in users' forks.
 
+        :param owner: Name of owner to query (defaults to current user)
         :return: Iterator over project_name
         """
         raise NotImplementedError(self.iter_my_forks)
@@ -336,10 +376,27 @@ class Hoster(object):
         """
         raise NotImplementedError(cls.iter_instances)
 
+    def get_current_user(self):
+        """Retrieve the name of the currently logged in user.
+
+        :return: Username or None if not logged in
+        """
+        raise NotImplementedError(self.get_current_user)
+
+    def get_user_url(self, user):
+        """Rerieve the web URL for a user."""
+        raise NotImplementedError(self.get_user_url)
+
 
 def determine_title(description):
     """Determine the title for a merge proposal based on full description."""
-    return description.splitlines()[0].split('.')[0]
+    firstline = description.splitlines()[0]
+    try:
+        i = firstline.index('. ')
+    except ValueError:
+        return firstline.rstrip('.')
+    else:
+        return firstline[:i]
 
 
 def get_hoster(branch, possible_hosters=None):
@@ -366,6 +423,20 @@ def get_hoster(branch, possible_hosters=None):
     raise UnsupportedHoster(branch)
 
 
+def iter_hoster_instances(hoster=None):
+    """Iterate over all known hoster instances.
+
+    :return: Iterator over Hoster instances
+    """
+    if hoster is None:
+        hoster_clses = [hoster_cls for name, hoster_cls in hosters.items()]
+    else:
+        hoster_clses = [hoster]
+    for hoster_cls in hoster_clses:
+        for instance in hoster_cls.iter_instances():
+            yield instance
+
+
 def get_proposal_by_url(url):
     """Get the proposal object associated with a URL.
 
@@ -373,12 +444,11 @@ def get_proposal_by_url(url):
     :raise UnsupportedHoster: if there is no hoster that supports the URL
     :return: A `MergeProposal` object
     """
-    for name, hoster_cls in hosters.items():
-        for instance in hoster_cls.iter_instances():
-            try:
-                return instance.get_proposal_by_url(url)
-            except UnsupportedHoster:
-                pass
+    for instance in iter_hoster_instances():
+        try:
+            return instance.get_proposal_by_url(url)
+        except UnsupportedHoster:
+            pass
     raise UnsupportedHoster(url)
 
 

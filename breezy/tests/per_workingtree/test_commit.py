@@ -102,7 +102,10 @@ class TestCommit(TestCaseWithWorkingTree):
         # Merging from A should introduce conflicts because 'n' was modified
         # (in A) and removed (in B), so 'a' needs to be restored.
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
-        self.assertEqual(3, num_conflicts)
+        if tree_b.has_versioned_directories():
+            self.assertEqual(3, num_conflicts)
+        else:
+            self.assertEqual(2, num_conflicts)
 
         self.assertThat(
             tree_b, HasPathRelations(
@@ -113,7 +116,7 @@ class TestCommit(TestCaseWithWorkingTree):
         osutils.rmtree('B/a')
         try:
             # bzr resolve --all
-            tree_b.set_conflicts(conflicts.ConflictList())
+            tree_b.set_conflicts([])
         except errors.UnsupportedOperation:
             # On WT2, set_conflicts is unsupported, but the rmtree has the same
             # effect.
@@ -166,7 +169,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
-        self.assertEqual(1, len(changes))
+        self.assertEqual(1, len(changes), changes)
         self.assertEqual((None, 'a/b'), changes[0].path)
 
     def test_commit_sets_last_revision(self):
@@ -220,8 +223,8 @@ class TestCommit(TestCaseWithWorkingTree):
             self.assertEqual('a', wt.id2path(a_id))
 
         def fail_message(obj):
-            raise errors.BzrCommandError("empty commit message")
-        self.assertRaises(errors.BzrCommandError, wt.commit,
+            raise errors.CommandError("empty commit message")
+        self.assertRaises(errors.CommandError, wt.commit,
                           message_callback=fail_message)
         self.assertTrue(wt.is_versioned('a'))
         if wt.supports_setting_file_ids():

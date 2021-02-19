@@ -39,7 +39,7 @@ from ...bzr import (
 from ...osutils import (
     getcwd,
     )
-from ...tests import test_bundle
+from ...bzr.tests import test_bundle
 from ...tests.test_sftp_transport import TestCaseWithSFTPServer
 from ...tests import (
     TestCaseWithTransport,

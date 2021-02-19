@@ -30,7 +30,6 @@ __all__ = [
     'HasLayout',
     'HasPathRelations',
     'MatchesAncestry',
-    'ContainsNoVfsCalls',
     'ReturnsUnlockable',
     'RevisionHistoryMatches',
     ]
@@ -39,16 +38,10 @@ from .. import (
     osutils,
     revision as _mod_revision,
     )
-from .. import lazy_import
-lazy_import.lazy_import(globals(),
-                        """
-from breezy.bzr.smart.request import request_handlers as smart_request_handlers
-from breezy.bzr.smart import vfs
-""")
 from ..sixish import (
     text_type,
     )
-from ..tree import find_previous_path
+from ..tree import InterTree
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -201,11 +194,11 @@ class HasPathRelations(Matcher):
 
     def get_path_map(self, tree):
         """Get the (path, previous_path) pairs for the current tree."""
+        previous_intertree = InterTree.get(self.previous_tree, tree)
         with tree.lock_read(), self.previous_tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
                 if tree.supports_rename_tracking():
-                    previous_path = find_previous_path(
-                        tree, self.previous_tree, path)
+                    previous_path = previous_intertree.find_source_path(path)
                 else:
                     if self.previous_tree.is_versioned(path):
                         previous_path = path
@@ -278,37 +271,3 @@ class RevisionHistoryMatches(Matcher):
                 branch.last_revision(), [_mod_revision.NULL_REVISION]))
             history.reverse()
         return Equals(self.expected).match(history)
-
-
-class _NoVfsCallsMismatch(Mismatch):
-    """Mismatch describing a list of HPSS calls which includes VFS requests."""
-
-    def __init__(self, vfs_calls):
-        self.vfs_calls = vfs_calls
-
-    def describe(self):
-        return "no VFS calls expected, got: %s" % ",".join([
-            "%s(%s)" % (c.method,
-                        ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
-
-
-class ContainsNoVfsCalls(Matcher):
-    """Ensure that none of the specified calls are HPSS calls."""
-
-    def __str__(self):
-        return 'ContainsNoVfsCalls()'
-
-    @classmethod
-    def match(cls, hpss_calls):
-        vfs_calls = []
-        for call in hpss_calls:
-            try:
-                request_method = smart_request_handlers.get(call.call.method)
-            except KeyError:
-                # A method we don't know about doesn't count as a VFS method.
-                continue
-            if issubclass(request_method, vfs.VfsRequest):
-                vfs_calls.append(call.call)
-        if len(vfs_calls) == 0:
-            return None
-        return _NoVfsCallsMismatch(vfs_calls)

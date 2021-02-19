@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # vim: expandtab
 
 # Copyright (C) 2011-2018 Jelmer Vernooij <jelmer@jelmer.uk>
@@ -81,7 +80,7 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
         lossy = False
     else:
         lossy = True
-    inter.fetch_objects(revs, lossy=lossy)
+    inter.fetch_revs(revs, lossy=lossy)
     outf.write(b"\n")
 
 

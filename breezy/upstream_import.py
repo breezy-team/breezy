@@ -31,14 +31,14 @@ import zipfile
 from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
-from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
+from .errors import (BzrError, NoSuchFile, CommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
 from .sixish import (
     text_type,
     )
 from .trace import warning
-from .transform import resolve_conflicts, cook_conflicts
+from .transform import resolve_conflicts
 from .transport import get_transport
 from .workingtree import WorkingTree
 
@@ -232,7 +232,7 @@ def import_dir(tree, dir_input):
 
 
 def import_archive(tree, archive_file):
-    with tree.get_transform() as tt:
+    with tree.transform() as tt:
         import_archive_to_transform(tree, archive_file, tt)
         tt.apply()
 
@@ -290,7 +290,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         if tt.tree_file_id(trans_id) is None:
             name = basename(member.name.rstrip('/'))
             file_id = generate_ids.gen_file_id(name)
-            tt.version_file(file_id, trans_id)
+            tt.version_file(trans_id, file_id=file_id)
 
     for relative_path in implied_parents.difference(added):
         if relative_path == "":
@@ -299,13 +299,13 @@ def import_archive_to_transform(tree, archive_file, tt):
         path = tree.abspath(relative_path)
         do_directory(tt, trans_id, tree, relative_path, path)
         if tt.tree_file_id(trans_id) is None:
-            tt.version_file(trans_id, trans_id)
+            tt.version_file(trans_id, file_id=trans_id)
         added.add(relative_path)
 
     for path in removed.difference(added):
         tt.unversion_file(tt.trans_id_tree_path(path))
 
-    for conflict in cook_conflicts(resolve_conflicts(tt), tt):
+    for conflict in tt.cook_conflicts(resolve_conflicts(tt)):
         warning(conflict)
 
 
@@ -323,7 +323,7 @@ def do_import(source, tree_directory=None):
         tree = WorkingTree.open_containing('.')[0]
     with tree.lock_write():
         if tree.changes_from(tree.basis_tree()).has_changed():
-            raise BzrCommandError("Working tree has uncommitted changes.")
+            raise CommandError("Working tree has uncommitted changes.")
 
         try:
             archive, external_compressor = get_archive_type(source)
@@ -333,7 +333,7 @@ def do_import(source, tree_directory=None):
                 s.seek(0)
                 import_dir(tree, s)
             else:
-                raise BzrCommandError('Unhandled import source')
+                raise CommandError('Unhandled import source')
         else:
             if archive == 'zip':
                 import_zip(tree, open_from_url(source))

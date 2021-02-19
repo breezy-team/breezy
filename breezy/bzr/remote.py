@@ -707,6 +707,23 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         b = self.open_branch(name=name)
         return b._format
 
+    def branch_names(self):
+        path = self._path_for_remote_call(self._client)
+        try:
+            response, handler = self._call_expecting_body(
+                b'BzrDir.get_branches', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_bzrdir.branch_names()
+        if response[0] != b"success":
+            raise errors.UnexpectedSmartServerResponse(response)
+        body = bencode.bdecode(handler.read_body_bytes())
+        ret = []
+        for name, value in viewitems(body):
+            name = name.decode('utf-8')
+            ret.append(name)
+        return ret
+
     def get_branches(self, possible_transports=None, ignore_fallbacks=False):
         path = self._path_for_remote_call(self._client)
         try:
@@ -721,9 +738,10 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         ret = {}
         for name, value in viewitems(body):
             name = name.decode('utf-8')
-            ret[name] = self._open_branch(name, value[0], value[1],
-                                          possible_transports=possible_transports,
-                                          ignore_fallbacks=ignore_fallbacks)
+            ret[name] = self._open_branch(
+                name, value[0].decode('ascii'), value[1],
+                possible_transports=possible_transports,
+                ignore_fallbacks=ignore_fallbacks)
         return ret
 
     def set_branch_reference(self, target_branch, name=None):
@@ -792,8 +810,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if kind == 'ref':
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
+            ref_loc = urlutils.join(self.user_url, location_or_format.decode('utf-8'))
             return format.open(self, name=name, _found=True,
-                               location=location_or_format.decode('utf-8'),
+                               location=ref_loc,
                                ignore_fallbacks=ignore_fallbacks,
                                possible_transports=possible_transports)
         branch_format_name = location_or_format
@@ -2259,9 +2278,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         identifiers = []
         for (file_id, revid, identifier) in desired_files:
             lines.append(b''.join([
-                osutils.safe_file_id(file_id),
+                file_id,
                 b'\0',
-                osutils.safe_revision_id(revid)]))
+                revid]))
             identifiers.append(identifier)
         (response_tuple, response_handler) = (
             self._call_with_body_bytes_expecting_body(
@@ -2549,47 +2568,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             filtered_inv = inv.filter(file_ids)
             yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        with self.lock_read():
-            medium = self._client._medium
-            if medium._is_remote_before((1, 2)):
-                self._ensure_real()
-                for delta in self._real_repository.get_deltas_for_revisions(
-                        revisions, specific_fileids):
-                    yield delta
-                return
-            # Get the revision-ids of interest
-            required_trees = set()
-            for revision in revisions:
-                required_trees.add(revision.revision_id)
-                required_trees.update(revision.parent_ids[:1])
-
-            # Get the matching filtered trees. Note that it's more
-            # efficient to pass filtered trees to changes_from() rather
-            # than doing the filtering afterwards. changes_from() could
-            # arguably do the filtering itself but it's path-based, not
-            # file-id based, so filtering before or afterwards is
-            # currently easier.
-            if specific_fileids is None:
-                trees = dict((t.get_revision_id(), t) for
-                             t in self.revision_trees(required_trees))
-            else:
-                trees = dict((t.get_revision_id(), t) for
-                             t in self._filtered_revision_trees(required_trees,
-                                                                specific_fileids))
-
-            # Calculate the deltas
-            for revision in revisions:
-                if not revision.parent_ids:
-                    old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-                else:
-                    old_tree = trees[revision.parent_ids[0]]
-                yield trees[revision.revision_id].changes_from(old_tree)
-
     def get_revision_delta(self, revision_id):
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions([r]))[0]
+            return list(self.get_revision_deltas([r]))[0]
 
     def revision_trees(self, revision_ids):
         with self.lock_read():
@@ -4033,12 +4015,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 source, overwrite=overwrite, stop_revision=stop_revision,
                 _override_hook_target=self, **kwargs)
 
-    def push(self, target, overwrite=False, stop_revision=None, lossy=False):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False, tag_selector=None):
         with self.lock_read():
             self._ensure_real()
             return self._real_branch.push(
                 target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
-                _override_hook_source_branch=self)
+                _override_hook_source_branch=self, tag_selector=tag_selector)
 
     def peek_lock_mode(self):
         return self._lock_mode
@@ -4518,6 +4500,9 @@ error_translators.register(b'UnresumableWriteGroup',
                            lambda err, find, get_path: errors.UnresumableWriteGroup(
                                repository=find('repository'), write_groups=err.error_args[0],
                                reason=err.error_args[1]))
+error_translators.register(b'AlreadyControlDir',
+                           lambda err, find, get_path: errors.AlreadyControlDirError(get_path()))
+
 no_context_error_translators.register(b'GhostRevisionsHaveNoRevno',
                                       lambda err: errors.GhostRevisionsHaveNoRevno(*err.error_args))
 no_context_error_translators.register(b'IncompatibleRepositories',

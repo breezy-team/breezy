@@ -26,10 +26,11 @@ from breezy import (
     revision as _mod_revision,
     tests,
     )
-from breezy.tree import TreeChange
+from breezy.sixish import PY3
 from breezy.bzr import (
     inventorytree,
     )
+from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests import per_repository
 from breezy.tests import (
     features,
@@ -196,7 +197,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                delete_change = TreeChange(
+                delete_change = InventoryTreeChange(
                     foo_id, ('foo', None), True, (True, False),
                     (tree.path2id(''), None),
                     ('foo', None), ('file', None),
@@ -498,11 +499,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 builder.abort()
                 raise
             delta = builder.get_basis_delta()
-            delta_dict = dict((change[2], change) for change in delta)
+            delta_dict = dict((change[1], change) for change in delta)
             if tree.branch.repository._format.records_per_file_revision:
-                version_recorded = (file_id in delta_dict
-                                    and delta_dict[file_id][3] is not None
-                                    and delta_dict[file_id][3].revision == rev2)
+                version_recorded = (new_name in delta_dict
+                                    and delta_dict[new_name][3] is not None
+                                    and delta_dict[new_name][3].revision == rev2)
                 if records_version:
                     self.assertTrue(version_recorded)
                 else:
@@ -513,11 +514,25 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 specific_files=[new_name]))[1]
 
             if delta_against_basis:
-                if tree.supports_rename_tracking() or name == new_name:
-                    expected_delta = (name, new_name, file_id, new_entry)
+                (delta_old_name, delta_new_name,
+                 delta_file_id, delta_entry) = delta_dict[new_name]
+                self.assertEqual(delta_new_name, new_name)
+                if tree.supports_rename_tracking():
+                    self.assertEqual(name, delta_old_name)
                 else:
-                    expected_delta = (None, new_name, file_id, new_entry)
-                self.assertEqual(expected_delta, delta_dict[file_id])
+                    self.assertIn(delta_old_name, (name, None))
+                if tree.supports_setting_file_ids():
+                    self.assertEqual(delta_file_id, file_id)
+                    self.assertEqual(delta_entry.file_id, file_id)
+                self.assertEqual(delta_entry.kind, new_entry.kind)
+                self.assertEqual(delta_entry.name, new_entry.name)
+                self.assertEqual(delta_entry.parent_id, new_entry.parent_id)
+                if delta_entry.kind == 'file':
+                    self.assertEqual(delta_entry.text_size, revtree.get_file_size(new_name))
+                    if getattr(delta_entry, 'text_sha1', None):
+                        self.assertEqual(delta_entry.text_sha1, revtree.get_file_sha1(new_name))
+                elif delta_entry.kind == 'symlink':
+                    self.assertEqual(delta_entry.symlink_target, new_entry.symlink_target)
             else:
                 expected_delta = None
                 if tree.branch.repository._format.records_per_file_revision:
@@ -807,6 +822,24 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertRaises(ValueError, branch.repository.get_commit_builder,
                           branch, [], branch.get_config_stack(),
                           revprops={'invalid': u'property\rwith\r\ninvalid chars'})
+
+    def test_get_commit_builder_with_surrogateescape(self):
+        if not PY3:
+            self.skipTest('python 2 does not have surrogateescape')
+        tree = self.make_branch_and_tree(".")
+        with tree.lock_write():
+            builder = tree.branch.get_commit_builder([], revprops={
+                'invalid': u'property' + b'\xc0'.decode('utf-8', 'surrogateescape')})
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                                             tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            try:
+                rev_id = builder.commit('foo bar blah')
+            except NotImplementedError:
+                raise tests.TestNotApplicable(
+                    'Format does not support revision properties')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('foo bar blah', rev.message)
 
     def test_commit_builder_commit_with_invalid_message(self):
         branch = self.make_branch('.')

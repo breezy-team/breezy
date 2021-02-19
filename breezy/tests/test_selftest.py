@@ -546,7 +546,7 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
     def test_assertEqualStat_equal(self):
-        from .test_dirstate import _FakeStat
+        from ..bzr.tests.test_dirstate import _FakeStat
         self.build_tree(["foo"])
         real = os.lstat("foo")
         fake = _FakeStat(real.st_size, real.st_mtime, real.st_ctime,
@@ -692,7 +692,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 
     def test_get_readonly_url_http(self):
         from .http_server import HttpServer
-        from ..transport.http import HttpTransport
+        from ..transport.http.urllib import HttpTransport
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
@@ -3294,7 +3294,7 @@ class TestTestPrefixRegistry(tests.TestCase):
 
     def test_resolve_unknown_alias(self):
         tpr = self._get_registry()
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           tpr.resolve_alias, 'I am not a prefix')
 
     def test_predefined_prefixes(self):

@@ -28,7 +28,6 @@ from breezy import (
     merge,
     osutils,
     urlutils,
-    transform,
     transport,
     repository,
     revision,
@@ -37,7 +36,6 @@ from breezy import (
     tree as _mod_tree,
     )
 from breezy.bzr import (
-    branch as _mod_bzrbranch,
     remote,
     )
 from breezy.sixish import (
@@ -260,7 +258,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
-        if not isinstance(branch, _mod_bzrbranch.BzrBranch):
+        if not branch.repository._format.supports_storing_branch_nick:
             raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
@@ -864,7 +862,7 @@ class FakeShelfCreator(object):
 
     def write_shelf(self, shelf_file, message=None):
         tree = self.branch.repository.revision_tree(revision.NULL_REVISION)
-        with transform.TransformPreview(tree) as tt:
+        with tree.preview_transform() as tt:
             shelf.ShelfCreator._write_shelf(
                 shelf_file, tt, revision.NULL_REVISION)
 

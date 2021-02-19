@@ -19,8 +19,8 @@ if sys.version_info < (2, 7):
 
 try:
     import setuptools
-except ImportError:
-    sys.stderr.write("[ERROR] Please install setuptools\n")
+except ImportError as e:
+    sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
 
@@ -68,16 +68,21 @@ META_INFO = {
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
-        'fastimport>=0.9.8',
-        'dulwich>=0.19.12',
+        'dulwich>=0.19.12;python_version>="3.5"',
+        'dulwich<0.20,>=0.19.12;python_version<"3.0"',
         ],
     'extras_require': {
-        'fastimport': [],
+        'cext': ['cython>=0.29'],
+        'fastimport': ['fastimport'],
         'git': [],
         'launchpad': ['launchpadlib>=1.6.3'],
+        'workspace': ['pyinotify'],
+        'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
     'tests_require': [
         'testtools',
+        'testtools<=2.4.0;python_version<"3.0"',
+        'python-subunit',
     ],
 }
 

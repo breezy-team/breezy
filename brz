@@ -80,30 +80,8 @@ if breezy.version_info[:3] != _script_version:
             breezy._format_version_tuple(_script_version),
             __file__))
 
-
-import breezy.breakin
-breezy.breakin.hook_debugger_to_signal()
-
-import breezy.commands
-import breezy.trace
-
-
 if __name__ == '__main__':
-    with breezy.initialize():
-        exit_val = breezy.commands.main()
-        if profiling:
-            profile_imports.log_stack_info(sys.stderr)
-
-    # By this point we really have completed everything we want to do, and
-    # there's no point doing any additional cleanup.  Abruptly exiting here
-    # stops any background threads getting into trouble as code is unloaded,
-    # and it may also be slightly faster, through avoiding gc of objects that
-    # are just about to be discarded anyhow.  This does mean that atexit hooks
-    # won't run but we don't use them.  Also file buffers won't be flushed,
-    # but our policy is to always close files from a finally block. -- mbp 20070215
-    exitfunc = getattr(sys, "exitfunc", None)
-    if exitfunc is not None:
-        exitfunc()
-    os._exit(exit_val)
+    from breezy.__main__ import main
+    main()
 else:
     raise ImportError("The brz script cannot be imported.")

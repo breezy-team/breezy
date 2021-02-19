@@ -69,7 +69,6 @@ from .osutils import (get_user_encoding,
                       minimum_path_selection,
                       )
 from .trace import mutter, note, is_quiet
-from .tree import TreeChange
 from .urlutils import unescape_for_display
 from .i18n import gettext
 
@@ -440,8 +439,8 @@ class Commit(object):
             # as updating its basis and unversioning paths that were missing.
             self.work_tree.unversion(self.deleted_paths)
             self._set_progress_stage("Updating the working tree")
-            self.work_tree.update_basis_by_delta(self.rev_id,
-                                                 self.builder.get_basis_delta())
+            self.work_tree.update_basis_by_delta(
+                self.rev_id, self.builder.get_basis_delta())
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
             return self.rev_id

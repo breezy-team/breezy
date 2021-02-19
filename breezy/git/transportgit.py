@@ -426,8 +426,10 @@ class TransportRepo(BaseRepo):
                     _mod_transport.get_transport_from_path(commondir)
         else:
             self._commontransport = self._controltransport
-        object_store = TransportObjectStore(
-            self._commontransport.clone(OBJECTDIR))
+        config = self.get_config()
+        object_store = TransportObjectStore.from_config(
+            self._commontransport.clone(OBJECTDIR),
+            config)
         if refs_text is not None:
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
@@ -514,6 +516,25 @@ class TransportRepo(BaseRepo):
         backends.extend(StackedConfig.default_backends())
         return StackedConfig(backends, writable=writable)
 
+    # Here for compatibility with dulwich < 0.19.17
+    def generate_pack_data(self, have, want, progress=None, ofs_delta=None):
+        """Generate pack data objects for a set of wants/haves.
+
+        Args:
+          have: List of SHA1s of objects that should not be sent
+          want: List of SHA1s of objects that should be sent
+          ofs_delta: Whether OFS deltas can be included
+          progress: Optional progress reporting method
+        """
+        shallow = self.get_shallow()
+        if shallow:
+            return self.object_store.generate_pack_data(
+                have, want, shallow=shallow,
+                progress=progress, ofs_delta=ofs_delta)
+        else:
+            return self.object_store.generate_pack_data(
+                have, want, progress=progress, ofs_delta=ofs_delta)
+
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__, self.transport)
 
@@ -546,15 +567,37 @@ class TransportRepo(BaseRepo):
 class TransportObjectStore(PackBasedObjectStore):
     """Git-style object store that exists on disk."""
 
-    def __init__(self, transport):
+    def __init__(self, transport,
+                 loose_compression_level=-1, pack_compression_level=-1):
         """Open an object store.
 
         :param transport: Transport to open data from
         """
         super(TransportObjectStore, self).__init__()
+        self.pack_compression_level = pack_compression_level
+        self.loose_compression_level = loose_compression_level
         self.transport = transport
         self.pack_transport = self.transport.clone(PACKDIR)
         self._alternates = None
+
+    @classmethod
+    def from_config(cls, path, config):
+        try:
+            default_compression_level = int(config.get(
+                (b'core', ), b'compression').decode())
+        except KeyError:
+            default_compression_level = -1
+        try:
+            loose_compression_level = int(config.get(
+                (b'core', ), b'looseCompression').decode())
+        except KeyError:
+            loose_compression_level = default_compression_level
+        try:
+            pack_compression_level = int(config.get(
+                (b'core', ), 'packCompression').decode())
+        except KeyError:
+            pack_compression_level = default_compression_level
+        return cls(path, loose_compression_level, pack_compression_level)
 
     def __eq__(self, other):
         if not isinstance(other, TransportObjectStore):
@@ -688,7 +731,14 @@ class TransportObjectStore(PackBasedObjectStore):
         path = urlutils.quote_from_bytes(osutils.pathjoin(dir, file))
         if self.transport.has(path):
             return  # Already there, no need to write again
-        self.transport.put_bytes(path, obj.as_legacy_object())
+        # Backwards compatibility with Dulwich < 0.20, which doesn't support
+        # the compression_level parameter.
+        if self.loose_compression_level not in (-1, None):
+            raw_string = obj.as_legacy_object(
+                compression_level=self.loose_compression_level)
+        else:
+            raw_string = obj.as_legacy_object()
+        self.transport.put_bytes(path, raw_string)
 
     def move_in_pack(self, f):
         """Move a specific file containing a pack into the pack directory.

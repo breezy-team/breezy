@@ -177,6 +177,20 @@ class TestGitBlackBox(ExternalBase):
             error,
             'Pushed up to revision id git(.*).\n')
 
+    def test_merge(self):
+        self.run_bzr(['init', '--git', 'orig'])
+        self.build_tree_contents([('orig/a', 'orig contents\n')])
+        self.run_bzr(['add', 'orig/a'])
+        self.run_bzr(['commit', '-m', 'add orig', 'orig'])
+        self.run_bzr(['clone', 'orig', 'other'])
+        self.build_tree_contents([('other/a', 'new contents\n')])
+        self.run_bzr(['commit', '-m', 'modify', 'other'])
+        self.build_tree_contents([('orig/b', 'more\n')])
+        self.run_bzr(['add', 'orig/b'])
+        self.build_tree_contents([('orig/a', 'new contents\n')])
+        self.run_bzr(['commit', '-m', 'more', 'orig'])
+        self.run_bzr(['merge', '-d', 'orig', 'other'])
+
     def test_push_lossy_non_mainline(self):
         self.run_bzr(['init', '--git', 'bla'])
         self.run_bzr(['init', 'foo'])
@@ -349,7 +363,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         self.assertEqual(set(["abranch", "bbranch"]),
-                         set(ControlDir.open("b").get_branches().keys()))
+                         set(ControlDir.open("b").branch_names()))
 
     def test_git_import_incremental(self):
         r = GitRepo.init("a", mkdir=True)
@@ -361,7 +375,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEqual(["abranch"], list(b.get_branches().keys()))
+        self.assertEqual(["abranch"], b.branch_names())
 
     def test_git_import_tags(self):
         r = GitRepo.init("a", mkdir=True)
@@ -373,7 +387,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEqual(["abranch"], list(b.get_branches().keys()))
+        self.assertEqual(["abranch"], b.branch_names())
         self.assertEqual(["atag"],
                          list(b.open_branch("abranch").tags.get_tag_dict().keys()))
 
@@ -425,6 +439,37 @@ class TestGitBlackBox(ExternalBase):
         self.maxDiff = None
         self.assertEqual(out, '')
         self.assertTrue(err.endswith, '3 objects\n')
+
+    def test_local_whoami(self):
+        r = GitRepo.init("gitr", mkdir=True)
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+  name = Test User
+""")])
+        out, err = self.run_bzr(["whoami", "-d", "gitr"])
+        self.assertEqual(out, "Test User <some@example.com>\n")
+        self.assertEqual(err, "")
+
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+""")])
+        out, err = self.run_bzr(["whoami", "-d", "gitr"])
+        self.assertEqual(out, "some@example.com\n")
+        self.assertEqual(err, "")
+
+    def test_local_signing_key(self):
+        r = GitRepo.init("gitr", mkdir=True)
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+  name = Test User
+  signingkey = D729A457
+""")])
+        out, err = self.run_bzr(["config", "-d", "gitr", "gpg_signing_key"])
+        self.assertEqual(out, "D729A457\n")
+        self.assertEqual(err, "")
 
 
 class ShallowTests(ExternalBase):

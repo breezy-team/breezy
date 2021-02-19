@@ -562,7 +562,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_internal_diff_exec_property(self):
         tree = self.make_branch_and_tree('tree')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.new_file('a', tt.root, [b'contents\n'], b'a-id', True)
         tt.new_file('b', tt.root, [b'contents\n'], b'b-id', False)
         tt.new_file('c', tt.root, [b'contents\n'], b'c-id', True)
@@ -572,7 +572,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tt.apply()
         tree.commit('one', rev_id=b'rev-1')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.set_executability(False, tt.trans_id_file_id(b'a-id'))
         tt.set_executability(True, tt.trans_id_file_id(b'b-id'))
         tt.set_executability(False, tt.trans_id_file_id(b'c-id'))
@@ -608,8 +608,8 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
             [('tree/' + alpha, b'\0'),
              ('tree/' + omega,
               (b'The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
-        tree.add([alpha], [b'file-id'])
-        tree.add([omega], [b'file-id-2'])
+        tree.add([alpha])
+        tree.add([omega])
         diff_content = StubO()
         diff.show_diff_trees(tree.basis_tree(), tree, diff_content)
         diff_content.check_types(self, bytes)
@@ -805,8 +805,11 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.differ.diff('olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
-            br'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
-            br' \@\@\n-old\n\n')
+            br'--- olddir/oldfile.*\n'
+            br'\+\+\+ newdir/newfile.*\n'
+            br'\@\@ -1,1 \+0,0 \@\@\n'
+            br'-old\n'
+            br'\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
                               b"=== target is 'new'\n")
 

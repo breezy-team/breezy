@@ -43,9 +43,16 @@ from breezy.git.git_remote_helper import (
     open_remote_dir,
     )
 
+from breezy.trace import warning
+
 parser = optparse.OptionParser()
 (opts, args) = parser.parse_args()
 (shortname, url) = args
+
+warning(
+    'git-remote-bzr is experimental and has not been optimized for '
+    'performance. Use \'brz fast-export\' and \'git fast-import\' for '
+    'large repositories.')
 
 helper = RemoteHelper(open_local_dir(), shortname, open_remote_dir(url))
 if PY3:

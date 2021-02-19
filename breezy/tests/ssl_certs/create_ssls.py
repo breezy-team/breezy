@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 # Copyright (C) 2007, 2008, 2009, 2017 Canonical Ltd
 #
@@ -84,7 +84,7 @@ def _openssl(args, input=None):
     """
     cmd = ['openssl'] + args
     proc = Popen(cmd, stdin=PIPE)
-    (stdout, stderr) = proc.communicate(input)
+    (stdout, stderr) = proc.communicate(input.encode('utf-8'))
     if proc.returncode:
         # Basic error handling, all commands should succeed
         raise CalledProcessError(proc.returncode, cmd)

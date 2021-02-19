@@ -44,6 +44,10 @@ from ..controldir import (
     RepositoryAcquisitionPolicy,
     )
 
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    )
 from .push import (
     GitPushResult,
     )
@@ -218,15 +222,22 @@ class GitDir(ControlDir):
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,
                         stacked=stacked)
+        if getattr(result_repo, '_git', None):
+            # Don't leak resources:
+            # TODO(jelmer): This shouldn't be git-specific, and possibly
+            # just use read locks.
+            result_repo._git.object_store.close()
         return result
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False,
                            stacked_on=None, create_prefix=False,
-                           use_existing_dir=True, no_tree=False):
+                           use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """See ControlDir.clone_on_transport."""
         from ..repository import InterRepository
         from .mapping import default_mapping
+        from ..transport.local import LocalTransport
         if stacked_on is not None:
             raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.user_url)
@@ -245,25 +256,26 @@ class GitDir(ControlDir):
         interrepo = InterRepository.get(source_repo, target_repo)
         if revision_id is not None:
             determine_wants = interrepo.get_determine_wants_revids(
-                [revision_id], include_tags=True)
+                [revision_id], include_tags=True, tag_selector=tag_selector)
         else:
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
         for name, val in viewitems(refs):
             target_git_repo.refs[name] = val
-        result_dir = self.__class__(transport, target_git_repo, format)
+        result_dir = LocalGitDir(transport, target_git_repo, format)
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
-        try:
-            # Cheaper to check if the target is not local, than to try making
-            # the tree and fail.
-            result_dir.root_transport.local_abspath('.')
+        if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
-                self.open_workingtree().clone(
-                    result_dir, revision_id=revision_id)
-        except (brz_errors.NoWorkingTree, brz_errors.NotLocalUrl):
-            pass
+                try:
+                    local_wt = self.open_workingtree()
+                except brz_errors.NoWorkingTree:
+                    pass
+                except brz_errors.NotLocalUrl:
+                    result_dir.create_workingtree(revision_id=revision_id)
+                else:
+                    local_wt.clone(result_dir, revision_id=revision_id)
 
         return result_dir
 
@@ -298,6 +310,20 @@ class GitDir(ControlDir):
         """
         return UseExistingRepository(self.find_repository())
 
+    def branch_names(self):
+        from .refs import ref_to_branch_name
+        ret = []
+        for ref in self.get_refs_container().keys():
+            try:
+                branch_name = ref_to_branch_name(ref)
+            except UnicodeDecodeError:
+                trace.warning("Ignoring branch %r with unicode error ref", ref)
+                continue
+            except ValueError:
+                continue
+            ret.append(branch_name)
+        return ret
+
     def get_branches(self):
         from .refs import ref_to_branch_name
         ret = {}
@@ -317,7 +343,7 @@ class GitDir(ControlDir):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    name=None):
+                    name=None, tag_selector=None):
         """Push the source branch into this ControlDir."""
         push_result = GitPushResult()
         push_result.workingtree_updated = None
@@ -330,7 +356,7 @@ class GitDir(ControlDir):
         target = self.open_branch(name, nascent_ok=True)
         push_result.branch_push_result = source.push(
             target, overwrite=overwrite, stop_revision=revision_id,
-            lossy=lossy)
+            lossy=lossy, tag_selector=tag_selector)
         push_result.new_revid = push_result.branch_push_result.new_revid
         push_result.old_revid = push_result.branch_push_result.old_revid
         try:
@@ -525,7 +551,7 @@ class LocalGitDir(GitDir):
                     target_branch._format, self._format)
             # TODO(jelmer): Do some consistency checking across branches..
             self.control_transport.put_bytes(
-                'commondir', target_path.encode('utf-8'))
+                'commondir', encode_git_path(target_path))
             # TODO(jelmer): Urgh, avoid mucking about with internals.
             self._git._commontransport = (
                 target_branch.repository._git._commontransport.clone())
@@ -565,7 +591,7 @@ class LocalGitDir(GitDir):
                 base_url = self.user_url.rstrip('/')
             else:
                 base_url = urlutils.local_path_to_url(
-                    commondir.decode(osutils._fs_enc)).rstrip('/.git/') + '/'
+                    decode_git_path(commondir)).rstrip('/.git/') + '/'
             if not PY3:
                 params = {k: v.encode('utf-8') for (k, v) in viewitems(params)}
             return urlutils.join_segment_parameters(base_url, params)

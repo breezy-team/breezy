@@ -49,6 +49,16 @@ from .sixish import (
     )
 
 
+class IllegalMergeDirectivePayload(errors.BzrError):
+    """A merge directive contained something other than a patch or bundle"""
+
+    _fmt = "Bad merge directive payload %(start)r"
+
+    def __init__(self, start):
+        errors.BzrError(self)
+        self.start = start
+
+
 class MergeRequestBodyParams(object):
     """Parameter object for the merge_request_body hook."""
 
@@ -546,7 +556,7 @@ class MergeDirective2(BaseMergeDirective):
                 if start.startswith(b'# Begin bundle'):
                     bundle = b''.join(line_iter)
                 else:
-                    raise errors.IllegalMergeDirectivePayload(start)
+                    raise IllegalMergeDirectivePayload(start)
         time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',

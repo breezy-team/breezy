@@ -24,7 +24,7 @@ from .. import (
     merge_directive,
     osutils,
     )
-from ..conflicts import (
+from ..bzr.conflicts import (
     ContentsConflict,
     TextConflict,
     PathConflict,
@@ -57,7 +57,7 @@ class MergeBuilder(object):
             wt.lock_write()
             wt.set_root_id(self.tree_root)
             wt.flush()
-            tt = wt.get_transform()
+            tt = wt.transform()
             return wt, tt
         self.base, self.base_tt = wt('base')
         self.this, self.this_tt = wt('this')

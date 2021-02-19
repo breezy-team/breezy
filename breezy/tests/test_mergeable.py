@@ -25,8 +25,10 @@ from .. import (
     errors,
     tests,
     )
-from . import (
+from ..bzr.tests import (
     test_read_bundle,
+    )
+from . import (
     test_server,
     )
 

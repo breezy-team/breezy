@@ -251,7 +251,7 @@ from ..sixish import (
     viewitems,
     viewvalues,
     )
-from ..tree import TreeChange
+from .inventorytree import InventoryTreeChange
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -531,7 +531,7 @@ class DirState(object):
                     file_id_entry[0][0], file_id_entry[0][1])
                 kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
                 info = '%s:%s' % (kind, path)
-                raise errors.DuplicateFileId(file_id, info)
+                raise inventory.DuplicateFileId(file_id, info)
         first_key = (dirname, basename, b'')
         block_index, present = self._find_block_index_from_key(first_key)
         if present:
@@ -3767,7 +3767,7 @@ class ProcessEntryPython(object):
                     else:
                         path_u = self.utf8_decode(path)[0]
                 source_kind = DirState._minikind_to_kind[source_minikind]
-                return TreeChange(
+                return InventoryTreeChange(
                     entry[0][2],
                     (old_path_u, path_u),
                     content_change,
@@ -3796,7 +3796,7 @@ class ProcessEntryPython(object):
                         and stat.S_IEXEC & path_info[3].st_mode)
                 else:
                     target_exec = target_details[3]
-                return TreeChange(
+                return InventoryTreeChange(
                     entry[0][2],
                     (None, self.utf8_decode(path)[0]),
                     True,
@@ -3807,7 +3807,7 @@ class ProcessEntryPython(object):
                     (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
-                return TreeChange(
+                return InventoryTreeChange(
                     entry[0][2],
                     (None, self.utf8_decode(path)[0]),
                     False,
@@ -3827,7 +3827,7 @@ class ProcessEntryPython(object):
                 self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
-            return TreeChange(
+            return InventoryTreeChange(
                 entry[0][2],
                 (self.utf8_decode(old_path)[0], None),
                 True,
@@ -3969,7 +3969,7 @@ class ProcessEntryPython(object):
                 new_executable = bool(
                     stat.S_ISREG(root_dir_info[3].st_mode)
                     and stat.S_IEXEC & root_dir_info[3].st_mode)
-                yield TreeChange(
+                yield InventoryTreeChange(
                     None,
                     (None, current_root_unicode),
                     True,
@@ -4052,7 +4052,7 @@ class ProcessEntryPython(object):
                                 new_executable = bool(
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
-                                yield TreeChange(
+                                yield InventoryTreeChange(
                                     None,
                                     (None, utf8_decode(current_path_info[0])[0]),
                                     True,
@@ -4188,7 +4188,7 @@ class ProcessEntryPython(object):
                                 except UnicodeDecodeError:
                                     raise errors.BadFilenameEncoding(
                                         current_path_info[0], osutils._fs_enc)
-                                yield TreeChange(
+                                yield InventoryTreeChange(
                                     None,
                                     (None, relpath_unicode),
                                     True,

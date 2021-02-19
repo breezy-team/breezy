@@ -90,7 +90,6 @@ import re
 import stat
 
 from breezy import (
-    atomicfile,
     cmdline,
     controldir,
     debug,
@@ -556,12 +555,12 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BRZ_EMAIL can be set to override this, then
+        $BRZ_EMAIL or $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If no username can be found, NoWhoami exception is raised.
         """
-        v = os.environ.get('BRZ_EMAIL')
+        v = os.environ.get('BRZ_EMAIL') or os.environ.get('BZR_EMAIL')
         if v:
             if not PY3:
                 v = v.decode(osutils.get_user_encoding())
@@ -931,6 +930,7 @@ class IniBasedConfig(Config):
     def _write_config_file(self):
         if self.file_name is None:
             raise AssertionError('We cannot save, self.file_name is None')
+        from . import atomicfile
         conf_dir = os.path.dirname(self.file_name)
         bedding.ensure_config_dir_exists(conf_dir)
         with atomicfile.AtomicFile(self.file_name) as atomic_file:
@@ -2546,7 +2546,7 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('email', override_from_env=['BRZ_EMAIL'],
+    Option('email', override_from_env=['BRZ_EMAIL', 'BZR_EMAIL'],
            default=bedding.default_email, help='The users identity'))
 option_registry.register(
     Option('gpg_signing_key',
@@ -2934,7 +2934,7 @@ class CommandLineStore(Store):
             try:
                 name, value = over.split('=', 1)
             except ValueError:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("Invalid '%s', should be of the form 'name=value'")
                     % (over,))
             self.options[name] = value
@@ -4035,7 +4035,7 @@ class cmd_config(commands.Command):
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 '--remove expects an option to remove.')
         conf = self._get_stack(directory, scope, write_access=True)
         try:

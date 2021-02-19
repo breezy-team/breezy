@@ -32,8 +32,7 @@ from ... import version_info  # noqa: F401
 class MercurialUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Mercurial branches are not yet supported. '
-            'To convert Mercurial branches to Bazaar branches or vice versa, '
-            'use the fastimport format. ')
+            'To interoperate with Mercurial, use the fastimport format.')
 
 
 class LocalHgDirFormat(controldir.ControlDirFormat):
@@ -82,7 +81,7 @@ class LocalHgProber(controldir.Prober):
     def probe_transport(klass, transport):
         """Our format is present if the transport has a '.hg/' subdir."""
         if klass._has_hg_dumb_repository(transport):
-            return HgDirFormat()
+            return LocalHgDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
     @classmethod
@@ -125,7 +124,11 @@ class SmartHgProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
-        return 90
+        if 'hg' in transport.base:
+            return 90
+        # hgweb repositories are prone to return *a* page for every possible URL,
+        # making probing hard for other formats so use 99 here rather than 100.
+        return 99
 
     @staticmethod
     def _has_hg_http_smart_server(transport, external_url):
@@ -137,12 +140,14 @@ class SmartHgProber(controldir.Prober):
         """
         from breezy.urlutils import urlparse
         parsed_url = urlparse.urlparse(external_url)
-        parsed_url = parsed_url._replace(
-            query='cmd=capabilities', path=parsed_url.path.rstrip('/') + '/hg')
+        parsed_url = parsed_url._replace(query='cmd=capabilities')
         url = urlparse.urlunparse(parsed_url)
         resp = transport.request(
             'GET', url, headers={'Accept': 'application/mercurial-0.1'})
         if resp.status == 404:
+            return False
+        if resp.status == 406:
+            # The server told us that it can't handle our Accept header.
             return False
         ct = resp.getheader("Content-Type")
         if ct is None:

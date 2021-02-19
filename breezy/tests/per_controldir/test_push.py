@@ -19,6 +19,7 @@
 from ...errors import (
     LossyPushToSameVCS,
     TagsNotSupported,
+    NoSuchRevision,
     )
 from ...revision import NULL_REVISION
 from .. import TestNotApplicable
@@ -45,6 +46,13 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
         self.assertEqual(dir.open_branch().base,
                          tree.branch.get_push_location())
+
+    def test_push_no_such_revision(self):
+        tree, rev_1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
+        self.assertRaises(
+            NoSuchRevision, dir.push_branch,
+            tree.branch, revision_id=b'idonotexist')
 
     def test_push_new_branch_fetch_tags(self):
         builder = self.make_branch_builder('from')
@@ -99,3 +107,14 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(2, result.branch_push_result.new_revno)
         self.assertEqual(tree.branch.base, result.source_branch.base)
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
+
+    def test_push_tag_selector(self):
+        tree, rev1 = self.create_simple_tree()
+        try:
+            tree.branch.tags.set_tag('tag1', rev1)
+        except TagsNotSupported:
+            raise TestNotApplicable('tags not supported')
+        tree.branch.tags.set_tag('tag2', rev1)
+        dir = self.make_repository('dir').controldir
+        dir.push_branch(tree.branch, tag_selector=lambda x: x == 'tag1')
+        self.assertEqual({'tag1': rev1}, dir.open_branch().tags.get_tag_dict())

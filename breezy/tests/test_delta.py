@@ -21,7 +21,7 @@ from .. import (
     revision as _mod_revision,
     tests,
     )
-from ..tree import TreeChange
+from ..bzr.inventorytree import InventoryTreeChange
 from ..sixish import (
     PY3,
     StringIO,
@@ -164,7 +164,7 @@ class TestReportChanges(tests.TestCase):
                            exe_change=False):
         reporter = InstrumentedReporter()
         _mod_delta.report_changes([
-            TreeChange(
+            InventoryTreeChange(
                 file_id, paths, content_change, versioned, parent_id,
                 name, kind, executable, copied)], reporter)
         output = reporter.calls[0]
@@ -261,7 +261,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         other_delta = _mod_delta.TreeDelta()
         self.assertNotEqual(other_delta, delta)
         other_delta.kind_changed = [
-            TreeChange(
+            InventoryTreeChange(
                 b'file-id',
                 ('filename', 'filename'), True, (True, True),
                 (tree.path2id(''), tree.path2id('')),
@@ -269,7 +269,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
                 ('file', 'symlink'), (False, False))]
         self.assertNotEqual(other_delta, delta)
         other_delta.kind_changed = [
-            TreeChange(
+            InventoryTreeChange(
                 b'file-id',
                 ('filename', 'filename'), True, (True, True),
                 (tree.path2id(''), tree.path2id('')), ('filename', 'filename'),
@@ -284,7 +284,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         self.assertEqual([], delta.kind_changed)
         # This loses the fact that kind changed, remembering it as a
         # modification
-        self.assertEqual([TreeChange(
+        self.assertEqual([InventoryTreeChange(
             b'file-id', ('filename', 'dirname'), True,
             (True, True), (tree.path2id(''), tree.path2id('')),
             ('filename', 'dirname'), ('file', 'directory'), (False, False))],

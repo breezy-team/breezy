@@ -28,6 +28,8 @@ from breezy import (
     lockdir,
     rio,
     shelf,
+    )
+from breezy.bzr import (
     tag as _mod_tag,
     )
 """)
@@ -1030,10 +1032,10 @@ class BranchReferenceFormat(BranchFormatMetadir):
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
-        def clone(to_bzrdir, revision_id=None,
-                  repository_policy=None):
+        def clone(to_bzrdir, revision_id=None, repository_policy=None, name=None,
+                  tag_selector=None):
             """See Branch.clone()."""
-            return format.initialize(to_bzrdir, target_branch=a_branch)
+            return format.initialize(to_bzrdir, target_branch=a_branch, name=name)
             # cannot obey revision_id limits when cloning a reference ...
             # FIXME RBC 20060210 either nuke revision_id for clone, or
             # emit some sort of warning/error to the caller ?!

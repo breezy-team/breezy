@@ -711,8 +711,12 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     def get_symlink_target(self, path):
         abspath = self.abspath(path)
-        target = osutils.readlink(abspath)
-        return target
+        try:
+            return osutils.readlink(abspath)
+        except OSError as e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                raise errors.NoSuchFile(path)
+            raise
 
     def subsume(self, other_tree):
         raise NotImplementedError(self.subsume)
@@ -821,13 +825,13 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
-             show_base=False):
+             show_base=False, tag_selector=None):
         with self.lock_write(), source.lock_read():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
                                      possible_transports=possible_transports,
-                                     local=local)
+                                     local=local, tag_selector=tag_selector)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 repository = self.branch.repository
@@ -1051,7 +1055,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             if file_id is None:
                 raise ValueError(
                     'WorkingTree.set_root_id with fileid=None')
-            file_id = osutils.safe_file_id(file_id)
             self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):
@@ -1074,10 +1077,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         raise NotImplementedError(self.unlock)
 
-    _marker = object()
-
     def update(self, change_reporter=None, possible_transports=None,
-               revision=None, old_tip=_marker, show_base=False):
+               revision=None, old_tip=None, show_base=False):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -1109,105 +1110,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             returned (old tip of the branch or None). _marker is used
             otherwise.
         """
-        if self.branch.get_bound_location() is not None:
-            self.lock_write()
-            update_branch = (old_tip is self._marker)
-        else:
-            self.lock_tree_write()
-            update_branch = False
-        try:
-            if update_branch:
-                old_tip = self.branch.update(possible_transports)
-            else:
-                if old_tip is self._marker:
-                    old_tip = None
-            return self._update_tree(old_tip, change_reporter, revision, show_base)
-        finally:
-            self.unlock()
-
-    def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
-                     show_base=False):
-        """Update a tree to the master branch.
-
-        :param old_tip: if supplied, the previous tip revision the branch,
-            before it was changed to the master branch's tip.
-        """
-        # here if old_tip is not None, it is the old tip of the branch before
-        # it was updated from the master branch. This should become a pending
-        # merge in the working tree to preserve the user existing work.  we
-        # cant set that until we update the working trees last revision to be
-        # one from the new branch, because it will just get absorbed by the
-        # parent de-duplication logic.
-        #
-        # We MUST save it even if an error occurs, because otherwise the users
-        # local work is unreferenced and will appear to have been lost.
-        #
-        with self.lock_tree_write():
-            nb_conflicts = 0
-            try:
-                last_rev = self.get_parent_ids()[0]
-            except IndexError:
-                last_rev = _mod_revision.NULL_REVISION
-            if revision is None:
-                revision = self.branch.last_revision()
-
-            old_tip = old_tip or _mod_revision.NULL_REVISION
-
-            if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
-                # the branch we are bound to was updated
-                # merge those changes in first
-                base_tree = self.basis_tree()
-                other_tree = self.branch.repository.revision_tree(old_tip)
-                nb_conflicts = merge.merge_inner(self.branch, other_tree,
-                                                 base_tree, this_tree=self,
-                                                 change_reporter=change_reporter,
-                                                 show_base=show_base)
-                if nb_conflicts:
-                    self.add_parent_tree((old_tip, other_tree))
-                    note(gettext('Rerun update after fixing the conflicts.'))
-                    return nb_conflicts
-
-            if last_rev != _mod_revision.ensure_null(revision):
-                # the working tree is up to date with the branch
-                # we can merge the specified revision from master
-                to_tree = self.branch.repository.revision_tree(revision)
-                to_root_id = to_tree.path2id('')
-
-                basis = self.basis_tree()
-                with basis.lock_read():
-                    if (basis.path2id('') is None or basis.path2id('') != to_root_id):
-                        self.set_root_id(to_root_id)
-                        self.flush()
-
-                # determine the branch point
-                graph = self.branch.repository.get_graph()
-                base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
-                                                    last_rev)
-                base_tree = self.branch.repository.revision_tree(base_rev_id)
-
-                nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
-                                                 this_tree=self,
-                                                 change_reporter=change_reporter,
-                                                 show_base=show_base)
-                self.set_last_revision(revision)
-                # TODO - dedup parents list with things merged by pull ?
-                # reuse the tree we've updated to to set the basis:
-                parent_trees = [(revision, to_tree)]
-                merges = self.get_parent_ids()[1:]
-                # Ideally we ask the tree for the trees here, that way the working
-                # tree can decide whether to give us the entire tree or give us a
-                # lazy initialised tree. dirstate for instance will have the trees
-                # in ram already, whereas a last-revision + basis-inventory tree
-                # will not, but also does not need them when setting parents.
-                for parent in merges:
-                    parent_trees.append(
-                        (parent, self.branch.repository.revision_tree(parent)))
-                if not _mod_revision.is_null(old_tip):
-                    parent_trees.append(
-                        (old_tip, self.branch.repository.revision_tree(old_tip)))
-                self.set_parent_trees(parent_trees)
-                last_rev = parent_trees[0][0]
-            return nb_conflicts
+        raise NotImplementedError(self.update)
 
     def set_conflicts(self, arg):
         raise errors.UnsupportedOperation(self.set_conflicts, self)
@@ -1222,8 +1125,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """Walk the directories of this tree.
 
         returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                (current_directory_path,
+                 [(file1_path, file1_name, file1_kind, (lstat),
                    file1_kind), ... ])
 
         This API returns a generator, which is only valid during the current
@@ -1243,11 +1146,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         into files that have text conflicts.  The corresponding .THIS .BASE and
         .OTHER files are deleted, as per 'resolve'.
 
-        :return: a tuple of ConflictLists: (un_resolved, resolved).
+        :return: a tuple of lists: (un_resolved, resolved).
         """
         with self.lock_tree_write():
-            un_resolved = _mod_conflicts.ConflictList()
-            resolved = _mod_conflicts.ConflictList()
+            un_resolved = []
+            resolved = []
             for conflict in self.conflicts():
                 try:
                     conflict.action_auto(self)

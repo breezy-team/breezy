@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 import os
 
 from .. import (
@@ -23,8 +22,10 @@ from .. import (
     option,
     osutils,
     tests,
+    transform,
     )
 from ..sixish import text_type
+from ..bzr import conflicts as bzr_conflicts
 from . import (
     script,
     scenarios,
@@ -42,24 +43,24 @@ load_tests = scenarios.load_tests_apply_scenarios
 # u'\xe5' == a with circle
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'path' and 'id' only with a circle and a hat. (shappo?)
-example_conflicts = conflicts.ConflictList(
-    [conflicts.MissingParent('Not deleting', u'p\xe5thg', b'\xc3\xaedg'),
-     conflicts.ContentsConflict(u'p\xe5tha', None, b'\xc3\xaeda'),
-     conflicts.TextConflict(u'p\xe5tha'),
-     conflicts.PathConflict(u'p\xe5thb', u'p\xe5thc', b'\xc3\xaedb'),
-     conflicts.DuplicateID('Unversioned existing file',
-                           u'p\xe5thc', u'p\xe5thc2',
-                           b'\xc3\xaedc', b'\xc3\xaedc'),
-     conflicts.DuplicateEntry('Moved existing file to',
-                              u'p\xe5thdd.moved', u'p\xe5thd',
-                              b'\xc3\xaedd', None),
-     conflicts.ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
-                          None, b'\xc3\xaed2e'),
-     conflicts.UnversionedParent('Versioned directory',
-                                 u'p\xe5thf', b'\xc3\xaedf'),
-     conflicts.NonDirectoryParent('Created directory',
-                                  u'p\xe5thg', b'\xc3\xaedg'),
-     ])
+example_conflicts = [
+     bzr_conflicts.MissingParent('Not deleting', u'p\xe5thg', b'\xc3\xaedg'),
+     bzr_conflicts.ContentsConflict(u'p\xe5tha', None, b'\xc3\xaeda'),
+     bzr_conflicts.TextConflict(u'p\xe5tha'),
+     bzr_conflicts.PathConflict(u'p\xe5thb', u'p\xe5thc', b'\xc3\xaedb'),
+     bzr_conflicts.DuplicateID('Unversioned existing file',
+                               u'p\xe5thc', u'p\xe5thc2',
+                               b'\xc3\xaedc', b'\xc3\xaedc'),
+     bzr_conflicts.DuplicateEntry('Moved existing file to',
+                                  u'p\xe5thdd.moved', u'p\xe5thd',
+                                  b'\xc3\xaedd', None),
+     bzr_conflicts.ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
+                              None, b'\xc3\xaed2e'),
+     bzr_conflicts.UnversionedParent('Versioned directory',
+                                     u'p\xe5thf', b'\xc3\xaedf'),
+     bzr_conflicts.NonDirectoryParent('Created directory',
+                                      u'p\xe5thg', b'\xc3\xaedg'),
+     ]
 
 
 def vary_by_conflicts():
@@ -77,7 +78,7 @@ class TestConflicts(tests.TestCaseWithTransport):
                                   ])
         os.mkdir('hello.OTHER')
         tree.add('hello', b'q')
-        l = conflicts.ConflictList([conflicts.TextConflict('hello')])
+        l = conflicts.ConflictList([bzr_conflicts.TextConflict('hello')])
         l.remove_files(tree)
 
     def test_select_conflicts(self):
@@ -89,24 +90,24 @@ class TestConflicts(tests.TestCaseWithTransport):
                 (not_selected, selected),
                 tree_conflicts.select_conflicts(tree, paths, **kwargs))
 
-        foo = conflicts.ContentsConflict('foo')
-        bar = conflicts.ContentsConflict('bar')
+        foo = bzr_conflicts.ContentsConflict('foo')
+        bar = bzr_conflicts.ContentsConflict('bar')
         tree_conflicts = clist([foo, bar])
 
         check_select(clist([bar]), clist([foo]), ['foo'])
         check_select(clist(), tree_conflicts,
                      [''], ignore_misses=True, recurse=True)
 
-        foobaz = conflicts.ContentsConflict('foo/baz')
+        foobaz = bzr_conflicts.ContentsConflict('foo/baz')
         tree_conflicts = clist([foobaz, bar])
 
         check_select(clist([bar]), clist([foobaz]),
                      ['foo'], ignore_misses=True, recurse=True)
 
-        qux = conflicts.PathConflict('qux', 'foo/baz')
+        qux = bzr_conflicts.PathConflict('qux', 'foo/baz')
         tree_conflicts = clist([qux])
 
-        check_select(clist(), tree_conflicts,
+        check_select(tree_conflicts, clist(),
                      ['foo'], ignore_misses=True, recurse=True)
         check_select(tree_conflicts, clist(), ['foo'], ignore_misses=True)
 
@@ -115,8 +116,7 @@ class TestConflicts(tests.TestCaseWithTransport):
         self.build_tree(['dir/', 'dir/hello'])
         tree.add(['dir', 'dir/hello'])
 
-        dirhello = conflicts.ConflictList(
-            [conflicts.TextConflict('dir/hello')])
+        dirhello = [bzr_conflicts.TextConflict('dir/hello')]
         tree.set_conflicts(dirhello)
 
         conflicts.resolve(tree, ['dir'], recursive=False, ignore_misses=True)
@@ -137,45 +137,18 @@ class TestPerConflict(tests.TestCase):
         self.assertContainsString(repr(self.conflict),
                                   self.conflict.__class__.__name__)
 
-    def test_stanza_roundtrip(self):
-        p = self.conflict
-        o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
-        self.assertEqual(o, p)
-
-        self.assertIsInstance(o.path, text_type)
-
-        if o.file_id is not None:
-            self.assertIsInstance(o.file_id, bytes)
-
-        conflict_path = getattr(o, 'conflict_path', None)
-        if conflict_path is not None:
-            self.assertIsInstance(conflict_path, text_type)
-
-        conflict_file_id = getattr(o, 'conflict_file_id', None)
-        if conflict_file_id is not None:
-            self.assertIsInstance(conflict_file_id, bytes)
-
-    def test_stanzification(self):
-        stanza = self.conflict.as_stanza()
-        if 'file_id' in stanza:
-            # In Stanza form, the file_id has to be unicode.
-            self.assertStartsWith(stanza['file_id'], u'\xeed')
-        self.assertStartsWith(stanza['path'], u'p\xe5th')
-        if 'conflict_path' in stanza:
-            self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
-        if 'conflict_file_id' in stanza:
-            self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
-
 
 class TestConflictList(tests.TestCase):
 
     def test_stanzas_roundtrip(self):
-        stanzas_iter = example_conflicts.to_stanzas()
-        processed = conflicts.ConflictList.from_stanzas(stanzas_iter)
+        stanzas_iter = bzr_conflicts.ConflictList(example_conflicts).to_stanzas()
+        processed = bzr_conflicts.ConflictList.from_stanzas(stanzas_iter)
         self.assertEqual(example_conflicts, processed)
 
     def test_stringification(self):
-        for text, o in zip(example_conflicts.to_strings(), example_conflicts):
+        for text, o in zip(
+                bzr_conflicts.ConflictList(example_conflicts).to_strings(),
+                example_conflicts):
             self.assertEqual(text, text_type(o))
 
 
@@ -367,7 +340,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
 class TestResolveTextConflicts(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.TextConflict
+    _conflict_type = bzr_conflicts.TextConflict
 
     # Set by the scenarios
     # path and file-id for the file involved in the conflict
@@ -438,7 +411,7 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
 
 class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.ContentsConflict
+    _conflict_type = bzr_conflicts.ContentsConflict
 
     # Set by the scenarios
     # path and file-id for the file involved in the conflict
@@ -524,7 +497,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
 class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.PathConflict
+    _conflict_type = bzr_conflicts.PathConflict
 
     def do_nothing(self):
         return []
@@ -674,14 +647,14 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
         # We create a conflict object as it was created before the fix and
         # inject it into the working tree, the test will exercise the
         # compatibility code.
-        old_c = conflicts.PathConflict('<deleted>', self._item_path,
+        old_c = bzr_conflicts.PathConflict('<deleted>', self._item_path,
                                        file_id=None)
-        wt.set_conflicts(conflicts.ConflictList([old_c]))
+        wt.set_conflicts([old_c])
 
 
 class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.DuplicateEntry
+    _conflict_type = bzr_conflicts.DuplicateEntry
 
     scenarios = mirror_scenarios(
         [
@@ -920,7 +893,7 @@ $ brz commit -q --strict -m 'No more conflicts nor unknown files'
 
 class TestResolveParentLoop(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.ParentLoop
+    _conflict_type = bzr_conflicts.ParentLoop
 
     _this_args = None
     _other_args = None
@@ -1077,7 +1050,7 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # This is nearly like TestResolveNonDirectoryParent but with branch and
         # trunk switched. As such it should certainly produce the same
         # conflict.
-        self.assertRaises(errors.MalformedTransform,
+        self.assertRaises(transform.MalformedTransform,
                           self.run_script, """
 $ brz init trunk
 ...
