@@ -72,10 +72,12 @@ META_INFO = {
         'dulwich<0.20,>=0.19.12;python_version<"3.0"',
         ],
     'extras_require': {
-        'fastimport': [],
+        'cext': ['cython>=0.29'],
+        'fastimport': ['fastimport'],
         'git': [],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
+        'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
     'tests_require': [
         'testtools',
