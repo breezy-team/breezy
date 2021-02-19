@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 __all__ = ['show_bzrdir_info']
 
 from io import StringIO
@@ -457,7 +455,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
         extra = []
         if repository.make_working_trees():
             extra.append('trees')
-        if len(control.get_branches()) > 0:
+        if len(control.branch_names()) > 0:
             extra.append('colocated branches')
         if extra:
             phrase += ' with ' + " and ".join(extra)

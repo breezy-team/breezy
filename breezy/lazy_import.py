@@ -41,7 +41,42 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
-from __future__ import absolute_import
+from .errors import BzrError, InternalBzrError
+
+
+class ImportNameCollision(InternalBzrError):
+
+    _fmt = ("Tried to import an object to the same name as"
+            " an existing object. %(name)s")
+
+    def __init__(self, name):
+        BzrError.__init__(self)
+        self.name = name
+
+
+class IllegalUseOfScopeReplacer(InternalBzrError):
+
+    _fmt = ("ScopeReplacer object %(name)r was used incorrectly:"
+            " %(msg)s%(extra)s")
+
+    def __init__(self, name, msg, extra=None):
+        BzrError.__init__(self)
+        self.name = name
+        self.msg = msg
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class InvalidImportLine(InternalBzrError):
+
+    _fmt = "Not a valid import statement: %(msg)\n%(text)s"
+
+    def __init__(self, text, msg):
+        BzrError.__init__(self)
+        self.text = text
+        self.msg = msg
 
 
 class ScopeReplacer(object):
@@ -84,8 +119,9 @@ class ScopeReplacer(object):
             scope = object.__getattribute__(self, '_scope')
             obj = factory(self, scope, name)
             if obj is self:
-                raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
-                                                       " to replace itself, check it's not using its own scope.")
+                raise IllegalUseOfScopeReplacer(
+                    name, msg="Object tried"
+                    " to replace itself, check it's not using its own scope.")
 
             # Check if another thread has jumped in while obj was generated.
             real_obj = object.__getattribute__(self, '_real_obj')
@@ -99,7 +135,7 @@ class ScopeReplacer(object):
 
         # Raise if proxying is disabled as obj has already been generated.
         if not ScopeReplacer._should_proxy:
-            raise errors.IllegalUseOfScopeReplacer(
+            raise IllegalUseOfScopeReplacer(
                 name, msg="Object already replaced, did you assign it"
                           " to another variable?")
         return real_obj
@@ -260,8 +296,8 @@ class ImportProcessor(object):
             elif line.startswith('from '):
                 self._convert_from_str(line)
             else:
-                raise errors.InvalidImportLine(line,
-                                               "doesn't start with 'import ' or 'from '")
+                raise InvalidImportLine(
+                    line, "doesn't start with 'import ' or 'from '")
 
     def _convert_import_str(self, import_str):
         """This converts a import string into an import map.
@@ -286,7 +322,7 @@ class ImportProcessor(object):
                 name = as_hunks[1].strip()
                 module_path = as_hunks[0].strip().split('.')
                 if name in self.imports:
-                    raise errors.ImportNameCollision(name)
+                    raise ImportNameCollision(name)
                 if not module_path[0]:
                     raise ImportError(path)
                 # No children available in 'import foo as bar'
@@ -345,7 +381,7 @@ class ImportProcessor(object):
             else:
                 name = module = path
             if name in self.imports:
-                raise errors.ImportNameCollision(name)
+                raise ImportNameCollision(name)
             self.imports[name] = (from_module_path, module, {})
 
     def _canonicalize_import_text(self, text):
@@ -377,7 +413,7 @@ class ImportProcessor(object):
                 else:
                     out.append(line.replace('(', '').replace(')', ''))
         if cur is not None:
-            raise errors.InvalidImportLine(cur, 'Unmatched parenthesis')
+            raise InvalidImportLine(cur, 'Unmatched parenthesis')
         return out
 
 
@@ -408,12 +444,3 @@ def lazy_import(scope, text, lazy_import_class=None):
     # This is just a helper around ImportProcessor.lazy_import
     proc = ImportProcessor(lazy_import_class=lazy_import_class)
     return proc.lazy_import(scope, text)
-
-
-# The only module that this module depends on is 'breezy.errors'. But it
-# can actually be imported lazily, since we only need it if there is a
-# problem.
-
-lazy_import(globals(), """
-from breezy import errors
-""")

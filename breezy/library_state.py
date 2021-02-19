@@ -16,18 +16,18 @@
 
 """The core state needed to make use of bzr is managed here."""
 
-from __future__ import absolute_import
-
 __all__ = [
     'BzrLibraryState',
     ]
+
+
+import contextlib
 
 
 import breezy
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    cleanup,
     config,
     osutils,
     symbol_versioning,
@@ -89,7 +89,7 @@ class BzrLibraryState(object):
         # isolation within the same interpreter.  It's not reached on normal
         # in-process run_bzr calls.  If it's broken, we expect that
         # TestRunBzrSubprocess may fail.
-        self.exit_stack = cleanup.ExitStack()
+        self.exit_stack = contextlib.ExitStack()
 
         if breezy.version_info[3] == 'final':
             self.exit_stack.callback(
@@ -98,8 +98,9 @@ class BzrLibraryState(object):
         self._trace.__enter__()
 
         self._orig_ui = breezy.ui.ui_factory
-        breezy.ui.ui_factory = self._ui
-        self._ui.__enter__()
+        if self._ui is not None:
+            breezy.ui.ui_factory = self._ui
+            self._ui.__enter__()
 
         if breezy._global_state is not None:
             raise RuntimeError("Breezy already initialized")
@@ -115,7 +116,8 @@ class BzrLibraryState(object):
         trace._flush_stdout_stderr()
         trace._flush_trace()
         osutils.report_extension_load_failures()
-        self._ui.__exit__(None, None, None)
+        if self._ui is not None:
+            self._ui.__exit__(None, None, None)
         self._trace.__exit__(None, None, None)
         ui.ui_factory = self._orig_ui
         breezy._global_state = None

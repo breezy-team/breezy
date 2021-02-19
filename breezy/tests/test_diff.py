@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+from io import BytesIO
 import os
 import re
 import subprocess
@@ -21,7 +23,6 @@ import sys
 import tempfile
 
 from .. import (
-    cleanup,
     diff,
     errors,
     osutils,
@@ -29,10 +30,6 @@ from .. import (
     revisionspec,
     revisiontree,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
-    unichr,
     )
 from ..tests import (
     features,
@@ -562,7 +559,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_internal_diff_exec_property(self):
         tree = self.make_branch_and_tree('tree')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.new_file('a', tt.root, [b'contents\n'], b'a-id', True)
         tt.new_file('b', tt.root, [b'contents\n'], b'b-id', False)
         tt.new_file('c', tt.root, [b'contents\n'], b'c-id', True)
@@ -572,7 +569,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tt.apply()
         tree.commit('one', rev_id=b'rev-1')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.set_executability(False, tt.trans_id_file_id(b'a-id'))
         tt.set_executability(True, tt.trans_id_file_id(b'b-id'))
         tt.set_executability(False, tt.trans_id_file_id(b'c-id'))
@@ -608,8 +605,8 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
             [('tree/' + alpha, b'\0'),
              ('tree/' + omega,
               (b'The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
-        tree.add([alpha], [b'file-id'])
-        tree.add([omega], [b'file-id-2'])
+        tree.add([alpha])
+        tree.add([omega])
         diff_content = StubO()
         diff.show_diff_trees(tree.basis_tree(), tree, diff_content)
         diff_content.check_types(self, bytes)
@@ -805,8 +802,11 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.differ.diff('olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
-            br'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
-            br' \@\@\n-old\n\n')
+            br'--- olddir/oldfile.*\n'
+            br'\+\+\+ newdir/newfile.*\n'
+            br'\@\@ -1,1 \+0,0 \@\@\n'
+            br'-old\n'
+            br'\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
                               b"=== target is 'new'\n")
 
@@ -874,6 +874,15 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '{old_path}', '{new_path}'],
                          diff_obj.command_template)
+
+    def test_from_string_no_paths(self):
+        diff_obj = diff.DiffFromTool.from_string(
+            ['diff', "-u5"], None, None, None)
+        self.addCleanup(diff_obj.finish)
+        self.assertEqual(['diff', '-u5'],
+                         diff_obj.command_template)
+        self.assertEqual(['diff', '-u5', 'old-path', 'new-path'],
+                         diff_obj._get_command('old-path', 'new-path'))
 
     def test_from_string_u5(self):
         diff_obj = diff.DiffFromTool.from_string(
@@ -1022,7 +1031,7 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
         """Call get_trees_and_branches_to_diff_locked."""
-        exit_stack = cleanup.ExitStack()
+        exit_stack = contextlib.ExitStack()
         self.addCleanup(exit_stack.close)
         return diff.get_trees_and_branches_to_diff_locked(
             path_list, revision_specs, old_url, new_url, exit_stack)

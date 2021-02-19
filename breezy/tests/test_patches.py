@@ -17,27 +17,30 @@
 
 import os.path
 
-from breezy.tests import TestCase
+from breezy.tests import TestCase, TestCaseWithTransport
 
 from breezy.iterablefile import IterableFile
-from breezy.patches import (MalformedLine,
-                            MalformedHunkHeader,
-                            MalformedPatchHeader,
-                            BinaryPatch,
-                            BinaryFiles,
-                            Patch,
-                            ContextLine,
-                            InsertLine,
-                            RemoveLine,
-                            difference_index,
-                            get_patch_names,
-                            hunk_from_header,
-                            iter_patched,
-                            iter_patched_from_hunks,
-                            parse_line,
-                            parse_patch,
-                            parse_patches,
-                            NO_NL)
+from breezy.patches import (
+    AppliedPatches,
+    MalformedLine,
+    MalformedHunkHeader,
+    MalformedPatchHeader,
+    BinaryPatch,
+    BinaryFiles,
+    Patch,
+    ContextLine,
+    InsertLine,
+    RemoveLine,
+    difference_index,
+    get_patch_names,
+    hunk_from_header,
+    iter_patched,
+    iter_patched_from_hunks,
+    parse_line,
+    parse_patch,
+    parse_patches,
+    NO_NL,
+    )
 
 
 class PatchesTester(TestCase):
@@ -83,10 +86,21 @@ class PatchesTester(TestCase):
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
+        lines = (
+            b"--- orig/commands.py\t2020-09-09 23:39:35 +0000\n"
+            b"+++ mod/dommands.py\t2020-09-09 23:39:35 +0000\n").split(b'\n')
+        (orig, mod) = get_patch_names(lines.__iter__())
+        self.assertEqual(
+            orig, (b"orig/commands.py", b'2020-09-09 23:39:35 +0000'))
+        self.assertEqual(
+            mod, (b"mod/dommands.py", b'2020-09-09 23:39:35 +0000'))
+
+    def testValidPatchHeaderMissingTimestamps(self):
+        """Parse a valid patch header"""
         lines = b"--- orig/commands.py\n+++ mod/dommands.py\n".split(b'\n')
         (orig, mod) = get_patch_names(lines.__iter__())
-        self.assertEqual(orig, b"orig/commands.py")
-        self.assertEqual(mod, b"mod/dommands.py")
+        self.assertEqual(orig, (b"orig/commands.py", None))
+        self.assertEqual(mod, (b"mod/dommands.py", None))
 
     def testInvalidPatchHeader(self):
         """Parse an invalid patch header"""
@@ -178,10 +192,10 @@ class PatchesTester(TestCase):
         patches = list(parse_patches(self.data_lines("binary.patch")))
         self.assertIs(BinaryPatch, patches[0].__class__)
         self.assertIs(Patch, patches[1].__class__)
-        self.assertContainsRe(patches[0].oldname, b'^bar\t')
-        self.assertContainsRe(patches[0].newname, b'^qux\t')
+        self.assertEqual(patches[0].oldname, b'bar')
+        self.assertEqual(patches[0].newname, b'qux')
         self.assertContainsRe(patches[0].as_bytes(),
-                              b'Binary files bar\t.* and qux\t.* differ\n')
+                              b'Binary files bar and qux differ\n')
 
     def test_parse_binary_after_normal(self):
         patches = list(parse_patches(
@@ -321,3 +335,49 @@ class PatchesTester(TestCase):
         """Test the added, removed and hunks values for stats_values."""
         patch = parse_patch(self.datafile("diff"))
         self.assertEqual((299, 407, 48), patch.stats_values())
+
+
+class AppliedPatchesTests(TestCaseWithTransport):
+
+    def test_apply_simple(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch(b"""\
+--- a/a
++++ a/a
+@@ -1 +1 @@
+-a
++b
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertEqual(b'b\n', newtree.get_file_text('a'))
+
+    def test_apply_delete(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch(b"""\
+--- a/a
++++ /dev/null
+@@ -1 +0,0 @@
+-a
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertFalse(newtree.has_filename('a'))
+
+    def test_apply_add(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch(b"""\
+--- /dev/null
++++ a/b
+@@ -0,0 +1 @@
++b
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertEqual(b'b\n', newtree.get_file_text('b'))

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.  They could also provide
@@ -23,6 +21,7 @@ from __future__ import absolute_import
 
 # TODO: Specific "examples" property on commands for consistent formatting.
 
+import contextlib
 import os
 import sys
 
@@ -38,7 +37,6 @@ import errno
 
 import breezy
 from breezy import (
-    cleanup,
     cmdline,
     debug,
     trace,
@@ -52,12 +50,9 @@ from .i18n import gettext
 from .option import Option
 from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
-from .sixish import (
-    string_types,
-    )
 
 
-class BzrOptionError(errors.BzrCommandError):
+class BzrOptionError(errors.CommandError):
 
     _fmt = "Error in command line options"
 
@@ -303,10 +298,10 @@ def get_cmd_object(cmd_name, plugins_override=True):
         # No command found, see if this was a typo
         candidate = guess_command(cmd_name)
         if candidate is not None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext('unknown command "%s". Perhaps you meant "%s"')
                 % (cmd_name, candidate))
-        raise errors.BzrCommandError(gettext('unknown command "%s"')
+        raise errors.CommandError(gettext('unknown command "%s"')
                                      % cmd_name)
 
 
@@ -716,7 +711,7 @@ class Command(object):
         r = Option.STD_OPTIONS.copy()
         std_names = set(r)
         for o in self.takes_options:
-            if isinstance(o, string_types):
+            if isinstance(o, str):
                 o = option.Option.OPTIONS[o]
             r[o.name] = o
             if o.name in std_names:
@@ -783,7 +778,7 @@ class Command(object):
             for hook in Command.hooks['pre_command']:
                 hook(self)
             try:
-                with cleanup.ExitStack() as self._exit_stack:
+                with contextlib.ExitStack() as self._exit_stack:
                     return class_run(*args, **kwargs)
             finally:
                 for hook in Command.hooks['post_command']:
@@ -915,7 +910,7 @@ def parse_args(command, argv, alias_argv=None):
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             gettext('Only ASCII permitted in option names'))
 
     opts = dict((k, v) for k, v in options.__dict__.items() if
@@ -940,7 +935,7 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise errors.BzrCommandError(gettext(
+                raise errors.CommandError(gettext(
                     "command {0!r} needs one or more {1}").format(
                     cmd, argname.upper()))
             else:
@@ -948,7 +943,7 @@ def _match_argform(cmd, takes_args, args):
                 args = []
         elif ap[-1] == '$':  # all but one
             if len(args) < 2:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("command {0!r} needs one or more {1}").format(
                         cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
@@ -957,14 +952,14 @@ def _match_argform(cmd, takes_args, args):
             # just a plain arg
             argname = ap
             if not args:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("command {0!r} requires argument {1}").format(
                         cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.BzrCommandError(gettext(
+        raise errors.CommandError(gettext(
             "extra argument to command {0}: {1}").format(
             cmd, args[0]))
 
@@ -974,7 +969,11 @@ def _match_argform(cmd, takes_args, args):
 def apply_coveraged(the_callable, *args, **kwargs):
     import coverage
     cov = coverage.Coverage()
-    os.environ['COVERAGE_PROCESS_START'] = cov.config_file
+    try:
+        config_file = cov.config.config_file
+    except AttributeError:  # older versions of coverage
+        config_file = cov.config_file
+    os.environ['COVERAGE_PROCESS_START'] = config_file
     cov.start()
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)
@@ -1156,7 +1155,10 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     debug.set_debug_flags_from_config()
 
     if not opt_no_plugins:
-        load_plugins()
+        from breezy import config
+        c = config.GlobalConfig()
+        warn_load_problems = not c.suppress_warning('plugin_load_failure')
+        load_plugins(warn_load_problems=warn_load_problems)
     else:
         disable_plugins()
 
@@ -1253,18 +1255,15 @@ def install_bzr_command_hooks():
 
 def _specified_or_unicode_argv(argv):
     # For internal or testing use, argv can be passed.  Otherwise, get it from
-    # the process arguments in a unicode-safe way.
+    # the process arguments.
     if argv is None:
-        return osutils.get_unicode_argv()
+        return sys.argv[1:]
     new_argv = []
     try:
         # ensure all arguments are unicode strings
         for a in argv:
-            if not isinstance(a, string_types):
+            if not isinstance(a, str):
                 raise ValueError('not native str or unicode: %r' % (a,))
-            if isinstance(a, bytes):
-                # For Python 2 only allow ascii native strings
-                a = a.decode('ascii')
             new_argv.append(a)
     except (ValueError, UnicodeDecodeError):
         raise errors.BzrError("argv should be list of unicode strings.")

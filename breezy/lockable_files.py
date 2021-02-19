@@ -14,19 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     counted_lock,
-    errors,
     lock,
     transactions,
     urlutils,
     )
 """)
 
+from . import (
+    errors,
+    )
 from .decorators import (
     only_raises,
     )

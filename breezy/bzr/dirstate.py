@@ -218,9 +218,8 @@ desired.
 
 """
 
-from __future__ import absolute_import
-
 import bisect
+import contextlib
 import errno
 import operator
 import os
@@ -235,7 +234,6 @@ from . import (
     )
 from .. import (
     cache_utf8,
-    cleanup,
     config,
     debug,
     errors,
@@ -245,13 +243,7 @@ from .. import (
     trace,
     urlutils,
     )
-from ..sixish import (
-    range,
-    text_type,
-    viewitems,
-    viewvalues,
-    )
-from ..tree import TreeChange
+from .inventorytree import InventoryTreeChange
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -501,7 +493,7 @@ class DirState(object):
         # you should never have files called . or ..; just add the directory
         # in the parent, or according to the special treatment for the root
         if basename == '.' or basename == '..':
-            raise errors.InvalidEntryName(path)
+            raise inventory.InvalidEntryName(path)
         # now that we've normalised, we need the correct utf8 path and
         # dirname and basename elements. This single encode and split should be
         # faster than three separate encodes.
@@ -531,7 +523,7 @@ class DirState(object):
                     file_id_entry[0][0], file_id_entry[0][1])
                 kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
                 info = '%s:%s' % (kind, path)
-                raise errors.DuplicateFileId(file_id, info)
+                raise inventory.DuplicateFileId(file_id, info)
         first_key = (dirname, basename, b'')
         block_index, present = self._find_block_index_from_key(first_key)
         if present:
@@ -999,7 +991,7 @@ class DirState(object):
             # Directories that need to be read
             pending_dirs = set()
             paths_to_search = set()
-            for entry_list in viewvalues(newly_found):
+            for entry_list in newly_found.values():
                 for dir_name_id, trees_info in entry_list:
                     found[dir_name_id] = trees_info
                     found_dir_names.add(dir_name_id[:2])
@@ -1312,7 +1304,7 @@ class DirState(object):
         result = DirState.initialize(dir_state_filename,
                                      sha1_provider=sha1_provider)
         try:
-            with cleanup.ExitStack() as exit_stack:
+            with contextlib.ExitStack() as exit_stack:
                 exit_stack.enter_context(tree.lock_read())
                 parent_ids = tree.get_parent_ids()
                 num_parents = len(parent_ids)
@@ -1423,8 +1415,8 @@ class DirState(object):
                                                fingerprint, new_child_path)
         self._check_delta_ids_absent(new_ids, delta, 0)
         try:
-            self._apply_removals(viewitems(removals))
-            self._apply_insertions(viewvalues(insertions))
+            self._apply_removals(removals.items())
+            self._apply_insertions(insertions.values())
             # Validate parents
             self._after_delta_check_parents(parents, 0)
         except errors.BzrError as e:
@@ -1964,7 +1956,7 @@ class DirState(object):
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
         fs_encoding = osutils._fs_enc
-        if isinstance(abspath, text_type):
+        if isinstance(abspath, str):
             # abspath is defined as the path to pass to lstat. readlink is
             # buggy in python < 2.6 (it doesn't encode unicode path into FS
             # encoding), so we need to encode ourselves knowing that unicode
@@ -2768,7 +2760,7 @@ class DirState(object):
         # --- end generation of full tree mappings
 
         # sort and output all the entries
-        new_entries = self._sort_entries(viewitems(by_path))
+        new_entries = self._sort_entries(by_path.items())
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
@@ -3348,7 +3340,7 @@ class DirState(object):
                 raise AssertionError(
                     "entry %r has no data for any tree." % (entry,))
         if self._id_index is not None:
-            for file_id, entry_keys in viewitems(self._id_index):
+            for file_id, entry_keys in self._id_index.items():
                 for entry_key in entry_keys:
                     # Check that the entry in the map is pointing to the same
                     # file_id
@@ -3767,7 +3759,7 @@ class ProcessEntryPython(object):
                     else:
                         path_u = self.utf8_decode(path)[0]
                 source_kind = DirState._minikind_to_kind[source_minikind]
-                return TreeChange(
+                return InventoryTreeChange(
                     entry[0][2],
                     (old_path_u, path_u),
                     content_change,
@@ -3796,7 +3788,7 @@ class ProcessEntryPython(object):
                         and stat.S_IEXEC & path_info[3].st_mode)
                 else:
                     target_exec = target_details[3]
-                return TreeChange(
+                return InventoryTreeChange(
                     entry[0][2],
                     (None, self.utf8_decode(path)[0]),
                     True,
@@ -3807,7 +3799,7 @@ class ProcessEntryPython(object):
                     (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
-                return TreeChange(
+                return InventoryTreeChange(
                     entry[0][2],
                     (None, self.utf8_decode(path)[0]),
                     False,
@@ -3827,7 +3819,7 @@ class ProcessEntryPython(object):
                 self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
-            return TreeChange(
+            return InventoryTreeChange(
                 entry[0][2],
                 (self.utf8_decode(old_path)[0], None),
                 True,
@@ -3969,7 +3961,7 @@ class ProcessEntryPython(object):
                 new_executable = bool(
                     stat.S_ISREG(root_dir_info[3].st_mode)
                     and stat.S_IEXEC & root_dir_info[3].st_mode)
-                yield TreeChange(
+                yield InventoryTreeChange(
                     None,
                     (None, current_root_unicode),
                     True,
@@ -4052,7 +4044,7 @@ class ProcessEntryPython(object):
                                 new_executable = bool(
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
-                                yield TreeChange(
+                                yield InventoryTreeChange(
                                     None,
                                     (None, utf8_decode(current_path_info[0])[0]),
                                     True,
@@ -4188,7 +4180,7 @@ class ProcessEntryPython(object):
                                 except UnicodeDecodeError:
                                     raise errors.BadFilenameEncoding(
                                         current_path_info[0], osutils._fs_enc)
-                                yield TreeChange(
+                                yield InventoryTreeChange(
                                     None,
                                     (None, relpath_unicode),
                                     True,

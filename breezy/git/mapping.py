@@ -18,8 +18,6 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from __future__ import absolute_import
-
 import base64
 import stat
 
@@ -39,15 +37,8 @@ from ..revision import (
     NULL_REVISION,
     Revision,
     )
-from ..sixish import (
-    PY3,
-    text_type,
-    viewitems,
-    )
 from .errors import (
     NoPushSupport,
-    UnknownCommitExtra,
-    UnknownMercurialCommitExtra,
     )
 from .hg import (
     format_hg_metadata,
@@ -71,6 +62,24 @@ FILE_ID_PREFIX = b'git:'
 
 # Always the same.
 ROOT_ID = b"TREE_ROOT"
+
+
+class UnknownCommitExtra(errors.BzrError):
+    _fmt = "Unknown extra fields in %(object)r: %(fields)r."
+
+    def __init__(self, object, fields):
+        errors.BzrError.__init__(self)
+        self.object = object
+        self.fields = ",".join(fields)
+
+
+class UnknownMercurialCommitExtra(errors.BzrError):
+    _fmt = "Unknown mercurial extra fields in %(object)r: %(fields)r."
+
+    def __init__(self, object, fields):
+        errors.BzrError.__init__(self)
+        self.object = object
+        self.fields = b",".join(fields)
 
 
 def escape_file_id(file_id):
@@ -105,6 +114,8 @@ def fix_person_identifier(text):
     if b"<" not in text and b">" not in text:
         username = text
         email = text
+    elif b">" not in text:
+        return text + b">"
     else:
         if text.rindex(b">") < text.rindex(b"<"):
             raise ValueError(text)
@@ -113,6 +124,26 @@ def fix_person_identifier(text):
         if username.endswith(b" "):
             username = username[:-1]
     return b"%s <%s>" % (username, email)
+
+
+def decode_git_path(path):
+    """Take a git path and decode it."""
+    try:
+        return path.decode('utf-8')
+    except UnicodeDecodeError:
+        if PY3:
+            return path.decode('utf-8', 'surrogateescape')
+        raise
+
+
+def encode_git_path(path):
+    """Take a regular path and encode it for git."""
+    try:
+        return path.encode('utf-8')
+    except UnicodeEncodeError:
+        if PY3:
+            return path.encode('utf-8', 'surrogateescape')
+        raise
 
 
 def warn_escaped(commit, num_escaped):
@@ -129,7 +160,7 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    BZR_DUMMY_FILE = None
+    BZR_DUMMY_FILE = None  # type: Optional[str]
 
     def is_special_file(self, filename):
         return (filename in (self.BZR_DUMMY_FILE, ))
@@ -159,7 +190,7 @@ class BzrGitMapping(foreign.VcsMapping):
     def generate_file_id(self, path):
         # Git paths are just bytestrings
         # We must just hope they are valid UTF-8..
-        if isinstance(path, text_type):
+        if isinstance(path, str):
             path = path.encode("utf-8")
         if path == b"":
             return ROOT_ID
@@ -170,15 +201,7 @@ class BzrGitMapping(foreign.VcsMapping):
             return u""
         if not file_id.startswith(FILE_ID_PREFIX):
             raise ValueError
-        return unescape_file_id(file_id[len(FILE_ID_PREFIX):]).decode('utf-8')
-
-    def revid_as_refname(self, revid):
-        if not isinstance(revid, bytes):
-            raise TypeError(revid)
-        if PY3:
-            revid = revid.decode('utf-8')
-        quoted_revid = urlutils.quote(revid)
-        return b"refs/bzr/" + quoted_revid.encode('utf-8')
+        return decode_git_path(unescape_file_id(file_id[len(FILE_ID_PREFIX):]))
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
@@ -236,11 +259,11 @@ class BzrGitMapping(foreign.VcsMapping):
         (message, renames, branch, extra) = extract_hg_metadata(message)
         if branch is not None:
             rev.properties[u'hg:extra:branch'] = branch
-        for name, value in viewitems(extra):
+        for name, value in extra.items():
             rev.properties[u'hg:extra:' + name] = base64.b64encode(value)
         if renames:
             rev.properties[u'hg:renames'] = base64.b64encode(bencode.bencode(
-                [(new, old) for (old, new) in viewitems(renames)]))
+                [(new, old) for (old, new) in renames.items()]))
         return message
 
     def _extract_bzr_metadata(self, rev, message):
@@ -316,7 +339,7 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         if u'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties[u'git-gpg-signature'].encode(
-                'ascii')
+                'utf-8', 'surrogateescape')
         commit.message = self._encode_commit_message(rev, rev.message,
                                                      encoding)
         if not isinstance(commit.message, bytes):
@@ -331,7 +354,7 @@ class BzrGitMapping(foreign.VcsMapping):
                  u'commit-timezone-neg-utc', u'git-implicit-encoding',
                  u'git-gpg-signature', u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
-            for k, v in viewitems(rev.properties):
+            for k, v in rev.properties.items():
                 if k not in mapping_properties:
                     metadata.properties[k] = v
         if not lossy and metadata:
@@ -370,7 +393,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 return metadata.revision_id
         return self.revision_id_foreign_to_bzr(commit.id)
 
-    def import_commit(self, commit, lookup_parent_revid):
+    def import_commit(self, commit, lookup_parent_revid, strict=True):
         """Convert a git commit to a bzr revision.
 
         :return: a `breezy.revision.Revision` object, foreign revid and a
@@ -412,7 +435,7 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties[u'commit-timezone-neg-utc'] = ""
         if commit.gpgsig:
             rev.properties[u'git-gpg-signature'] = commit.gpgsig.decode(
-                'ascii')
+                'utf-8', 'surrogateescape')
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
                 rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string()
@@ -444,12 +467,12 @@ class BzrGitMapping(foreign.VcsMapping):
                 extra_lines.append(k + b' ' + v + b'\n')
             elif k == HG_EXTRA:
                 hgk, hgv = v.split(b':', 1)
-                if hgk not in (HG_EXTRA_AMEND_SOURCE, ):
+                if hgk not in (HG_EXTRA_AMEND_SOURCE, ) and strict:
                     raise UnknownMercurialCommitExtra(commit, [hgk])
                 extra_lines.append(k + b' ' + v + b'\n')
             else:
                 unknown_extra_fields.append(k)
-        if unknown_extra_fields:
+        if unknown_extra_fields and strict:
             raise UnknownCommitExtra(
                 commit,
                 [f.decode('ascii', 'replace') for f in unknown_extra_fields])
@@ -487,10 +510,10 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         ret += self._generate_git_svn_metadata(rev, encoding)
         return ret
 
-    def import_commit(self, commit, lookup_parent_revid):
+    def import_commit(self, commit, lookup_parent_revid, strict=True):
         rev, roundtrip_revid, verifiers = super(
             BzrGitMappingExperimental, self).import_commit(
-                commit, lookup_parent_revid)
+                commit, lookup_parent_revid, strict)
         rev.properties[u'converted_revision'] = "git %s\n" % commit.id
         return rev, roundtrip_revid, verifiers
 
@@ -558,8 +581,8 @@ default_mapping = mapping_registry.get_default()()
 def symlink_to_blob(symlink_target):
     from dulwich.objects import Blob
     blob = Blob()
-    if isinstance(symlink_target, text_type):
-        symlink_target = symlink_target.encode('utf-8')
+    if isinstance(symlink_target, str):
+        symlink_target = encode_git_path(symlink_target)
     blob.data = symlink_target
     return blob
 

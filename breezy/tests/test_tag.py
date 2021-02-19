@@ -22,7 +22,6 @@ from breezy import (
     errors,
     )
 from breezy.tag import (
-    BasicTags,
     DisabledTags,
     MemoryTags,
     )
@@ -30,23 +29,6 @@ from breezy.tests import (
     TestCase,
     TestCaseWithTransport,
     )
-
-
-class TestTagSerialization(TestCase):
-
-    def test_tag_serialization(self):
-        """Test the precise representation of tag dicts."""
-        # Don't change this after we commit to this format, as it checks
-        # that the format is stable and compatible across releases.
-        #
-        # This release stores them in bencode as a dictionary from name to
-        # target.
-        store = BasicTags(branch=None)
-        td = dict(stable=b'stable-revid', boring=b'boring-revid')
-        packed = store._serialize_tag_dict(td)
-        expected = br'd6:boring12:boring-revid6:stable12:stable-revide'
-        self.assertEqualDiff(packed, expected)
-        self.assertEqual(store._deserialize_tag_dict(packed), td)
 
 
 class TestTagRevisionRenames(TestCaseWithTransport):
@@ -119,6 +101,17 @@ class TestTagMerging(TestCaseWithTransport):
         self.assertEqual(list(conflicts), [])
         self.assertEqual({u'tag-2': b'z'}, updates)
         self.assertEqual(b'z', b.tags.lookup_tag('tag-2'))
+
+    def test_merge_to_with_selector(self):
+        a = self.make_branch_supporting_tags('a')
+        b = self.make_branch_supporting_tags('b')
+        # simple merge
+        a.tags.set_tag('tag-1', b'x')
+        a.tags.set_tag('tag-2', b'y')
+        updates, conflicts = a.tags.merge_to(b.tags, selector=lambda x: x == 'tag-1')
+        self.assertEqual(list(conflicts), [])
+        self.assertEqual({u'tag-1': b'x'}, updates)
+        self.assertRaises(errors.NoSuchTag, b.tags.lookup_tag, 'tag-2')
 
 
 class TestTagsInCheckouts(TestCaseWithTransport):

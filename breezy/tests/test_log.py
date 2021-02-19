@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 import re
 
@@ -27,11 +31,6 @@ from .. import (
     tests,
     gpg,
     trace,
-    )
-from ..sixish import (
-    BytesIO,
-    StringIO,
-    unichr,
     )
 
 
@@ -223,7 +222,7 @@ class TestShowLog(tests.TestCaseWithTransport):
 
     def test_commit_message_with_control_chars(self):
         wt = self.make_branch_and_tree('.')
-        msg = u"All 8-bit chars: " + ''.join([unichr(x) for x in range(256)])
+        msg = u"All 8-bit chars: " + ''.join([chr(x) for x in range(256)])
         msg = msg.replace(u'\r', u'\n')
         wt.commit(msg)
         lf = LogCatcher()
@@ -241,7 +240,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         # newline conversion, neither LF (\x0A) nor CR (\x0D) are
         # included in the test commit message, even though they are
         # valid XML 1.0 characters.
-        msg = "\x09" + ''.join([unichr(x) for x in range(0x20, 256)])
+        msg = "\x09" + ''.join([chr(x) for x in range(0x20, 256)])
         wt.commit(msg)
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)

@@ -16,8 +16,6 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
-from __future__ import absolute_import
-
 # TODO: Remove the transport-based lock_read and lock_write methods.  They'll
 # then raise TransportNotPossible, which will break remote access to any
 # formats which rely on OS-level locks.  That should be fine as those formats
@@ -49,9 +47,6 @@ from ..errors import (FileExists,
                       ParamikoNotPresent,
                       )
 from ..osutils import fancy_rename
-from ..sixish import (
-    zip,
-    )
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,

@@ -53,10 +53,10 @@ different kinds of users:
 Differences in the release process between beta and stable release will be
 mentioned when needed.
 
-When do we relase ?
-===================
+When do we release ?
+====================
 
-As of September 2018, we maintain a single series: 3.0.
+As of May 2020, we maintain a two series: 3.1 and trunk (3.2).
 
 #. as much as possible releases should not disturb development, and
    ongoing development should not disturb releases,
@@ -105,14 +105,12 @@ To start a new series cycle:
 #. Start a new release-notes file::
 
        cd doc/en/release-notes
-       cp series-template.txt brz-x.y.txt  # e.g. brz-3.1.txt
-       brz add brz-3.1.txt
+       brz cp series-template.txt brz-x.y.txt  # e.g. brz-3.1.txt
 
 #. Start a new whats-new file::
 
        cd doc/en/whats-new
-       cp template.txt brz-x.y.txt  # e.g. brz-3.1.txt
-       brz add brz-x.y.txt
+       brz cp template.txt brz-x.y.txt  # e.g. brz-3.1.txt
 
 #. Update ``doc/en/index.txt`` to point to the new whats-new file.
 
@@ -129,7 +127,7 @@ To start a new release cycle:
 
 #. Make a local branch to prepare the release::
 
-        brz branch lp:brz/x.y x.y-dev
+       brz branch lp:brz/x.y x.y-dev
 
    If you're doing your first beta release, branch from trunk::
 
@@ -182,8 +180,8 @@ the alpha releases won't happen again.
 The process for releasing an alpha release is therefore:
 - upload a tarball to launchpad,
 - upload a tarball to pypi,
-- mail bazaar@lists.ubuntu.com,
-- post an announcement on the home page.  
+- mail bazaar@lists.ubuntu.com,breezy-vcs@googlegroups.com
+- post an announcement on the home page.
 
 Uploading tarballs are described below, just use alpha versions (3, 0, 0,
 'alpha', 1) in ``./breezy/__init__.py``

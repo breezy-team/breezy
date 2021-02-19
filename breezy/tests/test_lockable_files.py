@@ -26,7 +26,7 @@ from . import (
     TestCaseInTempDir,
     TestNotApplicable,
     )
-from .test_smart import TestCaseWithSmartMedium
+from ..bzr.tests.test_smart import TestCaseWithSmartMedium
 from .test_transactions import DummyWeave
 from ..transactions import (PassThroughTransaction,
                             ReadOnlyTransaction,

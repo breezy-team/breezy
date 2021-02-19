@@ -19,8 +19,6 @@
 See MemoryTree for more details.
 """
 
-from __future__ import absolute_import
-
 import os
 import stat
 
@@ -53,6 +51,9 @@ class MemoryTree(MutableInventoryTree):
 
     def supports_symlinks(self):
         return True
+
+    def supports_tree_reference(self):
+        return False
 
     def get_config_stack(self):
         return self.branch.get_config_stack()

@@ -16,8 +16,6 @@
 
 """Basic push implementation."""
 
-from __future__ import absolute_import
-
 from ..push import (
     PushResult,
     )

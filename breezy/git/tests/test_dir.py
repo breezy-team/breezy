@@ -17,8 +17,6 @@
 
 """Test the GitDir class"""
 
-from __future__ import absolute_import
-
 from dulwich.repo import Repo as GitRepo
 import os
 
@@ -54,11 +52,17 @@ class TestGitDir(tests.TestCaseInTempDir):
         gd = controldir.ControlDir.open('.')
         self.assertIsInstance(gd, dir.LocalGitDir)
 
+    def test_open_ref_parent(self):
+        r = GitRepo.init(".")
+        cid = r.do_commit(message=b"message", ref=b'refs/heads/foo/bar')
+        gd = controldir.ControlDir.open('.')
+        self.assertRaises(errors.NotBranchError, gd.open_branch, 'foo')
+
     def test_open_workingtree(self):
-        GitRepo.init(".")
+        r = GitRepo.init(".")
+        r.do_commit(message=b"message")
 
         gd = controldir.ControlDir.open('.')
-        raise TestSkipped
         wt = gd.open_workingtree()
         self.assertIsInstance(wt, workingtree.GitWorkingTree)
 

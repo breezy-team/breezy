@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ... import (
     errors,
     hooks,
@@ -140,13 +138,13 @@ class Proposer(object):
     def check_proposal(self):
         """Check that the submission is sensible."""
         if self.source_branch.lp.self_link == self.target_branch.lp.self_link:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 'Source and target branches must be different.')
         for mp in self.source_branch.lp.landing_targets:
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch.lp.self_link:
-                raise errors.BzrCommandError(gettext(
+                raise errors.CommandError(gettext(
                     'There is already a branch merge proposal: %s') %
                     lp_api.canonical_url(mp))
 

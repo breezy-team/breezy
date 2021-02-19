@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import time
@@ -40,10 +38,6 @@ from . import (
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
-from .sixish import (
-    text_type,
-    viewitems,
-    )
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -63,6 +57,18 @@ class IsInWriteGroupError(errors.InternalBzrError):
 class CannotSetRevisionId(errors.BzrError):
 
     _fmt = "Repository format does not support setting revision ids."
+
+
+class FetchResult(object):
+    """Result of a fetch operation.
+
+    :ivar revidmap: For lossy fetches, map from source revid to target revid.
+    :ivar total_fetched: Number of revisions fetched
+    """
+
+    def __init__(self, total_fetched=None, revidmap=None):
+        self.total_fetched = total_fetched
+        self.revidmap = revidmap
 
 
 class CommitBuilder(object):
@@ -98,7 +104,7 @@ class CommitBuilder(object):
 
         if committer is None:
             self._committer = self._config_stack.get('email')
-        elif not isinstance(committer, text_type):
+        elif not isinstance(committer, str):
             self._committer = committer.decode()  # throw if non-ascii
         else:
             self._committer = committer
@@ -140,10 +146,10 @@ class CommitBuilder(object):
             raise ValueError('Invalid value for %s: %r' % (context, text))
 
     def _validate_revprops(self, revprops):
-        for key, value in viewitems(revprops):
+        for key, value in revprops.items():
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
-            if not isinstance(value, (text_type, str)):
+            if not isinstance(value, str):
                 raise ValueError('revision property (%s) is not a valid'
                                  ' (unicode) string: %r' % (key, value))
             # TODO(jelmer): Make this repository-format specific
@@ -686,7 +692,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def fetch(self, source, revision_id=None, find_ghosts=False):
+    def fetch(self, source, revision_id=None, find_ghosts=False, lossy=False):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None, then all content is copied.
@@ -701,6 +707,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param revision_id: If specified, all the content needed for this
             revision ID will be copied to the target.  Fetch will determine for
             itself which content needs to be copied.
+        :return: A FetchResult object
         """
         if self.is_in_write_group():
             raise errors.InternalBzrError(
@@ -717,7 +724,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
-        return inter.fetch(revision_id=revision_id, find_ghosts=find_ghosts)
+        return inter.fetch(
+            revision_id=revision_id, find_ghosts=find_ghosts, lossy=lossy)
 
     def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -876,19 +884,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         raise NotImplementedError(self.iter_revisions)
 
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        """Produce a generator of revision deltas.
-
-        Note that the input is a sequence of REVISIONS, not revision_ids.
-        Trees will be held in memory until the generator exits.
-        Each delta is relative to the revision's lefthand predecessor.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        raise NotImplementedError(self.get_deltas_for_revisions)
-
     def get_revision_delta(self, revision_id):
         """Return the delta for one revision.
 
@@ -897,7 +892,45 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions([r]))[0]
+            return list(self.get_revision_deltas([r]))[0]
+
+    def get_revision_deltas(self, revisions, specific_files=None):
+        """Produce a generator of revision deltas.
+
+        Note that the input is a sequence of REVISIONS, not revision ids.
+        Trees will be held in memory until the generator exits.
+        Each delta is relative to the revision's lefthand predecessor.
+
+        specific_files should exist in the first revision.
+
+        :param specific_files: if not None, the result is filtered
+          so that only those files, their parents and their
+          children are included.
+        """
+        from .tree import InterTree
+        # Get the revision-ids of interest
+        required_trees = set()
+        for revision in revisions:
+            required_trees.add(revision.revision_id)
+            required_trees.update(revision.parent_ids[:1])
+
+        trees = {
+            t.get_revision_id(): t
+            for t in self.revision_trees(required_trees)}
+
+        # Calculate the deltas
+        for revision in revisions:
+            if not revision.parent_ids:
+                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
+            else:
+                old_tree = trees[revision.parent_ids[0]]
+            intertree = InterTree.get(old_tree, trees[revision.revision_id])
+            yield intertree.compare(specific_files=specific_files)
+            if specific_files is not None:
+                specific_files = [
+                    p for p in intertree.find_source_paths(
+                        specific_files).values()
+                    if p is not None]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError(self.store_revision_signature)
@@ -1038,8 +1071,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             else:
                 query_keys.append((revision_id,))
         vf = self.revisions.without_fallbacks()
-        for (revision_id,), parent_keys in viewitems(
-                vf.get_parent_map(query_keys)):
+        for (revision_id,), parent_keys in (
+                vf.get_parent_map(query_keys).items()):
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
                                              for (parent_revid,) in parent_keys])
@@ -1170,7 +1203,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # weave repositories refuse to store revisionids that are non-ascii.
         if revision_id is not None:
             # weaves require ascii revision ids.
-            if isinstance(revision_id, text_type):
+            if isinstance(revision_id, str):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
@@ -1298,6 +1331,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_custom_revision_properties = True
     # Does the format record per-file revision metadata?
     records_per_file_revision = True
+    supports_multiple_authors = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1496,18 +1530,18 @@ class InterRepository(InterObject):
             try:
                 self.target.set_make_working_trees(
                     self.source.make_working_trees())
-            except NotImplementedError:
+            except (NotImplementedError, errors.RepositoryUpgradeRequired):
                 pass
             self.target.fetch(self.source, revision_id=revision_id)
 
-    def fetch(self, revision_id=None, find_ghosts=False):
+    def fetch(self, revision_id=None, find_ghosts=False, lossy=False):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :return: None.
+        :return: FetchResult
         """
         raise NotImplementedError(self.fetch)
 
@@ -1606,7 +1640,7 @@ def _strip_NULL_ghosts(revision_graph):
     # Filter ghosts, and null:
     if _mod_revision.NULL_REVISION in revision_graph:
         del revision_graph[_mod_revision.NULL_REVISION]
-    for key, parents in viewitems(revision_graph):
+    for key, parents in revision_graph.items():
         revision_graph[key] = tuple(parent for parent in parents if parent
                                     in revision_graph)
     return revision_graph

@@ -17,8 +17,6 @@
 
 """The basic test suite for bzr-git."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import time
@@ -95,6 +93,12 @@ class GitBranchBuilder(object):
         mode = b'120000'
         self.commit_info.append(b'M %s :%d %s\n'
                                 % (mode, mark, self._encode_path(path)))
+
+    def set_submodule(self, path, commit_sha):
+        """Create or update submodule at a given path."""
+        mode = b'160000'
+        self.commit_info.append(
+            b'M %s %s %s\n' % (mode, commit_sha, self._encode_path(path)))
 
     def set_file(self, path, content, executable):
         """Create or update content at a given path."""
@@ -193,10 +197,12 @@ class MissingFeature(tests.TestCase):
         self.requireFeature(DulwichFeature)
 
 
-def test_suite():
-    loader = tests.TestUtil.TestLoader()
+def load_tests(loader, basic_tests, pattern):
+    suite = loader.suiteClass()
+    # add the tests for this module
+    suite.addTests(basic_tests)
 
-    suite = tests.TestUtil.TestSuite()
+    prefix = __name__ + '.'
 
     if not DulwichFeature.available():
         suite.addTests(loader.loadTestsFromTestCase(MissingFeature))
@@ -221,12 +227,15 @@ def test_suite():
         'test_revspec',
         'test_roundtrip',
         'test_server',
+        'test_transform',
         'test_transportgit',
+        'test_tree',
         'test_unpeel_map',
         'test_urls',
         'test_workingtree',
         ]
-    testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]
-    suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
 
+    # add the tests for the sub modules
+    suite.addTests(loader.loadTestsFromModuleNames(
+        [prefix + module_name for module_name in testmod_names]))
     return suite

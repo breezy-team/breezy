@@ -20,8 +20,7 @@ For interface tests see tests/per_repository/*.py.
 
 """
 
-from __future__ import absolute_import
-
+from io import BytesIO
 from stat import S_ISDIR
 import sys
 
@@ -38,9 +37,6 @@ from ...repository import (
     )
 from ...bzr.serializer import (
     format_registry as serializer_format_registry,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from ...tests import (
     TestCase,

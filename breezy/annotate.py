@@ -16,8 +16,6 @@
 
 """File annotate based on weave storage"""
 
-from __future__ import absolute_import
-
 # TODO: Choice of more or less verbose formats:
 #
 # interposed: show more details between blocks of modified lines
@@ -36,12 +34,12 @@ lazy_import(globals(), """
 import patiencediff
 
 from breezy import (
-    errors,
     tsort,
     )
 """)
 from . import (
     config,
+    errors,
     osutils,
     )
 from .repository import _strip_NULL_ghosts

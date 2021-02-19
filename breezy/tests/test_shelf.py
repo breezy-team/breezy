@@ -32,9 +32,6 @@ from . import (
     features,
     KnownFailure,
     )
-from ..errors import (
-    MalformedTransform,
-    )
 
 
 EMPTY_SHELF = (b"Bazaar pack format 1 (introduced in 0.18)\n"
@@ -254,7 +251,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         try:
             creator.transform()
             self.check_shelve_creation(creator, tree)
-        except MalformedTransform:
+        except transform.MalformedTransform:
             raise KnownFailure(
                 'shelving directory with ignored file: see bug #611739')
 
@@ -503,7 +500,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         parser = pack.ContainerPushParser()
         with open('shelf', 'rb') as shelf_file:
             parser.accept_bytes(shelf_file.read())
-        tt = transform.TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         records = iter(parser.read_pending_records())
         # skip revision-id

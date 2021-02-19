@@ -17,16 +17,9 @@
 """Walk multiple trees simultaneously.
 """
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     osutils,
-    )
-
-from .sixish import (
-    text_type,
-    viewvalues,
     )
 
 
@@ -94,10 +87,10 @@ class MultiWalker(object):
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
-        if not isinstance(path1, text_type):
+        if not isinstance(path1, str):
             raise TypeError("'path1' must be a unicode string, not %s: %r"
                             % (type(path1), path1))
-        if not isinstance(path2, text_type):
+        if not isinstance(path2, str):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
         return (MultiWalker._path_to_key(path1) <
@@ -247,7 +240,7 @@ class MultiWalker(object):
         #       might ensure better ordering, in case a caller strictly
         #       requires parents before children.
         for idx, other_extra in enumerate(self._others_extra):
-            others = sorted(viewvalues(other_extra),
+            others = sorted(other_extra.values(),
                             key=lambda x: self._path_to_key(x[0]))
             for other_path, other_ie in others:
                 file_id = other_ie.file_id

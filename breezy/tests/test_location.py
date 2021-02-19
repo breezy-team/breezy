@@ -76,6 +76,26 @@ class TestLocationToUrl(tests.TestCase):
     def test_absolute_file_url(self):
         self.assertEqual("file:///bar", location_to_url("file:/bar"))
 
+    def test_pserver(self):
+        self.assertEqual(
+            'cvs+pserver://anonymous@odessa.cvs.sourceforge.net/cvsroot/odess',
+            location_to_url(
+                ':pserver:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
+        self.assertRaises(ValueError, location_to_url, ':pserver:blah')
+
+    def test_extssh(self):
+        self.assertEqual(
+            'cvs+ssh://anonymous@odessa.cvs.sourceforge.net/cvsroot/odess',
+            location_to_url(
+                ':extssh:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
+
+    def test_missing_scheme(self):
+        self.skipTest('need clever guessing of scheme')
+        self.assertEqual(
+            'cvs+pserver://anonymous@savi.cvs.sourceforge.net:/cvsroot/savi',
+            location_to_url(
+                'anonymous@savi.cvs.sourceforge.net:/cvsroot/savi'))
+
     def test_rcp_url(self):
         self.assertEqual(
             "ssh://example.com/srv/git/bar",

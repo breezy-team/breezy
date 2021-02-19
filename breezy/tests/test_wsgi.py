@@ -16,10 +16,9 @@
 
 """Tests for WSGI application"""
 
+from io import BytesIO
+
 from .. import tests
-from ..sixish import (
-    BytesIO,
-    )
 from ..bzr.smart import medium, protocol
 from ..transport.http import wsgi
 from ..transport import chroot, memory
@@ -283,7 +282,7 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
         response_bytes = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # expect a successful response, rather than a jail break error
-        from breezy.tests.test_smart_transport import LoggingMessageHandler
+        from breezy.bzr.tests.test_smart_transport import LoggingMessageHandler
         message_handler = LoggingMessageHandler()
         decoder = protocol.ProtocolThreeDecoder(
             message_handler, expect_version_marker=True)

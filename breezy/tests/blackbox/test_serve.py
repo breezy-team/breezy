@@ -20,10 +20,7 @@
 import os
 import signal
 import sys
-try:
-    from _thread import interrupt_main
-except ImportError:  # Python < 3
-    from thread import interrupt_main
+from _thread import interrupt_main
 
 import threading
 

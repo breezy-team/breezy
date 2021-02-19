@@ -16,8 +16,6 @@
 
 """Tests for msg editor interactions.."""
 
-from __future__ import absolute_import
-
 from ... import commitfromnews
 from .... import msgeditor
 from ....tests import TestCaseWithTransport

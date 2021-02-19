@@ -15,9 +15,7 @@
 
 """Test tracking of heads"""
 
-from __future__ import absolute_import
-
-from ....sixish import StringIO
+from io import StringIO
 
 from fastimport import (
     commands,
@@ -26,7 +24,7 @@ from fastimport import (
 
 import testtools
 
-from .reftracker import (
+from fastimport.reftracker import (
     RefTracker,
     )
 

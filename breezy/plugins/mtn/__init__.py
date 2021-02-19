@@ -19,8 +19,6 @@
 Currently only tells the user that Monotone is not supported.
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 
 from ... import (
@@ -32,8 +30,8 @@ from ... import (
 class MonotoneUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Monotone branches are not yet supported. '
-            'To convert monotone branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+            'To interoperate with Monotone branches, '
+            'use fastimport.')
 
 
 class MonotoneDirFormat(controldir.ControlDirFormat):
@@ -65,6 +63,10 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
 
 
 class MonotoneProber(controldir.Prober):
+
+    @classmethod
+    def priority(klass, transport):
+        return 100
 
     @classmethod
     def probe_transport(klass, transport):

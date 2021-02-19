@@ -20,9 +20,6 @@
 import os
 import sys
 
-from ..sixish import (
-    text_type,
-    )
 from .. import (
     bedding,
     osutils,
@@ -56,7 +53,7 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(bedding.config_dir(), self.brz_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(bedding.config_dir(), text_type)
+        self.assertIsInstance(bedding.config_dir(), str)
 
     def test_config_path(self):
         self.assertEqual(bedding.config_path(),
@@ -84,7 +81,7 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
         self.assertEqual(bedding.config_dir(), self.bzr_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(bedding.config_dir(), text_type)
+        self.assertIsInstance(bedding.config_dir(), str)
 
     def test_config_path(self):
         self.assertEqual(bedding.config_path(),
@@ -125,6 +122,13 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
         newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
         os.makedirs(newdir)
         self.assertEqual(bedding.config_dir(), newdir)
+
+    def test_ensure_config_dir_exists(self):
+        xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
+        self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
+        bedding.ensure_config_dir_exists()
+        newdir = osutils.pathjoin(xdgconfigdir, 'breezy')
+        self.assertTrue(os.path.isdir(newdir))
 
 
 class TestDefaultMailDomain(tests.TestCaseInTempDir):

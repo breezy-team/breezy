@@ -8,8 +8,6 @@ formatted as a Python data structure.
 This can be useful in tests that need to recreate directory
 contents."""
 
-from __future__ import print_function
-
 import os
 import sys
 

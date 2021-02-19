@@ -16,21 +16,15 @@
 
 """Foreign branch utilities."""
 
-from __future__ import absolute_import
-
-
 from .branch import (
     Branch,
     )
 from .repository import Repository
 from .revision import Revision
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
+from . import (
     errors,
     registry,
     )
-""")
 
 
 class VcsMapping(object):

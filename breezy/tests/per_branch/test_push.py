@@ -16,6 +16,7 @@
 
 """Tests for branch.push behaviour."""
 
+from io import BytesIO
 import os
 
 from ... import (
@@ -24,7 +25,6 @@ from ... import (
     controldir,
     check,
     errors,
-    memorytree,
     push,
     revision,
     tests,
@@ -32,9 +32,6 @@ from ... import (
     )
 from ...bzr import (
     branch as bzrbranch,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from ...bzr.smart import (
     client,
@@ -375,8 +372,7 @@ class TestPushHook(per_branch.TestCaseWithBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.controldir.clone(self.get_url('source'))
-        source = memorytree.MemoryTree.create_on_branch(
-            sourcedir.open_branch())
+        source = sourcedir.open_branch().create_memorytree()
         rev2 = source.commit('rev 2')
         branch.Branch.hooks.install_named_hook(
             'post_push', self.capture_post_push_hook, None)

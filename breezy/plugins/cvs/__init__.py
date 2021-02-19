@@ -19,14 +19,13 @@
 Currently limited to referencing tools for migration.
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 
 from ... import (
     controldir,
     errors,
     )
+from ...transport import register_transport_proto
 
 
 class CVSUnsupportedError(errors.UnsupportedFormatError):
@@ -67,6 +66,10 @@ class CVSDirFormat(controldir.ControlDirFormat):
 class CVSProber(controldir.Prober):
 
     @classmethod
+    def priority(klass, transport):
+        return 100
+
+    @classmethod
     def probe_transport(klass, transport):
         # little ugly, but works
         # try a manual probe first, its a little faster perhaps ?
@@ -80,3 +83,6 @@ class CVSProber(controldir.Prober):
 
 
 controldir.ControlDirFormat.register_prober(CVSProber)
+
+register_transport_proto(
+    'cvs+pserver://', help="The pserver access protocol for CVS.")

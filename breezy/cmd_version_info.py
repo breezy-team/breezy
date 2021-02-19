@@ -16,23 +16,22 @@
 
 """Commands for generating snapshot information about a brz tree."""
 
-from __future__ import absolute_import
-
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
 from breezy import (
     branch,
-    errors,
     version_info_formats,
     workingtree,
     )
 from breezy.i18n import gettext
 """)
 
+from . import (
+    errors,
+    )
 from .commands import Command
 from .option import Option, RegistryOption
-from .sixish import text_type
 
 
 def _parse_version_info_format(format):
@@ -45,7 +44,7 @@ def _parse_version_info_format(format):
         return version_info_formats.get_builder(format)
     except KeyError:
         formats = version_info_formats.get_builder_formats()
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             gettext('No known version info format {0}.'
                     ' Supported types are: {1}').format(format, formats))
 
@@ -85,7 +84,7 @@ class cmd_version_info(Command):
                             help='Include the revision-history.'),
                      Option('include-file-revisions',
                             help='Include the last revision for each file.'),
-                     Option('template', type=text_type,
+                     Option('template', type=str,
                             help='Template for the output.'),
                      'revision',
                      ]
@@ -99,7 +98,7 @@ class cmd_version_info(Command):
             revision=None):
 
         if revision and len(revision) > 1:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext('brz version-info --revision takes exactly'
                         ' one revision specifier'))
 

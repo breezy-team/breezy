@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from __future__ import absolute_import
-
 import subprocess
 import tempfile
 
@@ -80,7 +78,7 @@ class EmailSender(object):
 
         # We must use StringIO.StringIO because we want a Unicode string that
         # we can pass to send_email and have that do the proper encoding.
-        from ...sixish import StringIO
+        from io import StringIO
         outf = StringIO()
 
         _body = self.config.get('post_commit_body')
@@ -137,7 +135,7 @@ class EmailSender(object):
 
         # We can use a StringIO because show_diff_trees should only write
         # 8-bit strings. It is an error to write a Unicode string here.
-        from ...sixish import StringIO
+        from io import StringIO
         diff_content = StringIO()
         diff_options = self.config.get('post_commit_diffoptions')
         show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)

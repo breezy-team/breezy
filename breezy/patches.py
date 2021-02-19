@@ -15,12 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .errors import (
     BzrError,
     )
 
+import os
 import re
 
 
@@ -88,6 +87,10 @@ def get_patch_names(iter_lines):
             raise MalformedPatchHeader("No orig name", line)
         else:
             orig_name = line[4:].rstrip(b"\n")
+            try:
+                (orig_name, orig_ts) = orig_name.split(b'\t')
+            except ValueError:
+                orig_ts = None
     except StopIteration:
         raise MalformedPatchHeader("No orig line", "")
     try:
@@ -96,9 +99,13 @@ def get_patch_names(iter_lines):
             raise PatchSyntax("No mod name")
         else:
             mod_name = line[4:].rstrip(b"\n")
+            try:
+                (mod_name, mod_ts) = mod_name.split(b'\t')
+            except ValueError:
+                mod_ts = None
     except StopIteration:
         raise MalformedPatchHeader("No mod line", "")
-    return (orig_name, mod_name)
+    return ((orig_name, orig_ts), (mod_name, mod_ts))
 
 
 def parse_range(textrange):
@@ -319,13 +326,16 @@ class BinaryPatch(object):
         self.newname = newname
 
     def as_bytes(self):
-        return b'Binary files %s and %s differ\n' % (self.oldname, self.newname)
+        return b'Binary files %s and %s differ\n' % (
+            self.oldname, self.newname)
 
 
 class Patch(BinaryPatch):
 
-    def __init__(self, oldname, newname):
+    def __init__(self, oldname, newname, oldts=None, newts=None):
         BinaryPatch.__init__(self, oldname, newname)
+        self.oldts = oldts
+        self.newts = newts
         self.hunks = []
 
     def as_bytes(self):
@@ -333,8 +343,18 @@ class Patch(BinaryPatch):
         ret += b"".join([h.as_bytes() for h in self.hunks])
         return ret
 
+    @classmethod
+    def _headerline(cls, start, name, ts):
+        l = start + b' ' + name
+        if ts is not None:
+            l += b'\t%s' % ts
+        l += b'\n'
+        return l
+
     def get_header(self):
-        return b"--- %s\n+++ %s\n" % (self.oldname, self.newname)
+        return (
+            self._headerline(b'---', self.oldname, self.oldts) +
+            self._headerline(b'+++', self.newname, self.newts))
 
     def stats_values(self):
         """Calculate the number of inserts and removes."""
@@ -386,11 +406,12 @@ def parse_patch(iter_lines, allow_dirty=False):
     '''
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
-        (orig_name, mod_name) = get_patch_names(iter_lines)
+        ((orig_name, orig_ts), (mod_name, mod_ts)) = get_patch_names(
+            iter_lines)
     except BinaryFiles as e:
         return BinaryPatch(e.orig_name, e.mod_name)
     else:
-        patch = Patch(orig_name, mod_name)
+        patch = Patch(orig_name, mod_name, orig_ts, mod_ts)
         for hunk in iter_hunks(iter_lines, allow_dirty):
             patch.hunks.append(hunk)
         return patch
@@ -418,7 +439,12 @@ def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
 
     for line in iter_lines:
         if line.startswith(b'=== '):
-            if len(saved_lines) > 0:
+            if allow_dirty and beginning:
+                # Patches can have "junk" at the beginning
+                # Stripping junk from the end of patches is handled when we
+                # parse the patch
+                pass
+            elif len(saved_lines) > 0:
                 if keep_dirty and len(dirty_head) > 0:
                     yield {'saved_lines': saved_lines,
                            'dirty_head': dirty_head}
@@ -544,14 +570,14 @@ def iter_patched_from_hunks(orig_lines, hunks):
             yield orig_line
             line_no += 1
         for hunk_line in hunk.lines:
-            seen_patch.append(str(hunk_line))
+            seen_patch.append(hunk_line.contents)
             if isinstance(hunk_line, InsertLine):
                 yield hunk_line.contents
             elif isinstance(hunk_line, (ContextLine, RemoveLine)):
                 orig_line = next(orig_lines)
                 if orig_line != hunk_line.contents:
                     raise PatchConflict(line_no, orig_line,
-                                        b"".join(seen_patch))
+                                        b''.join(seen_patch))
                 if isinstance(hunk_line, ContextLine):
                     yield orig_line
                 else:
@@ -561,3 +587,60 @@ def iter_patched_from_hunks(orig_lines, hunks):
     if orig_lines is not None:
         for line in orig_lines:
             yield line
+
+
+def apply_patches(tt, patches, prefix=1):
+    """Apply patches to a TreeTransform.
+
+    :param tt: TreeTransform instance
+    :param patches: List of patches
+    :param prefix: Number leading path segments to strip
+    """
+    def strip_prefix(p):
+        return '/'.join(p.split('/')[1:])
+
+    from breezy.bzr.generate_ids import gen_file_id
+    # TODO(jelmer): Extract and set mode
+    for patch in patches:
+        if patch.oldname == b'/dev/null':
+            trans_id = None
+            orig_contents = b''
+        else:
+            oldname = strip_prefix(patch.oldname.decode())
+            trans_id = tt.trans_id_tree_path(oldname)
+            orig_contents = tt._tree.get_file_text(oldname)
+            tt.delete_contents(trans_id)
+
+        if patch.newname != b'/dev/null':
+            newname = strip_prefix(patch.newname.decode())
+            new_contents = iter_patched_from_hunks(
+                orig_contents.splitlines(True), patch.hunks)
+            if trans_id is None:
+                parts = os.path.split(newname)
+                trans_id = tt.root
+                for part in parts[1:-1]:
+                    trans_id = tt.new_directory(part, trans_id)
+                tt.new_file(
+                    parts[-1], trans_id, new_contents,
+                    file_id=gen_file_id(newname))
+            else:
+                tt.create_file(new_contents, trans_id)
+
+
+class AppliedPatches(object):
+    """Context that provides access to a tree with patches applied.
+    """
+
+    def __init__(self, tree, patches, prefix=1):
+        self.tree = tree
+        self.patches = patches
+        self.prefix = prefix
+
+    def __enter__(self):
+        self._tt = self.tree.preview_transform()
+        apply_patches(self._tt, self.patches, prefix=self.prefix)
+        return self._tt.get_preview_tree()
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self._tt.finalize()
+        return False

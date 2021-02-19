@@ -18,8 +18,6 @@
 
 """Tests for the merge_quilt code."""
 
-from __future__ import absolute_import
-
 import os
 import shutil
 

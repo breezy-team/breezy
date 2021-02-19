@@ -20,14 +20,10 @@
 doc/developers/container-format.txt.
 """
 
-from __future__ import absolute_import
-
+from io import BytesIO
 import re
 
 from .. import errors
-from ..sixish import (
-    BytesIO,
-    )
 
 
 FORMAT_ONE = b"Bazaar pack format 1 (introduced in 0.18)"
@@ -141,10 +137,11 @@ class ContainerWriter(object):
         """Finish writing a container."""
         self.write_func(self._serialiser.end())
 
-    def add_bytes_record(self, bytes, names):
+    def add_bytes_record(self, chunks, length, names):
         """Add a Bytes record with the given names.
 
-        :param bytes: The bytes to insert.
+        :param bytes: The chunks to insert.
+        :param length: Total length of bytes in chunks
         :param names: The names to give the inserted bytes. Each name is
             a tuple of bytestrings. The bytestrings may not contain
             whitespace.
@@ -156,13 +153,13 @@ class ContainerWriter(object):
             and thus are only suitable for use by a ContainerReader.
         """
         current_offset = self.current_offset
-        length = len(bytes)
         if length < self._JOIN_WRITES_THRESHOLD:
             self.write_func(self._serialiser.bytes_header(length, names)
-                            + bytes)
+                            + b''.join(chunks))
         else:
             self.write_func(self._serialiser.bytes_header(length, names))
-            self.write_func(bytes)
+            for chunk in chunks:
+                self.write_func(chunk)
         self.records_written += 1
         # return a memo of where we wrote data to allow random access.
         return current_offset, self.current_offset - current_offset

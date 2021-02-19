@@ -22,8 +22,6 @@ branch operation we copy history from the source into the destination
 branch.
 """
 
-from __future__ import absolute_import
-
 import operator
 
 from ..lazy_import import lazy_import
@@ -42,9 +40,6 @@ from .. import (
     )
 from ..i18n import gettext
 from ..revision import NULL_REVISION
-from ..sixish import (
-    viewvalues,
-    )
 from ..trace import mutter
 
 
@@ -74,14 +69,11 @@ class RepoFetcher(object):
         self._last_revision = last_revision
         self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
-        self.from_repository.lock_read()
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               str(self.from_repository), str(self.from_repository._format),
-               str(self.to_repository), str(self.to_repository._format))
-        try:
+        with self.from_repository.lock_read():
+            mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+                   str(self.from_repository), str(self.from_repository._format),
+                   str(self.to_repository), str(self.to_repository._format))
             self.__fetch()
-        finally:
-            self.from_repository.unlock()
 
     def __fetch(self):
         """Primary worker function.
@@ -215,7 +207,7 @@ class Inter1and2Helper(object):
             revision_id = tree.get_file_revision(u'')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
-        parents = set(viewvalues(parent_map))
+        parents = set(parent_map.values())
         parents.difference_update(revision_root)
         parents.discard(NULL_REVISION)
         # Limit to revisions present in the versionedfile
@@ -268,8 +260,8 @@ def _new_root_data_stream(
         root_id, rev_id = root_key
         parent_keys = _parent_keys_for_root_version(
             root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
-        yield versionedfile.FulltextContentFactory(
-            root_key, parent_keys, None, b'')
+        yield versionedfile.ChunkedContentFactory(
+            root_key, parent_keys, None, [])
 
 
 def _parent_keys_for_root_version(
@@ -319,7 +311,8 @@ def _parent_keys_for_root_version(
             else:
                 try:
                     parent_ids.append(
-                        tree.get_file_revision(tree.id2path(root_id)))
+                        tree.get_file_revision(
+                            tree.id2path(root_id, recurse='none')))
                 except errors.NoSuchId:
                     # not in the tree
                     pass

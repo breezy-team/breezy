@@ -16,15 +16,12 @@
 
 """Server-side branch related request implmentations."""
 
-from __future__ import absolute_import
-
 from ... import (
     bencode,
     errors,
     revision as _mod_revision,
     )
 from ...controldir import ControlDir
-from ...sixish import text_type
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -254,7 +251,7 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             return self.do_tip_change_with_locked_branch(branch, *args)
         except errors.TipChangeRejected as e:
             msg = e.msg
-            if isinstance(msg, text_type):
+            if isinstance(msg, str):
                 msg = msg.encode('utf-8')
             return FailedSmartServerResponse((b'TipChangeRejected', msg))
 
@@ -439,3 +436,17 @@ class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
             return SuccessfulSmartServerResponse((b'yes',))
         else:
             return SuccessfulSmartServerResponse((b'no',))
+
+
+class SmartServerBranchRequestGetAllReferenceInfo(SmartServerBranchRequest):
+    """Get the reference information.
+
+    New in 3.1.
+    """
+
+    def do_with_branch(self, branch):
+        all_reference_info = branch._get_all_reference_info()
+        content = bencode.bencode([
+            (key, value[0].encode('utf-8'), value[1].encode('utf-8') if value[1] else b'')
+            for (key, value) in all_reference_info.items()])
+        return SuccessfulSmartServerResponse((b'ok', ), content)

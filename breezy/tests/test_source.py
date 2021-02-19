@@ -325,13 +325,21 @@ class TestSource(TestSourceHelper):
             self.fail('\n\n'.join(problems))
 
     def test_flake8(self):
-        self.requireFeature(features.flake8)
+        try:
+            self.requireFeature(features.flake8)
+        except (SyntaxError, NameError):
+            # importlib_metadata uses ModuleNotFoundError, which is
+            # python 3.6 only
+            if sys.version_info[:2] <= (3, 5):
+                self.skipTest('python version too old')
+            raise
         # Older versions of flake8 don't support the 'paths'
         # variable
         new_path = list(sys.path)
         new_path.insert(
             0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
         self.overrideAttr(sys, 'path', new_path)
+        import argparse
         from flake8.main.application import Application
         from flake8.formatting.base import BaseFormatter
         app = Application()
@@ -352,8 +360,11 @@ class TestSource(TestSourceHelper):
             def handle(self, error):
                 self.errors.append(error)
 
+        try:
+            app.initialize([])
+        except argparse.ArgumentError as e:
+            self.skipTest('broken flake8: %r' % e)
         app.formatter = Formatter()
-        app.initialize([])
         app.run_checks()
         app.report()
         self.assertEqual(app.formatter.errors, [])
@@ -444,23 +455,3 @@ class TestSource(TestSourceHelper):
             error_msg.extend(('', ''))
         if error_msg:
             self.fail('\n'.join(error_msg))
-
-    def test_feature_absolute_import(self):
-        """Using absolute imports means avoiding unnecesary stat and
-        open calls.
-
-        Make sure that all non-test files have absolute imports enabled.
-        """
-        missing_absolute_import = []
-        for fname, text in self.get_source_file_contents(
-                extensions=('.py', '.pyx')):
-            if "/tests/" in fname or "test_" in fname:
-                # We don't really care about tests
-                continue
-            if "from __future__ import absolute_import" not in text:
-                missing_absolute_import.append(fname)
-
-        if missing_absolute_import:
-            self.fail(
-                'The following files do not have absolute_import enabled:\n'
-                '\n' + '\n'.join(missing_absolute_import))

@@ -30,7 +30,6 @@ from breezy.bzr import (
 from breezy.tests import (
     TestCaseWithTransport,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
 from breezy.tests.features import (
     HardlinkFeature,
     )
@@ -195,38 +194,3 @@ class TestCheckout(TestCaseWithTransport):
         self.assertEqual(
             target.open_branch(name='somebranch').user_url,
             target.get_branch_reference(name=""))
-
-
-class TestSmartServerCheckout(TestCaseWithTransport):
-
-    def test_heavyweight_checkout(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['checkout', self.get_url('from'), 'target'])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(10, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-
-    def test_lightweight_checkout(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
-                                 'target'])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(13, self.hpss_calls)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

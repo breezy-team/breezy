@@ -20,16 +20,12 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
-from __future__ import absolute_import
-
 import gzip
+from io import BytesIO
 import os
 
 from .... import osutils
 from ....errors import BzrError, NoSuchFile, FileExists
-from ....sixish import (
-    BytesIO,
-    )
 from . import TransportStore
 from ....trace import mutter
 

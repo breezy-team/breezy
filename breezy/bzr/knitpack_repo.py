@@ -16,7 +16,9 @@
 
 """Knit-based pack repository formats."""
 
-from __future__ import absolute_import
+from .. import (
+    errors,
+    )
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -25,7 +27,6 @@ import time
 from breezy import (
     controldir,
     debug,
-    errors,
     osutils,
     revision as _mod_revision,
     trace,
@@ -66,10 +67,6 @@ from .pack_repo import (
     PackCommitBuilder,
     PackRepository,
     RepositoryPackCollection,
-    )
-from ..sixish import (
-    viewitems,
-    zip
     )
 from ..bzr.vf_repository import (
     StreamSource,
@@ -267,8 +264,6 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
 class RepositoryFormatKnitPack5(RepositoryFormatPack):
     """Repository that supports external references to allow stacking.
 
-    New in release 1.6.
-
     Supports external lookups, which results in non-truncated ghosts after
     reconcile compared to pack-0.92 formats.
     """
@@ -305,8 +300,6 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
 
 class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     """A repository with rich roots and stacking.
-
-    New in release 1.6.1.
 
     Supports stacking on other repositories, allowing data to be accessed
     without being stored locally.
@@ -346,8 +339,6 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
 
 class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     """A repository with rich roots and external references.
-
-    New in release 1.6.
 
     Supports external lookups, which results in non-truncated ghosts after
     reconcile compared to pack-0.92 formats.
@@ -656,7 +647,7 @@ class KnitPacker(Packer):
             request_groups[index].append((key, value))
         record_index = 0
         pb.update("Copied record", record_index, len(nodes))
-        for index, items in viewitems(request_groups):
+        for index, items in request_groups.items():
             pack_readv_requests = []
             for key, value in items:
                 # ---- KnitGraphIndex.get_position
@@ -684,7 +675,7 @@ class KnitPacker(Packer):
                 else:
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
-                pos, size = writer.add_bytes_record(raw_data, names)
+                pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" % (pos, size))
                 pb.update("Copied record", record_index)
                 record_index += 1
@@ -736,7 +727,7 @@ class KnitPacker(Packer):
                     # check the header only
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
-                pos, size = writer.add_bytes_record(raw_data, names)
+                pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" %
                                      (pos, size), references)
                 pb.update("Copied record", record_index)
@@ -748,7 +739,7 @@ class KnitPacker(Packer):
         fileid_revisions = repo._find_file_ids_from_xml_inventory_lines(
             inv_lines, self.revision_keys)
         text_filter = []
-        for fileid, file_revids in viewitems(fileid_revisions):
+        for fileid, file_revids in fileid_revisions.items():
             text_filter.extend([(fileid, file_revid)
                                 for file_revid in file_revids])
         self._text_filter = text_filter
@@ -947,7 +938,7 @@ class KnitPacker(Packer):
                 request_groups[index] = []
             request_groups[index].append((key, value, references))
         result = []
-        for index, items in viewitems(request_groups):
+        for index, items in request_groups.items():
             pack_readv_requests = []
             for key, value, references in items:
                 # ---- KnitGraphIndex.get_position
@@ -1089,8 +1080,8 @@ class KnitReconcilePacker(KnitPacker):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                                           (key, parent_keys))
                 parents.append(parent_key[1])
-            text_lines = osutils.split_lines(next(repo.texts.get_record_stream(
-                [key], 'unordered', True)).get_bytes_as('fulltext'))
+            text_lines = next(repo.texts.get_record_stream(
+                [key], 'unordered', True)).get_bytes_as('lines')
             output_texts.add_lines(key, parent_keys, text_lines,
                                    random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.

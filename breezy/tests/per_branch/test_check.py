@@ -16,15 +16,13 @@
 
 """Tests for branch implementations - test check() functionality"""
 
+from io import BytesIO
 
 from ... import (
     errors,
     tests,
     ui,
 )
-from ...sixish import (
-    BytesIO,
-    )
 from . import TestCaseWithBranch
 
 

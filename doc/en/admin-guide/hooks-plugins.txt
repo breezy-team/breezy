@@ -8,7 +8,7 @@ branches, Bazaar can also load *plugins* that perform specific tasks.  These
 specific tasks are specified by *hooks* that run during certain steps of the
 version control process.  
 
-For full documentation on the available hooks, see ``bzr help hooks``.  Among
+For full documentation on the available hooks, see ``brz help hooks``.  Among
 those, some of the most significant hooks from an administration
 standpoint are `pre_commit`, `post_commit` and `post_change_branch_tip`.
 A `pre_commit` hook can inspect a commit before it happens and cancel it if
@@ -24,10 +24,10 @@ purposes, as well as for backups and mirroring.
 Information on the whole range of Bazaar plugins is available at
 http://doc.bazaar.canonical.com/plugins/en/.  For purposes of installation,
 plugins are simply python packages.  They can be installed alongside Bazaar in
-the ``bzrlib.plugins`` package using each plugin's ``setup.py``.  They can
+the ``breezy.plugins`` package using each plugin's ``setup.py``.  They can
 also be installed in the plugin path which is the user's
 ``~/.config/breezy/plugins`` directory or can be specified with the
-``BZR_PLUGIN_PATH`` environment variable.  See ``bzr help configuration`` for
+``BRZ_PLUGIN_PATH`` environment variable.  See ``brz help configuration`` for
 more on specifying the location of plugins.
 
 
@@ -55,7 +55,7 @@ To configure this plugin, simply install the plugin and configure the
 in the ``locations.conf`` file or individually in each branch's
 ``branch.conf`` file.  The sender's email address can be specified as
 ``post_commit_sender`` if it is different than the email address reported by
-``bzr whoami``.  The ``post_commit_mailer`` option specifies how the
+``brz whoami``.  The ``post_commit_mailer`` option specifies how the
 mail should be sent.  If it isn't set, email is sent via ``/usr/bin/mail``.
 It can also be configured to communicate directly with an SMTP server.
 For more details on configuring this plugin, see
@@ -287,7 +287,7 @@ text_checker
 This plugin is a more advanced version of `checkeol` that can check such
 coding style guidelines such as trailing whitespace, long lines and files that
 don't end with a newline.  It is configured using Bazaar's built in rules
-specification in ``BZR_HOME/rules`` (see ``bzr help rules`` for more
+specification in ``BRZ_HOME/rules`` (see ``bzr help rules`` for more
 information.  For different types of undesired changes, you can specify
 different types of actions.  For example
 

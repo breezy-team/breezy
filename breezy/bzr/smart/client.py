@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ... import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy.bzr.smart import request as _mod_request

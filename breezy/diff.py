@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+import contextlib
 import difflib
 import os
 import re
@@ -29,9 +28,7 @@ import subprocess
 import tempfile
 
 from breezy import (
-    cleanup,
     controldir,
-    errors,
     osutils,
     textfile,
     timestamp,
@@ -42,10 +39,12 @@ from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext
 """)
 
+from . import (
+    errors,
+    )
 from .registry import (
     Registry,
     )
-from .sixish import text_type
 from .trace import mutter, note, warning
 from .tree import FileTimestampUnavailable
 
@@ -517,7 +516,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         context = DEFAULT_CONTEXT_AMOUNT
     if format_cls is None:
         format_cls = DiffTree
-    with cleanup.ExitStack() as exit_stack:
+    with contextlib.ExitStack() as exit_stack:
         exit_stack.enter_context(old_tree.lock_read())
         if extra_trees is not None:
             for tree in extra_trees:
@@ -732,10 +731,10 @@ class DiffText(DiffPath):
             new_date = self.EPOCH_DATE
         else:
             return self.CANNOT_DIFF
-        from_label = '%s%s\t%s' % (self.old_label, old_path,
-                                   old_date)
-        to_label = '%s%s\t%s' % (self.new_label, new_path,
-                                 new_date)
+        from_label = '%s%s\t%s' % (
+            self.old_label, old_path or new_path, old_date)
+        to_label = '%s%s\t%s' % (
+            self.new_label, new_path or old_path, new_date)
         return self.diff_text(old_path, new_path, from_label, to_label)
 
     def diff_text(self, from_path, to_path, from_label, to_label):
@@ -763,7 +762,9 @@ class DiffText(DiffPath):
         except errors.BinaryFile:
             self.to_file.write(
                 ("Binary files %s%s and %s%s differ\n" %
-                 (self.old_label, from_path, self.new_label, to_path)).encode(self.path_encoding, 'replace'))
+                 (self.old_label, from_path or to_path,
+                  self.new_label, to_path or from_path)
+                 ).encode(self.path_encoding, 'replace'))
         return self.CHANGED
 
 
@@ -795,10 +796,12 @@ class DiffFromTool(DiffPath):
         my_map = {'old_path': old_path, 'new_path': new_path}
         command = [t.format(**my_map) for t in
                    self.command_template]
+        if command == self.command_template:
+            command += [old_path, new_path]
         if sys.platform == 'win32':  # Popen doesn't accept unicode on win32
             command_encoded = []
             for c in command:
-                if isinstance(c, text_type):
+                if isinstance(c, str):
                     command_encoded.append(c.encode('mbcs'))
                 else:
                     command_encoded.append(c)
@@ -1051,8 +1054,8 @@ class DiffTree(object):
                     'supported on this filesystem.' % (change.path[0],))
                 continue
             oldpath, newpath = change.path
-            oldpath_encoded = get_encoded_path(change.path[0])
-            newpath_encoded = get_encoded_path(change.path[1])
+            oldpath_encoded = get_encoded_path(oldpath)
+            newpath_encoded = get_encoded_path(newpath)
             old_present = (change.kind[0] is not None and change.versioned[0])
             new_present = (change.kind[1] is not None and change.versioned[1])
             executable = change.executable
@@ -1072,11 +1075,9 @@ class DiffTree(object):
             if (old_present, new_present) == (True, False):
                 self.to_file.write(b"=== removed %s '%s'\n" %
                                    (kind[0].encode('ascii'), oldpath_encoded))
-                newpath = oldpath
             elif (old_present, new_present) == (False, True):
                 self.to_file.write(b"=== added %s '%s'\n" %
                                    (kind[1].encode('ascii'), newpath_encoded))
-                oldpath = newpath
             elif renamed:
                 self.to_file.write(b"=== renamed %s '%s' => '%s'%s\n" %
                                    (kind[0].encode('ascii'), oldpath_encoded, newpath_encoded, prop_str))

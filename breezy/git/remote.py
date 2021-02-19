@@ -16,9 +16,8 @@
 
 """Remote dirs, repositories and branches."""
 
-from __future__ import absolute_import
-
 import gzip
+from io import BytesIO
 import re
 
 from .. import (
@@ -47,11 +46,8 @@ from ..errors import (
     PermissionDenied,
     UninitializableFormat,
     )
+from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
-from ..sixish import (
-    text_type,
-    viewitems,
-    )
 from ..transport import (
     Transport,
     register_urlparse_netloc_protocol,
@@ -80,6 +76,7 @@ from .errors import (
     NoSuchRef,
     )
 from .mapping import (
+    encode_git_path,
     mapping_registry,
     )
 from .object_store import (
@@ -119,14 +116,9 @@ from dulwich.repo import (
     )
 import os
 import select
-import tempfile
 
-try:
-    import urllib.parse as urlparse
-    from urllib.parse import splituser, splitnport
-except ImportError:
-    import urlparse
-    from urllib import splituser, splitnport
+import urllib.parse as urlparse
+from urllib.parse import splituser
 
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
@@ -165,13 +157,11 @@ def split_git_url(url):
     :param url: Git URL
     :return: Tuple with host, port, username, path.
     """
-    (scheme, netloc, loc, _, _) = urlparse.urlsplit(url)
-    path = urlparse.unquote(loc)
+    parsed_url = urlparse.urlparse(url)
+    path = urlparse.unquote(parsed_url.path)
     if path.startswith("/~"):
         path = path[1:]
-    (username, hostport) = splituser(netloc)
-    (host, port) = splitnport(hostport, None)
-    return (host, port, username, path)
+    return ((parsed_url.hostname or '', parsed_url.port, parsed_url.username, path))
 
 
 class RemoteGitError(BzrError):
@@ -202,23 +192,52 @@ def parse_git_error(url, message):
                 message.endswith(' not found.'))):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
-        base_url, _ = urlutils.split_segment_parameters(url)
+        base_url = urlutils.strip_segment_parameters(url)
         return HeadUpdateFailed(base_url)
     if message.startswith('access denied or repository not exported:'):
-        extra, path = message.split(': ', 1)
-        return PermissionDenied(path, extra)
+        extra, path = message.split(':', 1)
+        return PermissionDenied(path.strip(), extra)
     if message.endswith('You are not allowed to push code to this project.'):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
         return NotBranchError(url, message)
+    if message == 'pre-receive hook declined':
+        return PermissionDenied(url, message)
     if re.match('(.+) is not a valid repository name',
                 message.splitlines()[0]):
         return NotBranchError(url, message)
+    if message == (
+            'GitLab: You are not allowed to push code to protected branches '
+            'on this project.'):
+        return PermissionDenied(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
         return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
+
+
+def parse_git_hangup(url, e):
+    """Parse the error lines from a git servers stderr on hangup.
+
+    :param url: URL of the remote repository
+    :param e: A HangupException
+    """
+    stderr_lines = getattr(e, 'stderr_lines', None)
+    if not stderr_lines:
+        return e
+    if all(line.startswith(b'remote: ') for line in stderr_lines):
+        stderr_lines = [
+            line[len(b'remote: '):] for line in stderr_lines]
+    interesting_lines = [
+        line for line in stderr_lines
+        if line and line.replace(b'=', b'')]
+    if len(interesting_lines) == 1:
+        interesting_line = interesting_lines[0]
+        return parse_git_error(
+            url, interesting_line.decode('utf-8', 'surrogateescape'))
+    return RemoteGitError(
+        b'\n'.join(stderr_lines).decode('utf-8', 'surrogateescape'))
 
 
 class GitSmartTransport(Transport):
@@ -417,7 +436,9 @@ class RemoteGitDir(GitDir):
                 write_error,
                 format=(format.encode('ascii') if format else None),
                 subdirs=subdirs,
-                prefix=(prefix.encode('utf-8') if prefix else None))
+                prefix=(encode_git_path(prefix) if prefix else None))
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -440,6 +461,8 @@ class RemoteGitDir(GitDir):
             self._refs = remote_refs_dict_to_container(
                 result.refs, result.symrefs)
             return result
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -453,14 +476,16 @@ class RemoteGitDir(GitDir):
         else:
             pb = None
 
-        def get_changed_refs_wrapper(refs):
-            # TODO(jelmer): This drops symref information
-            self._refs = remote_refs_dict_to_container(refs)
-            return get_changed_refs(refs)
+        def get_changed_refs_wrapper(remote_refs):
+            if self._refs is not None:
+                update_refs_container(self._refs, remote_refs)
+            return get_changed_refs(remote_refs)
         try:
             return self._client.send_pack(
                 self._client_path, get_changed_refs_wrapper,
                 generate_pack_data, progress)
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -472,11 +497,10 @@ class RemoteGitDir(GitDir):
         refname = self._get_selected_ref(name, ref)
         if refname != b'HEAD' and refname in self.get_refs_container():
             raise AlreadyBranchError(self.user_url)
-        if refname in self.get_refs_container():
-            ref_chain, unused_sha = self.get_refs_container().follow(
-                self._get_selected_ref(None))
-            if ref_chain[0] == b'HEAD':
-                refname = ref_chain[1]
+        ref_chain, unused_sha = self.get_refs_container().follow(
+            self._get_selected_ref(name))
+        if ref_chain and ref_chain[0] == b'HEAD':
+            refname = ref_chain[1]
         repo = self.open_repository()
         return RemoteGitBranch(self, repo, refname)
 
@@ -492,7 +516,11 @@ class RemoteGitDir(GitDir):
 
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.send_pack(get_changed_refs, generate_pack_data)
+        result = self.send_pack(get_changed_refs, generate_pack_data)
+        if result is not None and not isinstance(result, dict):
+            error = result.ref_status.get(refname)
+            if error:
+                raise RemoteGitError(error)
 
     @property
     def user_url(self):
@@ -556,12 +584,15 @@ class RemoteGitDir(GitDir):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    name=None):
+                    name=None, tag_selector=None):
         """Push the source branch into this ControlDir."""
         if revision_id is None:
             # No revision supplied by the user, default to the branch
             # revision
             revision_id = source.last_revision()
+        else:
+            if not source.repository.has_revision(revision_id):
+                raise NoSuchRevision(source, revision_id)
 
         push_result = GitPushResult()
         push_result.workingtree_updated = None
@@ -571,12 +602,23 @@ class RemoteGitDir(GitDir):
         push_result.branch_push_result = None
         repo = self.find_repository()
         refname = self._get_selected_ref(name)
+        try:
+            ref_chain, old_sha = self.get_refs_container().follow(refname)
+        except NotBranchError:
+            actual_refname = refname
+            old_sha = None
+        else:
+            if ref_chain:
+                actual_refname = ref_chain[-1]
+            else:
+                actual_refname = refname
         if isinstance(source, GitBranch) and lossy:
             raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
         fetch_tags = source.get_config_stack().get('branch.fetch_tags')
-        def get_changed_refs(refs):
-            self._refs = remote_refs_dict_to_container(refs)
+        def get_changed_refs(remote_refs):
+            if self._refs is not None:
+                update_refs_container(self._refs, remote_refs)
             ret = {}
             # TODO(jelmer): Unpeel if necessary
             push_result.new_original_revid = revision_id
@@ -589,38 +631,72 @@ class RemoteGitDir(GitDir):
                     raise errors.NoRoundtrippingSupport(
                         source, self.open_branch(name=name, nascent_ok=True))
             if not overwrite:
-                if remote_divergence(ret.get(refname), new_sha,
-                                     source_store):
+                old_sha = remote_refs.get(actual_refname)
+                if remote_divergence(old_sha, new_sha, source_store):
                     raise DivergedBranches(
                         source, self.open_branch(name, nascent_ok=True))
-            ret[refname] = new_sha
+            ret[actual_refname] = new_sha
             if fetch_tags:
-                for tagname, revid in viewitems(source.tags.get_tag_dict()):
+                for tagname, revid in source.tags.get_tag_dict().items():
+                    if tag_selector and not tag_selector(tagname):
+                        continue
                     if lossy:
-                        new_sha = source_store._lookup_revision_sha1(revid)
+                        try:
+                            new_sha = source_store._lookup_revision_sha1(revid)
+                        except KeyError:
+                            if source.repository.has_revision(revid):
+                                raise
                     else:
                         try:
                             new_sha = repo.lookup_bzr_revision_id(revid)[0]
                         except errors.NoSuchRevision:
                             continue
+                        else:
+                            if not source.repository.has_revision(revid):
+                                continue
                     ret[tag_name_to_ref(tagname)] = new_sha
             return ret
         with source_store.lock_read():
-            if lossy:
-                generate_pack_data = source_store.generate_lossy_pack_data
-            else:
-                generate_pack_data = source_store.generate_pack_data
-            new_refs = self.send_pack(get_changed_refs, generate_pack_data)
+            def generate_pack_data(have, want, progress=None,
+                                   ofs_delta=True):
+                git_repo = getattr(source.repository, '_git', None)
+                if git_repo:
+                    shallow = git_repo.get_shallow()
+                else:
+                    shallow = None
+                if lossy:
+                    return source_store.generate_lossy_pack_data(
+                        have, want, shallow=shallow,
+                        progress=progress, ofs_delta=ofs_delta)
+                elif shallow:
+                    return source_store.generate_pack_data(
+                        have, want, shallow=shallow,
+                        progress=progress, ofs_delta=ofs_delta)
+                else:
+                    return source_store.generate_pack_data(
+                        have, want, progress=progress, ofs_delta=ofs_delta)
+            dw_result = self.send_pack(get_changed_refs, generate_pack_data)
+            if not isinstance(dw_result, dict):
+                new_refs = dw_result.refs
+                error = dw_result.ref_status.get(actual_refname)
+                if error:
+                    raise RemoteGitError(error)
+                for ref, error in dw_result.ref_status.items():
+                    if error:
+                        trace.warning('unable to open ref %s: %s',
+                                      ref, error)
+            else:  # dulwich < 0.20.4
+                new_refs = dw_result
         push_result.new_revid = repo.lookup_foreign_revision_id(
-            new_refs[refname])
-        try:
-            old_remote = self._refs[refname]
-        except KeyError:
-            old_remote = ZERO_SHA
-        push_result.old_revid = repo.lookup_foreign_revision_id(old_remote)
-        self._refs = remote_refs_dict_to_container(new_refs)
+            new_refs[actual_refname])
+        if old_sha is not None:
+            push_result.old_revid = repo.lookup_foreign_revision_id(old_sha)
+        else:
+            push_result.old_revid = NULL_REVISION
+        if self._refs is not None:
+            update_refs_container(self._refs, new_refs)
         push_result.target_branch = self.open_branch(name)
-        if old_remote != ZERO_SHA:
+        if old_sha is not None:
             push_result.branch_push_result = GitBranchPushResult()
             push_result.branch_push_result.source_branch = source
             push_result.branch_push_result.target_branch = (
@@ -678,7 +754,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url = urlutils.URL.from_string(transport.external_url())
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
-        url = urlutils.split_segment_parameters(str(url))[0]
+        url = urlutils.strip_segment_parameters(str(url))
         super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
@@ -712,7 +788,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             raise NotGitRepository()
         elif response.status != 200:
             raise GitProtocolError("unexpected http resp %d for %s" %
-                                   (response.code, url))
+                                   (response.status, url))
 
         # TODO: Optimization available by adding `preload_content=False` to the
         # request and just passing the `read` method on instead of going via
@@ -720,7 +796,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         # before issuing the next to still allow for connection reuse from the
         # pool.
         if response.getheader("Content-Encoding") == "gzip":
-            read = gzip.GzipFile(fileobj=response).read
+            read = gzip.GzipFile(fileobj=BytesIO(response.read())).read
         else:
             read = response.read
 
@@ -742,7 +818,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
 
 def _git_url_and_path_from_transport(external_url):
-    url, _ = urlutils.split_segment_parameters(external_url)
+    url = urlutils.strip_segment_parameters(external_url)
     return urlparse.urlsplit(url)
 
 
@@ -815,6 +891,7 @@ class GitRemoteRevisionTree(RevisionTree):
         """
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
+        import tempfile
         f = tempfile.SpooledTemporaryFile()
         # git-upload-archive(1) generaly only supports refs. So let's see if we
         # can find one.
@@ -843,6 +920,9 @@ class GitRemoteRevisionTree(RevisionTree):
     def get_file_text(self, path):
         raise GitSmartRemoteNotSupported(self.get_file_text, self)
 
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        raise GitSmartRemoteNotSupported(self.list_files, self)
+
 
 class RemoteGitRepository(GitRepository):
 
@@ -868,6 +948,7 @@ class RemoteGitRepository(GitRepository):
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
                       progress=None):
+        import tempfile
         fd, path = tempfile.mkstemp(suffix=".pack")
         try:
             self.fetch_pack(determine_wants, graph_walker,
@@ -926,7 +1007,12 @@ class RemoteGitTagDict(GitTags):
 
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        result = self.repository.send_pack(
+            get_changed_refs, generate_pack_data)
+        if result and not isinstance(result, dict):
+            error = result.ref_status.get(ref)
+            if error:
+                raise RemoteGitError(error)
 
 
 class RemoteGitBranch(GitBranch):
@@ -996,7 +1082,7 @@ class RemoteGitBranch(GitBranch):
             if peeled is None:
                 # Let's just hope it's a commit
                 peeled = unpeeled
-            if not isinstance(tag_name, text_type):
+            if not isinstance(tag_name, str):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 
@@ -1010,7 +1096,12 @@ class RemoteGitBranch(GitBranch):
             return {self.ref: sha}
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        result = self.repository.send_pack(
+            get_changed_refs, generate_pack_data)
+        if result is not None and not isinstance(result, dict):
+            error = result.ref_status.get(self.ref)
+            if error:
+                raise RemoteGitError(error)
         self._sha = sha
 
 
@@ -1027,3 +1118,15 @@ def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
     ret = DictRefsContainer(base)
     ret._peeled = peeled
     return ret
+
+
+def update_refs_container(container, refs_dict):
+    peeled = {}
+    base = {}
+    for k, v in refs_dict.items():
+        if is_peeled(k):
+            peeled[k[:-3]] = v
+        else:
+            base[k] = v
+    container._peeled = peeled
+    container._refs.update(base)

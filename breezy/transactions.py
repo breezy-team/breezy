@@ -36,8 +36,6 @@ repeated reads cannot be obtained if the object is ejected, or that
 the object is an expensive one for obtaining.
 """
 
-from __future__ import absolute_import
-
 import sys
 
 from . import errors as errors

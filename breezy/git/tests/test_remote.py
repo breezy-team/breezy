@@ -16,8 +16,6 @@
 
 """Test the smart client."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import os
@@ -41,6 +39,7 @@ from ..mapping import default_mapping
 from ..remote import (
     split_git_url,
     parse_git_error,
+    parse_git_hangup,
     HeadUpdateFailed,
     RemoteGitError,
     RemoteGitBranchFormat,
@@ -48,6 +47,7 @@ from ..remote import (
     )
 
 from dulwich import porcelain
+from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
 
 
@@ -65,6 +65,11 @@ class SplitUrlTests(TestCase):
         self.assertEqual(("foo", None, "la", "/bar"),
                          split_git_url("git://la@foo/bar"))
 
+    def test_username_password(self):
+        self.assertEqual(
+            ("foo", None, "la", "/bar"),
+            split_git_url("git://la:passwd@foo/bar"))
+
     def test_nopath(self):
         self.assertEqual(("foo", None, None, "/"),
                          split_git_url("git://foo/"))
@@ -76,6 +81,11 @@ class SplitUrlTests(TestCase):
     def test_homedir(self):
         self.assertEqual(("foo", None, None, "~bar"),
                          split_git_url("git://foo/~bar"))
+
+    def test_file(self):
+        self.assertEqual(
+            ("", None, None, "/bar"),
+            split_git_url("file:///bar"))
 
 
 class ParseGitErrorTests(TestCase):
@@ -125,6 +135,14 @@ class ParseGitErrorTests(TestCase):
         self.assertEqual(e.path, 'porridge/gaduhistory.git')
         self.assertEqual(e.extra, ': denied to jelmer')
 
+    def test_pre_receive_hook_declined(self):
+        e = parse_git_error(
+            "url",
+            'pre-receive hook declined')
+        self.assertIsInstance(e, PermissionDenied)
+        self.assertEqual(e.path, "url")
+        self.assertEqual(e.extra, ': pre-receive hook declined')
+
     def test_invalid_repo_name(self):
         e = parse_git_error(
             "url",
@@ -132,6 +150,60 @@ class ParseGitErrorTests(TestCase):
 Email support@github.com for help
 """)
         self.assertIsInstance(e, NotBranchError)
+
+    def test_invalid_git_error(self):
+        self.assertEqual(
+            PermissionDenied(
+                'url',
+                'GitLab: You are not allowed to push code to protected '
+                'branches on this project.'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'GitLab: You are not allowed to push code to '
+                    'protected branches on this project.')))
+
+
+class ParseHangupTests(TestCase):
+
+    def setUp(self):
+        super(ParseHangupTests, self).setUp()
+        try:
+            HangupException([b'foo'])
+        except TypeError:
+            self.skipTest('dulwich version too old')
+
+    def test_not_set(self):
+        self.assertIsInstance(
+            parse_git_hangup('http://', HangupException()), HangupException)
+
+    def test_single_line(self):
+        self.assertEqual(
+            RemoteGitError('foo bar'),
+            parse_git_hangup('http://', HangupException([b'foo bar'])))
+
+    def test_multi_lines(self):
+        self.assertEqual(
+            RemoteGitError('foo bar\nbla bla'),
+            parse_git_hangup(
+                'http://', HangupException([b'foo bar', b'bla bla'])))
+
+    def test_filter_boring(self):
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                [b'=======', b'foo bar', b'======'])))
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                [b'remote: =======', b'remote: foo bar', b'remote: ======'])))
+
+    def test_permission_denied(self):
+        self.assertEqual(
+            PermissionDenied('http://', 'You are not allowed to push code to this project.'),
+            parse_git_hangup(
+                'http://',
+                HangupException(
+                    [b'=======',
+                     b'You are not allowed to push code to this project.', b'', b'======'])))
 
 
 class TestRemoteGitBranchFormat(TestCase):
@@ -347,6 +419,42 @@ class PushToRemoteBase(object):
              },
             self.remote_real.get_refs())
 
+    def test_push_branch_symref(self):
+        cfg = self.remote_real.get_config()
+        cfg.set((b'core', ), b'bare', True)
+        cfg.write_to_path()
+        self.remote_real.refs.set_symbolic_ref(b'HEAD', b'refs/heads/master')
+        c1 = self.remote_real.do_commit(
+            message=b'message',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>',
+            ref=b'refs/heads/master')
+        remote = ControlDir.open(self.remote_url)
+        wt = self.make_branch_and_tree('local', format=self._from_format)
+        self.build_tree(['local/blah'])
+        wt.add(['blah'])
+        revid = wt.commit('blah')
+
+        if self._from_format == 'git':
+            result = remote.push_branch(wt.branch, overwrite=True)
+        else:
+            result = remote.push_branch(wt.branch, lossy=True, overwrite=True)
+
+        self.assertEqual(None, result.old_revno)
+        if self._from_format == 'git':
+            self.assertEqual(1, result.new_revno)
+        else:
+            self.assertIs(None, result.new_revno)
+
+        result.report(BytesIO())
+
+        self.assertEqual(
+            {
+                b'HEAD': self.remote_real.refs[b'refs/heads/master'],
+                b'refs/heads/master': self.remote_real.refs[b'refs/heads/master'],
+            },
+            self.remote_real.get_refs())
+
     def test_push_branch_new_with_tags(self):
         remote = ControlDir.open(self.remote_url)
         builder = self.make_branch_builder('local', format=self._from_format)
@@ -521,6 +629,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual(
             {'': 'master', 'blah': 'blah', 'master': 'master'},
             {n: b.name for (n, b) in remote.get_branches().items()})
+        self.assertEqual(
+            set(['', 'blah', 'master']), set(remote.branch_names()))
 
     def test_remove_tag(self):
         c1 = self.remote_real.do_commit(

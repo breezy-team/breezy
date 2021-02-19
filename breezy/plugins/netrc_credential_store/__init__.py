@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
@@ -23,16 +21,13 @@ from ... import version_info  # noqa: F401
 
 from ... import (
     config,
+    errors,
     lazy_import,
     )
 
 lazy_import.lazy_import(globals(), """
 import errno
 import netrc
-
-from breezy import (
-    errors,
-    )
 """)
 
 

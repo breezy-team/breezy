@@ -16,8 +16,6 @@
 
 """Weave-era branch implementations."""
 
-from __future__ import absolute_import
-
 from ... import (
     errors,
     lockable_files,
@@ -215,3 +213,5 @@ class BzrBranchFormat4(BranchFormat):
 
     def supports_leaving_lock(self):
         return False
+
+    supports_reference_locations = False

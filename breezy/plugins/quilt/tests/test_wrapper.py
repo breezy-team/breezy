@@ -18,8 +18,6 @@
 
 """Tests for the quilt code."""
 
-from __future__ import absolute_import
-
 import os
 
 from ..wrapper import (
@@ -89,6 +87,14 @@ class QuiltTests(TestCaseWithTransport):
             ("source/patches/series", "patch1.diff\n"),
             ("source/patches/patch1.diff", "foob ar")])
         self.assertEquals(["patch1.diff"], quilt_unapplied("source"))
+
+    def test_unapplied_dir(self):
+        self.make_empty_quilt_dir("source")
+        self.build_tree_contents([
+            ("source/patches/series", "debian/patch1.diff\n"),
+            ("source/patches/debian/", ),
+            ("source/patches/debian/patch1.diff", "foob ar")])
+        self.assertEquals(["debian/patch1.diff"], quilt_unapplied("source"))
 
     def test_unapplied_multi(self):
         self.make_empty_quilt_dir("source")

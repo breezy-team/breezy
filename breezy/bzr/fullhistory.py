@@ -16,8 +16,6 @@
 
 """Full history branch formats."""
 
-from __future__ import absolute_import
-
 from .. import (
     debug,
     errors,
@@ -173,3 +171,5 @@ class BzrBranchFormat5(BranchFormatMetadir):
 
     def supports_tags(self):
         return False
+
+    supports_reference_locations = False

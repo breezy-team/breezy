@@ -23,8 +23,6 @@ See `bzr help debug-flags` or `breezy/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 
-from __future__ import absolute_import
-
 debug_flags = set()
 
 

@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Classify a commit based on the types of files it changed."""
 
-from __future__ import absolute_import
-
 import os.path
 
 from ... import urlutils
@@ -65,5 +63,5 @@ def classify_delta(delta):
     # number of lines changed in a file.
     types = []
     for d in delta.added + delta.modified:
-        types.append(classify_filename(d[0]))
+        types.append(classify_filename(d.path[1] or d.path[0]))
     return types

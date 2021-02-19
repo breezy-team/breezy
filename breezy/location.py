@@ -17,18 +17,12 @@
 
 """UI location string handling."""
 
-from __future__ import absolute_import
-
 import re
 
 from . import (
     urlutils,
     )
 from .hooks import Hooks
-from .sixish import (
-    PY3,
-    string_types,
-    )
 
 
 class LocationHooks(Hooks):
@@ -45,12 +39,11 @@ class LocationHooks(Hooks):
 
 hooks = LocationHooks()
 
-
-def rcp_location_to_url(location, scheme='ssh'):
+def parse_rcp_location(location):
     """Convert a rcp-style location to a URL.
 
     :param location: Location to convert, e.g. "foo:bar"
-    :param schenme: URL scheme to return, defaults to "ssh"
+    :param scheme: URL scheme to return, defaults to "ssh"
     :return: A URL, e.g. "ssh://foo/bar"
     :raises ValueError: if this is not a RCP-style URL
     """
@@ -59,13 +52,59 @@ def rcp_location_to_url(location, scheme='ssh'):
         raise ValueError("Not a RCP URL")
     if m.group('path').startswith('//'):
         raise ValueError("Not a RCP URL: already looks like a URL")
-    quoted_user = urlutils.quote(m.group('user')[:-1]) if m.group('user') else None
+    return (m.group('host'),
+            m.group('user')[:-1] if m.group('user') else None,
+            m.group('path'))
+
+
+def rcp_location_to_url(location, scheme='ssh'):
+    """Convert a rcp-style location to a URL.
+
+    :param location: Location to convert, e.g. "foo:bar"
+    :param scheme: URL scheme to return, defaults to "ssh"
+    :return: A URL, e.g. "ssh://foo/bar"
+    :raises ValueError: if this is not a RCP-style URL
+    """
+    (host, user, path) = parse_rcp_location(location)
+    quoted_user = urlutils.quote(user) if user else None
     url = urlutils.URL(
         scheme=scheme, quoted_user=quoted_user,
         port=None, quoted_password=None,
-        quoted_host=urlutils.quote(m.group('host')),
-        quoted_path=urlutils.quote(m.group('path')))
+        quoted_host=urlutils.quote(host),
+        quoted_path=urlutils.quote(path))
     return str(url)
+
+
+def parse_cvs_location(location):
+    parts = location.split(':')
+    if parts[0] or parts[1] not in ('pserver', 'ssh', 'extssh'):
+        raise ValueError('not a valid CVS location string')
+    try:
+        (username, hostname) = parts[2].split('@', 1)
+    except IndexError:
+        hostname = parts[2]
+        username = None
+    scheme = parts[1]
+    if scheme == 'extssh':
+        scheme = 'ssh'
+    path = parts[3]
+    return (scheme, hostname, username, path)
+
+
+def cvs_to_url(location):
+    """Convert a CVS pserver location string to a URL.
+
+    :param location: pserver URL
+    :return: A cvs+pserver URL
+    """
+    (scheme, host, user, path) = parse_cvs_location(location)
+    return str(urlutils.URL(
+        scheme='cvs+' + scheme,
+        quoted_user=urlutils.quote(user) if user else None,
+        quoted_host=urlutils.quote(host),
+        quoted_password=None,
+        port=None,
+        quoted_path=urlutils.quote(path)))
 
 
 def location_to_url(location, purpose=None):
@@ -79,8 +118,12 @@ def location_to_url(location, purpose=None):
     :raise InvalidURL: If the location is already a URL, but not valid.
     :return: Byte string with resulting URL
     """
-    if not isinstance(location, string_types):
+    if not isinstance(location, str):
         raise AssertionError("location not a byte or unicode string")
+
+    if location.startswith(':pserver:') or location.startswith(':extssh:'):
+        return cvs_to_url(location)
+
     from .directory_service import directories
     location = directories.dereference(location, purpose)
 
@@ -93,8 +136,7 @@ def location_to_url(location, purpose=None):
                 path=location, extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
     else:
-        if PY3:
-            location = location.decode('ascii')
+        location = location.decode('ascii')
 
     if location.startswith("file:") and not location.startswith("file://"):
         return urlutils.join(urlutils.local_path_to_url("."), location[5:])

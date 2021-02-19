@@ -17,13 +17,11 @@
 
 """Tests being able to ignore bad filetypes."""
 
+from io import StringIO
 import os
 
 from .. import (
     errors,
-    )
-from ..sixish import (
-    StringIO,
     )
 from ..status import show_tree_status
 from . import TestCaseWithTransport

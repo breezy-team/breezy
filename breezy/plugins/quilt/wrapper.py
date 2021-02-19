@@ -19,8 +19,6 @@
 
 """Quilt patch handling."""
 
-from __future__ import absolute_import
-
 import errno
 import os
 import signal
@@ -226,16 +224,19 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
+    working_dir = os.path.abspath(working_dir)
+    if patches_dir is None:
+        patches_dir = os.path.join(working_dir, DEFAULT_PATCHES_DIR)
     try:
         unapplied_patches = run_quilt(
             ["unapplied"],
             working_dir=working_dir, patches_dir=patches_dir,
             series_file=series_file).splitlines()
-        patch_basenames = []
+        patch_names = []
         for patch in unapplied_patches:
-            patch = os.path.basename(patch)
-            patch_basenames.append(patch.decode(osutils._fs_enc))
-        return patch_basenames
+            patch = patch.decode(osutils._fs_enc)
+            patch_names.append(os.path.relpath(patch, patches_dir))
+        return patch_names
     except QuiltError as e:
         if e.retcode == 1:
             return []

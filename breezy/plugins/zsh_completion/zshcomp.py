@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ... import (
     cmdline,
     commands,
@@ -26,9 +22,6 @@ from ... import (
     option,
     plugin,
 )
-from ...sixish import (
-    text_type,
-    )
 import breezy
 import re
 import sys
@@ -266,11 +259,11 @@ class cmd_zsh_completion(commands.Command):
     """
 
     takes_options = [
-        option.Option("function-name", short_name="f", type=text_type, argname="name",
+        option.Option("function-name", short_name="f", type=str, argname="name",
                       help="Name of the generated function (default: _brz)"),
         option.Option("debug", type=None, hidden=True,
                       help="Enable shell code useful for debugging"),
-        option.ListOption("plugin", type=text_type, argname="name",
+        option.ListOption("plugin", type=str, argname="name",
                           # param_name="selected_plugins", # doesn't work, bug #387117
                           help="Enable completions for the selected plugin"
                           + " (default: all plugins)"),

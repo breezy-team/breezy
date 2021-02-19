@@ -19,8 +19,6 @@
 Currently only tells the user to use fastimport/fastexport.
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from breezy import (
     controldir,
@@ -31,8 +29,7 @@ from breezy import (
 class DarcsUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Darcs branches are not yet supported. '
-            'To convert darcs branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+            'To interoperate with darcs branches, use fastimport.')
 
 
 class DarcsDirFormat(controldir.ControlDirFormat):
@@ -59,11 +56,11 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 
     def open(self, transport, _found=False):
         """Open this directory."""
-        raise DarcsUnsupportedError(self)
+        raise DarcsUnsupportedError()
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise DarcsUnsupportedError(self)
+        raise DarcsUnsupportedError()
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there
@@ -74,8 +71,14 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 class DarcsProber(controldir.Prober):
 
     @classmethod
+    def priority(klass, transport):
+        if 'darcs' in transport.base:
+            return 90
+        return 100
+
+    @classmethod
     def probe_transport(klass, transport):
-        if transport.has('_darcs'):
+        if transport.has_any(['_darcs/format', '_darcs/inventory']):
             return DarcsDirFormat()
         raise errors.NotBranchError(path=transport.base)
 

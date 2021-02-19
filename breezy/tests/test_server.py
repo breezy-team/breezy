@@ -16,10 +16,7 @@
 
 import errno
 import socket
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
+import socketserver
 import sys
 import threading
 
@@ -256,7 +253,7 @@ class TestThread(cethread.CatchingExceptionThread):
         serving a client connection is hung.
         """
         super(TestThread, self).join(timeout)
-        if timeout and self.isAlive():
+        if timeout and self.is_alive():
             # The timeout expired without joining the thread, the thread is
             # therefore stucked and that's a failure as far as the test is
             # concerned. We used to hang here.

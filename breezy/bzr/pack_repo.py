@@ -14,17 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import re
 import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
 import time
 
 from breezy import (
-    cleanup,
     config,
     debug,
     graph,
@@ -59,10 +57,6 @@ from ..repository import (
 from ..bzr.repository import (
     MetaDirRepository,
     RepositoryFormatMetaDir,
-    )
-from ..sixish import (
-    reraise,
-    viewitems,
     )
 from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
@@ -1337,7 +1331,7 @@ class RepositoryPackCollection(object):
 
         # do a two-way diff against our original content
         current_nodes = set()
-        for name, sizes in viewitems(self._names):
+        for name, sizes in self._names.items():
             current_nodes.add(
                 (name, b' '.join(b'%d' % size for size in sizes)))
 
@@ -1550,7 +1544,7 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 stack.callback(setattr, self, '_new_pack', None)
                 # If we aborted while in the middle of finishing the write
                 # group, _remove_pack_indices could fail because the indexes are
@@ -1560,7 +1554,7 @@ class RepositoryPackCollection(object):
                                ignore_missing=True)
                 self._new_pack.abort()
         for resumed_pack in self._resumed_packs:
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 # See comment in previous finally block.
                 stack.callback(self._remove_pack_indices, resumed_pack,
                                ignore_missing=True)
@@ -1964,6 +1958,23 @@ class _DirectPackAccess(object):
         self._reload_func = reload_func
         self._flush_func = flush_func
 
+    def add_raw_record(self, key, size, raw_data):
+        """Add raw knit bytes to a storage area.
+
+        The data is spooled to the container writer in one bytes-record per
+        raw data item.
+
+        :param key: key of the data segment
+        :param size: length of the data segment
+        :param raw_data: A bytestring containing the data.
+        :return: An opaque index memo For _DirectPackAccess the memo is
+            (index, pos, length), where the index field is the write_index
+            object supplied to the PackAccess object.
+        """
+        p_offset, p_length = self._container_writer.add_bytes_record(
+            raw_data, size, [])
+        return (self._write_index, p_offset, p_length)
+
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
 
@@ -1978,16 +1989,16 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
+        raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
         offset = 0
         for key, size in key_sizes:
-            p_offset, p_length = self._container_writer.add_bytes_record(
-                raw_data[offset:offset + size], [])
+            result.append(
+                self.add_raw_record(key, size, [raw_data[offset:offset + size]]))
             offset += size
-            result.append((self._write_index, p_offset, p_length))
         return result
 
     def flush(self):
@@ -2082,4 +2093,4 @@ class _DirectPackAccess(object):
                 is_error = True
         if is_error:
             # GZ 2017-03-27: No real reason this needs the original traceback.
-            reraise(*retry_exc.exc_info)
+            raise retry_exc.exc_info[1]

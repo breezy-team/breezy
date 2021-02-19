@@ -16,23 +16,27 @@
 
 """Annotate."""
 
-from __future__ import absolute_import
-
 from dulwich.object_store import (
     tree_lookup_path,
     )
 
+from .. import osutils
+from ..bzr.versionedfile import UnavailableRepresentation
 from ..errors import (
     NoSuchRevision,
-    UnavailableRepresentation,
     )
 from ..graph import Graph
 from ..revision import (
     NULL_REVISION,
     )
 
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    )
 
-class GitFulltextContentFactory(object):
+
+class GitBlobContentFactory(object):
     """Static data content factory.
 
     This takes a fulltext when created and just returns that during
@@ -52,17 +56,28 @@ class GitFulltextContentFactory(object):
         """Create a ContentFactory."""
         self.store = store
         self.key = (path, revision)
-        self.storage_kind = 'fulltext'
+        self.storage_kind = 'git-blob'
         self.parents = None
         self.blob_id = blob_id
+        self.size = None
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
             return self.store[self.blob_id].as_raw_string()
+        elif storage_kind == 'lines':
+            return list(osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks()))
         elif storage_kind == 'chunked':
             return self.store[self.blob_id].as_raw_chunks()
         raise UnavailableRepresentation(self.key, storage_kind,
-                                        'fulltext')
+                                        self.storage_kind)
+
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind == 'lines':
+            return iter(osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks()))
+        elif storage_kind == 'chunked':
+            return iter(self.store[self.blob_id].as_raw_chunks())
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 
 class GitAbsentContentFactory(object):
@@ -84,8 +99,12 @@ class GitAbsentContentFactory(object):
         self.key = (path, revision)
         self.storage_kind = 'absent'
         self.parents = None
+        self.size = None
 
     def get_bytes_as(self, storage_kind):
+        raise ValueError
+
+    def iter_bytes_as(self, storage_kind):
         raise ValueError
 
 
@@ -100,17 +119,18 @@ class AnnotateProvider(object):
             self.change_scanner.repository.lookup_bzr_revision_id(
                 text_revision))
         text_parents = []
+        path = encode_git_path(path)
         for commit_parent in self.store[commit_id].parents:
             try:
                 (path, text_parent) = (
                     self.change_scanner.find_last_change_revision(
-                        path.encode('utf-8'), commit_parent))
+                        path, commit_parent))
             except KeyError:
                 continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
         return tuple([
-            (path.decode('utf-8'),
+            (decode_git_path(path),
                 self.change_scanner.repository.lookup_foreign_revision_id(p))
             for p in text_parents])
 
@@ -148,9 +168,9 @@ class AnnotateProvider(object):
                 continue
             try:
                 (mode, blob_sha) = tree_lookup_path(
-                    store.__getitem__, tree_id, path.encode('utf-8'))
+                    store.__getitem__, tree_id, encode_git_path(path))
             except KeyError:
                 yield GitAbsentContentFactory(store, path, text_revision)
             else:
-                yield GitFulltextContentFactory(
+                yield GitBlobContentFactory(
                     store, path, text_revision, blob_sha)

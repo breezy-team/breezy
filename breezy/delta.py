@@ -14,16 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+from io import StringIO
 
 from breezy import (
     osutils,
     trace,
     )
-from .sixish import (
-    StringIO,
-    )
-from .tree import TreeChange
+from .bzr.inventorytree import InventoryTreeChange
 
 
 class TreeDelta(object):
@@ -330,14 +327,12 @@ def report_changes(change_iterator, reporter):
         exe_change = False
         # files are "renamed" if they are moved or if name changes, as long
         # as it had a value
-        if None not in change.name and None not in change.parent_id and\
-                (change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]):
-            if change.copied:
-                copied = True
-                renamed = False
-            else:
-                renamed = True
-                copied = False
+        if change.copied:
+            copied = True
+            renamed = False
+        elif change.renamed:
+            renamed = True
+            copied = False
         else:
             copied = False
             renamed = False
@@ -400,7 +395,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
         dec_new_path = decorate_path(item.path[1], item.kind[1], item.meta_modified())
         to_file.write(' => %s' % dec_new_path)
         if item.changed_content or item.meta_modified():
-            extra_modified.append(TreeChange(
+            extra_modified.append(InventoryTreeChange(
                 item.file_id, (item.path[1], item.path[1]),
                 item.changed_content,
                 item.versioned,

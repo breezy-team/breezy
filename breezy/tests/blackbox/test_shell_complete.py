@@ -19,7 +19,6 @@
 """Black-box tests for 'brz shell-complete'."""
 
 from breezy.tests import TestCaseWithTransport
-from breezy.sixish import PY3
 
 
 class ShellCompleteTests(TestCaseWithTransport):

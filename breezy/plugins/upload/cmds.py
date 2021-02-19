@@ -16,11 +16,10 @@
 
 """bzr-upload command implementations."""
 
-from __future__ import absolute_import
-
 from ... import (
     commands,
     config,
+    errors,
     lazy_import,
     option,
     osutils,
@@ -30,7 +29,6 @@ import stat
 
 from breezy import (
     controldir,
-    errors,
     globbing,
     ignores,
     revision,
@@ -39,9 +37,6 @@ from breezy import (
     )
 """)
 
-from ...sixish import (
-    text_type,
-    )
 
 auto_option = config.Option(
     'upload_auto', default=False, from_unicode=config.bool_from_store,
@@ -451,12 +446,12 @@ class BzrUploader(object):
             self.set_uploaded_revid(self.rev_id)
 
 
-class CannotUploadToWorkingTree(errors.BzrCommandError):
+class CannotUploadToWorkingTree(errors.CommandError):
 
     _fmt = 'Cannot upload to a bzr managed working tree: %(url)s".'
 
 
-class DivergedUploadedTree(errors.BzrCommandError):
+class DivergedUploadedTree(errors.CommandError):
 
     _fmt = ("Your branch (%(revid)s)"
             " and the uploaded tree (%(uploaded_revid)s) have diverged: ")
@@ -483,7 +478,7 @@ class cmd_upload(commands.Command):
                       help='Branch to upload from, '
                       'rather than the one containing the working directory.',
                       short_name='d',
-                      type=text_type,
+                      type=str,
                       ),
         option.Option('auto',
                       'Trigger an upload from this branch whenever the tip '
@@ -515,7 +510,7 @@ class cmd_upload(commands.Command):
             if location is None:
                 stored_loc = conf.get('upload_location')
                 if stored_loc is None:
-                    raise errors.BzrCommandError(
+                    raise errors.CommandError(
                         'No upload location known or specified.')
                 else:
                     # FIXME: Not currently tested
@@ -543,7 +538,7 @@ class cmd_upload(commands.Command):
                 rev_id = branch.last_revision()
             else:
                 if len(revision) != 1:
-                    raise errors.BzrCommandError(
+                    raise errors.CommandError(
                         'bzr upload --revision takes exactly 1 argument')
                 rev_id = revision[0].in_history(branch).rev_id
 

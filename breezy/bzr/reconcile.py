@@ -16,8 +16,6 @@
 
 """Reconcilers are able to fix some potential data errors in a branch."""
 
-from __future__ import absolute_import
-
 __all__ = [
     'BranchReconciler',
     'KnitReconciler',
@@ -26,7 +24,6 @@ __all__ = [
     ]
 
 from .. import (
-    cleanup,
     errors,
     revision as _mod_revision,
     ui,
@@ -35,7 +32,7 @@ from ..reconcile import ReconcileResult
 from ..i18n import gettext
 from ..trace import mutter
 from ..tsort import topo_sort
-from .versionedfile import AdapterFactory, FulltextContentFactory
+from .versionedfile import AdapterFactory, ChunkedContentFactory
 
 
 class VersionedFileRepoReconciler(object):
@@ -152,8 +149,8 @@ class VersionedFileRepoReconciler(object):
                 # The check for the left most parent only handles knit
                 # compressors, but this code only applies to knit and weave
                 # repositories anyway.
-                bytes = record.get_bytes_as('fulltext')
-                yield FulltextContentFactory(record.key, wanted_parents, record.sha1, bytes)
+                chunks = record.get_bytes_as('chunked')
+                yield ChunkedContentFactory(record.key, wanted_parents, record.sha1, chunks)
             else:
                 adapted_record = AdapterFactory(
                     record.key, wanted_parents, record)
@@ -344,10 +341,10 @@ class KnitReconciler(VersionedFileRepoReconciler):
 
         def fix_parents(stream):
             for record in stream:
-                bytes = record.get_bytes_as('fulltext')
+                chunks = record.get_bytes_as('chunked')
                 new_key = (new_file_id, record.key[-1])
                 parents = new_parents[new_key]
-                yield FulltextContentFactory(new_key, parents, record.sha1, bytes)
+                yield ChunkedContentFactory(new_key, parents, record.sha1, chunks)
         stream = self.repo.texts.get_record_stream(
             needed_keys, 'topological', True)
         self.repo._remove_file_id(new_file_id)

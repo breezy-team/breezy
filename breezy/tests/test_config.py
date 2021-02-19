@@ -17,6 +17,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 
 from textwrap import dedent
+from io import BytesIO
 import os
 import sys
 import threading
@@ -42,10 +43,6 @@ from .. import (
     )
 from ..bzr import (
     remote,
-    )
-from ..sixish import (
-    BytesIO,
-    text_type,
     )
 from ..transport import remote as transport_remote
 from . import (
@@ -1484,6 +1481,13 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
 
+    def test_BRZ_EMAIL_OVERRIDES(self):
+        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
+        branch = FakeBranch()
+        my_config = config.BranchConfig(branch)
+        self.assertEqual("Robert Collins <robertc@example.org>",
+                         my_config.username())
+
     def test_get_user_option_global(self):
         my_config = self.get_branch_config(global_config=sample_config_text)
         self.assertEqual('something',
@@ -2344,7 +2348,7 @@ class TestCommandLineStore(tests.TestCase):
         self.assertEqual('y', section.get('x'))
 
     def test_wrong_syntax(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           self.store._from_cmdline, ['a=b', 'c'])
 
 
@@ -4648,8 +4652,16 @@ class EmailOptionTests(tests.TestCase):
 
     def test_default_email_uses_BRZ_EMAIL(self):
         conf = config.MemoryStack(b'email=jelmer@debian.org')
-        # BRZ_EMAIL takes precedence over EMAIL
+        # BRZ_EMAIL takes precedence over BZR_EMAIL and EMAIL
         self.overrideEnv('BRZ_EMAIL', 'jelmer@samba.org')
+        self.overrideEnv('BZR_EMAIL', 'jelmer@jelmer.uk')
+        self.overrideEnv('EMAIL', 'jelmer@apache.org')
+        self.assertEqual('jelmer@samba.org', conf.get('email'))
+
+    def test_default_email_uses_BZR_EMAIL(self):
+        conf = config.MemoryStack(b'email=jelmer@debian.org')
+        # BZR_EMAIL takes precedence over EMAIL
+        self.overrideEnv('BZR_EMAIL', 'jelmer@samba.org')
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
         self.assertEqual('jelmer@samba.org', conf.get('email'))
 

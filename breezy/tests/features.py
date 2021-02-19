@@ -17,8 +17,6 @@
 """A collection of commonly used 'Features' to optionally run tests.
 """
 
-from __future__ import absolute_import
-
 import importlib
 import os
 import subprocess
@@ -406,6 +404,8 @@ flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
 lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
 pkg_resources_feature = ModuleAvailableFeature('pkg_resources')
+
+pyinotify = ModuleAvailableFeature('pyinotify')
 
 
 class _BackslashDirSeparatorFeature(Feature):

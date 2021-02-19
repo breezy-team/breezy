@@ -15,8 +15,6 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
-from __future__ import absolute_import
-
 from ... import (
     debug,
     errors,

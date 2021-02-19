@@ -20,8 +20,6 @@
 
 """Support in "brz send" for git-am style patches."""
 
-from __future__ import absolute_import
-
 import time
 from .. import __version__ as brz_version
 from .. import (
@@ -175,10 +173,10 @@ class GitMergeDirective(BaseMergeDirective):
 def send_git(branch, revision_id, submit_branch, public_branch, no_patch,
              no_bundle, message, base_revision_id, local_target_branch=None):
     if no_patch:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             "no patch not supported for git-am style patches")
     if no_bundle:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             "no bundle not supported for git-am style patches")
     return GitMergeDirective.from_objects(
         branch.repository, revision_id, time.time(),

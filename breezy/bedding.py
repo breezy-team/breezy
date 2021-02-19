@@ -17,22 +17,19 @@
 
 """Functions for deriving user configuration from system environment."""
 
-from __future__ import absolute_import
-
 import os
 import sys
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    errors,
     osutils,
     trace,
     win32utils,
     )
 """)
-from .sixish import (
-    PY3,
+from . import (
+    errors,
     )
 
 
@@ -46,12 +43,12 @@ def ensure_config_dir_exists(path=None):
     if path is None:
         path = config_dir()
     if not os.path.isdir(path):
-        if sys.platform == 'win32':
-            parent_dir = os.path.dirname(path)
-            if not os.path.isdir(parent_dir):
-                trace.mutter(
-                    'creating config parent directory: %r', parent_dir)
-                os.mkdir(parent_dir)
+        parent_dir = os.path.dirname(path)
+        if not os.path.isdir(parent_dir):
+            trace.mutter(
+                'creating config parent directory: %r', parent_dir)
+            os.mkdir(parent_dir)
+            osutils.copy_ownership_from_path(parent_dir)
         trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
         osutils.copy_ownership_from_path(path)
@@ -66,7 +63,7 @@ def bazaar_config_dir():
 
     TODO: Global option --config-dir to override this.
     """
-    base = osutils.path_from_environ('BZR_HOME')
+    base = os.environ.get('BZR_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
@@ -74,7 +71,7 @@ def bazaar_config_dir():
             base = win32utils.get_home_location()
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if base is None:
-        xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
+        xdg_dir = os.environ.get('XDG_CONFIG_HOME')
         if xdg_dir is None:
             xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
         xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
@@ -94,14 +91,14 @@ def _config_dir():
     the bazaar one (see bazaar_config_dir()) does, use that instead.
     """
     # TODO: Global option --config-dir to override this.
-    base = osutils.path_from_environ('BRZ_HOME')
+    base = os.environ.get('BRZ_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
     if base is None:
-        base = osutils.path_from_environ('XDG_CONFIG_HOME')
+        base = os.environ.get('XDG_CONFIG_HOME')
         if base is None:
             base = osutils.pathjoin(osutils._get_home_dir(), ".config")
     breezy_dir = osutils.pathjoin(base, 'breezy')
@@ -169,14 +166,14 @@ def crash_dir():
 
 def cache_dir():
     """Return the cache directory to use."""
-    base = osutils.path_from_environ('BRZ_HOME')
+    base = os.environ.get('BRZ_HOME')
     if sys.platform in "win32":
         if base is None:
             base = win32utils.get_local_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
     else:
-        base = osutils.path_from_environ('XDG_CACHE_HOME')
+        base = os.environ.get('XDG_CACHE_HOME')
         if base is None:
             base = osutils.pathjoin(osutils._get_home_dir(), ".cache")
 
@@ -211,13 +208,9 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
 def default_email():
     v = os.environ.get('BRZ_EMAIL')
     if v:
-        if not PY3:
-            v = v.decode(osutils.get_user_encoding())
         return v
     v = os.environ.get('EMAIL')
     if v:
-        if not PY3:
-            v = v.decode(osutils.get_user_encoding())
         return v
     name, email = _auto_user_id()
     if name and email:

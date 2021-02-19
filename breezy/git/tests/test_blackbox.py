@@ -17,8 +17,6 @@
 
 """Black-box tests for bzr-git."""
 
-from __future__ import absolute_import
-
 from dulwich.repo import (
     Repo as GitRepo,
     )
@@ -48,6 +46,21 @@ class TestGitBlackBox(ExternalBase):
         builder.set_file('a', b'text for a\n', False)
         r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
         return repo, builder.finish()[r1]
+
+    def test_add(self):
+        r = GitRepo.init(self.test_dir)
+        dir = ControlDir.open(self.test_dir)
+        dir.create_branch()
+        self.build_tree(['a', 'b'])
+        output, error = self.run_bzr(['add', 'a'])
+        self.assertEqual('adding a\n', output)
+        self.assertEqual('', error)
+        output, error = self.run_bzr(
+            ['add', '--file-ids-from=../othertree', 'b'])
+        self.assertEqual('adding b\n', output)
+        self.assertEqual(
+            'Ignoring --file-ids-from, since the tree does not support '
+            'setting file ids.\n', error)
 
     def test_nick(self):
         r = GitRepo.init(self.test_dir)
@@ -162,6 +175,20 @@ class TestGitBlackBox(ExternalBase):
             error,
             'Pushed up to revision id git(.*).\n')
 
+    def test_merge(self):
+        self.run_bzr(['init', '--git', 'orig'])
+        self.build_tree_contents([('orig/a', 'orig contents\n')])
+        self.run_bzr(['add', 'orig/a'])
+        self.run_bzr(['commit', '-m', 'add orig', 'orig'])
+        self.run_bzr(['clone', 'orig', 'other'])
+        self.build_tree_contents([('other/a', 'new contents\n')])
+        self.run_bzr(['commit', '-m', 'modify', 'other'])
+        self.build_tree_contents([('orig/b', 'more\n')])
+        self.run_bzr(['add', 'orig/b'])
+        self.build_tree_contents([('orig/a', 'new contents\n')])
+        self.run_bzr(['commit', '-m', 'more', 'orig'])
+        self.run_bzr(['merge', '-d', 'orig', 'other'])
+
     def test_push_lossy_non_mainline(self):
         self.run_bzr(['init', '--git', 'bla'])
         self.run_bzr(['init', 'foo'])
@@ -178,6 +205,27 @@ class TestGitBlackBox(ExternalBase):
             'performance, push into a Bazaar repository.\n'
             'All changes applied successfully.\n'
             'Pushed up to revision 2.\n', error)
+
+    def test_push_lossy_non_mainline_incremental(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(['push', '--lossy', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertEqual(
+            'Pushing from a Bazaar to a Git repository. For better '
+            'performance, push into a Bazaar repository.\n'
+            'All changes applied successfully.\n'
+            'Pushed up to revision 2.\n', error)
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(['push', '--lossy', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertEqual(
+            'Pushing from a Bazaar to a Git repository. For better '
+            'performance, push into a Bazaar repository.\n'
+            'All changes applied successfully.\n'
+            'Pushed up to revision 3.\n', error)
 
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
@@ -215,6 +263,28 @@ class TestGitBlackBox(ExternalBase):
             ['commit', '-Ocalculate_revnos=no', '--unchanged', '-m', 'two'])
         self.assertNotContainsRe(error, 'Committed revision 2.')
         self.assertContainsRe(error, 'Committed revid .*.')
+
+    def test_log_file(self):
+        # Smoke test for "bzr log" in a git repository.
+        repo = GitRepo.init(self.test_dir)
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', b'text for a\n', False)
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'First')
+        builder.set_file('a', b'text 3a for a\n', False)
+        r2a = builder.commit(b'Joe Foo <joe@foo.com>', u'Second a', base=r1)
+        builder.set_file('a', b'text 3b for a\n', False)
+        r2b = builder.commit(b'Joe Foo <joe@foo.com>', u'Second b', base=r1)
+        builder.set_file('a', b'text 4 for a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', u'Third', merge=[r2a], base=r2b)
+        builder.finish()
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', '-n2', 'a'])
+        self.assertEqual(error, '')
+        self.assertIn('Second a', output)
+        self.assertIn('Second b', output)
+        self.assertIn('First', output)
+        self.assertIn('Third', output)
 
     def test_tags(self):
         git_repo, commit_sha1 = self.simple_commit()
@@ -291,7 +361,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         self.assertEqual(set(["abranch", "bbranch"]),
-                         set(ControlDir.open("b").get_branches().keys()))
+                         set(ControlDir.open("b").branch_names()))
 
     def test_git_import_incremental(self):
         r = GitRepo.init("a", mkdir=True)
@@ -303,7 +373,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEqual(["abranch"], list(b.get_branches().keys()))
+        self.assertEqual(["abranch"], b.branch_names())
 
     def test_git_import_tags(self):
         r = GitRepo.init("a", mkdir=True)
@@ -315,7 +385,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEqual(["abranch"], list(b.get_branches().keys()))
+        self.assertEqual(["abranch"], b.branch_names())
         self.assertEqual(["atag"],
                          list(b.open_branch("abranch").tags.get_tag_dict().keys()))
 
@@ -367,6 +437,37 @@ class TestGitBlackBox(ExternalBase):
         self.maxDiff = None
         self.assertEqual(out, '')
         self.assertTrue(err.endswith, '3 objects\n')
+
+    def test_local_whoami(self):
+        r = GitRepo.init("gitr", mkdir=True)
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+  name = Test User
+""")])
+        out, err = self.run_bzr(["whoami", "-d", "gitr"])
+        self.assertEqual(out, "Test User <some@example.com>\n")
+        self.assertEqual(err, "")
+
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+""")])
+        out, err = self.run_bzr(["whoami", "-d", "gitr"])
+        self.assertEqual(out, "some@example.com\n")
+        self.assertEqual(err, "")
+
+    def test_local_signing_key(self):
+        r = GitRepo.init("gitr", mkdir=True)
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+  name = Test User
+  signingkey = D729A457
+""")])
+        out, err = self.run_bzr(["config", "-d", "gitr", "gpg_signing_key"])
+        self.assertEqual(out, "D729A457\n")
+        self.assertEqual(err, "")
 
 
 class ShallowTests(ExternalBase):
@@ -453,6 +554,28 @@ class SwitchTests(ExternalBase):
             basis_tree = tree.basis_tree()
             with basis_tree.lock_read():
                 self.assertEqual([], list(tree.iter_changes(basis_tree)))
+
+    def test_branch_with_nested_trees(self):
+        orig = self.make_branch_and_tree('source', format='git')
+        subtree = self.make_branch_and_tree('source/subtree', format='git')
+        self.build_tree(['source/subtree/a'])
+        self.build_tree_contents([('source/.gitmodules', """\
+[submodule "subtree"]
+    path = subtree
+    url = %s
+""" % subtree.user_url)])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.add(['.gitmodules'])
+        orig.commit('add subtree')
+
+        self.run_bzr('branch source target')
+
+        target = WorkingTree.open('target')
+        target_subtree = WorkingTree.open('target/subtree')
+        self.assertTreesEqual(orig, target)
+        self.assertTreesEqual(subtree, target_subtree)
 
 
 class SwitchScriptTests(TestCaseWithTransportAndScript):

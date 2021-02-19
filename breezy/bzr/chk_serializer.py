@@ -16,12 +16,15 @@
 
 """Serializer object for CHK based inventory storage."""
 
-from __future__ import absolute_import
+from io import (
+    BytesIO,
+    )
 
 from .. import lazy_import
 lazy_import.lazy_import(globals(),
                         """
 from breezy.bzr import (
+    serializer,
     xml_serializer,
     )
 """)
@@ -34,15 +37,12 @@ from .. import (
 from . import (
     serializer,
     )
-from ..sixish import (
-    BytesIO,
-    )
 
 
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
     # Cast the utf8 properties into Unicode 'in place'
-    return {_decode(key)[0]: _decode(value)[0] for key, value in props.items()}
+    return {_decode(key)[0]: _decode(value, 'surrogateescape')[0] for key, value in props.items()}
 
 
 def _is_format_10(value):
@@ -90,7 +90,7 @@ class BEncodeRevisionSerializer1(object):
         # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.items():
-            revprops[encode_utf8(key)[0]] = encode_utf8(value)[0]
+            revprops[encode_utf8(key)[0]] = encode_utf8(value, 'surrogateescape')[0]
         ret.append((b'properties', revprops))
         ret.extend([
             (b"timestamp", b"%.3f" % rev.timestamp),
@@ -101,8 +101,8 @@ class BEncodeRevisionSerializer1(object):
         ])
         return bencode.bencode(ret)
 
-    def write_revision(self, rev, f):
-        f.write(self.write_revision_to_string(rev))
+    def write_revision_to_lines(self, rev):
+        return self.write_revision_to_string(rev).splitlines(True)
 
     def read_revision_from_string(self, text):
         # TODO: consider writing a Revision decoder, rather than using the
@@ -162,8 +162,8 @@ class CHKSerializer(serializer.Serializer):
                                                    return_from_cache)
         return inv
 
-    def read_inventory_from_string(self, xml_string, revision_id=None,
-                                   entry_cache=None, return_from_cache=False):
+    def read_inventory_from_lines(self, xml_lines, revision_id=None,
+                                  entry_cache=None, return_from_cache=False):
         """Read xml_string into an inventory object.
 
         :param xml_string: The xml to read.
@@ -179,11 +179,11 @@ class CHKSerializer(serializer.Serializer):
         """
         try:
             return self._unpack_inventory(
-                xml_serializer.fromstring(xml_string), revision_id,
+                xml_serializer.fromstringlist(xml_lines), revision_id,
                 entry_cache=entry_cache,
                 return_from_cache=return_from_cache)
         except xml_serializer.ParseError as e:
-            raise errors.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f, revision_id=None):
         """Read an inventory from a file-like object."""
@@ -194,21 +194,15 @@ class CHKSerializer(serializer.Serializer):
             finally:
                 f.close()
         except xml_serializer.ParseError as e:
-            raise errors.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e)
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""
         return self.write_inventory(inv, None)
 
-    def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a BytesIO and return the value.
-
-        :param working: If True skip history data - text_sha1, text_size,
-            reference_revision, symlink_target.
-        """
-        sio = BytesIO()
-        self.write_inventory(inv, sio, working)
-        return sio.getvalue()
+    def write_inventory_to_chunks(self, inv):
+        """Return a list of lines with the encoded inventory."""
+        return self.write_inventory(inv, None)
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.
@@ -223,14 +217,14 @@ class CHKSerializer(serializer.Serializer):
         output = []
         append = output.append
         if inv.revision_id is not None:
-            revid1 = b' revision_id="'
-            revid2 = xml_serializer.encode_and_escape(inv.revision_id)
+            revid = b''.join(
+                [b' revision_id="',
+                 xml_serializer.encode_and_escape(inv.revision_id), b'"'])
         else:
-            revid1 = b""
-            revid2 = b""
-        append(b'<inventory format="%s"%s%s>\n' % (
-            self.format_num, revid1, revid2))
-        append(b'<directory file_id="%s name="%s revision="%s />\n' % (
+            revid = b""
+        append(b'<inventory format="%s"%s>\n' % (
+            self.format_num, revid))
+        append(b'<directory file_id="%s" name="%s" revision="%s" />\n' % (
             xml_serializer.encode_and_escape(inv.root.file_id),
             xml_serializer.encode_and_escape(inv.root.name),
             xml_serializer.encode_and_escape(inv.root.revision)))

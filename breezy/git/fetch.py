@@ -16,8 +16,6 @@
 
 """Fetching from git into bzr."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Commit,
     Tag,
@@ -51,10 +49,10 @@ from ..revision import (
     NULL_REVISION,
     )
 from ..bzr.inventorytree import InventoryRevisionTree
-from ..sixish import text_type
 from ..bzr.testament import (
     StrictTestament3,
     )
+from ..tree import InterTree
 from ..tsort import (
     topo_sort,
     )
@@ -64,6 +62,7 @@ from ..bzr.versionedfile import (
 
 from .mapping import (
     DEFAULT_FILE_MODE,
+    decode_git_path,
     mode_is_executable,
     mode_kind,
     warn_unusual_mode,
@@ -87,7 +86,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     """
     if not isinstance(path, bytes):
         raise TypeError(path)
-    decoded_path = path.decode('utf-8')
+    decoded_path = decode_git_path(path)
     (base_mode, mode) = modes
     (base_hexsha, hexsha) = hexshas
     if mapping.is_special_file(path):
@@ -100,7 +99,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
         cls = InventoryLink
     else:
         cls = InventoryFile
-    ie = cls(file_id, name.decode("utf-8"), parent_id)
+    ie = cls(file_id, decode_git_path(name), parent_id)
     if ie.kind == "file":
         ie.executable = mode_is_executable(mode)
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
@@ -118,16 +117,19 @@ def import_git_blob(texts, mapping, path, name, hexshas,
         blob = lookup_object(hexsha)
         if ie.kind == "symlink":
             ie.revision = None
-            ie.symlink_target = blob.data.decode("utf-8")
+            ie.symlink_target = decode_git_path(blob.data)
         else:
             ie.text_size = sum(map(len, blob.chunked))
             ie.text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
+        intertree = InterTree.get(ptree, base_bzr_tree)
         try:
-            ppath = ptree.id2path(file_id)
-        except errors.NoSuchId:
+            ppath = intertree.find_source_paths(decoded_path, recurse='none')
+        except errors.NoSuchFile:
+            continue
+        if ppath is None:
             continue
         pkind = ptree.kind(ppath)
         if (pkind == ie.kind and
@@ -182,12 +184,13 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
     (base_mode, mode) = modes
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
+    path = decode_git_path(path)
     file_id = lookup_file_id(path)
     invdelta = []
-    ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
+    ie = TreeReference(file_id, decode_git_path(name), parent_id)
     ie.revision = revision_id
     if base_hexsha is not None:
-        old_path = path.decode("utf-8")  # Renames are not supported yet
+        old_path = path  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
             invdelta.extend(remove_disappeared_children(
                 base_bzr_tree, old_path, lookup_object(base_hexsha), [],
@@ -213,13 +216,13 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree,
     :param lookup_object: Lookup a git object by its SHA1
     :return: Inventory delta, as list
     """
-    if not isinstance(path, text_type):
+    if not isinstance(path, str):
         raise TypeError(path)
     ret = []
     for name, mode, hexsha in base_tree.iteritems():
         if name in existing_children:
             continue
-        c_path = posixpath.join(path, name.decode("utf-8"))
+        c_path = posixpath.join(path, decode_git_path(name))
         file_id = base_bzr_tree.path2id(c_path)
         if file_id is None:
             raise TypeError(file_id)
@@ -256,16 +259,15 @@ def import_git_tree(texts, mapping, path, name, hexshas,
         return [], {}
     invdelta = []
     file_id = lookup_file_id(osutils.safe_unicode(path))
-    # We just have to hope this is indeed utf-8:
-    ie = InventoryDirectory(file_id, name.decode("utf-8"), parent_id)
+    ie = InventoryDirectory(file_id, decode_git_path(name), parent_id)
     tree = lookup_object(hexsha)
     if base_hexsha is None:
         base_tree = None
         old_path = None  # Newly appeared here
     else:
         base_tree = lookup_object(base_hexsha)
-        old_path = path.decode("utf-8")  # Renames aren't supported yet
-    new_path = path.decode("utf-8")
+        old_path = decode_git_path(path)  # Renames aren't supported yet
+    new_path = decode_git_path(path)
     if base_tree is None or type(base_tree) is not Tree:
         ie.revision = revision_id
         invdelta.append((old_path, new_path, ie.file_id, ie))
@@ -378,13 +380,13 @@ def ensure_inventories_in_repo(repo, trees):
 
 
 def import_git_commit(repo, mapping, head, lookup_object,
-                      target_git_object_retriever, trees_cache):
+                      target_git_object_retriever, trees_cache, strict):
     o = lookup_object(head)
     # Note that this uses mapping.revision_id_foreign_to_bzr. If the parents
     # were bzr roundtripped revisions they would be specified in the
     # roundtrip data.
     rev, roundtrip_revid, verifiers = mapping.import_commit(
-        o, mapping.revision_id_foreign_to_bzr)
+        o, mapping.revision_id_foreign_to_bzr, strict)
     if roundtrip_revid is not None:
         original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
@@ -482,7 +484,7 @@ def import_git_objects(repo, mapping, object_iter,
             continue
         if isinstance(o, Commit):
             rev, roundtrip_revid, verifiers = mapping.import_commit(
-                o, mapping.revision_id_foreign_to_bzr)
+                o, mapping.revision_id_foreign_to_bzr, strict=True)
             if (repo.has_revision(rev.revision_id)
                     or (roundtrip_revid and
                         repo.has_revision(roundtrip_revid))):
@@ -515,7 +517,8 @@ def import_git_objects(repo, mapping, object_iter,
                         pb.update("fetching revisions", offset + i,
                                   len(revision_ids))
                     import_git_commit(repo, mapping, head, lookup_object,
-                                      target_git_object_retriever, trees_cache)
+                                      target_git_object_retriever, trees_cache,
+                                      strict=True)
                     last_imported = head
             except BaseException:
                 repo.abort_write_group()

@@ -354,7 +354,7 @@ class TestScopeReplacer(TestCase):
 
         # However, the next access on test_obj3 should raise an error
         # because only now are we able to detect the problem.
-        self.assertRaises(errors.IllegalUseOfScopeReplacer,
+        self.assertRaises(lazy_import.IllegalUseOfScopeReplacer,
                           getattr, test_obj3, 'foo')
 
         self.assertEqual([('__getattribute__', 'foo'),
@@ -448,7 +448,7 @@ class TestScopeReplacer(TestCase):
 
         self.assertEqual(InstrumentedReplacer,
                          object.__getattribute__(test_obj7, '__class__'))
-        e = self.assertRaises(errors.IllegalUseOfScopeReplacer, test_obj7)
+        e = self.assertRaises(lazy_import.IllegalUseOfScopeReplacer, test_obj7)
         self.assertIn("replace itself", e.msg)
         self.assertEqual([('__call__', (), {}),
                           'factory'], actions)
@@ -917,7 +917,7 @@ class TestCanonicalize(TestCase):
 
     def test_missing_trailing(self):
         proc = lazy_import.ImportProcessor()
-        self.assertRaises(errors.InvalidImportLine,
+        self.assertRaises(lazy_import.InvalidImportLine,
                           proc._canonicalize_import_text,
                           "from foo import (\n  bar\n")
 
@@ -1016,13 +1016,13 @@ class TestImportProcessor(TestCase):
 
     def test_incorrect_line(self):
         proc = lazy_import.ImportProcessor()
-        self.assertRaises(errors.InvalidImportLine,
+        self.assertRaises(lazy_import.InvalidImportLine,
                           proc._build_map, 'foo bar baz')
-        self.assertRaises(errors.InvalidImportLine,
+        self.assertRaises(lazy_import.InvalidImportLine,
                           proc._build_map, 'improt foo')
-        self.assertRaises(errors.InvalidImportLine,
+        self.assertRaises(lazy_import.InvalidImportLine,
                           proc._build_map, 'importfoo')
-        self.assertRaises(errors.InvalidImportLine,
+        self.assertRaises(lazy_import.InvalidImportLine,
                           proc._build_map, 'fromimport')
 
     def test_name_collision(self):
@@ -1031,11 +1031,11 @@ class TestImportProcessor(TestCase):
 
         # All of these would try to create an object with the
         # same name as an existing object.
-        self.assertRaises(errors.ImportNameCollision,
+        self.assertRaises(lazy_import.ImportNameCollision,
                           proc._build_map, 'import bar as foo')
-        self.assertRaises(errors.ImportNameCollision,
+        self.assertRaises(lazy_import.ImportNameCollision,
                           proc._build_map, 'from foo import bar as foo')
-        self.assertRaises(errors.ImportNameCollision,
+        self.assertRaises(lazy_import.ImportNameCollision,
                           proc._build_map, 'from bar import foo')
 
     def test_relative_imports(self):

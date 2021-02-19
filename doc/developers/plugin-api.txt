@@ -138,7 +138,7 @@ Example
 
 An example setup.py follows::
 
-  #!/usr/bin/env python2.4
+  #!/usr/bin/env python3
   from distutils.core import setup
 
   brz_plugin_name = 'demo'
@@ -188,19 +188,6 @@ shown by ``bzr help PLUGIN_NAME``.
 
 This is a user-visible docstring so should be prefixed with ``__doc__ =``
 to ensure help works under ``python -OO`` with docstrings stripped.
-
-API version
------------
-
-Plugins can and should declare that they depend on a particular version of
-breezy like so::
-
-    from breezy.api import require_api
-
-    require_api(breezy, (1, 11, 0))
-
-Please see `API versioning <api-versioning.html>`_ for more details on the API
-metadata protocol used by breezy.
 
 Plugin version
 --------------

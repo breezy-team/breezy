@@ -17,7 +17,6 @@
 """Tests for the test trees used by the per_tree tests."""
 
 from breezy import errors
-from breezy.sixish import text_type
 from breezy.tests import per_tree
 from breezy.tests import (
     TestNotApplicable,
@@ -323,7 +322,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
             self.assertEqual(expected[0], path)  # Paths should match
-            self.assertIsInstance(path, text_type)
+            self.assertIsInstance(path, str)
             self.assertEqual(expected[1], ie.file_id)
             self.assertIsInstance(ie.file_id, bytes)
             self.assertEqual(expected[2], ie.parent_id)
@@ -393,7 +392,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
             self.assertEqual(epath, path)  # Paths should match
-            self.assertIsInstance(path, text_type)
+            self.assertIsInstance(path, str)
             self.assertIsInstance(ie.file_id, bytes)
             if wt.supports_setting_file_ids():
                 self.assertEqual(efid, ie.file_id)
@@ -410,3 +409,43 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         last_revision = getattr(tree, 'last_revision', None)
         if last_revision is not None:
             self.assertIsInstance(last_revision(), bytes)
+
+    def skip_if_no_reference(self, tree):
+        if not getattr(tree, 'supports_tree_reference', lambda: False)():
+            raise TestNotApplicable('Tree references not supported')
+
+    def create_nested(self):
+        work_tree = self.make_branch_and_tree('wt')
+        with work_tree.lock_write():
+            self.skip_if_no_reference(work_tree)
+            subtree = self.make_branch_and_tree('wt/subtree')
+            self.build_tree(['wt/subtree/a'])
+            subtree.add(['a'])
+            subtree.commit('foo')
+            work_tree.add_reference(subtree)
+        tree = self._convert_tree(work_tree)
+        self.skip_if_no_reference(tree)
+        return tree, subtree
+
+    def test_iter_entries_with_unfollowed_reference(self):
+        tree, subtree = self.create_nested()
+        expected = [
+            ('', 'directory'),
+            ('subtree', 'tree-reference')]
+        with tree.lock_read():
+            path_entries = list(tree.iter_entries_by_dir(recurse_nested=False))
+            actual = [(path, ie.kind)
+                      for path, ie in path_entries]
+        self.assertEqual(expected, actual)
+
+    def test_iter_entries_with_followed_reference(self):
+        tree, subtree = self.create_nested()
+        expected = [
+            ('', 'directory'),
+            ('subtree', 'directory'),
+            ('subtree/a', 'file')]
+        with tree.lock_read():
+            path_entries = list(tree.iter_entries_by_dir(recurse_nested=True))
+            actual = [(path, ie.kind)
+                      for path, ie in path_entries]
+        self.assertEqual(expected, actual)

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # vim: expandtab
 
 # Copyright (C) 2011-2018 Jelmer Vernooij <jelmer@jelmer.uk>
@@ -18,8 +17,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the git remote helper."""
-
-from __future__ import absolute_import
 
 from io import BytesIO
 import os
@@ -116,7 +113,10 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         (out, err) = p.communicate(b'capabilities\n')
         lines = out.splitlines()
         self.assertIn(b'push', lines, "no 'push' in %r, error: %r" % (lines, err))
-        self.assertEqual(b'', err)
+        self.assertEqual(
+            b"git-remote-bzr is experimental and has not been optimized "
+            b"for performance. Use 'brz fast-export' and 'git fast-import' "
+            b"for large repositories.\n", err)
 
 
 class RemoteHelperTests(TestCaseWithTransport):
@@ -136,7 +136,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = b"fetch\noption\npush\n"
-        self.assertTrue(capabs in (base + b"\n", base + b"import\n\n"), capabs)
+        self.assertTrue(capabs in (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()

@@ -37,7 +37,7 @@ Installing a plugin is very easy! If not already created, create a
 ``plugins`` directory under your Breezy configuration directory,
 ``~/.config/breezy/`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0\``
-on Windows. Within this directory (referred to as $BZR_HOME below),
+on Windows. Within this directory (referred to as $BRZ_HOME below),
 each plugin is placed in its own subdirectory.
 
 Plugins work particularly well with Breezy branches. For example, to
@@ -50,15 +50,15 @@ one can perform the following::
 When installing plugins, the directories that you install them in must
 be valid python identifiers. This means that they can only contain
 certain characters, notably they cannot contain hyphens (``-``). Rather
-than installing ``brz-gtk`` to ``$BZR_HOME/plugins/brz-gtk``, install it
-to ``$BZR_HOME/plugins/gtk``.
+than installing ``brz-gtk`` to ``$BRZ_HOME/plugins/brz-gtk``, install it
+to ``$BRZ_HOME/plugins/gtk``.
 
 Alternative plugin locations
 ----------------------------
 
 If you have the necessary permissions, plugins can also be installed on a
 system-wide basis.  One can additionally override the personal plugins
-location by setting the environment variable ``BZR_PLUGIN_PATH`` (see `User
+location by setting the environment variable ``BRZ_PLUGIN_PATH`` (see `User
 Reference <../user-reference/configuration-help.html#brz-plugin-path>`_ 
 for a detailed explanation).
 

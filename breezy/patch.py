@@ -15,14 +15,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Diff and patch functionality"""
 
 import errno
 import os
 from subprocess import Popen, PIPE
 import sys
+import tempfile
 
 from .errors import NoDiff3, BzrError
 from .textfile import check_text_path
@@ -175,3 +174,27 @@ def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
         raise PatchFailed()
 
     return result
+
+
+def iter_patched_from_hunks(orig_lines, hunks):
+    """Iterate through a series of lines with a patch applied.
+    This handles a single file, and does exact, not fuzzy patching.
+
+    :param orig_lines: The unpatched lines.
+    :param hunks: An iterable of Hunk instances.
+
+    This is different from breezy.patches in that it invokes the patch
+    command.
+    """
+    with tempfile.NamedTemporaryFile() as f:
+        f.writelines(orig_lines)
+        f.flush()
+        # TODO(jelmer): Stream patch contents to command, rather than
+        # serializing the entire patch upfront.
+        serialized = b''.join([hunk.as_bytes() for hunk in hunks])
+        args = ["patch", "-f", "-s", "--posix", "--binary",
+                "-o", "-", f.name, "-r", "-"]
+        stdout, stderr, status = write_to_cmd(args, serialized)
+    if status == 0:
+        return [stdout]
+    raise PatchFailed(stderr)

@@ -25,15 +25,14 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
-from __future__ import absolute_import
-
 import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
+
 from breezy import (
     branch as _mod_branch,
-    cleanup,
     lockable_files,
     lockdir,
     osutils,
@@ -61,10 +60,10 @@ from breezy.transport import (
 from breezy.i18n import gettext
 """)
 
-from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
+    warning,
     )
 
 from .. import (
@@ -142,7 +141,8 @@ class BzrDir(controldir.ControlDir):
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False, stacked_on=None,
-                           create_prefix=False, use_existing_dir=True, no_tree=False):
+                           create_prefix=False, use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -172,17 +172,18 @@ class BzrDir(controldir.ControlDir):
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
+        local_branches = self.get_branches()
         try:
-            local_branch = self.open_branch()
-        except errors.NotBranchError:
-            local_branch = None
+            local_active_branch = local_branches['']
+        except KeyError:
+            pass
         else:
             # enable fallbacks when branch is not a branch reference
-            if local_branch.repository.has_same_location(local_repo):
-                local_repo = local_branch.repository
+            if local_active_branch.repository.has_same_location(local_repo):
+                local_repo = local_active_branch.repository
             if preserve_stacking:
                 try:
-                    stacked_on = local_branch.get_stacked_on_url()
+                    stacked_on = local_active_branch.get_stacked_on_url()
                 except (_mod_branch.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
@@ -231,10 +232,11 @@ class BzrDir(controldir.ControlDir):
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
-        if local_branch is not None:
+        for name, local_branch in local_branches.items():
             local_branch.clone(
-                result, revision_id=revision_id,
-                repository_policy=repository_policy)
+                result, revision_id=(None if name != '' else revision_id),
+                repository_policy=repository_policy,
+                name=name, tag_selector=tag_selector)
         try:
             # Cheaper to check if the target is not local, than to try making
             # the tree and fail.
@@ -376,7 +378,7 @@ class BzrDir(controldir.ControlDir):
             when working locally.
         :return: The created control directory
         """
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             fetch_spec_factory = fetch.FetchSpecFactory()
             if revision_id is not None:
                 fetch_spec_factory.add_revision_ids([revision_id])
@@ -428,6 +430,8 @@ class BzrDir(controldir.ControlDir):
                 # actually useful?
                 # Not especially, but it's part of the contract.
                 result_branch = result.create_branch()
+                if revision_id is not None:
+                    result_branch.generate_revision_history(revision_id)
             else:
                 result_branch = source_branch.sprout(
                     result, revision_id=revision_id,
@@ -453,21 +457,30 @@ class BzrDir(controldir.ControlDir):
             else:
                 wt = None
             if recurse == 'down':
-                basis = None
+                tree = None
                 if wt is not None:
-                    basis = wt.basis_tree()
-                elif result_branch is not None:
-                    basis = result_branch.basis_tree()
-                elif source_branch is not None:
-                    basis = source_branch.basis_tree()
-                if basis is not None:
+                    tree = wt
+                    basis = tree.basis_tree()
                     stack.enter_context(basis.lock_read())
-                    subtrees = basis.iter_references()
+                elif result_branch is not None:
+                    basis = tree = result_branch.basis_tree()
+                elif source_branch is not None:
+                    basis = tree = source_branch.basis_tree()
+                if tree is not None:
+                    stack.enter_context(tree.lock_read())
+                    subtrees = tree.iter_references()
                 else:
                     subtrees = []
                 for path in subtrees:
                     target = urlutils.join(url, urlutils.escape(path))
-                    sublocation = source_branch.reference_parent(path)
+                    sublocation = tree.reference_parent(
+                        path, branch=result_branch,
+                        possible_transports=possible_transports)
+                    if sublocation is None:
+                        warning(
+                            'Ignoring nested tree %s, parent location unknown.',
+                            path)
+                        continue
                     sublocation.controldir.sprout(
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,
@@ -1004,6 +1017,18 @@ class BzrDirMeta1(BzrDir):
             pass
         return self.transport.clone('checkout')
 
+    def branch_names(self):
+        """See ControlDir.branch_names."""
+        ret = []
+        try:
+            self.get_branch_reference()
+        except errors.NotBranchError:
+            pass
+        else:
+            ret.append("")
+        ret.extend(self._read_branch_list())
+        return ret
+
     def get_branches(self):
         """See ControlDir.get_branches."""
         ret = {}
@@ -1141,7 +1166,7 @@ class BzrFormat(object):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        for name, necessity in viewitems(self.features):
+        for name, necessity in self.features.items():
             if name in self._present_features:
                 continue
             if necessity == b"optional":
@@ -1181,7 +1206,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
-                      for item in sorted(viewitems(self.features))])
+                      for item in sorted(self.features.items())])
         return b"".join(lines)
 
     @classmethod
@@ -1302,11 +1327,13 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 remote_dir_format = RemoteBzrDirFormat()
                 remote_dir_format._network_name = self.network_name()
                 self._supply_sub_formats_to(remote_dir_format)
-                return remote_dir_format.initialize_on_transport_ex(transport,
-                                                                    use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-                                                                    force_new_repo=force_new_repo, stacked_on=stacked_on,
-                                                                    stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-                                                                    make_working_trees=make_working_trees, shared_repo=shared_repo)
+                return remote_dir_format.initialize_on_transport_ex(
+                    transport, use_existing_dir=use_existing_dir,
+                    create_prefix=create_prefix, force_new_repo=force_new_repo,
+                    stacked_on=stacked_on, stack_on_pwd=stack_on_pwd,
+                    repo_format_name=repo_format_name,
+                    make_working_trees=make_working_trees,
+                    shared_repo=shared_repo)
         # XXX: Refactor the create_prefix/no_create_prefix code into a
         #      common helper function
         # The destination may not exist - if so make it according to policy.
@@ -1465,6 +1492,11 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # method's contract is extended beyond the current trivial
         # implementation, please add new tests for it to the appropriate place.
         return filename == '.bzr' or filename.startswith('.bzr/')
+
+    @classmethod
+    def get_default_format(klass):
+        """Return the current default format."""
+        return controldir.format_registry.get('bzr')()
 
 
 class BzrDirMetaFormat1(BzrDirFormat):

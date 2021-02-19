@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-from __future__ import absolute_import
-
 import operator
 
 from ... import (
@@ -61,7 +59,10 @@ def collapse_by_person(revisions, canonical_committer):
             info[2][username] = info[2].setdefault(username, 0) + 1
     res = [(len(revs), revs, emails, fnames)
            for revs, emails, fnames in committer_to_info.values()]
-    res.sort(reverse=True, key=operator.itemgetter(0))
+
+    def key_fn(item):
+        return item[0], list(item[2].keys())
+    res.sort(reverse=True, key=key_fn)
     return res
 
 
@@ -312,7 +313,7 @@ def gather_class_stats(repository, revs):
     with ui.ui_factory.nested_progress_bar() as pb:
         with repository.lock_read():
             i = 0
-            for delta in repository.get_deltas_for_revisions(revs):
+            for delta in repository.get_revision_deltas(revs):
                 pb.update("classifying commits", i, len(revs))
                 for c in classify_delta(delta):
                     if c not in ret:
@@ -361,7 +362,7 @@ def find_credits(repository, revid):
                     if ps is not None and r != NULL_REVISION]
         revs = repository.get_revisions(ancestry)
         with ui.ui_factory.nested_progress_bar() as pb:
-            iterator = zip(revs, repository.get_deltas_for_revisions(revs))
+            iterator = zip(revs, repository.get_revision_deltas(revs))
             for i, (rev, delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
                 # Don't count merges

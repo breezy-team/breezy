@@ -15,8 +15,6 @@
 
 """An abstraction of a repository providing just the bits importing needs."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ... import (
@@ -25,7 +23,7 @@ from ... import (
     osutils,
     revision as _mod_revision,
     )
-from ...tree import TreeChange
+from ...bzr.inventorytree import InventoryTreeChange
 from ...bzr import (
     inventory,
     )
@@ -47,7 +45,7 @@ class _TreeShim(object):
         self._new_info_by_path = {new_path: ie
                                   for _, new_path, file_id, ie in inv_delta}
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         if file_id in self._new_info_by_id:
             new_path = self._new_info_by_id[file_id][0]
             if new_path is None:
@@ -119,7 +117,7 @@ class _TreeShim(object):
                 old_ie = None
                 if ie is None:
                     raise AssertionError('How is both old and new None?')
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         False,
@@ -129,7 +127,7 @@ class _TreeShim(object):
                         (None, None),
                         (None, None),
                         )
-                change = TreeChange(
+                change = InventoryTreeChange(
                     file_id,
                     (old_path, new_path),
                     True,
@@ -141,7 +139,7 @@ class _TreeShim(object):
                     )
             else:
                 if ie is None:
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         True,
@@ -156,7 +154,7 @@ class _TreeShim(object):
                                         ie.text_size != old_ie.text_size)
                     # TODO: ie.kind != old_ie.kind
                     # TODO: symlinks changing targets, content_modified?
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         content_modified,
