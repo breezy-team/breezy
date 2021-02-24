@@ -26,9 +26,11 @@ import json
 
 try:
     from urllib.request import urlopen
+    from urllib.parse import urlparse
     from urllib.error import HTTPError
 except ImportError:  # python < 3
     from urllib import urlopen, HTTPError
+    from urlparse import urlparse
 
 
 class PypiProjectWithoutRepositoryURL(InvalidURL):
@@ -47,6 +49,18 @@ class NoSuchPypiProject(InvalidURL):
         BzrError.__init__(self, name=name, url=url)
 
 
+def find_repo_url(data):
+    for key, value in data['info']['project_urls'].items():
+        if key == 'Repository':
+            note('Found repository URL %s for pypi project %s',
+                 value, name)
+            return value
+        parsed_url = urlparse(value)
+        if (parsed_url.hostname == 'github.com' and
+                parsed_url.path.strip('/').count('/') == 1):
+            return value
+
+
 class PypiDirectory(object):
 
     def look_up(self, name, url, purpose=None):
@@ -58,9 +72,7 @@ class PypiDirectory(object):
             if e.status == 404:
                 raise NoSuchPypiProject(name, url=url)
             raise
-        for key, value in data['info']['project_urls'].items():
-            if key == 'Repository':
-                note('Found repository URL %s for pypi project %s',
-                     value, name)
-                return value
-        raise PypiProjectWithoutRepositoryURL(name, url=url)
+        url = find_repo_url(data)
+        if url is None:
+            raise PypiProjectWithoutRepositoryURL(name, url=url)
+        return url
