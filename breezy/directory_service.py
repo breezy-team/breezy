@@ -85,11 +85,7 @@ class DirectoryServiceRegistry(registry.Registry):
             return url
         service, name = match
         directory = service()
-        try:
-            return directory.look_up(name, url, purpose=purpose)
-        except TypeError:
-            # Compatibility for plugins written for Breezy < 3.0.0
-            return directory.look_up(name, url)
+        return directory.look_up(name, url, purpose=purpose)
 
 
 directories = DirectoryServiceRegistry()
