@@ -54,6 +54,9 @@ Improvements
    but it prevents the DWIM revision specifier from treating "svn:"
    as a URL. (Jelmer Vernooĳ)
 
+ * New `pypi` directory that can be used to access remote repositories
+   declared in pypi. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
