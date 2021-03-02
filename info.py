@@ -20,10 +20,9 @@ from __future__ import absolute_import
 
 brz_plugin_name = 'debian'
 
-brz_plugin_version = (3, 0, 0, 'final', 0)
+brz_plugin_version = (2, 8, 51, 'final', 0)
 
 brz_commands = [
-    "test_builddeb",
     "builddeb",
     "merge_upstream",
     "import_dsc",
