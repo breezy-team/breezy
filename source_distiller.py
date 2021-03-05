@@ -248,7 +248,7 @@ class DebcargoDistiller(SourceDistiller):
             package, semver_suffix)
         crate_version = version.upstream_version
         if crate_semver_version is not None:
-            note('Using crate name: %s, version (semver: %s)', crate,
+            note('Using crate name: %s, version %s (semver: %s)', crate,
                  crate_version, crate_semver_version)
         else:
             note('Using crate name: %s, version %s', crate, crate_version)
