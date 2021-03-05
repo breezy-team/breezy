@@ -217,6 +217,7 @@ class DebcargoDistiller(SourceDistiller):
         :param target: a string containing the location at which to
             place the tree containing the buildable source.
         """
+        from debmutate.debcargo import parse_debcargo_source_name
         if os.path.exists(target):
             raise bzr_errors.FileExists(target)
         with self.tree.get_file(os.path.join(
@@ -243,13 +244,9 @@ class DebcargoDistiller(SourceDistiller):
             from toml.decoder import loads as loads_toml
             debcargo = loads_toml(debcargo_text.decode())
             semver_suffix = debcargo.get('semver_suffix')
-        crate = package[len('rust-'):]
+        crate, crate_semver_version = parse_debcargo_source_name(
+            package, semver_suffix)
         crate_version = version.upstream_version
-        if semver_suffix and '-' in crate:
-            crate, crate_semver_version = crate.rsplit('-', 1)
-        else:
-            crate_semver_version = None
-        crate = crate.replace('-', '_')
         if crate_semver_version is not None:
             note('Using crate name: %s, version (semver: %s)', crate,
                  crate_version, crate_semver_version)
