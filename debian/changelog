@@ -1,8 +1,8 @@
-breezy-debian (2.8.53) UNRELEASED; urgency=medium
+breezy-debian (2.8.53) unstable; urgency=medium
 
   * debcargo: Use version from changelog rather than package name.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 05 Mar 2021 17:14:55 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 05 Mar 2021 17:14:59 +0000
 
 breezy-debian (2.8.52) unstable; urgency=medium
 
