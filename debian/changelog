@@ -1,3 +1,9 @@
+breezy-debian (2.8.52) UNRELEASED; urgency=medium
+
+  * Handle semver_suffix for debcargo packages.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 05 Mar 2021 17:08:13 +0000
+
 breezy-debian (2.8.51) unstable; urgency=medium
 
   * Drop the dh-make subcommand.

@@ -31,6 +31,7 @@ from ... import errors as bzr_errors
 from ...export import (
     export,
     )
+from ...trace import note
 
 from .util import (
     extract_orig_tarballs,
@@ -228,17 +229,32 @@ class DebcargoDistiller(SourceDistiller):
         if not package.startswith('rust-'):
             raise NotImplementedError
 
-        crate = package[len('rust-'):]
-
         debcargo_path = [self.subpath]
         if not self.top_level:
             debcargo_path.append('debian')
         debcargo_path.append('debcargo.toml')
         try:
+            debcargo_text = self.tree.get_file_text(
+                os.path.join(*debcargo_path))
+        except bzr_errors.NoSuchFile:
+            semver_suffix = False
+        else:
+            from toml.decoder import loads as loads_toml
+            debcargo = loads_toml(debcargo_text.decode())
+            semver_suffix = debcargo.get('semver_suffix')
+        crate = package[len('rust-'):]
+        crate_version = None
+        if semver_suffix and '-' in crate:
+            crate, crate_version = crate.rsplit('-', 1)
+            note('Using crate name: %s, version %s', crate, crate_version)
+        else:
+            note('Using crate name: %s', crate)
+        try:
             subprocess.check_call([
                 'debcargo', 'package',
                 '--changelog-ready',
                 '--config', self.tree.abspath(os.path.join(*debcargo_path)),
-                '--directory', target, crate])
+                '--directory', target, crate]
+                + ([crate_version] if crate_version else []))
         except subprocess.CalledProcessError:
             raise DebcargoError()
