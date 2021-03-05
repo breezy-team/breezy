@@ -225,6 +225,7 @@ class DebcargoDistiller(SourceDistiller):
                 'changelog'), 'r') as f:
             cl = Changelog(f, max_blocks=1)
             package = cl.package
+            version = cl.version
 
         if not package.startswith('rust-'):
             raise NotImplementedError
@@ -243,12 +244,13 @@ class DebcargoDistiller(SourceDistiller):
             debcargo = loads_toml(debcargo_text.decode())
             semver_suffix = debcargo.get('semver_suffix')
         crate = package[len('rust-'):]
-        crate_version = None
+        crate_version = version.upstream_version
         if semver_suffix and '-' in crate:
-            crate, crate_version = crate.rsplit('-', 1)
-            note('Using crate name: %s, version %s', crate, crate_version)
+            crate, crate_semver_version = crate.rsplit('-', 1)
+            note('Using crate name: %s, version (semver: %s)', crate,
+                 crate_version, crate_semver_version)
         else:
-            note('Using crate name: %s', crate)
+            note('Using crate name: %s, version %s', crate, crate_version)
         try:
             subprocess.check_call([
                 'debcargo', 'package',
