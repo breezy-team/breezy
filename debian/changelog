@@ -1,3 +1,9 @@
+breezy-debian (2.8.54) UNRELEASED; urgency=medium
+
+  * debcargo: Fix manipulation of dashes in package names.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 05 Mar 2021 17:20:03 +0000
+
 breezy-debian (2.8.53) unstable; urgency=medium
 
   * debcargo: Use version from changelog rather than package name.

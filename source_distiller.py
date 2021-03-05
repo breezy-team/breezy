@@ -247,6 +247,10 @@ class DebcargoDistiller(SourceDistiller):
         crate_version = version.upstream_version
         if semver_suffix and '-' in crate:
             crate, crate_semver_version = crate.rsplit('-', 1)
+        else:
+            crate_semver_version = None
+        crate = crate.replace('-', '_')
+        if crate_semver_version is not None:
             note('Using crate name: %s, version (semver: %s)', crate,
                  crate_version, crate_semver_version)
         else:
