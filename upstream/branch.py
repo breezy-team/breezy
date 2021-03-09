@@ -66,12 +66,15 @@ from ....export import (
     )
 
 
-class PreviousVersionNotFound(BzrError):
+class PreviousVersionTagMissing(BzrError):
 
-    _fmt = 'Previous version not found %(package)s version %(version)s'
+    _fmt = ("Unable to find the tag for the "
+            "previous upstream version (%(version)s) in the branch: "
+            "%(tag_name)s")
 
-    def __init__(self, package, version):
-        BzrError.__init__(self, package=package, version=version)
+    def __init__(self, version, tag_name):
+        super(PreviousVersionTagMissing, self).__init__(
+            version=version, tag_name=tag_name)
 
 
 def upstream_tag_to_version(tag_name, package=None):
@@ -530,7 +533,7 @@ class UpstreamBranchSource(UpstreamSource):
                     since_revision = self.version_as_revision(
                         package, since_version)
                 except PackageVersionNotPresent:
-                    raise PreviousVersionNotFound(package, since_version)
+                    raise PreviousVersionTagMissing(package, since_version)
             else:
                 since_revision = None
             for tag, revision in tags.items():

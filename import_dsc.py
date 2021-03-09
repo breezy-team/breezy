@@ -75,6 +75,9 @@ from .util import (
 from .upstream import (
     PackageVersionNotPresent,
     )
+from .upstream.branch import (
+    PreviousVersionTagMissing,
+    )
 from .upstream.pristinetar import (
     get_pristine_tar_source,
     )
@@ -89,17 +92,6 @@ class UpstreamAlreadyImported(BzrError):
 
     def __init__(self, version):
         BzrError.__init__(self, version=str(version))
-
-
-class PreviousVersionTagMissing(BzrError):
-
-    _fmt = ("Unable to find the tag for the "
-            "previous upstream version (%(version)s) in the branch: "
-            "%(tag_name)s")
-
-    def __init__(self, version, tag_name):
-        super(PreviousVersionTagMissing, self).__init__(
-            version=version, tag_name=tag_name)
 
 
 class DscCache(object):
