@@ -640,8 +640,8 @@ class RemoteGitDir(GitDir):
                 except errors.NoSuchRevision:
                     raise errors.NoRoundtrippingSupport(
                         source, self.open_branch(name=name, nascent_ok=True))
+            old_sha = remote_refs.get(actual_refname)
             if not overwrite:
-                old_sha = remote_refs.get(actual_refname)
                 if remote_divergence(old_sha, new_sha, source_store):
                     raise DivergedBranches(
                         source, self.open_branch(name, nascent_ok=True))
