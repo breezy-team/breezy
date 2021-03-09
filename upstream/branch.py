@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import tempfile
+from typing import Optional
 
 from debmutate.versions import git_snapshot_data_from_version
 
@@ -63,6 +64,14 @@ from . import (
 from ....export import (
     export,
     )
+
+
+class PreviousVersionNotFound(BzrError):
+
+    _fmt = 'Previous version not found %(package)s version %(version)s'
+
+    def __init__(self, package, version):
+        BzrError.__init__(self, package=package, version=version)
 
 
 def upstream_tag_to_version(tag_name, package=None):
@@ -510,14 +519,18 @@ class UpstreamBranchSource(UpstreamSource):
                 return None
             return versions[-1]
 
-    def get_recent_versions(self, package, since_version=None):
+    def get_recent_versions(
+            self, package: str, since_version: Optional[Version] = None):
         versions = []
         tags = self.upstream_branch.tags.get_tag_dict()
         with self.upstream_branch.repository.lock_read():
             graph = self.upstream_branch.repository.get_graph()
             if since_version is not None:
-                since_revision = self.version_as_revision(
-                    package, since_version)
+                try:
+                    since_revision = self.version_as_revision(
+                        package, since_version)
+                except PackageVersionNotPresent:
+                    raise PreviousVersionNotFound(package, since_version)
             else:
                 since_revision = None
             for tag, revision in tags.items():

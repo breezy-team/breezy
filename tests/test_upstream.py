@@ -80,7 +80,8 @@ from ..upstream.branch import (
     UpstreamBranchSource,
     _upstream_branch_version,
     upstream_tag_to_version,
-    upstream_version_add_revision
+    upstream_version_add_revision,
+    PreviousVersionNotFound,
     )
 from ..upstream.pristinetar import (
     get_pristine_tar_source,
@@ -480,6 +481,16 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertEquals(
             ["2.1", "2.2"],
             source.get_recent_versions("foo", "1.0"))
+
+    def test_get_recent_versions_previous_missing(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("1.0", revid1)
+        source = UpstreamBranchSource(
+            self.tree.branch,
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')})
+        self.assertRaises(
+            PreviousVersionNotFound, source.get_recent_versions,
+            "foo", "1.1")
 
     def test_version_as_revisions(self):
         revid1 = self.tree.commit("msg")
