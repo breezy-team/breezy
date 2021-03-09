@@ -238,6 +238,7 @@ class GitDir(ControlDir):
         from ..repository import InterRepository
         from .mapping import default_mapping
         from ..transport.local import LocalTransport
+        from .refs import is_peeled
         if stacked_on is not None:
             raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.user_url)
@@ -262,7 +263,10 @@ class GitDir(ControlDir):
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
         for name, val in viewitems(refs):
-            target_git_repo.refs[name] = val
+            if is_peeled(name):
+                continue
+            if val in target_git_repo.object_store:
+                target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
