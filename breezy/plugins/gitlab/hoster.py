@@ -586,7 +586,7 @@ class GitLab(Hoster):
             target_project['http_url_to_repo'], name)
         return push_result.target_branch, public_url
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self.get_current_user()
@@ -596,8 +596,19 @@ class GitLab(Hoster):
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (self.base_url, owner, project))
-        return _mod_branch.Branch.open(gitlab_url_to_bzr_url(
-            target_project['ssh_url_to_repo'], name))
+        if preferred_schemes is None:
+            preferred_schemes = ['git+ssh']
+        for scheme in preferred_schemes:
+            if scheme == 'git+ssh':
+                gitlab_url = target_project['ssh_url_to_repo']
+                break
+            elif scheme == 'https':
+                gitlab_url = target_project['http_url_to_repo']
+                break
+        else:
+            raise AssertionError
+        return _mod_branch.Branch.open(
+            gitlab_url_to_bzr_url(gitlab_url, name))
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self, source_branch, target_branch)
