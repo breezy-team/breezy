@@ -1358,10 +1358,12 @@ class DistributionBranch(object):
                     conflicts = self.tree.merge_from_branch(
                         self.pristine_upstream_branch,
                         merge_type=merge_type, from_revision=from_revision)
+                if not isinstance(conflicts, list):
+                    conflicts = self.tree.conflicts()
             else:
                 # Pull so that merge-upstream allows you to start a branch
                 # from upstream tarball.
-                conflicts = 0
+                conflicts = []
                 self.tree.pull(self.pristine_upstream_branch)
             self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
             return conflicts, imported_revids

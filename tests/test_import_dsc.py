@@ -1628,7 +1628,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.close()
         conflicts, imported_revids = db.merge_upstream(
             [(tarball_filename, None)], "foo", "0.2", "0.1")
-        self.assertEqual(0,  conflicts)
+        self.assertFalse(conflicts)
 
     def test_merge_upstream_initial_with_branch(self):
         """Verify we can go from normal branches to merge-upstream."""
@@ -1665,7 +1665,7 @@ class DistributionBranchTests(BuilddebTestCase):
             [(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: upstream_rev})
-        self.assertEqual(0,  conflicts)
+        self.assertFalse(conflicts)
 
     def test_merge_upstream_initial_with_removed_debian(self):
         """Verify we can go from normal branches to merge-upstream."""
@@ -1704,7 +1704,7 @@ class DistributionBranchTests(BuilddebTestCase):
             upstream_branch=upstream_tree.branch,
             upstream_revisions={None: upstream_rev})
         # ./debian conflicts.
-        self.assertEqual(3,  conflicts)
+        self.assertEqual(3, len(conflicts))
 
     def test_merge_upstream_with_unrelated_branch(self):
         """Check that we can merge-upstream with an unrelated branch.

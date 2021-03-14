@@ -1,6 +1,7 @@
 breezy-debian (2.8.55) UNRELEASED; urgency=medium
 
   * Raise specific error if previous version is missing.
+  * Fix compatibility with newer versions of the merge API.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Mar 2021 14:29:35 +0000
 

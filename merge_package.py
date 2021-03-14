@@ -171,7 +171,7 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                     # Merge shared upstream parent into the target merge
                     # branch. This creates revison L in the digram above.
                     conflicts = tree.merge_from_branch(tmp_target_utree.branch)
-                    if conflicts > 0:
+                    if conflicts:
                         cmd = "bzr merge"
                         raise SharedUpstreamConflictsWithTargetPackaging(cmd)
                     else:

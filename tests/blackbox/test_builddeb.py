@@ -91,7 +91,7 @@ class TestBuilddeb(BuilddebTestCase):
 
     p = '%s/work/newtree/%s' % (self.test_base_dir, self.uncommited_file)
     with open(p, 'w') as fh:
-      fh.write('** This is the conflicting line.')
+        fh.write('** This is the conflicting line.')
     newtree.add([self.uncommited_file])
     newtree.commit("new-two", rev_id=b'revidn2')
     conflicts = tree.merge_from_branch(newtree.branch) 
@@ -106,7 +106,7 @@ class TestBuilddeb(BuilddebTestCase):
 
   def test_builddeb_refuses_tree_with_conflicts(self):
     (conflicts, tree) = self.build_tree_with_conflict()
-    self.assertTrue(conflicts > 0)
+    self.assertTrue(conflicts)
     self.run_bzr_error(
       ['There are conflicts in the working tree. You must resolve these'],
       "builddeb --native --builder true --dont-purge")
