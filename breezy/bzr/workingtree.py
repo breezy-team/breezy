@@ -1937,7 +1937,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # local work is unreferenced and will appear to have been lost.
         #
         with self.lock_tree_write():
-            nb_conflicts = 0
+            nb_conflicts = []
             try:
                 last_rev = self.get_parent_ids()[0]
             except IndexError:
