@@ -1521,7 +1521,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         #
         with self.lock_tree_write():
             from .. import merge
-            nb_conflicts = 0
+            nb_conflicts = []
             try:
                 last_rev = self.get_parent_ids()[0]
             except IndexError:

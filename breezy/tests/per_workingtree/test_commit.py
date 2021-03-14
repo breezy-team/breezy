@@ -105,7 +105,7 @@ class TestCommit(TestCaseWithWorkingTree):
         if tree_b.has_versioned_directories():
             self.assertEqual(3, len(conflicts))
         else:
-            self.assertEqual(2, len(num_conflicts))
+            self.assertEqual(2, len(conflicts))
 
         self.assertThat(
             tree_b, HasPathRelations(

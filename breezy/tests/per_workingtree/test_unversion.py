@@ -177,9 +177,9 @@ class TestUnversion(TestCaseWithWorkingTree):
         # because 'a' is still an existing directory
         conflicts = tree_b.merge_from_branch(tree_a.branch)
         if tree_b.has_versioned_directories():
-            self.assertEqual(4, len(num_conflicts))
+            self.assertEqual(4, len(conflicts))
         else:
-            self.assertEqual(1, len(num_conflicts))
+            self.assertEqual(1, len(conflicts))
 
         self.assertThat(
             tree_b,
