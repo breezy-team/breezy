@@ -224,9 +224,9 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         outer.commit('delete file3')
         nb_conflicts = outer.merge_from_branch(inner, to_revision=revs[2])
         if outer.supports_rename_tracking():
-            self.assertEqual(4, nb_conflicts)
+            self.assertEqual(4, len(nb_conflicts))
         else:
-            self.assertEqual(1, nb_conflicts)
+            self.assertEqual(1, len(nb_conflicts))
         self.assertTreeLayout(['dir-outer',
                                'dir-outer/dir',
                                'dir-outer/dir/file1',
@@ -245,9 +245,9 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         # file4 could not be added to its original root, so it gets added to
         # the new root with a conflict.
         if outer.supports_rename_tracking():
-            self.assertEqual(1, nb_conflicts)
+            self.assertEqual(1, len(nb_conflicts))
         else:
-            self.assertEqual(0, nb_conflicts)
+            self.assertEqual(0, len(nb_conflicts))
         self.assertTreeLayout(['dir-outer',
                                'dir-outer/dir',
                                'dir-outer/dir/file1',
@@ -261,9 +261,9 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         # 1 conflict, because file4 can't be put into the old root
         nb_conflicts = outer.merge_from_branch(inner, to_revision=revs[3])
         if outer.supports_rename_tracking():
-            self.assertEqual(1, nb_conflicts)
+            self.assertEqual(1, len(nb_conflicts))
         else:
-            self.assertEqual(0, nb_conflicts)
+            self.assertEqual(0, len(nb_conflicts))
         try:
             outer.set_conflicts([])
         except errors.UnsupportedOperation:
@@ -275,7 +275,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         # And now file4 gets renamed into an existing dir
         nb_conflicts = outer.merge_from_branch(inner, to_revision=revs[4])
         if outer.supports_rename_tracking():
-            self.assertEqual(1, nb_conflicts)
+            self.assertEqual(1, len(nb_conflicts))
             self.assertTreeLayout(['dir-outer',
                                    'dir-outer/dir',
                                    'dir-outer/dir/file1',
@@ -285,9 +285,9 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
                                   outer)
         else:
             if outer.has_versioned_directories():
-                self.assertEqual(2, nb_conflicts)
+                self.assertEqual(2, len(nb_conflicts))
             else:
-                self.assertEqual(1, nb_conflicts)
+                self.assertEqual(1, len(nb_conflicts))
             self.assertTreeLayout(['dir',
                                    'dir-outer',
                                    'dir-outer/dir',
