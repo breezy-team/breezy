@@ -101,11 +101,11 @@ class TestCommit(TestCaseWithWorkingTree):
 
         # Merging from A should introduce conflicts because 'n' was modified
         # (in A) and removed (in B), so 'a' needs to be restored.
-        num_conflicts = tree_b.merge_from_branch(tree_a.branch)
+        conflicts = tree_b.merge_from_branch(tree_a.branch)
         if tree_b.has_versioned_directories():
-            self.assertEqual(3, num_conflicts)
+            self.assertEqual(3, len(conflicts))
         else:
-            self.assertEqual(2, num_conflicts)
+            self.assertEqual(2, len(num_conflicts))
 
         self.assertThat(
             tree_b, HasPathRelations(

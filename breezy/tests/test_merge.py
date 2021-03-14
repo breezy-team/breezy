@@ -2287,7 +2287,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         self.assertFalse(wt.is_executable('foo'))
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertTrue(wt.is_executable('foo'))
 
     def test_create_symlink(self):
@@ -2323,7 +2323,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         self.assertFalse(wt.is_versioned('foo'))
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual(b'foo-id', wt.path2id('foo'))
         self.assertEqual('bar', wt.get_symlink_target('foo'))
 
@@ -2403,7 +2403,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.merge_from_branch(wt.branch, b'C-id')
         wt.commit('D merges B & C', rev_id=b'D-id')
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_renamed_symlink(self):
@@ -2460,7 +2460,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            False),
                           ], entries)
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual('blah', wt.id2path(b'foo-id'))
 
     def test_symlink_no_content_change(self):
@@ -2510,7 +2510,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual([], list(merge_obj._entries_lca()))
         # Now do a real merge, just to test the rest of the stack
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'E-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_symlink_this_changed_kind(self):

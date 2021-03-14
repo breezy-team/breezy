@@ -151,7 +151,7 @@ class TestMergeHook(TestCaseWithTransport):
 """, "a/debian/patches/patch1")
         # "a" should be unapplied again
         self.assertPathDoesNotExist("a/a")
-        self.assertEquals(1, conflicts)
+        self.assertEquals(1, len(conflicts))
 
     def test_auto_apply_patches_after_checkout(self):
         self.enable_hooks()
@@ -288,7 +288,7 @@ d
 c
 >>>>>>> MERGE-SOURCE
 """, "a/a")
-        self.assertEquals(2, conflicts)
+        self.assertEquals(2, len(conflicts))
 
 
 
