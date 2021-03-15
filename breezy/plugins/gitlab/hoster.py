@@ -415,6 +415,8 @@ class GitLab(Hoster):
     def create_project(self, project_name):
         fields = {'name': project_name}
         response = self._api_request('POST', 'projects', fields=fields)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
             _unexpected_status('projects', response)
         project = json.loads(response.data)
