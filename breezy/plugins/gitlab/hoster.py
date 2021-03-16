@@ -683,7 +683,7 @@ class GitLab(Hoster):
             yield GitLabMergeProposal(self, mp)
 
     def iter_my_forks(self, owner=None):
-        if owner is not None:
+        if owner is None:
             owner = self.get_current_user()
         for project in self._list_projects(owner=owner):
             base_project = project.get('forked_from_project')
