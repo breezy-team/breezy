@@ -113,11 +113,11 @@ class GitlabLoginError(errors.BzrError):
 
 class GitLabConflict(errors.BzrError):
 
-    _fmt = "Conflict during operation: %(message)s"
+    _fmt = "Conflict during operation: %(reason)s"
 
-    def __init__(self, message):
+    def __init__(self, reason):
         errors.BzrError(self)
-        self.message = message
+        self.reason = reason
 
 
 class ForkingDisabled(errors.BzrError):
@@ -238,7 +238,7 @@ class GitLabMergeProposal(MergeProposal):
                 self._mr['project_id'], self._mr['iid'], kwargs)
         except GitLabConflict as e:
             self.gl._handle_merge_request_conflict(
-                e.message, self.get_source_branch_url(),
+                e.reason, self.get_source_branch_url(),
                 self._mr['target_project_id'])
 
     def __repr__(self):
@@ -804,7 +804,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             merge_request = self.gl._create_mergerequest(**kwargs)
         except GitLabConflict as e:
             self.gl._handle_merge_request_conflict(
-                e.message, self.source_branch.user_url,
+                e.reason, self.source_branch.user_url,
                 target_project['path_with_namespace'])
         except GitLabUnprocessable as e:
             if e.error == [
