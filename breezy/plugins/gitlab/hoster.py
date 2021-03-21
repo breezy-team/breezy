@@ -313,7 +313,7 @@ class GitLabMergeProposal(MergeProposal):
         elif self._mr['merge_status'] == 'can_be_merged':
             return True
         elif self._mr['merge_status'] in (
-                'unchecked', 'cannot_be_merged_recheck'):
+                'unchecked', 'cannot_be_merged_recheck', 'checking'):
             # See https://gitlab.com/gitlab-org/gitlab/-/commit/7517105303c for
             # an explanation of the distinction between unchecked and
             # cannot_be_merged_recheck
