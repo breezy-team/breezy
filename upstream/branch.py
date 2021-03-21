@@ -553,8 +553,9 @@ class UpstreamBranchSource(UpstreamSource):
             return upstream_branch_version(
                 self.upstream_branch, revision, package, current_version)
 
-    def fetch_tarballs(self, package, version, target_dir, components=None,
-                       revisions=None):
+    def fetch_tarballs(
+            self, package: str, version,
+            target_dir, components=None, revisions=None):
         if components is not None and components != [None]:
             # Multiple components are not supported
             raise PackageVersionNotPresent(package, version, self)

@@ -18,6 +18,7 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from typing import Optional
 
 from base64 import (
     standard_b64decode,
@@ -286,6 +287,9 @@ def revision_pristine_tar_format(rev):
 
 class BasePristineTarSource(UpstreamSource):
 
+    def _has_revision(self, revid, md5):
+        raise NotImplementedError(self._has_revision)
+
     def tag_version(self, version, revid, component=None):
         """Tags the upstream branch's last revision with an upstream version.
 
@@ -325,7 +329,8 @@ class BasePristineTarSource(UpstreamSource):
                 package, version, component, md5)
         return ret
 
-    def has_version(self, package, version, tarballs=None):
+    def has_version(
+            self, package: Optional[str], version: Version, tarballs=None):
         if tarballs is None:
             return self.has_version_component(package, version, component=None)
         else:
@@ -344,8 +349,9 @@ class BasePristineTarSource(UpstreamSource):
             ret.setdefault(version, {})[component] = tag_revid
         return ret
 
-    def version_component_as_revision(self, package, version, component,
-                                      md5=None):
+    def version_component_as_revision(
+            self, package: Optional[str], version: Version,
+            component: Optional[str], md5: Optional[str] = None):
         with self.branch.lock_read():
             for tag_name in self.possible_tag_names(
                     package, version, component=component):
@@ -361,7 +367,8 @@ class BasePristineTarSource(UpstreamSource):
             (git_id, git_date) = git_snapshot_data_from_version(version)
             if git_id:
                 try:
-                    return RevisionSpec.from_string('git:%s' % git_id).as_revision_id(self.branch)
+                    revspec = RevisionSpec.from_string('git:%s' % git_id)
+                    return revspec.as_revision_id(self.branch)
                 except (InvalidRevisionSpec, NoSuchTag):
                     pass
             revid = self._search_for_upstream_version(
@@ -382,8 +389,11 @@ class BasePristineTarSource(UpstreamSource):
             self, package, version, component, md5=None):
         raise NotImplementedError(self._search_for_upstream_version)
 
-    def has_version_component(self, package, version, component, md5=None):
-        for tag_name in self.possible_tag_names(package, version, component=component):
+    def has_version_component(
+            self, package: Optional[str], version: Version, component,
+            md5=None):
+        for tag_name in self.possible_tag_names(
+                package, version, component=component):
             try:
                 revid = self.branch.tags.lookup_tag(tag_name)
             except NoSuchTag:
@@ -533,7 +543,9 @@ class BzrPristineTarSource(BasePristineTarSource):
             raise PackageVersionNotPresent(package, version, self)
         return target_filename
 
-    def possible_tag_names(self, package, version, component):
+    def possible_tag_names(
+            self, package: Optional[str], version: Version,
+            component: Optional[str]):
         return possible_upstream_tag_names(package, version, component)
 
     def get_pristine_tar_delta(self, package, version, dest_filename,
@@ -854,7 +866,7 @@ class GitPristineTarSource(BasePristineTarSource):
                 return False
         return True
 
-    def possible_tag_names(self, package, version, component):
+    def possible_tag_names(self, package: Optional[str], version: Version, component: Optional[str]):
         tags = []
         if self.gbp_tag_format:
             tags.append(gbp_expand_tag_name(self.gbp_tag_format, version))
@@ -967,7 +979,9 @@ class GitPristineTarSource(BasePristineTarSource):
                 package, version, component, target_dir)
             for component in components]
 
-    def _search_for_upstream_version(self, package, version, component, md5=None):
+    def _search_for_upstream_version(
+            self, package: Optional[str], version: Version, component,
+            md5=None):
         start_revids = []
         sources = []
         if self.branch.last_revision() != NULL_REVISION:

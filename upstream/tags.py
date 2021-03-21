@@ -19,7 +19,11 @@
 
 from itertools import islice
 import re
+from typing import Optional
 
+from debian.changelog import Version
+
+from ....revision import Revision
 from ....errors import (
     BzrError,
     )
@@ -79,7 +83,7 @@ def upstream_tag_name(version, component=None, distro=None, git_style=False):
     return name
 
 
-def possible_upstream_tag_names(package, version, component=None):
+def possible_upstream_tag_names(package: Optional[str], version: Version, component: Optional[str] = None):
     tags = []
     if component is None:
         # compatibility with git-buildpackage
@@ -97,7 +101,8 @@ def possible_upstream_tag_names(package, version, component=None):
         if '~' not in str(version) and '+' not in str(version):
             tags.append("release-%s" % version)
             tags.append("v%s-release" % version)
-        tags.append("%s-%s" % (package, version))
+        if package:
+            tags.append("%s-%s" % (package, version))
     else:
         tags.append(upstream_tag_name(version, component))
     return tags
@@ -139,42 +144,49 @@ def upstream_tag_version(tag):
     return (component, version)
 
 
-def _rev_is_upstream_import(revision, package, version):
+def _rev_is_upstream_import(
+        revision: Revision, package: Optional[str], version: str):
     possible_messages = [
-        'Import %s_%s' % (package, version),
-        'import %s_%s' % (package, version),
-        'import %s-%s' % (package.replace('-', '_'), version),
+    ]
+    if package is not None:
+        possible_messages.extend([
+            'Import %s_%s' % (package, version),
+            'import %s_%s' % (package, version),
+            'import %s-%s' % (package.replace('-', '_'), version),
+            '%s-%s' % (package, version),
+        ])
+    possible_messages.extend([
         'Imported upstream version %s' % version,
         'Import upstream version %s' % version,
         'New upstream version %s' % version,
         'New upstream version v%s' % version,
-        '%s-%s' % (package, version),
-        ]
+        ])
     for possible_message in possible_messages:
         if revision.message.lower().startswith(possible_message.lower()):
             return True
     return False
 
 
-def _rev_is_upstream_merge(revision, package, version):
+def _rev_is_upstream_merge(revision: Revision, package: Optional[str], version):
     if revision.message.lower().startswith(
             ("Merge tag 'v%s' into debian/" % version).lower()):
         return True
-    if revision.message.lower().startswith(
+    if package is not None and revision.message.lower().startswith(
             ("Merge tag '%s-%s' into " % (package, version)).lower()):
         return True
     return False
 
 
-def upstream_version_tag_start_revids(tag_dict, package, version):
+def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version):
     candidate_tag_start = [
         'debian/%s-' % mangle_version_for_git(version),
         'debian-%s' % version,
-        'debian-%s-%s' % (package, version),
         # Epochs are sometimes replaced by underscores, rather than by %,
         # as DEP-14 suggests.
         'debian/%s-' % mangle_version_for_git(version.replace(':', '_')),
         ]
+    if package:
+        candidate_tag_start.append('debian-%s-%s' % (package, version))
     for tag_name, revid in tag_dict.items():
         if any([tag_name.startswith(tag_start)
                 for tag_start in candidate_tag_start]):
@@ -182,7 +194,8 @@ def upstream_version_tag_start_revids(tag_dict, package, version):
 
 
 def search_for_upstream_version(
-        repository, start_revids, package, version, component=None, md5=None,
+        repository, start_revids, package: Optional[str],
+        version, component=None, md5=None,
         scan_depth=None):
     """Find possible upstream revisions that don't have appropriate tags."""
     todo = []
