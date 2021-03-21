@@ -348,10 +348,11 @@ def guess_upstream_revspec(package, version):
     if git_date:
         yield "date:%s" % git_date
     yield 'tag:%s' % version
-    for prefix in ['rust-']:
-        if package.startswith(prefix):
-            yield 'tag:%s-%s' % (package[len(prefix):], version)
-    yield 'tag:%s-%s' % (package, version)
+    if package:
+        for prefix in ['rust-']:
+            if package.startswith(prefix):
+                yield 'tag:%s-%s' % (package[len(prefix):], version)
+        yield 'tag:%s-%s' % (package, version)
     yield 'tag:v%s' % version
     yield 'tag:v.%s' % version
 
