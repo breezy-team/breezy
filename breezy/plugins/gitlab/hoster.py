@@ -113,11 +113,11 @@ class GitlabLoginError(errors.BzrError):
 
 class GitLabConflict(errors.BzrError):
 
-    _fmt = "Conflict during operation: %(reason)s"
+    _fmt = "Conflict during operation: %(message)s"
 
-    def __init__(self, reason):
+    def __init__(self, message):
         errors.BzrError(self)
-        self.reason = reason
+        self.message = message
 
 
 class ForkingDisabled(errors.BzrError):
@@ -238,7 +238,7 @@ class GitLabMergeProposal(MergeProposal):
                 self._mr['project_id'], self._mr['iid'], kwargs)
         except GitLabConflict as e:
             self.gl._handle_merge_request_conflict(
-                e.reason, self.get_source_branch_url(),
+                e.message, self.get_source_branch_url(),
                 self._mr['target_project_id'])
 
     def __repr__(self):
@@ -457,11 +457,11 @@ class GitLab(Hoster):
             project = self._get_project(project['path_with_namespace'])
         return project
 
-    def _handle_merge_request_conflict(self, reason, source_url, target_project):
+    def _handle_merge_request_conflict(self, message, source_url, target_project):
         m = re.fullmatch(
             r'Another open merge request already exists for '
             r'this source branch: \!([0-9]+)',
-            reason['message'][0])
+            message[0])
         if m:
             merge_id = int(m.group(1))
             mr = self._get_merge_request(target_project, merge_id)
@@ -804,7 +804,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             merge_request = self.gl._create_mergerequest(**kwargs)
         except GitLabConflict as e:
             self.gl._handle_merge_request_conflict(
-                e.reason, self.source_branch.user_url,
+                e.message, self.source_branch.user_url,
                 target_project['path_with_namespace'])
         except GitLabUnprocessable as e:
             if e.error == [
