@@ -457,11 +457,11 @@ class GitLab(Hoster):
             project = self._get_project(project['path_with_namespace'])
         return project
 
-    def _handle_merge_request_conflict(self, reason, source_url, target_project):
+    def _handle_merge_request_conflict(self, message, source_url, target_project):
         m = re.fullmatch(
             r'Another open merge request already exists for '
             r'this source branch: \!([0-9]+)',
-            reason['message'][0])
+            message[0])
         if m:
             merge_id = int(m.group(1))
             mr = self._get_merge_request(target_project, merge_id)
