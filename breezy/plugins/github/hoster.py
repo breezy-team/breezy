@@ -456,7 +456,7 @@ class GitHub(Hoster):
         repo = self._get_repo(owner, project)
         return github_url_to_bzr_url(repo['ssh_url'], branch_name)
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
@@ -465,10 +465,24 @@ class GitHub(Hoster):
             project = base_repo['name']
         try:
             remote_repo = self._get_repo(owner, project)
-            full_url = github_url_to_bzr_url(remote_repo['ssh_url'], name)
-            return _mod_branch.Branch.open(full_url)
         except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (WEB_GITHUB_URL, owner, project))
+        if preferred_schemes is None:
+            preferred_schemes = ['git+ssh']
+        for scheme in preferred_schemes:
+            if scheme == 'git+ssh':
+                github_url = remote_repo['ssh_url']
+                break
+            if scheme == 'https':
+                github_url = remote_repo['clone_url']
+                break
+            if scheme == 'git':
+                github_url = remote_repo['git_url']
+                break
+        else:
+            raise AssertionError
+        full_url = github_url_to_bzr_url(github_url, name)
+        return _mod_branch.Branch.open(full_url)
 
     def get_proposer(self, source_branch, target_branch):
         return GitHubMergeProposalBuilder(self, source_branch, target_branch)

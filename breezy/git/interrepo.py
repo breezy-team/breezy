@@ -801,9 +801,9 @@ class InterLocalGitRemoteGitRepository(InterToGitRepository):
         def git_update_refs(old_refs):
             ret = {}
             self.old_refs = {
-                k: (v, None) for (k, v) in viewitems(old_refs)}
+                k: (v, None) for (k, v) in old_refs.items()}
             new_refs = update_refs(self.old_refs)
-            for name, (gitid, revid) in viewitems(new_refs):
+            for name, (gitid, revid) in new_refs.items():
                 if gitid is None:
                     gitid = self.source_store._lookup_revision_sha1(revid)
                 if not overwrite:

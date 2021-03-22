@@ -4584,7 +4584,7 @@ class cmd_merge(Command):
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
-        conflict_count = merger.do_merge()
+        conflict_count = len(merger.do_merge())
         if allow_pending:
             merger.set_pending()
         if verified == 'failed':
@@ -4842,7 +4842,7 @@ class cmd_remerge(Command):
             conflicts = merger.do_merge()
         finally:
             tree.set_parent_ids(parents)
-        if conflicts > 0:
+        if len(conflicts) > 0:
             return 1
         else:
             return 0

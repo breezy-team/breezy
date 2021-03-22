@@ -286,7 +286,7 @@ class Hoster(object):
         """
         raise NotImplementedError(self.publish_derived)
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         """Get a derived branch ('a fork').
         """
         raise NotImplementedError(self.get_derived_branch)

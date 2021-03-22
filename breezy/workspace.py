@@ -52,7 +52,7 @@ def reset_tree(local_tree, subpath=''):
       subpath: Subpath to operate on
     """
     revert(local_tree, local_tree.branch.basis_tree(),
-           [subpath] if subpath not in ('.', '') else None)
+           [subpath] if subpath else None)
     deletables = list(iter_deletables(
         local_tree, unknown=True, ignored=False, detritus=False))
     delete_items(deletables)
