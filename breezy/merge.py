@@ -666,7 +666,7 @@ class Merger(object):
             trace.note(gettext("%d conflicts encountered.")
                        % len(merge.cooked_conflicts))
 
-        return len(merge.cooked_conflicts)
+        return merge.cooked_conflicts
 
 
 class _InventoryNoneEntry(object):

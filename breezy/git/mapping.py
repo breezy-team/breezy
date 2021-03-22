@@ -411,9 +411,11 @@ class BzrGitMapping(foreign.VcsMapping):
                 rev.properties[u'author'] = commit.author.decode(encoding)
             rev.message, rev.git_metadata = self._decode_commit_message(
                 rev, commit.message, encoding)
+
         if commit.encoding is not None:
             rev.properties[u'git-explicit-encoding'] = commit.encoding.decode(
                 'ascii')
+        if commit.encoding is not None and commit.encoding != b'false':
             decode_using_encoding(rev, commit, commit.encoding.decode('ascii'))
         else:
             for encoding in ('utf-8', 'latin1'):
