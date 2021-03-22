@@ -736,7 +736,7 @@ def _prepare_revert_transform(es, working_tree, target_tree, tt, filenames,
     return conflicts, merge_modified
 
 
-def revert(working_tree, target_tree, filenames, backups=False,
+def revert(working_tree, target_tree, filenames=None, backups=False,
            pb=None, change_reporter=None, merge_modified=None, basis_tree=None):
     """Revert a working tree's contents to those of a target tree."""
     with cleanup.ExitStack() as es:
