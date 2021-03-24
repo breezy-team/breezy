@@ -668,7 +668,7 @@ class GitLab(Hoster):
         if response.status == 200:
             self._current_user = json.loads(response.data)
             return
-        if response == 401:
+        if response.status == 401:
             if json.loads(response.data) == {"message": "401 Unauthorized"}:
                 raise GitLabLoginMissing()
             else:
