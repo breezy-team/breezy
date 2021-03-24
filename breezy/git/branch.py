@@ -156,7 +156,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
                 else:
                     conflicts.append(
                         (tag_name,
-                         self.repository.lookup_foreign_revision_id(peeled),
+                         self.source.branch.repository.lookup_foreign_revision_id(peeled),
                          self.target.branch.repository.lookup_foreign_revision_id(
                              old_refs[ref_name])))
             return ret
@@ -263,7 +263,7 @@ class InterTagsFromGitToNonGit(InterTags):
             return updates, conflicts
 
     def _merge_to(self, to_tags, source_tag_refs, overwrite=False,
-                  selector=None):
+                  selector=None, ignore_master=False):
         unpeeled_map = defaultdict(set)
         conflicts = []
         updates = {}
@@ -502,8 +502,9 @@ class GitBranch(ForeignBranch):
         if getattr(self.repository, '_git', None):
             cs = self.repository._git.get_config_stack()
             try:
-                return cs.get((b"branch", self.name.encode('utf-8')),
-                        b"nick").decode("utf-8")
+                return cs.get(
+                    (b"branch", self.name.encode('utf-8')),
+                    b"nick").decode("utf-8")
             except KeyError:
                 pass
         return self.name or u"HEAD"
@@ -521,6 +522,9 @@ class GitBranch(ForeignBranch):
     def __repr__(self):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
                                  self.name)
+
+    def set_last_revision(self, revid):
+        raise NotImplementedError(self.set_last_revision)
 
     def generate_revision_history(self, revid, last_rev=None,
                                   other_branch=None):
@@ -597,7 +601,7 @@ class GitBranch(ForeignBranch):
         try:
             ref = cs.get((b"branch", remote), b"merge")
         except KeyError:
-            ref = self.ref
+            ref = b'HEAD'
 
         return git_url_to_bzr_url(location.decode('utf-8'), ref=ref)
 
