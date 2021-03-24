@@ -1937,7 +1937,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # local work is unreferenced and will appear to have been lost.
         #
         with self.lock_tree_write():
-            nb_conflicts = 0
+            nb_conflicts = []
             try:
                 last_rev = self.get_parent_ids()[0]
             except IndexError:
@@ -1958,7 +1958,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                                  show_base=show_base)
                 if nb_conflicts:
                     self.add_parent_tree((old_tip, other_tree))
-                    return nb_conflicts
+                    return len(nb_conflicts)
 
             if last_rev != _mod_revision.ensure_null(revision):
                 # the working tree is up to date with the branch
@@ -2000,7 +2000,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         (old_tip, self.branch.repository.revision_tree(old_tip)))
                 self.set_parent_trees(parent_trees)
                 last_rev = parent_trees[0][0]
-            return nb_conflicts
+            return len(nb_conflicts)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

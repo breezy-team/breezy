@@ -84,7 +84,8 @@ class GitLabUnprocessable(errors.BzrError):
     _fmt = "GitLab can not process request: %(error)s."
 
     def __init__(self, error):
-        errors.BzrError.__init__(self, error=error)
+        errors.BzrError.__init__(self)
+        self.error = error
 
 
 class DifferentGitLabInstances(errors.BzrError):
@@ -115,7 +116,8 @@ class GitLabConflict(errors.BzrError):
     _fmt = "Conflict during operation: %(reason)s"
 
     def __init__(self, reason):
-        errors.BzrError(self, reason=reason)
+        errors.BzrError(self)
+        self.reason = reason
 
 
 class ForkingDisabled(errors.BzrError):
@@ -231,7 +233,13 @@ class GitLabMergeProposal(MergeProposal):
         self._mr = mr
 
     def _update(self, **kwargs):
-        self.gl._update_merge_request(self._mr['project_id'], self._mr['iid'], kwargs)
+        try:
+            self.gl._update_merge_request(
+                self._mr['project_id'], self._mr['iid'], kwargs)
+        except GitLabConflict as e:
+            self.gl._handle_merge_request_conflict(
+                e.reason, self.get_source_branch_url(),
+                self._mr['target_project_id'])
 
     def __repr__(self):
         return "<%s at %r>" % (type(self).__name__, self._mr['web_url'])
@@ -305,7 +313,7 @@ class GitLabMergeProposal(MergeProposal):
         elif self._mr['merge_status'] == 'can_be_merged':
             return True
         elif self._mr['merge_status'] in (
-                'unchecked', 'cannot_be_merged_recheck'):
+                'unchecked', 'cannot_be_merged_recheck', 'checking'):
             # See https://gitlab.com/gitlab-org/gitlab/-/commit/7517105303c for
             # an explanation of the distinction between unchecked and
             # cannot_be_merged_recheck
@@ -415,6 +423,8 @@ class GitLab(Hoster):
     def create_project(self, project_name):
         fields = {'name': project_name}
         response = self._api_request('POST', 'projects', fields=fields)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
             _unexpected_status('projects', response)
         project = json.loads(response.data)
@@ -446,6 +456,18 @@ class GitLab(Hoster):
             time.sleep(interval)
             project = self._get_project(project['path_with_namespace'])
         return project
+
+    def _handle_merge_request_conflict(self, message, source_url, target_project):
+        m = re.fullmatch(
+            r'Another open merge request already exists for '
+            r'this source branch: \!([0-9]+)',
+            message[0])
+        if m:
+            merge_id = int(m.group(1))
+            mr = self._get_merge_request(target_project, merge_id)
+            raise MergeProposalExists(
+                source_url, GitLabMergeProposal(self, mr))
+        raise MergeRequestConflict(reason)
 
     def get_current_user(self):
         return self._current_user['username']
@@ -506,6 +528,8 @@ class GitLab(Hoster):
         response = self._api_request('PUT', path, fields=mr)
         if response.status == 200:
             return json.loads(response.data)
+        if response.status == 409:
+            raise GitLabConflict(json.loads(response.data).get('message'))
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
@@ -540,7 +564,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
-            raise MergeRequestConflict(json.loads(response.data))
+            raise GitLabConflict(json.loads(response.data).get('message'))
         if response.status == 422:
             data = json.loads(response.data)
             raise GitLabUnprocessable(data['error'])
@@ -586,7 +610,7 @@ class GitLab(Hoster):
             target_project['http_url_to_repo'], name)
         return push_result.target_branch, public_url
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self.get_current_user()
@@ -596,8 +620,19 @@ class GitLab(Hoster):
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (self.base_url, owner, project))
-        return _mod_branch.Branch.open(gitlab_url_to_bzr_url(
-            target_project['ssh_url_to_repo'], name))
+        if preferred_schemes is None:
+            preferred_schemes = ['git+ssh']
+        for scheme in preferred_schemes:
+            if scheme == 'git+ssh':
+                gitlab_url = target_project['ssh_url_to_repo']
+                break
+            elif scheme == 'https':
+                gitlab_url = target_project['http_url_to_repo']
+                break
+        else:
+            raise AssertionError
+        return _mod_branch.Branch.open(
+            gitlab_url_to_bzr_url(gitlab_url, name))
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self, source_branch, target_branch)
@@ -670,7 +705,7 @@ class GitLab(Hoster):
             yield GitLabMergeProposal(self, mp)
 
     def iter_my_forks(self, owner=None):
-        if owner is not None:
+        if owner is None:
             owner = self.get_current_user()
         for project in self._list_projects(owner=owner):
             base_project = project.get('forked_from_project')
@@ -767,18 +802,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
                 kwargs['assignee_ids'].append(user['id'])
         try:
             merge_request = self.gl._create_mergerequest(**kwargs)
-        except MergeRequestConflict as e:
-            m = re.fullmatch(
-                r'Another open merge request already exists for '
-                r'this source branch: \!([0-9]+)',
-                e.reason['message'][0])
-            if m:
-                merge_id = int(m.group(1))
-                mr = self.gl._get_merge_request(
-                    target_project['path_with_namespace'], merge_id)
-                raise MergeProposalExists(
-                    self.source_branch.user_url, GitLabMergeProposal(self.gl, mr))
-            raise Exception('conflict: %r' % e.reason)
+        except GitLabConflict as e:
+            self.gl._handle_merge_request_conflict(
+                e.reason, self.source_branch.user_url,
+                target_project['path_with_namespace'])
         except GitLabUnprocessable as e:
             if e.error == [
                     "Source project is not a fork of the target project"]:

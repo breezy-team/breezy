@@ -1441,7 +1441,7 @@ class GitTreeTransform(DiskTreeTransform):
         changes = {}
         changed_ids = set()
         for id_set in [self._new_name, self._new_parent,
-                       self._new_executability]:
+                       self._new_executability, self._new_contents]:
             changed_ids.update(id_set)
         for id_set in [self._new_name, self._new_parent]:
             removed_id.update(id_set)

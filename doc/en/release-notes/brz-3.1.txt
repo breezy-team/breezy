@@ -99,6 +99,10 @@ API Changes
  * File ids are no longer returned in ``Tree.walkdirs``.
    (Jelmer Vernooĳ)
 
+ * ``WorkingTree.merge_from_branch``, ``Merge.do_merge`` and
+   ``merge_inner`` now return a list of conflicts rather than number of
+   conflicts.  (Jelmer Vernooĳ)
+
 Internals
 *********
 
