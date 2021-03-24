@@ -264,8 +264,10 @@ class GitDir(ControlDir):
         for name, val in viewitems(refs):
             target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
+        result_branch = result_dir.open_branch()
+        result_branch.set_parent(self.open_branch().user_url)
         if revision_id is not None:
-            result_dir.open_branch().set_last_revision(revision_id)
+            result_branch.set_last_revision(revision_id)
         if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
                 try:

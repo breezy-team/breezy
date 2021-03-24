@@ -606,11 +606,6 @@ class GitBranch(ForeignBranch):
         cs = self.repository._git.get_config_stack()
         return self._get_related_merge_branch(cs)
 
-    def _write_git_config(self, cs):
-        f = BytesIO()
-        cs.write_to_file(f)
-        self.repository._git._put_named_file('config', f.getvalue())
-
     def set_parent(self, location):
         cs = self.repository._git.get_config()
         remote = self._get_origin(cs)
@@ -618,14 +613,17 @@ class GitBranch(ForeignBranch):
         target_url, branch, ref = bzr_url_to_git_url(location)
         location = urlutils.relative_url(this_url, target_url)
         cs.set((b"remote", remote), b"url", location)
-        if branch:
-            cs.set((b"branch", remote), b"merge", branch_name_to_ref(branch))
-        elif ref:
-            cs.set((b"branch", remote), b"merge", ref)
-        else:
-            # TODO(jelmer): Maybe unset rather than setting to HEAD?
-            cs.set((b"branch", remote), b"merge", b'HEAD')
-        self._write_git_config(cs)
+        cs.set((b"remote", remote), b'fetch',
+               b'+refs/heads/*:refs/remotes/%s/*' % remote)
+        if self.name:
+            if branch:
+                cs.set((b"branch", self.name.encode()), b"merge", branch_name_to_ref(branch))
+            elif ref:
+                cs.set((b"branch", self.name.encode()), b"merge", ref)
+            else:
+                # TODO(jelmer): Maybe unset rather than setting to HEAD?
+                cs.set((b"branch", self.name.encode()), b"merge", b'HEAD')
+        self.repository._write_git_config(cs)
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
