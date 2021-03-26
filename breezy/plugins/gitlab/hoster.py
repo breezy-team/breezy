@@ -83,9 +83,10 @@ class GitLabUnprocessable(errors.BzrError):
 
     _fmt = "GitLab can not process request: %(error)s."
 
-    def __init__(self, error):
+    def __init__(self, error, full_response):
         errors.BzrError.__init__(self)
         self.error = error
+        self.full_response = full_response
 
 
 class DifferentGitLabInstances(errors.BzrError):
@@ -567,7 +568,7 @@ class GitLab(Hoster):
             raise GitLabConflict(json.loads(response.data).get('message'))
         if response.status == 422:
             data = json.loads(response.data)
-            raise GitLabUnprocessable(data['error'])
+            raise GitLabUnprocessable(data.get('error'), data)
         if response.status != 201:
             _unexpected_status(path, response)
         return json.loads(response.data)
@@ -811,6 +812,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
                     "Source project is not a fork of the target project"]:
                 raise SourceNotDerivedFromTarget(
                     self.source_branch, self.target_branch)
+            raise
         return GitLabMergeProposal(self.gl, merge_request)
 
 
