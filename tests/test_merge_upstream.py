@@ -29,60 +29,7 @@ from ....tests import (
 
 from ..merge_upstream import (
     changelog_add_new_version,
-    upstream_merge_changelog_line,
-    package_version,
     )
-
-
-class TestPackageVersion(TestCase):
-
-    def test_simple_debian(self):
-        self.assertEquals(
-            Version("1.2-1"),
-            package_version("1.2", "debian"))
-
-    def test_simple_ubuntu(self):
-        self.assertEquals(
-            Version("1.2-0ubuntu1"),
-            package_version("1.2", "ubuntu"))
-
-    def test_debian_with_dash(self):
-        self.assertEquals(
-            Version("1.2-0ubuntu1-1"),
-            package_version("1.2-0ubuntu1", "debian"))
-
-    def test_ubuntu_with_dash(self):
-        self.assertEquals(
-            Version("1.2-1-0ubuntu1"),
-            package_version("1.2-1", "ubuntu"))
-
-    def test_ubuntu_with_epoch(self):
-        self.assertEquals(
-            Version("3:1.2-1-0ubuntu1"),
-            package_version("1.2-1", "ubuntu", "3"))
-
-
-class UpstreamMergeChangelogLineTests(TestCase):
-
-    def test_release(self):
-        self.assertEquals(
-            "New upstream release.",
-            upstream_merge_changelog_line("1.0"))
-
-    def test_bzr_snapshot(self):
-        self.assertEquals(
-            "New upstream snapshot.",
-            upstream_merge_changelog_line("1.0+bzr3"))
-
-    def test_git_snapshot(self):
-        self.assertEquals(
-            "New upstream snapshot.",
-            upstream_merge_changelog_line("1.0~git20101212"))
-
-    def test_plus(self):
-        self.assertEquals(
-            "New upstream release.",
-            upstream_merge_changelog_line("1.0+dfsg1"))
 
 
 class ChangelogAddNewVersionTests(TestCaseWithTransport):

@@ -1,3 +1,9 @@
+breezy-debian (2.8.56) UNRELEASED; urgency=medium
+
+  * Use debmutate for editing changelogs.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 26 Mar 2021 15:39:45 +0000
+
 breezy-debian (2.8.55) unstable; urgency=medium
 
   * Raise specific error if previous version is missing.

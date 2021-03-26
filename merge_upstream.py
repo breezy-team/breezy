@@ -29,10 +29,11 @@
 from __future__ import absolute_import
 
 import os
-import subprocess
 import tempfile
 
 from debian.changelog import Version
+from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
+from debmutate.versions import new_package_version
 
 from ... import osutils
 from ...revision import NULL_REVISION
@@ -59,47 +60,6 @@ from .util import (
 TAG_PREFIX = "upstream-"
 
 
-class DchError(BzrError):
-    _fmt = 'There was an error using dch: %(error)s.'
-
-    def __init__(self, error):
-        BzrError.__init__(self, error=error)
-
-
-def package_version(upstream_version, distribution_name, epoch=None):
-    """Determine the package version for a new upstream.
-
-    :param upstream_version: Upstream version string
-    :param distribution_name: Distribution the package is for
-    :param epoch: Optional epoch
-    """
-    if distribution_name == "ubuntu":
-        ret = Version("%s-0ubuntu1" % upstream_version)
-    else:
-        ret = Version("%s-1" % upstream_version)
-    ret.epoch = epoch
-    return ret
-
-
-def upstream_merge_changelog_line(upstream_version):
-    """Describe that a new upstream revision was merged.
-
-    This will either describe that a new upstream release or a new upstream
-    snapshot was merged.
-
-    :param upstream_version: Upstream version string
-    :return: Line string for use in changelog
-    """
-    vcs_suffixes = ["~bzr", "+bzr", "~svn", "+svn", "~git", "+git", "-git"]
-    for vcs_suffix in vcs_suffixes:
-        if vcs_suffix in str(upstream_version):
-            entry_description = "New upstream snapshot."
-            break
-    else:
-        entry_description = "New upstream release."
-    return entry_description
-
-
 # TODO(jelmer): Move into debmutate
 def changelog_add_new_version(
         tree, subpath, upstream_version, distribution_name, changelog,
@@ -112,27 +72,24 @@ def changelog_add_new_version(
     :param changelog: Changelog object
     :param package: Package name
     """
-    entry_description = upstream_merge_changelog_line(upstream_version)
     if changelog is None:
         epoch = None
     else:
         epoch = changelog.epoch
-    argv = ["dch", "-v",
-            str(package_version(upstream_version, distribution_name, epoch)),
-            "-D", "UNRELEASED", "--release-heuristic", "changelog",
-            "--package", package, entry_description]
     if not tree.has_filename(osutils.pathjoin(subpath, 'debian')):
         tree.mkdir(osutils.pathjoin(subpath, 'debian'))
     cl_path = osutils.pathjoin(subpath, "debian/changelog")
     create = (not tree.has_filename(cl_path))
     if create:
-        argv.append("--create")
-    proc = subprocess.Popen(
-        argv, cwd=osutils.pathjoin(tree.basedir, subpath),
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (stdout, stderr) = proc.communicate()
-    if proc.returncode != 0:
-        raise DchError("Adding changelog entry failed: %s" % stderr)
+        cl = ChangelogEditor.create(tree.abspath(cl_path))
+    else:
+        cl = ChangelogEditor(tree.abspath(cl_path))
+    with cl:
+        cl.auto_version(
+            version=new_package_version(
+                upstream_version, distribution_name, epoch),
+            package=package)
+        cl.add_entry([upstream_merge_changelog_line(upstream_version)])
     if not tree.is_versioned(cl_path):
         tree.add([cl_path])
 
