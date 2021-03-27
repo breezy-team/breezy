@@ -238,6 +238,7 @@ class GitDir(ControlDir):
         from ..repository import InterRepository
         from .mapping import default_mapping
         from ..transport.local import LocalTransport
+        from .refs import is_peeled
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:
@@ -261,7 +262,10 @@ class GitDir(ControlDir):
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
         for name, val in viewitems(refs):
-            target_git_repo.refs[name] = val
+            if is_peeled(name):
+                continue
+            if val in target_git_repo.object_store:
+                target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
         result_branch = result_dir.open_branch()
         try:
