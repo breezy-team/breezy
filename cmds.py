@@ -745,21 +745,6 @@ class cmd_merge_upstream(Command):
         snapshot_opt, launchpad_opt, force_pristine_tar_opt,
         dist_command_opt]
 
-    def _add_changelog_entry(self, tree, subpath, package, version,
-                             distribution_name, changelog):
-        from .merge_upstream import (
-            DchError,
-            changelog_add_new_version)
-        try:
-            changelog_add_new_version(
-                tree, subpath, version, distribution_name, changelog, package)
-        except DchError as e:
-            note(e)
-            raise BzrCommandError(
-                    'Adding a new changelog stanza after the '
-                    'merge had completed failed. Add the new changelog '
-                    'entry yourself, review the merge, and then commit.')
-
     def run(self, location: Optional[str] = None,
             upstream_branch: Optional[str] = None,
             version: Optional[str] = None,
@@ -773,6 +758,7 @@ class cmd_merge_upstream(Command):
 
         from .hooks import run_hook
         from .merge_upstream import (
+            changelog_add_new_version,
             do_merge,
             get_tarballs,
             PreviousVersionTagMissing,
@@ -973,8 +959,8 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError(
                     gettext("Upstream version %s has already been merged.") %
                     version)
-            self._add_changelog_entry(
-                tree, subpath, package, version, distribution_name, changelog)
+            changelog_add_new_version(
+                tree, subpath, version, distribution_name, changelog, package)
             run_hook(tree, 'merge-upstream', config)
         if not need_upstream_tarball:
             note(gettext("An entry for the new upstream version has been "
