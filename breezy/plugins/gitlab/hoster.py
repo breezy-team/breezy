@@ -79,6 +79,16 @@ class NotMergeRequestUrl(errors.BzrError):
         self.url = url
 
 
+class GitLabError(errors.BzrError):
+
+    _fmt = "GitLab error: %(error)s"
+
+    def __init__(self, error, full_response):
+        errors.BzrError.__init__(self)
+        self.error = error
+        self.full_response = full_response
+
+
 class GitLabUnprocessable(errors.BzrError):
 
     _fmt = "GitLab can not process request: %(error)s."
@@ -562,6 +572,8 @@ class GitLab(Hoster):
         if labels:
             fields['labels'] = labels
         response = self._api_request('POST', path, fields=fields)
+        if response.status == 400:
+            raise GitLabError(data.get('message'), data)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
@@ -669,7 +681,7 @@ class GitLab(Hoster):
         if response.status == 200:
             self._current_user = json.loads(response.data)
             return
-        if response == 401:
+        if response.status == 401:
             if json.loads(response.data) == {"message": "401 Unauthorized"}:
                 raise GitLabLoginMissing()
             else:
