@@ -1,3 +1,9 @@
+breezy-debian (2.8.57) unstable; urgency=medium
+
+  * Remove some no longer existing but unused imports.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 27 Mar 2021 16:40:27 +0000
+
 breezy-debian (2.8.56) unstable; urgency=medium
 
   * Use debmutate for editing changelogs.
