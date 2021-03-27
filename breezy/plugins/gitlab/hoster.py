@@ -432,8 +432,24 @@ class GitLab(Hoster):
         _unexpected_status(path, response)
 
     def create_project(self, project_name):
-        fields = {'name': project_name}
+        if project_name.endswith('.git'):
+            project_name = project_name[:-4]
+        if '/' in project_name:
+            namespace, path = project_name.rsplit('/', 1)
+        else:
+            namespace = None
+            path = project_name
+        fields = {
+            'path': path,
+            'name': path.replace('-', '_'),
+            'namespace_path': namespace,
+            }
         response = self._api_request('POST', 'projects', fields=fields)
+        if response.status == 400:
+            ret = json.loads(response.data)
+            if ret.get("message", {}).get("path") == ["has already been taken"]:
+                raise errors.AlreadyControlDirError(project_name)
+            raise
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
