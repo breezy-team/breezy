@@ -511,7 +511,7 @@ class RemoteGitDir(GitDir):
             raise AlreadyBranchError(self.user_url)
         ref_chain, unused_sha = self.get_refs_container().follow(
             self._get_selected_ref(name))
-        if ref_chain and ref_chain[0] == b'HEAD':
+        if ref_chain and ref_chain[0] == b'HEAD' and len(ref_chain) > 1:
             refname = ref_chain[1]
         repo = self.open_repository()
         return RemoteGitBranch(self, repo, refname)
