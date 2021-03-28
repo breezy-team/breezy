@@ -568,28 +568,29 @@ class cmd_builddeb(Command):
                 run_hook(tree, 'post-build', config, wd=build_source_dir)
                 if not dont_purge:
                     builder.clean()
-                if source:
-                    arch = "source"
-                else:
-                    arch = get_build_architecture()
-                changes = changes_filename(
-                    changelog.package, changelog.version, arch)
-                changes_path = os.path.join(build_dir, changes)
-                if not os.path.exists(changes_path):
+                changes_paths = []
+                for option in ['source', get_build_architecture(), 'multi']:
+                    fn = changes_filename(
+                        changelog.package, changelog.version, option)
+                    changes_path = os.path.join(build_dir, fn)
+                    if os.path.exists(changes_path):
+                        changes_paths.append(changes_path)
+                if not changes_paths:
                     if result_dir is not None:
                         raise BzrCommandError(
                             "Could not find the .changes "
                             "file from the build: %s" % changes_path)
+                    return
+                if is_local:
+                    target_dir = result_dir or default_result_dir
+                    target_dir = os.path.join(
+                            urlutils.local_path_from_url(location),
+                            target_dir)
                 else:
-                    if is_local:
-                        target_dir = result_dir or default_result_dir
-                        target_dir = os.path.join(
-                                urlutils.local_path_from_url(location),
-                                target_dir)
-                    else:
-                        target_dir = "."
-                    if not os.path.exists(target_dir):
-                        os.makedirs(target_dir)
+                    target_dir = "."
+                if not os.path.exists(target_dir):
+                    os.makedirs(target_dir)
+                for changes_path in changes_paths:
                     dget_changes(changes_path, target_dir)
 
 
