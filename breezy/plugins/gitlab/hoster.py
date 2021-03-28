@@ -45,6 +45,7 @@ from ...propose import (
     PrerequisiteBranchUnsupported,
     SourceNotDerivedFromTarget,
     UnsupportedHoster,
+    HosterLoginRequired,
     )
 
 
@@ -109,9 +110,9 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-class GitLabLoginMissing(errors.BzrError):
+class GitLabLoginMissing(HosterLoginRequired):
 
-    _fmt = ("Please log into GitLab")
+    _fmt = ("Please log into GitLab instance at %(hoster)s")
 
 
 class GitlabLoginError(errors.BzrError):
@@ -693,7 +694,12 @@ class GitLab(Hoster):
         return self.base_hostname == host
 
     def check(self):
-        response = self._api_request('GET', 'user')
+        try:
+            response = self._api_request('GET', 'user')
+        except errors.UnexpectedHttpStatus as e:
+            if e.code == 401:
+                raise GitLabLoginMissing()
+            raise
         if response.status == 200:
             self._current_user = json.loads(response.data)
             return
@@ -715,7 +721,17 @@ class GitLab(Hoster):
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
             return cls(transport, credentials.get('private_token'))
-        raise UnsupportedHoster(url)
+        try:
+            resp = transport.request(
+                'GET', 'https://%s/api/v4/projects/%s' % (host, urlutils.quote(str(project), '')))
+        except errors.UnexpectedHttpStatus as e:
+            raise UnsupportedHoster(url)
+        else:
+            if not resp.getheader('X-Gitlab-Feature-Category'):
+                raise UnsupportedHoster(url)
+            if resp.status in (200, 401):
+                raise GitLabLoginMissing()
+            raise UnsupportedHoster(url)
 
     @classmethod
     def iter_instances(cls):
