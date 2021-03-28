@@ -45,6 +45,7 @@ from ...propose import (
     PrerequisiteBranchUnsupported,
     SourceNotDerivedFromTarget,
     UnsupportedHoster,
+    HosterLoginRequired,
     )
 
 
@@ -109,9 +110,9 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-class GitLabLoginMissing(errors.BzrError):
+class GitLabLoginMissing(HosterLoginRequired):
 
-    _fmt = ("Please log into GitLab")
+    _fmt = ("Please log into GitLab instance at %(hoster)s")
 
 
 class GitlabLoginError(errors.BzrError):
