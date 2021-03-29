@@ -843,13 +843,6 @@ def find_changes_files(path, package, version):
             yield m.group(1), entry
 
 
-def changes_filename(package, version, arch):
-    non_epoch_version = version.upstream_version
-    if version.debian_version is not None:
-        non_epoch_version += "-%s" % version.debian_version
-    return "%s_%s_%s.changes" % (package, non_epoch_version, arch)
-
-
 def get_build_architecture():
     try:
         return subprocess.check_output(

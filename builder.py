@@ -32,14 +32,14 @@ from .hooks import run_hook
 from .util import (
     get_parent_dir,
     subprocess_setup,
-    changes_filename,
+    find_changes_files,
     dget_changes,
     )
 
 
 class ChangesFileMissing(BzrError):
 
-    _fmt = "Missing changes file: %(path)r"
+    _fmt = "Missing changes file."
 
 
 class NoSourceDirError(BzrError):
@@ -135,10 +135,8 @@ def do_build(package_name, version, distiller, local_tree, config,
         run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
         builder.build()
         run_hook(local_tree, 'post-build', config, wd=build_source_dir)
-        changes = changes_filename(
-            package_name, version, 'source')
-        changes_path = os.path.join(bd, changes)
         if target_dir is not None:
-            if not os.path.exists(changes_path):
-                raise ChangesFileMissing(changes_path)
-            return dget_changes(changes_path, target_dir)
+            for kind, entry in find_changes_files(bd, package_name, version):
+                return dget_changes(entry.path, target_dir)
+            else:
+                raise ChangesFileMissing()
