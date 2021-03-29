@@ -832,6 +832,17 @@ def debsign(path, keyid=None):
     subprocess.check_call(args, cwd=bd)
 
 
+def find_changes_files(path, package, version):
+    non_epoch_version = version.upstream_version
+    if version.debian_version is not None:
+        non_epoch_version += "-%s" % version.debian_version
+    c = re.compile('%s_%s_(.*).changes' % (re.escape(package), re.escape(non_epoch_version)))
+    for entry in os.scandir(path):
+        m = c.match(entry.name)
+        if m:
+            yield m.group(1), entry
+
+
 def changes_filename(package, version, arch):
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:

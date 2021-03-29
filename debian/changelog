@@ -1,6 +1,7 @@
 breezy-debian (2.8.58) UNRELEASED; urgency=medium
 
   * Support building multiple changes files.
+  * Support custom suffixes in changes files.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 29 Mar 2021 00:20:14 +0100
 

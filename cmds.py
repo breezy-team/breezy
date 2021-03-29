@@ -491,7 +491,7 @@ class cmd_builddeb(Command):
             find_changelog,
             find_previous_upload,
             tree_contains_upstream_source,
-            changes_filename,
+            find_changes_files,
             )
 
         location, build_options, source = self._branch_and_build_options(
@@ -569,17 +569,14 @@ class cmd_builddeb(Command):
                 if not dont_purge:
                     builder.clean()
                 changes_paths = []
-                for option in ['source', get_build_architecture(), 'multi']:
-                    fn = changes_filename(
-                        changelog.package, changelog.version, option)
-                    changes_path = os.path.join(build_dir, fn)
-                    if os.path.exists(changes_path):
-                        changes_paths.append(changes_path)
+                for kind, entry in find_changes_files(
+                        build_dir, changelog.package, changelog.version):
+                    changes_paths.append(entry.path)
                 if not changes_paths:
                     if result_dir is not None:
                         raise BzrCommandError(
                             "Could not find the .changes "
-                            "file from the build: %s" % changes_path)
+                            "file from the build: %s" % build_dir)
                     return
                 if is_local:
                     target_dir = result_dir or default_result_dir
