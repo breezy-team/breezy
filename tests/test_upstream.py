@@ -981,7 +981,7 @@ upstream-tag = blah-%(version%~%-)s
     def test_version(self):
         self.assertEquals(
             ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
-             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3'],
+             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3'],
             self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):
@@ -992,7 +992,8 @@ upstream-tag = blah-%(version%~%-)s
             'upstream_3.3~brz232',
             '3.3~brz232',
             'v3.3~brz232',
-            'pkg-3.3~brz232'],
+            'pkg-3.3~brz232',
+            'v/3.3~brz232'],
             self.source.possible_tag_names(
                 'pkg', "3.3~brz232", component=None))
 
@@ -1078,7 +1079,7 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
     def test_version(self):
         self.assertEquals(
             ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
-             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3'],
+             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3'],
             self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):
@@ -1089,7 +1090,8 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
             'upstream_3.3~brz232',
             '3.3~brz232',
             'v3.3~brz232',
-            'pkg-3.3~brz232'],
+            'pkg-3.3~brz232',
+            'v/3.3~brz232'],
             self.source.possible_tag_names(
                 'pkg', "3.3~brz232", component=None))
 
