@@ -396,7 +396,7 @@ class DefaultProgressReporter(object):
 
     def progress(self, text):
         text = text.rstrip(b"\r\n")
-        text = text.decode('utf-8')
+        text = text.decode('utf-8', 'surrogateescape')
         if text.lower().startswith('error: '):
             trace.show_error('git: %s', text[len(b'error: '):])
         else:
