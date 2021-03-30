@@ -44,7 +44,7 @@ from ....errors import (
 from ..repack_tarball import get_filetype, repack_tarball
 from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
-from ....trace import note, mutter
+from ....trace import note, mutter, warning
 from ....tree import Tree
 
 try:
@@ -85,6 +85,8 @@ def upstream_tag_to_version(tag_name, package=None):
         tag_name = tag_name[len("release-"):]
     if tag_name[0] == "v" and tag_name[1].isdigit():
         tag_name = tag_name[1:]
+    if tag_name[0] == "v" and tag_name[1] in ('/', 'v') and tag_name[2].isdigit():
+        tag_name = tag_name[2:]
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
           tag_name.startswith("%s_" % package))):
@@ -151,6 +153,12 @@ def _upstream_branch_version(
             return None
         # Assume we were just somewhere after the last release
         last_upstream = (previous_version, '+')
+    else:
+        if Version(last_upstream[0]) < Version(previous_version):
+            warning(
+                'last found upstream version (%s) is lower than '
+                'previous packaged upstream version (%s)',
+                last_upstream[0], previous_version)
     return add_rev(last_upstream[0], upstream_revision, last_upstream[1])
 
 
