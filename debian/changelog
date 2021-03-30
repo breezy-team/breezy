@@ -1,3 +1,9 @@
+breezy-debian (2.8.59) UNRELEASED; urgency=medium
+
+  * Improve snapshot revision creation a bit more.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Mar 2021 22:41:27 +0100
+
 breezy-debian (2.8.58) unstable; urgency=medium
 
   * Support building multiple changes files.

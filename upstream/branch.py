@@ -124,6 +124,7 @@ def _upstream_branch_version(
     if upstream_revision == NULL_REVISION:
         # No new version to merge
         return previous_version
+    last_upstream = None
     try:
         for r in revhistory:
             if r in reverse_tag_dict:
@@ -134,16 +135,23 @@ def _upstream_branch_version(
                     upstream_version = upstream_tag_to_version(
                             tag, package=package)
                     if upstream_version is not None:
-                        if r != upstream_revision:
-                            upstream_version = add_rev(
-                                str(upstream_version), upstream_revision)
-                        return upstream_version
+                        if r == upstream_revision:
+                            # Well, that's simple
+                            return upstream_version
+                        last_upstream = (str(upstream_version), '+')
+            if r == upstream_revision and last_upstream:
+                # The last upstream release was after us
+                last_upstream = (last_upstream[0], '~')
     except RevisionNotPresent:
         # Ghost revision somewhere on mainline.
         pass
-    if previous_version is None:
-        return None
-    return add_rev(str(previous_version), upstream_revision)
+    if last_upstream is None:
+        # Well, we didn't find any releases
+        if previous_version is None:
+            return None
+        # Assume we were just somewhere after the last release
+        last_upstream = (previous_version, '+')
+    return add_rev(last_upstream[0], upstream_revision, last_upstream[1])
 
 
 def extract_gitid(rev):
@@ -314,8 +322,8 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
             revhistory, upstream_revision,
             upstream_branch.tags.get_reverse_tag_dict(), package,
             previous_version,
-            lambda version, revision: upstream_version_add_revision(
-                upstream_branch, version, revision))
+            lambda version, revision, sep: upstream_version_add_revision(
+                upstream_branch, version, revision, sep))
 
 
 def get_export_upstream_revision(config=None, version=None):
