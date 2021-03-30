@@ -104,6 +104,7 @@ def possible_upstream_tag_names(package: Optional[str], version: Version, compon
         if package:
             tags.append("%s-%s" % (package, version))
         tags.append("v/%s" % version)
+        tags.append("v.%s" % version)
     else:
         tags.append(upstream_tag_name(version, component))
     return tags

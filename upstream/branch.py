@@ -23,7 +23,7 @@ import os
 import re
 import subprocess
 import tempfile
-from typing import Optional
+from typing import Optional, Tuple
 
 from debmutate.versions import git_snapshot_data_from_version
 
@@ -85,7 +85,7 @@ def upstream_tag_to_version(tag_name, package=None):
         tag_name = tag_name[len("release-"):]
     if tag_name[0] == "v" and tag_name[1].isdigit():
         tag_name = tag_name[1:]
-    if tag_name[0] == "v" and tag_name[1] in ('/', 'v') and tag_name[2].isdigit():
+    if tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
         tag_name = tag_name[2:]
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
@@ -98,6 +98,9 @@ def upstream_tag_to_version(tag_name, package=None):
         # Most debian packages seem to just drop the underscore.
         tag_name = tag_name.replace('_', '')
     if all([c.isdigit() or c in (".", "~") for c in tag_name]):
+        return tag_name
+    parts = tag_name.split('.')
+    if len(parts) > 1 and all(p.isdigit() for p in parts[:-1]) and parts[-1].isalnum():
         return tag_name
     return None
 
@@ -126,7 +129,7 @@ def _upstream_branch_version(
     if upstream_revision == NULL_REVISION:
         # No new version to merge
         return previous_version
-    last_upstream = None
+    last_upstream: Optional[Tuple[Version, str]] = None
     try:
         for r in revhistory:
             if r in reverse_tag_dict:
@@ -140,7 +143,8 @@ def _upstream_branch_version(
                         if r == upstream_revision:
                             # Well, that's simple
                             return upstream_version
-                        last_upstream = (str(upstream_version), '+')
+                        if last_upstream is None or Version(last_upstream[0]) < Version(upstream_version):
+                            last_upstream = (str(upstream_version), '+')
             if r == upstream_revision and last_upstream:
                 # The last upstream release was after us
                 last_upstream = (last_upstream[0], '~')

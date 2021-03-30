@@ -651,50 +651,74 @@ class TestUpstreamBranchVersion(TestCase):
 
     def test_snapshot_none_existing(self):
         self.revhistory = [b"somerevid"]
-        self.assertEquals("1.2+bzr1",
-            _upstream_branch_version(self.revhistory, b"somerevid", {}, "bla", "1.2", self.get_suffix))
+        self.assertEquals(
+            "1.2+bzr1",
+            _upstream_branch_version(
+                self.revhistory, b"somerevid", {}, "bla",
+                "1.2", self.get_suffix))
 
     def test_snapshot_nothing_new(self):
         self.revhistory = []
-        self.assertEquals("1.2",
-            _upstream_branch_version(self.revhistory, NULL_REVISION, {}, "bla", "1.2", self.get_suffix))
-  
+        self.assertEquals(
+            "1.2",
+            _upstream_branch_version(
+                self.revhistory, NULL_REVISION, {}, "bla", "1.2",
+                self.get_suffix))
+
     def test_new_tagged_release(self):
         """Last revision is tagged - use as upstream version."""
-        self.revhistory = [b"somerevid"]
-        self.assertEquals("1.3",
-            _upstream_branch_version(self.revhistory, b"somerevid", {b"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
-  
+        self.revhistory = [b"somerevid", b"oldrevid"]
+        self.assertEquals(
+            "1.3",
+            _upstream_branch_version(
+                self.revhistory, b"somerevid",
+                {b"somerevid": [u"1.3", u"1.3a"], b"oldrevid": ["1.2"]}, "bla",
+                "1.2", self.get_suffix))
+
     def test_snapshot_since_new_tagged_release(self):
         """Last revision is tagged - use as upstream version."""
-        self.revhistory = [b"lastrevid", b"somerevid"]
-        self.assertEquals("1.3+bzr2",
-            _upstream_branch_version(self.revhistory, b"lastrevid", {b"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
+        self.revhistory = [b"lastrevid", b"somerevid", b"oldrevid"]
+        self.assertEquals(
+            "1.3+bzr3",
+            _upstream_branch_version(
+                self.revhistory, b"lastrevid",
+                {b"somerevid": [u"1.3"], b'oldrevid': ["1.2"]}, "bla",
+                "1.2", self.get_suffix))
 
     def test_snapshot_before_new_tagged_release(self):
         """Last revision is tagged - use as upstream version."""
         self.revhistory = [b"somerevid", b"targetrevid"]
-        self.assertEquals("1.3~bzr1",
-            _upstream_branch_version(self.revhistory, b"targetrevid", {b"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
-  
+        self.assertEquals(
+            "1.3~bzr1",
+            _upstream_branch_version(
+                self.revhistory, b"targetrevid",
+                {b"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
+
     def test_refresh_snapshot_pre(self):
-      self.revhistory = [b"somerevid", b"oldrevid"]
-      self.assertEquals("1.3~bzr2",
-          _upstream_branch_version(self.revhistory, b"somerevid", {}, "bla", "1.3~bzr1",
-              self.get_suffix))
+        self.revhistory = [b"somerevid", b"oldrevid"]
+        self.assertEquals(
+            "1.3~bzr2",
+            _upstream_branch_version(
+                self.revhistory, b"somerevid", {}, "bla",
+                "1.3~bzr1",
+                self.get_suffix))
 
     def test_refresh_snapshot_post(self):
         self.revhistory = [b"somerevid", b"oldrevid"]
-        self.assertEquals("1.3+bzr2",
-            _upstream_branch_version(self.revhistory, b"somerevid", {}, "bla", "1.3+bzr1",
+        self.assertEquals(
+            "1.3+bzr2",
+            _upstream_branch_version(
+                self.revhistory, b"somerevid", {}, "bla", "1.3+bzr1",
                 self.get_suffix))
-  
+
     def test_new_tag_refresh_snapshot(self):
         self.revhistory = [b"newrevid", b"somerevid", b"oldrevid"]
-        self.assertEquals("1.3+bzr3",
-              _upstream_branch_version(self.revhistory, b"newrevid",
-                  {b"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
-  
+        self.assertEquals(
+            "1.3+bzr3",
+            _upstream_branch_version(
+                self.revhistory, b"newrevid",
+                {b"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
+
 
 class TestUpstreamTagToVersion(TestCase):
 
@@ -709,6 +733,10 @@ class TestUpstreamTagToVersion(TestCase):
 
     def test_plain(self):
         self.assertEquals("2.0", upstream_tag_to_version(u"2.0"))
+
+    def test_v(self):
+        self.assertEquals("2.0", upstream_tag_to_version(u"v2.0"))
+        self.assertEquals("2.0", upstream_tag_to_version(u"v.2.0"))
 
     def test_package_prefix(self):
         self.assertEquals("42.0", upstream_tag_to_version(u"bla-42.0", "bla"))
@@ -725,6 +753,10 @@ class TestUpstreamTagToVersion(TestCase):
 
     def test_perl(self):
         self.assertEquals("0.006019", upstream_tag_to_version("v0.006_019"))
+
+    def test_alpha(self):
+        self.assertEquals("1.4a1", upstream_tag_to_version("1.4a1", "popt"))
+        self.assertEquals("1.4a", upstream_tag_to_version("1.4a", "popt"))
 
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):
@@ -993,7 +1025,7 @@ upstream-tag = blah-%(version%~%-)s
     def test_version(self):
         self.assertEquals(
             ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
-             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3'],
+             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3', 'v.3.3'],
             self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):
@@ -1005,7 +1037,7 @@ upstream-tag = blah-%(version%~%-)s
             '3.3~brz232',
             'v3.3~brz232',
             'pkg-3.3~brz232',
-            'v/3.3~brz232'],
+            'v/3.3~brz232', 'v.3.3~brz232'],
             self.source.possible_tag_names(
                 'pkg', "3.3~brz232", component=None))
 
@@ -1091,7 +1123,7 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
     def test_version(self):
         self.assertEquals(
             ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
-             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3'],
+             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3', 'v.3.3'],
             self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):
@@ -1103,7 +1135,7 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
             '3.3~brz232',
             'v3.3~brz232',
             'pkg-3.3~brz232',
-            'v/3.3~brz232'],
+            'v/3.3~brz232', 'v.3.3~brz232'],
             self.source.possible_tag_names(
                 'pkg', "3.3~brz232", component=None))
 
