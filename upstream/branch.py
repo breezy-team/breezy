@@ -158,7 +158,7 @@ def _upstream_branch_version(
         # Assume we were just somewhere after the last release
         last_upstream = (previous_version, '+')
     else:
-        if Version(last_upstream[0]) < Version(previous_version):
+        if previous_version is not None and Version(last_upstream[0]) < Version(previous_version):
             warning(
                 'last found upstream version (%s) is lower than '
                 'previous packaged upstream version (%s)',
