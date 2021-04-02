@@ -288,7 +288,10 @@ def get_snapshot_revision(upstream_version):
         upstream branch that the snapshot was taken from, or None if it
         doesn't appear to be a snapshot.
     """
-    (kind, rev) = _get_snapshot_revision(upstream_version)
+    ret = _get_snapshot_revision(upstream_version)
+    if ret is None:
+        return None
+    (kind, rev) = ret
     if kind == 'svn':
         return "svn:%s" % rev
     elif kind == 'git':
