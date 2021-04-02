@@ -23,15 +23,13 @@ import shlex
 import subprocess
 import sys
 
-from debmutate.changelog import release as mark_for_release, ChangelogEditor
+from debmutate.changelog import release as mark_for_release, ChangelogEditor, distribution_is_unreleased
 
 from ... import osutils
 
 from .changelog import debcommit_release
 
-from .util import (
-    find_changelog,
-    )
+from .util import find_changelog
 
 
 def release(local_tree, subpath):
@@ -41,7 +39,7 @@ def release(local_tree, subpath):
 
     # TODO(jelmer): If this changelog is automatically updated,
     # insert missing entries now.
-    if changelog.distributions == "UNRELEASED":
+    if distribution_is_unreleased(changelog.distributions):
         if top_level:
             changelog_path = 'changelog'
         else:
