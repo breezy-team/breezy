@@ -826,7 +826,7 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
 
     def test_git_new_rev(self):
         self.assertEquals(
-            "1.3+git20180101.e7f47cf",
+            "1.3+git20180101.1.e7f47cf",
             upstream_version_add_revision(
                 self, "1.3", b"somegitrev"))
         self.assertEquals(

@@ -186,6 +186,8 @@ def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version)
         # Epochs are sometimes replaced by underscores, rather than by %,
         # as DEP-14 suggests.
         'debian/%s-' % mangle_version_for_git(version.replace(':', '_')),
+        # Haskell repo style
+        "%s_v%s" % (package, version),
         ]
     if package:
         candidate_tag_start.append('debian-%s-%s' % (package, version))

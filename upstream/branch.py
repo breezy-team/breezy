@@ -25,7 +25,10 @@ import subprocess
 import tempfile
 from typing import Optional, Tuple
 
-from debmutate.versions import git_snapshot_data_from_version
+from debmutate.versions import (
+    git_snapshot_data_from_version,
+    get_snapshot_revision as _get_snapshot_revision,
+    )
 
 from .... import osutils
 from ....branch import (
@@ -208,6 +211,7 @@ def extract_svn_revno(rev):
             return svn_revno
 
 
+# TODO(jelmer): Rely on version from debmutate
 def upstream_version_add_revision(
         upstream_branch, version_string, revid, sep='+'):
     """Update the revision in a upstream version string.
@@ -263,7 +267,7 @@ def upstream_version_add_revision(
     if svn_revno:
         return "%s%ssvn%d" % (version_string, sep, svn_revno)
     elif gitid:
-        return "%s%sgit%s.%s" % (version_string, sep, gitdate, gitid)
+        return "%s%sgit%s.1.%s" % (version_string, sep, gitdate, gitid)
     else:
         return "%s%sbzr%s" % (version_string, sep, revno_str)
 
@@ -284,19 +288,17 @@ def get_snapshot_revision(upstream_version):
         upstream branch that the snapshot was taken from, or None if it
         doesn't appear to be a snapshot.
     """
-    match = re.search("(?:~|\\+)bzr([0-9]+)$", upstream_version)
-    if match is not None:
-        return match.groups()[0]
-    match = re.search("(?:~|\\+)svn([0-9]+)$", upstream_version)
-    if match is not None:
-        return "svn:%s" % match.groups()[0]
-    match = re.match(r"^(.*)([\+~])git(\d{8})\.([a-f0-9]{7})$",
-                     upstream_version)
-    if match:
-        return "git:%s" % match.group(4)
-    match = re.match(r"^(.*)([\+~])git(\d{8})$", upstream_version)
-    if match:
-        return "date:%s" % match.group(3)
+    (kind, rev) = _get_snapshot_revision(upstream_version)
+    if kind == 'svn':
+        return "svn:%s" % rev
+    elif kind == 'git':
+        return "git:%s" % rev
+    elif kind == 'date':
+        return 'date:%s' % rev
+    elif kind == 'bzr':
+        return str(rev)
+    else:
+        raise ValueError(kind)
     return None
 
 
