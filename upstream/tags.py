@@ -32,40 +32,6 @@ from ....errors import (
 from debmutate.versions import mangle_version_for_git
 
 
-class GbpTagFormatError(BzrError):
-    _fmt = 'Unknown variable %(variable)s in tag %(tag_name)s.'
-
-    def __init__(self, tag_name, variable):
-        self.variable = variable
-        self.tag_name = tag_name
-
-
-def gbp_expand_tag_name(tag_format, version):
-    version = str(version)
-    # See gbp/pkg/pkgpolicy.py in gbp-buildpackage
-    version_mangle_re = (
-        r'%\(version'
-        r'%(?P<M>[^%])'
-        r'%(?P<R>([^%]|\\%))+'
-        r'\)s')
-
-    ret = tag_format
-    m = re.search(version_mangle_re, tag_format)
-    if m:
-        ret = re.sub(version_mangle_re, "%(version)s", tag_format)
-        version = version.replace(
-            m.group('M'), m.group('R').replace(r'\%', '%'))
-
-    vars = {
-        'version': version,
-        'hversion': version.replace('.', '-'),
-        }
-    try:
-        return ret % vars
-    except KeyError as e:
-        raise GbpTagFormatError(tag_format, e.args[0])
-
-
 def upstream_tag_name(version, component=None, distro=None, git_style=False):
     if git_style:
         # In git, the convention is to use a slash
