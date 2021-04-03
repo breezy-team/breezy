@@ -582,7 +582,7 @@ class UpstreamBranchSource(UpstreamSource):
                         since_revision, revision):
                     continue
                 versions.append(version)
-        return sorted(versions)
+        return sorted(versions, key=Version)
 
     def get_version(self, package, current_version, revision):
         with self.upstream_branch.lock_read():

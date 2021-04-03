@@ -463,15 +463,15 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("1.0", revid1)
         revid2 = self.tree.commit("msg")
-        self.tree.branch.tags.set_tag("2.1", revid2)
+        self.tree.branch.tags.set_tag("2.9", revid2)
         source = UpstreamBranchSource(
             self.tree.branch,
-            {"2.1": self.tree.branch.last_revision().decode('utf-8')})
-        self.assertEquals(["2.1"], source.get_recent_versions("foo", "1.0"))
+            {"2.9": self.tree.branch.last_revision().decode('utf-8')})
+        self.assertEquals(["2.9"], source.get_recent_versions("foo", "1.0"))
         revid2 = self.tree.commit("msg")
-        self.tree.branch.tags.set_tag('2.2', revid2)
+        self.tree.branch.tags.set_tag('2.10', revid2)
         self.assertEquals(
-            ["2.1", "2.2"],
+            ["2.9", "2.10"],
             source.get_recent_versions("foo", "1.0"))
 
     def test_get_recent_versions_previous_missing(self):
