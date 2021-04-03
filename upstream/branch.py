@@ -365,12 +365,16 @@ def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
     if version.endswith('+ds'):
         version = str(version)[:-len('+ds')]
+    is_snapshot = False
     if "+bzr" in version or "~bzr" in version:
+        is_snapshot = True
         yield "revno:%s" % re.match(".*[~+]bzr(\\d+).*", version).group(1)
     (git_id, git_date) = git_snapshot_data_from_version(version)
     if git_id:
+        is_snapshot = True
         yield "git:%s" % git_id
     if git_date:
+        is_snapshot = True
         yield "date:%s" % git_date
     yield 'tag:%s' % version
     if package:
@@ -378,8 +382,10 @@ def guess_upstream_revspec(package, version):
             if package.startswith(prefix):
                 yield 'tag:%s-%s' % (package[len(prefix):], version)
         yield 'tag:%s-%s' % (package, version)
-    yield 'tag:v%s' % version
-    yield 'tag:v.%s' % version
+    if not is_snapshot:
+        yield 'tag:v%s' % version
+        yield 'tag:v.%s' % version
+        yield 'tag:release-%s' % version
 
 
 try:
@@ -590,7 +596,7 @@ class UpstreamBranchSource(UpstreamSource):
             # Multiple components are not supported
             raise PackageVersionNotPresent(package, version, self)
         note("Looking for upstream %s/%s in upstream branch %r.",
-             package, version, self._actual_branch)
+             package, version, getattr(self, '_actual_branch', self.upstream_branch))
         with self.upstream_branch.lock_read():
             if revisions is not None:
                 revid = revisions[None]
