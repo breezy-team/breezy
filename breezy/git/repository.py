@@ -17,6 +17,8 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
+from io import BytesIO
+
 from .. import (
     check,
     errors,
@@ -257,6 +259,11 @@ class LocalGitRepository(GitRepository):
             revision_id, lossy)
         self.start_write_group()
         return builder
+
+    def _write_git_config(self, cs):
+        f = BytesIO()
+        cs.write_to_file(f)
+        self._git._put_named_file('config', f.getvalue())
 
     def get_file_graph(self):
         return _mod_graph.Graph(GitFileParentProvider(

@@ -233,13 +233,13 @@ class GitDir(ControlDir):
         from ..repository import InterRepository
         from .mapping import default_mapping
         from ..transport.local import LocalTransport
-        if stacked_on is not None:
-            raise _mod_branch.UnstackableBranchFormat(
-                self._format, self.user_url)
+        from .refs import is_peeled
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:
             format = LocalGitControlDirFormat()
+        if stacked_on is not None:
+            raise _mod_branch.UnstackableBranchFormat(format, self.user_url)
         (target_repo, target_controldir, stacking,
          repo_policy) = format.initialize_on_transport_ex(
             transport, use_existing_dir=use_existing_dir,
@@ -257,10 +257,21 @@ class GitDir(ControlDir):
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
         for name, val in refs.items():
-            target_git_repo.refs[name] = val
+            if is_peeled(name):
+                continue
+            if val in target_git_repo.object_store:
+                target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
+        result_branch = result_dir.open_branch()
+        try:
+            parent = self.open_branch().get_parent()
+        except brz_errors.InaccessibleParent:
+            pass
+        else:
+            if parent:
+                result_branch.set_parent(parent)
         if revision_id is not None:
-            result_dir.open_branch().set_last_revision(revision_id)
+            result_branch.set_last_revision(revision_id)
         if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
                 try:

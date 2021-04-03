@@ -205,6 +205,16 @@ class ParseHangupTests(TestCase):
                     [b'=======',
                      b'You are not allowed to push code to this project.', b'', b'======'])))
 
+    def test_notbrancherror_yet(self):
+        self.assertEqual(
+            NotBranchError('http://', 'A repository for this project does not exist yet.'),
+            parse_git_hangup(
+                'http://',
+                HangupException(
+                    [b'=======',
+                     b'',
+                     b'A repository for this project does not exist yet.', b'', b'======'])))
+
 
 class TestRemoteGitBranchFormat(TestCase):
 
