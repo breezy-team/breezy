@@ -521,6 +521,10 @@ class UpstreamBranchSource(UpstreamSource):
                 raise PackageVersionNotPresent(package, version, self)
         raise PackageVersionNotPresent(package, version, self)
 
+    def revision_tree(self, package, version):
+        revid = self.version_as_revision(package, version)
+        return self.upstream_branch.repository.revision_tree(revid)
+
     def version_as_revisions(self, package, version, tarballs=None):
         # FIXME: Support multiple upstream locations if there are multiple
         # components
@@ -586,7 +590,7 @@ class UpstreamBranchSource(UpstreamSource):
             # Multiple components are not supported
             raise PackageVersionNotPresent(package, version, self)
         note("Looking for upstream %s/%s in upstream branch %r.",
-             package, version, self.upstream_branch)
+             package, version, self._actual_branch)
         with self.upstream_branch.lock_read():
             if revisions is not None:
                 revid = revisions[None]
