@@ -201,6 +201,8 @@ def parse_git_error(url, message):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
         return NotBranchError(url, message)
+    if message == 'A repository for this project does not exist yet.':
+        return NotBranchError(url, message)
     if message == 'pre-receive hook declined':
         return PermissionDenied(url, message)
     if re.match('(.+) is not a valid repository name',
@@ -384,7 +386,7 @@ class DefaultProgressReporter(object):
 
     def progress(self, text):
         text = text.rstrip(b"\r\n")
-        text = text.decode('utf-8')
+        text = text.decode('utf-8', 'surrogateescape')
         if text.lower().startswith('error: '):
             trace.show_error('git: %s', text[len(b'error: '):])
         else:
@@ -499,7 +501,7 @@ class RemoteGitDir(GitDir):
             raise AlreadyBranchError(self.user_url)
         ref_chain, unused_sha = self.get_refs_container().follow(
             self._get_selected_ref(name))
-        if ref_chain and ref_chain[0] == b'HEAD':
+        if ref_chain and ref_chain[0] == b'HEAD' and len(ref_chain) > 1:
             refname = ref_chain[1]
         repo = self.open_repository()
         return RemoteGitBranch(self, repo, refname)
