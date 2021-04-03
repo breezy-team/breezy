@@ -386,6 +386,8 @@ def guess_upstream_revspec(package, version):
         yield 'tag:v%s' % version
         yield 'tag:v.%s' % version
         yield 'tag:release-%s' % version
+        yield 'tag:%s_release' % version.replace('.', '_')
+        yield 'tag:%s' % version.replace('.', '_')
 
 
 try:
