@@ -86,6 +86,8 @@ def upstream_tag_to_version(tag_name, package=None):
         tag_name = tag_name[:-len('-release')]
     if tag_name.startswith("release-"):
         tag_name = tag_name[len("release-"):]
+    if tag_name.startswith('version-'):
+        tag_name = tag_name[len("version-"):]
     if tag_name[0] == "v" and tag_name[1].isdigit():
         tag_name = tag_name[1:]
     if tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
@@ -388,6 +390,7 @@ def guess_upstream_revspec(package, version):
         yield 'tag:release-%s' % version
         yield 'tag:%s_release' % version.replace('.', '_')
         yield 'tag:%s' % version.replace('.', '_')
+        yield 'tag:version-%s' % version
 
 
 try:

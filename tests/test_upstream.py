@@ -387,12 +387,12 @@ class GuessUpstreamRevspecTests(TestCase):
 
     def test_guess_upstream_revspec(self):
         self.assertEqual(
-                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2', u'tag:v.1.2', 'tag:release-1.2', 'tag:1_2_release', 'tag:1_2'],
+                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2', u'tag:v.1.2', 'tag:release-1.2', 'tag:1_2_release', 'tag:1_2', 'tag:version-1.2'],
                 list(guess_upstream_revspec('foo', '1.2')))
 
     def test_guess_upstream_revspec_ds(self):
         self.assertEqual(
-                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2', u'tag:v.1.2', 'tag:release-1.2', 'tag:1_2_release', 'tag:1_2'],
+                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2', u'tag:v.1.2', 'tag:release-1.2', 'tag:1_2_release', 'tag:1_2', 'tag:version-1.2'],
                 list(guess_upstream_revspec('foo', '1.2+ds')))
 
     def test_snapshot(self):
