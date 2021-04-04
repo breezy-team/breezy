@@ -74,7 +74,7 @@ def changelog_commit_message(
     return ''.join(strip_changelog_message(changes))
 
 
-def debcommit(tree, committer=None, subpath="", paths=None):
+def debcommit(tree, committer=None, subpath="", paths=None, reporter=None):
     message = changelog_commit_message(
         tree, tree.basis_tree(),
         path=posixpath.join(subpath, "debian/changelog")
@@ -86,7 +86,8 @@ def debcommit(tree, committer=None, subpath="", paths=None):
     else:
         specific_files = None
     tree.commit(
-        committer=committer, message=message, specific_files=specific_files)
+        committer=committer, message=message, specific_files=specific_files,
+        reporter=reporter)
 
 
 def debcommit_release(tree, committer=None, subpath="", message=None):

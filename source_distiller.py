@@ -195,6 +195,14 @@ class DebcargoError(bzr_errors.BzrError):
     _fmt = "Debcargo failed to run."
 
 
+def cargo_translate_dashes(crate):
+    output = subprocess.check_output(['cargo', 'search', crate])
+    for line in output.splitlines(False):
+        name = line.split(b' = ')[0].decode()
+        return name
+    return crate
+
+
 class DebcargoDistiller(SourceDistiller):
     """A SourceDistiller for unpacking a debcargo package."""
 
@@ -246,6 +254,8 @@ class DebcargoDistiller(SourceDistiller):
             semver_suffix = debcargo.get('semver_suffix')
         crate, crate_semver_version = parse_debcargo_source_name(
             package, semver_suffix)
+        if '-' in crate:
+            crate = cargo_translate_dashes(crate)
         crate_version = version.upstream_version
         if crate_semver_version is not None:
             note('Using crate name: %s, version %s (semver: %s)', crate,
