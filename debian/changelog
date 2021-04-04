@@ -1,9 +1,9 @@
-breezy-debian (2.8.59) UNRELEASED; urgency=medium
+breezy-debian (2.8.59) unstable; urgency=medium
 
   * Improve snapshot revision creation a bit more.
   * Fix upstream version sorting.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 30 Mar 2021 22:41:27 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 04 Apr 2021 02:30:45 +0100
 
 breezy-debian (2.8.58) unstable; urgency=medium
 
