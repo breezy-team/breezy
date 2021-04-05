@@ -88,9 +88,9 @@ def upstream_tag_to_version(tag_name, package=None):
         tag_name = tag_name[len("release-"):]
     if tag_name.startswith('version-'):
         tag_name = tag_name[len("version-"):]
-    if tag_name[0] == "v" and tag_name[1].isdigit():
+    if len(tag_name) >= 2 and tag_name[0] == "v" and tag_name[1].isdigit():
         tag_name = tag_name[1:]
-    if tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
+    if len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
         tag_name = tag_name[2:]
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
