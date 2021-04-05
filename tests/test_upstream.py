@@ -1001,7 +1001,7 @@ upstream-tag = blah-%(version%~%-)s
         self.source = GitPristineTarSource.from_tree(self.tree)
         self.assertEqual(
             self.source.tag_name("0.1~1"),
-            "blah-0.1-1")
+            "blah-0.1_1")
 
     def test_upstream_tag_name(self):
         upstream_v_no = "0.1"
