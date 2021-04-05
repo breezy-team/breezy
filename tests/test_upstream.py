@@ -1035,7 +1035,7 @@ upstream-tag = blah-%(version%~%-)s
 
     def test_version_component(self):
         self.assertEquals([
-            'upstream-3.3/extlib'],
+            'upstream-3.3/extlib', 'upstream/3.3/extlib'],
             self.source.possible_tag_names('pkg', "3.3", component="extlib"))
 
     def test_version_as_revisions_missing(self):
@@ -1133,7 +1133,7 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
 
     def test_version_component(self):
         self.assertEquals([
-            'upstream-3.3/extlib'],
+            'upstream-3.3/extlib', 'upstream/3.3/extlib'],
             self.source.possible_tag_names('pkg', "3.3", component="extlib"))
 
     def test_version_as_revisions_missing(self):

@@ -32,23 +32,6 @@ from ....errors import (
 from debmutate.versions import mangle_version_for_git
 
 
-def upstream_tag_name(version, component=None, distro=None, git_style=False):
-    if git_style:
-        # In git, the convention is to use a slash
-        if distro is None:
-            name = "upstream/" + mangle_version_for_git(version)
-        else:
-            name = "upstream-%s/%s" % (distro, version.replace('~', '_'))
-    else:
-        if distro is None:
-            name = "upstream-" + version
-        else:
-            name = "upstream-%s-%s" % (distro, version)
-    if component is not None:
-        name += "/%s" % component
-    return name
-
-
 def possible_upstream_tag_names(package: Optional[str], version: Version, component: Optional[str] = None):
     tags = []
     if component is None:
@@ -72,7 +55,8 @@ def possible_upstream_tag_names(package: Optional[str], version: Version, compon
         tags.append("v/%s" % version)
         tags.append("v.%s" % version)
     else:
-        tags.append(upstream_tag_name(version, component))
+        tags.append('upstream-%s/%s' % (version, component))
+        tags.append('upstream/%s/%s' % (mangle_version_for_git(version), component))
     return tags
 
 

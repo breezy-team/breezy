@@ -72,7 +72,6 @@ from .branch import (
     RevisionSpec,
     )
 from .tags import (
-    upstream_tag_name,
     is_upstream_tag,
     possible_upstream_tag_names,
     search_for_upstream_version,
@@ -421,7 +420,13 @@ class BzrPristineTarSource(BasePristineTarSource):
         :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
-        return upstream_tag_name(version, component, distro, False)
+        if distro is None:
+            name = "upstream-" + version
+        else:
+            name = "upstream-%s-%s" % (distro, version)
+        if component is not None:
+            name += "/%s" % component
+        return name
 
     def import_component_tarball(
             self, package, version, tree, parent_ids,
@@ -725,7 +730,14 @@ class GitPristineTarSource(BasePristineTarSource):
         """
         if self.gbp_tag_format is not None:
             return gbp_expand_tag_name(self.gbp_tag_format, version)
-        return upstream_tag_name(version, component, distro, True)
+        # In git, the convention is to use a slash
+        if distro is None:
+            name = "upstream/" + mangle_version_for_git(version)
+        else:
+            name = "upstream-%s/%s" % (distro, mangle_version_for_git(version))
+        if component is not None:
+            name += "/%s" % component
+        return name
 
     def import_component_tarball(
             self, package, version, tree, parent_ids,
