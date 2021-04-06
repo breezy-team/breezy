@@ -20,7 +20,7 @@
 from __future__ import absolute_import
 
 from . import config as _mod_config, errors, osutils
-from .branch import Branch
+from .branch import Branch, BranchWriteLockResult
 from .lock import LogicalLockResult, _RelockDebugMixin
 from .revision import NULL_REVISION
 from .tag import DisabledTags, MemoryTags
@@ -42,6 +42,9 @@ class MemoryBranch(Branch, _RelockDebugMixin):
         self._partial_revision_id_to_revno_cache = {}
         self.base = 'memory://' + osutils.rand_chars(10)
 
+    def __repr__(self):
+        return "<MemoryBranch()>"
+
     def get_config(self):
         return _mod_config.Config()
 
@@ -62,7 +65,6 @@ class MemoryBranch(Branch, _RelockDebugMixin):
     def _gen_revision_history(self):
         """Generate the revision history from last revision
         """
-        last_revno, last_revision = self.last_revision_info()
         with self.lock_read():
             self._extend_partial_history()
             return list(reversed(self._partial_revision_history_cache))
