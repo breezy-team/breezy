@@ -729,7 +729,7 @@ class GitPristineTarSource(BasePristineTarSource):
         :return: a String with the name of the tag.
         """
         if self.gbp_tag_format is not None:
-            return gbp_expand_tag_name(self.gbp_tag_format, version)
+            return gbp_expand_tag_name(self.gbp_tag_format, mangle_version_for_git(version))
         # In git, the convention is to use a slash
         if distro is None:
             name = "upstream/" + mangle_version_for_git(version)
@@ -880,7 +880,7 @@ class GitPristineTarSource(BasePristineTarSource):
     def possible_tag_names(self, package: Optional[str], version: Version, component: Optional[str]):
         tags = []
         if self.gbp_tag_format:
-            tags.append(gbp_expand_tag_name(self.gbp_tag_format, version))
+            tags.append(gbp_expand_tag_name(self.gbp_tag_format, mangle_version_for_git(version)))
 
         tags.extend(possible_upstream_tag_names(package, version, component))
 
