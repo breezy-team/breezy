@@ -52,6 +52,9 @@ class MemoryBranch(Branch, _RelockDebugMixin):
         self.repository.lock_read()
         return LogicalLockResult(self.unlock)
 
+    def is_locked(self):
+        return self.repository.is_locked()
+
     def lock_write(self, token=None):
         self.repository.lock_write()
         return BranchWriteLockResult(self.unlock, None)
@@ -89,3 +92,14 @@ class MemoryBranch(Branch, _RelockDebugMixin):
                         distance_from_last:
                     self._extend_partial_history(distance_from_last)
                 return self._partial_revision_history_cache[distance_from_last]
+
+    def get_config_stack(self):
+        """Get a breezy.config.BranchStack for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A breezy.config.BranchStack.
+        """
+        gstore = _mod_config.GlobalStore()
+        return _mod_config.Stack([_mod_config.NameMatcher(gstore, 'DEFAULT').get_sections])
