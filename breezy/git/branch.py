@@ -461,10 +461,10 @@ class GitBranch(ForeignBranch):
         except ValueError:
             self.name = None
             if self.ref is not None:
-                params = {"ref": urlutils.escape(self.ref)}
+                params = {"ref": urlutils.escape(self.ref, safe='')}
         else:
             if self.name != "":
-                params = {"branch": urlutils.escape(self.name)}
+                params = {"branch": urlutils.escape(self.name, safe='')}
         for k, v in params.items():
             self._user_transport.set_segment_parameter(k, v)
             self._control_transport.set_segment_parameter(k, v)
