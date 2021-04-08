@@ -474,8 +474,6 @@ class BzrPristineTarSource(BasePristineTarSource):
         if md5 is not None:
             if supports_custom_revprops:
                 revprops["deb-md5"] = md5
-            else:
-                message += ", md5 %s" % md5
             delta = make_pristine_tar_delta_from_tree(
                 tree, tarball, subdir=subdir, exclude=exclude)
             if supports_custom_revprops:
@@ -778,8 +776,6 @@ class GitPristineTarSource(BasePristineTarSource):
         revprops = {}
         if component is not None:
             message += ", component %s" % component
-        if md5 is not None:
-            message += ", md5 %s" % md5
         if author is not None:
             revprops['authors'] = author
         timezone = None
