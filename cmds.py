@@ -45,7 +45,7 @@ from ...errors import (
     NoWorkingTree,
     )
 from ...option import Option
-from ...trace import mutter, note
+from ...trace import mutter, note, warning
 from ...transport import get_transport
 from ...workingtree import WorkingTree
 
@@ -736,12 +736,17 @@ class cmd_merge_upstream(Command):
         help='Command to run for creating an upstream tarball from a '
         'VCS snapshot.')
 
+    guess_upstream_branch_url_opt = Option(
+        'guess-upstream-branch-url', help=(
+            'Guess upstream branch URL if unknown '
+            '(requires upstream-ontologist)'))
+
     takes_options = [
         package_opt, version_opt,
         distribution_opt, directory_opt, last_version_opt,
         force_opt, 'revision', 'merge-type',
         snapshot_opt, launchpad_opt, force_pristine_tar_opt,
-        dist_command_opt]
+        dist_command_opt, guess_upstream_branch_url_opt]
 
     def run(self, location: Optional[str] = None,
             upstream_branch: Optional[str] = None,
@@ -751,7 +756,8 @@ class cmd_merge_upstream(Command):
             last_version: Optional[str] = None,
             force: Optional[bool] = None, snapshot: bool = False,
             launchpad: bool = False, force_pristine_tar: bool = False,
-            dist_command: Optional[str] = None):
+            dist_command: Optional[str] = None,
+            guess_upstream_branch_url: bool = False):
         from debian.changelog import Version
 
         from .hooks import run_hook
@@ -833,8 +839,27 @@ class cmd_merge_upstream(Command):
                 note(gettext("Using upstream branch %s (from configuration)"),
                      config.upstream_branch)
                 upstream_branch = Branch.open(config.upstream_branch)
-            else:
-                upstream_branch = None
+            elif upstream_branch is None and guess_upstream_branch_url:
+                try:
+                    from upstream_ontologist.guess import (
+                        guess_upstream_metadata,
+                        )
+                except ModuleNotFoundError:
+                    warning(
+                        'upstream-ontologist not available, '
+                        'not guess upstream branch URL')
+                    upstream_branch = None
+                else:
+                    guessed_upstream_metadata = guess_upstream_metadata(
+                        tree.abspath(subpath), trust_package=False,
+                        net_access=True, consult_external_directory=False)
+                    guessed_repo = guessed_upstream_metadata.get('Repository')
+                    if guessed_repo:
+                        note('Opening upstream-ontologist provided branch %s',
+                             guessed_repo)
+                        upstream_branch = Branch.open(guessed_repo)
+                    else:
+                        upstream_branch = None
 
             if dist_command:
                 def create_dist(tree, package, version, target_dir):

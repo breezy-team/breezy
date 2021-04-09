@@ -88,14 +88,14 @@ def upstream_tag_to_version(tag_name, package=None):
         tag_name = tag_name[len("release-"):]
     if tag_name.startswith('version-'):
         tag_name = tag_name[len("version-"):]
-    if len(tag_name) >= 2 and tag_name[0] == "v" and tag_name[1].isdigit():
-        tag_name = tag_name[1:]
-    if len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
-        tag_name = tag_name[2:]
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
           tag_name.startswith("%s_" % package))):
         tag_name = tag_name[len(package)+1:]
+    if len(tag_name) >= 2 and tag_name[0] == "v" and tag_name[1].isdigit():
+        tag_name = tag_name[1:]
+    if len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
+        tag_name = tag_name[2:]
     if '_' in tag_name and '.' not in tag_name:
         tag_name = tag_name.replace('_', '.')
     if tag_name.count('_') == 1 and tag_name.startswith('0.'):
@@ -393,6 +393,9 @@ def guess_upstream_revspec(package, version):
         yield 'tag:%s_release' % version.replace('.', '_')
         yield 'tag:%s' % version.replace('.', '_')
         yield 'tag:version-%s' % version
+        if package:
+            yield 'tag:%s-%s-release' % (package, version.replace('.', '_'))
+            yield 'tag:%s-v%s' % (package, version)
 
 
 try:
@@ -562,7 +565,7 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             versions = list(self.get_recent_versions(package, current_version))
             if not versions:
-                return None
+                return current_version
             return versions[-1]
 
     def get_recent_versions(
