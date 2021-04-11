@@ -1498,7 +1498,7 @@ class GitTransformPreview(GitTreeTransform):
 
     def __init__(self, tree, pb=None, case_sensitive=True):
         tree.lock_read()
-        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
+        limbodir = osutils.mkdtemp(prefix='git-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):

@@ -286,11 +286,11 @@ class GitHub(Hoster):
                 headers=headers, body=body, retries=3)
         except UnexpectedHttpStatus as e:
             if e.code == 401:
-                raise GitHubLoginRequired(self)
+                raise GitHubLoginRequired(self.base_url)
             else:
                 raise
         if response.status == 401:
-            raise GitHubLoginRequired(self)
+            raise GitHubLoginRequired(self.base_url)
         return response
 
     def _get_repo(self, owner, repo):

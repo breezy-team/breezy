@@ -166,7 +166,8 @@ class GitDir(ControlDir):
             result = ControlDir.open_from_transport(target_transport)
         except brz_errors.NotBranchError:
             result = cloning_format.initialize_on_transport(target_transport)
-        source_branch = self.open_branch()
+        if source_branch is None:
+            source_branch = self.open_branch()
         source_repository = self.find_repository()
         try:
             result_repo = result.find_repository()
@@ -238,6 +239,7 @@ class GitDir(ControlDir):
         from ..repository import InterRepository
         from .mapping import default_mapping
         from ..transport.local import LocalTransport
+        from .refs import is_peeled
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:
@@ -261,7 +263,10 @@ class GitDir(ControlDir):
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
         for name, val in viewitems(refs):
-            target_git_repo.refs[name] = val
+            if is_peeled(name):
+                continue
+            if val in target_git_repo.object_store:
+                target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
         result_branch = result_dir.open_branch()
         try:
@@ -640,7 +645,12 @@ class LocalGitDir(GitDir):
         if not nascent_ok and ref not in self._git.refs:
             raise brz_errors.NotBranchError(
                 self.root_transport.base, controldir=self)
-        ref_chain, unused_sha = self._git.refs.follow(ref)
+        try:
+            ref_chain, unused_sha = self._git.refs.follow(ref)
+        except KeyError as e:
+            raise brz_errors.NotBranchError(
+                self.root_transport.base, controldir=self,
+                detail='intermediate ref %s missing' % e.args[0])
         if ref_chain[-1] == b'HEAD':
             controldir = self
         else:

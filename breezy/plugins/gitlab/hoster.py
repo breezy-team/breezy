@@ -45,6 +45,7 @@ from ...propose import (
     PrerequisiteBranchUnsupported,
     SourceNotDerivedFromTarget,
     UnsupportedHoster,
+    HosterLoginRequired,
     )
 
 
@@ -79,13 +80,24 @@ class NotMergeRequestUrl(errors.BzrError):
         self.url = url
 
 
+class GitLabError(errors.BzrError):
+
+    _fmt = "GitLab error: %(error)s"
+
+    def __init__(self, error, full_response):
+        errors.BzrError.__init__(self)
+        self.error = error
+        self.full_response = full_response
+
+
 class GitLabUnprocessable(errors.BzrError):
 
     _fmt = "GitLab can not process request: %(error)s."
 
-    def __init__(self, error):
+    def __init__(self, error, full_response):
         errors.BzrError.__init__(self)
         self.error = error
+        self.full_response = full_response
 
 
 class DifferentGitLabInstances(errors.BzrError):
@@ -98,9 +110,9 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-class GitLabLoginMissing(errors.BzrError):
+class GitLabLoginMissing(HosterLoginRequired):
 
-    _fmt = ("Please log into GitLab")
+    _fmt = ("Please log into GitLab instance at %(hoster)s")
 
 
 class GitlabLoginError(errors.BzrError):
@@ -421,8 +433,24 @@ class GitLab(Hoster):
         _unexpected_status(path, response)
 
     def create_project(self, project_name):
-        fields = {'name': project_name}
+        if project_name.endswith('.git'):
+            project_name = project_name[:-4]
+        if '/' in project_name:
+            namespace, path = project_name.rsplit('/', 1)
+        else:
+            namespace = None
+            path = project_name
+        fields = {
+            'path': path,
+            'name': path.replace('-', '_'),
+            'namespace_path': namespace,
+            }
         response = self._api_request('POST', 'projects', fields=fields)
+        if response.status == 400:
+            ret = json.loads(response.data)
+            if ret.get("message", {}).get("path") == ["has already been taken"]:
+                raise errors.AlreadyControlDirError(project_name)
+            raise
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status not in (200, 201):
@@ -561,13 +589,15 @@ class GitLab(Hoster):
         if labels:
             fields['labels'] = labels
         response = self._api_request('POST', path, fields=fields)
+        if response.status == 400:
+            raise GitLabError(data.get('message'), data)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get('message'))
         if response.status == 422:
             data = json.loads(response.data)
-            raise GitLabUnprocessable(data['error'])
+            raise GitLabUnprocessable(data.get('error'), data)
         if response.status != 201:
             _unexpected_status(path, response)
         return json.loads(response.data)
@@ -664,13 +694,18 @@ class GitLab(Hoster):
         return self.base_hostname == host
 
     def check(self):
-        response = self._api_request('GET', 'user')
+        try:
+            response = self._api_request('GET', 'user')
+        except errors.UnexpectedHttpStatus as e:
+            if e.code == 401:
+                raise GitLabLoginMissing(self.base_url)
+            raise
         if response.status == 200:
             self._current_user = json.loads(response.data)
             return
         if response.status == 401:
             if json.loads(response.data) == {"message": "401 Unauthorized"}:
-                raise GitLabLoginMissing()
+                raise GitLabLoginMissing(self.base_url)
             else:
                 raise GitlabLoginError(response.text)
         raise UnsupportedHoster(self.base_url)
@@ -686,7 +721,17 @@ class GitLab(Hoster):
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
             return cls(transport, credentials.get('private_token'))
-        raise UnsupportedHoster(url)
+        try:
+            resp = transport.request(
+                'GET', 'https://%s/api/v4/projects/%s' % (host, urlutils.quote(str(project), '')))
+        except errors.UnexpectedHttpStatus as e:
+            raise UnsupportedHoster(url)
+        else:
+            if not resp.getheader('X-Gitlab-Feature-Category'):
+                raise UnsupportedHoster(url)
+            if resp.status in (200, 401):
+                raise GitLabLoginMissing('https://%s/' % host)
+            raise UnsupportedHoster(url)
 
     @classmethod
     def iter_instances(cls):
@@ -811,6 +856,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
                     "Source project is not a fork of the target project"]:
                 raise SourceNotDerivedFromTarget(
                     self.source_branch, self.target_branch)
+            raise
         return GitLabMergeProposal(self.gl, merge_request)
 
 
