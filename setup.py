@@ -73,7 +73,7 @@ META_INFO = {
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
-        'fastimport': ['fastimport<0.9.9;python_version<"3.0"', 'fastimport'],
+        'fastimport': ['fastimport<0.9.9;python_version<"3.0"', 'fastimport;python_version>="3.5"'],
         'git': ['dulwich'],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
