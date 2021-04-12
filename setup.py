@@ -73,8 +73,8 @@ META_INFO = {
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
-        'fastimport': ['fastimport'],
-        'git': [],
+        'fastimport': ['fastimport<0.9.8;python_version<"3.0"', 'fastimport;python_version>="3.5"'],
+        'git': ['dulwich'],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
         'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
