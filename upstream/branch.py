@@ -169,7 +169,9 @@ def _upstream_branch_version(
                     'last found upstream version (%s) is lower than '
                     'previous packaged upstream version (%s)',
                     last_upstream[0], previous_version)
-            last_upstream = (previous_version, '~')
+                last_upstream = (previous_version, '+')
+            else:
+                last_upstream = (previous_version, '~')
     return add_rev(last_upstream[0], upstream_revision, last_upstream[1])
 
 
@@ -586,6 +588,7 @@ class UpstreamBranchSource(UpstreamSource):
                 version = upstream_tag_to_version(tag, package)
                 if version is None:
                     continue
+                self.upstream_revision_map[version] = 'tag:%s' % tag
                 if since_version is not None and version <= since_version:
                     continue
                 if since_revision and not graph.is_ancestor(

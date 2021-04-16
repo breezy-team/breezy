@@ -459,6 +459,13 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
 
+    def test_get_latest_version_irreversible_version(self):
+        self.tree.commit("msg")
+        revid2 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("0.01_01", revid2)
+        source = UpstreamBranchSource(self.tree.branch, {}, snapshot=False)
+        self.assertEquals("0.0101", source.get_latest_version("foo", None))
+
     def test_get_recent_versions(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("1.0", revid1)
