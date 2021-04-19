@@ -371,6 +371,8 @@ def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
     if version.endswith('+ds'):
         version = str(version)[:-len('+ds')]
+    if version.endswith('+dfsg'):
+        version = str(version)[:-len('+dfsg')]
     is_snapshot = False
     if "+bzr" in version or "~bzr" in version:
         is_snapshot = True
