@@ -476,7 +476,7 @@ class UpstreamBranchSource(UpstreamSource):
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
                  config=None, actual_branch=None, create_dist=None,
-                 other_repository=None, version_kind="snapshot"):
+                 other_repository=None, version_kind="auto"):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
         self.create_dist = create_dist
@@ -490,7 +490,7 @@ class UpstreamBranchSource(UpstreamSource):
     @classmethod
     def from_branch(cls, upstream_branch, upstream_revision_map=None,
                     config=None, local_dir=None, create_dist=None,
-                    version_kind="snapshot"):
+                    version_kind="auto"):
         """Create a new upstream branch source from a branch.
 
         This will optionally fetch into a local directory.
