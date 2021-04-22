@@ -476,12 +476,12 @@ class UpstreamBranchSource(UpstreamSource):
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
                  config=None, actual_branch=None, create_dist=None,
-                 other_repository=None, snapshot=True):
+                 other_repository=None, version_kind="snapshot"):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
         self.create_dist = create_dist
         self.config = config
-        self.snapshot = snapshot
+        self.version_kind = version_kind
         self.other_repository = other_repository
         self.upstream_revision_map = {}
         if upstream_revision_map is not None:
@@ -490,7 +490,7 @@ class UpstreamBranchSource(UpstreamSource):
     @classmethod
     def from_branch(cls, upstream_branch, upstream_revision_map=None,
                     config=None, local_dir=None, create_dist=None,
-                    snapshot=True):
+                    version_kind="snapshot"):
         """Create a new upstream branch source from a branch.
 
         This will optionally fetch into a local directory.
@@ -514,7 +514,7 @@ class UpstreamBranchSource(UpstreamSource):
             upstream_branch=upstream_branch,
             upstream_revision_map=upstream_revision_map, config=config,
             actual_branch=actual_branch, create_dist=create_dist,
-            snapshot=snapshot)
+            version_kind=version_kind)
 
     def version_as_revision(self, package, version, tarballs=None):
         if version in self.upstream_revision_map:
@@ -560,17 +560,31 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             return True
 
+    def get_latest_snapshot_version(self, package, current_version):
+        revid = self.upstream_branch.last_revision()
+        version = self.get_version(package, current_version, revid)
+        self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
+        return version
+
+    def get_latest_release_version(self, package, current_version):
+        versions = list(self.get_recent_versions(package, current_version))
+        if not versions:
+            return None
+        return versions[-1]
+
     def get_latest_version(self, package, current_version):
-        if self.snapshot:
-            revid = self.upstream_branch.last_revision()
-            version = self.get_version(package, current_version, revid)
-            self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
-            return version
-        else:
-            versions = list(self.get_recent_versions(package, current_version))
-            if not versions:
+        if self.version_kind == "snapshot":
+            return self.get_latest_snapshot_version(package, current_version)
+        elif self.version_kind == "release":
+            version = self.get_latest_release_version(package, current_version)
+            if version is None:
                 return current_version
-            return versions[-1]
+            return version
+        elif self.version_kind == "auto":
+            version = self.get_latest_release_version(package, current_version)
+            if version is None:
+                version = self.get_latest_snapshot_version(package, current_version)
+            return version
 
     def get_recent_versions(
             self, package: str, since_version: Optional[Version] = None):
@@ -659,9 +673,9 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
 
     def __init__(self, upstream_branch_url, upstream_revision_map=None,
                  config=None, create_dist=None, other_repository=None,
-                 snapshot=True):
+                 version_kind="snapshot"):
         self.upstream_branch_url = upstream_branch_url
-        self.snapshot = snapshot
+        self.version_kind = version_kind
         self._upstream_branch = None
         self.config = config
         self.create_dist = create_dist

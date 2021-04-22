@@ -785,6 +785,11 @@ class cmd_merge_upstream(Command):
             tree_contains_upstream_source,
             )
 
+        if snapshot:
+            version_kind = "snapshot"
+        else:
+            version_kind = "release"
+
         tree, subpath = WorkingTree.open_containing(directory)
         with tree.lock_write():
             _check_uncommitted(tree, subpath)
@@ -871,7 +876,7 @@ class cmd_merge_upstream(Command):
             if upstream_branch is not None:
                 upstream_branch_source = UpstreamBranchSource.from_branch(
                     upstream_branch, config=config, local_dir=tree.controldir,
-                    create_dist=create_dist, snapshot=snapshot)
+                    create_dist=create_dist, version_kind=version_kind)
             else:
                 upstream_branch_source = None
 
@@ -880,7 +885,7 @@ class cmd_merge_upstream(Command):
                     primary_upstream_source = UpstreamBranchSource.from_branch(
                         Branch.open(location), config=config,
                         local_dir=tree.controldir,
-                        create_dist=create_dist, snapshot=snapshot)
+                        create_dist=create_dist, version_kind=version_kind)
                 except NotBranchError:
                     primary_upstream_source = TarfileSource(location, version)
             else:
