@@ -583,8 +583,11 @@ class UpstreamBranchSource(UpstreamSource):
         elif self.version_kind == "auto":
             version = self.get_latest_release_version(package, current_version)
             if version is None:
+                note(gettext('No upstream releases found, falling back to snapshot.'))
                 version = self.get_latest_snapshot_version(package, current_version)
             return version
+        else:
+            raise ValueError(self.version_kind)
 
     def get_recent_versions(
             self, package: str, since_version: Optional[Version] = None):
