@@ -92,6 +92,10 @@ def upstream_tag_to_version(tag_name, package=None):
           tag_name.startswith("%s-" % package) or
           tag_name.startswith("%s_" % package))):
         tag_name = tag_name[len(package)+1:]
+    if package is None and '-' in tag_name:
+        (before, version) = tag_name.split('-', 1)
+        if before.isalpha():
+            return version
     if len(tag_name) >= 2 and tag_name[0] == "v" and tag_name[1].isdigit():
         tag_name = tag_name[1:]
     if len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
