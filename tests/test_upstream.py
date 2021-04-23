@@ -443,9 +443,9 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
         source = UpstreamBranchSource(self.tree.branch,
             {"2.1": self.tree.branch.last_revision().decode('utf-8')})
-        self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
+        self.assertEquals("2.1", source.get_latest_version("foo", "2.1"))
         self.tree.commit("msg")
-        self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
+        self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "2.1"))
 
     def test_get_latest_version_not_snapshot(self):
         revid1 = self.tree.commit("msg")
@@ -557,13 +557,13 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             self.tree.branch,
             {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             local_dir=local_repo.controldir)
-        self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
+        self.assertEqual('2.1', source.get_latest_version("foo", "2.1"))
         self.tree.commit("msg")
         source = UpstreamBranchSource.from_branch(
             self.tree.branch,
             {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             local_dir=local_repo.controldir)
-        self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
+        self.assertEqual("2.1+bzr2", source.get_latest_version("foo", "2.1"))
 
 
 class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
