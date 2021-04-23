@@ -757,6 +757,10 @@ class TestUpstreamTagToVersion(TestCase):
         self.assertEquals("1.4a1", upstream_tag_to_version("1.4a1", "popt"))
         self.assertEquals("1.4a", upstream_tag_to_version("1.4a", "popt"))
 
+    def test_no_package(self):
+        self.assertEquals("1.4a1", upstream_tag_to_version("erbium-1.4a1", None))
+        self.assertEquals(None, upstream_tag_to_version("erbium-blah", None))
+
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):
     """Test that updating the version string works."""
