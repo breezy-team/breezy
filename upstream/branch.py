@@ -159,9 +159,10 @@ def _upstream_branch_version(
     if last_upstream is None:
         # Well, we didn't find any releases
         if previous_version is None:
-            return None
-        # Assume we were just somewhere after the last release
-        last_upstream = (previous_version, '+')
+            last_upstream = ('0', '+')
+        else:
+            # Assume we were just somewhere after the last release
+            last_upstream = (previous_version, '+')
     else:
         if previous_version is not None and Version(last_upstream[0]) < Version(previous_version):
             if '~' not in previous_version:
@@ -563,7 +564,8 @@ class UpstreamBranchSource(UpstreamSource):
     def get_latest_snapshot_version(self, package, current_version):
         revid = self.upstream_branch.last_revision()
         version = self.get_version(package, current_version, revid)
-        self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
+        if version is not None:
+            self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
         return version
 
     def get_latest_release_version(self, package, current_version):
