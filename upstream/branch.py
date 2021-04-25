@@ -28,6 +28,7 @@ from typing import Optional, Tuple
 from debmutate.versions import (
     git_snapshot_data_from_version,
     get_snapshot_revision as _get_snapshot_revision,
+    debianize_upstream_version,
     )
 
 from .... import osutils
@@ -100,13 +101,7 @@ def upstream_tag_to_version(tag_name, package=None):
         tag_name = tag_name[1:]
     if len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
         tag_name = tag_name[2:]
-    if '_' in tag_name and '.' not in tag_name:
-        tag_name = tag_name.replace('_', '.')
-    if tag_name.count('_') == 1 and tag_name.startswith('0.'):
-        # This is a style commonly used for perl packages.
-        # Most debian packages seem to just drop the underscore.
-        tag_name = tag_name.replace('_', '')
-    if all([c.isdigit() or c in (".", "~") for c in tag_name]):
+    if all([c.isdigit() or c in (".", "~", "_") for c in tag_name]):
         return tag_name
     parts = tag_name.split('.')
     if len(parts) > 1 and all(p.isdigit() for p in parts[:-1]) and parts[-1].isalnum():
@@ -570,7 +565,7 @@ class UpstreamBranchSource(UpstreamSource):
         version = self.get_version(package, current_version, revid)
         if version is not None:
             self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
-        return version
+        return version, debianize_upstream_version(version)
 
     def get_latest_release_version(self, package, current_version):
         versions = list(self.get_recent_versions(package, current_version))
@@ -613,14 +608,15 @@ class UpstreamBranchSource(UpstreamSource):
                 version = upstream_tag_to_version(tag, package)
                 if version is None:
                     continue
-                self.upstream_revision_map[version] = 'tag:%s' % tag
-                if since_version is not None and version <= since_version:
+                mangled_version = debianize_upstream_version(version)
+                self.upstream_revision_map[mangled_version] = 'tag:%s' % tag
+                if since_version is not None and mangled_version <= since_version:
                     continue
                 if since_revision and not graph.is_ancestor(
                         since_revision, revision):
                     continue
-                versions.append(version)
-        return sorted(versions, key=Version)
+                versions.append((version, mangled_version))
+        return sorted(versions, key=lambda v: Version(v[1]))
 
     def get_version(self, package, current_version, revision):
         with self.upstream_branch.lock_read():

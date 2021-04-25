@@ -28,6 +28,8 @@ import tempfile
 
 from debian.changelog import Version
 
+from debmutate.versions import debianize_upstream_version
+
 from ....errors import BzrError, DependencyNotPresent, NoSuchFile
 from .... import osutils
 from ....export import export
@@ -78,9 +80,12 @@ class UpstreamSource(object):
     def get_latest_version(self, package, current_version):
         """Check what the latest upstream version is.
 
-        :param package: Name of the package
-        :param version: The current upstream version of the package.
-        :return: The version string of the latest available upstream version.
+        Args:
+          package: Name of the package
+          version: The current upstream version of the package.
+        Returns:
+          Tuple with the version string of the latest available upstream
+          version, and mangled Debian version.
         """
         raise NotImplementedError(self.get_latest_version)
 
@@ -89,7 +94,7 @@ class UpstreamSource(object):
 
         :param package: Name of the package
         :param version: Last upstream version since which to retrieve versions
-        :return: Iterator over version strings
+        :return: Iterator over (version, mangled version) tuples
         """
         raise NotImplementedError(self.get_recent_versions)
 
@@ -247,11 +252,11 @@ class StackedUpstreamSource(UpstreamSource):
         return None
 
     def get_recent_versions(self, package, since_version=None):
-        versions = set()
+        versions = {}
         for source in self._sources:
-            for version in source.get_recent_versions(package, since_version):
-                versions.add(version)
-        return list(sorted(versions))
+            for unmangled, mangled in source.get_recent_versions(package, since_version):
+                versions[mangled] = unmangled
+        return [(u, m) for (m, u) in sorted(versions.items(), key=lambda v: Version(v[0]))]
 
     def version_as_revisions(self, package, version, tarballs=None):
         for source in self._sources:
@@ -423,13 +428,15 @@ class TarfileSource(UpstreamSource):
 
     def get_recent_versions(self, package, since_version=None):
         latest_version = self.get_latest_version(package, since_version)
+        if latest_version is None:
+            return []
         return [latest_version]
 
     def get_latest_version(self, package, version):
         if self.version is not None:
-            return self.version
+            return (self.version, self.version)
         self.version = extract_tarball_version(self.path, package)
-        return self.version
+        return (self.version, self.version)
 
 
 class LaunchpadReleaseFileSource(UpstreamSource):
@@ -501,15 +508,15 @@ class LaunchpadReleaseFileSource(UpstreamSource):
 
     def get_recent_versions(self, package, since_version=None):
         versions = []
-        for version in self._all_versions():
-            if since_version is None or since_version < version:
-                versions.append(version)
+        for unmangled, mangled in self._all_versions():
+            if since_version is None or since_version < mangled:
+                versions.append((unmangled, mangled))
         return sorted(versions)
 
     def get_latest_version(self, package, version):
         versions = list(self._all_versions())
         versions.sort()
-        return versions[-1][1]
+        return (versions[-1][1], debianize_upstream_version(versions[-1][1]))
 
 
 class DirectoryScanSource(UpstreamSource):

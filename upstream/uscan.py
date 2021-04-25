@@ -124,8 +124,8 @@ class UScanSource(UpstreamSource):
                 if wf and wf.entries and len(wf.entries) == 1:
                     uversionmangle = getattr(
                         wf.entries[0], 'uversionmangle', None)
-        version = _xml_report_extract_upstream_version(text)
-        if version is None:
+        unmangled_new_version = _xml_report_extract_upstream_version(text)
+        if unmangled_new_version is None:
             for w in _xml_report_extract_warnings(text):
                 if re.match(
                         'In (.*)/watch no matching files for watch line',
@@ -134,8 +134,8 @@ class UScanSource(UpstreamSource):
                 raise UScanError(w)
             return
         if uversionmangle is None:
-            return version
-        return uversionmangle(version)
+            return (unmangled_new_version, unmangled_new_version)
+        return unmangled_new_version, uversionmangle(unmangled_new_version)
 
     def get_recent_versions(self, package, since_version=None):
         raise NotImplementedError(self.get_recent_versions)
@@ -196,10 +196,10 @@ def _xml_report_extract_upstream_version(text):
     from xml.sax.saxutils import unescape
     # uscan --dehs's output isn't well-formed XML, so let's fall back to
     # regexes instead..
-    m = re.search(b'<upstream-version>(.*)</upstream-version>', text)
-    if not m:
-        return None
-    return unescape(m.group(1).decode())
+    um = re.search(b'<upstream-version>(.*)</upstream-version>', text)
+    if um:
+        return unescape(um.group(1).decode())
+    return None
 
 
 def _xml_report_extract_target_paths(text):
