@@ -203,6 +203,10 @@ def cargo_translate_dashes(crate):
     return crate
 
 
+def unmangle_debcargo_version(version):
+    return version.replace('~', '-')
+
+
 class DebcargoDistiller(SourceDistiller):
     """A SourceDistiller for unpacking a debcargo package."""
 
@@ -256,7 +260,7 @@ class DebcargoDistiller(SourceDistiller):
             package, semver_suffix)
         if '-' in crate:
             crate = cargo_translate_dashes(crate)
-        crate_version = version.upstream_version
+        crate_version = unmangle_debcargo_version(version.upstream_version)
         if crate_semver_version is not None:
             note('Using crate name: %s, version %s (semver: %s)', crate,
                  crate_version, crate_semver_version)
