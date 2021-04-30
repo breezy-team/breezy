@@ -565,7 +565,7 @@ class UpstreamBranchSource(UpstreamSource):
         version = self.get_version(package, current_version, revid)
         if version is not None:
             self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
-        return version, debianize_upstream_version(version)
+        return version, debianize_upstream_version(version, package)
 
     def get_latest_release_version(self, package, current_version):
         versions = list(self.get_recent_versions(package, current_version))
@@ -608,7 +608,7 @@ class UpstreamBranchSource(UpstreamSource):
                 version = upstream_tag_to_version(tag, package)
                 if version is None:
                     continue
-                mangled_version = debianize_upstream_version(version)
+                mangled_version = debianize_upstream_version(version, package)
                 self.upstream_revision_map[mangled_version] = 'tag:%s' % tag
                 if since_version is not None and mangled_version <= since_version:
                     continue

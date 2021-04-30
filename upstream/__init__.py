@@ -516,7 +516,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
     def get_latest_version(self, package, version):
         versions = list(self._all_versions())
         versions.sort()
-        return (versions[-1][1], debianize_upstream_version(versions[-1][1]))
+        return (versions[-1][1], debianize_upstream_version(versions[-1][1], package))
 
 
 class DirectoryScanSource(UpstreamSource):
