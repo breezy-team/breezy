@@ -1207,12 +1207,11 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             for i in range(1, len(parts)):
                 basepath = b'/'.join(parts[:i])
                 try:
-                    (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
-                     flags) = index[basepath]
+                    value = index[basepath]
                 except KeyError:
                     continue
                 else:
-                    if S_ISGITLINK(mode):
+                    if S_ISGITLINK(value.mode):
                         index = self._get_submodule_index(basepath)
                         remaining_path = b'/'.join(parts[i:])
                         break
@@ -1324,9 +1323,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             if index is None:
                 index = self.index
             for path, value in index.items():
-                (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
-                 flags) = value
-                if S_ISGITLINK(mode) and recurse_nested:
+                if S_ISGITLINK(value.mode) and recurse_nested:
                     subindex = self._get_submodule_index(path)
                     for entry in self._recurse_index_entries(
                             index=subindex, basepath=path,
@@ -1392,20 +1389,19 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             raise TypeError(path)
         if not isinstance(value, tuple) or len(value) != 10:
             raise TypeError(value)
-        (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
         file_id = self.path2id(path)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
-        kind = mode_kind(mode)
+        kind = mode_kind(value.mode)
         ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path)
         elif kind == 'tree-reference':
             ie.reference_revision = self.get_reference_revision(path)
         else:
-            ie.git_sha1 = sha
-            ie.text_size = size
-            ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+            ie.git_sha1 = value.sha
+            ie.text_size = value.size
+            ie.executable = bool(stat.S_ISREG(value.mode) and stat.S_IEXEC & value.mode)
         return ie
 
     def _add_missing_parent_ids(self, path, dir_ids):
