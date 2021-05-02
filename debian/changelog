@@ -1,3 +1,10 @@
+breezy-debian (2.8.60) UNRELEASED; urgency=medium
+
+  * Improve handling of mangled upstream versions, especially for git
+    snapshots.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 02 May 2021 16:13:07 +0100
+
 breezy-debian (2.8.59) unstable; urgency=medium
 
   * Improve snapshot revision creation a bit more.
