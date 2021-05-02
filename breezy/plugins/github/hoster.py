@@ -333,6 +333,8 @@ class GitHub(Hoster):
             'POST', path, body=json.dumps(data).encode('utf-8'))
         if response.status == 403:
             raise PermissionDenied(path, response.text)
+        if response.status == 422:
+            raise ValidationFailed(json.loads(response.text))
         if response.status != 201:
             raise UnexpectedHttpStatus(path, response.status)
         return json.loads(response.text)
@@ -659,5 +661,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 maintainer_can_modify=allow_collaboration,
                 )
         except ValidationFailed:
+            # TODO(jelmer): Check the actual error message rather than assuming
+            # a merge proposal exists?
             raise MergeProposalExists(self.source_branch.user_url)
         return GitHubMergeProposal(self.gh, pull_request)
