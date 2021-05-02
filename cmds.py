@@ -924,7 +924,7 @@ class cmd_merge_upstream(Command):
                 version = upstream_branch_source.get_version(
                     package, current_version, upstream_revisions[None])
             elif version is None and primary_upstream_source is not None:
-                version = primary_upstream_source.get_latest_version(
+                unmangled_version, version = primary_upstream_source.get_latest_version(
                     package, current_version)
             if version is None:
                 if upstream_branch_source is not None:
@@ -937,7 +937,7 @@ class cmd_merge_upstream(Command):
                     raise BzrCommandError(gettext(
                         "You must specify the "
                         "version number using --version."))
-            note(gettext("Using version string %s.") % (version))
+            note(gettext("Using version string %s."), version)
             # Look up the revision id from the version string
             if (upstream_revisions is None and
                     upstream_branch_source is not None):
