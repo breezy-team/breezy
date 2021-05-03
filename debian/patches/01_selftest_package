@@ -3,17 +3,17 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not upstream, Debian-specific
 
 === modified file 'breezy/builtins.py'
-Index: unstable/breezy/builtins.py
-===================================================================
---- unstable.orig/breezy/builtins.py
-+++ unstable/breezy/builtins.py
-@@ -4158,7 +4158,8 @@ class cmd_selftest(Command):
+--- old/breezy/builtins.py	2021-05-03 14:02:26 +0000
++++ new/breezy/builtins.py	2021-05-03 14:14:13 +0000
+@@ -4225,7 +4225,9 @@
              from . import tests
-         except ImportError:
-             raise errors.BzrCommandError("tests not available. Install the "
+         except ImportError as e:
+             raise errors.CommandError("tests not available. Install the "
 -                                         "breezy tests to run the breezy testsuite.")
-+                                         "python-breezy.tests package to run "
-+                                         "the breezy testsuite.")
++                                      "python-breezy.tests package to run "
++                                      "the breezy testsuite.")
++
  
          if testspecs_list is not None:
              pattern = '|'.join(testspecs_list)
+
