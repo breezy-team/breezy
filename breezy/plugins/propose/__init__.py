@@ -16,8 +16,6 @@
 
 """Management of hosted branches."""
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
@@ -28,6 +26,7 @@ plugin_cmds.register_lazy("cmd_find_merge_proposal", ['find-proposal'], __name__
 plugin_cmds.register_lazy(
     "cmd_my_merge_proposals", ["my-proposals"],
     __name__ + ".cmds")
+plugin_cmds.register_lazy("cmd_hosters", [], __name__ + ".cmds")
 
 
 def test_suite():

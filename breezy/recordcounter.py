@@ -16,8 +16,6 @@
 
 """Record counting support for showing progress of revision fetch."""
 
-from __future__ import absolute_import
-
 
 class RecordCounter(object):
     """Container for maintains estimates of work requires for fetch.

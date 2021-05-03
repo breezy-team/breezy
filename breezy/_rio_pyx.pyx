@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+# cython: language_level=3
 
 """Pyrex implementation of _read_stanza_*."""
-
-from __future__ import absolute_import
 
 
 cdef extern from "python-compat.h":
@@ -175,7 +175,7 @@ def _read_stanza_utf8(line_iter):
                     raise ValueError("invalid rio tag %r" % (tag,))
         if tag is not None: # add last tag-value
             PyList_Append(pairs,
-                (tag, PyUnicode_DecodeUTF8(accum_value, accum_len-1, "strict")))
+                (tag, PyUnicode_DecodeUTF8(accum_value, accum_len-1, "surrogateescape")))
             return Stanza.from_pairs(pairs)
         else:     # didn't see any content
             return None

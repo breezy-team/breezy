@@ -17,10 +17,9 @@
 
 """Support for committing in native Git working trees."""
 
-from __future__ import absolute_import
-
 from dulwich.index import (
     commit_tree,
+    read_submodule_head,
     )
 import stat
 
@@ -39,18 +38,15 @@ from ..errors import (
 from ..repository import (
     CommitBuilder,
     )
-from ..sixish import (
-    viewitems,
-    )
 
 from dulwich.objects import (
     Blob,
     Commit,
     )
-from dulwich.index import read_submodule_head
 
 
 from .mapping import (
+    encode_git_path,
     object_mode,
     fix_person_identifier,
     )
@@ -69,6 +65,7 @@ class GitCommitBuilder(CommitBuilder):
         self.store = self.repository._git.object_store
         self._blobs = {}
         self._inv_delta = []
+        self._deleted_paths = set()
         self._any_changes = False
         self._mapping = self.repository.get_mapping()
 
@@ -78,27 +75,40 @@ class GitCommitBuilder(CommitBuilder):
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         seen_root = False
         for change in iter_changes:
+            if change.kind == (None, None):
+                # Ephemeral
+                continue
+            if change.versioned[0] and not change.copied:
+                file_id = self._mapping.generate_file_id(change.path[0])
+            elif change.versioned[1]:
+                file_id = self._mapping.generate_file_id(change.path[1])
+            else:
+                file_id = None
+            if change.path[1]:
+                parent_id_new = self._mapping.generate_file_id(osutils.dirname(change.path[1]))
+            else:
+                parent_id_new = None
             if change.kind[1] in ("directory",):
                 self._inv_delta.append(
-                    (change.path[0], change.path[1], change.file_id,
+                    (change.path[0], change.path[1], file_id,
                      entry_factory[change.kind[1]](
-                         change.file_id, change.name[1], change.parent_id[1])))
+                         file_id, change.name[1], parent_id_new)))
                 if change.kind[0] in ("file", "symlink"):
-                    self._blobs[change.path[0].encode("utf-8")] = None
+                    self._blobs[encode_git_path(change.path[0])] = None
                     self._any_changes = True
                 if change.path[1] == "":
                     seen_root = True
                 continue
             self._any_changes = True
             if change.path[1] is None:
-                self._inv_delta.append((change.path[0], change.path[1], change.file_id, None))
-                self._blobs[change.path[0].encode("utf-8")] = None
+                self._inv_delta.append((change.path[0], change.path[1], file_id, None))
+                self._deleted_paths.add(encode_git_path(change.path[0]))
                 continue
             try:
                 entry_kls = entry_factory[change.kind[1]]
             except KeyError:
                 raise KeyError("unknown kind %s" % change.kind[1])
-            entry = entry_kls(change.file_id, change.name[1], change.parent_id[1])
+            entry = entry_kls(file_id, change.name[1], parent_id_new)
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
                 blob = Blob()
@@ -107,14 +117,17 @@ class GitCommitBuilder(CommitBuilder):
                     blob.data = f.read()
                 finally:
                     f.close()
-                entry.text_size = len(blob.data)
-                entry.text_sha1 = osutils.sha_string(blob.data)
-                self.store.add_object(blob)
                 sha = blob.id
+                if st is not None:
+                    entry.text_size = st.st_size
+                else:
+                    entry.text_size = len(blob.data)
+                entry.git_sha1 = sha
+                self.store.add_object(blob)
             elif change.kind[1] == "symlink":
                 symlink_target = workingtree.get_symlink_target(change.path[1])
                 blob = Blob()
-                blob.data = symlink_target.encode("utf-8")
+                blob.data = encode_git_path(symlink_target)
                 self.store.add_object(blob)
                 sha = blob.id
                 entry.symlink_target = symlink_target
@@ -127,11 +140,12 @@ class GitCommitBuilder(CommitBuilder):
             else:
                 raise AssertionError("Unknown kind %r" % change.kind[1])
             mode = object_mode(change.kind[1], change.executable[1])
-            self._inv_delta.append((change.path[0], change.path[1], change.file_id, entry))
-            encoded_new_path = change.path[1].encode("utf-8")
-            self._blobs[encoded_new_path] = (mode, sha)
+            self._inv_delta.append((change.path[0], change.path[1], file_id, entry))
+            if change.path[0] is not None:
+                self._deleted_paths.add(encode_git_path(change.path[0]))
+            self._blobs[encode_git_path(change.path[1])] = (mode, sha)
             if st is not None:
-                yield change.path[1], (entry.text_sha1, st)
+                yield change.path[1], (entry.git_sha1, st)
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):
@@ -146,6 +160,8 @@ class GitCommitBuilder(CommitBuilder):
         for entry in basis_tree._iter_tree_contents(include_trees=False):
             if entry.path in self._blobs:
                 continue
+            if entry.path in self._deleted_paths:
+                continue
             self._blobs[entry.path] = (entry.mode, entry.sha)
         self.new_inventory = None
 
@@ -155,12 +171,11 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in viewitems(
-            self._blobs) if v is not None}
+        self._blobs = {k: v for (k, v) in self._blobs.items()}
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha))
-                in viewitems(self._blobs))
+                in self._blobs.items())
 
     def commit(self, message):
         self._validate_unicode_text(message, 'commit message')

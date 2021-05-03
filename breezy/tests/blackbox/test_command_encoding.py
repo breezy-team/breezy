@@ -18,7 +18,6 @@
 
 from .. import TestCaseWithMemoryTransport
 from ...commands import Command, register_command, plugin_cmds
-from ...sixish import PY3
 
 
 class cmd_echo_exact(Command):

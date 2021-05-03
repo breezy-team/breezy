@@ -16,8 +16,6 @@
 
 """Interface thunk for a StaticTuple implementation."""
 
-from __future__ import absolute_import
-
 from . import debug
 
 try:

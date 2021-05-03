@@ -17,8 +17,6 @@
 """Export a Tree to a zip file.
 """
 
-from __future__ import absolute_import
-
 from contextlib import closing
 import os
 import stat

@@ -16,8 +16,6 @@
 
 """Tests for the commit template creation."""
 
-from __future__ import absolute_import
-
 from ... import commitfromnews
 from .... import (
     config,

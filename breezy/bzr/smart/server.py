@@ -16,8 +16,6 @@
 
 """Server for smart-server protocol."""
 
-from __future__ import absolute_import
-
 import errno
 import os.path
 import socket
@@ -267,7 +265,7 @@ class SmartTCPServer(object):
         still_active = []
         for handler, thread in self._active_connections:
             thread.join(timeout)
-            if thread.isAlive():
+            if thread.is_alive():
                 still_active.append((handler, thread))
         self._active_connections = still_active
 
@@ -435,10 +433,7 @@ class BzrServerFactory(object):
         self.transport = transport
 
     def _get_stdin_stdout(self):
-        if sys.version_info[0] < 3:
-            return sys.stdin, sys.stdout
-        else:
-            return sys.stdin.buffer, sys.stdout.buffer
+        return sys.stdin.buffer, sys.stdout.buffer
 
     def _make_smart_server(self, host, port, inet, timeout):
         if timeout is None:

@@ -17,6 +17,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 
 from textwrap import dedent
+from io import BytesIO
 import os
 import sys
 import threading
@@ -42,10 +43,6 @@ from .. import (
     )
 from ..bzr import (
     remote,
-    )
-from ..sixish import (
-    BytesIO,
-    text_type,
     )
 from ..transport import remote as transport_remote
 from . import (
@@ -2351,7 +2348,7 @@ class TestCommandLineStore(tests.TestCase):
         self.assertEqual('y', section.get('x'))
 
     def test_wrong_syntax(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           self.store._from_cmdline, ['a=b', 'c'])
 
 

@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
+from io import StringIO
 import os
 
 from ... import (
@@ -41,9 +42,6 @@ from ...errors import (
 from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
 from ...osutils import pathjoin, getcwd, has_symlinks
-from ...sixish import (
-    StringIO,
-    )
 from .. import (
     features,
     TestSkipped,
@@ -58,7 +56,7 @@ from ...tree import (
     TreeFile,
     TreeLink,
     )
-from ...conflicts import ConflictList, TextConflict, ContentsConflict
+from ...bzr.conflicts import ConflictList, TextConflict, ContentsConflict
 from ...workingtree import (
     SettingFileIdUnsupported,
     WorkingTree,
@@ -143,9 +141,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     ('zz_dir', 'directory'),
                     ], files)
 
-    def test_get_transform(self):
+    def test_transform(self):
         tree = self.make_branch_and_tree('tree')
-        with tree.get_transform():
+        with tree.transform():
             pass
 
     def test_list_files_kind_change(self):
@@ -216,13 +214,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_lock_locks_branch(self):
         tree = self.make_branch_and_tree('.')
         self.assertEqual(None, tree.branch.peek_lock_mode())
-        tree.lock_read()
-        self.assertEqual('r', tree.branch.peek_lock_mode())
-        tree.unlock()
+        with tree.lock_read():
+            self.assertEqual('r', tree.branch.peek_lock_mode())
         self.assertEqual(None, tree.branch.peek_lock_mode())
-        tree.lock_write()
-        self.assertEqual('w', tree.branch.peek_lock_mode())
-        tree.unlock()
+        with tree.lock_write():
+            self.assertEqual('w', tree.branch.peek_lock_mode())
         self.assertEqual(None, tree.branch.peek_lock_mode())
 
     def test_revert(self):
@@ -799,7 +795,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
         try:
-            tree.set_conflicts(ConflictList())
+            tree.set_conflicts([])
         except UnsupportedOperation:
             raise TestSkipped('unsupported operation')
         self.assertEqual(tree.conflicts(), ConflictList())
@@ -931,11 +927,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
-                (('', tree.path2id('')),
-                 [('missing', 'missing', 'unknown', None, b'missing-id', 'file'),
+                ('',
+                 [('missing', 'missing', 'unknown', None, 'file'),
                   ('present', 'present', 'file',
-                   present_stat, b'present-id', 'file'),
-                  ('unknown', 'unknown', 'file', unknown_stat, None, None),
+                   present_stat, 'file'),
+                  ('unknown', 'unknown', 'file', unknown_stat, None),
                   ]
                  )]
             self.assertEqual(expected_results, list(tree.walkdirs()))
@@ -1012,6 +1008,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual('file', tree.stored_kind('a'))
         if tree.branch.repository._format.supports_versioned_directories:
             self.assertEqual('directory', tree.stored_kind('b'))
+
+    def test_stored_kind_nonexistent(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.assertRaises(errors.NoSuchFile, tree.stored_kind, 'a')
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/a'])
+        self.assertRaises(errors.NoSuchFile, tree.stored_kind, 'a')
+        tree.add(['a'])
+        self.assertIs('file', tree.stored_kind('a'))
 
     def test_missing_file_sha1(self):
         """If a file is missing, its sha1 should be reported as None."""

@@ -18,9 +18,6 @@
 
 from testtools.matchers import *
 
-from ..bzr.smart.client import CallHookParams
-from ..sixish import PY3
-
 from . import (
     CapturedCall,
     TestCase,
@@ -133,14 +130,9 @@ class TestHasLayout(TestCaseWithTransport):
         t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
-        if PY3:
-            self.assertEqual(
-                set(("['', 'a', 'b/', 'b/c']", "['a']")),
-                set(mismatch.describe().split(" != ")))
-        else:
-            self.assertEqual(
-                set(("[u'', u'a', u'b/', u'b/c']", "['a']")),
-                set(mismatch.describe().split(" != ")))
+        self.assertEqual(
+            set(("['', 'a', 'b/', 'b/c']", "['a']")),
+            set(mismatch.describe().split(" != ")))
 
     def test_no_dirs(self):
         # Some tree/repository formats do not support versioned directories
@@ -152,14 +144,9 @@ class TestHasLayout(TestCaseWithTransport):
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
         self.assertIsNot(None, mismatch)
-        if PY3:
-            self.assertEqual(
-                set(("['', 'a', 'b/', 'b/c']", "['', 'a']")),
-                set(mismatch.describe().split(" != ")))
-        else:
-            self.assertEqual(
-                set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
-                set(mismatch.describe().split(" != ")))
+        self.assertEqual(
+            set(("['', 'a', 'b/', 'b/c']", "['', 'a']")),
+            set(mismatch.describe().split(" != ")))
 
 
 class TestHasPathRelations(TestCaseWithTransport):
@@ -188,36 +175,6 @@ class TestHasPathRelations(TestCaseWithTransport):
         self.assertIsNot(None, mismatch)
 
 
-class TestContainsNoVfsCalls(TestCase):
-
-    def _make_call(self, method, args):
-        return CapturedCall(CallHookParams(method, args, None, None, None), 0)
-
-    def test__str__(self):
-        self.assertEqual("ContainsNoVfsCalls()", str(ContainsNoVfsCalls()))
-
-    def test_empty(self):
-        self.assertIs(None, ContainsNoVfsCalls().match([]))
-
-    def test_no_vfs_calls(self):
-        calls = [self._make_call("Branch.get_config_file", [])]
-        self.assertIs(None, ContainsNoVfsCalls().match(calls))
-
-    def test_ignores_unknown(self):
-        calls = [self._make_call("unknown", [])]
-        self.assertIs(None, ContainsNoVfsCalls().match(calls))
-
-    def test_match(self):
-        calls = [self._make_call(b"append", [b"file"]),
-                 self._make_call(b"Branch.get_config_file", [])]
-        mismatch = ContainsNoVfsCalls().match(calls)
-        self.assertIsNot(None, mismatch)
-        self.assertEqual([calls[0].call], mismatch.vfs_calls)
-        self.assertIn(mismatch.describe(), [
-            "no VFS calls expected, got: b'append'(b'file')",
-            "no VFS calls expected, got: append('file')"])
-
-
 class TestRevisionHistoryMatches(TestCaseWithTransport):
 
     def test_empty(self):
@@ -237,11 +194,6 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
         tree.commit('msg1', rev_id=b'a')
         tree.commit('msg2', rev_id=b'b')
         matcher = RevisionHistoryMatches([b'a', b'b', b'c'])
-        if PY3:
-            self.assertEqual(
-                set(("[b'a', b'b']", "[b'a', b'b', b'c']")),
-                set(matcher.match(tree.branch).describe().split(" != ")))
-        else:
-            self.assertEqual(
-                set(("['a', 'b']", "['a', 'b', 'c']")),
-                set(matcher.match(tree.branch).describe().split(" != ")))
+        self.assertEqual(
+            set(("[b'a', b'b']", "[b'a', b'b', b'c']")),
+            set(matcher.match(tree.branch).describe().split(" != ")))

@@ -16,18 +16,11 @@
 
 from io import BytesIO
 
-try:
-    from xmlrpc.client import (
-        loads as xmlrpc_loads,
-        Transport,
-        )
-except ImportError:  # python < 3
-    from xmlrpclib import (
-        loads as xmlrpc_loads,
-        Transport,
-        )
+from xmlrpc.client import (
+    loads as xmlrpc_loads,
+    Transport,
+    )
 
-from ...sixish import PY3
 from ...tests import TestCaseWithTransport
 
 # local import
@@ -111,23 +104,17 @@ class InstrumentedXMLRPCTransport(Transport):
             raise AssertionError()
         return InstrumentedXMLRPCConnection(test)
 
-    if PY3:
-        def send_request(self, host, handler_path, request_body,
-                         verbose=None):
-            self.connected_host = host
-            test = self.testcase
-            self.got_request = True
-            unpacked, method = xmlrpc_loads(request_body)
-            if None in unpacked:
-                raise AssertionError(
-                    "xmlrpc result %r shouldn't contain None" % (unpacked,))
-            self.sent_params = unpacked
-            return InstrumentedXMLRPCConnection(test)
-    else:
-        def send_request(self, connection, handler_path, request_body,
-                         verbose=None):
-            test = self.testcase
-            self.got_request = True
+    def send_request(self, host, handler_path, request_body,
+                     verbose=None):
+        self.connected_host = host
+        test = self.testcase
+        self.got_request = True
+        unpacked, method = xmlrpc_loads(request_body)
+        if None in unpacked:
+            raise AssertionError(
+                "xmlrpc result %r shouldn't contain None" % (unpacked,))
+        self.sent_params = unpacked
+        return InstrumentedXMLRPCConnection(test)
 
     def send_host(self, conn, host):
         pass

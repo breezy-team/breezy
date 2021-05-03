@@ -16,8 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from dulwich.server import TCPGitServer
 
 import sys
@@ -33,6 +31,7 @@ from ..controldir import (
 
 from .mapping import (
     default_mapping,
+    decode_git_path,
     )
 from .object_store import (
     BazaarObjectStore,
@@ -60,7 +59,7 @@ class BzrBackend(Backend):
 
     def open_repository(self, path):
         # FIXME: More secure path sanitization
-        transport = self.transport.clone(path.decode('utf-8').lstrip("/"))
+        transport = self.transport.clone(decode_git_path(path).lstrip("/"))
         trace.mutter('client opens %r: %r', path, transport)
         return BzrBackendRepo(transport, self.mapping)
 
@@ -171,7 +170,7 @@ def serve_command(handler_cls, backend, inf=sys.stdin, outf=sys.stdout):
 
 def serve_git_receive_pack(transport, host=None, port=None, inet=False):
     if not inet:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             "git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)
     sys.exit(serve_command(ReceivePackHandler, backend=backend))
@@ -179,7 +178,7 @@ def serve_git_receive_pack(transport, host=None, port=None, inet=False):
 
 def serve_git_upload_pack(transport, host=None, port=None, inet=False):
     if not inet:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             "git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)
     sys.exit(serve_command(UploadPackHandler, backend=backend))

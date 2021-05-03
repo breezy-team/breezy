@@ -17,8 +17,6 @@
 
 """Tests from fetching from git into bzr."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Blob,
     Tag,

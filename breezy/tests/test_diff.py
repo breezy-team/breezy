@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+from io import BytesIO
 import os
 import re
 import subprocess
@@ -21,7 +23,6 @@ import sys
 import tempfile
 
 from .. import (
-    cleanup,
     diff,
     errors,
     osutils,
@@ -29,10 +30,6 @@ from .. import (
     revisionspec,
     revisiontree,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
-    unichr,
     )
 from ..tests import (
     features,
@@ -562,7 +559,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_internal_diff_exec_property(self):
         tree = self.make_branch_and_tree('tree')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.new_file('a', tt.root, [b'contents\n'], b'a-id', True)
         tt.new_file('b', tt.root, [b'contents\n'], b'b-id', False)
         tt.new_file('c', tt.root, [b'contents\n'], b'c-id', True)
@@ -572,7 +569,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tt.apply()
         tree.commit('one', rev_id=b'rev-1')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.set_executability(False, tt.trans_id_file_id(b'a-id'))
         tt.set_executability(True, tt.trans_id_file_id(b'b-id'))
         tt.set_executability(False, tt.trans_id_file_id(b'c-id'))
@@ -1034,7 +1031,7 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
         """Call get_trees_and_branches_to_diff_locked."""
-        exit_stack = cleanup.ExitStack()
+        exit_stack = contextlib.ExitStack()
         self.addCleanup(exit_stack.close)
         return diff.get_trees_and_branches_to_diff_locked(
             path_list, revision_specs, old_url, new_url, exit_stack)

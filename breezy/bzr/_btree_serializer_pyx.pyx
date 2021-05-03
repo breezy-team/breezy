@@ -14,10 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
+# cython: language_level=3
 
 """Pyrex extensions to btree node parsing."""
-
-from __future__ import absolute_import
 
 
 cdef extern from "python-compat.h":

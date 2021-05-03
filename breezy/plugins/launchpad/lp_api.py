@@ -16,24 +16,16 @@
 
 """Tools for dealing with the Launchpad API."""
 
-from __future__ import absolute_import
-
 # Importing this module will be expensive, since it imports launchpadlib and
 # its dependencies. However, our plan is to only load this module when it is
 # needed by a command that uses it.
 
 
 import re
-try:
-    from urllib.parse import (
-        urlparse,
-        urlunparse,
-        )
-except ImportError:  # python < 3
-    from urlparse import (
-        urlparse,
-        urlunparse,
-        )
+from urllib.parse import (
+    urlparse,
+    urlunparse,
+    )
 
 from ... import (
     branch,
@@ -60,6 +52,7 @@ try:
 except ImportError as e:
     raise LaunchpadlibMissing(e)
 
+from launchpadlib.credentials import RequestTokenAuthorizationEngine
 from launchpadlib.launchpad import (
     Launchpad,
     )
@@ -106,6 +99,14 @@ class NoLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
+def get_auth_engine(base_url):
+    return Launchpad.authorization_engine_factory(base_url, 'breezy')
+
+
+def get_credential_store():
+    return Launchpad.credential_store_factory(None)
+
+
 def connect_launchpad(base_url, timeout=None, proxy_info=None,
                       version=Launchpad.DEFAULT_VERSION):
     """Log in to the Launchpad API.
@@ -119,8 +120,12 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
         cache_directory = get_cache_directory()
     except EnvironmentError:
         cache_directory = None
+    credential_store = get_credential_store()
+    authorization_engine = get_auth_engine(base_url)
     return Launchpad.login_with(
         'breezy', base_url, cache_directory, timeout=timeout,
+        credential_store=credential_store,
+        authorization_engine=authorization_engine,
         proxy_info=proxy_info, version=version)
 
 

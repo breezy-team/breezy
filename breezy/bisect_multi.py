@@ -16,8 +16,6 @@
 
 """Bisection lookup multiple keys."""
 
-from __future__ import absolute_import
-
 __all__ = [
     'bisect_multi_bytes',
     ]

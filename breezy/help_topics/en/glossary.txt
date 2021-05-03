@@ -91,8 +91,8 @@ Glossary
     changes. For these cases, a user may instead prefer a cherrypick, which
     gives the user the option to apply only those revisions that are wanted.
 
-    As well as altering the working tree, bzr's merge command will also get all
-    of the revisions that a branch has, and add metadata indicating that a
+    As well as altering the working tree, Breezy's merge command will also get
+    all of the revisions that a branch has, and add metadata indicating that a
     merge has been performed.
 
   merge, criss-cross
@@ -120,13 +120,13 @@ Glossary
   revision
     A revision is one state of the code.
 
-    bzr is snapshot based, meaning that conceptually it stores the whole state
-    of the tree at each revision. This is in contrast to changeset based, where
-    a revision refers to just the changes that were made in that revision. I
-    said "conceptually", as internally bzr uses delta compression to reduce the
-    amount of data that it stores, and so may only record the changes in a
-    revision. However you must always think of a revision as referring to a
-    whole snapshot.
+    Breezy is snapshot based, meaning that conceptually it stores the whole
+    state of the tree at each revision. This is in contrast to changeset based,
+    where a revision refers to just the changes that were made in that
+    revision. I said "conceptually", as internally Breezy uses delta
+    compression to reduce the amount of data that it stores, and so may only
+    record the changes in a revision. However you must always think of a
+    revision as referring to a whole snapshot.
 
     A revision also contains some metadata. In particular it stores the
     committer, and the timestamp when the commit was made, the log message that
@@ -136,7 +136,7 @@ Glossary
     number of revision properties, these is extra information that can be
     stored with the revision and is immutable, some uses of them are to store
     the author of the patch if it wasn't the committer (when given using the
-    --author option of bzr commit), or to store information about the bugs
+    --author option of brz commit), or to store information about the bugs
     fixed in that revision if using the bug-tracker integration.
 
     A revision also has a name, referred to as a revision id. This is a

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .. import (
     cache_utf8,
     errors,
@@ -75,8 +73,7 @@ class Serializer_v5(xml6.Serializer_v6):
                 raise errors.BzrError("parent_id {%s} not in inventory"
                                       % (parent_id,))
             if ie.file_id in byid:
-                raise errors.DuplicateFileId(ie.file_id,
-                                             byid[ie.file_id])
+                raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
             if ie.name in parent.children:
                 raise errors.BzrError(
                     "%s is already versioned" % (

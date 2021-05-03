@@ -520,7 +520,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         except errors.NoRoundtrippingSupport:
             raise TestNotApplicable('roundtripping not supported')
-        self.assertFalse(target.has_revision('b'))
+        self.assertFalse(target.has_revision(b'b'))
 
     def test_fetch_funky_file_id(self):
         from_tree = self.make_branch_and_tree('tree')

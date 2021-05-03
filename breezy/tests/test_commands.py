@@ -63,7 +63,7 @@ class TestCommands(tests.TestCase):
     def test_unicode_command(self):
         # This error is thrown when we can't find the command in the
         # list of available commands
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           commands.run_bzr, [u'cmd\xb5'])
 
     def test_unicode_option(self):
@@ -72,7 +72,7 @@ class TestCommands(tests.TestCase):
         import optparse
         if optparse.__version__ == "1.5.3":
             raise TestSkipped("optparse 1.5.3 can't handle unicode options")
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           commands.run_bzr, ['log', u'--option\xb5'])
 
     @staticmethod
@@ -324,12 +324,12 @@ class TestCommandNotFound(tests.TestCase):
         commands.install_bzr_command_hooks()
 
     def test_not_found_no_suggestion(self):
-        e = self.assertRaises(errors.BzrCommandError,
+        e = self.assertRaises(errors.CommandError,
                               commands.get_cmd_object, 'idontexistand')
         self.assertEqual('unknown command "idontexistand"', str(e))
 
     def test_not_found_with_suggestion(self):
-        e = self.assertRaises(errors.BzrCommandError,
+        e = self.assertRaises(errors.CommandError,
                               commands.get_cmd_object, 'statue')
         self.assertEqual('unknown command "statue". Perhaps you meant "status"',
                          str(e))
@@ -452,13 +452,13 @@ class TestPreAndPostCommandHooks(tests.TestCase):
         self.assertEqual(['run', 'post'], hook_calls)
 
     def test_pre_command_error(self):
-        """Ensure an BzrCommandError in pre_command aborts the command"""
+        """Ensure an CommandError in pre_command aborts the command"""
 
         hook_calls = []
 
         def pre_command(cmd):
             hook_calls.append('pre')
-            # verify that all subclasses of BzrCommandError caught too
+            # verify that all subclasses of CommandError caught too
             raise commands.BzrOptionError()
 
         def post_command(cmd, e):
@@ -475,7 +475,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
             "post_command", post_command, None)
 
         self.assertEqual([], hook_calls)
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           commands.run_bzr, [u'rocks'])
         self.assertEqual(['pre'], hook_calls)
 

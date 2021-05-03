@@ -14,16 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import BytesIO
 
 from .. import (
     merge3,
     tests,
     )
 from ..errors import BinaryFile
-from ..sixish import (
-    BytesIO,
-    int2byte,
-    )
 
 
 def split_lines(t):
@@ -325,7 +322,7 @@ bbb
     def test_minimal_conflicts_unique(self):
         def add_newline(s):
             """Add a newline to each entry in the string"""
-            return [(int2byte(x) + b'\n') for x in bytearray(s)]
+            return [(bytes([x]) + b'\n') for x in bytearray(s)]
 
         base_text = add_newline(b"abcdefghijklm")
         this_text = add_newline(b"abcdefghijklmNOPQRSTUVWXYZ")
@@ -343,7 +340,7 @@ bbb
     def test_minimal_conflicts_nonunique(self):
         def add_newline(s):
             """Add a newline to each entry in the string"""
-            return [(int2byte(x) + b'\n') for x in bytearray(s)]
+            return [(bytes([x]) + b'\n') for x in bytearray(s)]
 
         base_text = add_newline(b"abacddefgghij")
         this_text = add_newline(b"abacddefgghijkalmontfprz")

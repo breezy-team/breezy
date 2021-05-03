@@ -79,13 +79,6 @@ class CertReqsConfigTests(tests.TestCaseInTempDir):
 
 class MatchHostnameTests(tests.TestCase):
 
-    def setUp(self):
-        super(MatchHostnameTests, self).setUp()
-        if sys.version_info < (2, 7, 9):
-            raise tests.TestSkipped(
-                'python version too old to provide proper'
-                ' https hostname verification')
-
     def test_no_certificate(self):
         self.assertRaises(ValueError,
                           ssl.match_hostname, {}, "example.com")

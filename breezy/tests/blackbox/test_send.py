@@ -15,6 +15,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import (
+    BytesIO,
+    )
 
 from ... import (
     branch,
@@ -23,14 +26,10 @@ from ... import (
     )
 from ...controldir import ControlDir
 from ...bzr.bundle import serializer
-from ...sixish import (
-    BytesIO,
-    )
 from ...transport import memory
 from .. import (
     scenarios,
     )
-from ..matchers import ContainsNoVfsCalls
 
 
 load_tests = scenarios.load_tests_apply_scenarios
@@ -448,26 +447,3 @@ class TestBundleStrictWithoutChanges(TestSendStrictWithoutChanges):
 
     _default_command = ['bundle-revisions', '../parent']
 
-
-class TestSmartServerSend(tests.TestCaseWithTransport):
-
-    def test_send(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        local = t.controldir.sprout('local-branch').open_workingtree()
-        self.build_tree_contents([('branch/foo', b'thenewcontents')])
-        local.commit("anothermessage")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(
-            ['send', '-o', 'x.diff', self.get_url('branch')], working_dir='local-branch')
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(7, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

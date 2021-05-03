@@ -27,7 +27,6 @@ from .. import (
     )
 from ..controldir import ControlDir
 from ..bzr.smart import medium
-from ..sixish import PY3
 from ..transport import remote
 
 from . import (
@@ -104,12 +103,8 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if PY3:
-                if err.find("\nimport '%s' " % module_name) != -1:
-                    bad_modules.append(module_name)
-            else:
-                if err.find("\nimport %s " % module_name) != -1:
-                    bad_modules.append(module_name)
+            if err.find("\nimport '%s' " % module_name) != -1:
+                bad_modules.append(module_name)
 
         if bad_modules:
             self.fail("command loaded forbidden modules %r"
@@ -156,10 +151,10 @@ class TestImportTariffs(ImportTariffTestCase):
                           ['st'],
                           ['breezy.tree'])
 
-    def test_simple_local(self):
+    def test_simple_local_bzr(self):
         # 'st' in a default format working tree shouldn't need many modules
-        self.make_branch_and_tree('.')
-        self.run_command_check_imports(['st'], [
+        self.make_branch_and_tree('.', format='bzr')
+        forbidden_modules = [
             'breezy.annotate',
             'breezy.atomicfile',
             'breezy.bugtracker',
@@ -194,14 +189,66 @@ class TestImportTariffs(ImportTariffTestCase):
             'socket',
             'smtplib',
             'tarfile',
-            'tempfile',
             'termios',
             'tty',
-            ] + old_format_modules)
+            ] + old_format_modules
+        self.run_command_check_imports(['st'], forbidden_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #
         # See https://bugs.launchpad.net/bzr/+bug/553017
+
+    def test_simple_local_git(self):
+        # 'st' in a default format working tree shouldn't need many modules
+        self.make_branch_and_tree('.', format='git')
+        from dulwich import __version__ as dulwich_version
+
+        if dulwich_version >= (0, 20, 4):
+            forbidden = ['shutil', 'tempfile', 'ssl']
+        elif PY3:
+            forbidden = ['ssl']
+        else:
+            forbidden = []
+
+        self.run_command_check_imports(['st'], [
+            'breezy.annotate',
+            'breezy.bugtracker',
+            'breezy.bundle.commands',
+            'breezy.cmd_version_info',
+            'breezy.externalcommand',
+            'breezy.filters',
+            'breezy.hashcache',
+            # foreign branch plugins import the foreign_vcs_registry from
+            # breezy.foreign so it can't be blacklisted
+            'breezy.gpg',
+            'breezy.info',
+            'breezy.bzr.knit',
+            'breezy.merge',
+            'breezy.merge3',
+            'breezy.merge_directive',
+            'breezy.msgeditor',
+            'breezy.bzr.remote',
+            'breezy.rules',
+            'breezy.sign_my_commits',
+            'breezy.bzr.smart',
+            'breezy.bzr.smart.client',
+            'breezy.bzr.smart.medium',
+            'breezy.bzr.smart.server',
+            'breezy.transform',
+            'breezy.version_info_formats.format_rio',
+            'breezy.bzr.xml_serializer',
+            'breezy.bzr.xml8',
+            'breezy.bzr.inventory',
+            'breezy.bzr.bzrdir',
+            'breezy.git.remote',
+            'breezy.git.commit',
+            'getpass',
+            'kerberos',
+            'smtplib',
+            'tarfile',
+            'termios',
+            'tty',
+            ] + old_format_modules + forbidden)
 
     def test_help_commands(self):
         # See https://bugs.launchpad.net/bzr/+bug/663773

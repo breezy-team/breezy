@@ -29,8 +29,6 @@ Some particularly interesting things in breezy are:
 We hope you enjoy this library.
 """
 
-from __future__ import absolute_import
-
 import time
 
 # Keep track of when breezy was first imported, so that we can give rough
@@ -53,7 +51,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 1, 0, 'final', 0)
+version_info = (3, 2, 0, 'final', 0)
 
 
 def _format_version_tuple(version_info):
@@ -129,26 +127,22 @@ def _patch_filesystem_default_encoding(new_enc):
     The use of intern() may defer breakage is but is not enough, the string
     object should be secure against module reloading and during teardown.
     """
-    is_py3 = sys.version_info > (3,)
     try:
         import ctypes
-        old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
-                                         "Py_FileSystemDefaultEncoding")
-        if is_py3:
-            has_enc = ctypes.c_int.in_dll(ctypes.pythonapi,
+        pythonapi = getattr(ctypes, 'pythonapi', None)
+        if pythonapi is not None:
+            old_ptr = ctypes.c_void_p.in_dll(pythonapi,
+                                             "Py_FileSystemDefaultEncoding")
+            has_enc = ctypes.c_int.in_dll(pythonapi,
                                           "Py_HasFileSystemDefaultEncoding")
             as_utf8 = ctypes.PYFUNCTYPE(
                 ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
-                    ("PyUnicode_AsUTF8", ctypes.pythonapi))
+                    ("PyUnicode_AsUTF8", pythonapi))
     except (ImportError, ValueError):
         return  # No ctypes or not CPython implementation, do nothing
-    if is_py3:
-        new_enc = sys.intern(new_enc)
-        enc_ptr = as_utf8(new_enc)
-        has_enc.value = 1
-    else:
-        new_enc = intern(new_enc)
-        enc_ptr = ctypes.c_char_p(new_enc)
+    new_enc = sys.intern(new_enc)
+    enc_ptr = as_utf8(new_enc)
+    has_enc.value = 1
     old_ptr.value = ctypes.cast(enc_ptr, ctypes.c_void_p).value
     if sys.getfilesystemencoding() != new_enc:
         raise RuntimeError("Failed to change the filesystem default encoding")

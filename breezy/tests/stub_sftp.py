@@ -22,10 +22,7 @@ Adapted from the one in paramiko's unit tests.
 import os
 import paramiko
 import socket
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
+import socketserver
 import sys
 import time
 

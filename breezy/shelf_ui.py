@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+import contextlib
 import patiencediff
 import shutil
 import sys
@@ -25,7 +24,6 @@ from io import BytesIO
 
 from . import (
     builtins,
-    cleanup,
     delta,
     diff,
     errors,
@@ -403,7 +401,7 @@ class Unshelver(object):
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
-                    raise errors.BzrCommandError(
+                    raise errors.CommandError(
                         gettext('No changes are shelved.'))
             apply_changes = True
             delete_shelf = True
@@ -458,7 +456,7 @@ class Unshelver(object):
 
     def run(self):
         """Perform the unshelving operation."""
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.tree.lock_tree_write())
             if self.read_shelf:
                 trace.note(gettext('Using changes with id "%d".') %

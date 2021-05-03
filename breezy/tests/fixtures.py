@@ -37,7 +37,7 @@ def generate_unicode_names():
     >>> n1 = next(gen)
     >>> n2 = next(gen)
     >>> type(n1)
-    <type 'unicode'>
+    <class 'str'>
     >>> n1 == n2
     False
     >>> n1.encode('ascii', 'replace') == n1

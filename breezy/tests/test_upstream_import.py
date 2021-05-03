@@ -26,7 +26,7 @@ from .. import (
     revision as _mod_revision,
     transform
     )
-from ..bzr.bzrdir import BzrDir
+from ..controldir import ControlDir
 from ..export import export
 from ..upstream_import import (
     common_directory,
@@ -222,7 +222,7 @@ class TestImport(TestCaseInTempDir):
 
     def archive_test(self, builder, importer, subdir=False):
         archive_file = self.make_archive(builder, subdir)
-        tree = BzrDir.create_standalone_workingtree('tree')
+        tree = ControlDir.create_standalone_workingtree('tree')
         with tree.lock_write():
             importer(tree, archive_file)
             self.assertTrue(tree.is_versioned('README'))
@@ -244,19 +244,19 @@ class TestImport(TestCaseInTempDir):
 
     def test_untar2(self):
         tar_file = self.make_messed_tar()
-        tree = BzrDir.create_standalone_workingtree('tree')
+        tree = ControlDir.create_standalone_workingtree('tree')
         import_tar(tree, tar_file)
         self.assertTrue(tree.is_versioned('project-0.1/README'))
 
     def test_untar_gzip(self):
         tar_file = self.make_tar(mode='w:gz')
-        tree = BzrDir.create_standalone_workingtree('tree')
+        tree = ControlDir.create_standalone_workingtree('tree')
         import_tar(tree, tar_file)
         self.assertTrue(tree.is_versioned('README'))
 
     def test_no_crash_with_bzrdir(self):
         tar_file = self.make_tar_with_bzrdir()
-        tree = BzrDir.create_standalone_workingtree('tree')
+        tree = ControlDir.create_standalone_workingtree('tree')
         import_tar(tree, tar_file)
         # So long as it did not crash, that should be ok
 
@@ -284,7 +284,7 @@ class TestWithStuff(TestCaseWithTransport):
     def get_empty_tt(self):
         b = self.make_repository('foo')
         null_tree = b.revision_tree(_mod_revision.NULL_REVISION)
-        tt = transform.TransformPreview(null_tree)
+        tt = null_tree.preview_transform()
         tt.new_directory('', transform.ROOT_PARENT, b'tree-root')
         tt.fixup_new_roots()
         self.addCleanup(tt.finalize)

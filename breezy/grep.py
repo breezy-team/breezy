@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+from io import BytesIO
 import re
 
 from .lazy_import import lazy_import
@@ -39,9 +38,6 @@ from .revisionspec import (
     RevisionSpec,
     RevisionSpec_revid,
     RevisionSpec_revno,
-    )
-from .sixish import (
-    BytesIO,
     )
 
 _user_encoding = osutils.get_user_encoding()
@@ -423,7 +419,7 @@ def workingtree_grep(opts):
     if not tree:
         msg = ('Cannot search working tree. Working tree not found.\n'
                'To search for specific revision in history use the -r option.')
-        raise errors.BzrCommandError(msg)
+        raise errors.CommandError(msg)
 
     # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
     opts.outputter = _Outputter(opts)

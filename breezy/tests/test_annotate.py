@@ -17,14 +17,11 @@
 """Whitebox tests for annotate functionality."""
 
 import codecs
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from .. import (
     annotate,
     tests,
-    )
-from ..sixish import (
-    StringIO,
     )
 from .ui_testing import StringIOWithEncoding
 

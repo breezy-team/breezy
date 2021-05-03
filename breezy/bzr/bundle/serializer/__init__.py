@@ -17,9 +17,8 @@
 """Serializer factory for reading and writing bundles.
 """
 
-from __future__ import absolute_import
-
 import base64
+from io import BytesIO
 import re
 
 from .... import (
@@ -28,9 +27,6 @@ from .... import (
     )
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
-from ....sixish import (
-    BytesIO,
-    )
 # For backwards-compatibility
 from ....timestamp import unpack_highres_date, format_highres_date
 

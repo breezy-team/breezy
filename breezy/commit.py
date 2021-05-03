@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # The newly committed revision is going to have a shape corresponding
 # to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -57,7 +55,7 @@ from . import (
     ui,
     )
 from .branch import Branch
-from .cleanup import ExitStack
+from contextlib import ExitStack
 import breezy.config
 from .errors import (BzrError,
                      ConflictsInTree,
@@ -69,7 +67,6 @@ from .osutils import (get_user_encoding,
                       minimum_path_selection,
                       )
 from .trace import mutter, note, is_quiet
-from .tree import TreeChange
 from .urlutils import unescape_for_display
 from .i18n import gettext
 
@@ -440,8 +437,8 @@ class Commit(object):
             # as updating its basis and unversioning paths that were missing.
             self.work_tree.unversion(self.deleted_paths)
             self._set_progress_stage("Updating the working tree")
-            self.work_tree.update_basis_by_delta(self.rev_id,
-                                                 self.builder.get_basis_delta())
+            self.work_tree.update_basis_by_delta(
+                self.rev_id, self.builder.get_basis_delta())
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
             return self.rev_id

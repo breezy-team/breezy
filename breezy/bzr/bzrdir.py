@@ -25,15 +25,14 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
-from __future__ import absolute_import
-
 import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
+
 from breezy import (
     branch as _mod_branch,
-    cleanup,
     lockable_files,
     lockdir,
     osutils,
@@ -61,7 +60,6 @@ from breezy.transport import (
 from breezy.i18n import gettext
 """)
 
-from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
@@ -380,7 +378,7 @@ class BzrDir(controldir.ControlDir):
             when working locally.
         :return: The created control directory
         """
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             fetch_spec_factory = fetch.FetchSpecFactory()
             if revision_id is not None:
                 fetch_spec_factory.add_revision_ids([revision_id])
@@ -432,6 +430,8 @@ class BzrDir(controldir.ControlDir):
                 # actually useful?
                 # Not especially, but it's part of the contract.
                 result_branch = result.create_branch()
+                if revision_id is not None:
+                    result_branch.generate_revision_history(revision_id)
             else:
                 result_branch = source_branch.sprout(
                     result, revision_id=revision_id,
@@ -1166,7 +1166,7 @@ class BzrFormat(object):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        for name, necessity in viewitems(self.features):
+        for name, necessity in self.features.items():
             if name in self._present_features:
                 continue
             if necessity == b"optional":
@@ -1206,7 +1206,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
-                      for item in sorted(viewitems(self.features))])
+                      for item in sorted(self.features.items())])
         return b"".join(lines)
 
     @classmethod
@@ -1492,6 +1492,11 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # method's contract is extended beyond the current trivial
         # implementation, please add new tests for it to the appropriate place.
         return filename == '.bzr' or filename.startswith('.bzr/')
+
+    @classmethod
+    def get_default_format(klass):
+        """Return the current default format."""
+        return controldir.format_registry.get('bzr')()
 
 
 class BzrDirMetaFormat1(BzrDirFormat):

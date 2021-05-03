@@ -5,6 +5,130 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.1.1
+#########
+
+:Codename: TBD
+:3.1.1: UNRELEASED
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance
+   or memory usage, or better results.
+
+ * Permission denied errors from GitLab during push are now properly
+   recognized. (Jelmer Vernooĳ)
+
+ * Support rename and copy tracking when accessing Git
+   repositories. (Jelmer Vernooĳ, #1760740)
+
+ * A new method ``MergeProposal.get_source_revision`` has been added.
+   (Jelmer Vernooĳ)
+
+ * Add support for HTTP response code 308. (Jelmer Vernooĳ)
+
+ * Handle non-utf8 characters in Git repositories by surrogate escaping
+   them.  (Jelmer Vernooĳ, #1489872)
+
+ * ``BzrDir.sprout`` now correctly handles the ``revision_id``
+   argument when ``source_branch`` is None. (Jelmer Vernooĳ)
+
+ * Warn when loading a plugin that is broken, but support
+   ``suppress_warnings=load_plugin_failure`` to suppress it.
+   (Jelmer Vernooĳ, #1882528)
+
+ * Add a basic ``svn:`` revision spec. Currently this doesn't work,
+   but it prevents the DWIM revision specifier from treating "svn:"
+   as a URL. (Jelmer Vernooĳ)
+
+ * New `pypi` directory that can be used to access remote repositories
+   declared in pypi. (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+ * Don't require ``ctypes.pythonapi`` to exist, as it's missing on newer
+   versions of Pypy3. (Jelmer Vernooĳ)
+
+ * Prevent exceptions during commit when quilt is not installed but
+   the tree contains quilt patches. (Jelmer Vernooĳ)
+
+ * Support pushing to Git repositories that do not yet exist,
+   such as is the case on Launchpad repositories.
+   (Jelmer Vernooĳ)
+
+ * Fix compatibility with reference counting in Python 3.10.
+   (Victor Stinner, #1904868)
+
+ * Remove shebangs from non-executable files, add executable bits where
+   needed. (Miro Hrončok)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+ * ``BzrCommandError`` has been renamed to ``CommandError``.
+   (Jelmer Vernooĳ)
+
+ * The ``osutils.safe_file_id`` and ``osutils.safe_revision_id`` methods
+   have been removed. (Jelmer Vernooĳ)
+
+ * File ids are no longer returned in ``Tree.walkdirs``.
+   (Jelmer Vernooĳ)
+
+ * ``WorkingTree.merge_from_branch``, ``Merge.do_merge`` and
+   ``merge_inner`` now return a list of conflicts rather than number of
+   conflicts.  (Jelmer Vernooĳ)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+ * A new ``MergeProposal.post_comment`` function has been added, and
+   is currently implemented for GitHub, GitLab and Launchpad.
+   (Jelmer Vernooĳ)
+
+ * Add a ``MemoryBranch`` implementation.  (Jelmer Vernooĳ)
+
+ * A new ``Workspace`` interface is now available for efficiently
+   making changes to large working trees from automation.
+   (Jelmer Vernooĳ)
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+ * Tests for most bzr-specific functionality has been moved to the
+   ``breezy.bzr.tests`` module. (Jelmer Vernooĳ)
+
 brz 3.1.0
 #########
 

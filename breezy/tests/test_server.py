@@ -16,10 +16,7 @@
 
 import errno
 import socket
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
+import socketserver
 import sys
 import threading
 
@@ -248,10 +245,6 @@ class TestingChrootServer(chroot.ChrootServer):
 
 
 class TestThread(cethread.CatchingExceptionThread):
-
-    if not getattr(cethread.CatchingExceptionThread, 'is_alive', None):
-        def is_alive(self):
-            return self.isAlive()
 
     def join(self, timeout=5):
         """Overrides to use a default timeout.

@@ -17,8 +17,6 @@
 
 """Map from Git sha's to Bazaar objects."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Blob,
     Commit,
@@ -46,7 +44,6 @@ from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
     )
-from ..sixish import viewitems
 from ..tree import InterTree
 from ..bzr.testament import (
     StrictTestament3,
@@ -57,6 +54,7 @@ from .cache import (
     )
 from .mapping import (
     default_mapping,
+    encode_git_path,
     entry_mode,
     extract_unusual_modes,
     mapping_registry,
@@ -202,7 +200,7 @@ def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes,
             mode = entry_mode(value)
         hexsha = lookup_ie_sha1(child_path, value)
         if hexsha is not None:
-            tree.add(value.name.encode("utf-8"), mode, hexsha)
+            tree.add(encode_git_path(value.name), mode, hexsha)
     if not allow_empty and len(tree) == 0:
         # Only the root can be an empty tree
         if empty_file_name is not None:
@@ -311,7 +309,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     for (path, file_id), chunks in tree.iter_files_bytes(
             [(path, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
-        obj.chunked = chunks
+        obj.chunked = list(chunks)
         if add_cache_entry is not None:
             add_cache_entry(obj, (file_id, tree.get_file_revision(path)), path)
         yield path, obj, (file_id, tree.get_file_revision(path))
@@ -404,7 +402,7 @@ class PackTupleIterable(object):
 
     def __iter__(self):
         return ((self.store[object_id], path) for (object_id, path) in
-                viewitems(self.objects))
+                self.objects.items())
 
 
 class BazaarObjectStore(BaseObjectStore):
@@ -572,7 +570,7 @@ class BazaarObjectStore(BaseObjectStore):
             ((key[0], key[1], key) for key in keys))
         for (file_id, revision, expected_sha), chunks in stream:
             blob = Blob()
-            blob.chunked = chunks
+            blob.chunked = list(chunks)
             if blob.id != expected_sha and blob.data == b"":
                 # Perhaps it's a symlink ?
                 tree = self.tree_cache.revision_tree(revision)

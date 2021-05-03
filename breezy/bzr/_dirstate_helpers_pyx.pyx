@@ -13,13 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+# cython: language_level=3
 
 """Helper functions for DirState.
 
 This is the python implementation for DirState functions.
 """
-
-from __future__ import absolute_import
 
 import binascii
 import bisect
@@ -31,7 +31,7 @@ import sys
 from .. import cache_utf8, errors, osutils
 from .dirstate import DirState, DirstateCorrupt
 from ..osutils import parent_directories, pathjoin, splitpath, is_inside_any, is_inside
-from ..tree import TreeChange
+from .inventorytree import InventoryTreeChange
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -1303,7 +1303,7 @@ cdef class ProcessEntryC:
                     else:
                         path_u = self.utf8_decode(path)[0]
                 source_kind = _minikind_to_kind(source_minikind)
-                return TreeChange(entry[0][2],
+                return InventoryTreeChange(entry[0][2],
                        (old_path_u, path_u),
                        content_change,
                        (True, True),
@@ -1336,7 +1336,7 @@ cdef class ProcessEntryC:
                         and S_IXUSR & path_info[3].st_mode)
                 else:
                     target_exec = target_details[3]
-                return TreeChange(entry[0][2],
+                return InventoryTreeChange(entry[0][2],
                        (None, self.utf8_decode(path)[0]),
                        True,
                        (False, True),
@@ -1346,7 +1346,7 @@ cdef class ProcessEntryC:
                        (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
-                return TreeChange(entry[0][2],
+                return InventoryTreeChange(entry[0][2],
                        (None, self.utf8_decode(path)[0]),
                        False,
                        (False, True),
@@ -1364,7 +1364,7 @@ cdef class ProcessEntryC:
             parent_id = self.state._get_entry(self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
-            return TreeChange(
+            return InventoryTreeChange(
                    entry[0][2],
                    (self.utf8_decode(old_path)[0], None),
                    True,
@@ -1562,7 +1562,7 @@ cdef class ProcessEntryC:
                 new_executable = bool(
                     stat.S_ISREG(self.root_dir_info[3].st_mode)
                     and stat.S_IEXEC & self.root_dir_info[3].st_mode)
-                return TreeChange(
+                return InventoryTreeChange(
                        None,
                        (None, self.current_root_unicode),
                        True,
@@ -1674,7 +1674,7 @@ cdef class ProcessEntryC:
                             new_executable = bool(
                                 stat.S_ISREG(current_path_info[3].st_mode)
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
-                            return TreeChange(
+                            return InventoryTreeChange(
                                 None,
                                 (None, self.utf8_decode(current_path_info[0])[0]),
                                 True,
@@ -1844,7 +1844,7 @@ cdef class ProcessEntryC:
                             if changed is not None:
                                 raise AssertionError(
                                     "result is not None: %r" % result)
-                            result = TreeChange(
+                            result = InventoryTreeChange(
                                 None,
                                 (None, relpath_unicode),
                                 True,
