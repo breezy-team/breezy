@@ -6,6 +6,7 @@ breezy (3.2.0-1) UNRELEASED; urgency=medium
 
   [ Jelmer Vernooĳ ]
   * New upstream release.
+  * Update watch file format version to 4.
 
  -- Helmut Grohne <helmut@subdivi.de>  Mon, 03 May 2021 15:01:57 -0000
 
