@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .. import (
     config,
     errors,
@@ -23,6 +21,15 @@ from .. import (
     pyutils,
     registry,
     )
+
+
+class LineEndingError(errors.BzrError):
+
+    _fmt = ("Line ending corrupted for file: %(file)s; "
+            "Maybe your files got corrupted in transport?")
+
+    def __init__(self, file):
+        self.file = file
 
 
 class BzrProber(controldir.Prober):
@@ -42,15 +49,25 @@ class BzrProber(controldir.Prober):
             format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
+        except errors.BadHttpRequest as e:
+            if e.reason == 'no such method: .bzr':
+                # hgweb 
+                raise errors.NotBranchError(path=transport.base)
+            raise
+
         try:
             first_line = format_string[:format_string.index(b"\n") + 1]
         except ValueError:
             first_line = format_string
+        if (first_line.startswith(b'<!DOCTYPE') or
+                first_line.startswith(b'<html')):
+            raise errors.NotBranchError(
+                path=transport.base, detail="format file looks like HTML")
         try:
             cls = klass.formats.get(first_line)
         except KeyError:
             if first_line.endswith(b"\r\n"):
-                raise errors.LineEndingError(file=".bzr/branch-format")
+                raise LineEndingError(file=".bzr/branch-format")
             else:
                 raise errors.UnknownFormatError(
                     format=first_line, kind='bzrdir')
@@ -197,7 +214,7 @@ register_metadir(
     controldir.format_registry, 'rich-root',
     'breezy.bzr.knitrepo.RepositoryFormatKnit4',
     help='Variant of dirstate with better handling of tree roots. '
-    'Introduced in bzr 1.0',
+    'Introduced in bzr 1.0.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
@@ -217,7 +234,7 @@ register_metadir(
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack1',
     help='Pack-based format used in 1.x series. Introduced in 0.92. '
     'Interoperates with bzr repositories before 0.92 but cannot be '
-    'read by bzr < 0.92. ',
+    'read by bzr < 0.92.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     deprecated=True,
@@ -228,7 +245,7 @@ register_metadir(
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack3',
     help='Pack-based format used in 1.x series, with subtree support. '
     'Introduced in 0.92. Interoperates with '
-    'bzr repositories before 0.92 but cannot be read by bzr < 0.92. ',
+    'bzr repositories before 0.92 but cannot be read by bzr < 0.92.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,

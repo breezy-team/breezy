@@ -30,10 +30,6 @@ from breezy import (
     static_tuple,
     tests,
     )
-from breezy.sixish import (
-    PY3,
-    text_type,
-    )
 from breezy.tests import (
     features,
     )
@@ -221,16 +217,6 @@ class TestStaticTuple(tests.TestCase):
         # But not a subclass, because subint could introduce refcycles
         self.assertRaises(TypeError, self.module.StaticTuple, subint(2))
 
-    def test_holds_long(self):
-        if PY3:
-            self.skipTest("No long type on Python 3")
-        k1 = self.module.StaticTuple(2**65)
-
-        class sublong(long):
-            pass
-        # But not a subclass
-        self.assertRaises(TypeError, self.module.StaticTuple, sublong(1))
-
     def test_holds_float(self):
         k1 = self.module.StaticTuple(1.2)
 
@@ -248,7 +234,7 @@ class TestStaticTuple(tests.TestCase):
     def test_holds_unicode(self):
         k1 = self.module.StaticTuple(u'\xb5')
 
-        class subunicode(text_type):
+        class subunicode(str):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple,
                           subunicode(u'\xb5'))
@@ -295,7 +281,7 @@ class TestStaticTuple(tests.TestCase):
 
     def check_strict_compare(self, k1, k2, mismatched_types):
         """True if on Python 3 and stricter comparison semantics are used."""
-        if PY3 and mismatched_types:
+        if mismatched_types:
             for op in ("ge", "gt", "le", "lt"):
                 self.assertRaises(TypeError, getattr(operator, op), k1, k2)
             return True
@@ -457,7 +443,15 @@ class TestStaticTuple(tests.TestCase):
             refs = strs + [self.module.StaticTuple]
         else:
             refs = strs
-        self.assertEqual(sorted(refs), sorted(scanner.get_referents(k)))
+        def key(k):
+            if isinstance(k, type):
+                return (0, k)
+            if isinstance(k, str):
+                return (1, k)
+            raise TypeError(k)
+        self.assertEqual(
+            sorted(refs, key=key),
+            sorted(scanner.get_referents(k), key=key))
 
     def test_nested_referents(self):
         self.requireFeature(features.meliae)
@@ -469,8 +463,15 @@ class TestStaticTuple(tests.TestCase):
         refs = [k1, k2]
         if self.module is _static_tuple_py:
             refs.append(self.module.StaticTuple)
-        self.assertEqual(sorted(refs),
-                         sorted(scanner.get_referents(k3)))
+        def key(k):
+            if isinstance(k, type):
+                return (0, k)
+            if isinstance(k, self.module.StaticTuple):
+                return (1, k)
+            raise TypeError(k)
+
+        self.assertEqual(sorted(refs, key=key),
+                         sorted(scanner.get_referents(k3), key=key))
 
     def test_empty_is_singleton(self):
         key = self.module.StaticTuple()

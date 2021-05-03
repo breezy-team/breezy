@@ -63,7 +63,7 @@ Upgrading required plugins
 --------------------------
 
 Many plugins are not dependent on a particular Breezy version so
-upgrading them is optional. Other plugins, notably bzr-svn, are more tightly
+upgrading them is optional. Other plugins, notably brz-svn, are more tightly
 associated with Breezy's APIs so these typically need to be upgraded in
 lockstep with the core software.
 

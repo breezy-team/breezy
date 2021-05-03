@@ -16,8 +16,6 @@
 
 """Help information."""
 
-from __future__ import absolute_import
-
 help_git = """Using Bazaar with Git.
 
 The bzr-git plugin provides support for using Bazaar with local and remote

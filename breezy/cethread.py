@@ -14,14 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import sys
 import threading
-
-from .sixish import (
-    reraise,
-)
 
 
 class CatchingExceptionThread(threading.Thread):
@@ -145,7 +139,7 @@ class CatchingExceptionThread(threading.Thread):
             if (self.ignored_exceptions is None
                     or not self.ignored_exceptions(exc_value)):
                 # Raise non ignored exceptions
-                reraise(exc_class, exc_value, exc_tb)
+                raise exc_value
 
     def pending_exception(self):
         """Raise the caught exception.

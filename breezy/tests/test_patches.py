@@ -86,10 +86,21 @@ class PatchesTester(TestCase):
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
+        lines = (
+            b"--- orig/commands.py\t2020-09-09 23:39:35 +0000\n"
+            b"+++ mod/dommands.py\t2020-09-09 23:39:35 +0000\n").split(b'\n')
+        (orig, mod) = get_patch_names(lines.__iter__())
+        self.assertEqual(
+            orig, (b"orig/commands.py", b'2020-09-09 23:39:35 +0000'))
+        self.assertEqual(
+            mod, (b"mod/dommands.py", b'2020-09-09 23:39:35 +0000'))
+
+    def testValidPatchHeaderMissingTimestamps(self):
+        """Parse a valid patch header"""
         lines = b"--- orig/commands.py\n+++ mod/dommands.py\n".split(b'\n')
         (orig, mod) = get_patch_names(lines.__iter__())
-        self.assertEqual(orig, b"orig/commands.py")
-        self.assertEqual(mod, b"mod/dommands.py")
+        self.assertEqual(orig, (b"orig/commands.py", None))
+        self.assertEqual(mod, (b"mod/dommands.py", None))
 
     def testInvalidPatchHeader(self):
         """Parse an invalid patch header"""
@@ -181,10 +192,10 @@ class PatchesTester(TestCase):
         patches = list(parse_patches(self.data_lines("binary.patch")))
         self.assertIs(BinaryPatch, patches[0].__class__)
         self.assertIs(Patch, patches[1].__class__)
-        self.assertContainsRe(patches[0].oldname, b'^bar\t')
-        self.assertContainsRe(patches[0].newname, b'^qux\t')
+        self.assertEqual(patches[0].oldname, b'bar')
+        self.assertEqual(patches[0].newname, b'qux')
         self.assertContainsRe(patches[0].as_bytes(),
-                              b'Binary files bar\t.* and qux\t.* differ\n')
+                              b'Binary files bar and qux differ\n')
 
     def test_parse_binary_after_normal(self):
         patches = list(parse_patches(

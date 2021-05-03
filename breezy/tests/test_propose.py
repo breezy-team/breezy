@@ -117,3 +117,19 @@ Make some change.
 
 And here are some more details.
 """))
+        self.assertEqual('Make some change', determine_title("""\
+Make some change. And another one.
+
+With details.
+"""))
+        self.assertEqual('Release version 5.1', determine_title("""\
+Release version 5.1
+
+And here are some more details.
+"""))
+        self.assertEqual('Release version 5.1', determine_title("""\
+
+Release version 5.1
+
+And here are some more details.
+"""))

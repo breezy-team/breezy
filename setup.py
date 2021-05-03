@@ -12,15 +12,15 @@ import sys
 import copy
 import glob
 
-if sys.version_info < (2, 7):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
+if sys.version_info < (3, 5):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 3.5+\n")
     sys.exit(1)
 
 
 try:
     import setuptools
-except ImportError:
-    sys.stderr.write("[ERROR] Please install setuptools\n")
+except ImportError as e:
+    sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
 
@@ -64,21 +64,24 @@ META_INFO = {
         ],
     'install_requires': [
         'configobj',
-        'six>=1.9.0',
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
-        'fastimport>=0.9.8',
-        'dulwich>=0.19.12',
-        'dulwich<0.20;python_version<"3.0"',
+        'dulwich>=0.19.12;python_version>="3.5"',
+        'dulwich<0.20,>=0.19.12;python_version<"3.0"',
         ],
     'extras_require': {
-        'fastimport': [],
-        'git': [],
+        'cext': ['cython>=0.29'],
+        'fastimport': ['fastimport<0.9.8;python_version<"3.0"', 'fastimport;python_version>="3.5"'],
+        'git': ['dulwich'],
         'launchpad': ['launchpadlib>=1.6.3'],
+        'workspace': ['pyinotify'],
+        'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
     'tests_require': [
         'testtools',
+        'testtools<=2.4.0;python_version<"3.0"',
+        'python-subunit',
     ],
 }
 
@@ -596,12 +599,6 @@ elif 'py2exe' in sys.argv:
         includes.append(module)
 
     additional_packages = set()
-    if sys.version.startswith('2.7'):
-        additional_packages.add('xml.etree')
-    else:
-        import warnings
-        warnings.warn('Unknown Python version.\n'
-                      'Please check setup.py script for compatibility.')
 
     # Although we currently can't enforce it, we consider it an error for
     # py2exe to report any files are "missing".  Such modules we know aren't

@@ -16,11 +16,8 @@
 
 """Ping plugin for brz."""
 
-from __future__ import absolute_import
-
 from ...commands import Command
 from ...lazy_import import lazy_import
-from ...sixish import viewitems
 
 lazy_import(globals(), """
 from breezy.bzr.smart.client import _SmartClient
@@ -44,7 +41,7 @@ class cmd_ping(Command):
         try:
             medium = transport.get_smart_medium()
         except errors.NoSmartMedium as e:
-            raise errors.BzrCommandError(str(e))
+            raise errors.CommandError(str(e))
         client = _SmartClient(medium)
         # Use call_expecting_body (even though we don't expect a body) so that
         # we can see the response headers (if any) via the handler object.
@@ -54,5 +51,5 @@ class cmd_ping(Command):
         if getattr(handler, 'headers', None) is not None:
             headers = {
                 k.decode('utf-8'): v.decode('utf-8')
-                for (k, v) in viewitems(handler.headers)}
+                for (k, v) in handler.headers.items()}
             self.outf.write('Headers: %r\n' % (headers,))

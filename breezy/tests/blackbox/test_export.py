@@ -18,6 +18,7 @@
 """Black-box tests for brz export.
 """
 
+from io import BytesIO
 import os
 import stat
 import tarfile
@@ -30,14 +31,10 @@ from ... import (
     export,
     osutils,
     )
-from ...sixish import (
-    BytesIO,
-    )
 from .. import (
     features,
     TestCaseWithTransport,
     )
-from ..matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -419,24 +416,3 @@ class TestExport(TestCaseWithTransport):
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
         self.assertEqual(time.localtime(timestamp)[:6], info.date_time)
-
-
-class TestSmartServerExport(TestCaseWithTransport):
-
-    def test_simple_export(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(
-            ['export', "foo.tar.gz", self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(8, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -74,11 +74,11 @@ h=help
 up=pull
 """
 
-from __future__ import absolute_import
 import os
 import sys
 
 import configobj
+from io import BytesIO
 
 import breezy
 from .lazy_import import lazy_import
@@ -90,7 +90,6 @@ import re
 import stat
 
 from breezy import (
-    atomicfile,
     cmdline,
     controldir,
     debug,
@@ -114,13 +113,6 @@ from . import (
     hooks,
     lazy_regex,
     registry,
-    )
-from .sixish import (
-    binary_type,
-    BytesIO,
-    PY3,
-    string_types,
-    text_type,
     )
 
 
@@ -258,19 +250,6 @@ def signing_policy_from_unicode(signature_string):
                      % signature_string)
 
 
-def _has_decode_bug():
-    """True if configobj will fail to decode to unicode on Python 2."""
-    if PY3:
-        return False
-    conf = configobj.ConfigObj()
-    decode = getattr(conf, "_decode", None)
-    if decode:
-        result = decode(b"\xc2\xa7", "utf-8")
-        if isinstance(result[0], str):
-            return True
-    return False
-
-
 def _has_triplequote_bug():
     """True if triple quote logic is reversed, see lp:710410."""
     conf = configobj.ConfigObj()
@@ -287,12 +266,6 @@ class ConfigObj(configobj.ConfigObj):
         super(ConfigObj, self).__init__(infile=infile,
                                         interpolation=False,
                                         **kwargs)
-
-    if _has_decode_bug():
-        def _decode(self, infile, encoding):
-            if isinstance(infile, str) and encoding:
-                return infile.decode(encoding).splitlines(True)
-            return super(ConfigObj, self)._decode(infile, encoding)
 
     if _has_triplequote_bug():
         def _get_triple_quote(self, value):
@@ -520,7 +493,7 @@ class Config(object):
             otherwise.
         """
         l = self.get_user_option(option_name, expand=expand)
-        if isinstance(l, string_types):
+        if isinstance(l, str):
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
             l = [l]
@@ -563,8 +536,6 @@ class Config(object):
         """
         v = os.environ.get('BRZ_EMAIL') or os.environ.get('BZR_EMAIL')
         if v:
-            if not PY3:
-                v = v.decode(osutils.get_user_encoding())
             return v
         v = self._get_user_id()
         if v:
@@ -730,7 +701,7 @@ class IniBasedConfig(Config):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
-        if isinstance(str_or_unicode, text_type):
+        if isinstance(str_or_unicode, str):
             str_or_unicode = str_or_unicode.encode('utf-8')
         self._content = BytesIO(str_or_unicode)
         # Some tests use in-memory configs, some other always need the config
@@ -931,6 +902,7 @@ class IniBasedConfig(Config):
     def _write_config_file(self):
         if self.file_name is None:
             raise AssertionError('We cannot save, self.file_name is None')
+        from . import atomicfile
         conf_dir = os.path.dirname(self.file_name)
         bedding.ensure_config_dir_exists(conf_dir)
         with atomicfile.AtomicFile(self.file_name) as atomic_file:
@@ -1278,6 +1250,8 @@ class BranchConfig(Config):
 
     def _get_location_config(self):
         if self._location_config is None:
+            if self.branch.base is None:
+                self.branch.base = 'memory://'
             self._location_config = LocationConfig(self.branch.base)
         return self._location_config
 
@@ -2129,7 +2103,7 @@ class Option(object):
                 raise AssertionError(
                     'Only empty lists are supported as default values')
             self.default = u','
-        elif isinstance(default, (binary_type, text_type, bool, int, float)):
+        elif isinstance(default, (bytes, str, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
             self.default = u'%s' % (default,)
         elif callable(default):
@@ -2176,8 +2150,6 @@ class Option(object):
             try:
                 # If the env variable is defined, its value takes precedence
                 value = os.environ[var]
-                if not PY3:
-                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2189,8 +2161,6 @@ class Option(object):
             try:
                 # If the env variable is defined, its value is the default one
                 value = os.environ[var]
-                if not PY3:
-                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2198,7 +2168,7 @@ class Option(object):
             # Otherwise, fallback to the value defined at registration
             if callable(self.default):
                 value = self.default()
-                if not isinstance(value, text_type):
+                if not isinstance(value, str):
                     raise AssertionError(
                         "Callable default value for '%s' should be unicode"
                         % (self.name))
@@ -2283,7 +2253,7 @@ class ListOption(Option):
             invalid=invalid, unquote=False)
 
     def from_unicode(self, unicode_str):
-        if not isinstance(unicode_str, string_types):
+        if not isinstance(unicode_str, str):
             raise TypeError
         # Now inject our string directly as unicode. All callers got their
         # value from configobj, so values that need to be quoted are already
@@ -2291,7 +2261,7 @@ class ListOption(Option):
         _list_converter_config.reset()
         _list_converter_config._parse([u"list=%s" % (unicode_str,)])
         maybe_list = _list_converter_config['list']
-        if isinstance(maybe_list, string_types):
+        if isinstance(maybe_list, str):
             if maybe_list:
                 # A single value, most probably the user forgot (or didn't care
                 # to add) the final ','
@@ -2323,7 +2293,7 @@ class RegistryOption(Option):
         self.registry = registry
 
     def from_unicode(self, unicode_str):
-        if not isinstance(unicode_str, string_types):
+        if not isinstance(unicode_str, str):
             raise TypeError
         try:
             return self.registry.get(unicode_str)
@@ -2934,7 +2904,7 @@ class CommandLineStore(Store):
             try:
                 name, value = over.split('=', 1)
             except ValueError:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("Invalid '%s', should be of the form 'name=value'")
                     % (over,))
             self.options[name] = value
@@ -3082,7 +3052,7 @@ class IniFileStore(Store):
             self._config_obj.list_values = False
 
     def unquote(self, value):
-        if value and isinstance(value, string_types):
+        if value and isinstance(value, str):
             # _unquote doesn't handle None nor empty strings nor anything that
             # is not a string, really.
             value = self._config_obj._unquote(value)
@@ -3499,7 +3469,7 @@ class Stack(object):
             # None or ends up being None during expansion or conversion.
             if val is not None:
                 if expand:
-                    if isinstance(val, string_types):
+                    if isinstance(val, str):
                         val = self._expand_options_in_string(val)
                     else:
                         trace.warning('Cannot expand "%s":'
@@ -3906,7 +3876,7 @@ class cmd_config(commands.Command):
         # http://pad.lv/788991 -- vila 20101115
         commands.Option('scope', help='Reduce the scope to the specified'
                         ' configuration file.',
-                        type=text_type),
+                        type=str),
         commands.Option('all',
                         help='Display all the defined values for the matching options.',
                         ),
@@ -4035,7 +4005,7 @@ class cmd_config(commands.Command):
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 '--remove expects an option to remove.')
         conf = self._get_stack(directory, scope, write_access=True)
         try:

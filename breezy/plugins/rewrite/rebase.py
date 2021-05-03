@@ -16,8 +16,6 @@
 
 """Rebase."""
 
-from __future__ import absolute_import
-
 import os
 
 from ... import (
@@ -32,12 +30,12 @@ from ...errors import (
     UnrelatedBranches,
     )
 from ...bzr.generate_ids import gen_revision_id
+from ...bzr.inventorytree import InventoryTreeChange
 from ...graph import FrozenHeadsCache
 from ...merge import Merger
 from ...revision import NULL_REVISION
 from ...trace import mutter
 from ...tsort import topo_sort
-from ...tree import TreeChange
 from ... import ui
 
 from .maptree import (
@@ -391,7 +389,7 @@ def wrap_iter_changes(old_iter_changes, map_tree):
             new_parent = map_tree.new_id(change.parent_id[1])
         else:
             new_parent = change.parent_id[1]
-        yield TreeChange(
+        yield InventoryTreeChange(
             map_tree.new_id(change.file_id), change.path,
             change.changed_content, change.versioned,
             (old_parent, new_parent), change.name, change.kind,

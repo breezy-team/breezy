@@ -16,14 +16,9 @@
 
 """Tests for _rio_*."""
 
-from __future__ import absolute_import
-
 from .. import (
     rio,
     tests,
-    )
-from ..sixish import (
-    text_type,
     )
 
 
@@ -56,11 +51,8 @@ class TestValidTag(tests.TestCase):
         self.assertFalse(self.module._valid_tag(""))
 
     def test_unicode(self):
-        if text_type is str:
-            # When str is a unicode type, it is valid for a tag
-            self.assertTrue(self.module._valid_tag(u"foo"))
-        else:
-            self.assertRaises(TypeError, self.module._valid_tag, u"foo")
+        # When str is a unicode type, it is valid for a tag
+        self.assertTrue(self.module._valid_tag(u"foo"))
 
     def test_non_ascii_char(self):
         self.assertFalse(self.module._valid_tag("\xb5"))
@@ -76,7 +68,7 @@ class TestReadUTF8Stanza(tests.TestCase):
         if s is not None:
             for tag, value in s.iter_pairs():
                 self.assertIsInstance(tag, str)
-                self.assertIsInstance(value, text_type)
+                self.assertIsInstance(value, str)
 
     def assertReadStanzaRaises(self, exception, line_iter):
         self.assertRaises(exception, self.module._read_stanza_utf8, line_iter)
@@ -132,7 +124,7 @@ class TestReadUnicodeStanza(tests.TestCase):
         if s is not None:
             for tag, value in s.iter_pairs():
                 self.assertIsInstance(tag, str)
-                self.assertIsInstance(value, text_type)
+                self.assertIsInstance(value, str)
 
     def assertReadStanzaRaises(self, exception, line_iter):
         self.assertRaises(exception, self.module._read_stanza_unicode,

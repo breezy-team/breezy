@@ -16,8 +16,6 @@
 
 """Test the smart client."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import os
@@ -137,6 +135,14 @@ class ParseGitErrorTests(TestCase):
         self.assertEqual(e.path, 'porridge/gaduhistory.git')
         self.assertEqual(e.extra, ': denied to jelmer')
 
+    def test_pre_receive_hook_declined(self):
+        e = parse_git_error(
+            "url",
+            'pre-receive hook declined')
+        self.assertIsInstance(e, PermissionDenied)
+        self.assertEqual(e.path, "url")
+        self.assertEqual(e.extra, ': pre-receive hook declined')
+
     def test_invalid_repo_name(self):
         e = parse_git_error(
             "url",
@@ -145,13 +151,25 @@ Email support@github.com for help
 """)
         self.assertIsInstance(e, NotBranchError)
 
+    def test_invalid_git_error(self):
+        self.assertEqual(
+            PermissionDenied(
+                'url',
+                'GitLab: You are not allowed to push code to protected '
+                'branches on this project.'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'GitLab: You are not allowed to push code to '
+                    'protected branches on this project.')))
+
 
 class ParseHangupTests(TestCase):
 
     def setUp(self):
         super(ParseHangupTests, self).setUp()
         try:
-            HangupException(['foo'])
+            HangupException([b'foo'])
         except TypeError:
             self.skipTest('dulwich version too old')
 
@@ -162,18 +180,21 @@ class ParseHangupTests(TestCase):
     def test_single_line(self):
         self.assertEqual(
             RemoteGitError('foo bar'),
-            parse_git_hangup('http://', HangupException(['foo bar'])))
+            parse_git_hangup('http://', HangupException([b'foo bar'])))
 
     def test_multi_lines(self):
         self.assertEqual(
             RemoteGitError('foo bar\nbla bla'),
             parse_git_hangup(
-                'http://', HangupException(['foo bar', 'bla bla'])))
+                'http://', HangupException([b'foo bar', b'bla bla'])))
 
     def test_filter_boring(self):
         self.assertEqual(
             RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
-                ['=======', 'foo bar', '======'])))
+                [b'=======', b'foo bar', b'======'])))
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                [b'remote: =======', b'remote: foo bar', b'remote: ======'])))
 
     def test_permission_denied(self):
         self.assertEqual(
@@ -181,8 +202,18 @@ class ParseHangupTests(TestCase):
             parse_git_hangup(
                 'http://',
                 HangupException(
-                    ['=======',
-                     'You are not allowed to push code to this project.', '', '======'])))
+                    [b'=======',
+                     b'You are not allowed to push code to this project.', b'', b'======'])))
+
+    def test_notbrancherror_yet(self):
+        self.assertEqual(
+            NotBranchError('http://', 'A repository for this project does not exist yet.'),
+            parse_git_hangup(
+                'http://',
+                HangupException(
+                    [b'=======',
+                     b'',
+                     b'A repository for this project does not exist yet.', b'', b'======'])))
 
 
 class TestRemoteGitBranchFormat(TestCase):

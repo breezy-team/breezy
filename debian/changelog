@@ -1,9 +1,13 @@
-breezy (3.1.0-8.1) UNRELEASED; urgency=medium
+breezy (3.2.0-1) UNRELEASED; urgency=medium
 
+  [ Helmut Grohne ]
   * Non-maintainer upload.
   * Add missing python3-setuptools to Build-Depends. (Closes: #983015)
 
- -- Helmut Grohne <helmut@subdivi.de>  Wed, 17 Feb 2021 22:23:49 +0100
+  [ Jelmer Vernooĳ ]
+  * New upstream release.
+
+ -- Helmut Grohne <helmut@subdivi.de>  Mon, 03 May 2021 15:01:57 -0000
 
 breezy (3.1.0-8) unstable; urgency=medium
 

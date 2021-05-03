@@ -23,10 +23,6 @@ from .. import osutils, urlutils
 from ..errors import (
     PathNotChild,
     )
-from ..sixish import (
-    text_type,
-    PY3,
-    )
 from . import features, TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -128,14 +124,6 @@ class TestUrlToPath(TestCase):
            normalize_url('http://host/%7Ebob%2525%2D%2E%5F'))
         eq('http://host/~bob%2525-._',
            normalize_url(u'http://host/%7Ebob%2525%2D%2E%5F'))
-
-        if not PY3:
-            # On Python 2, normalize verifies URLs when they are not unicode
-            # (indicating they did not come from the user)
-            self.assertRaises(urlutils.InvalidURL, normalize_url,
-                              b'http://host/\xb5')
-            self.assertRaises(urlutils.InvalidURL,
-                              normalize_url, b'http://host/ ')
 
     def test_url_scheme_re(self):
         # Test paths that may be URLs
@@ -449,7 +437,7 @@ class TestUrlToPath(TestCase):
 
         self.assertEqual(
             'file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertFalse(isinstance(result, text_type))
+        self.assertFalse(isinstance(result, str))
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
@@ -678,7 +666,7 @@ class TestUrlToPath(TestCase):
         # Test that URLs are converted to nice unicode strings for display
         def test(expected, url, encoding='utf-8'):
             disp_url = urlutils.unescape_for_display(url, encoding=encoding)
-            self.assertIsInstance(disp_url, text_type)
+            self.assertIsInstance(disp_url, str)
             self.assertEqual(expected, disp_url)
 
         test('http://foo', 'http://foo')
@@ -727,14 +715,7 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%', urlutils.unescape('%25'))
         self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))
 
-        if not PY3:
-            self.assertRaises(urlutils.InvalidURL, urlutils.unescape, u'\xe5')
-        self.assertRaises((TypeError, urlutils.InvalidURL),
-                          urlutils.unescape, b'\xe5')
-        if not PY3:
-            self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '%E5')
-        else:
-            self.assertEqual('\xe5', urlutils.unescape('%C3%A5'))
+        self.assertEqual('\xe5', urlutils.unescape('%C3%A5'))
 
     def test_escape_unescape(self):
         self.assertEqual(u'\xe5', urlutils.unescape(urlutils.escape(u'\xe5')))
@@ -1140,10 +1121,7 @@ class QuoteTests(TestCase):
 
     def test_unquote(self):
         self.assertEqual('%', urlutils.unquote('%25'))
-        if PY3:
-            self.assertEqual('\xe5', urlutils.unquote('%C3%A5'))
-        else:
-            self.assertEqual('\xc3\xa5', urlutils.unquote('%C3%A5'))
+        self.assertEqual('\xe5', urlutils.unquote('%C3%A5'))
         self.assertEqual(u"\xe5", urlutils.unquote(u'\xe5'))
 
     def test_unquote_to_bytes(self):

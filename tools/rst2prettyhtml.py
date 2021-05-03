@@ -2,7 +2,7 @@
 
 import errno
 import os
-from breezy.sixish import StringIO
+from io import StringIO
 import sys
 
 try:

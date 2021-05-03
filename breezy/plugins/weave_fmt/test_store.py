@@ -16,14 +16,12 @@
 
 """Test Store implementations."""
 
+from io import BytesIO
 import os
 import gzip
 
 from ... import errors as errors
 from ...errors import BzrError
-from ...sixish import (
-    BytesIO,
-    )
 from .store import TransportStore
 from .store.text import TextStore
 from .store.versioned import VersionedFileStore

@@ -21,8 +21,6 @@ and sometimes don't.  By using this decorator, you can force those transports
 to never have a smart medium.
 """
 
-from __future__ import absolute_import
-
 from .. import errors
 from ..transport import decorator
 

@@ -22,20 +22,18 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import os
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
 import errno
 import stat
 
 from breezy import (
     branch as _mod_branch,
     cache_utf8,
-    cleanup,
     controldir,
     debug,
     filters as _mod_filters,
@@ -43,12 +41,12 @@ from breezy import (
     revision as _mod_revision,
     revisiontree,
     trace,
-    transform,
     views,
     )
 from breezy.bzr import (
     dirstate,
     generate_ids,
+    transform as bzr_transform,
     )
 """)
 
@@ -61,6 +59,7 @@ from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from .inventorytree import (
     InventoryTree,
+    InterInventoryTree,
     InventoryRevisionTree,
     )
 from ..mutabletree import (
@@ -73,9 +72,6 @@ from ..osutils import (
     pathjoin,
     realpath,
     safe_unicode,
-    )
-from ..sixish import (
-    viewitems,
     )
 from ..transport import get_transport_from_path
 from ..transport.local import LocalTransport
@@ -469,7 +465,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def get_reference_revision(self, path):
         # referenced tree's revision is whatever's currently there
-        return self.get_nested_tree(path).last_revision()
+        try:
+            return self.get_nested_tree(path).last_revision()
+        except errors.NotBranchError:
+            entry = self._get_entry(path=path)
+            if entry == (None, None):
+                return False
+            return entry[1][0][1]
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
@@ -700,7 +702,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
             # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
             # missing those added here, but there's also no test coverage for this.
-            rollbacks = cleanup.ExitStack()
+            rollbacks = contextlib.ExitStack()
 
             def move_one(old_entry, from_path_utf8, minikind, executable,
                          fingerprint, packed_stat, size,
@@ -1044,7 +1046,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     raise errors.PathsNotVersionedError(
                         [p.decode('utf-8') for p in paths])
 
-        for dir_name_id, trees_info in viewitems(found):
+        for dir_name_id, trees_info in found.items():
             for index in search_indexes:
                 if trees_info[index][0] not in (b'r', b'a'):
                     found_ids.add(dir_name_id[2])
@@ -1570,9 +1572,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 # delta_from_tree is safe even for DirStateRevisionTrees,
                 # because wt4.apply_inventory_delta does not mutate the input
                 # inventory entries.
-                transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink,
-                                     delta_from_tree=delta_from_tree)
+                bzr_transform.build_tree(
+                    basis, wt, accelerator_tree,
+                    hardlink=hardlink,
+                    delta_from_tree=delta_from_tree)
                 for hook in MutableTree.hooks['post_build_tree']:
                     hook(wt)
         finally:
@@ -2161,19 +2164,18 @@ class DirStateRevisionTree(InventoryTree):
                 relroot = ""
             # FIXME: stash the node in pending
             entry = inv.get_entry(file_id)
+            subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.file_id, child.kind
-                                 ))
-            yield (relpath, entry.file_id), dirblock
+                dirblock.append((toppath, name, child.kind, None, child.kind))
+                if child.kind == _directory:
+                    subdirs.append((toppath, child.file_id))
+            yield relpath, dirblock
             # push the user specified dirs from dirblock
-            for dir in reversed(dirblock):
-                if dir[2] == _directory:
-                    pending.append((dir[0], dir[4]))
+            pending.extend(reversed(subdirs))
 
 
-class InterDirStateTree(InterTree):
+class InterDirStateTree(InterInventoryTree):
     """Fast path optimiser for changes_from with dirstate trees.
 
     This is used only when both trees are in the dirstate working file, and
@@ -2206,7 +2208,7 @@ class InterDirStateTree(InterTree):
     @classmethod
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
                                                   target):
-        from ..tests.test__dirstate_helpers import \
+        from .tests.test__dirstate_helpers import \
             compiled_dirstate_helpers_feature
         test_case.requireFeature(compiled_dirstate_helpers_feature)
         from ._dirstate_helpers_pyx import ProcessEntryC

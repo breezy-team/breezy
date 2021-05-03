@@ -16,6 +16,7 @@
 
 """Test that we can use smart_add on all Tree implementations."""
 
+from io import StringIO
 import os
 import sys
 
@@ -27,9 +28,6 @@ from ... import (
     tests,
     trace,
     workingtree,
-    )
-from ...sixish import (
-    StringIO,
     )
 from .. import (
     features,
@@ -324,6 +322,9 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree_contents([('t1/file', b'content in t1')])
         t1.commit('Changing file in t1')
         t1.merge_from_branch(tb.branch)
+        fnames = ['file.%s' % s for s in ('BASE', 'THIS', 'OTHER')]
+        for fn in fnames:
+            self.assertPathExists(os.path.join(t1.basedir, fn))
         return t1
 
     def test_cant_add_generated_files_implicitly(self):

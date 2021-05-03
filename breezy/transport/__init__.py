@@ -26,18 +26,12 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
-from __future__ import absolute_import
-
 import errno
+from io import BytesIO
 import sys
 
 from stat import S_ISDIR
 
-from ..sixish import (
-    BytesIO,
-    PY3,
-    string_types,
-    )
 from ..trace import (
     mutter,
     )
@@ -392,7 +386,7 @@ class Transport(object):
         while True:
             new_transport = cur_transport.clone('..')
             if new_transport.base == cur_transport.base:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     "Failed to create path prefix for %s."
                     % cur_transport.base)
             try:
@@ -1661,12 +1655,12 @@ register_lazy_transport('sftp://', 'breezy.transport.sftp', 'SFTPTransport')
 register_transport_proto('http+urllib://',
                          #                help="Read-only access of branches exported on the web."
                          register_netloc=True)
-register_lazy_transport('http+urllib://', 'breezy.transport.http',
+register_lazy_transport('http+urllib://', 'breezy.transport.http.urllib',
                         'HttpTransport')
 register_transport_proto('https+urllib://',
                          #                help="Read-only access of branches exported on the web using SSL."
                          register_netloc=True)
-register_lazy_transport('https+urllib://', 'breezy.transport.http',
+register_lazy_transport('https+urllib://', 'breezy.transport.http.urllib',
                         'HttpTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
@@ -1674,9 +1668,9 @@ register_transport_proto('http://',
 register_transport_proto('https://',
                          help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
-register_lazy_transport('http://', 'breezy.transport.http',
+register_lazy_transport('http://', 'breezy.transport.http.urllib',
                         'HttpTransport')
-register_lazy_transport('https://', 'breezy.transport.http',
+register_lazy_transport('https://', 'breezy.transport.http.urllib',
                         'HttpTransport')
 
 register_transport_proto(

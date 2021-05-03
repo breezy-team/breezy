@@ -47,17 +47,12 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from __future__ import absolute_import
-
 from .. import (
     ui,
     )
 from ..branch import Branch
 from ..check import Check
 from ..revision import NULL_REVISION
-from ..sixish import (
-    viewitems,
-    )
 from ..trace import note
 from ..workingtree import WorkingTree
 from ..i18n import gettext
@@ -119,7 +114,7 @@ class VersionedFileCheck(Check):
                 # landing].
                 distances = set()
                 existences = set()
-                for ref, wantlist in viewitems(callback_refs):
+                for ref, wantlist in callback_refs.items():
                     wanting_items.update(wantlist)
                     kind, value = ref
                     if kind == 'trees':
@@ -132,7 +127,7 @@ class VersionedFileCheck(Check):
                         raise AssertionError(
                             'unknown ref kind for ref %s' % ref)
                 node_distances = repo.get_graph().find_lefthand_distances(distances)
-                for key, distance in viewitems(node_distances):
+                for key, distance in node_distances.items():
                     refs[('lefthand-distance', key)] = distance
                     if key in existences and distance > 0:
                         refs[('revision-existence', key)] = True
@@ -218,7 +213,7 @@ class VersionedFileCheck(Check):
             note(gettext('%6d revisions missing parents in ancestry'),
                  len(self.missing_parent_links))
             if verbose:
-                for link, linkers in viewitems(self.missing_parent_links):
+                for link, linkers in self.missing_parent_links.items():
                     note(gettext('      %s should be in the ancestry for:'),
                          link.decode('utf-8'))
                     for linker in linkers:
@@ -314,7 +309,7 @@ class VersionedFileCheck(Check):
         wrongs, unused_versions = weave_checker.check_file_version_parents(
             self.repository.texts)
         self.checked_weaves = weave_checker.file_ids
-        for text_key, (stored_parents, correct_parents) in viewitems(wrongs):
+        for text_key, (stored_parents, correct_parents) in wrongs.items():
             # XXX not ready for id join/split operations.
             weave_id = text_key[0]
             revision_id = text_key[-1]

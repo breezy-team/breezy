@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 # Copyright (C) 2005-2013, 2016, 2017 Canonical Ltd
 # Copyright (C) 2018-2020 Breezy Developers
 #

@@ -16,8 +16,7 @@
 
 """Repository formats built around versioned files."""
 
-from __future__ import absolute_import
-
+from io import BytesIO
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -77,17 +76,11 @@ from .repository import (
     RepositoryFormatMetaDir,
     )
 
-from ..sixish import (
-    BytesIO,
-    range,
-    viewitems,
-    viewvalues,
-    )
 
 from ..trace import (
     mutter
     )
-from ..tree import TreeChange
+from .inventorytree import InventoryTreeChange
 
 
 class VersionedFileRepositoryFormat(RepositoryFormat):
@@ -406,7 +399,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 # by the user. So we discard this change.
                 pass
             else:
-                change = TreeChange(
+                change = InventoryTreeChange(
                     file_id,
                     (basis_inv.id2path(file_id), tree.id2path(file_id)),
                     False, (True, True),
@@ -422,7 +415,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         seen_root = False  # Is the root in the basis delta?
         inv_delta = self._basis_delta
         modified_rev = self._new_revision_id
-        for change, head_candidates in viewvalues(changes):
+        for change, head_candidates in changes.values():
             if change.versioned[1]:  # versioned in target.
                 # Several things may be happening here:
                 # We may have a fork in the per-file graph
@@ -499,7 +492,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             file_id, file_obj, heads, nostore_sha,
                             size=(stat_value.st_size if stat_value else None))
                         yield change.path[1], (entry.text_sha1, stat_value)
-                    except errors.ExistingContent:
+                    except versionedfile.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
                         carried_over = True
@@ -1056,7 +1049,7 @@ class VersionedFileRepository(Repository):
         referrers = frozenset(r[0] for r in key_deps.get_referrers())
         file_ids = self.fileids_altered_by_revision_ids(referrers)
         missing_texts = set()
-        for file_id, version_ids in viewitems(file_ids):
+        for file_id, version_ids in file_ids.items():
             missing_texts.update(
                 (file_id, version_id) for version_id in version_ids)
         present_texts = self.texts.get_parent_map(missing_texts)
@@ -1232,7 +1225,7 @@ class VersionedFileRepository(Repository):
         """
         parent_map = self.revisions.get_parent_map(revision_keys)
         parent_keys = set(itertools.chain.from_iterable(
-            viewvalues(parent_map)))
+            parent_map.values()))
         parent_keys.difference_update(revision_keys)
         parent_keys.discard(_mod_revision.NULL_REVISION)
         return parent_keys
@@ -1279,7 +1272,7 @@ class VersionedFileRepository(Repository):
         for record in self.texts.get_record_stream(text_keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key[1], record.key[0])
-            yield text_keys[record.key], record.get_bytes_as('chunked')
+            yield text_keys[record.key], record.iter_bytes_as('chunked')
 
     def _generate_text_key_index(self, text_key_references=None,
                                  ancestors=None):
@@ -1312,7 +1305,7 @@ class VersionedFileRepository(Repository):
         # a cache of the text keys to allow reuse; costs a dict of all the
         # keys, but saves a 2-tuple for every child of a given key.
         text_key_cache = {}
-        for text_key, valid in viewitems(text_key_references):
+        for text_key, valid in text_key_references.items():
             if not valid:
                 invalid_keys.add(text_key)
             else:
@@ -1417,7 +1410,7 @@ class VersionedFileRepository(Repository):
         file_ids = self.fileids_altered_by_revision_ids(revision_ids, inv_w)
         count = 0
         num_file_ids = len(file_ids)
-        for file_id, altered_versions in viewitems(file_ids):
+        for file_id, altered_versions in file_ids.items():
             if pb is not None:
                 pb.update(gettext("Fetch texts"), count, num_file_ids)
             count += 1
@@ -1563,61 +1556,6 @@ class VersionedFileRepository(Repository):
         for inv in inventories:
             yield inventorytree.InventoryRevisionTree(self, inv, inv.revision_id)
 
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        """Produce a generator of revision deltas.
-
-        Note that the input is a sequence of REVISIONS, not revision_ids.
-        Trees will be held in memory until the generator exits.
-        Each delta is relative to the revision's lefthand predecessor.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
-
-        # Get the matching filtered trees. Note that it's more
-        # efficient to pass filtered trees to changes_from() rather
-        # than doing the filtering afterwards. changes_from() could
-        # arguably do the filtering itself but it's path-based, not
-        # file-id based, so filtering before or afterwards is
-        # currently easier.
-        if specific_fileids is None:
-            trees = dict((t.get_revision_id(), t) for
-                         t in self.revision_trees(required_trees))
-        else:
-            trees = dict((t.get_revision_id(), t) for
-                         t in self._filtered_revision_trees(required_trees,
-                                                            specific_fileids))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-            else:
-                old_tree = trees[revision.parent_ids[0]]
-            yield trees[revision.revision_id].changes_from(old_tree)
-
-    def _filtered_revision_trees(self, revision_ids, file_ids):
-        """Return Tree for a revision on this branch with only some files.
-
-        :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or b'null:'
-        :param file_ids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        inventories = self.iter_inventories(revision_ids)
-        for inv in inventories:
-            # Should we introduce a FilteredRevisionTree class rather
-            # than pre-filter the inventory here?
-            filtered_inv = inv.filter(file_ids)
-            yield inventorytree.InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
-
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map"""
         # revisions index works in keys; this just works in revisions
@@ -1631,8 +1569,8 @@ class VersionedFileRepository(Repository):
                 raise ValueError('get_parent_map(None) is not valid')
             else:
                 query_keys.append((revision_id,))
-        for (revision_id,), parent_keys in viewitems(
-                self.revisions.get_parent_map(query_keys)):
+        for (revision_id,), parent_keys in (
+                self.revisions.get_parent_map(query_keys)).items():
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
                                              for (parent_revid,) in parent_keys])
@@ -1657,8 +1595,8 @@ class VersionedFileRepository(Repository):
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
-        result_parents = set(itertools.chain.from_iterable(viewvalues(
-            self.get_graph().get_parent_map(result_set))))
+        result_parents = set(itertools.chain.from_iterable(
+            self.get_graph().get_parent_map(result_set).values()))
         included_keys = result_set.intersection(result_parents)
         start_keys = result_set.difference(included_keys)
         exclude_keys = result_parents.difference(result_set)
@@ -2099,7 +2037,7 @@ class StreamSource(object):
             raise AssertionError(
                 'cannot copy revisions to fill in missing deltas %s' % (
                     keys['revisions'],))
-        for substream_kind, keys in viewitems(keys):
+        for substream_kind, keys in keys.items():
             vf = getattr(self.from_repository, substream_kind)
             if vf is None and keys:
                 raise AssertionError(
@@ -2582,8 +2520,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         source may be not have _fallback_repositories even though it is
         stacked.)
         """
-        parent_revs = set(itertools.chain.from_iterable(viewvalues(
-            parent_map)))
+        parent_revs = set(itertools.chain.from_iterable(
+            parent_map.values()))
         present_parents = self.source.get_parent_map(parent_revs)
         absent_parents = parent_revs.difference(present_parents)
         parent_invs_keys_for_stacking = self.source.inventories.get_parent_map(
@@ -2915,7 +2853,7 @@ def _install_revision(repository, rev, revision_tree, signature,
         # commit to determine parents. There is a latent/real bug here where
         # the parents inserted are not those commit would do - in particular
         # they are not filtered by heads(). RBC, AB
-        for revision, tree in viewitems(parent_trees):
+        for revision, tree in parent_trees.items():
             try:
                 path = tree.id2path(ie.file_id)
             except errors.NoSuchId:

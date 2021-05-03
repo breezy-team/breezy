@@ -20,8 +20,6 @@ The user-visible behaviour of this module is described in
 configuring_bazaar.txt.
 """
 
-from __future__ import absolute_import
-
 import re
 
 

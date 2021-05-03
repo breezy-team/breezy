@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from ...tests import TestCase, TestCaseWithTransport
 from ...revision import Revision
 from .cmds import get_revisions_and_committers, collapse_by_person

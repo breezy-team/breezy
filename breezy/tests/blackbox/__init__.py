@@ -60,7 +60,6 @@ def load_tests(loader, basic_tests, pattern):
         'test_debug',
         'test_deleted',
         'test_diff',
-        'test_dump_btree',
         'test_exceptions',
         'test_export',
         'test_export_pot',

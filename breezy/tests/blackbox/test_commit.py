@@ -31,13 +31,11 @@ from ... import (
     msgeditor,
     )
 from ...controldir import ControlDir
-from ...sixish import PY3
 from .. import (
     test_foreign,
     features,
     )
 from .. import TestCaseWithTransport
-from ..matchers import ContainsNoVfsCalls
 from ..test_bedding import override_whoami
 
 
@@ -147,7 +145,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE | re.DOTALL | re.UNICODE
         te = osutils.get_terminal_encoding()
-        self.assertContainsRe(err if PY3 else err.decode(te),
+        self.assertContainsRe(err,
                               u'The commit message is a file name:',
                               flags=reflags)
 
@@ -166,7 +164,7 @@ brz: ERROR: No changes to commit.\
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE | re.DOTALL | re.UNICODE
             te = osutils.get_terminal_encoding()
-            self.assertContainsRe(err if PY3 else err.decode(te, 'replace'),
+            self.assertContainsRe(err,
                                   u'The commit message is a file name:',
                                   flags=reflags)
         finally:
@@ -188,11 +186,7 @@ brz: ERROR: No changes to commit.\
         tree.add(["f"])
         out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", u"\xa7"],
                                     encoding="iso-8859-5", retcode=3)
-        if not PY3:
-            self.expectFailure("Error messages are always written as UTF-8",
-                               self.assertNotContainsString, err, b"\xc2\xa7")
-        else:
-            self.assertNotContainsString(err, b"\xc2\xa7")
+        self.assertNotContainsString(err, b"\xc2\xa7")
         self.assertContainsRe(err, b"(?m)not versioned: \"\xfd\"$")
 
     def test_warn_about_forgotten_commit_message(self):
@@ -900,26 +894,3 @@ altered in u2
 
         self.run_bzr('ci -m "non-ascii mv"')
 
-
-class TestSmartServerCommit(TestCaseWithTransport):
-
-    def test_commit_to_lightweight(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
-                                 'target'])
-        self.reset_smart_call_log()
-        self.build_tree(['target/afile'])
-        self.run_bzr(['add', 'target/afile'])
-        out, err = self.run_bzr(['commit', '-m', 'do something', 'target'])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(211, self.hpss_calls)
-        self.assertLength(2, self.hpss_connections)
-        self.expectFailure("commit still uses VFS calls",
-                           self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

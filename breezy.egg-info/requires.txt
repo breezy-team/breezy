@@ -1,15 +1,35 @@
 configobj
-six>=1.9.0
 patiencediff
-fastimport>=0.9.8
-dulwich>=0.19.12
 
 [:python_version < "3.0"]
-dulwich<0.20
+dulwich<0.20,>=0.19.12
+
+[:python_version >= "3.5"]
+dulwich>=0.19.12
+
+[cext]
+cython>=0.29
+
+[doc]
+sphinx_epytext
+
+[doc:python_version < "3.0"]
+setuptools<45
+sphinx==1.8.5
 
 [fastimport]
 
+[fastimport:python_version < "3.0"]
+fastimport<0.9.8
+
+[fastimport:python_version >= "3.5"]
+fastimport
+
 [git]
+dulwich
 
 [launchpad]
 launchpadlib>=1.6.3
+
+[workspace]
+pyinotify

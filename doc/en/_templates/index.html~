@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+
+{% set title = 'Table of Contents' %}
+{% block body %}
+
+  <h2>Core documentation</h2>
+
+  <table class="contentstable" align="center" style="margin-left: 30px"><tr>
+    <td width="50%">
+        <p class="biglink"><a class="biglink" href="{{ pathto("whats-new/whats-new-in-3.0") }}">What's New in Breezy 3.0?</a><br/>
+        <span class="linkdescr">what's new in this release</span>
+      </p>
+        <p class="biglink"><a class="biglink" href="{{ pathto("user-guide/index") }}">User Guide</a><br/>
+        <span class="linkdescr">how to use the command line client</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("tutorials/index") }}">Tutorials</a><br/>
+      <span class="linkdescr">brief introductions</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("quick-reference/index") }}">Quick Reference</a><br/>
+      <span class="linkdescr">for your wall</span>
+      </p>
+    </td><td width="50%">
+    <p class="biglink"><a class="biglink" href="{{ pathto("release-notes/index") }}">Release Notes</a><br/>
+      <span class="linkdescr">a detailed log of changes</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("upgrade-guide/index") }}">Upgrade Guide</a><br/>
+      <span class="linkdescr">moving to Breezy 3.x</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("user-reference/index") }}">User Reference</a><br/>
+      <span class="linkdescr">all the gory details</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("admin-guide/index") }}">System Admin Guide</a><br/>
+      <span class="linkdescr">security, backups, etc.</span>
+      </p>
+    </td></tr>
+  </table>
+
+  <h2>Related links</h2>
+
+  <table class="contentstable" align="center" style="margin-left: 30px"><tr>
+    <td width="50%">
+      <p class="biglink"><a class="biglink" href="http://doc.bazaar.canonical.com/explorer/en/guide/">Desktop Guide</a><br/>
+      <span class="linkdescr">how to use our GUI applications</span>
+      </p>
+        <p class="biglink"><a class="biglink" href="https://answers.launchpad.net/brz/+faqs">FAQ</a><br/>
+      <span class="linkdescr">frequently asked questions</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="user-reference/glossary-help.html">Glossary</a><br/>
+      <span class="linkdescr">help with terminology</span>
+      </p>
+    </td>
+    <td width="50%">
+      <p class="biglink"><a class="biglink" href="{{ pathto("developers/index") }}">Developer Docs</a><br/>
+        <span class="linkdescr">improving and extending brz</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="http://doc.bazaar.canonical.com/migration/en/">Migration Docs</a><br/>
+      <span class="linkdescr">for refugees of other tools</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="http://doc.bazaar.canonical.com/plugins/en/">Plugins Guide</a><br/>
+      <span class="linkdescr">help on popular plugins</span>
+      </p>
+    </td></tr>
+  </table>
+
+{% endblock %}

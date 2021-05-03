@@ -29,9 +29,6 @@ from breezy.revision import (
 from breezy.tests import (
     TestCaseWithTransport,
     )
-from breezy.sixish import (
-    text_type,
-    )
 
 
 class ForeignBranchFactory(object):
@@ -99,8 +96,8 @@ class ForeignBranchTests(TestCaseWithTransport):
     def test__get_nick(self):
         """Make sure _get_nick is implemented and returns a string."""
         branch = self.make_branch()
-        self.assertIsInstance(branch._get_nick(local=False), text_type)
-        self.assertIsInstance(branch._get_nick(local=True), text_type)
+        self.assertIsInstance(branch._get_nick(local=False), str)
+        self.assertIsInstance(branch._get_nick(local=True), str)
 
     def test_null_revid_revno(self):
         """null: should return revno 0."""

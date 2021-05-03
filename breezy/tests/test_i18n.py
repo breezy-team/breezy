@@ -24,7 +24,6 @@ from .. import (
     errors,
     workingtree,
     )
-from ..sixish import PY3
 
 
 class ZzzTranslations(object):
@@ -63,28 +62,16 @@ class TestZzzTranslation(tests.TestCase):
         t = trans.zzz('msg')
         self._check_exact(u'zz\xe5{{msg}}', t)
 
-        if PY3:
-            t = trans.gettext('msg')
-            self._check_exact(u'zz\xe5{{msg}}', t)
+        t = trans.gettext('msg')
+        self._check_exact(u'zz\xe5{{msg}}', t)
 
-            t = trans.ngettext('msg1', 'msg2', 0)
-            self._check_exact(u'zz\xe5{{msg2}}', t)
-            t = trans.ngettext('msg1', 'msg2', 2)
-            self._check_exact(u'zz\xe5{{msg2}}', t)
+        t = trans.ngettext('msg1', 'msg2', 0)
+        self._check_exact(u'zz\xe5{{msg2}}', t)
+        t = trans.ngettext('msg1', 'msg2', 2)
+        self._check_exact(u'zz\xe5{{msg2}}', t)
 
-            t = trans.ngettext('msg1', 'msg2', 1)
-            self._check_exact(u'zz\xe5{{msg1}}', t)
-        else:
-            t = trans.ugettext('msg')
-            self._check_exact(u'zz\xe5{{msg}}', t)
-
-            t = trans.ungettext('msg1', 'msg2', 0)
-            self._check_exact(u'zz\xe5{{msg2}}', t)
-            t = trans.ungettext('msg1', 'msg2', 2)
-            self._check_exact(u'zz\xe5{{msg2}}', t)
-
-            t = trans.ungettext('msg1', 'msg2', 1)
-            self._check_exact(u'zz\xe5{{msg1}}', t)
+        t = trans.ngettext('msg1', 'msg2', 1)
+        self._check_exact(u'zz\xe5{{msg1}}', t)
 
 
 class TestGetText(tests.TestCase):
@@ -164,11 +151,7 @@ class TestTranslate(tests.TestCaseWithTransport):
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError as e:
             err = str(e)
-        if PY3:
-            self.assertContainsRe(err, u"zz\xe5{{Not a branch: .*}}")
-        else:
-            self.assertContainsRe(
-                err, u"zz\xe5{{Not a branch: .*}}".encode('utf-8'))
+        self.assertContainsRe(err, u"zz\xe5{{Not a branch: .*}}")
 
     def test_topic_help_translation(self):
         """does topic help get translated?"""

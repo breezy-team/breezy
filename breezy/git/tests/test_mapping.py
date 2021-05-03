@@ -17,8 +17,6 @@
 
 """Tests for mapping."""
 
-from __future__ import absolute_import
-
 from ...revision import (
     Revision,
     )
@@ -140,6 +138,26 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Authér", rev.properties[u'author'])
         self.assertEqual("iso8859-1", rev.properties[u"git-explicit-encoding"])
+        self.assertTrue(u"git-implicit-encoding" not in rev.properties)
+
+    def test_explicit_encoding_false(self):
+        c = Commit()
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 60 * 5
+        c.author_timezone = 60 * 3
+        c.author = u"Authér".encode("utf-8")
+        c.encoding = b"false"
+        mapping = BzrGitMappingv1()
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+            c, mapping.revision_id_foreign_to_bzr)
+        self.assertEqual(None, roundtrip_revid)
+        self.assertEqual({}, verifiers)
+        self.assertEqual(u"Authér", rev.properties[u'author'])
+        self.assertEqual("false", rev.properties[u"git-explicit-encoding"])
         self.assertTrue(u"git-implicit-encoding" not in rev.properties)
 
     def test_implicit_encoding_fallback(self):
@@ -443,9 +461,14 @@ class FixPersonIdentifierTests(tests.TestCase):
                          fix_person_identifier(b"bar@blah.nl"))
 
     def test_fix(self):
-        self.assertEqual(b"person <bar@blah.nl>",
-                         fix_person_identifier(b"somebody <person <bar@blah.nl>>"))
-        self.assertEqual(b"person <bar@blah.nl>",
-                         fix_person_identifier(b"person<bar@blah.nl>"))
+        self.assertEqual(
+            b"person <bar@blah.nl>",
+            fix_person_identifier(b"somebody <person <bar@blah.nl>>"))
+        self.assertEqual(
+            b"person <bar@blah.nl>",
+            fix_person_identifier(b"person<bar@blah.nl>"))
+        self.assertEqual(
+            b'Rohan Garg <rohangarg@kubuntu.org>',
+            fix_person_identifier(b'Rohan Garg <rohangarg@kubuntu.org'))
         self.assertRaises(ValueError,
                           fix_person_identifier, b"person >bar@blah.nl<")

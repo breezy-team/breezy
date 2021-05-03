@@ -27,7 +27,7 @@ an example::
 
 
     def post_push_hook(push_result):
-        print "The new revno is %d" % push_result.new_revno
+        print("The new revno is %d" % push_result.new_revno)
 
 
     branch.Branch.hooks.install_named_hook('post_push', post_push_hook,
@@ -62,7 +62,7 @@ version of the example above::
     from breezy import hooks
 
     def post_push_hook(push_result):
-        print "The new revno is %d" % push_result.new_revno
+        print("The new revno is %d" % push_result.new_revno)
 
 
     hooks.install_lazy_named_hook('breezy.branch', 'Branch.hooks',

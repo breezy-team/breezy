@@ -15,22 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
-try:
-    import http.client as http_client
-    import http.server as http_server
-except ImportError:
-    import httplib as http_client
-    import SimpleHTTPServer as http_server
+import http.client as http_client
+import http.server as http_server
 import os
 import posixpath
 import random
 import re
 import socket
 import sys
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
+from urllib.parse import urlparse
 
 from .. import (
     osutils,
@@ -194,22 +187,6 @@ Message: %(message)s.
         header_line = '%s: %s\r\n' % (keyword, value)
         return len(header_line)
 
-    def send_head(self):
-        """Overrides base implementation to work around a bug in python2.5."""
-        path = self.translate_path(self.path)
-        if os.path.isdir(path) and not self.path.endswith('/'):
-            # redirect browser - doing basically what apache does when
-            # DirectorySlash option is On which is quite common (braindead, but
-            # common)
-            self.send_response(301)
-            self.send_header("Location", self.path + "/")
-            # Indicates that the body is empty for HTTP/1.1 clients
-            self.send_header('Content-Length', '0')
-            self.end_headers()
-            return None
-
-        return http_server.SimpleHTTPRequestHandler.send_head(self)
-
     def send_range_content(self, file, start, length):
         file.seek(start)
         self.wfile.write(file.read(length))
@@ -340,8 +317,6 @@ Message: %(message)s.
         # abandon query parameters
         path = urlparse(path)[2]
         path = posixpath.normpath(urlutils.unquote(path))
-        if sys.version_info[0] == 2:
-            path = path.decode('utf-8')
         words = path.split('/')
         path = self._cwd
         for num, word in enumerate(w for w in words if w):

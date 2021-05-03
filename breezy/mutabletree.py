@@ -19,8 +19,6 @@
 See MutableTree for more details.
 """
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     hooks,
@@ -29,9 +27,6 @@ from . import (
     tree,
     )
 
-from .sixish import (
-    text_type,
-    )
 
 
 class BadReferenceTarget(errors.InternalBzrError):
@@ -101,12 +96,12 @@ class MutableTree(tree.Tree):
 
         TODO: Perhaps callback with the ids and paths as they're added.
         """
-        if isinstance(files, (str, text_type)):
+        if isinstance(files, str):
             # XXX: Passing a single string is inconsistent and should be
             # deprecated.
             if not (ids is None or isinstance(ids, bytes)):
                 raise AssertionError()
-            if not (kinds is None or isinstance(kinds, (str, text_type))):
+            if not (kinds is None or isinstance(kinds, str)):
                 raise AssertionError()
             files = [files]
             if ids is not None:
@@ -190,42 +185,7 @@ class MutableTree(tree.Tree):
 
         :return: True if a change is found. False otherwise
         """
-        with self.lock_read():
-            # Check pending merges
-            if len(self.get_parent_ids()) > 1:
-                return True
-            if _from_tree is None:
-                _from_tree = self.basis_tree()
-            changes = self.iter_changes(_from_tree)
-            if self.supports_symlinks():
-                # Fast path for has_changes.
-                try:
-                    change = next(changes)
-                    # Exclude root (talk about black magic... --vila 20090629)
-                    if change.parent_id == (None, None):
-                        change = next(changes)
-                    return True
-                except StopIteration:
-                    # No changes
-                    return False
-            else:
-                # Slow path for has_changes.
-                # Handle platforms that do not support symlinks in the
-                # conditional below. This is slower than the try/except
-                # approach below that but we don't have a choice as we
-                # need to be sure that all symlinks are removed from the
-                # entire changeset. This is because in platforms that
-                # do not support symlinks, they show up as None in the
-                # working copy as compared to the repository.
-                # Also, exclude root as mention in the above fast path.
-                changes = filter(
-                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
-                    changes)
-                try:
-                    next(iter(changes))
-                except StopIteration:
-                    return False
-                return True
+        raise NotImplementedError(self.has_changes)
 
     def check_changed_or_out_of_date(self, strict, opt_name,
                                      more_error, more_warning):
@@ -248,7 +208,7 @@ class MutableTree(tree.Tree):
                 strict = self.branch.get_config_stack().get(opt_name)
             if strict is not False:
                 err_class = None
-                if (self.has_changes()):
+                if self.has_changes():
                     err_class = errors.UncommittedChanges
                 elif self.last_revision() != self.branch.last_revision():
                     # The tree has lost sync with its branch, there is little
@@ -406,9 +366,9 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.copy_one)
 
-    def get_transform(self, pb=None):
+    def transform(self, pb=None):
         """Return a transform object for use with this tree."""
-        raise NotImplementedError(self.get_transform)
+        raise NotImplementedError(self.transform)
 
 
 class MutableTreeHooks(hooks.Hooks):

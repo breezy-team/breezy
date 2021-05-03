@@ -41,8 +41,6 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
-from __future__ import absolute_import
-
 from .errors import BzrError, InternalBzrError
 
 

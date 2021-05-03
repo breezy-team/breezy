@@ -16,12 +16,11 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import os
 import sys
+import posixpath
 
 from dulwich.errors import (
     NoIndexPresent,
@@ -41,11 +40,16 @@ from dulwich.object_store import (
 from dulwich.pack import (
     MemoryPackIndex,
     PackData,
+    PackIndexer,
     Pack,
+    PackStreamCopier,
     iter_sha1,
     load_pack_index_file,
     write_pack_objects,
     write_pack_index_v2,
+    write_pack_header,
+    compute_file_sha,
+    write_pack_object,
     )
 from dulwich.repo import (
     BaseRepo,
@@ -98,12 +102,7 @@ class TransportRefsContainer(RefsContainer):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
     def _ensure_dir_exists(self, path):
-        for n in range(path.count("/")):
-            dirname = "/".join(path.split("/")[:n + 1])
-            try:
-                self.transport.mkdir(dirname)
-            except FileExists:
-                pass
+        self.transport.clone(posixpath.dirname(path)).create_prefix()
 
     def subkeys(self, base):
         """Refs present in this container under a base.
@@ -269,6 +268,7 @@ class TransportRefsContainer(RefsContainer):
         :param new_ref: The new sha the refname will refer to.
         :return: True if the set was successful, False otherwise.
         """
+        self._check_refname(name)
         try:
             realnames, _ = self.follow(name)
             realname = realnames[-1]
@@ -642,7 +642,12 @@ class TransportObjectStore(PackBasedObjectStore):
                 try:
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
-                    f = self.pack_transport.get(pack_name)
+                    try:
+                        f = self.pack_transport.get(pack_name)
+                    except NoSuchFile:
+                        warning('Unable to read pack file %s',
+                                self.pack_transport.abspath(pack_name))
+                        continue
                     # TODO(jelmer): Don't read entire file into memory?
                     f = BytesIO(f.read())
                     pd = PackData(pack_name, f)
@@ -819,3 +824,99 @@ class TransportObjectStore(PackBasedObjectStore):
         except FileExists:
             pass
         return cls(transport)
+
+    def _get_pack_basepath(self, entries):
+        suffix = iter_sha1(entry[0] for entry in entries)
+        # TODO: Handle self.pack_dir being bytes
+        suffix = suffix.decode('ascii')
+        return self.pack_transport.local_abspath("pack-" + suffix)
+
+    def _complete_thin_pack(self, f, path, copier, indexer):
+        """Move a specific file containing a pack into the pack directory.
+
+        Note: The file should be on the same file system as the
+            packs directory.
+
+        Args:
+          f: Open file object for the pack.
+          path: Path to the pack file.
+          copier: A PackStreamCopier to use for writing pack data.
+          indexer: A PackIndexer for indexing the pack.
+        """
+        entries = list(indexer)
+
+        # Update the header with the new number of objects.
+        f.seek(0)
+        write_pack_header(f, len(entries) + len(indexer.ext_refs()))
+
+        # Must flush before reading (http://bugs.python.org/issue3207)
+        f.flush()
+
+        # Rescan the rest of the pack, computing the SHA with the new header.
+        new_sha = compute_file_sha(f, end_ofs=-20)
+
+        # Must reposition before writing (http://bugs.python.org/issue3207)
+        f.seek(0, os.SEEK_CUR)
+
+        # Complete the pack.
+        for ext_sha in indexer.ext_refs():
+            type_num, data = self.get_raw(ext_sha)
+            offset = f.tell()
+            crc32 = write_pack_object(
+                f, type_num, data, sha=new_sha,
+                compression_level=self.pack_compression_level)
+            entries.append((ext_sha, offset, crc32))
+        pack_sha = new_sha.digest()
+        f.write(pack_sha)
+        f.close()
+
+        # Move the pack in.
+        entries.sort()
+        pack_base_name = self._get_pack_basepath(entries)
+        target_pack = pack_base_name + '.pack'
+        if sys.platform == 'win32':
+            # Windows might have the target pack file lingering. Attempt
+            # removal, silently passing if the target does not exist.
+            try:
+                os.remove(target_pack)
+            except FileNotFoundError:
+                pass
+        os.rename(path, target_pack)
+
+        # Write the index.
+        index_file = GitFile(pack_base_name + '.idx', 'wb')
+        try:
+            write_pack_index_v2(index_file, entries, pack_sha)
+            index_file.close()
+        finally:
+            index_file.abort()
+
+        # Add the pack to the store and return it.
+        final_pack = Pack(pack_base_name)
+        final_pack.check_length_and_checksum()
+        self._add_cached_pack(pack_base_name, final_pack)
+        return final_pack
+
+    def add_thin_pack(self, read_all, read_some):
+        """Add a new thin pack to this object store.
+
+        Thin packs are packs that contain deltas with parents that exist
+        outside the pack. They should never be placed in the object store
+        directly, and always indexed and completed as they are copied.
+
+        Args:
+          read_all: Read function that blocks until the number of
+            requested bytes are read.
+          read_some: Read function that returns at least one byte, but may
+            not return the number of bytes requested.
+        Returns: A Pack object pointing at the now-completed thin pack in the
+            objects/pack directory.
+        """
+        import tempfile
+        fd, path = tempfile.mkstemp(dir=self.pack_transport.local_abspath('.'), prefix='tmp_pack_')
+        with os.fdopen(fd, 'w+b') as f:
+            indexer = PackIndexer(f, resolve_ext_ref=self.get_raw)
+            copier = PackStreamCopier(read_all, read_some, f,
+                                      delta_iter=indexer)
+            copier.verify()
+            return self._complete_thin_pack(f, path, copier, indexer)

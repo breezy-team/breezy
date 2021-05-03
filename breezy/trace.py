@@ -45,8 +45,6 @@ KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
 
-from __future__ import absolute_import
-
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
@@ -57,6 +55,7 @@ from __future__ import absolute_import
 # that.
 
 import errno
+from io import StringIO
 import logging
 import os
 import sys
@@ -80,12 +79,6 @@ from breezy import (
 """)
 from . import (
     errors,
-    )
-
-from .sixish import (
-    PY3,
-    StringIO,
-    text_type,
     )
 
 
@@ -162,9 +155,6 @@ def mutter(fmt, *args):
         fmt = fmt.decode('ascii', 'replace')
 
     if args:
-        if not PY3:
-            args = tuple(
-                _Bytes(arg) if isinstance(arg, bytes) else arg for arg in args)
         out = fmt % args
     else:
         out = fmt
@@ -211,7 +201,7 @@ def _get_brz_log_filename():
     :return: A path to the log file
     :raise EnvironmentError: If the cache directory could not be created
     """
-    brz_log = osutils.path_from_environ('BRZ_LOG')
+    brz_log = os.environ.get('BRZ_LOG')
     if brz_log:
         return brz_log
     return os.path.join(bedding.cache_dir(), 'brz.log')
@@ -306,12 +296,7 @@ def enable_default_logging():
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    if sys.version_info[0] == 2:
-        stderr_handler = EncodedStreamHandler(
-            sys.stderr, osutils.get_terminal_encoding(), 'replace',
-            level=logging.INFO)
-    else:
-        stderr_handler = logging.StreamHandler(stream=sys.stderr)
+    stderr_handler = logging.StreamHandler(stream=sys.stderr)
     logging.getLogger('brz').addHandler(stderr_handler)
     return memento
 
@@ -524,7 +509,7 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif osutils.is_environment_error(exc_object):
+    elif isinstance(exc_object, EnvironmentError):
         if getattr(exc_object, 'errno', None) == errno.EPIPE:
             err_file.write("brz: broken pipe\n")
             return errors.EXIT_ERROR
@@ -615,12 +600,11 @@ class EncodedStreamHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            if not isinstance(record.msg, text_type):
+            if not isinstance(record.msg, str):
                 msg = record.msg.decode("utf-8")
-                if PY3:
-                    record.msg = msg
+                record.msg = msg
             line = self.format(record)
-            if not isinstance(line, text_type):
+            if not isinstance(line, str):
                 line = line.decode("utf-8")
             self.stream.write(line.encode(self.encoding, self.errors) + b"\n")
         except Exception:

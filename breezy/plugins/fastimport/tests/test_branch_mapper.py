@@ -15,8 +15,6 @@
 
 """Test the BranchMapper methods."""
 
-from __future__ import absolute_import
-
 from .... import tests
 
 from .. import (

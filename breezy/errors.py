@@ -17,11 +17,6 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-from __future__ import absolute_import
-
-from .sixish import (
-    PY3,
-    )
 
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
@@ -108,13 +103,7 @@ class BzrError(Exception):
                getattr(self, '_fmt', None),
                err)
 
-    if PY3:
-        __str__ = _format
-    else:
-        def __str__(self):
-            return self._format().encode('utf-8')
-
-        __unicode__ = _format
+    __str__ = _format
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, str(self))
@@ -182,15 +171,6 @@ class InProcessTransport(BzrError):
         self.transport = transport
 
 
-class InvalidEntryName(InternalBzrError):
-
-    _fmt = "Invalid entry name: %(name)s"
-
-    def __init__(self, name):
-        BzrError.__init__(self)
-        self.name = name
-
-
 class InvalidRevisionNumber(BzrError):
 
     _fmt = "Invalid revision number %(revno)s"
@@ -250,15 +230,6 @@ class NotStacked(BranchError):
     _fmt = "The branch '%(branch)s' is not stacked."
 
 
-class InventoryModified(InternalBzrError):
-
-    _fmt = ("The current inventory for the tree %(tree)r has been modified,"
-            " so a clean inventory cannot be read without data loss.")
-
-    def __init__(self, tree):
-        self.tree = tree
-
-
 class NoWorkingTree(BzrError):
 
     _fmt = 'No WorkingTree exists for "%(base)s".'
@@ -291,7 +262,7 @@ class NoWhoami(BzrError):
             'E.g. brz whoami "Your Name <name@example.com>"')
 
 
-class BzrCommandError(BzrError):
+class CommandError(BzrError):
     """Error from user command"""
 
     # Error from malformed user command; please avoid raising this as a
@@ -299,8 +270,12 @@ class BzrCommandError(BzrError):
     #
     # I think it's a waste of effort to differentiate between errors that
     # are not intended to be caught anyway.  UI code need not subclass
-    # BzrCommandError, and non-UI code should not throw a subclass of
-    # BzrCommandError.  ADHB 20051211
+    # CommandError, and non-UI code should not throw a subclass of
+    # CommandError.  ADHB 20051211
+
+
+# Provide the old name as backup, for the moment.
+BzrCommandError = CommandError
 
 
 class NotWriteLocked(BzrError):
@@ -400,18 +375,6 @@ class ResourceBusy(PathError):
 class PermissionDenied(PathError):
 
     _fmt = 'Permission denied: "%(path)s"%(extra)s'
-
-
-class UnavailableRepresentation(InternalBzrError):
-
-    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
-            "is encoded as '%(native)s'.")
-
-    def __init__(self, key, wanted, native):
-        InternalBzrError.__init__(self)
-        self.wanted = wanted
-        self.native = native
-        self.key = key
 
 
 class UnsupportedProtocol(PathError):
@@ -598,15 +561,6 @@ class UnknownFormatError(BzrError):
     def __init__(self, format, kind='branch'):
         self.kind = kind
         self.format = format
-
-
-class LineEndingError(BzrError):
-
-    _fmt = ("Line ending corrupted for file: %(file)s; "
-            "Maybe your files got corrupted in transport?")
-
-    def __init__(self, file):
-        self.file = file
 
 
 class IncompatibleFormat(BzrError):
@@ -976,20 +930,6 @@ class NoSuchRevisionInTree(NoSuchRevision):
         self.revision_id = revision_id
 
 
-class InvalidRevisionSpec(BzrError):
-
-    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch_url)s%(extra)s")
-
-    def __init__(self, spec, branch, extra=None):
-        BzrError.__init__(self, branch=branch, spec=spec)
-        self.branch_url = getattr(branch, 'user_url', str(branch))
-        if extra:
-            self.extra = '\n' + str(extra)
-        else:
-            self.extra = ''
-
-
 class AppendRevisionsOnlyViolation(BzrError):
 
     _fmt = ('Operation denied because it would change the main history,'
@@ -1340,6 +1280,31 @@ class InvalidHttpResponse(TransportError):
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
+class UnexpectedHttpStatus(InvalidHttpResponse):
+
+    _fmt = "Unexpected HTTP status %(code)d for %(path)s: %(extra)s"
+
+    def __init__(self, path, code, extra=None):
+        self.path = path
+        self.code = code
+        self.extra = extra or ''
+        full_msg = 'status code %d unexpected' % code
+        if extra is not None:
+            full_msg += ': ' + extra
+        InvalidHttpResponse.__init__(
+            self, path, full_msg)
+
+
+class BadHttpRequest(UnexpectedHttpStatus):
+
+    _fmt = "Bad http request for %(path)s: %(reason)s"
+
+    def __init__(self, path, reason):
+        self.path = path
+        self.reason = reason
+        TransportError.__init__(self, reason)
+
+
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
@@ -1495,16 +1460,6 @@ class MissingText(BzrError):
         self.file_id = file_id
 
 
-class DuplicateFileId(BzrError):
-
-    _fmt = "File id {%(file_id)s} already exists in inventory as %(entry)s"
-
-    def __init__(self, file_id, entry):
-        BzrError.__init__(self)
-        self.file_id = file_id
-        self.entry = entry
-
-
 class DuplicateKey(BzrError):
 
     _fmt = "Key %(key)s is already present in map"
@@ -1516,23 +1471,6 @@ class DuplicateHelpPrefix(BzrError):
 
     def __init__(self, prefix):
         self.prefix = prefix
-
-
-class MalformedTransform(InternalBzrError):
-
-    _fmt = "Tree transform is malformed %(conflicts)r"
-
-
-class NoFinalPath(BzrError):
-
-    _fmt = ("No final name for trans_id %(trans_id)r\n"
-            "file-id: %(file_id)r\n"
-            "root trans-id: %(root_trans_id)r\n")
-
-    def __init__(self, trans_id, transform):
-        self.trans_id = trans_id
-        self.file_id = transform.final_file_id(trans_id)
-        self.root_trans_id = transform.root
 
 
 class BzrBadParameter(InternalBzrError):
@@ -1550,27 +1488,6 @@ class BzrBadParameter(InternalBzrError):
 class BzrBadParameterNotUnicode(BzrBadParameter):
 
     _fmt = "Parameter %(param)s is neither unicode nor utf8."
-
-
-class ReusingTransform(BzrError):
-
-    _fmt = "Attempt to reuse a transform that has already been applied."
-
-
-class CantMoveRoot(BzrError):
-
-    _fmt = "Moving the root directory is not supported at this time"
-
-
-class TransformRenameFailed(BzrError):
-
-    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
-
-    def __init__(self, from_path, to_path, why, errno):
-        self.from_path = from_path
-        self.to_path = to_path
-        self.why = why
-        self.errno = errno
 
 
 class BzrMoveFailedError(BzrError):
@@ -1702,12 +1619,6 @@ class NoDiff3(BzrError):
     _fmt = "Diff3 is not installed on this machine."
 
 
-class ExistingContent(BzrError):
-    # Added in breezy 0.92, used by VersionedFile.add_lines.
-
-    _fmt = "The content being inserted is already present."
-
-
 class ExistingLimbo(BzrError):
 
     _fmt = """This tree contains left-over files from a failed operation.
@@ -1727,17 +1638,6 @@ class ExistingPendingDeletion(BzrError):
 
     def __init__(self, pending_deletion):
         BzrError.__init__(self, pending_deletion=pending_deletion)
-
-
-class ImmortalLimbo(BzrError):
-
-    _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
-    Please examine %(limbo_dir)s to see if it contains any files you wish to
-    keep, and delete it when you are done."""
-
-    def __init__(self, limbo_dir):
-        BzrError.__init__(self)
-        self.limbo_dir = limbo_dir
 
 
 class ImmortalPendingDeletion(BzrError):
@@ -1966,19 +1866,6 @@ class IncompatibleBundleFormat(BzrError):
         self.other = other
 
 
-class BadInventoryFormat(BzrError):
-
-    _fmt = "Root class for inventory serialization errors"
-
-
-class UnexpectedInventoryFormat(BadInventoryFormat):
-
-    _fmt = "The inventory was not in the expected format:\n %(msg)s"
-
-    def __init__(self, msg):
-        BadInventoryFormat.__init__(self, msg=msg)
-
-
 class RootNotRich(BzrError):
 
     _fmt = """This operation requires rich root data storage"""
@@ -2041,16 +1928,6 @@ class NoMergeSource(BzrError):
         " branch location."
 
 
-class IllegalMergeDirectivePayload(BzrError):
-    """A merge directive contained something other than a patch or bundle"""
-
-    _fmt = "Bad merge directive payload %(start)r"
-
-    def __init__(self, start):
-        BzrError(self)
-        self.start = start
-
-
 class PatchVerificationFailed(BzrError):
     """A patch from a merge directive could not be verified"""
 
@@ -2078,14 +1955,6 @@ class TargetNotBranch(BzrError):
     def __init__(self, location):
         BzrError.__init__(self)
         self.location = location
-
-
-class UnsupportedInventoryKind(BzrError):
-
-    _fmt = """Unsupported entry kind %(kind)s"""
-
-    def __init__(self, kind):
-        self.kind = kind
 
 
 class BadSubsumeSource(BzrError):
@@ -2413,7 +2282,7 @@ class UnsupportedKindChange(BzrError):
         self.format = format
 
 
-class ChangesAlreadyStored(BzrCommandError):
+class ChangesAlreadyStored(CommandError):
 
     _fmt = ('Cannot store uncommitted changes because this branch already'
             ' stores uncommitted changes.')
