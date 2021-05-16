@@ -373,6 +373,8 @@ def guess_upstream_revspec(package, version):
         version = str(version)[:-len('+ds')]
     if version.endswith('+dfsg'):
         version = str(version)[:-len('+dfsg')]
+    if version.endswith('+repack'):
+        version = str(version)[:-len('+repack')]
     is_snapshot = False
     if "+bzr" in version or "~bzr" in version:
         is_snapshot = True
