@@ -20,16 +20,11 @@
 
 from __future__ import absolute_import
 
-try:
-    from ...revisionspec import InvalidRevisionSpec
-except ImportError:  # breezy < 3.2
-    from ...errors import InvalidRevisionSpec
-
 from ...errors import (
     NoSuchTag,
     BzrError,
     )
-from ...revisionspec import RevisionSpec, RevisionInfo
+from ...revisionspec import RevisionSpec, RevisionInfo, InvalidRevisionSpec
 
 
 class UnknownVersion(BzrError):

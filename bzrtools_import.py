@@ -102,11 +102,7 @@ def _import_archive(
         tree: Tree, archive_file: str, file_ids_from,
         target_tree = None, exclude=None):
     prefix = common_directory(names_of_files(archive_file))
-    try:
-        transform = tree.transform
-    except AttributeError:  # brz < 3.1.1
-        transform = tree.get_transform
-    with transform() as tt:
+    with tree.transform() as tt:
         removed = set()
         for path, entry in tree.iter_entries_by_dir():
             if entry.parent_id is None:
@@ -188,12 +184,7 @@ def _import_archive(
                     file_id = generate_ids.gen_file_id(name)
                     tt.version_file(file_id=file_id, trans_id=trans_id)
             else:
-                try:
-                    tt.version_file(trans_id=trans_id)
-                except TypeError:  # brz < 3.1.1
-                    name = basename(member.name.rstrip('/'))
-                    file_id = generate_ids.gen_file_id(name)
-                    tt.version_file(trans_id=trans_id, file_id=file_id)
+                tt.version_file(trans_id=trans_id)
 
             path = tree.abspath(relative_path)
             if member.name in seen:
@@ -239,11 +230,7 @@ def _import_archive(
         for path in removed.difference(added):
             tt.unversion_file(tt.trans_id_tree_path(path))
 
-        if getattr(tt, 'cook_conflicts', None):
-            conflicts = tt.cook_conflicts(resolve_conflicts(tt))
-        else:  # brz < 3.1.1
-            from breezy.transform import cook_conflicts
-            conflicts = cook_conflicts(resolve_conflicts(tt), tt)
+        conflicts = tt.cook_conflicts(resolve_conflicts(tt))
 
         for conflict in conflicts:
             warning('%s', conflict)

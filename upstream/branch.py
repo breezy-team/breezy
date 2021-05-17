@@ -45,16 +45,14 @@ from ....errors import (
     RevisionNotPresent,
     UnsupportedOperation,
     )
+from ....memorybranch import MemoryBranch
 from ..repack_tarball import get_filetype, repack_tarball
 from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
 from ....trace import note, mutter, warning
 from ....tree import Tree
 
-try:
-    from ....revisionspec import InvalidRevisionSpec
-except ImportError:  # Breezy < 3.2
-    from ....errors import InvalidRevisionSpec
+from ....revisionspec import InvalidRevisionSpec
 
 from ..errors import (
     MultipleUpstreamTarballsNotSupported,
@@ -402,71 +400,6 @@ def guess_upstream_revspec(package, version):
         if package:
             yield 'tag:%s-%s-release' % (package, version.replace('.', '_'))
             yield 'tag:%s-v%s' % (package, version)
-
-
-try:
-    from breezy.memorybranch import MemoryBranch
-except ImportError:  # breezy < 3.1.1
-    from ....bzr import branch as bzr_branch
-    from ....lock import _RelockDebugMixin, LogicalLockResult
-
-    class MemoryBranch(bzr_branch.Branch, _RelockDebugMixin):
-
-        def __init__(self, repository, last_revision_info, tags):
-            from ....tag import DisabledTags, MemoryTags
-            self.repository = repository
-            self._last_revision_info = last_revision_info
-            self._revision_history_cache = None
-            if tags is not None:
-                self.tags = MemoryTags(tags)
-            else:
-                self.tags = DisabledTags(self)
-            self._partial_revision_history_cache = []
-            self._last_revision_info_cache = None
-            self._revision_id_to_revno_cache = None
-            self._partial_revision_id_to_revno_cache = {}
-            self._partial_revision_history_cache = []
-
-        def lock_read(self):
-            self.repository.lock_read()
-            return LogicalLockResult(self.unlock)
-
-        def lock_write(self, token=None):
-            self.repository.lock_write()
-            return BranchWriteLockResult(self.unlock, None)
-
-        def unlock(self):
-            self.repository.unlock()
-
-        def last_revision_info(self):
-            return self._last_revision_info
-
-        def _gen_revision_history(self):
-            """Generate the revision history from last revision
-            """
-            last_revno, last_revision = self.last_revision_info()
-            self._extend_partial_history()
-            return list(reversed(self._partial_revision_history_cache))
-
-        def get_rev_id(self, revno, history=None):
-            """Find the revision id of the specified revno."""
-            with self.lock_read():
-                if revno == 0:
-                    return NULL_REVISION
-                last_revno, last_revid = self.last_revision_info()
-                if revno == last_revno:
-                    return last_revid
-                if last_revno is None:
-                    self._extend_partial_history()
-                    return self._partial_revision_history_cache[
-                            len(self._partial_revision_history_cache) - revno]
-                else:
-                    if revno <= 0 or revno > last_revno:
-                        raise NoSuchRevision(self, revno)
-                    distance_from_last = last_revno - revno
-                    if len(self._partial_revision_history_cache) <= distance_from_last:
-                        self._extend_partial_history(distance_from_last)
-                    return self._partial_revision_history_cache[distance_from_last]
 
 
 class UpstreamBranchSource(UpstreamSource):
