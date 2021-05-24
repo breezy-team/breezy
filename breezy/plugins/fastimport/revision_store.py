@@ -246,10 +246,11 @@ class RevisionStore(object):
         # We can't use self.repo.get_commit_builder() here because it starts a
         # new write group. We want one write group around a batch of imports
         # where the default batch size is currently 10000. IGC 20090312
-        self._commit_builder = self.repo._commit_builder_class(self.repo,
-                                                               parents, config, timestamp=revision.timestamp,
-                                                               timezone=revision.timezone, committer=revision.committer,
-                                                               revprops=revision.properties, revision_id=revision.revision_id)
+        self._commit_builder = self.repo.get_commit_builder(
+            self.repo,
+            parents, config, timestamp=revision.timestamp,
+            timezone=revision.timezone, committer=revision.committer,
+            revprops=revision.properties, revision_id=revision.revision_id)
 
     def get_parents_and_revision_for_entry(self, ie):
         """Get the parents and revision for an inventory entry.
