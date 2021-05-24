@@ -984,9 +984,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         value = self.index[path]
         self._index_dirty = True
         if conflicted:
-            self.index[path] = (value[:9] + (value[9] | FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags | FLAG_STAGEMASK)
         else:
-            self.index[path] = (value[:9] + (value[9] & ~ FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags &~ FLAG_STAGEMASK)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
