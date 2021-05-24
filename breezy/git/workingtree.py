@@ -29,6 +29,7 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import GitFile, FileLocked
 from dulwich.index import (
     Index,
+    IndexEntry,
     SHA1Writer,
     build_index_from_tree,
     index_entry_from_path,
@@ -1142,7 +1143,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             add_entry(dirname, 'directory')
             dirname = decode_git_path(dirname)
             dir_file_id = self.path2id(dirname)
-            if not isinstance(value, tuple) or len(value) != 10:
+            if not isinstance(value, (tuple, IndexEntry)):
                 raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
                 (decode_git_path(path), decode_git_path(child_name),
