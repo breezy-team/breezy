@@ -27,6 +27,7 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import GitFile, FileLocked
 from dulwich.index import (
     Index,
+    IndexEntry,
     SHA1Writer,
     build_index_from_tree,
     index_entry_from_path,
@@ -981,9 +982,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         value = self.index[path]
         self._index_dirty = True
         if conflicted:
-            self.index[path] = (value[:9] + (value[9] | FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags | FLAG_STAGEMASK)
         else:
-            self.index[path] = (value[:9] + (value[9] & ~ FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags &~ FLAG_STAGEMASK)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
@@ -1139,7 +1140,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             add_entry(dirname, 'directory')
             dirname = decode_git_path(dirname)
             dir_file_id = self.path2id(dirname)
-            if not isinstance(value, tuple) or len(value) != 10:
+            if not isinstance(value, (tuple, IndexEntry)):
                 raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
                 (decode_git_path(path), decode_git_path(child_name),

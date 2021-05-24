@@ -85,8 +85,8 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.build_tree(['conflicted'])
         self.tree.add(['conflicted'])
         with self.tree.lock_tree_write():
-            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted'][:9] + \
-                (FLAG_STAGEMASK, )
+            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted']._replace(
+                flags=FLAG_STAGEMASK)
             self.tree._index_dirty = True
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
@@ -358,7 +358,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.build_tree_contents([('a/.git/HEAD', a.id)])
         with self.wt.lock_tree_write():
             (index, index_path) = self.wt._lookup_index(b'a')
-            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0)
+            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0, 0)
             self.wt._index_dirty = True
         t = Tree()
         t.add(b"a", S_IFGITLINK, a.id)
@@ -369,7 +369,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         a = Blob.from_string(b'irrelevant\n')
         with self.wt.lock_tree_write():
             (index, index_path) = self.wt._lookup_index(b'a')
-            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0)
+            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0, 0)
             self.wt._index_dirty = True
         os.mkdir(self.wt.abspath('a'))
         t = Tree()
