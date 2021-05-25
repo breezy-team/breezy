@@ -79,10 +79,11 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
+                 revision_id=None, lossy=False, owns_transaction=True):
         VersionedFileCommitBuilder.__init__(self, repository, parents, config,
                                             timestamp=timestamp, timezone=timezone, committer=committer,
-                                            revprops=revprops, revision_id=revision_id, lossy=lossy)
+                                            revprops=revprops, revision_id=revision_id, lossy=lossy,
+                                            owns_transaction=owns_transaction)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
