@@ -649,7 +649,7 @@ class InterGitGitRepository(InterFromGitRepository):
 
         def determine_wants(heads):
             old_refs = dict([(k, (v, None))
-                             for (k, v) in heads.as_dict().items()])
+                             for (k, v) in heads.items()])
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
             return [sha1 for (sha1, bzr_revid) in new_refs.values()]
