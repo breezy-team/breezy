@@ -1,6 +1,7 @@
 breezy-debian (2.8.61) UNRELEASED; urgency=medium
 
   * Bump minimum Breezy to 3.2.
+  * Drop --launchpad flag.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 17 May 2021 22:33:12 +0100
 
