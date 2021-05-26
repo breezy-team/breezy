@@ -62,7 +62,6 @@ from .config import (
     )
 from .util import (
     debuild_config,
-    get_build_architecture,
     )
 
 dont_purge_opt = Option(
@@ -722,10 +721,6 @@ class cmd_merge_upstream(Command):
         'snapshot', help="Merge a snapshot from the "
         "upstream branch rather than a new upstream release.")
 
-    launchpad_opt = Option(
-        'launchpad',
-        help='Use Launchpad to find upstream locations.')
-
     force_pristine_tar_opt = Option(
         'force-pristine-tar', help=(
             'Force the use of pristine-tar, even if no '
@@ -745,7 +740,7 @@ class cmd_merge_upstream(Command):
         package_opt, version_opt,
         distribution_opt, directory_opt, last_version_opt,
         force_opt, 'revision', 'merge-type',
-        snapshot_opt, launchpad_opt, force_pristine_tar_opt,
+        snapshot_opt, force_pristine_tar_opt,
         dist_command_opt, guess_upstream_branch_url_opt]
 
     def run(self, location: Optional[str] = None,
@@ -755,7 +750,7 @@ class cmd_merge_upstream(Command):
             directory: str = ".", revision=None, merge_type=None,
             last_version: Optional[str] = None,
             force: Optional[bool] = None, snapshot: bool = False,
-            launchpad: bool = False, force_pristine_tar: bool = False,
+            force_pristine_tar: bool = False,
             dist_command: Optional[str] = None,
             guess_upstream_branch_url: bool = False):
         from debian.changelog import Version
@@ -823,14 +818,6 @@ class cmd_merge_upstream(Command):
             if build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError(gettext(
                     "Merge upstream in native mode is not supported."))
-
-            if launchpad:
-                from .launchpad import (
-                    get_upstream_branch_url as lp_get_upstream_branch_url,
-                    )
-                upstream_branch = lp_get_upstream_branch_url(
-                    package, distribution_name, distribution)
-                note(gettext("Using upstream branch %s") % upstream_branch)
 
             if upstream_branch is not None:
                 upstream_branch = Branch.open(upstream_branch)

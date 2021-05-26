@@ -823,15 +823,6 @@ def dput_changes(path):
     subprocess.check_call(["dput", changes_file], cwd=bd)
 
 
-def debsign(path, keyid=None):
-    (bd, changes_file) = os.path.split(path)
-    args = ["debsign"]
-    if keyid:
-        args.append("-k%s" % keyid)
-    args.append(changes_file)
-    subprocess.check_call(args, cwd=bd)
-
-
 def find_changes_files(path, package, version):
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
@@ -841,15 +832,6 @@ def find_changes_files(path, package, version):
         m = c.match(entry.name)
         if m:
             yield m.group(1), entry
-
-
-def get_build_architecture():
-    try:
-        return subprocess.check_output(
-            ['dpkg-architecture', '-qDEB_BUILD_ARCH']).strip().decode()
-    except subprocess.CalledProcessError as e:
-        raise BzrError(
-            "Could not find the build architecture: %s" % e)
 
 
 def get_files_excluded(tree, subpath='', top_level=False):
