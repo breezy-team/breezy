@@ -218,11 +218,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             info = self._submodule_info()[relpath]
         except KeyError:
-            index_path = os.path.join(self.basedir, decode_git_path(relpath), '.git', 'index')
+            submodule_transport = self.user_transport.clone(decode_git_path(relpath))
         else:
-            index_path = self.control_transport.local_abspath(
-                posixpath.join('modules', decode_git_path(info[1]), 'index'))
-        return Index(index_path)
+            submodule_transport = self.control_transport.clone(
+                posixpath.join('modules', decode_git_path(info[1])))
+        submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
+        return Index(submodule_dir.control_transport.local_abspath('index'))
 
     def lock_read(self):
         """Lock the repository for read operations.
