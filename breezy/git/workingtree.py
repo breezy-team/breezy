@@ -647,7 +647,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         raise errors.BadFilenameEncoding(
                             relpath, osutils._fs_enc)
                     if not self.is_versioned(relpath.decode(osutils._fs_enc)):
-                        dirnames.remove(name)
+                        try:
+                            dirnames.remove(name)
+                        except ValueError:
+                            pass  # removed earlier
             for name in filenames:
                 if self.mapping.is_special_file(name):
                     continue
@@ -984,7 +987,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         if conflicted:
             self.index[path] = self.index[path]._replace(flags=self.index[path].flags | FLAG_STAGEMASK)
         else:
-            self.index[path] = self.index[path]._replace(flags=self.index[path].flags &~ FLAG_STAGEMASK)
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags & ~FLAG_STAGEMASK)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
