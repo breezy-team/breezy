@@ -249,7 +249,7 @@ class StackedUpstreamSource(UpstreamSource):
                     return new_version
             except NotImplementedError:
                 pass
-        return None
+        return None, None
 
     def get_recent_versions(self, package, since_version=None):
         versions = {}
@@ -544,4 +544,4 @@ class DirectoryScanSource(UpstreamSource):
         return []
 
     def get_latest_version(self, package, version):
-        return None
+        return None, None

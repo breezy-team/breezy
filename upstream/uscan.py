@@ -112,7 +112,7 @@ class UScanSource(UpstreamSource):
                 watch_tempfilename = self._export_file('watch', tmpdir)
             except NoSuchFile:
                 note("No watch file to use to check latest upstream release.")
-                return None
+                return None, None
             args = ["--watchfile=%s" % watch_tempfilename,
                     "--package=%s" % package, "--report",
                     "--no-download",

@@ -514,7 +514,8 @@ class UpstreamBranchSource(UpstreamSource):
         elif self.version_kind == "release":
             version = self.get_latest_release_version(package, current_version)
             if version is None:
-                return current_version
+                # TODO(jelmer): De-debianize current_version ?
+                return current_version, current_version
             return version
         elif self.version_kind == "auto":
             version = self.get_latest_release_version(package, current_version)
