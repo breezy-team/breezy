@@ -56,6 +56,7 @@ from ...transport import (
     do_catching_redirections,
     get_transport,
     )
+from ...tree import Tree
 from . import (
     global_conf,
     )
@@ -848,3 +849,18 @@ def get_files_excluded(tree, subpath='', top_level=False):
             return copyright.header["Files-Excluded"].split()
         except KeyError:
             return []
+
+
+def control_files_in_root(tree: Tree, subpath: str) -> bool:
+    debian_path = os.path.join(subpath, "debian")
+    if tree.has_filename(debian_path):
+        return False
+    control_path = os.path.join(subpath, "control")
+    if tree.has_filename(control_path):
+        return True
+    if tree.has_filename(control_path + ".in"):
+        return True
+    return False
+
+
+
