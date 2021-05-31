@@ -27,6 +27,7 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import GitFile, FileLocked
 from dulwich.index import (
     Index,
+    IndexEntry,
     SHA1Writer,
     build_index_from_tree,
     index_entry_from_path,
@@ -217,11 +218,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             info = self._submodule_info()[relpath]
         except KeyError:
-            index_path = os.path.join(self.basedir, decode_git_path(relpath), '.git', 'index')
+            submodule_transport = self.user_transport.clone(decode_git_path(relpath))
         else:
-            index_path = self.control_transport.local_abspath(
-                posixpath.join('modules', decode_git_path(info[1]), 'index'))
-        return Index(index_path)
+            submodule_transport = self.control_transport.clone(
+                posixpath.join('modules', decode_git_path(info[1])))
+        submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
+        return Index(submodule_dir.control_transport.local_abspath('index'))
 
     def lock_read(self):
         """Lock the repository for read operations.
@@ -646,7 +648,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         raise errors.BadFilenameEncoding(
                             relpath, osutils._fs_enc)
                     if not self.is_versioned(relpath.decode(osutils._fs_enc)):
-                        dirnames.remove(name)
+                        try:
+                            dirnames.remove(name)
+                        except ValueError:
+                            pass  # removed earlier
             for name in filenames:
                 if self.mapping.is_special_file(name):
                     continue
@@ -981,9 +986,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         value = self.index[path]
         self._index_dirty = True
         if conflicted:
-            self.index[path] = (value[:9] + (value[9] | FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags | FLAG_STAGEMASK)
         else:
-            self.index[path] = (value[:9] + (value[9] & ~ FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags & ~FLAG_STAGEMASK)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
@@ -1139,7 +1144,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             add_entry(dirname, 'directory')
             dirname = decode_git_path(dirname)
             dir_file_id = self.path2id(dirname)
-            if not isinstance(value, tuple) or len(value) != 10:
+            if not isinstance(value, (tuple, IndexEntry)):
                 raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
                 (decode_git_path(path), decode_git_path(child_name),

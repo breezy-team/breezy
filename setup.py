@@ -67,8 +67,7 @@ META_INFO = {
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
-        'dulwich>=0.19.12;python_version>="3.5"',
-        'dulwich<0.20,>=0.19.12;python_version<"3.0"',
+        'dulwich>=0.20.22',
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],

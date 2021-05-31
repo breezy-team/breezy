@@ -109,7 +109,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
 
     def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
+                 revision_id=None, lossy=False, owns_transaction=True):
         super(VersionedFileCommitBuilder, self).__init__(repository,
                                                          parents, config_stack, timestamp, timezone, committer, revprops,
                                                          revision_id, lossy)
@@ -123,6 +123,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
         # memo'd check for no-op commits.
         self._any_changes = False
+        self._owns_transaction = owns_transaction
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -191,13 +192,15 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 self._new_revision_id)
         self.repository._add_revision(rev)
         self._ensure_fallback_inventories()
-        self.repository.commit_write_group()
+        if self._owns_transaction:
+            self.repository.commit_write_group()
         return self._new_revision_id
 
     def abort(self):
         """Abort the commit that is being built.
         """
-        self.repository.abort_write_group()
+        if self._owns_transaction:
+            self.repository.abort_write_group()
 
     def revision_tree(self):
         """Return the tree that was just committed.
@@ -1002,10 +1005,13 @@ class VersionedFileRepository(Repository):
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                                   " in pre-2a formats. See "
                                   "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-        result = self._commit_builder_class(self, parents, config_stack,
-                                            timestamp, timezone, committer, revprops, revision_id,
-                                            lossy)
-        self.start_write_group()
+        in_transaction = self.is_in_write_group()
+        result = self._commit_builder_class(
+            self, parents, config_stack,
+            timestamp, timezone, committer, revprops, revision_id,
+            lossy, owns_transaction=not in_transaction)
+        if not in_transaction:
+            self.start_write_group()
         return result
 
     def get_missing_parent_inventories(self, check_for_missing_texts=True):
