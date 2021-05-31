@@ -655,7 +655,7 @@ class TestUpstreamBranchVersion(TestCase):
     def test_snapshot_none_existing(self):
         self.revhistory = [b"somerevid"]
         self.assertEquals(
-            "1.2+bzr1",
+            ("1.2+bzr1", "1.2+bzr1"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid", {}, "bla",
                 "1.2", self.get_suffix))
@@ -663,7 +663,7 @@ class TestUpstreamBranchVersion(TestCase):
     def test_snapshot_nothing_new(self):
         self.revhistory = []
         self.assertEquals(
-            "1.2",
+            ("1.2", "1.2"),
             _upstream_branch_version(
                 self.revhistory, NULL_REVISION, {}, "bla", "1.2",
                 self.get_suffix))
@@ -672,7 +672,7 @@ class TestUpstreamBranchVersion(TestCase):
         """Last revision is tagged - use as upstream version."""
         self.revhistory = [b"somerevid", b"oldrevid"]
         self.assertEquals(
-            "1.3",
+            ("1.3", "1.3"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid",
                 {b"somerevid": [u"1.3", u"1.3a"], b"oldrevid": ["1.2"]}, "bla",
@@ -682,7 +682,7 @@ class TestUpstreamBranchVersion(TestCase):
         """Last revision is tagged - use as upstream version."""
         self.revhistory = [b"lastrevid", b"somerevid", b"oldrevid"]
         self.assertEquals(
-            "1.3+bzr3",
+            ("1.3+bzr3", "1.3+bzr3"),
             _upstream_branch_version(
                 self.revhistory, b"lastrevid",
                 {b"somerevid": [u"1.3"], b'oldrevid': ["1.2"]}, "bla",
@@ -692,7 +692,7 @@ class TestUpstreamBranchVersion(TestCase):
         """Last revision is tagged - use as upstream version."""
         self.revhistory = [b"somerevid", b"targetrevid"]
         self.assertEquals(
-            "1.3~bzr1",
+            ("1.3~bzr1", "1.3~bzr1"),
             _upstream_branch_version(
                 self.revhistory, b"targetrevid",
                 {b"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
@@ -700,7 +700,7 @@ class TestUpstreamBranchVersion(TestCase):
     def test_refresh_snapshot_pre(self):
         self.revhistory = [b"somerevid", b"oldrevid"]
         self.assertEquals(
-            "1.3~bzr2",
+            ("1.3~bzr2", "1.3~bzr2"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid", {}, "bla",
                 "1.3~bzr1",
@@ -709,7 +709,7 @@ class TestUpstreamBranchVersion(TestCase):
     def test_refresh_snapshot_post(self):
         self.revhistory = [b"somerevid", b"oldrevid"]
         self.assertEquals(
-            "1.3+bzr2",
+            ("1.3+bzr2", "1.3+bzr2"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid", {}, "bla", "1.3+bzr1",
                 self.get_suffix))
@@ -717,7 +717,7 @@ class TestUpstreamBranchVersion(TestCase):
     def test_new_tag_refresh_snapshot(self):
         self.revhistory = [b"newrevid", b"somerevid", b"oldrevid"]
         self.assertEquals(
-            "1.3+bzr3",
+            ("1.3+bzr3", "1.3+bzr3"),
             _upstream_branch_version(
                 self.revhistory, b"newrevid",
                 {b"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))

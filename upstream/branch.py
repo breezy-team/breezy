@@ -126,11 +126,11 @@ def _upstream_branch_version(
     :param previous_version: Previous upstream version in debian changelog.
     :param add_rev: Function that can add a revision suffix to a version
         string.
-    :return: Name of the upstream revision.
+    :return: Tuple with vesion of the upstream revision, and mangled
     """
     if upstream_revision == NULL_REVISION:
         # No new version to merge
-        return previous_version
+        return previous_version, previous_version
     last_upstream: Optional[Tuple[Version, str]] = None
     try:
         for r in revhistory:
@@ -142,10 +142,11 @@ def _upstream_branch_version(
                     upstream_version = upstream_tag_to_version(
                             tag, package=package)
                     if upstream_version is not None:
+                        mangled_version = debianize_upstream_version(upstream_version, package)
                         if r == upstream_revision:
                             # Well, that's simple
-                            return upstream_version
-                        if last_upstream is None or Version(last_upstream[0]) < Version(upstream_version):
+                            return upstream_version, mangled_version
+                        if last_upstream is None or Version(last_upstream[0]) < Version(mangled_version):
                             last_upstream = (str(upstream_version), '+')
             if r == upstream_revision and last_upstream:
                 # The last upstream release was after us
@@ -170,7 +171,8 @@ def _upstream_branch_version(
                 last_upstream = (previous_version, '+')
             else:
                 last_upstream = (previous_version, '~')
-    return add_rev(last_upstream[0], upstream_revision, last_upstream[1])
+    upstream_version = add_rev(last_upstream[0], upstream_revision, last_upstream[1])
+    return upstream_version, debianize_upstream_version(upstream_version, package)
 
 
 def extract_gitid(rev):
@@ -497,10 +499,10 @@ class UpstreamBranchSource(UpstreamSource):
 
     def get_latest_snapshot_version(self, package, current_version):
         revid = self.upstream_branch.last_revision()
-        version = self.get_version(package, current_version, revid)
-        if version is not None:
-            self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
-        return version, debianize_upstream_version(version, package)
+        version, mangled_version = self.get_version(package, current_version, revid)
+        if mangled_version is not None:
+            self.upstream_revision_map[mangled_version] = 'revid:%s' % revid.decode('utf-8')
+        return version, mangled_version
 
     def get_latest_release_version(self, package, current_version):
         versions = list(self.get_recent_versions(package, current_version))
