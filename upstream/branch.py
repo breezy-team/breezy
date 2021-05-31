@@ -131,7 +131,7 @@ def _upstream_branch_version(
     if upstream_revision == NULL_REVISION:
         # No new version to merge
         return previous_version, previous_version
-    last_upstream: Optional[Tuple[Version, str]] = None
+    last_upstream: Optional[Tuple[Version, str, str]] = None
     try:
         for r in revhistory:
             if r in reverse_tag_dict:
@@ -146,32 +146,32 @@ def _upstream_branch_version(
                         if r == upstream_revision:
                             # Well, that's simple
                             return upstream_version, mangled_version
-                        if last_upstream is None or Version(last_upstream[0]) < Version(mangled_version):
-                            last_upstream = (str(upstream_version), '+')
+                        if last_upstream is None or Version(last_upstream[1]) < Version(mangled_version):
+                            last_upstream = (upstream_version, mangled_version, '+')
             if r == upstream_revision and last_upstream:
                 # The last upstream release was after us
-                last_upstream = (last_upstream[0], '~')
+                last_upstream = (last_upstream[0], last_upstream[1], '~')
     except RevisionNotPresent:
         # Ghost revision somewhere on mainline.
         pass
     if last_upstream is None:
         # Well, we didn't find any releases
         if previous_version is None:
-            last_upstream = ('0', '+')
+            last_upstream = ('0', '0', '+')
         else:
             # Assume we were just somewhere after the last release
-            last_upstream = (previous_version, '+')
+            last_upstream = (previous_version, previous_version, '+')
     else:
-        if previous_version is not None and Version(last_upstream[0]) < Version(previous_version):
+        if previous_version is not None and Version(last_upstream[1]) < Version(previous_version):
             if '~' not in previous_version:
                 warning(
-                    'last found upstream version (%s) is lower than '
+                    'last found upstream version %s (%s) is lower than '
                     'previous packaged upstream version (%s)',
-                    last_upstream[0], previous_version)
-                last_upstream = (previous_version, '+')
+                    last_upstream[1], last_upstream[0], previous_version)
+                last_upstream = (previous_version, previous_version, '+')
             else:
-                last_upstream = (previous_version, '~')
-    upstream_version = add_rev(last_upstream[0], upstream_revision, last_upstream[1])
+                last_upstream = (previous_version, previous_version, '~')
+    upstream_version = add_rev(last_upstream[0], upstream_revision, last_upstream[2])
     return upstream_version, debianize_upstream_version(upstream_version, package)
 
 
