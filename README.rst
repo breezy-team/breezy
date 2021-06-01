@@ -17,21 +17,18 @@ information than this file.
 Installation
 ------------
 
-This plugin requires `python-debian`_ (at least version 0.1.11),
-and a version of brz at least 2.1. These are available in Debian
-(though maybe not at the required versions for a development version
-of builddeb).
+This plugin requires `python-debian`_ and Breezy.
 
 .. _python-debian: http://bzr.debian.org/pkg-python-debian/trunk/
 
 It also requires the ``dpkg-dev`` package to be installed (for the
 ``dpkg-mergechangelogs`` tool)::
 
-  apt-get install dpkg-dev
+  apt install dpkg-dev
 
 This plugin can be installed in two ways. As you are probably using a Debian
 system you can probably just use the Debian packages. The other way is to
-branch it in to ``~/.bazaar/plugins/builddeb``, i.e::
+branch it in to ``~/.breezy/plugins/debian``, i.e::
 
   brz branch https://code.breezy-vcs.org/breezy-debian/trunk/ \
     ~/.config/breezy/plugins/debian
@@ -338,11 +335,11 @@ especially if files are removed**, it is advisable to run a build without
 Workflow
 --------
 
-bzr-builddeb is designed to fit in with the workflow that brz encourages. It
-is designed as a plugin, so that it just becomes one more ``bzr`` command that
+brz-debian is designed to fit in with the workflow that brz encourages. It
+is designed as a plugin, so that it just becomes one more ``brz`` command that
 you run while working on the package.
 
-It also works fine with the frequent branching approach of bzr, so that you
+It also works fine with the frequent branching approach of brz, so that you
 can branch to test something new for the package, or for a bug fix, and then
 merge it back in to your main branch when it is done.
 
