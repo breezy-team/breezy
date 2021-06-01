@@ -1,11 +1,11 @@
-breezy-debian (2.8.61) UNRELEASED; urgency=medium
+breezy-debian (2.8.61) unstable; urgency=medium
 
   * Bump minimum Breezy to 3.2.
   * Drop --launchpad flag.
   * Add scripts deb-auto-import, deb-import-uncommitted and deb-new-
     upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 17 May 2021 22:33:12 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 01 Jun 2021 18:06:24 +0100
 
 breezy-debian (2.8.60) unstable; urgency=medium
 
