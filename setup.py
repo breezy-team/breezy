@@ -37,6 +37,7 @@ if __name__ == '__main__':
           license="GNU GPL v2",
           url="https://code.breezy-vcs.org/breezy-debian",
           install_requires=['pyyaml', 'breezy>=3.1.0', 'debmutate'],
+          scripts=['scripts/deb-auto-backport', 'scripts/deb-import-uncommitted', 'scripts/deb-new-upstream'],
           packages=['breezy.plugins.debian',
                     'breezy.plugins.debian.tests',
                     'breezy.plugins.debian.tests.blackbox',
