@@ -378,7 +378,9 @@ def guess_upstream_revspec(package, version):
     is_snapshot = False
     if "+bzr" in version or "~bzr" in version:
         is_snapshot = True
-        yield "revno:%s" % re.match(".*[~+]bzr(\\d+).*", version).group(1)
+        m = re.match(r".*[~+]bzr(\.?)(\d+).*", version)
+        if m:
+            yield "revno:%s" % m.group(2)
     (git_id, git_date) = git_snapshot_data_from_version(version)
     if git_id:
         is_snapshot = True

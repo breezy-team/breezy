@@ -53,7 +53,6 @@ from breezy.errors import (
     InvalidHttpResponse,
     NoRoundtrippingSupport,
 )
-from breezy.revision import NULL_REVISION
 from breezy.plugins.debian.config import UpstreamMetadataSyntaxError
 from breezy.plugins.debian.util import (
     InconsistentSourceFormatError,
@@ -277,15 +276,14 @@ def is_big_version_jump(old_upstream_version, new_upstream_version):
 def get_upstream_branch_location(tree, subpath, config, trust_package=False):
     if config.upstream_branch is not None:
         logging.info(
-            "Using upstream branch %s (from configuration)", config.upstream_branch
-        )
+            "Using upstream branch %s (from configuration)",
+            config.upstream_branch)
         # TODO(jelmer): Make brz-debian sanitize the URL?
         upstream_branch_location = sanitize_vcs_url(config.upstream_branch)
-        upstream_branch_browse = getattr(config, "upstream_branch_browse", None)
+        upstream_branch_browse = getattr(
+            config, "upstream_branch_browse", None)
     else:
-        from upstream_ontologist.guess import (
-            guess_upstream_metadata,
-        )
+        from upstream_ontologist.guess import guess_upstream_metadata
 
         guessed_upstream_metadata = guess_upstream_metadata(
             tree.abspath(subpath),
@@ -294,9 +292,11 @@ def get_upstream_branch_location(tree, subpath, config, trust_package=False):
             consult_external_directory=False,
         )
         upstream_branch_location = guessed_upstream_metadata.get("Repository")
-        upstream_branch_browse = guessed_upstream_metadata.get("Repository-Browse")
+        upstream_branch_browse = guessed_upstream_metadata.get(
+            "Repository-Browse")
         if upstream_branch_location:
-            logging.info("Using upstream branch %s (guessed)", upstream_branch_location)
+            logging.info(
+                "Using upstream branch %s (guessed)", upstream_branch_location)
     if upstream_branch_browse is None and upstream_branch_location is not None:
         try:
             from lintian_brush.vcs import determine_browser_url
@@ -329,12 +329,15 @@ def refresh_quilt_patches(
             patches.push(name, refresh=True)
         except QuiltError as e:
             lines = e.stdout.splitlines()
-            m = re.match("Patch debian/patches/(.*) can be reverse-applied", lines[-1])
+            m = re.match(
+                "Patch debian/patches/(.*) can be reverse-applied",
+                lines[-1])
             if m and getattr(patches, "delete", None):
                 assert m.group(1) == name
                 patches.delete(name, remove=True)
                 with ChangelogEditor(
-                        local_tree.abspath(os.path.join(subpath, 'debian/changelog'))
+                        local_tree.abspath(
+                            os.path.join(subpath, 'debian/changelog'))
                         ) as cl:
                     cl.add_entry(["Drop patch %s, present upstream." % name])
                 debcommit(
@@ -463,9 +466,9 @@ def find_new_upstream(  # noqa: C901
     # TODO(jelmer): Find the lastest upstream present in the upstream branch
     # rather than what's in the changelog.
 
-    upstream_branch_location, upstream_branch_browse = get_upstream_branch_location(
-        tree, subpath, config, trust_package=trust_package
-    )
+    upstream_branch_location, upstream_branch_browse = (
+            get_upstream_branch_location(
+                tree, subpath, config, trust_package=trust_package))
 
     if upstream_branch_location:
         try:
@@ -504,7 +507,8 @@ def find_new_upstream(  # noqa: C901
         try:
             branch = open_branch(location)
         except (BranchUnavailable, BranchMissing, BranchUnsupported):
-            primary_upstream_source = TarfileSource(location, new_upstream_version)
+            primary_upstream_source = TarfileSource(
+                location, new_upstream_version)
         else:
             primary_upstream_source = UpstreamBranchSource.from_branch(
                 branch,
@@ -533,9 +537,9 @@ def find_new_upstream(  # noqa: C901
                 primary_upstream_source = upstream_branch_source
 
     if new_upstream_version is None and primary_upstream_source is not None:
-        unmangled_new_upstream_version, new_upstream_version = primary_upstream_source.get_latest_version(
-            package, old_upstream_version
-        )
+        unmangled_new_upstream_version, new_upstream_version = (
+                primary_upstream_source.get_latest_version(
+                    package, old_upstream_version))
     else:
         new_upstream_version = debianize_upstream_version(
             new_upstream_version)
@@ -567,7 +571,8 @@ def find_new_upstream(  # noqa: C901
             raise NewerUpstreamAlreadyImported(
                 old_upstream_version, new_upstream_version
             )
-        if is_big_version_jump(old_upstream_version, new_upstream_version) and not force_big_version_jump:
+        if (is_big_version_jump(old_upstream_version, new_upstream_version) and
+                not force_big_version_jump):
             raise BigVersionJump(old_upstream_version, new_upstream_version)
 
     # TODO(jelmer): Check if new_upstream_version is already imported
@@ -593,11 +598,13 @@ def find_new_upstream(  # noqa: C901
                 # The branch is our primary upstream source, so if it can't
                 # find the version then there's nothing we can do.
                 raise UpstreamVersionMissingInUpstreamBranch(
-                    upstream_branch_source.upstream_branch, str(new_upstream_version)
+                    upstream_branch_source.upstream_branch,
+                    str(new_upstream_version)
                 )
             elif not allow_ignore_upstream_branch:
                 raise UpstreamVersionMissingInUpstreamBranch(
-                    upstream_branch_source.upstream_branch, str(new_upstream_version)
+                    upstream_branch_source.upstream_branch,
+                    str(new_upstream_version)
                 )
             else:
                 logging.warn(
@@ -673,7 +680,8 @@ def import_upstream(
     if subpath is None:
         subpath = ""
     config = debuild_config(tree, subpath)
-    (changelog, top_level) = find_changelog(tree, subpath, merge=False, max_blocks=2)
+    (changelog, top_level) = find_changelog(
+        tree, subpath, merge=False, max_blocks=2)
     old_upstream_version = changelog.version.upstream_version
     package = changelog.package
     contains_upstream_source = tree_contains_upstream_source(tree, subpath)
@@ -721,7 +729,8 @@ def import_upstream(
         os.mkdir(initial_path)
         try:
             locations = primary_upstream_source.fetch_tarballs(
-                package, str(new_upstream_version), target_dir, components=[None]
+                package, str(new_upstream_version), target_dir,
+                components=[None]
             )
         except (PackageVersionNotPresent, WatchLineWithoutMatchingHrefs):
             if upstream_revisions is not None:
@@ -828,7 +837,8 @@ def merge_upstream(  # noqa: C901
     update_changelog: bool = True,
     subpath: str = "",
     include_upstream_history: Optional[bool] = None,
-    create_dist: Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
+    create_dist: Optional[
+        Callable[[Tree, str, Version, str], Optional[str]]] = None,
     force_big_version_jump: bool = False,
     debian_revision: Optional[str] = None,
     require_uscan: bool = False
@@ -916,8 +926,8 @@ def merge_upstream(  # noqa: C901
 
             try:
                 locations = primary_upstream_source.fetch_tarballs(
-                    package, str(new_upstream_version), initial_path, components=[None]
-                )
+                    package, str(new_upstream_version), initial_path,
+                    components=[None])
             except PackageVersionNotPresent as e:
                 if upstream_revisions is not None:
                     locations = upstream_branch_source.fetch_tarballs(
@@ -928,7 +938,8 @@ def merge_upstream(  # noqa: C901
                         revisions=upstream_revisions,
                     )
                 else:
-                    raise NewUpstreamTarballMissing(e.package, e.version, e.upstream)
+                    raise NewUpstreamTarballMissing(
+                        e.package, e.version, e.upstream)
 
             orig_path = os.path.join(target_dir, "orig")
             os.mkdir(orig_path)
@@ -975,7 +986,8 @@ def merge_upstream(  # noqa: C901
                     upstream_tag = pristine_tar_source.tag_name(
                         new_upstream_version, component
                     )
-                    imported_revids.append((component, upstream_tag, revid, None))
+                    imported_revids.append(
+                        (component, upstream_tag, revid, None))
                 try:
                     conflicts = tree.merge_from_branch(
                         pristine_tar_source.branch, to_revision=upstream_revid
@@ -989,7 +1001,8 @@ def merge_upstream(  # noqa: C901
     # Re-read changelog, since it may have been changed by the merge
     # from upstream.
     try:
-        (changelog, top_level) = find_changelog(tree, subpath, False, max_blocks=2)
+        (changelog, top_level) = find_changelog(
+            tree, subpath, False, max_blocks=2)
     except (ChangelogParseError, MissingChangelogError):
         # If there was a conflict that affected debian/changelog, then that might be
         # to blame.
@@ -1063,13 +1076,14 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
         rule.append_command(b" ".join(command))
 
     return update_rules(
-        makefile_cb=update_makefile, path=os.path.join(basedir, "debian", "rules")
+        makefile_cb=update_makefile,
+        path=os.path.join(basedir, "debian", "rules")
     )
 
 
 def update_packaging(
-    tree: Tree, old_tree: Tree, subpath: str = "", committer: Optional[str] = None
-) -> List[str]:
+    tree: Tree, old_tree: Tree, subpath: str = "",
+    committer: Optional[str] = None) -> List[str]:
     """Update packaging to take in changes between upstream trees.
 
     Args:
@@ -1286,7 +1300,8 @@ async def main():
     except InvalidFormatUpstreamVersion as e:
         report_fatal(
             "invalid-upstream-version-format",
-            "%r reported invalid format version string %s." % (e.source, e.version),
+            "%r reported invalid format version string %s." % (
+                e.source, e.version),
         )
         return 1
     except PristineTarError as e:

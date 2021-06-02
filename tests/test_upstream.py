@@ -404,6 +404,9 @@ class GuessUpstreamRevspecTests(TestCase):
                 [u'revno:1200', u'tag:1.2+bzr1200', u'tag:foo-1.2+bzr1200'],
                 list(guess_upstream_revspec('foo', '1.2+bzr1200')))
         self.assertEqual(
+                [u'revno:1200', u'tag:1.2+bzr.1200', u'tag:foo-1.2+bzr.1200'],
+                list(guess_upstream_revspec('foo', '1.2+bzr.1200')))
+        self.assertEqual(
                 [u'revno:1200', u'tag:1.2~bzr1200', u'tag:foo-1.2~bzr1200'],
                 list(guess_upstream_revspec('foo', '1.2~bzr1200')))
         self.assertEqual(
