@@ -37,6 +37,7 @@ from debmutate.versions import new_package_version
 
 from ... import osutils
 from ...revision import NULL_REVISION
+from ...trace import note
 
 from .errors import (
     BzrError,
@@ -201,3 +202,41 @@ def get_tarballs(orig_dir, tree, package, version, locations):
     if not os.path.exists(orig_dir):
         os.makedirs(orig_dir)
     return fetch_tarball(package, version, orig_dir, locations, v3)
+
+
+def get_upstream_branch_location(tree, subpath, config, trust_package=False):
+    from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
+
+    if config.upstream_branch is not None:
+        note(
+            "Using upstream branch %s (from configuration)",
+            config.upstream_branch)
+        # TODO(jelmer): Make brz-debian sanitize the URL?
+        upstream_branch_location = sanitize_vcs_url(config.upstream_branch)
+        upstream_branch_browse = getattr(
+            config, "upstream_branch_browse", None)
+    else:
+        from upstream_ontologist.guess import guess_upstream_metadata
+
+        guessed_upstream_metadata = guess_upstream_metadata(
+            tree.abspath(subpath),
+            trust_package=trust_package,
+            net_access=True,
+            consult_external_directory=False,
+        )
+        upstream_branch_location = guessed_upstream_metadata.get("Repository")
+        upstream_branch_browse = guessed_upstream_metadata.get(
+            "Repository-Browse")
+        if upstream_branch_location:
+            note(
+                "Using upstream branch %s (guessed)", upstream_branch_location)
+    if upstream_branch_browse is None and upstream_branch_location is not None:
+        try:
+            from lintian_brush.vcs import determine_browser_url
+        except ImportError:
+            pass
+        else:
+            upstream_branch_browse = determine_browser_url(
+                None, upstream_branch_location
+            )
+    return (upstream_branch_location, upstream_branch_browse)

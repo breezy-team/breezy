@@ -17,7 +17,6 @@
 
 """Support for merging new upstream versions."""
 
-import argparse
 from email.utils import parseaddr
 import errno
 import json
@@ -125,7 +124,7 @@ from debmutate.watch import WatchSyntaxError
 
 from breezy.tree import Tree
 
-from lintian_brush.vcs import sanitize_url as sanitize_vcs_url
+from breezy.plugins.debian.merge_upstream import get_upstream_branch_location
 
 
 __all__ = [
@@ -271,42 +270,6 @@ def is_big_version_jump(old_upstream_version, new_upstream_version):
     if old_major_version > 0 and new_major_version > 5*old_major_version:
         return True
     return False
-
-
-def get_upstream_branch_location(tree, subpath, config, trust_package=False):
-    if config.upstream_branch is not None:
-        logging.info(
-            "Using upstream branch %s (from configuration)",
-            config.upstream_branch)
-        # TODO(jelmer): Make brz-debian sanitize the URL?
-        upstream_branch_location = sanitize_vcs_url(config.upstream_branch)
-        upstream_branch_browse = getattr(
-            config, "upstream_branch_browse", None)
-    else:
-        from upstream_ontologist.guess import guess_upstream_metadata
-
-        guessed_upstream_metadata = guess_upstream_metadata(
-            tree.abspath(subpath),
-            trust_package=trust_package,
-            net_access=True,
-            consult_external_directory=False,
-        )
-        upstream_branch_location = guessed_upstream_metadata.get("Repository")
-        upstream_branch_browse = guessed_upstream_metadata.get(
-            "Repository-Browse")
-        if upstream_branch_location:
-            logging.info(
-                "Using upstream branch %s (guessed)", upstream_branch_location)
-    if upstream_branch_browse is None and upstream_branch_location is not None:
-        try:
-            from lintian_brush.vcs import determine_browser_url
-        except ImportError:
-            pass
-        else:
-            upstream_branch_browse = determine_browser_url(
-                None, upstream_branch_location
-            )
-    return (upstream_branch_location, upstream_branch_browse)
 
 
 def refresh_quilt_patches(
