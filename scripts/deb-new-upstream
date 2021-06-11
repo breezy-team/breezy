@@ -1165,6 +1165,8 @@ async def main():
               "(if --snapshot is not specified)"))
     args = parser.parse_args()
 
+    logging.basicConfig(format='%(message)s')
+
     local_tree, subpath = WorkingTree.open_containing('.')
 
     committer = os.environ.get('COMMITTER')
@@ -1492,6 +1494,8 @@ async def main():
                 report_fatal(error_code, error_description)
                 return 1
 
+        logging.info(
+            'Merge new upstream version %s', result.new_upstream_version)
         proposed_commit_message = (
             "Merge new upstream release %s" % result.new_upstream_version
         )
