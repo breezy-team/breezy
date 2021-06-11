@@ -172,7 +172,8 @@ def _upstream_branch_version(
             else:
                 last_upstream = (previous_version, previous_version, '~')
     upstream_version = add_rev(last_upstream[0], upstream_revision, last_upstream[2])
-    return upstream_version, debianize_upstream_version(upstream_version, package)
+    mangled_upstream_version = add_rev(last_upstream[1], upstream_revision, last_upstream[2])
+    return upstream_version, mangled_upstream_version
 
 
 def extract_gitid(rev):
