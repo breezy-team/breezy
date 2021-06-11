@@ -1,8 +1,8 @@
-breezy-debian (2.8.62) UNRELEASED; urgency=medium
+breezy-debian (2.8.62) unstable; urgency=medium
 
   * Support . after 'bzr' in version strings.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 02 Jun 2021 23:03:50 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 11 Jun 2021 20:09:52 +0100
 
 breezy-debian (2.8.61) unstable; urgency=medium
 
