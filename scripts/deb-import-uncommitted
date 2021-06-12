@@ -263,11 +263,11 @@ async def main():
             json.dump(f, {
                 'description': 'Import archive changes missing from the VCS.',
                 'commit-message': "Import missing uploads: %s." % (
-                    ", ".join([str(v) for t, v in ret])),
+                    ", ".join([str(v) for t, v, rs in ret])),
                 'context': {
                     'tags':
                         [(tag_name, str(version))
-                         for (tag_name, version, revid) in ret],
+                         for (tag_name, version, rs) in ret],
                 },
             })
 
