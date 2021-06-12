@@ -222,9 +222,9 @@ def import_uncommitted(tree, subpath):
 def report_fatal(code, description):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump(f, {
+            json.dump({
                 'result_code': code,
-                'description': description})
+                'description': description}, f)
     logging.fatal('%s', description)
 
 
@@ -260,7 +260,7 @@ async def main():
 
     if os.environ.get('SVP_API') == 1:
         with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump(f, {
+            json.dump({
                 'description': 'Import archive changes missing from the VCS.',
                 'commit-message': "Import missing uploads: %s." % (
                     ", ".join([str(v) for t, v, rs in ret])),
@@ -269,7 +269,7 @@ async def main():
                         [(tag_name, str(version))
                          for (tag_name, version, rs) in ret],
                 },
-            })
+            }, f)
 
     logging.info('Imported %d uploads.', len(ret))
 

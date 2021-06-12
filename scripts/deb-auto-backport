@@ -171,7 +171,7 @@ async def main():
 
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
-            json.dump(f, {
+            json.dump({
                 'description': 'Backport %s to %s' % (
                     result.source, result.target_release),
                 'context': {
@@ -179,7 +179,7 @@ async def main():
                     'version': str(result.version),
                     'since_version': str(result.since_version),
                     'target_release': result.target_release,
-                }})
+                }}, f)
     logging.info('Backported %s to %s', result.source, result.target_release)
 
 
