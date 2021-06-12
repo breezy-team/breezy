@@ -156,7 +156,7 @@ def retrieve_source(package_name, target):
         if stderr[-1].startswith(b"E: "):
             raise AptSourceError(stderr[-1][3:].decode())
         if stderr[-1].startswith(CS):
-            raise AptSourceError(stderr[-1][len(CS): -len(CE)])
+            raise AptSourceError(stderr[-1][len(CS): -len(CE)].decode())
         raise AptSourceError(
             [line.decode("utf-8", "surrogateescape") for line in stderr]
         )
