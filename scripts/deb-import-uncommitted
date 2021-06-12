@@ -201,7 +201,8 @@ def import_uncommitted(tree, subpath):
         for version in missing_versions:
             output_dir = es.enter_context(tempfile.TemporaryDirectory())
             download_snapshot(
-                package_name, version, output_dir, no_preparation=no_preparation
+                package_name, version, output_dir,
+                no_preparation=no_preparation
             )
             version_path[version] = output_dir
         for version in reversed(missing_versions):
@@ -210,7 +211,7 @@ def import_uncommitted(tree, subpath):
                 version_path[version], "%s_%s.dsc" % (package_name, version)
             )
             tag_name = db.import_package(dsc_path)
-            revision = db.version_as_revisions(version)
+            revision = db.pristine_upstream_source.version_as_revisions(version)
             ret.append((tag_name, version, revision))
     return ret
 
