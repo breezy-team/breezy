@@ -187,7 +187,7 @@ def import_uncommitted(tree, subpath):
         dbs = DistributionBranchSet()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs.add_branch(db)
-        if tree_cl.version.debian_revision:
+        if cree_cl.version.debian_revision:
             logging.info(
                 "Extracting upstream version %s.", tree_cl.version.upstream_version
             )
@@ -214,7 +214,8 @@ def import_uncommitted(tree, subpath):
                 version_path[version], "%s_%s.dsc" % (package_name, version)
             )
             tag_name = db.import_package(dsc_path)
-            revision = db.pristine_upstream_source.version_as_revisions(version)
+            revision = db.pristine_upstream_source.version_as_revisions(
+                tree_cl.package, version)
             ret.append((tag_name, version, revision))
     return ret
 
