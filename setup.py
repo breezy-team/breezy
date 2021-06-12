@@ -12,11 +12,6 @@ import sys
 import copy
 import glob
 
-if sys.version_info < (3, 5):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 3.5+\n")
-    sys.exit(1)
-
-
 try:
     import setuptools
 except ImportError as e:
@@ -82,6 +77,7 @@ META_INFO = {
         'testtools<=2.4.0;python_version<"3.0"',
         'python-subunit',
     ],
+    'python_requires': '>=3.5',
 }
 
 # The list of packages is automatically generated later. Add other things
