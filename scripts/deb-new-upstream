@@ -1163,350 +1163,357 @@ async def main():
         action="store_true",
         help=("Require that uscan provides a tarball"
               "(if --snapshot is not specified)"))
+    parser.add_argument(
+        "--verbose", action="store_true")
     args = parser.parse_args()
 
-    logging.basicConfig(format='%(message)s')
+    if args.verbose:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.INFO
+    logging.basicConfig(level=loglevel, format='%(message)s')
 
     local_tree, subpath = WorkingTree.open_containing('.')
 
-    committer = os.environ.get('COMMITTER')
+    with local_tree.lock_write():
+        committer = os.environ.get('COMMITTER')
 
-    if control_files_in_root(local_tree, subpath):
-        report_fatal(
-            "control-files-in-root",
-            "control files live in root rather than debian/ " "(LarstIQ mode)",
-        )
-        return 1
+        if control_files_in_root(local_tree, subpath):
+            report_fatal(
+                "control-files-in-root",
+                "control files live in root rather than debian/ " "(LarstIQ mode)",
+            )
+            return 1
 
-    if args.dist_command:
-        def create_dist(self, tree, package, version, target_dir):
-            return run_dist_command(tree, package, version, target_dir, args.dist_command)
-    else:
-        create_dist = None
+        if args.dist_command:
+            def create_dist(self, tree, package, version, target_dir):
+                return run_dist_command(tree, package, version, target_dir, args.dist_command)
+        else:
+            create_dist = None
 
-    update_changelog = True
-    if os.environ.get('DEB_UPDATE_CHANGELOG') == 'leave':
-        update_changelog = False
-    elif os.environ.get('DEB_UPDATE_CHANGELOG') == 'update':
         update_changelog = True
+        if os.environ.get('DEB_UPDATE_CHANGELOG') == 'leave':
+            update_changelog = False
+        elif os.environ.get('DEB_UPDATE_CHANGELOG') == 'update':
+            update_changelog = True
 
-    try:
-        if not args.import_only:
-            try:
-                result = merge_upstream(
+        try:
+            if not args.import_only:
+                try:
+                    result = merge_upstream(
+                        tree=local_tree,
+                        snapshot=args.snapshot,
+                        trust_package=args.trust_package,
+                        update_changelog=update_changelog,
+                        subpath=subpath,
+                        committer=committer,
+                        include_upstream_history=args.include_upstream_history,
+                        create_dist=create_dist,
+                        force_big_version_jump=args.force_big_version_jump,
+                        debian_revision=args.debian_revision,
+                        require_uscan=args.require_uscan,
+                    )
+                except MalformedTransform:
+                    traceback.print_exc()
+                    error_description = (
+                        "Malformed tree transform during new upstream merge"
+                    )
+                    error_code = "malformed-transform"
+                    report_fatal(error_code, error_description)
+                    return 1
+            else:
+                result = import_upstream(
                     tree=local_tree,
                     snapshot=args.snapshot,
                     trust_package=args.trust_package,
-                    update_changelog=update_changelog,
                     subpath=subpath,
                     committer=committer,
                     include_upstream_history=args.include_upstream_history,
                     create_dist=create_dist,
                     force_big_version_jump=args.force_big_version_jump,
-                    debian_revision=args.debian_revision,
-                    require_uscan=args.require_uscan,
                 )
-            except MalformedTransform:
-                traceback.print_exc()
-                error_description = (
-                    "Malformed tree transform during new upstream merge"
-                )
-                error_code = "malformed-transform"
-                report_fatal(error_code, error_description)
-                return 1
-        else:
-            result = import_upstream(
-                tree=local_tree,
-                snapshot=args.snapshot,
-                trust_package=args.trust_package,
-                subpath=subpath,
-                committer=committer,
-                include_upstream_history=args.include_upstream_history,
-                create_dist=create_dist,
-                force_big_version_jump=args.force_big_version_jump,
+        except UpstreamAlreadyImported as e:
+            report_fatal(
+                "nothing-to-do",
+                "Last upstream version %s already imported." % e.version,
+                upstream_version=e.version
             )
-    except UpstreamAlreadyImported as e:
-        report_fatal(
-            "nothing-to-do",
-            "Last upstream version %s already imported." % e.version,
-            upstream_version=e.version
-        )
-        return 1
-    except UnsupportedRepackFormat as e:
-        error_description = (
-            "Unable to repack file %s to supported tarball format."
-            % (os.path.basename(e.location))
-        )
-        report_fatal("unsupported-repack-format", error_description)
-        return 1
-    except NewUpstreamMissing as e:
-        report_fatal(
-            "new-upstream-missing", "Unable to find new upstream source.", e
-        )
-        return 1
-    except UpstreamAlreadyMerged as e:
-        report_fatal(
-            "nothing-to-do",
-            "Last upstream version %s already merged." % e.version,
-            upstream_version=e.version)
-        return 1
-    except NoWatchFile:
-        report_fatal(
-            "no-watch-file",
-            "No watch file is present, but --require-uscan was specified")
-        return 1
-    except PreviousVersionTagMissing as e:
-        report_fatal(
-            "previous-upstream-missing",
-            "Previous upstream version %s missing (tag: %s)."
-            % (e.version, e.tag_name),
-        )
-        return 1
-    except InvalidFormatUpstreamVersion as e:
-        report_fatal(
-            "invalid-upstream-version-format",
-            "%r reported invalid format version string %s." % (
-                e.source, e.version),
-        )
-        return 1
-    except PristineTarError as e:
-        report_fatal("pristine-tar-error", "Pristine tar error: %s" % e)
-        return 1
-    except UpstreamBranchUnavailable as e:
-        error_description = "The upstream branch at %s was unavailable: %s" % (
-            e.location,
-            e.error,
-        )
-        error_code = "upstream-branch-unavailable"
-        if "Fossil branches are not yet supported" in str(e.error):
-            error_code = "upstream-unsupported-vcs-fossil"
-        if "Mercurial branches are not yet supported." in str(e.error):
-            error_code = "upstream-unsupported-vcs-hg"
-        if "Subversion branches are not yet supported." in str(e.error):
-            error_code = "upstream-unsupported-vcs-svn"
-        if "Darcs branches are not yet supported" in str(e.error):
-            error_code = "upstream-unsupported-vcs-darcs"
-        if "Unsupported protocol for url" in str(e.error):
-            if "svn://" in str(e.error):
-                error_code = "upstream-unsupported-vcs-svn"
-            elif "cvs+pserver://" in str(e.error):
-                error_code = "upstream-unsupported-vcs-cvs"
-            else:
-                error_code = "upstream-unsupported-vcs"
-        report_fatal(error_code, error_description)
-        return 1
-    except UpstreamBranchUnknown as e:
-        report_fatal(
-            "upstream-branch-unknown",
-            "Upstream branch location unknown. "
-            "Set 'Repository' field in debian/upstream/metadata?",
-        )
-        return 1
-    except UpstreamMergeConflicted as e:
-        if isinstance(e.conflicts, int):
-            conflicts = e.conflicts
-        else:
-            conflicts = [[c.path, c.typestring] for c in e.conflicts]
-        report_fatal(
-            "upstream-merged-conflicts",
-            "Merging upstream version %s resulted in conflicts." % e.version,
-            upstream_version=e.version, conflicts=conflicts)
-        return 1
-    except PackageIsNative as e:
-        report_fatal(
-            "native-package",
-            "Package %s is native; unable to merge new upstream." % (e.package,),
-        )
-        return 1
-    except ChangelogParseError as e:
-        error_description = str(e)
-        error_code = "unparseable-changelog"
-        report_fatal(error_code, error_description)
-        return 1
-    except UpstreamVersionMissingInUpstreamBranch as e:
-        error_description = "Upstream version %s not in upstream branch %r" % (
-            e.version,
-            e.branch,
-        )
-        error_code = "upstream-version-missing-in-upstream-branch"
-        report_fatal(error_code, error_description)
-        return 1
-    except InconsistentSourceFormatError as e:
-        report_fatal(
-            "inconsistent-source-format",
-            "Inconsistencies in type of package: %s" % e,
-        )
-        return 1
-    except WatchLineWithoutMatches as e:
-        report_fatal(
-            "uscan-watch-line-without-matches",
-            "UScan did not find matches for line: %s" % e.line.strip(),
-        )
-        return 1
-    except NoRoundtrippingSupport:
-        error_description = (
-            "Unable to import upstream repository into "
-            "packaging repository."
-        )
-        error_code = "roundtripping-error"
-        report_fatal(error_code, error_description)
-        return 1
-    except UScanError as e:
-        error_description = str(e)
-        if e.errors == "OpenPGP signature did not verify.":
-            error_code = "upstream-pgp-signature-verification-failed"
-        else:
-            error_code = "uscan-error"
-        report_fatal(error_code, error_description)
-        return 1
-    except UpstreamMetadataSyntaxError as e:
-        report_fatal(
-            "upstream-metadata-syntax-error",
-            "Unable to parse %s: %s" % (e.path, e.error),
-        )
-        return 1
-    except InvalidNormalization as e:
-        error_description = str(e)
-        error_code = "invalid-path-normalization"
-        report_fatal(error_code, error_description)
-        return 1
-    except MissingChangelogError as e:
-        report_fatal("missing-changelog", "Missing changelog %s" % e)
-        return 1
-    except DistCommandFailed as e:
-        report_fatal("dist-command-failed", str(e))
-        return 1
-    except MissingUpstreamTarball as e:
-        report_fatal(
-            "missing-upstream-tarball", "Missing upstream tarball: %s" % e
-        )
-        return 1
-    except NewUpstreamTarballMissing as e:
-        report_fatal(
-            "new-upstream-tarball-missing",
-            "New upstream version (%s/%s) found, but was missing "
-            "when retrieved as tarball from %r."
-            % (e.package, e.version, e.upstream),
-            upstream_version=e.version)
-        return 1
-    except NoUpstreamLocationsKnown:
-        report_fatal(
-            "no-upstream-locations-known",
-            "No debian/watch file or Repository in "
-            "debian/upstream/metadata to retrieve new upstream version "
-            "from.",
-        )
-        return 1
-    except NewerUpstreamAlreadyImported as e:
-        report_fatal(
-            "newer-upstream-version-already-imported",
-            "A newer upstream release (%s) has already been imported. "
-            "Found: %s" % (e.old_upstream_version, e.new_upstream_version),
-            upstream_version=e.new_upstream_version
-        )
-        return 1
-    except WatchSyntaxError as e:
-        report_fatal('watch-syntax-error', str(e))
-        return 1
-    except BigVersionJump as e:
-        report_fatal(
-            "big-version-jump",
-            "There was a big jump in upstream versions: %s ⇒ %s" % (
-                e.old_upstream_version, e.new_upstream_version),
-            upstream_version=e.new_upstream_version)
-        return 1
-    except OSError as e:
-        if e.errno == errno.ENOSPC:
-            report_fatal("no-space-on-device", str(e))
             return 1
-        raise
-
-    svp_context = {
-        "old_upstream_version":
-            str(result.old_upstream_version)
-            if result.old_upstream_version else None,
-        "upstream_version": str(result.new_upstream_version),
-    }
-
-    if result.upstream_branch:
-        svp_context["upstream_branch_url"] = full_branch_url(
-            result.upstream_branch)
-        svp_context["upstream_branch_browse"] = result.upstream_branch_browse
-
-    svp_context["include_upstream_history"] = result.include_upstream_history
-
-    if args.import_only:
-        logging.info(
-            "Imported new upstream version %s (previous: %s)",
-            result.new_upstream_version,
-            result.old_upstream_version,
-        )
-
-        if os.environ.get('SVP_API') == '1':
-            with open(os.environ['SVP_RESULT'], 'w') as f:
-                json.dump(f, {
-                    'description': "Imported new upstream version %s" % (
-                        result.new_upstream_version),
-                    'context': svp_context,
-                    })
-        return 0
-    else:
-        logging.info(
-            "Merged new upstream version %s (previous: %s)",
-            result.new_upstream_version,
-            result.old_upstream_version,
-        )
-
-        if args.update_packaging:
-            old_tree = local_tree.branch.repository.revision_tree(
-                result.old_revision
+        except UnsupportedRepackFormat as e:
+            error_description = (
+                "Unable to repack file %s to supported tarball format."
+                % (os.path.basename(e.location))
             )
-            notes = update_packaging(local_tree, old_tree, committer=committer)
-            svp_context["notes"] = notes
-            for n in notes:
-                logging.info("%s", n)
-
-        patch_series_path = os.path.join(subpath, "debian/patches/series")
-        if args.refresh_patches and local_tree.has_filename(patch_series_path):
-            logging.info("Refresh quilt patches.")
-            try:
-                refresh_quilt_patches(
-                    local_tree,
-                    old_version=result.old_upstream_version,
-                    new_version=result.new_upstream_version,
-                    committer=committer,
-                    subpath=subpath,
-                )
-            except QuiltError as e:
-                error_description = (
-                    "An error (%d) occurred refreshing quilt patches: "
-                    "%s%s" % (e.retcode, e.stderr, e.extra)
-                )
-                error_code = "quilt-refresh-error"
-                report_fatal(error_code, error_description)
+            report_fatal("unsupported-repack-format", error_description)
+            return 1
+        except NewUpstreamMissing as e:
+            report_fatal(
+                "new-upstream-missing", "Unable to find new upstream source.", e
+            )
+            return 1
+        except UpstreamAlreadyMerged as e:
+            report_fatal(
+                "nothing-to-do",
+                "Last upstream version %s already merged." % e.version,
+                upstream_version=e.version)
+            return 1
+        except NoWatchFile:
+            report_fatal(
+                "no-watch-file",
+                "No watch file is present, but --require-uscan was specified")
+            return 1
+        except PreviousVersionTagMissing as e:
+            report_fatal(
+                "previous-upstream-missing",
+                "Previous upstream version %s missing (tag: %s)."
+                % (e.version, e.tag_name),
+            )
+            return 1
+        except InvalidFormatUpstreamVersion as e:
+            report_fatal(
+                "invalid-upstream-version-format",
+                "%r reported invalid format version string %s." % (
+                    e.source, e.version),
+            )
+            return 1
+        except PristineTarError as e:
+            report_fatal("pristine-tar-error", "Pristine tar error: %s" % e)
+            return 1
+        except UpstreamBranchUnavailable as e:
+            error_description = "The upstream branch at %s was unavailable: %s" % (
+                e.location,
+                e.error,
+            )
+            error_code = "upstream-branch-unavailable"
+            if "Fossil branches are not yet supported" in str(e.error):
+                error_code = "upstream-unsupported-vcs-fossil"
+            if "Mercurial branches are not yet supported." in str(e.error):
+                error_code = "upstream-unsupported-vcs-hg"
+            if "Subversion branches are not yet supported." in str(e.error):
+                error_code = "upstream-unsupported-vcs-svn"
+            if "Darcs branches are not yet supported" in str(e.error):
+                error_code = "upstream-unsupported-vcs-darcs"
+            if "Unsupported protocol for url" in str(e.error):
+                if "svn://" in str(e.error):
+                    error_code = "upstream-unsupported-vcs-svn"
+                elif "cvs+pserver://" in str(e.error):
+                    error_code = "upstream-unsupported-vcs-cvs"
+                else:
+                    error_code = "upstream-unsupported-vcs"
+            report_fatal(error_code, error_description)
+            return 1
+        except UpstreamBranchUnknown as e:
+            report_fatal(
+                "upstream-branch-unknown",
+                "Upstream branch location unknown. "
+                "Set 'Repository' field in debian/upstream/metadata?",
+            )
+            return 1
+        except UpstreamMergeConflicted as e:
+            if isinstance(e.conflicts, int):
+                conflicts = e.conflicts
+            else:
+                conflicts = [[c.path, c.typestring] for c in e.conflicts]
+            report_fatal(
+                "upstream-merged-conflicts",
+                "Merging upstream version %s resulted in conflicts." % e.version,
+                upstream_version=e.version, conflicts=conflicts)
+            return 1
+        except PackageIsNative as e:
+            report_fatal(
+                "native-package",
+                "Package %s is native; unable to merge new upstream." % (e.package,),
+            )
+            return 1
+        except ChangelogParseError as e:
+            error_description = str(e)
+            error_code = "unparseable-changelog"
+            report_fatal(error_code, error_description)
+            return 1
+        except UpstreamVersionMissingInUpstreamBranch as e:
+            error_description = "Upstream version %s not in upstream branch %r" % (
+                e.version,
+                e.branch,
+            )
+            error_code = "upstream-version-missing-in-upstream-branch"
+            report_fatal(error_code, error_description)
+            return 1
+        except InconsistentSourceFormatError as e:
+            report_fatal(
+                "inconsistent-source-format",
+                "Inconsistencies in type of package: %s" % e,
+            )
+            return 1
+        except WatchLineWithoutMatches as e:
+            report_fatal(
+                "uscan-watch-line-without-matches",
+                "UScan did not find matches for line: %s" % e.line.strip(),
+            )
+            return 1
+        except NoRoundtrippingSupport:
+            error_description = (
+                "Unable to import upstream repository into "
+                "packaging repository."
+            )
+            error_code = "roundtripping-error"
+            report_fatal(error_code, error_description)
+            return 1
+        except UScanError as e:
+            error_description = str(e)
+            if e.errors == "OpenPGP signature did not verify.":
+                error_code = "upstream-pgp-signature-verification-failed"
+            else:
+                error_code = "uscan-error"
+            report_fatal(error_code, error_description)
+            return 1
+        except UpstreamMetadataSyntaxError as e:
+            report_fatal(
+                "upstream-metadata-syntax-error",
+                "Unable to parse %s: %s" % (e.path, e.error),
+            )
+            return 1
+        except InvalidNormalization as e:
+            error_description = str(e)
+            error_code = "invalid-path-normalization"
+            report_fatal(error_code, error_description)
+            return 1
+        except MissingChangelogError as e:
+            report_fatal("missing-changelog", "Missing changelog %s" % e)
+            return 1
+        except DistCommandFailed as e:
+            report_fatal("dist-command-failed", str(e))
+            return 1
+        except MissingUpstreamTarball as e:
+            report_fatal(
+                "missing-upstream-tarball", "Missing upstream tarball: %s" % e
+            )
+            return 1
+        except NewUpstreamTarballMissing as e:
+            report_fatal(
+                "new-upstream-tarball-missing",
+                "New upstream version (%s/%s) found, but was missing "
+                "when retrieved as tarball from %r."
+                % (e.package, e.version, e.upstream),
+                upstream_version=e.version)
+            return 1
+        except NoUpstreamLocationsKnown:
+            report_fatal(
+                "no-upstream-locations-known",
+                "No debian/watch file or Repository in "
+                "debian/upstream/metadata to retrieve new upstream version "
+                "from.",
+            )
+            return 1
+        except NewerUpstreamAlreadyImported as e:
+            report_fatal(
+                "newer-upstream-version-already-imported",
+                "A newer upstream release (%s) has already been imported. "
+                "Found: %s" % (e.old_upstream_version, e.new_upstream_version),
+                upstream_version=e.new_upstream_version
+            )
+            return 1
+        except WatchSyntaxError as e:
+            report_fatal('watch-syntax-error', str(e))
+            return 1
+        except BigVersionJump as e:
+            report_fatal(
+                "big-version-jump",
+                "There was a big jump in upstream versions: %s ⇒ %s" % (
+                    e.old_upstream_version, e.new_upstream_version),
+                upstream_version=e.new_upstream_version)
+            return 1
+        except OSError as e:
+            if e.errno == errno.ENOSPC:
+                report_fatal("no-space-on-device", str(e))
                 return 1
-            except QuiltPatchPushFailure as e:
-                error_description = (
-                    "An error occurred refreshing quilt patch %s: %s"
-                    % (e.patch_name, e.actual_error.extra)
-                )
-                error_code = "quilt-refresh-error"
-                report_fatal(error_code, error_description)
-                return 1
+            raise
 
-        logging.info(
-            'Merge new upstream version %s', result.new_upstream_version)
-        proposed_commit_message = (
-            "Merge new upstream release %s" % result.new_upstream_version
-        )
-        if os.environ.get('SVP_API') == '1':
-            with open(os.environ['SVP_RESULT'], 'w') as f:
-                json.dump(f, {
-                    'description': "Merged new upstream version %s" % (
-                        result.new_upstream_version),
-                    'commit-message': proposed_commit_message,
-                    'context': svp_context,
-                    })
+        svp_context = {
+            "old_upstream_version":
+                str(result.old_upstream_version)
+                if result.old_upstream_version else None,
+            "upstream_version": str(result.new_upstream_version),
+        }
+
+        if result.upstream_branch:
+            svp_context["upstream_branch_url"] = full_branch_url(
+                result.upstream_branch)
+            svp_context["upstream_branch_browse"] = result.upstream_branch_browse
+
+        svp_context["include_upstream_history"] = result.include_upstream_history
+
+        if args.import_only:
+            logging.info(
+                "Imported new upstream version %s (previous: %s)",
+                result.new_upstream_version,
+                result.old_upstream_version,
+            )
+
+            if os.environ.get('SVP_API') == '1':
+                with open(os.environ['SVP_RESULT'], 'w') as f:
+                    json.dump(f, {
+                        'description': "Imported new upstream version %s" % (
+                            result.new_upstream_version),
+                        'context': svp_context,
+                        })
+            return 0
+        else:
+            logging.info(
+                "Merged new upstream version %s (previous: %s)",
+                result.new_upstream_version,
+                result.old_upstream_version,
+            )
+
+            if args.update_packaging:
+                old_tree = local_tree.branch.repository.revision_tree(
+                    result.old_revision
+                )
+                notes = update_packaging(local_tree, old_tree, committer=committer)
+                svp_context["notes"] = notes
+                for n in notes:
+                    logging.info("%s", n)
+
+            patch_series_path = os.path.join(subpath, "debian/patches/series")
+            if args.refresh_patches and local_tree.has_filename(patch_series_path):
+                logging.info("Refresh quilt patches.")
+                try:
+                    refresh_quilt_patches(
+                        local_tree,
+                        old_version=result.old_upstream_version,
+                        new_version=result.new_upstream_version,
+                        committer=committer,
+                        subpath=subpath,
+                    )
+                except QuiltError as e:
+                    error_description = (
+                        "An error (%d) occurred refreshing quilt patches: "
+                        "%s%s" % (e.retcode, e.stderr, e.extra)
+                    )
+                    error_code = "quilt-refresh-error"
+                    report_fatal(error_code, error_description)
+                    return 1
+                except QuiltPatchPushFailure as e:
+                    error_description = (
+                        "An error occurred refreshing quilt patch %s: %s"
+                        % (e.patch_name, e.actual_error.extra)
+                    )
+                    error_code = "quilt-refresh-error"
+                    report_fatal(error_code, error_description)
+                    return 1
+
+            logging.info(
+                'Merge new upstream version %s', result.new_upstream_version)
+            proposed_commit_message = (
+                "Merge new upstream release %s" % result.new_upstream_version
+            )
+            if os.environ.get('SVP_API') == '1':
+                with open(os.environ['SVP_RESULT'], 'w') as f:
+                    json.dump(f, {
+                        'description': "Merged new upstream version %s" % (
+                            result.new_upstream_version),
+                        'commit-message': proposed_commit_message,
+                        'context': svp_context,
+                        })
 
 
 if __name__ == "__main__":
