@@ -25,6 +25,9 @@ import tempfile
 
 from urllib.request import urlopen
 
+import breezy.bzr
+import breezy.git
+
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
