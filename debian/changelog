@@ -1,3 +1,10 @@
+breezy (3.2.0+bzr7543-2) UNRELEASED; urgency=medium
+
+  * Upgrade dulwich from recommends to a hard dependency for the moment.
+    See bug 988166.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Jun 2021 20:40:16 +0100
+
 breezy (3.2.0+bzr7543-1) unstable; urgency=low
 
   * New upstream snapshot.

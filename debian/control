@@ -59,13 +59,13 @@ Depends: python3-configobj,
          python3-six,
          ${misc:Depends},
          ${python3:Depends},
-         ${shlibs:Depends}
+         ${shlibs:Depends},
+         python3-dulwich (>= 0.19.11)
 Recommends: ca-certificates,
             python3-launchpadlib,
             python3-github,
             python3-gitlab,
             ssh-client | python3-paramiko,
-            python3-dulwich (>= 0.19.11),
             python3-gpg,
 Conflicts: python3-paramiko (<< 1.14.1), python3-dulwich (<< 0.19.11)
 Suggests: python3-breezy-dbg,
