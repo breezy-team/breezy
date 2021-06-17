@@ -1,8 +1,8 @@
-breezy-debian (2.8.63) UNRELEASED; urgency=medium
+breezy-debian (2.8.63) unstable; urgency=medium
 
   * Support SVP protocol in scripts.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 17 Jun 2021 09:37:30 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 17 Jun 2021 09:37:34 +0100
 
 breezy-debian (2.8.62) unstable; urgency=medium
 
