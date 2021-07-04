@@ -23,7 +23,6 @@ from breezy import (
     debug,
     memorytree,
     repository,
-    revision as _mod_revision,
     tag as _mod_tag,
     transport,
     ui,
@@ -40,11 +39,13 @@ from breezy.i18n import gettext, ngettext
 from . import (
     controldir,
     errors,
+    revision as _mod_revision,
     registry,
     )
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
+from .revision import RevisionID
 from .trace import mutter, mutter_callsite, note, is_quiet, warning
 
 
@@ -665,7 +666,7 @@ class Branch(controldir.ControlComponent):
             return False
         return self.get_config_stack().get('append_revisions_only')
 
-    def set_append_revisions_only(self, enabled):
+    def set_append_revisions_only(self, enabled: bool) -> None:
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
@@ -726,11 +727,12 @@ class Branch(controldir.ControlComponent):
         """
         return None
 
-    def get_stacked_on_url(self):
+    def get_stacked_on_url(self) -> str:
         """Get the URL this branch is stacked against.
 
-        :raises NotStacked: If the branch is not stacked.
-        :raises UnstackableBranchFormat: If the branch does not support
+        Raises:
+          NotStacked: If the branch is not stacked.
+          UnstackableBranchFormat: If the branch does not support
             stacking.
         """
         raise NotImplementedError(self.get_stacked_on_url)
@@ -766,7 +768,7 @@ class Branch(controldir.ControlComponent):
                 revision_id, known_revision_ids)
             self.set_last_revision_info(revno, revision_id)
 
-    def set_parent(self, url):
+    def set_parent(self, url: Optional[str]) -> None:
         """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
         # URLs should never be unicode, even on the local fs,
@@ -968,11 +970,11 @@ class Branch(controldir.ControlComponent):
         """Older format branches cannot bind or unbind."""
         raise errors.UpgradeRequired(self.user_url)
 
-    def last_revision(self):
+    def last_revision(self) -> RevisionID:
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
-    def last_revision_info(self):
+    def last_revision_info(self) -> Tuple[int, RevisionID]:
         """Return information about the last revision.
 
         :return: A tuple (revno, revision_id).
