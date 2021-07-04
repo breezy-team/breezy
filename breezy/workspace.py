@@ -83,7 +83,7 @@ def delete_items(deletables, dry_run=False):
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        warnings.warn('unable to remove %s' % path)
+        warning('unable to remove %s' % path)
     for path, subp in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
