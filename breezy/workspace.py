@@ -182,7 +182,6 @@ class Workspace(object):
         with self.tree.lock_write():
             specific_files = self._stage()
             basis_tree = self.tree.basis_tree()
-            # TODO(jelmer): After Python 3.3, use 'yield from'
             for change in self.tree.iter_changes(
                     basis_tree, specific_files=specific_files,
                     want_unversioned=False, require_versioned=True):
