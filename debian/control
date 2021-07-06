@@ -14,7 +14,7 @@ Build-Depends: bash-completion,
                python3-all-dev (>= 2.6.6-3),
                python3-configobj (>= 4.7.2+ds-2),
                python3-coverage <!nocheck>,
-               python3-dulwich (>= 0.19.11),
+               python3-dulwich (>= 0.20.23),
                python3-docutils,
                python3-fastimport (>= 0.9.8),
                python3-launchpadlib,
@@ -33,7 +33,7 @@ Vcs-Browser: https://code.breezy-vcs.org/breezy/unstable
 Homepage: https://www.breezy-vcs.org/
 
 Package: brz
-Recommends: python3-gpg, python3-dulwich (>= 0.19.11)
+Recommends: python3-gpg, python3-dulwich (>= 0.20.23)
 Architecture: all
 Conflicts: git-remote-bzr, bzr-git (<< 0.6.13+bzr1650+brz1), bzr (<< 2.7.0+bzr6622-1)
 Depends: python3-breezy (<= ${source:Version}.1~),
@@ -60,7 +60,7 @@ Depends: python3-configobj,
          ${misc:Depends},
          ${python3:Depends},
          ${shlibs:Depends},
-         python3-dulwich (>= 0.19.11)
+         python3-dulwich (>= 0.20.23)
 Recommends: ca-certificates,
             python3-launchpadlib,
             python3-github,

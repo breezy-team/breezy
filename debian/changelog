@@ -1,3 +1,9 @@
+breezy (3.2.0+bzr7543-3) UNRELEASED; urgency=medium
+
+  * Bump dependency on dulwich - we need at least version 0.20.23.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 06 Jul 2021 17:29:00 +0100
+
 breezy (3.2.0+bzr7543-2) unstable; urgency=medium
 
   * Upgrade dulwich from recommends to a hard dependency for the moment.
