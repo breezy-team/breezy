@@ -17,15 +17,15 @@
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
+from typing import List, Optional, Dict
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import bugtracker
-""")
 from . import (
     errors,
     osutils,
     )
+
+
+RevisionID = bytes
 
 NULL_REVISION = b"null:"
 CURRENT_REVISION = b"current:"
@@ -49,7 +49,17 @@ class Revision(object):
         word; the value can be an arbitrary string.
     """
 
-    def __init__(self, revision_id, properties=None, **args):
+    parent_ids: List[RevisionID]
+    revision_id: RevisionID
+    parent_sha1s: List[str]
+    committer: Optional[str]
+    message: str
+    properties: Dict[str, bytes]
+    inventory_sha1: str
+    timestamp: float
+    timezone: int
+
+    def __init__(self, revision_id: RevisionID, properties=None, **args):
         self.revision_id = revision_id
         if properties is None:
             self.properties = {}
@@ -143,11 +153,12 @@ class Revision(object):
         bug_property = self.properties.get('bugs', None)
         if bug_property is None:
             return iter([])
+        from . import bugtracker
         return bugtracker.decode_bug_urls(bug_property)
 
 
-def iter_ancestors(revision_id, revision_source, only_present=False):
-    ancestors = (revision_id,)
+def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool = False):
+    ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
         new_ancestors = []
@@ -168,12 +179,11 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
         distance += 1
 
 
-def find_present_ancestors(revision_id, revision_source):
+def find_present_ancestors(revision_id: RevisionID, revision_source) -> List[RevisionID]:
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
     one of its revisions.
-
     """
     found_ancestors = {}
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
@@ -193,21 +203,21 @@ def __get_closest(intersection):
     return matches
 
 
-def is_reserved_id(revision_id):
+def is_reserved_id(revision_id: RevisionID) -> bool:
     """Determine whether a revision id is reserved
 
-    :return: True if the revision is reserved, False otherwise
+    Returns: True if the revision is reserved, False otherwise
     """
     return isinstance(revision_id, bytes) and revision_id.endswith(b':')
 
 
-def check_not_reserved_id(revision_id):
+def check_not_reserved_id(revision_id: RevisionID) -> None:
     """Raise ReservedId if the supplied revision_id is reserved"""
     if is_reserved_id(revision_id):
         raise errors.ReservedId(revision_id)
 
 
-def ensure_null(revision_id):
+def ensure_null(revision_id: RevisionID) -> RevisionID:
     """Ensure only NULL_REVISION is used to represent the null revision"""
     if revision_id is None:
         raise ValueError(
@@ -216,7 +226,7 @@ def ensure_null(revision_id):
     return revision_id
 
 
-def is_null(revision_id):
+def is_null(revision_id: RevisionID) -> bool:
     if revision_id is None:
         raise ValueError('NULL_REVISION should be used for the null'
                          ' revision instead of None.')
