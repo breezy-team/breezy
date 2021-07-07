@@ -14,19 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import Optional, Tuple
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import contextlib
-import itertools
 from breezy import (
-    config as _mod_config,
     debug,
-    memorytree,
     repository,
-    tag as _mod_tag,
     transport,
     ui,
-    urlutils,
     )
 from breezy.bzr import (
     fetch,
@@ -36,11 +32,16 @@ from breezy.bzr import (
 from breezy.i18n import gettext, ngettext
 """)
 
+import contextlib
+import itertools
+
 from . import (
+    config as _mod_config,
     controldir,
     errors,
     revision as _mod_revision,
     registry,
+    urlutils,
     )
 from .hooks import Hooks
 from .inter import InterObject
@@ -63,16 +64,10 @@ class UnstackableBranchFormat(errors.BzrError):
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
-    :ivar base:
-        Base directory/url of the branch; using control_url and
-        control_transport is more standardized.
     :ivar hooks: An instance of BranchHooks.
     :ivar _master_branch_cache: cached result of get_master_branch, see
         _clear_cached_state.
     """
-    # this is really an instance variable - FIXME move it there
-    # - RBC 20060112
-    base = None
 
     @property
     def control_transport(self):
@@ -767,6 +762,9 @@ class Branch(controldir.ControlComponent):
             revno = graph.find_distance_to_null(
                 revision_id, known_revision_ids)
             self.set_last_revision_info(revno, revision_id)
+
+    def _set_parent_location(self, url: Optional[str]) -> None:
+        raise NotImplementedError(self._set_parent_location)
 
     def set_parent(self, url: Optional[str]) -> None:
         """See Branch.set_parent."""
@@ -1488,6 +1486,7 @@ class Branch(controldir.ControlComponent):
 
         :return: An in-memory MutableTree instance
         """
+        from . import memorytree
         return memorytree.MemoryTree.create_on_branch(self)
 
 
@@ -1583,7 +1582,8 @@ class BranchFormat(controldir.ControlComponentFormat):
         Note that it is normal for branch to be a RemoteBranch when using tags
         on a RemoteBranch.
         """
-        return _mod_tag.DisabledTags(branch)
+        from .tag import DisabledTags
+        return DisabledTags(branch)
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
