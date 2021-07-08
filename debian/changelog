@@ -1,8 +1,8 @@
-breezy (3.2.1-1) UNRELEASED; urgency=low
+breezy (3.2.1-1) unstable; urgency=low
 
   * New upstream release.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 08 Jul 2021 16:01:13 -0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 08 Jul 2021 16:08:37 +0100
 
 breezy (3.2.0+bzr7543-3) unstable; urgency=medium
 
