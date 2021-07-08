@@ -51,6 +51,7 @@ from breezy.errors import (
     PointlessMerge,
     InvalidHttpResponse,
     NoRoundtrippingSupport,
+    UncommittedChanges,
 )
 from breezy.plugins.debian.config import UpstreamMetadataSyntaxError
 from breezy.plugins.debian.util import (
@@ -366,7 +367,7 @@ def detect_include_upstream_history(
             package, old_upstream_version
         )
     except PackageVersionNotPresent:
-        logging.warn(
+        logging.warning(
             "Old upstream version %r is not present in upstream "
             "branch %r. Unable to determine whether upstream history "
             "is normally included. Assuming no.",
@@ -438,7 +439,7 @@ def find_new_upstream(  # noqa: C901
             upstream_branch = open_branch(upstream_branch_location)
         except (BranchUnavailable, BranchMissing, BranchUnsupported) as e:
             if not snapshot and allow_ignore_upstream_branch:
-                logging.warn(
+                logging.warning(
                     "Upstream branch %s inaccessible; ignoring. %s",
                     upstream_branch_location,
                     e,
@@ -570,7 +571,7 @@ def find_new_upstream(  # noqa: C901
                     str(new_upstream_version)
                 )
             else:
-                logging.warn(
+                logging.warning(
                     "Upstream version %s is not in upstream branch %s. "
                     "Not merging from upstream branch. ",
                     new_upstream_version,
@@ -1181,13 +1182,16 @@ async def main():
         if control_files_in_root(local_tree, subpath):
             report_fatal(
                 "control-files-in-root",
-                "control files live in root rather than debian/ " "(LarstIQ mode)",
+                "control files live in root rather than debian/ "
+                "(LarstIQ mode)",
             )
             return 1
 
         if args.dist_command:
+
             def create_dist(self, tree, package, version, target_dir):
-                return run_dist_command(tree, package, version, target_dir, args.dist_command)
+                return run_dist_command(
+                    tree, package, version, target_dir, args.dist_command)
         else:
             create_dist = None
 
@@ -1220,6 +1224,9 @@ async def main():
                     )
                     error_code = "malformed-transform"
                     report_fatal(error_code, error_description)
+                    return 1
+                except UncommittedChanges as e:
+                    report_fatal('uncommitted-changes', str(e))
                     return 1
             else:
                 result = import_upstream(
