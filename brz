@@ -23,15 +23,7 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (3, 2, 0)
-
-NEED_VERS = (2, 7)
-
-if sys.version_info < NEED_VERS:
-    sys.stderr.write("brz: error: cannot find a suitable python interpreter\n")
-    sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
-    sys.exit(1)
-
+_script_version = (3, 2, 1)
 
 profiling = False
 if '--profile-imports' in sys.argv:

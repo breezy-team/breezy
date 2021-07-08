@@ -1,7 +1,0 @@
-[run]
-branch = True
-source = breezy
-
-[report]
-exclude_lines =
-    raise NotImplementedError
