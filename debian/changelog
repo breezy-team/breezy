@@ -1,3 +1,9 @@
+breezy (3.2.1-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 08 Jul 2021 16:01:13 -0000
+
 breezy (3.2.0+bzr7543-3) unstable; urgency=medium
 
   * Bump dependency on dulwich - we need at least version 0.20.23.

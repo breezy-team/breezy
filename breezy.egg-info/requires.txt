@@ -1,0 +1,30 @@
+configobj
+dulwich>=0.20.23
+patiencediff
+
+[cext]
+cython>=0.29
+
+[doc]
+sphinx_epytext
+
+[doc:python_version < "3.0"]
+setuptools<45
+sphinx==1.8.5
+
+[fastimport]
+
+[fastimport:python_version < "3.0"]
+fastimport<0.9.8
+
+[fastimport:python_version >= "3.5"]
+fastimport
+
+[git]
+dulwich>=0.20.23
+
+[launchpad]
+launchpadlib>=1.6.3
+
+[workspace]
+pyinotify
