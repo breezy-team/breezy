@@ -187,7 +187,7 @@ def import_uncommitted(tree, subpath):
         dbs = DistributionBranchSet()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs.add_branch(db)
-        if cree_cl.version.debian_revision:
+        if tree_cl.version.debian_revision:
             logging.info(
                 "Extracting upstream version %s.", tree_cl.version.upstream_version
             )
