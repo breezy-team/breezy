@@ -480,6 +480,7 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, package_merge=None,
             strict=False, guess_upstream_branch_url=False):
+        from debian.changelog import ChangelogParseError
         from .builder import DebBuild
         from .config import UpstreamMetadataSyntaxError
         from .hooks import run_hook
@@ -515,8 +516,13 @@ class cmd_builddeb(Command):
 
             contains_upstream_source = tree_contains_upstream_source(
                     tree, subpath)
-            (changelog, top_level) = find_changelog(
-                tree, subpath, merge=not contains_upstream_source)
+            try:
+                (changelog, top_level) = find_changelog(
+                    tree, subpath, merge=not contains_upstream_source)
+            except ChangelogParseError as e:
+                raise BzrCommandError(
+                    gettext("Unable to parse changelog: %s") %
+                    e)
 
             if package_merge:
                 try:
