@@ -23,25 +23,25 @@ import json
 import logging
 import os
 import re
+import socket
 import ssl
 import tempfile
 import traceback
 from typing import List, Optional, Callable, Union
 
+from breezy.bzr import LineEndingError
+from breezy.git.remote import RemoteGitError
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Version, ChangelogParseError, get_maintainer
 
-from silver_platter.utils import (
-    open_branch,
-    BranchMissing,
-    BranchUnavailable,
-    BranchUnsupported,
-)
+from breezy import errors, urlutils
 
+from breezy.branch import Branch
 from breezy.commit import (
     PointlessCommit,
 )
+from breezy.controldir import ControlDir
 from breezy.errors import (
     FileExists,
     InvalidNormalization,
@@ -52,6 +52,11 @@ from breezy.errors import (
     NoRoundtrippingSupport,
     UncommittedChanges,
 )
+from breezy.transport import (
+    Transport,
+    UnusableRedirect,
+    get_transport,
+    )
 from breezy.plugins.debian.config import UpstreamMetadataSyntaxError
 from breezy.plugins.debian.util import (
     InconsistentSourceFormatError,
@@ -116,6 +121,7 @@ from breezy.plugins.debian.upstream.branch import (
 
 from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
 from debmutate.versions import (
+    matches_release,
     new_upstream_package_version,
     initial_debian_revision,
     debianize_upstream_version,
@@ -394,19 +400,62 @@ def detect_include_upstream_history(
     return ret
 
 
-try:
-    from debmutate.versions import matches_release
-except ImportError:  # debmutate < 0.35
-    def matches_release(upstream_version: str, release_version: str):
-        release_version = release_version.lower()
-        upstream_version = upstream_version.lower()
-        m = re.match("(.*)([~+-])(ds|dfsg|git|bzr|svn|hg).*", upstream_version)
-        if m and m.group(1) == release_version:
-            return True
-        m = re.match("(.*)([~+-]).*", upstream_version)
-        if m and m.group(1) == release_version:
-            return True
-        return False
+class BranchOpenError(Exception):
+    """Generic handler for branch open failures."""
+
+
+def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
+    if isinstance(e, socket.error):
+        return BranchOpenError(url, "Socket error: %s" % e)
+    if isinstance(e, errors.NotBranchError):
+        return BranchOpenError(url, "Branch does not exist: %s" % e)
+    if isinstance(e, errors.UnsupportedProtocol):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, errors.ConnectionError):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, errors.PermissionDenied):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, errors.InvalidHttpResponse):
+        if "Unexpected HTTP status 429" in str(e):
+            raise BranchOpenError(url, str(e))
+        return BranchOpenError(url, str(e))
+    if isinstance(e, errors.TransportError):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, UnusableRedirect):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, errors.UnsupportedFormatError):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, errors.UnknownFormatError):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, RemoteGitError):
+        return BranchOpenError(url, str(e))
+    if isinstance(e, LineEndingError):
+        return BranchOpenError(url, str(e))
+    return None
+
+
+
+def open_branch(
+    url: str,
+    possible_transports: Optional[List[Transport]] = None,
+    name: str = None,
+) -> Branch:
+    """Open a branch by URL."""
+    url, params = urlutils.split_segment_parameters(url)
+    if name is None:
+        try:
+            name = urlutils.unquote(params["branch"])
+        except KeyError:
+            name = None
+    try:
+        transport = get_transport(url, possible_transports=possible_transports)
+        dir = ControlDir.open_from_transport(transport)
+        return dir.open_branch(name=name)
+    except Exception as e:
+        converted = _convert_exception(url, e)
+        if converted is not None:
+            raise converted
+        raise e
 
 
 def find_new_upstream(  # noqa: C901
@@ -437,7 +486,7 @@ def find_new_upstream(  # noqa: C901
     if upstream_branch_location:
         try:
             upstream_branch = open_branch(upstream_branch_location)
-        except (BranchUnavailable, BranchMissing, BranchUnsupported) as e:
+        except BranchOpenError as e:
             if not snapshot and allow_ignore_upstream_branch:
                 logging.warning(
                     "Upstream branch %s inaccessible; ignoring. %s",
@@ -470,7 +519,7 @@ def find_new_upstream(  # noqa: C901
     if location is not None:
         try:
             branch = open_branch(location)
-        except (BranchUnavailable, BranchMissing, BranchUnsupported):
+        except BranchOpenError as e:
             primary_upstream_source = TarfileSource(
                 location, new_upstream_version)
         else:
