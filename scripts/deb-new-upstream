@@ -33,7 +33,6 @@ from breezy.workingtree import WorkingTree
 from debian.changelog import Version, ChangelogParseError, get_maintainer
 
 from silver_platter.utils import (
-    full_branch_url,
     open_branch,
     BranchMissing,
     BranchUnavailable,
@@ -94,6 +93,7 @@ from breezy.plugins.debian.util import (
     find_changelog,
     MissingChangelogError,
     control_files_in_root,
+    full_branch_url,
 )
 
 from breezy.plugins.debian.upstream import (
