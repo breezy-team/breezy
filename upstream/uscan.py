@@ -72,13 +72,14 @@ class WatchLineWithoutMatchingHrefs(PackageVersionNotPresent):
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
-    def __init__(self, tree, subpath=None, top_level=False):
+    def __init__(self, tree, subpath=None, top_level=False, auto_fix=False):
         self.tree = tree
         self.subpath = subpath
         self.top_level = top_level
+        self.auto_fix = auto_fix
 
     @classmethod
-    def from_tree(cls, tree, subpath, top_level=False):
+    def from_tree(cls, tree, subpath, top_level=False, auto_fix=False):
         if top_level:
             file = 'watch'
         else:
@@ -87,7 +88,7 @@ class UScanSource(UpstreamSource):
             file = osutils.pathjoin(subpath, file)
         if not tree.has_filename(file):
             raise NoWatchFile(tree, file)
-        return cls(tree, subpath=subpath, top_level=top_level)
+        return cls(tree, subpath=subpath, top_level=top_level, auto_fix=auto_fix)
 
     def _export_file(self, name, directory):
         if self.top_level:
@@ -104,6 +105,18 @@ class UScanSource(UpstreamSource):
             os.makedirs(output_dir)
         with open(output_path, 'wb') as f:
             f.write(self.tree.get_file_text(file))
+        if self.auto_fix:
+            from debmutate.watch import WatchEditor
+            try:
+                from lintian_brush.watch import fix_watch_issues
+            except ModuleNotFoundError:
+                warning(
+                    'Not auto-fixing debian/watch file, '
+                    'since lintian-brush is not installed.')
+            else:
+                with WatchEditor(path=output_path, allow_reformatting=True) as updater:
+                    fix_watch_issues(updater)
+
         return output_path
 
     def get_latest_version(self, package, current_version):

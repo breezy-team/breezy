@@ -538,7 +538,7 @@ def find_new_upstream(  # noqa: C901
         else:
             try:
                 primary_upstream_source = UScanSource.from_tree(
-                    tree, subpath, top_level
+                    tree, subpath, top_level, auto_fix=True
                 )
             except NoWatchFile:
                 # TODO(jelmer): Call out to lintian_brush.watch to generate a
