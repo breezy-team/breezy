@@ -508,7 +508,9 @@ def find_new_upstream(  # noqa: C901
         upstream_subpath = None  # noqa: F841
 
     if upstream_branch is not None:
-        # TODO(jelmer: What about upstream_subpath?
+        if upstream_subpath:
+            raise Exception(
+                'merging from upstream with subpath not yet supported')
         try:
             upstream_branch_source = UpstreamBranchSource.from_branch(
                 upstream_branch,
@@ -527,7 +529,7 @@ def find_new_upstream(  # noqa: C901
     if location is not None:
         try:
             branch = open_branch(location)
-        except BranchOpenError as e:
+        except BranchOpenError:
             primary_upstream_source = TarfileSource(
                 location, new_upstream_version)
         else:
