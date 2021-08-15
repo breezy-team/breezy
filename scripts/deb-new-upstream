@@ -127,6 +127,7 @@ from debmutate.versions import (
     debianize_upstream_version,
     )
 
+from debmutate.vcs import split_vcs_url
 from debmutate.watch import WatchSyntaxError
 
 from breezy.tree import Tree
@@ -484,8 +485,13 @@ def find_new_upstream(  # noqa: C901
                 tree, subpath, config, trust_package=trust_package))
 
     if upstream_branch_location:
+        (upstream_branch_url, upstream_branch_name,
+         upstream_subpath) = split_vcs_url(upstream_branch_location)
+        if upstream_branch_name:
+            upstream_branch_url = urlutils.join_segment_parameters(
+                upstream_branch_url, {'branch': upstream_branch_name})
         try:
-            upstream_branch = open_branch(upstream_branch_location)
+            upstream_branch = open_branch(upstream_branch_url)
         except BranchOpenError as e:
             if not snapshot and allow_ignore_upstream_branch:
                 logging.warning(
@@ -499,8 +505,10 @@ def find_new_upstream(  # noqa: C901
             upstream_branch_browse = None
     else:
         upstream_branch = None
+        upstream_subpath = None  # noqa: F841
 
     if upstream_branch is not None:
+        # TODO(jelmer: What about upstream_subpath?
         try:
             upstream_branch_source = UpstreamBranchSource.from_branch(
                 upstream_branch,
