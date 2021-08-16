@@ -1,12 +1,14 @@
 [package]
 name = "breezy"
-version = "3.2.0"
+version = "3.3.0"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 publish = false
 edition = "2018"
+default-run = "brz"
 
 [[bin]]
 name = "brz"
 path = "src/main.rs"
 
 [dependencies]
+pyo3 = { version = "0.14.2", features = [ "auto-initialize" ] }
