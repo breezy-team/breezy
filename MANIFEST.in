@@ -10,3 +10,6 @@ recursive-include apport *
 recursive-include contrib *
 recursive-include doc *
 recursive-include po *
+
+include Cargo.toml
+recursive-include src *

@@ -23,6 +23,12 @@ except ImportError as e:
     sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
+try:
+    from setuptools_rust import Binding, RustExtension
+except ImportError as e:
+    sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
+    sys.exit(1)
+
 
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
@@ -49,6 +55,8 @@ META_INFO = {
     'license': 'GNU GPL v2',
     'download_url': 'https://launchpad.net/brz/+download',
     'long_description': get_long_description(),
+    # rust extensions are not zip safe, just like C-extensions.
+    'zip_safe': False,
     'classifiers': [
         'Development Status :: 6 - Mature',
         'Environment :: Console',
@@ -78,6 +86,7 @@ META_INFO = {
         'workspace': ['pyinotify'],
         'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
+    'rust_extensions': [RustExtension("brz", binding=Binding.Exec)],
     'tests_require': [
         'testtools',
         'testtools<=2.4.0;python_version<"3.0"',

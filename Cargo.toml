@@ -1,0 +1,12 @@
+[package]
+name = "breezy"
+version = "3.2.0"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+publish = false
+edition = "2018"
+
+[[bin]]
+name = "brz"
+path = "src/main.rs"
+
+[dependencies]
