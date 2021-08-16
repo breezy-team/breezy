@@ -11,4 +11,5 @@ name = "brz"
 path = "src/main.rs"
 
 [dependencies]
+pkg-version = "1.0.0"
 pyo3 = { version = "0.14.2", features = [ "auto-initialize" ] }

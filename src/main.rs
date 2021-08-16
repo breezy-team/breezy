@@ -1,27 +1,52 @@
+use pkg_version::*;
 use pyo3::prelude::*;
+use pyo3::types::*;
+
+const MAJOR: u32 = pkg_version_major!();
+const MINOR: u32 = pkg_version_minor!();
+const PATCH: u32 = pkg_version_patch!();
+
+fn check_version(py: Python<'_>) -> PyResult<()> {
+    let breezy = PyModule::import(py, "breezy")?;
+
+    let ver = breezy
+        .getattr("version_info")?
+        .extract::<Py<PyTuple>>()?
+        .into_ref(py);
+
+    if ver.len() < 3
+        || ver.get_item(0).extract::<u32>()? != MAJOR
+        || ver.get_item(1).extract::<u32>()? != MINOR
+        || ver.get_item(2).extract::<u32>()? != PATCH
+    {
+        eprintln!(
+            "\
+            brz: WARNING: breezy version doesn't match the brz program.\n\
+            This may indicate an installation problem.\n\
+            breezy version is {}\n\
+            brz version is {}.{}.{}\n",
+            ver, MAJOR, MINOR, PATCH
+        );
+    }
+    Ok(())
+}
 
 fn main() -> PyResult<()> {
-    const BIN_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
     Python::with_gil(|py| {
         let os = PyModule::import(py, "os")?;
         let locale = PyModule::import(py, "locale")?;
 
         if os.getattr("name")?.to_string() == "posix" {
-            locale.getattr("setlocale")?.call1((locale.getattr("LC_ALL")?, "", ))?;
+            locale
+                .getattr("setlocale")?
+                .call1((locale.getattr("LC_ALL")?, ""))?;
         }
 
         let sys = PyModule::import(py, "sys")?;
 
         sys.setattr("_brz_default_fs_enc", "utf-8")?;
 
-        let breezy = PyModule::import(py, "breezy")?;
-
-        let module_version = breezy.getattr("_core_version_string")?.to_string();
-
-        if module_version != BIN_VERSION {
-            println!("Mismatched versions: {}, {}", module_version, BIN_VERSION);
-        }
+        check_version(py)?;
 
         let main = PyModule::import(py, "breezy.__main__")?;
         main.getattr("main")?.call1(())?;
@@ -34,8 +59,8 @@ fn main() -> PyResult<()> {
 //     import profile_imports
 //     profile_imports.install()
 //     profiling = True
-// 
-// 
+//
+//
 // if os.name == "posix":
 //     import locale
 //     try:
@@ -51,8 +76,8 @@ fn main() -> PyResult<()> {
 //     # natively even when the C locale or no locale at all is given. Note that
 //     # we need an immortal string for the hack, hence the lack of a hyphen.
 //     sys._brz_default_fs_enc = "utf8"
-// 
-// 
+//
+//
 // try:
 //     import breezy
 // except ImportError as e:
@@ -62,7 +87,7 @@ fn main() -> PyResult<()> {
 //         "Please check the directory containing breezy is on your PYTHONPATH.\n"
 //         "\n")
 //     raise
-// 
+//
 // if breezy.version_info[:3] != _script_version:
 //     sys.stderr.write(
 //         "brz: WARNING: breezy version doesn't match the brz program.\n"
@@ -73,7 +98,7 @@ fn main() -> PyResult<()> {
 //             breezy.__path__[0],
 //             breezy._format_version_tuple(_script_version),
 //             __file__))
-// 
+//
 // if __name__ == '__main__':
 //     from breezy.__main__ import main
 //     main()
