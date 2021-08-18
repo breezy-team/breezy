@@ -23,11 +23,12 @@ import os
 import struct
 from zlib import adler32
 
+import fastbencode as bencode
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     annotate,
-    bencode,
     graph as _mod_graph,
     osutils,
     multiparent,
@@ -1985,7 +1986,7 @@ def record_to_fulltext_bytes(record):
         parents = b'nil'
     else:
         parents = record.parents
-    record_meta = bencode.bencode((record.key, parents))
+    record_meta = bencode.bencode((record.key, tuple(parents)))
     record_content = record.get_bytes_as('fulltext')
     return b"fulltext\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
