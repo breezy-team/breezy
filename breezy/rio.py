@@ -390,6 +390,8 @@ try:
     from ._rio_pyx import (
         _read_stanza_utf8,
         _read_stanza_unicode,
+        )
+    from ._rio_rs import (
         _valid_tag,
         )
 except ImportError as e:

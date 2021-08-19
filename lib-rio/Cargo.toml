@@ -10,3 +10,9 @@ path = "pyrio.rs"
 
 [dependencies.pyo3]
 version = "0.14.2"
+
+[dependencies.lazy_static]
+version = "1.4.0"
+
+[dependencies.regex]
+version = "1.5.4"
