@@ -124,8 +124,10 @@ class Stanza(object):
         if not valid_tag(tag):
             raise ValueError("invalid tag %r" % (tag,))
         if isinstance(value, bytes):
-            value = value.decode('ascii')
+            pass
         elif isinstance(value, str):
+            pass
+        elif isinstance(value, Stanza):
             pass
         else:
             raise TypeError("invalid type for rio value: %r of type %s"
@@ -175,7 +177,12 @@ class Stanza(object):
         result = []
         for text_tag, text_value in self.items:
             tag = text_tag.encode('ascii')
-            value = text_value.encode('utf-8', 'surrogateescape')
+            if isinstance(text_value, str):
+                value = text_value.encode('utf-8', 'surrogateescape')
+            elif isinstance(text_value, Stanza):
+                value = text_value.to_string()
+            else:
+                value = text_value
             if value == b'':
                 result.append(tag + b': \n')
             elif b'\n' in value:

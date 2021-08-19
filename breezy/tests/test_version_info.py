@@ -99,42 +99,42 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertContainsRe(val, b'revno: 1.1.1')
 
     def regen_text(self, wt, **kwargs):
-        sio = StringIO()
+        bio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
-        builder.generate(sio)
-        val = sio.getvalue()
+        builder.generate(bio)
+        val = bio.getvalue()
         return val
 
     def test_simple(self):
         wt = self.create_branch()
 
         val = self.regen_text(wt)
-        self.assertContainsRe(val, 'build-date:')
-        self.assertContainsRe(val, 'date:')
-        self.assertContainsRe(val, 'revno: 3')
-        self.assertContainsRe(val, 'revision-id: r3')
+        self.assertContainsRe(val, b'build-date:')
+        self.assertContainsRe(val, b'date:')
+        self.assertContainsRe(val, b'revno: 3')
+        self.assertContainsRe(val, b'revision-id: r3')
 
     def test_clean(self):
         wt = self.create_branch()
         val = self.regen_text(wt, check_for_clean=True)
-        self.assertContainsRe(val, 'clean: True')
+        self.assertContainsRe(val, b'clean: True')
 
     def test_no_clean(self):
         wt = self.create_branch()
         self.build_tree(['branch/c'])
         val = self.regen_text(wt, check_for_clean=True)
-        self.assertContainsRe(val, 'clean: False')
+        self.assertContainsRe(val, b'clean: False')
 
     def test_history(self):
         wt = self.create_branch()
 
         val = self.regen_text(wt, include_revision_history=True)
-        self.assertContainsRe(val, 'id: r1')
-        self.assertContainsRe(val, 'message: a')
-        self.assertContainsRe(val, 'id: r2')
-        self.assertContainsRe(val, 'message: b')
-        self.assertContainsRe(val, 'id: r3')
-        self.assertContainsRe(val, 'message: \xe5')
+        self.assertContainsRe(val, b'id: r1')
+        self.assertContainsRe(val, b'message: a')
+        self.assertContainsRe(val, b'id: r2')
+        self.assertContainsRe(val, b'message: b')
+        self.assertContainsRe(val, b'id: r3')
+        self.assertContainsRe(val, b'message: \xc3\xa52')
 
     def regen(self, wt, **kwargs):
         bio = BytesIO()
