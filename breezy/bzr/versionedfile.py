@@ -23,10 +23,11 @@ import os
 import struct
 from zlib import adler32
 
-import fastbencode as bencode
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import fastbencode as bencode
+
 from breezy import (
     annotate,
     graph as _mod_graph,
