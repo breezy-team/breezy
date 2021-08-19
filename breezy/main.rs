@@ -17,14 +17,9 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
 
     let ver = breezy
         .getattr("version_info")?
-        .extract::<Py<PyTuple>>()?
-        .into_ref(py);
+        .extract::<(u32, u32, u32, String, u32)>()?;
 
-    if ver.len() < 3
-        || ver.get_item(0).extract::<u32>()? != MAJOR
-        || ver.get_item(1).extract::<u32>()? != MINOR
-        || ver.get_item(2).extract::<u32>()? != PATCH
-    {
+    if ver.0 != MAJOR || ver.1 != MINOR || ver.2 != PATCH {
         eprintln!(
             "\
             brz: WARNING: breezy version doesn't match the brz program.\n  \
