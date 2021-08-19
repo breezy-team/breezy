@@ -95,15 +95,6 @@ def read_stanzas(from_file):
         yield s
 
 
-def read_stanzas_unicode(from_file):
-
-    while True:
-        s = read_stanza_unicode(from_file)
-        if s is None:
-            break
-        yield s
-
-
 class Stanza(object):
     """One stanza for rio.
 
@@ -201,28 +192,6 @@ class Stanza(object):
         """Return stanza as a single string"""
         return b''.join(self.to_lines())
 
-    def to_unicode(self):
-        """Return stanza as a single Unicode string.
-
-        This is most useful when adding a Stanza to a parent Stanza
-        """
-        if not self.items:
-            return u''
-
-        result = []
-        for tag, value in self.items:
-            if value == u'':
-                result.append(tag + u': \n')
-            elif u'\n' in value:
-                # don't want splitlines behaviour on empty lines
-                val_lines = value.split(u'\n')
-                result.append(tag + u': ' + val_lines[0] + u'\n')
-                for line in val_lines[1:]:
-                    result.append(u'\t' + line + u'\n')
-            else:
-                result.append(tag + u': ' + value + u'\n')
-        return u''.join(result)
-
     def write(self, to_file):
         """Write stanza to a file"""
         to_file.writelines(self.to_lines())
@@ -275,26 +244,6 @@ def read_stanza(line_iter):
     The raw lines must be in utf-8 encoding.
     """
     return _read_stanza_utf8(line_iter)
-
-
-def read_stanza_unicode(unicode_iter):
-    """Read a Stanza from a list of lines or a file.
-
-    The lines should already be in unicode form. This returns a single
-    stanza that was read. If there is a blank line at the end of the Stanza,
-    it is consumed. It is not an error for there to be no blank line at
-    the end of the iterable. If there is a blank line at the beginning,
-    this is treated as an empty Stanza and None is returned.
-
-    Only the stanza lines and the trailing blank (if any) are consumed
-    from the unicode_iter
-
-    :param unicode_iter: A iterable, yeilding Unicode strings. See read_stanza
-        if you have a utf-8 encoded string.
-    :return: A Stanza object if there are any lines in the file.
-        None otherwise
-    """
-    return _read_stanza_unicode(unicode_iter)
 
 
 def to_patch_lines(stanza, max_width=72):
@@ -389,13 +338,11 @@ def read_patch_stanza(line_iter):
 try:
     from ._rio_pyx import (
         _read_stanza_utf8,
-        _read_stanza_unicode,
         _valid_tag,
         )
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from ._rio_py import (
         _read_stanza_utf8,
-        _read_stanza_unicode,
         _valid_tag,
         )

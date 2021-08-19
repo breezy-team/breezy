@@ -32,15 +32,6 @@ def _valid_tag(tag):
 
 
 def _read_stanza_utf8(line_iter):
-    def iter_unicode_lines():
-        for line in line_iter:
-            if not isinstance(line, bytes):
-                raise TypeError(line)
-            yield line.decode('utf-8', 'surrogateescape')
-    return _read_stanza_unicode(iter_unicode_lines())
-
-
-def _read_stanza_unicode(unicode_iter):
     stanza = Stanza()
     tag = None
     accum_value = None
@@ -49,7 +40,10 @@ def _read_stanza_unicode(unicode_iter):
     #       using 'assert' to process user input, or raising ValueError
     #       rather than a more specific error.
 
-    for line in unicode_iter:
+    for bline in line_iter:
+        if not isinstance(bline, bytes):
+            raise TypeError(bline)
+        line = bline.decode('utf-8', 'surrogateescape')
         if line is None or line == u'':
             break       # end of file
         if line == u'\n':
