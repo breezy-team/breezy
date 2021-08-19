@@ -8,7 +8,7 @@ default-run = "brz"
 
 [[bin]]
 name = "brz"
-path = "src/main.rs"
+path = "breezy/main.rs"
 
 [dependencies]
 pkg-version = "1.0.0"
