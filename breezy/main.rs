@@ -63,12 +63,6 @@ fn posix_setup(py: Python<'_>, sys: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-// profiling = False
-// if '--profile-imports' in sys.argv:
-//     import profile_imports
-//     profile_imports.install()
-//     profiling = True
-
 fn main() -> PyResult<()> {
     Python::with_gil(|py| {
         let sys = PyModule::import(py, "sys")?;
@@ -76,7 +70,14 @@ fn main() -> PyResult<()> {
 
         check_version(py)?;
 
-        sys.setattr("argv", PyList::new(py, std::env::args()))?;
+        let args: Vec<String> = std::env::args().collect();
+
+        if args.contains(&String::from("--profile-imports")) {
+            let profile_imports = PyModule::import(py, "profile_imports")?;
+            profile_imports.getattr("install")?.call1(())?;
+        }
+
+        sys.setattr("argv", PyList::new(py, args))?;
 
         let main = PyModule::import(py, "breezy.__main__")?;
         main.getattr("main")?.call1(())?;
