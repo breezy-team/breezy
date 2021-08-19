@@ -48,23 +48,21 @@ fn setup_locale(py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 
-fn posix_setup(py: Python<'_>) -> PyResult<()> {
+fn posix_setup(py: Python<'_>, sys: &PyModule) -> PyResult<()> {
     let os = PyModule::import(py, "os")?;
 
     if os.getattr("name")?.to_string() == "posix" {
-        match setup_locale(py) {
-            Err(e) => eprintln!(
+        if let Err(e) = setup_locale(py) {
+            eprintln!(
                 "brz: WARNING: {}\n  \
-              Could not set the application locale.\n  \
-              Although this should be no problem for bzr itself, it might\n  \
-              cause problems with some plugins. To investigate the issue,\n  \
-              look at the output of the locale(1p) tool.\n",
+                Could not set the application locale.\n  \
+                Although this should be no problem for bzr itself, it might\n  \
+                cause problems with some plugins. To investigate the issue,\n  \
+                look at the output of the locale(1p) tool.\n",
                 e
-            ),
-            Ok(()) => (),
+            );
         };
 
-        let sys = PyModule::import(py, "sys")?;
         sys.setattr("_brz_default_fs_enc", "utf-8")?;
     }
     Ok(())
@@ -78,9 +76,12 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
 
 fn main() -> PyResult<()> {
     Python::with_gil(|py| {
-        posix_setup(py)?;
+        let sys = PyModule::import(py, "sys")?;
+        posix_setup(py, sys)?;
 
         check_version(py)?;
+
+        sys.setattr("argv", PyList::new(py, std::env::args()))?;
 
         let main = PyModule::import(py, "breezy.__main__")?;
         main.getattr("main")?.call1(())?;
