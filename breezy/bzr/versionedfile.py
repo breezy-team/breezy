@@ -1985,8 +1985,8 @@ def record_to_fulltext_bytes(record):
     if record.parents is None:
         parents = b'nil'
     else:
-        parents = record.parents
-    record_meta = bencode.bencode((record.key, tuple(parents)))
+        parents = tuple([tuple(p) for p in record.parents])
+    record_meta = bencode.bencode((record.key, parents))
     record_content = record.get_bytes_as('fulltext')
     return b"fulltext\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
