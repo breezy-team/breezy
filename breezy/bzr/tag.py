@@ -17,10 +17,11 @@
 
 from __future__ import absolute_import
 
+import fastbencode as bencode
+
 from ..tag import Tags
 
 from .. import (
-    bencode,
     errors,
     trace,
     )

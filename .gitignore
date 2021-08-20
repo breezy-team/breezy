@@ -10,8 +10,5 @@ build/
 *_c.so
 *_pyx.cpython-*.c
 *~
-
-
-# Added by cargo
-
 /target
+./brz

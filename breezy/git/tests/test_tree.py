@@ -281,7 +281,8 @@ class DeltaFromGitChangesTests(TestCase):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('remove',
-            (b'a', stat.S_IFREG|0o644, b), (None, None, None))])
+            (b'a', stat.S_IFREG | 0o644, b),
+            (None, None, None))])
         expected_delta = TreeDelta()
         expected_delta.removed.append(TreeChange(
                 b'git:a', ('a', None), True, (True, False), (b'TREE_ROOT', None),

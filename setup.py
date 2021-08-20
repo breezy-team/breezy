@@ -12,11 +12,6 @@ import sys
 import copy
 import glob
 
-if sys.version_info < (3, 5):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 3.5+\n")
-    sys.exit(1)
-
-
 try:
     import setuptools
 except ImportError as e:
@@ -24,7 +19,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from setuptools_rust import Binding, RustExtension
+    from setuptools_rust import Binding, RustExtension, Strip
 except ImportError as e:
     sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
     sys.exit(1)
@@ -72,22 +67,22 @@ META_INFO = {
         ],
     'install_requires': [
         'configobj',
+        'fastbencode',
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
-        'dulwich>=0.19.12;python_version>="3.5"',
-        'dulwich<0.20,>=0.19.12;python_version<"3.0"',
+        'dulwich>=0.20.23',
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
-        'fastimport': ['fastimport'],
-        'git': [],
+        'fastimport': ['fastimport<0.9.8;python_version<"3.0"', 'fastimport;python_version>="3.5"'],
+        'git': ['dulwich>=0.20.23'],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
         'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
     'rust_extensions': [
-        RustExtension("brz", binding=Binding.Exec),
+        RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
         RustExtension("breezy._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
         ],
     'tests_require': [
@@ -95,6 +90,7 @@ META_INFO = {
         'testtools<=2.4.0;python_version<"3.0"',
         'python-subunit',
     ],
+    'python_requires': '>=3.5',
 }
 
 # The list of packages is automatically generated later. Add other things
@@ -145,42 +141,40 @@ BREEZY['packages'] = get_breezy_packages()
 
 from setuptools import setup
 from distutils.version import LooseVersion
-from distutils.command.install_scripts import install_scripts
+from distutils.command.install import install
 from distutils.command.install_data import install_data
+from distutils.command.install_scripts import install_scripts
 from distutils.command.build import build
+from distutils.command.build_scripts import build_scripts
 
 ###############################
 # Overridden distutils actions
 ###############################
 
-class my_install_scripts(install_scripts):
-    """ Customized install_scripts distutils action.
-    Create brz.bat for win32.
-    """
+class brz_build_scripts(build_scripts):
+    """Fixup Rust extension binary files to live under scripts."""
+
     def run(self):
-        install_scripts.run(self)   # standard action
+        build_scripts.run(self)
 
-        if sys.platform == "win32":
-            try:
-                scripts_dir = os.path.join(sys.prefix, 'Scripts')
-                script_path = self._quoted_path(os.path.join(scripts_dir,
-                                                             "brz"))
-                python_exe = self._quoted_path(sys.executable)
-                batch_str = "@%s %s %%*" % (python_exe, script_path)
-                batch_path = os.path.join(self.install_dir, "brz.bat")
-                with open(batch_path, "w") as f:
-                    f.write(batch_str)
-                print(("Created: %s" % batch_path))
-            except Exception:
-                e = sys.exc_info()[1]
-                print(("ERROR: Unable to create %s: %s" % (batch_path, e)))
+        self.run_command('build_ext')
+        build_ext = self.get_finalized_command("build_ext")
 
-    def _quoted_path(self, path):
-        if ' ' in path:
-            return '"' + path + '"'
-        else:
-            return path
-#/class my_install_scripts
+        for ext in self.distribution.rust_extensions:
+            if ext.binding == Binding.Exec:
+                # GZ 2021-08-19: Not handling multiple binaries yet.
+                os.replace(
+                    os.path.join(build_ext.build_lib, ext.name),
+                    os.path.join(self.build_dir, ext.name))
+
+
+class brz_install(install):
+    """Turns out easy_install was always just a bad idea."""
+
+    def finalize_options(self):
+        install.finalize_options(self)
+        # Get us off the do_egg_install() path
+        self.single_version_externally_managed = True
 
 
 class bzr_build(build):
@@ -205,10 +199,13 @@ class bzr_build(build):
 
 from breezy.bzr_distutils import build_mo
 
-command_classes = {'install_scripts': my_install_scripts,
-                   'build': bzr_build,
-                   'build_mo': build_mo,
-                   }
+command_classes = {
+    'build': bzr_build,
+    'build_mo': build_mo,
+    'build_scripts': brz_build_scripts,
+    'install': brz_install,
+}
+
 from distutils import log
 from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
@@ -329,7 +326,6 @@ add_cython_extension('breezy._simple_set_pyx')
 ext_modules.append(Extension('breezy._static_tuple_c',
                              ['breezy/_static_tuple_c.c']))
 add_cython_extension('breezy._annotator_pyx')
-add_cython_extension('breezy._bencode_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
 add_cython_extension('breezy.bzr._groupcompress_pyx',
                      extra_source=['breezy/bzr/diff-delta.c'])
@@ -785,4 +781,6 @@ else:
     ARGS.update(PKG_DATA)
 
     if __name__ == '__main__':
+        import site
+        site.ENABLE_USER_SITE = "--user" in sys.argv
         setup(**ARGS)

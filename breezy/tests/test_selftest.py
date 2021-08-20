@@ -2659,9 +2659,8 @@ class TestStartBzrSubProcess(tests.TestCase):
     def test_run_bzr_subprocess_no_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
         command = self._popen_args[0]
-        self.assertEqual(sys.executable, command[0])
-        self.assertEqual(self.get_brz_path(), command[1])
-        self.assertEqual(['--no-plugins'], command[2:])
+        self.assertEqual(self.get_brz_path(), command[0])
+        self.assertEqual(['--no-plugins'], command[1:])
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
