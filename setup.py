@@ -12,11 +12,6 @@ import sys
 import copy
 import glob
 
-if sys.version_info < (3, 5):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 3.5+\n")
-    sys.exit(1)
-
-
 try:
     import setuptools
 except ImportError as e:
@@ -75,13 +70,12 @@ META_INFO = {
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
-        'dulwich>=0.19.12;python_version>="3.5"',
-        'dulwich<0.20,>=0.19.12;python_version<"3.0"',
+        'dulwich>=0.20.23',
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
-        'fastimport': ['fastimport'],
-        'git': [],
+        'fastimport': ['fastimport<0.9.8;python_version<"3.0"', 'fastimport;python_version>="3.5"'],
+        'git': ['dulwich>=0.20.23'],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
         'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
@@ -92,6 +86,7 @@ META_INFO = {
         'testtools<=2.4.0;python_version<"3.0"',
         'python-subunit',
     ],
+    'python_requires': '>=3.5',
 }
 
 # The list of packages is automatically generated later. Add other things

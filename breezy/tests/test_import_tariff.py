@@ -201,14 +201,6 @@ class TestImportTariffs(ImportTariffTestCase):
     def test_simple_local_git(self):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.', format='git')
-        from dulwich import __version__ as dulwich_version
-
-        if dulwich_version >= (0, 20, 4):
-            forbidden = ['shutil', 'tempfile', 'ssl']
-        elif PY3:
-            forbidden = ['ssl']
-        else:
-            forbidden = []
 
         self.run_command_check_imports(['st'], [
             'breezy.annotate',
@@ -244,11 +236,14 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.git.commit',
             'getpass',
             'kerberos',
+            'shutil',
             'smtplib',
+            'ssl',
+            'tempfile',
             'tarfile',
             'termios',
             'tty',
-            ] + old_format_modules + forbidden)
+            ] + old_format_modules)
 
     def test_help_commands(self):
         # See https://bugs.launchpad.net/bzr/+bug/663773

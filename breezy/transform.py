@@ -514,6 +514,9 @@ class TreeTransform(object):
         """
         raise NotImplementedError(self.create_symlink)
 
+    def create_tree_reference(self, reference_revision, trans_id):
+        raise NotImplementedError(self.create_tree_reference)
+
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
         raise NotImplementedError(self.create_hardlink)
@@ -703,6 +706,8 @@ def create_from_tree(tt, trans_id, tree, path, chunks=None,
                 f.close()
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(path), trans_id)
+    elif kind == "tree-reference":
+        tt.create_tree_reference(tree.get_reference_revision(path), trans_id)
     else:
         raise AssertionError('Unknown kind %r' % kind)
 
