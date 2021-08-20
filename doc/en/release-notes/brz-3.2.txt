@@ -5,6 +5,24 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.2.1
+#########
+
+:Codename: Nirvana
+:3.2.1: 2021-07-08
+
+Bug Fixes
+*********
+
+ * Fix compatibility with newer versions of Dulwich.
+   (Jelmer Vernooĳ)
+
+Testing
+*******
+
+ * Extend test certificate expiry to 1000 years.
+   (Bernhard M. Wiedemann, #1926151)
+
 brz 3.2.0
 #########
 
