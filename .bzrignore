@@ -77,4 +77,6 @@ selftest.log
 doc/developers/api/*.txt
 __pycache__
 .mypy_cache
-target
+# rust bits
+./target
+./Cargo.lock
