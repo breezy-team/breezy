@@ -16,8 +16,9 @@
 
 """Server-side branch related request implmentations."""
 
+import fastbencode as bencode
+
 from ... import (
-    bencode,
     errors,
     revision as _mod_revision,
     )

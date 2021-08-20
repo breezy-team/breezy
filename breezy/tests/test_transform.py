@@ -21,8 +21,9 @@ import os
 import sys
 import time
 
+import fastbencode as bencode
+
 from .. import (
-    bencode,
     errors,
     filters,
     osutils,

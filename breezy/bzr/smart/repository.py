@@ -25,8 +25,9 @@ import tempfile
 import threading
 import zlib
 
+import fastbencode as bencode
+
 from ... import (
-    bencode,
     errors,
     estimate_compressed_size,
     osutils,
