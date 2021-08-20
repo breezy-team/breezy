@@ -67,6 +67,7 @@ META_INFO = {
         ],
     'install_requires': [
         'configobj',
+        'fastbencode',
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
@@ -352,7 +353,6 @@ add_cython_extension('breezy._simple_set_pyx')
 ext_modules.append(Extension('breezy._static_tuple_c',
                              ['breezy/_static_tuple_c.c']))
 add_cython_extension('breezy._annotator_pyx')
-add_cython_extension('breezy._bencode_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
 add_cython_extension('breezy.bzr._groupcompress_pyx',
                      extra_source=['breezy/bzr/diff-delta.c'])

@@ -872,7 +872,7 @@ class TreeTransformBase(TreeTransform):
 
         :param serializer: A Serialiser like pack.ContainerSerializer.
         """
-        from .. import bencode
+        import fastbencode as bencode
         new_name = {k.encode('utf-8'): v.encode('utf-8')
                     for k, v in self._new_name.items()}
         new_parent = {k.encode('utf-8'): v.encode('utf-8')
@@ -924,7 +924,7 @@ class TreeTransformBase(TreeTransform):
         :param records: An iterable of (names, content) tuples, as per
             pack.ContainerPushParser.
         """
-        from .. import bencode
+        import fastbencode as bencode
         names, content = next(records)
         attribs = bencode.bdecode(content)
         self._id_number = attribs[b'_id_number']

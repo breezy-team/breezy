@@ -40,13 +40,11 @@ from breezy.tests import (
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
 COPYRIGHT_EXCEPTIONS = [
-    'breezy/_bencode_py.py',
     'breezy/doc_generate/conf.py',
     'breezy/lsprof.py',
     ]
 
 LICENSE_EXCEPTIONS = [
-    'breezy/_bencode_py.py',
     'breezy/doc_generate/conf.py',
     'breezy/lsprof.py',
     ]

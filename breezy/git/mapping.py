@@ -21,8 +21,9 @@
 import base64
 import stat
 
+import fastbencode as bencode
+
 from .. import (
-    bencode,
     errors,
     foreign,
     trace,
