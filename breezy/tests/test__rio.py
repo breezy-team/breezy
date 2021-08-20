@@ -106,7 +106,7 @@ class TestReadUTF8Stanza(tests.TestCase):
 
     def test_large(self):
         value = b"bla" * 9000
-        self.assertReadStanza(rio.Stanza(foo=value),
+        self.assertReadStanza(rio.Stanza(foo=value.decode()),
                               [b"foo: %s\n" % value])
 
     def test_non_ascii_char(self):
