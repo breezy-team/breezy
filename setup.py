@@ -18,6 +18,12 @@ except ImportError as e:
     sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
+try:
+    from setuptools_rust import Binding, RustExtension, Strip
+except ImportError as e:
+    sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
+    sys.exit(1)
+
 
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
@@ -44,6 +50,8 @@ META_INFO = {
     'license': 'GNU GPL v2',
     'download_url': 'https://launchpad.net/brz/+download',
     'long_description': get_long_description(),
+    # rust extensions are not zip safe, just like C-extensions.
+    'zip_safe': False,
     'classifiers': [
         'Development Status :: 6 - Mature',
         'Environment :: Console',
@@ -73,6 +81,7 @@ META_INFO = {
         'workspace': ['pyinotify'],
         'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
+    'rust_extensions': [RustExtension("brz", binding=Binding.Exec, strip=Strip.All)],
     'tests_require': [
         'testtools',
         'testtools<=2.4.0;python_version<"3.0"',
@@ -129,42 +138,40 @@ BREEZY['packages'] = get_breezy_packages()
 
 from setuptools import setup
 from distutils.version import LooseVersion
-from distutils.command.install_scripts import install_scripts
+from distutils.command.install import install
 from distutils.command.install_data import install_data
+from distutils.command.install_scripts import install_scripts
 from distutils.command.build import build
+from distutils.command.build_scripts import build_scripts
 
 ###############################
 # Overridden distutils actions
 ###############################
 
-class my_install_scripts(install_scripts):
-    """ Customized install_scripts distutils action.
-    Create brz.bat for win32.
-    """
+class brz_build_scripts(build_scripts):
+    """Fixup Rust extension binary files to live under scripts."""
+
     def run(self):
-        install_scripts.run(self)   # standard action
+        build_scripts.run(self)
 
-        if sys.platform == "win32":
-            try:
-                scripts_dir = os.path.join(sys.prefix, 'Scripts')
-                script_path = self._quoted_path(os.path.join(scripts_dir,
-                                                             "brz"))
-                python_exe = self._quoted_path(sys.executable)
-                batch_str = "@%s %s %%*" % (python_exe, script_path)
-                batch_path = os.path.join(self.install_dir, "brz.bat")
-                with open(batch_path, "w") as f:
-                    f.write(batch_str)
-                print(("Created: %s" % batch_path))
-            except Exception:
-                e = sys.exc_info()[1]
-                print(("ERROR: Unable to create %s: %s" % (batch_path, e)))
+        self.run_command('build_ext')
+        build_ext = self.get_finalized_command("build_ext")
 
-    def _quoted_path(self, path):
-        if ' ' in path:
-            return '"' + path + '"'
-        else:
-            return path
-#/class my_install_scripts
+        for ext in self.distribution.rust_extensions:
+            if ext.binding == Binding.Exec:
+                # GZ 2021-08-19: Not handling multiple binaries yet.
+                os.replace(
+                    os.path.join(build_ext.build_lib, ext.name),
+                    os.path.join(self.build_dir, ext.name))
+
+
+class brz_install(install):
+    """Turns out easy_install was always just a bad idea."""
+
+    def finalize_options(self):
+        install.finalize_options(self)
+        # Get us off the do_egg_install() path
+        self.single_version_externally_managed = True
 
 
 class bzr_build(build):
@@ -189,10 +196,13 @@ class bzr_build(build):
 
 from breezy.bzr_distutils import build_mo
 
-command_classes = {'install_scripts': my_install_scripts,
-                   'build': bzr_build,
-                   'build_mo': build_mo,
-                   }
+command_classes = {
+    'build': bzr_build,
+    'build_mo': build_mo,
+    'build_scripts': brz_build_scripts,
+    'install': brz_install,
+}
+
 from distutils import log
 from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
@@ -507,7 +517,7 @@ if 'bdist_wininst' in sys.argv:
         return docs
 
     # python's distutils-based win32 installer
-    ARGS = {'scripts': ['brz', 'tools/win32/brz-win32-bdist-postinstall.py'],
+    ARGS = {'scripts': ['tools/win32/brz-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
             # help pages
             'data_files': find_docs(),
@@ -752,8 +762,7 @@ else:
 
     DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
-    ARGS = {'scripts': ['brz',
-                        # TODO(jelmer): Only install the git scripts if
+    ARGS = {'scripts': [# TODO(jelmer): Only install the git scripts if
                         # Dulwich was found.
                         'breezy/git/git-remote-bzr',
                         'breezy/git/bzr-receive-pack',
@@ -768,4 +777,6 @@ else:
     ARGS.update(PKG_DATA)
 
     if __name__ == '__main__':
+        import site
+        site.ENABLE_USER_SITE = "--user" in sys.argv
         setup(**ARGS)

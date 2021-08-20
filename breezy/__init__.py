@@ -114,6 +114,7 @@ def _format_version_tuple(version_info):
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
+_core_version_string = '.'.join(map(str, version_info[:3]))
 
 
 def _patch_filesystem_default_encoding(new_enc):
