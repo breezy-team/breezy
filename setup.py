@@ -813,4 +813,6 @@ else:
     ARGS.update(PKG_DATA)
 
     if __name__ == '__main__':
+        import site
+        site.ENABLE_USER_SITE = "--user" in sys.argv
         setup(**ARGS)
