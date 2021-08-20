@@ -80,3 +80,4 @@ __pycache__
 # rust bits
 ./target
 ./Cargo.lock
+./brz
