@@ -127,10 +127,6 @@ class TestSource(TestSourceHelper):
         if extensions is None:
             extensions = ('.py',)
 
-        # This is the front-end 'bzr' script
-        bzr_path = self.get_brz_path()
-        yield bzr_path
-
         for root, dirs, files in os.walk(breezy_dir):
             for d in dirs:
                 if d.endswith('.tmp'):
