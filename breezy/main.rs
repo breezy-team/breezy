@@ -43,7 +43,16 @@ fn setup_locale(py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 
-fn posix_setup(py: Python<'_>, sys: &PyModule) -> PyResult<()> {
+// TODO: Does not actually work? Upstream has been messing around again.
+fn ensure_sane_fs_enc() -> () {
+    let new_enc = std::ffi::CString::new("utf8").unwrap().into_raw();
+    unsafe {
+        pyo3::ffi::Py_FileSystemDefaultEncoding = new_enc;
+        pyo3::ffi::Py_HasFileSystemDefaultEncoding = 1;
+    }
+}
+
+fn posix_setup(py: Python<'_>) -> PyResult<()> {
     let os = PyModule::import(py, "os")?;
 
     if os.getattr("name")?.to_string() == "posix" {
@@ -57,16 +66,14 @@ fn posix_setup(py: Python<'_>, sys: &PyModule) -> PyResult<()> {
                 e
             );
         };
-
-        sys.setattr("_brz_default_fs_enc", "utf-8")?;
     }
     Ok(())
 }
 
 fn main() -> PyResult<()> {
+    pyo3::prepare_freethreaded_python();
     Python::with_gil(|py| {
-        let sys = PyModule::import(py, "sys")?;
-        posix_setup(py, sys)?;
+        posix_setup(py)?;
 
         check_version(py)?;
 
@@ -77,6 +84,7 @@ fn main() -> PyResult<()> {
             profile_imports.getattr("install")?.call1(())?;
         }
 
+        let sys = PyModule::import(py, "sys")?;
         sys.setattr("argv", PyList::new(py, args))?;
 
         let main = PyModule::import(py, "breezy.__main__")?;
