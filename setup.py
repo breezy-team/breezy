@@ -24,7 +24,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from setuptools_rust import Binding, RustExtension
+    from setuptools_rust import Binding, RustExtension, Strip
 except ImportError as e:
     sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
     sys.exit(1)
@@ -86,7 +86,7 @@ META_INFO = {
         'workspace': ['pyinotify'],
         'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
-    'rust_extensions': [RustExtension("brz", binding=Binding.Exec)],
+    'rust_extensions': [RustExtension("brz", binding=Binding.Exec, strip=Strip.All)],
     'tests_require': [
         'testtools',
         'testtools<=2.4.0;python_version<"3.0"',
@@ -142,15 +142,43 @@ BREEZY['packages'] = get_breezy_packages()
 
 from setuptools import setup
 from distutils.version import LooseVersion
-from distutils.command.install_scripts import install_scripts
+from distutils.command.install import install
 from distutils.command.install_data import install_data
+from distutils.command.install_scripts import install_scripts
 from distutils.command.build import build
+from distutils.command.build_scripts import build_scripts
 
 ###############################
 # Overridden distutils actions
 ###############################
 
-class my_install_scripts(install_scripts):
+class brz_build_scripts(build_scripts):
+    """Fixup Rust extension binary files to live under scripts."""
+
+    def run(self):
+        build_scripts.run(self)
+
+        self.run_command('build_ext')
+        build_ext = self.get_finalized_command("build_ext")
+
+        for ext in self.distribution.rust_extensions:
+            if ext.binding == Binding.Exec:
+                # GZ 2021-08-19: Not handling multiple binaries yet.
+                os.replace(
+                    os.path.join(build_ext.build_lib, ext.name),
+                    os.path.join(self.build_dir, ext.name))
+
+
+class brz_install(install):
+    """Turns out easy_install was always just a bad idea."""
+
+    def finalize_options(self):
+        install.finalize_options(self)
+        # Get us off the do_egg_install() path
+        self.single_version_externally_managed = True
+
+
+class brz_install_scripts(install_scripts):
     """ Customized install_scripts distutils action.
     Create brz.bat for win32.
     """
@@ -202,10 +230,14 @@ class bzr_build(build):
 
 from breezy.bzr_distutils import build_mo
 
-command_classes = {'install_scripts': my_install_scripts,
-                   'build': bzr_build,
-                   'build_mo': build_mo,
-                   }
+command_classes = {
+    'build': bzr_build,
+    'build_mo': build_mo,
+    'build_scripts': brz_build_scripts,
+    'install': brz_install,
+    'install_scripts': brz_install_scripts,
+}
+
 from distutils import log
 from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
