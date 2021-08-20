@@ -83,7 +83,7 @@ def delete_items(deletables, dry_run=False):
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        warnings.warn('unable to remove %s' % path)
+        warning('unable to remove %s' % path)
     for path, subp in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
@@ -182,7 +182,6 @@ class Workspace(object):
         with self.tree.lock_write():
             specific_files = self._stage()
             basis_tree = self.tree.basis_tree()
-            # TODO(jelmer): After Python 3.3, use 'yield from'
             for change in self.tree.iter_changes(
                     basis_tree, specific_files=specific_files,
                     want_unversioned=False, require_versioned=True):
