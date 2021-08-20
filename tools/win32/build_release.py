@@ -62,7 +62,7 @@ def get_target():
     global TARGET
     if TARGET is not None:
         return TARGET
-    out = call_or_fail([sys.executable, get_brz_dir() + '/brz',
+    out = call_or_fail([get_brz_dir() + '/brz',
                         'version', '--short'], stdout=subprocess.PIPE)
     version = out.strip()
     TARGET = os.path.abspath(TARGET_ROOT + '-' + version)

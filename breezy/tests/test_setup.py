@@ -71,11 +71,13 @@ class TestSetup(tests.TestCaseInTempDir):
         args = [sys.executable, './setup.py', ] + args
         self.log('source base directory: %s', self.source_dir)
         self.log('args: %r', args)
+        env = dict(os.environ)
+        env['PYTHONPATH'] = ':'.join(sys.path)
         p = subprocess.Popen(args,
                              cwd=self.source_dir,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
-                             )
+                             env=env)
         stdout, stderr = p.communicate()
         self.log('stdout: %r', stdout)
         self.log('stderr: %r', stderr)

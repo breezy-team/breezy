@@ -546,10 +546,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def report_tests_starting(self):
         """Display information before the test run begins"""
-        if getattr(sys, 'frozen', None) is None:
-            bzr_path = osutils.realpath(sys.argv[0])
-        else:
-            bzr_path = sys.executable
+        bzr_path = osutils.realpath(sys.argv[0])
         self.stream.write(
             'brz selftest: %s\n' % (bzr_path,))
         self.stream.write(
@@ -3646,9 +3643,6 @@ def reinvoke_for_tests(suite):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
         bzr_path = [bzr_path]
-        if sys.platform == "win32":
-            # if we're on windows, we can't execute the bzr script directly
-            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:

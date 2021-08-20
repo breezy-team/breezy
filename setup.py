@@ -174,36 +174,6 @@ class brz_install(install):
         self.single_version_externally_managed = True
 
 
-class brz_install_scripts(install_scripts):
-    """ Customized install_scripts distutils action.
-    Create brz.bat for win32.
-    """
-    def run(self):
-        install_scripts.run(self)   # standard action
-
-        if sys.platform == "win32":
-            try:
-                scripts_dir = os.path.join(sys.prefix, 'Scripts')
-                script_path = self._quoted_path(os.path.join(scripts_dir,
-                                                             "brz"))
-                python_exe = self._quoted_path(sys.executable)
-                batch_str = "@%s %s %%*" % (python_exe, script_path)
-                batch_path = os.path.join(self.install_dir, "brz.bat")
-                with open(batch_path, "w") as f:
-                    f.write(batch_str)
-                print(("Created: %s" % batch_path))
-            except Exception:
-                e = sys.exc_info()[1]
-                print(("ERROR: Unable to create %s: %s" % (batch_path, e)))
-
-    def _quoted_path(self, path):
-        if ' ' in path:
-            return '"' + path + '"'
-        else:
-            return path
-#/class my_install_scripts
-
-
 class bzr_build(build):
     """Customized build distutils action.
     Generate brz.1.
@@ -231,7 +201,6 @@ command_classes = {
     'build_mo': build_mo,
     'build_scripts': brz_build_scripts,
     'install': brz_install,
-    'install_scripts': brz_install_scripts,
 }
 
 from distutils import log
