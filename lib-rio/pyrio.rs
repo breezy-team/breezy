@@ -4,18 +4,6 @@ extern crate lazy_static;
 use pyo3::prelude::*;
 use regex::Regex;
 
-#[pyclass]
-struct RioReader {
-}
-
-#[pyclass]
-struct RioWriter {
-}
-
-#[pyclass]
-struct Stanza {
-}
-
 #[pyfunction]
 fn _valid_tag(tag: &str) -> bool {
     lazy_static! {
@@ -26,9 +14,6 @@ fn _valid_tag(tag: &str) -> bool {
 
 #[pymodule]
 fn _rio_rs(_: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<RioReader>()?;
-    m.add_class::<RioWriter>()?;
-    m.add_class::<Stanza>()?;
     m.add_wrapped(wrap_pyfunction!(_valid_tag)).unwrap();
 
     Ok(())
