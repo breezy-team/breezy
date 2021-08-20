@@ -102,7 +102,7 @@ message:
             env_changes={'LANG': 'BOGUS', 'LC_ALL': None, 'LC_CTYPE': None,
                          'LANGUAGE': None, 'PYTHONCOERCECLOCALE': '0',
                          'PYTHONUTF8': '0'})
-        self.assertStartsWith(err, b'brz: WARNING: unsupported locale setting')
+        self.assertStartsWith(err, b'brz: WARNING: Error: unsupported locale setting')
         self.assertEqualDiff(b"""\
 ------------------------------------------------------------
 revno: 1
