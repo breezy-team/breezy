@@ -23,6 +23,7 @@
 
 import atexit
 import codecs
+import contextlib
 import copy
 import difflib
 import doctest
@@ -1691,6 +1692,12 @@ class TestCase(testtools.TestCase):
         self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
+
+    @contextlib.contextmanager
+    def text_log_file(self, **kwargs):
+        stream = TextIOWrapper(self._log_file, encoding='utf-8', **kwargs)
+        yield stream
+        stream.detach()
 
     def _finishLogFile(self):
         """Flush and dereference the in-memory log for this testcase"""
