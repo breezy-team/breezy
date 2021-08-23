@@ -305,9 +305,9 @@ class DistributionBranch(object):
         :return: a String with the name of the tag.
         """
         if vendor is not None:
-            return '%s/%s' % (vendor, version)
+            return mangle_version(self.branch, '%s/%s' % (vendor, version))
         else:
-            return str(version)
+            return mangle_version(self.branch, str(version))
 
     def has_version(self, version, md5=None, vendor=None):
         """Whether this branch contains the package version specified.
