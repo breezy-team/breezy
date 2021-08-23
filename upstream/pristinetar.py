@@ -94,7 +94,7 @@ class PristineTarDeltaTooLarge(PristineTarError):
 
 
 class PristineTarDeltaAbsent(PristineTarError):
-    _fmt = 'There is not delta present for %(version)s.'
+    _fmt = 'There is no delta present for %(version)s.'
 
     def __init__(self, version):
         BzrError.__init__(self, version=version)
