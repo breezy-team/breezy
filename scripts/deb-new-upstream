@@ -1146,11 +1146,13 @@ def update_packaging(
     return notes
 
 
-def report_fatal(code, description, upstream_version=None):
+def report_fatal(code, description, upstream_version=None, conflicts=None):
     if os.environ.get('SVP_API') == '1':
         context = {}
         if upstream_version is not None:
             context['upstream_version'] = str(upstream_version)
+        if conflicts is not None:
+            context['conflicts'] = conflicts
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
