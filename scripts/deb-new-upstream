@@ -435,7 +435,6 @@ def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
     return None
 
 
-
 def open_branch(
     url: str,
     possible_transports: Optional[List[Transport]] = None,
@@ -670,7 +669,8 @@ def import_upstream(
     committer: Optional[str] = None,
     subpath: str = "",
     include_upstream_history: Optional[bool] = None,
-    create_dist: Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
+    create_dist:
+        Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
     force_big_version_jump: bool = False,
 ) -> ImportUpstreamResult:
     """Import a new upstream version into a tree.
@@ -1196,6 +1196,7 @@ async def main():
         "--dist-command",
         type=str,
         help="Command to run to create tarball from source tree.",
+        default=os.environ.get('DIST'),
     )
     parser.add_argument(
         "--no-include-upstream-history",
