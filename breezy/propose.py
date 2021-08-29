@@ -199,6 +199,10 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.post_comment)
 
+    def reopen(self):
+        """Reopen the merge proposal if it is closed."""
+        raise NotImplementedError(self.reopen)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.

@@ -97,6 +97,8 @@ class ControlComponent(object):
     def user_url(self):
         return self.user_transport.base
 
+    _format: ControlComponentFormat
+
 
 class ControlDir(ControlComponent):
     """A control directory.

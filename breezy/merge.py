@@ -264,6 +264,9 @@ class Merger(object):
 
     hooks = MergeHooks()
 
+    # TODO(jelmer): There should probably be a merger base type
+    merge_type: object
+
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, change_reporter=None,
                  recurse='down', revision_graph=None):
