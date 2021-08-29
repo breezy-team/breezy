@@ -69,6 +69,10 @@ class Branch(controldir.ControlComponent):
         _clear_cached_state.
     """
 
+    controldir: controldir.ControlDir
+
+    name: Optional[str]
+
     @property
     def control_transport(self):
         return self._transport
