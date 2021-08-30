@@ -86,8 +86,6 @@ def create_bpo_version(orig_version, bpo_suffix):
 
 def backport_package(local_tree, subpath, target_release, author=None):
     changes = []
-    # TODO(jelmer): Check that package has a high enough popcon count,
-    # and warn otherwise?
     # TODO(jelmer): Iterate Build-Depends and verify that depends are
     # satisfied by target_distribution
     # TODO(jelmer): Update Vcs-Git/Vcs-Browser header?
