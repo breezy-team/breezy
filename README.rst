@@ -4,14 +4,15 @@ brz-debian
 Overview
 --------
 
-This is brz-debian, a plugin for `brz`_ that allows you to build `Debian`_
-packages from a brz branch.
+This is brz-debian, a plugin for `Breezy`_ that allows you to build `Debian`_
+packages from a Breezy compatible branch, like a Git repository or a Bazaar
+branch.
 
-.. _brz: https://www.breezy-vcs.org/
+.. _Breezy: https://www.breezy-vcs.org/
 .. _Debian: http://www.debian.org/
 
 Note that there is a user manual available at
-/usr/share/doc/bzr-builddeb/user_manual/index.html that gives more
+/usr/share/doc/brz-debian/user_manual/index.html that gives more
 information than this file.
 
 Installation
@@ -177,7 +178,6 @@ Then the user can override this locally if they want for all of their packages
 they are involved with upstream as well, so they set ``orig_dir =
 /home/.../releases/``), this can be done in ``.bzr-builddeb/local.conf``).
 
-
 Creating a package
 ------------------
 
@@ -287,7 +287,6 @@ if you create it).
 
 Now you are ready to build using the plugin.
 
-
 Building a Package
 ------------------
 
@@ -331,7 +330,6 @@ keep using this build directory. **N.B. This may cause build problems,
 especially if files are removed**, it is advisable to run a build without
 ``--reuse`` after removing any files.
 
-
 Workflow
 --------
 
@@ -342,27 +340,3 @@ you run while working on the package.
 It also works fine with the frequent branching approach of brz, so that you
 can branch to test something new for the package, or for a bug fix, and then
 merge it back in to your main branch when it is done.
-
-Copyright
----------
-
-This README is Copyright (C) 2006 James Westby <jw+debian@jameswestby.net> and
-is distributed under the following terms::
-
-   This file is part of breezy-debian.
-
-   bzr-builddeb is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2 of the License, or
-   (at your option) any later version.
-
-   bzr-builddeb is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with bzr-builddeb; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-
-.. vim: set ft=rst :
