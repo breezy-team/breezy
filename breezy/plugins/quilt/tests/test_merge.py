@@ -29,6 +29,7 @@ from .... import (
     )
 from ....merge import Merger
 from ....mutabletree import MutableTree
+from ....tests.features import ExecutableFeature, ModuleAvailableFeature
 
 from .. import (
     pre_merge_quilt,
@@ -36,10 +37,9 @@ from .. import (
     post_build_tree_quilt,
     post_merge_quilt_cleanup,
     )
-from ..quilt import QuiltPatches
-from ..merge import tree_unapply_patches
 
-from .test_wrapper import quilt_feature
+quilt_feature = ExecutableFeature('quilt')
+doona_feature = ModuleAvailableFeature('doona')
 
 from ....tests import (
     TestCaseWithTransport,
@@ -54,20 +54,23 @@ TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 
 
 def quilt_push_all(tree):
+    from ..quilt import QuiltPatches
     QuiltPatches(tree, 'debian/patches').push_all()
 
 
 class TestTreeUnapplyPatches(TestCaseWithTransport):
 
-    _test_needs_features = [quilt_feature]
+    _test_needs_features = [doona_feature, quilt_feature]
 
     def test_no_patches(self):
+        from ..merge import tree_unapply_patches
         tree = self.make_branch_and_tree('.')
         new_tree, target_dir = tree_unapply_patches(tree)
         self.assertIs(tree, new_tree)
         self.assertIs(None, target_dir)
 
     def test_unapply(self):
+        from ..merge import tree_unapply_patches
         orig_tree = self.make_branch_and_tree('source')
         self.build_tree(["source/debian/", "source/debian/patches/"])
         self.build_tree_contents([
@@ -83,6 +86,7 @@ class TestTreeUnapplyPatches(TestCaseWithTransport):
         self.assertPathExists(tree.abspath("debian/patches/series"))
 
     def test_unapply_nothing_applied(self):
+        from ..merge import tree_unapply_patches
         orig_tree = self.make_branch_and_tree('source')
         self.build_tree(["source/debian/", "source/debian/patches/"])
         self.build_tree_contents([
@@ -96,7 +100,7 @@ class TestTreeUnapplyPatches(TestCaseWithTransport):
 
 class TestMergeHook(TestCaseWithTransport):
 
-    _test_needs_features = [quilt_feature]
+    _test_needs_features = [doona_feature, quilt_feature]
 
     def enable_hooks(self):
         Merger.hooks.install_named_hook(
@@ -292,7 +296,7 @@ c
 
 class StartCommitMergeHookTests(TestCaseWithTransport):
 
-    _test_needs_features = [quilt_feature]
+    _test_needs_features = [doona_feature, quilt_feature]
 
     def enable_hooks(self):
         MutableTree.hooks.install_named_hook(

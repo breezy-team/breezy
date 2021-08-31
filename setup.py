@@ -79,6 +79,7 @@ META_INFO = {
         'git': ['dulwich>=0.20.23'],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
+        'quilt': ['doona'],
         'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
         },
     'rust_extensions': [RustExtension("brz", binding=Binding.Exec, strip=Strip.All)],

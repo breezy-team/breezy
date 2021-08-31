@@ -29,7 +29,6 @@ from ....tests import (
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_merge',
-        'test_wrapper',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
         ["%s.%s" % (__name__, i) for i in testmod_names]))

@@ -113,7 +113,12 @@ def start_commit_check_quilt(tree):
     config = tree.get_config_stack()
     policy = config.get('quilt.commit_policy')
     from .merge import start_commit_quilt_patches
-    from .wrapper import QuiltNotInstalled
+    try:
+        from doona.wrapper import QuiltNotInstalled
+    except ModuleNotFoundError:
+        trace.warning(
+            'doona not installed; not touching patches')
+        return
     try:
         start_commit_quilt_patches(tree, policy)
     except QuiltNotInstalled:
@@ -127,12 +132,18 @@ def post_build_tree_quilt(tree):
     if policy is None:
         return
     from .merge import post_process_quilt_patches
-    from .wrapper import QuiltNotInstalled
+    try:
+        from doona.wrapper import QuiltNotInstalled
+    except ModuleNotFoundError:
+        trace.warning(
+            'doona not installed; not touching patches')
+        return
     try:
         post_process_quilt_patches(tree, [], policy)
     except QuiltNotInstalled:
         trace.warning(
             'quilt not installed; not touching patches')
+        return
 
 
 from ...hooks import install_lazy_named_hook

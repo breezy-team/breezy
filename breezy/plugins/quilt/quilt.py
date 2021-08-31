@@ -18,10 +18,14 @@
 
 """Quilt patch handling."""
 
+import errno
 import os
 
-from ... import osutils
-from . import wrapper
+from ... import errors, osutils
+try:
+    from doona import wrapper
+except ModuleNotFoundError as e:
+    raise errors.DependencyNotPresent('doona', e)
 
 QuiltError = wrapper.QuiltError
 
@@ -60,10 +64,10 @@ class QuiltPatches(object):
         return wrapper.quilt_upgrade(self.tree.basedir)
 
     def series(self):
-        return wrapper.quilt_series(self.tree, self.series_path)
+        return quilt_series(self.tree, self.series_path)
 
     def applied(self):
-        return wrapper.quilt_applied(self.tree)
+        return quilt_applied(self.tree)
 
     def unapplied(self):
         return wrapper.quilt_unapplied(
@@ -96,3 +100,38 @@ class QuiltPatches(object):
         return wrapper.quilt_delete(
             self.tree.basedir, patch, patches_dir=self.patches_dir,
             series_file=self.series_file, remove=remove)
+
+
+def quilt_series(tree, series_path):
+    """Find the list of patches.
+
+    :param tree: Tree to read from
+    """
+    try:
+        return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
+                tree.get_file_lines(series_path)
+                if patch.strip() != b""]
+    except (IOError, OSError) as e:
+        if e.errno == errno.ENOENT:
+            # File has already been removed
+            return []
+        raise
+    except errors.NoSuchFile:
+        return []
+
+
+def quilt_applied(tree):
+    """Find the list of applied quilt patches.
+
+    """
+    try:
+        return [patch.rstrip(b"\n").decode(osutils._fs_enc)
+                for patch in tree.get_file_lines(".pc/applied-patches")
+                if patch.strip() != b""]
+    except errors.NoSuchFile:
+        return []
+    except (IOError, OSError) as e:
+        if e.errno == errno.ENOENT:
+            # File has already been removed
+            return []
+        raise
