@@ -701,7 +701,6 @@ def run_dist_command(
     with ExitStack() as es:
         td = es.enter_context(tempfile.TemporaryDirectory())
         package_dir = os.path.join(td, package)
-        existing_files = os.listdir(package_dir)
         env = dict(os.environ.items())
         env['PACKAGE'] = package
         env['VERSION'] = version
@@ -711,6 +710,7 @@ def run_dist_command(
             _dupe_vcs_tree(rev_tree, package_dir)
         else:
             export(rev_tree, package_dir, 'dir')
+        existing_files = os.listdir(package_dir)
         try:
             _run_and_interpret(dist_command, env, package_dir)
         except NotImplementedError:
@@ -719,7 +719,9 @@ def run_dist_command(
             # Retry with the control directory
             if (e.kind == 'vcs-control-directory-needed' and
                     not include_controldir):
+                osutils.rmtree(package_dir)
                 _dupe_vcs_tree(rev_tree, package_dir)
+                existing_files = os.listdir(package_dir)
                 _run_and_interpret(dist_command, env, package_dir)
             else:
                 raise
