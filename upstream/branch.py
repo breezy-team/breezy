@@ -43,6 +43,7 @@ from ....errors import (
     InvalidRevisionId,
     NoSuchRevision,
     NoSuchTag,
+    NotBranchError,
     RevisionNotPresent,
     UnsupportedOperation,
     )
@@ -66,6 +67,9 @@ from . import (
     )
 from ....export import (
     export,
+    )
+from ....workingtree import (
+    WorkingTree,
     )
 
 
@@ -653,25 +657,38 @@ class DistCommandFailed(BzrError):
         super(DistCommandFailed, self).__init__(error=error, kind=kind)
 
 
+def _dupe_vcs_tree(tree, directory):
+    with tree.lock_read():
+        if isinstance(tree, WorkingTree):
+            tree = tree.basis_tree()
+    result = tree._repository.controldir.sprout(
+        directory, create_tree_if_local=True,
+        revision_id=tree.get_revision_id()
+    )
+    if not result.has_workingtree():
+        raise AssertionError
+    # Copy parent location - some scripts need this
+    if isinstance(tree, WorkingTree):
+        parent = tree.branch.get_parent()
+    else:
+        try:
+            parent = tree._repository.controldir.open_branch().get_parent()
+        except NotBranchError:
+            parent = None
+    if parent:
+        result.open_branch().set_parent(parent)
+
+
 def run_dist_command(
         rev_tree: Tree, package: str, version: Version, target_dir: str,
-        dist_command: str) -> bool:
-    with ExitStack() as es:
-        td = es.enter_context(tempfile.TemporaryDirectory())
-        package_dir = os.path.join(td, package)
-        export(rev_tree, package_dir, 'dir')
-        existing_files = os.listdir(package_dir)
-        env = dict(os.environ.items())
-        env['PACKAGE'] = package
-        env['VERSION'] = version
-        env['DIST_RESULT'] = os.path.join(td, 'dist.json')
-        note('Running dist command: %s', dist_command)
+        dist_command: str, include_controldir: bool = False) -> bool:
+
+    def _run_and_interpret(command, env, dir):
         try:
-            subprocess.check_call(
-                dist_command, env=env, cwd=package_dir, shell=True)
+            subprocess.check_call(command, env=env, cwd=dir, shell=True)
         except subprocess.CalledProcessError as e:
             if e.returncode == 2:
-                return None
+                raise NotImplementedError
             try:
                 import json
                 with open(env['DIST_RESULT'], 'r') as f:
@@ -680,6 +697,32 @@ def run_dist_command(
                     result['description'], result['result_code'])
             except FileNotFoundError:
                 raise DistCommandFailed(str(e))
+
+    with ExitStack() as es:
+        td = es.enter_context(tempfile.TemporaryDirectory())
+        package_dir = os.path.join(td, package)
+        existing_files = os.listdir(package_dir)
+        env = dict(os.environ.items())
+        env['PACKAGE'] = package
+        env['VERSION'] = version
+        env['DIST_RESULT'] = os.path.join(td, 'dist.json')
+        note('Running dist command: %s', dist_command)
+        if include_controldir:
+            _dupe_vcs_tree(rev_tree, package_dir)
+        else:
+            export(rev_tree, package_dir, 'dir')
+        try:
+            _run_and_interpret(dist_command, env, package_dir)
+        except NotImplementedError:
+            return None
+        except DistCommandFailed as e:
+            # Retry with the control directory
+            if (e.kind == 'vcs-control-directory-needed' and
+                    not include_controldir):
+                _dupe_vcs_tree(rev_tree, package_dir)
+                _run_and_interpret(dist_command, env, package_dir)
+            else:
+                raise
         new_files = os.listdir(package_dir)
         diff_files = set(new_files) - set(existing_files)
         diff = [n for n in diff_files if get_filetype(n) is not None]
