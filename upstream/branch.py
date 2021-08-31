@@ -18,6 +18,7 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from contextlib import ExitStack
 from debian.changelog import Version
 import os
 import re
@@ -648,20 +649,22 @@ class DistCommandFailed(BzrError):
 
     _fmt = "Dist command failed to produce a tarball: %(error)s"
 
-    def __init__(self, error):
-        super(DistCommandFailed, self).__init__(error=error)
+    def __init__(self, error, kind=None):
+        super(DistCommandFailed, self).__init__(error=error, kind=kind)
 
 
 def run_dist_command(
         rev_tree: Tree, package: str, version: Version, target_dir: str,
         dist_command: str) -> bool:
-    with tempfile.TemporaryDirectory() as td:
+    with ExitStack() as es:
+        td = es.enter_context(tempfile.TemporaryDirectory())
         package_dir = os.path.join(td, package)
         export(rev_tree, package_dir, 'dir')
         existing_files = os.listdir(package_dir)
         env = dict(os.environ.items())
         env['PACKAGE'] = package
         env['VERSION'] = version
+        env['DIST_RESULT'] = os.path.join(td, 'dist.json')
         note('Running dist command: %s', dist_command)
         try:
             subprocess.check_call(
@@ -669,7 +672,14 @@ def run_dist_command(
         except subprocess.CalledProcessError as e:
             if e.returncode == 2:
                 return None
-            raise DistCommandFailed(str(e))
+            try:
+                import json
+                with open(env['DIST_RESULT'], 'r') as f:
+                    result = json.load(f)
+                raise DistCommandFailed(
+                    result['description'], result['result_code'])
+            except FileNotFoundError:
+                raise DistCommandFailed(str(e))
         new_files = os.listdir(package_dir)
         diff_files = set(new_files) - set(existing_files)
         diff = [n for n in diff_files if get_filetype(n) is not None]
