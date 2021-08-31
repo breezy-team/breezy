@@ -1251,7 +1251,7 @@ async def main():
 
         if args.dist_command:
 
-            def create_dist(self, tree, package, version, target_dir):
+            def create_dist(tree, package, version, target_dir):
                 return run_dist_command(
                     tree, package, version, target_dir, args.dist_command)
         else:
