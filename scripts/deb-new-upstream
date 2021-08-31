@@ -1450,7 +1450,7 @@ async def main():
             report_fatal("missing-changelog", "Missing changelog %s" % e)
             return 1
         except DistCommandFailed as e:
-            report_fatal("dist-command-failed", str(e))
+            report_fatal(e.kind or "dist-command-failed", e.error)
             return 1
         except MissingUpstreamTarball as e:
             report_fatal(
