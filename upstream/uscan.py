@@ -78,6 +78,11 @@ class UScanSource(UpstreamSource):
         self.top_level = top_level
         self.auto_fix = auto_fix
 
+    def __repr__(self):
+        return "<%s(%r, subpath=%r, top_level=%r, auto_fix=%r)>" % (
+            type(self).__name__, self.tree, self.subpath, self.top_level,
+            self.auto_fix)
+
     @classmethod
     def from_tree(cls, tree, subpath, top_level=False, auto_fix=False):
         if top_level:
@@ -106,18 +111,21 @@ class UScanSource(UpstreamSource):
         with open(output_path, 'wb') as f:
             f.write(self.tree.get_file_text(file))
         if self.auto_fix:
-            from debmutate.watch import WatchEditor
-            try:
-                from lintian_brush.watch import fix_watch_issues
-            except ModuleNotFoundError:
-                warning(
-                    'Not auto-fixing debian/watch file, '
-                    'since lintian-brush is not installed.')
-            else:
-                with WatchEditor(path=output_path, allow_reformatting=True) as updater:
-                    fix_watch_issues(updater)
-
+            self._do_auto_fix(output_path)
         return output_path
+
+    @staticmethod
+    def _do_auto_fix(path):
+        from debmutate.watch import WatchEditor
+        try:
+            from lintian_brush.watch import fix_watch_issues
+        except ModuleNotFoundError:
+            warning(
+                'Not auto-fixing debian/watch file, '
+                'since lintian-brush is not installed.')
+        else:
+            with WatchEditor(path=path, allow_reformatting=True) as updater:
+                fix_watch_issues(updater)
 
     def get_latest_version(self, package, current_version):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -167,6 +175,8 @@ class UScanSource(UpstreamSource):
             # Just export all of debian/, since e.g. uupdate needs more of it.
             export(self.tree, os.path.join(container, 'debian'), format='dir',
                    subdir=subdir)
+            if self.auto_fix:
+                self._do_auto_fix(os.path.join(container, 'debian', 'watch'))
             args = ["--force-download", "--rename",
                     "--check-dirname-level=0",
                     "--download", '--destdir=%s' % container,
