@@ -867,9 +867,17 @@ class GitPristineTarSource(BasePristineTarSource):
         return target_filename
 
     def _has_revision(self, revid, md5=None):
+        if not self.branch.repository.has_revision(revid):
+            return False
+        if self.branch.last_revision() == _mod_revision.NULL_REVISION:
+            # there's no explicit upstream branch so.. whatever?
+            return True
         with self.branch.lock_read():
             graph = self.branch.repository.get_graph()
             if not graph.is_ancestor(revid, self.branch.last_revision()):
+                warning(
+                    'Revision %r exists in repository but not in '
+                    'upstream branch, ignoring', revid)
                 return False
         return True
 
