@@ -18,8 +18,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from __future__ import absolute_import
-
 from breezy.tests.scenarios import (
     load_tests_apply_scenarios,
     multiply_scenarios,

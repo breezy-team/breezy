@@ -23,8 +23,6 @@
 
 """manage versioned Debian packages."""
 
-from __future__ import absolute_import
-
 import os
 
 import breezy

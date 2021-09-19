@@ -18,8 +18,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from __future__ import absolute_import
-
 from email.message import Message
 from email.parser import Parser
 from io import BytesIO, TextIOWrapper

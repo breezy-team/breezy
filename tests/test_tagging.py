@@ -19,8 +19,6 @@
 
 """Tests for builddeb.tagging."""
 
-from __future__ import absolute_import
-
 from .. import tagging
 from ....tests import (
     TestCase,

@@ -22,8 +22,6 @@
 
 """Tests for the upstream module."""
 
-from __future__ import absolute_import
-
 from base64 import standard_b64encode
 
 import bz2

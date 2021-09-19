@@ -19,8 +19,6 @@
 
 """Tests for import-upstream."""
 
-from __future__ import absolute_import
-
 from debian.changelog import Version
 
 from .test_import_dsc import TestBaseImportDsc

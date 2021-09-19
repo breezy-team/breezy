@@ -19,8 +19,6 @@
 
 """Tagging related functions for bzr-builddeb."""
 
-from __future__ import absolute_import
-
 from debian.changelog import Version
 
 

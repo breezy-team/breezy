@@ -3,8 +3,6 @@
 
 """Import upstream source into a branch"""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ...upstream_import import (

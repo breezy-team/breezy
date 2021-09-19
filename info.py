@@ -16,8 +16,6 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from __future__ import absolute_import
-
 brz_plugin_name = 'debian'
 
 brz_plugin_version = (2, 8, 51, 'final', 0)

@@ -17,8 +17,6 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from __future__ import absolute_import
-
 from .. import debian_changelog_commit_message, debian_changelog_commit
 from . import TestCaseWithTransport
 from ....tests.features import Feature

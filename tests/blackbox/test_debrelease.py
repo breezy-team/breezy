@@ -21,8 +21,6 @@
 
 """Blackbox tests for "bzr debrelease"."""
 
-from __future__ import absolute_import
-
 from .....tests.blackbox import ExternalBase
 
 import os
