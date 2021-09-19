@@ -31,7 +31,7 @@ from ...trace import note, warning
 from debian.deb822 import Deb822
 from debian.changelog import Version
 
-from debmutate.vcs import source_package_vcs
+from debmutate.vcs import source_package_vcs, split_vcs_url
 
 
 def fixup_broken_git_url(url):
@@ -79,24 +79,9 @@ def fixup_broken_git_url(url):
 
 def vcs_git_url_to_bzr_url(url):
     """Convert a Vcs-Git string to a Breezy URL."""
-
-    # some packages seem to use [PATH] behind the URL to
-    # indicate a subdirectory inside of the versioned tree.
-    # (this is not documented in policy)
-
-    m = re.finditer(r' \[([^] ]+)\]', url)
-    try:
-        m = next(m)
-        url = url[:m.start()] + url[m.end():]
-        subpath = m.group(1)
-    except StopIteration:
-        subpath = None
+    (url, branch, subpath) = split_vcs_url(url)
 
     from breezy.git.urls import git_url_to_bzr_url
-    if ' -b ' in url:
-        (url, branch) = url.split(' -b ', 1)
-    else:
-        branch = None
 
     url = fixup_broken_git_url(url)
     url = git_url_to_bzr_url(url)
@@ -139,15 +124,14 @@ def vcs_cvs_url_to_bzr_url(location):
 
 
 def vcs_hg_url_to_bzr_url(url):
-    if ' -b ' in url:
-        (url, branch) = url.split(' -b ', 1)
-    else:
-        branch = None
+    (url, branch, subpath) = split_vcs_url(url)
 
     if branch:
         branch = urlutils.quote(branch, '')
         url = urlutils.join_segment_parameters(
             url, {'branch': branch})
+    if subpath:
+        url = urlutils.join(url, subpath)
     return url
 
 
