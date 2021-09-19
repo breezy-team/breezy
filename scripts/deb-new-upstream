@@ -193,6 +193,14 @@ class QuiltPatchPushFailure(Exception):
         self.actual_error = actual_error
 
 
+class UpstreamBranchLocationInvalid(Exception):
+    """Upstream branch location is invalid."""
+
+    def __init__(self, url, extra):
+        self.url = url
+        self.extra = extra
+
+
 class InvalidFormatUpstreamVersion(Exception):
     """Invalid format upstream version string."""
 
@@ -510,6 +518,15 @@ def find_new_upstream(  # noqa: C901
                 )
             else:
                 raise UpstreamBranchUnavailable(upstream_branch_location, e)
+            upstream_branch = None
+            upstream_branch_browse = None
+        except urlutils.InvalidURL as e:
+            if not snapshot and allow_ignore_upstream_branch:
+                logging.warning(
+                    "Upstream branch location %s invalid; ignoring. %s",
+                    e.path, e)
+            else:
+                raise UpstreamBranchLocationInvalid(e.path, e.extra)
             upstream_branch = None
             upstream_branch_browse = None
     else:
@@ -1323,6 +1340,12 @@ async def main():
                 "Last upstream version %s already imported." % e.version,
                 upstream_version=e.version
             )
+            return 1
+        except UpstreamBranchLocationInvalid as e:
+            report_fatal(
+                "upstream-branch-invalid",
+                "The upstream branch location (%s) is invalid: %s" % (
+                    e.url, e.extra))
             return 1
         except ChangelogGeneratedFile as e:
             report_fatal(
