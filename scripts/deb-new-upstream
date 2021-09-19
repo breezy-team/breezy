@@ -120,6 +120,7 @@ from breezy.plugins.debian.upstream.branch import (
 )
 
 from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
+from debmutate.reformatting import GeneratedFile
 from debmutate.versions import (
     matches_release,
     new_upstream_package_version,
@@ -259,6 +260,15 @@ class NewerUpstreamAlreadyImported(Exception):
     def __init__(self, old_upstream_version, new_upstream_version):
         self.old_upstream_version = old_upstream_version
         self.new_upstream_version = new_upstream_version
+
+
+class ChangelogGeneratedFile(Exception):
+    """The changelog file is generated."""
+
+    def __init__(self, path, template_path, template_type):
+        self.path = path
+        self.template_path = template_path
+        self.template_type = template_type
 
 
 RELEASE_BRANCH_NAME = "new-upstream-release"
@@ -1042,21 +1052,24 @@ def merge_upstream(  # noqa: C901
             raise UpstreamMergeConflicted(old_upstream_version, conflicts)
         raise UpstreamAlreadyMerged(new_upstream_version)
 
-    with ChangelogEditor(
-            tree.abspath(os.path.join(debian_path, "changelog"))) as cl:
-        if debian_revision is None:
-            debian_revision = initial_debian_revision(distribution_name)
-        new_version = str(new_upstream_package_version(
-            new_upstream_version, debian_revision, cl[0].version.epoch))
-        if not update_changelog:
-            # We need to run "gbp dch" here, since the next "gbp dch" runs
-            # won't pick up the pending changes, as we're about to change
-            # debian/changelog.
-            from debmutate.changelog import gbp_dch
-            gbp_dch(tree.basedir)
-        cl.auto_version(new_version)
+    try:
+        with ChangelogEditor(
+                tree.abspath(os.path.join(debian_path, "changelog"))) as cl:
+            if debian_revision is None:
+                debian_revision = initial_debian_revision(distribution_name)
+            new_version = str(new_upstream_package_version(
+                new_upstream_version, debian_revision, cl[0].version.epoch))
+            if not update_changelog:
+                # We need to run "gbp dch" here, since the next "gbp dch" runs
+                # won't pick up the pending changes, as we're about to change
+                # debian/changelog.
+                from debmutate.changelog import gbp_dch
+                gbp_dch(tree.basedir)
+            cl.auto_version(new_version)
 
-        cl.add_entry([upstream_merge_changelog_line(new_upstream_version)])
+            cl.add_entry([upstream_merge_changelog_line(new_upstream_version)])
+    except GeneratedFile as e:
+        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type)
 
     if not need_upstream_tarball:
         logging.info("The changelog has been updated for the new version.")
@@ -1310,6 +1323,13 @@ async def main():
                 "Last upstream version %s already imported." % e.version,
                 upstream_version=e.version
             )
+            return 1
+        except ChangelogGeneratedFile as e:
+            report_fatal(
+                "changelog-generated-file",
+                "changelog file can't be updated because it is generated. "
+                "(template type: %s, path: %s)" % (
+                    e.template_type, e.template_path))
             return 1
         except UnsupportedRepackFormat as e:
             error_description = (
