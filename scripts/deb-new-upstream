@@ -1301,6 +1301,9 @@ async def main():
                     create_dist=create_dist,
                     force_big_version_jump=args.force_big_version_jump,
                 )
+        except MemoryError as e:
+            report_fatal("memory-error", str(e))
+            return 1
         except UpstreamAlreadyImported as e:
             report_fatal(
                 "nothing-to-do",
