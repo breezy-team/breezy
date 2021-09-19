@@ -171,7 +171,7 @@ class AddChangelogError(BzrError):
         BzrError.__init__(self, changelog=changelog)
 
 
-def find_changelog(t, subpath='', merge=False, max_blocks=1):
+def find_changelog(t, subpath='', merge=False, max_blocks=1, strict=False):
     """Find the changelog in the given tree.
 
     First looks for 'debian/changelog'. If "merge" is true will also
@@ -229,7 +229,8 @@ def find_changelog(t, subpath='', merge=False, max_blocks=1):
         contents = t.get_file_text(changelog_file)
     changelog = Changelog()
     changelog.parse_changelog(
-        contents, max_blocks=max_blocks, allow_empty_author=True)
+        contents, max_blocks=max_blocks, allow_empty_author=True,
+        strict=strict)
     return changelog, top_level
 
 
