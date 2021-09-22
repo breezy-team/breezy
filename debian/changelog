@@ -1,3 +1,9 @@
+breezy-debian (2.8.64) UNRELEASED; urgency=medium
+
+  * Import deb-move-orphaned from silver-platter.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 22 Sep 2021 18:14:34 +0100
+
 breezy-debian (2.8.63) unstable; urgency=medium
 
   * Support SVP protocol in scripts.
