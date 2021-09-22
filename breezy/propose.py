@@ -199,6 +199,10 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.post_comment)
 
+    def reopen(self):
+        """Reopen this merge proposal."""
+        raise NotImplementedError(self.reopen)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.
@@ -337,7 +341,7 @@ class Hoster(object):
             url, possible_transports=[branch.control_transport])
 
     @classmethod
-    def probe_from_url(cls, url, possible_hosters=None):
+    def probe_from_url(cls, url, possible_transports=None):
         """Create a Hoster object if this hoster knows about a URL."""
         raise NotImplementedError(cls.probe_from_url)
 
@@ -452,6 +456,24 @@ def get_proposal_by_url(url):
         except UnsupportedHoster:
             pass
     raise UnsupportedHoster(url)
+
+
+def create_project(url: str) -> None:
+    """Create a project.
+
+    Args:
+      url: URL of project to create
+    """
+    for hoster_cls in [hoster_cls for name, hoster_cls in hosters.items()]:
+        try:
+            hoster = hoster_cls.probe_from_url(url)
+        except UnsupportedHoster:
+            pass
+        else:
+            hoster.create_project(urlutils.URL.from_string(url).path)
+            break
+    else:
+        raise UnsupportedHoster(url)
 
 
 hosters = registry.Registry()
