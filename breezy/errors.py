@@ -1269,7 +1269,7 @@ class InvalidHttpResponse(TransportError):
 
     _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
 
-    def __init__(self, path, msg, orig_error=None):
+    def __init__(self, path, msg, orig_error=None, headers=None):
         self.path = path
         if orig_error is None:
             orig_error = ''
@@ -1277,6 +1277,7 @@ class InvalidHttpResponse(TransportError):
             # This is reached for obscure and unusual errors so we want to
             # preserve as much info as possible to ease debug.
             orig_error = ': %r' % (orig_error,)
+        self.headers = headers
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
@@ -1284,7 +1285,7 @@ class UnexpectedHttpStatus(InvalidHttpResponse):
 
     _fmt = "Unexpected HTTP status %(code)d for %(path)s: %(extra)s"
 
-    def __init__(self, path, code, extra=None):
+    def __init__(self, path, code, extra=None, headers=None):
         self.path = path
         self.code = code
         self.extra = extra or ''
@@ -1292,7 +1293,7 @@ class UnexpectedHttpStatus(InvalidHttpResponse):
         if extra is not None:
             full_msg += ': ' + extra
         InvalidHttpResponse.__init__(
-            self, path, full_msg)
+            self, path, full_msg, headers=headers)
 
 
 class BadHttpRequest(UnexpectedHttpStatus):

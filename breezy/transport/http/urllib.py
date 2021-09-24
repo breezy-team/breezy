@@ -1732,7 +1732,8 @@ class HTTPDefaultErrorHandler(urllib_request.HTTPDefaultErrorHandler):
         else:
             raise errors.UnexpectedHttpStatus(
                 req.get_full_url(), code,
-                'Unable to handle http code: %s' % msg)
+                'Unable to handle http code: %s' % msg,
+                headers=hdrs)
 
 
 class Opener(object):
@@ -1983,7 +1984,7 @@ class HttpTransport(ConnectedTransport):
             else:
                 raise errors.BadHttpRequest(abspath, response.reason)
         elif response.status not in (200, 206):
-            raise errors.UnexpectedHttpStatus(abspath, response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
 
         data = handle_response(
             abspath, response.status, response.getheader, response)
@@ -2214,7 +2215,7 @@ class HttpTransport(ConnectedTransport):
             'POST', abspath, body=body_bytes,
             headers={'Content-Type': 'application/octet-stream'})
         if response.status not in (200, 403):
-            raise errors.UnexpectedHttpStatus(abspath, response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)
@@ -2228,7 +2229,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         response = self.request('HEAD', abspath)
         if response.status not in (200, 404):
-            raise errors.UnexpectedHttpStatus(abspath, response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
 
         return response
 
@@ -2457,7 +2458,8 @@ class HttpTransport(ConnectedTransport):
         if resp.status in (403, 405):
             raise errors.InvalidHttpResponse(
                 abspath,
-                "OPTIONS not supported or forbidden for remote URL")
+                "OPTIONS not supported or forbidden for remote URL",
+                headers=resp.getheaders())
         return resp.getheaders()
 
 
