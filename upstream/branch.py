@@ -680,7 +680,7 @@ def _dupe_vcs_tree(tree, directory):
 
 
 def run_dist_command(
-        rev_tree: Tree, package: str, version: Version, target_dir: str,
+        rev_tree: Tree, package: Optional[str], version: Version, target_dir: str,
         dist_command: str, include_controldir: bool = False) -> bool:
 
     def _run_and_interpret(command, env, dir):
@@ -700,9 +700,13 @@ def run_dist_command(
 
     with ExitStack() as es:
         td = es.enter_context(tempfile.TemporaryDirectory())
-        package_dir = os.path.join(td, package)
+        if package:
+            package_dir = os.path.join(td, package)
+        else:
+            package_dir = os.path.join(package_dir, 'package')
         env = dict(os.environ.items())
-        env['PACKAGE'] = package
+        if package:
+            env['PACKAGE'] = package
         env['VERSION'] = version
         env['DIST_RESULT'] = os.path.join(td, 'dist.json')
         note('Running dist command: %s', dist_command)
@@ -741,7 +745,7 @@ def run_dist_command(
                     os.rename(entry.path, os.path.join(target_dir, entry.name))
                     return entry.name
             note('No tarballs found in dist directory.')
-        diff = set(os.listdir(td)) - set([package])
+        diff = set(os.listdir(td)) - set([os.path.basename(package_dir)])
         if len(diff) == 1:
             fn = diff.pop()
             note('Found tarball %s in parent directory.', fn)
