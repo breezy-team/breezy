@@ -491,10 +491,10 @@ class Launchpad(Hoster):
         return iter([])
 
     def _getPerson(self, person):
-        if '@' in name:
-            return self.launchpad.people.getByEmail(email=name)
+        if '@' in person:
+            return self.launchpad.people.getByEmail(email=person)
         else:
-            return self.launchpad.people[name]
+            return self.launchpad.people[person]
 
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.
