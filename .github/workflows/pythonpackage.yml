@@ -47,3 +47,4 @@ jobs:
         env:
           PYTHONHASHSEED: random
           BRZ_PLUGIN_PATH: -site:-user
+          PYTHONPATH: .
