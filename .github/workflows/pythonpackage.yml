@@ -33,7 +33,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -U pip setuptools
-          pip install -U pip coverage codecov flake8 testtools paramiko fastbencode fastimport configobj cython testscenarios six docutils $TEST_REQUIRE sphinx sphinx_epytext launchpadlib patiencediff pyinotify git+https://github.com/dulwich/dulwich
+          pip install -U pip coverage codecov flake8 testtools paramiko fastbencode fastimport configobj cython testscenarios six docutils $TEST_REQUIRE sphinx sphinx_epytext launchpadlib patiencediff pyinotify git+https://github.com/dulwich/dulwich setuptools-rust
       - name: Build docs
         run: |
           make docs PYTHON=python
