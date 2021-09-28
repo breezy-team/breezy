@@ -153,7 +153,7 @@ class UScanSource(UpstreamSource):
                         w.splitlines()[0]):
                     raise WatchLineWithoutMatches(w.splitlines()[1])
                 raise UScanError(w)
-            return
+            return None, None
         if uversionmangle is None:
             return (unmangled_new_version, unmangled_new_version)
         return unmangled_new_version, uversionmangle(unmangled_new_version)
