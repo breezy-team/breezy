@@ -74,11 +74,14 @@ def changelog_commit_message(
     return ''.join(strip_changelog_message(changes))
 
 
-def debcommit(tree, committer=None, subpath="", paths=None, reporter=None):
-    message = changelog_commit_message(
-        tree, tree.basis_tree(),
-        path=posixpath.join(subpath, "debian/changelog")
-    )
+def debcommit(
+        tree, committer=None, subpath="", paths=None, reporter=None,
+        message=None):
+    if message is None:
+        message = changelog_commit_message(
+            tree, tree.basis_tree(),
+            path=posixpath.join(subpath, "debian/changelog")
+        )
     if paths:
         specific_files = [posixpath.join(subpath, p) for p in paths]
     elif subpath:
