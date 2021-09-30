@@ -575,8 +575,8 @@ class UpstreamBranchSource(UpstreamSource):
         if components is not None and components != [None]:
             # Multiple components are not supported
             raise PackageVersionNotPresent(package, version, self)
-        note("Looking for upstream %s/%s in upstream branch %r.",
-             package, version, getattr(self, '_actual_branch', self.upstream_branch))
+        note("Looking for upstream %s in upstream branch %r.",
+             version, getattr(self, '_actual_branch', self.upstream_branch))
         with self.upstream_branch.lock_read():
             if revisions is not None:
                 revid = revisions[None]
