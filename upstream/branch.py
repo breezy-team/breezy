@@ -703,7 +703,7 @@ def run_dist_command(
         if package:
             package_dir = os.path.join(td, package)
         else:
-            package_dir = os.path.join(package_dir, 'package')
+            package_dir = os.path.join(td, 'package')
         env = dict(os.environ.items())
         if package:
             env['PACKAGE'] = package
