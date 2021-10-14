@@ -28,6 +28,7 @@ from urllib.request import urlopen
 import breezy.bzr
 import breezy.git
 
+from breezy.errors import NoSuchFile
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
@@ -37,6 +38,7 @@ from breezy.plugins.debian.import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
 )
+from breezy.plugins.debian.util import MissingChangelogError
 
 BRANCH_NAME = "missing-commits"
 
@@ -164,9 +166,13 @@ def retrieve_source(package_name, target):
 
 def import_uncommitted(tree, subpath):
     cl_path = os.path.join(subpath, "debian/changelog")
-    with tree.get_file(cl_path) as f:
-        tree_cl = Changelog(f)
-        package_name = tree_cl.package
+    try:
+        with tree.get_file(cl_path) as f:
+            tree_cl = Changelog(f)
+            package_name = tree_cl.package
+    except NoSuchFile:
+        raise MissingChangelogError([cl_path])
+
     with contextlib.ExitStack() as es:
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
         retrieve_source(package_name, archive_source)
@@ -243,6 +249,11 @@ async def main():
         else:
             reason = e.reason
         report_fatal("apt-source-error", reason)
+        return 1
+    except MissingChangelogError as e:
+        report_fatal(
+            "missing-changelog",
+            "Missing changelog: %s" % e.locations[0])
         return 1
     except NoAptSources:
         report_fatal(
