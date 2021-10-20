@@ -68,9 +68,12 @@ def new_tarball_name(package, version, old_name):
     """Determine new tarball name based on the package name and the old name.
     """
     if package is None:
-        if '-' not in old_name:
+        if '-' in old_name:
+            package = old_name.split('-')[0]
+        elif '_' in old_name:
+            package = old_name.split('_')[0]
+        else:
             raise ValueError(old_name)
-        package = old_name.split('-')[0]
     old_format = get_filetype(old_name)
     if old_format in ("gz", "bz2", "xz"):
         return tarball_name(package, version, None, old_format)

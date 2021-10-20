@@ -112,6 +112,9 @@ def do_import(
       merge_type: Merge type
       committer: Committer string to use
       files_excluded: Files to exclude
+    Returns:
+      list with (component, tag, revid, pristine_tar_imported)
+      tuples
     """
     db = DistributionBranch(tree.branch, tree.branch, tree=tree)
     dbs = DistributionBranchSet()
@@ -238,3 +241,17 @@ def get_upstream_branch_location(tree, subpath, config, trust_package=False):
                 None, upstream_branch_location
             )
     return (upstream_branch_location, upstream_branch_browse)
+
+
+def get_existing_imported_upstream_revids(
+        upstream_source, package, new_upstream_version):
+    imported_revids = []
+    for component, revid in upstream_source.version_as_revisions(
+        package, new_upstream_version
+    ).items():
+        upstream_tag = upstream_source.tag_name(
+            new_upstream_version, component
+        )
+        imported_revids.append(
+            (component, upstream_tag, revid, None))
+    return imported_revids

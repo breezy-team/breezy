@@ -866,17 +866,19 @@ class DistributionBranch(object):
                                  files_excluded=None):
         """Import an upstream part to the upstream branch.
 
-        :param tarballs: List of tarballs / components to extract
-        :param version: The upstream version to import.
-        :param parents: The tarball-branch parents to use for the import.
+        Args:
+          tarballs: List of tarballs / components to extract
+          version: The upstream version to import.
+          parents: The tarball-branch parents to use for the import.
             If an upstream branch is supplied, its automatically added to
             parents.
-        :param upstream_branch: An upstream branch to associate with the
+          upstream_branch: An upstream branch to associate with the
             tarball.
-        :param upstream_revisions: Upstream revision ids dictionary
-        :param md5sum: hex digest of the md5sum of the tarball, if known.
-        :return: list with (component, tag, revid, pristine_tar_imported)
-            tuples
+          upstream_revisions: Upstream revision ids dictionary
+          md5sum: hex digest of the md5sum of the tarball, if known.
+        Returns:
+          list with (component, tag, revid, pristine_tar_imported)
+          tuples
         """
         with _extract_tarballs_to_tempdir(tarballs) as tarball_dir:
             return self.import_upstream(

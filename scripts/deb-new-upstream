@@ -47,6 +47,7 @@ from breezy.errors import (
     InvalidNormalization,
     NoSuchFile,
     NotBranchError,
+    NoCommits,
     PointlessMerge,
     InvalidHttpResponse,
     NoRoundtrippingSupport,
@@ -72,6 +73,7 @@ from breezy.transform import MalformedTransform
 from breezy.plugins.debian.merge_upstream import (
     do_import,
     do_merge,
+    get_existing_imported_upstream_revids,
     get_tarballs,
     PreviousVersionTagMissing,
 )
@@ -1025,25 +1027,27 @@ def merge_upstream(  # noqa: C901
                 # TODO(jelmer): Perhaps reconcile these two exceptions?
                 raise UpstreamAlreadyMerged(new_upstream_version)
             except UpstreamAlreadyImported:
-                pristine_tar_source = get_pristine_tar_source(tree, tree.branch)
-                upstream_revid = None
-                imported_revids = []
-                for component, revid in pristine_tar_source.version_as_revisions(
-                    package, new_upstream_version
-                ).items():
-                    if component is None:
-                        upstream_revid = revid
-                    upstream_tag = pristine_tar_source.tag_name(
-                        new_upstream_version, component
-                    )
-                    imported_revids.append(
-                        (component, upstream_tag, revid, None))
+                pristine_tar_source = get_pristine_tar_source(
+                    tree, tree.branch)
+                imported_revids = get_existing_imported_upstream_revids(
+                    pristine_tar_source, package, new_upstream_version)
+                for entry in imported_revids:
+                    if entry[0] is None:
+                        upstream_revid = entry[2]
+                else:
+                    upstream_revid = None
                 try:
                     conflicts = tree.merge_from_branch(
                         pristine_tar_source.branch, to_revision=upstream_revid
                     )
                 except PointlessMerge:
                     raise UpstreamAlreadyMerged(new_upstream_version)
+                except NoCommits:
+                    # Maybe it's somewhere in our history, but
+                    # there isn't a viable upstream branch.
+                    conflicts = tree.merge_from_branch(
+                        tree.branch, to_revision=upstream_revid
+                    )
     else:
         conflicts = 0
         imported_revids = []

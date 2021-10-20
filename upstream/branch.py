@@ -24,7 +24,7 @@ import os
 import re
 import subprocess
 import tempfile
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Iterable
 
 from debmutate.versions import (
     git_snapshot_data_from_version,
@@ -373,6 +373,25 @@ def get_export_upstream_revision(config=None, version=None):
     return rev
 
 
+def guess_upstream_tag(package, version, is_snapshot: bool = False) -> Iterable[str]:
+    yield version
+    if package:
+        for prefix in ['rust-']:
+            if package.startswith(prefix):
+                yield '%s-%s' % (package[len(prefix):], version)
+        yield '%s-%s' % (package, version)
+    if not is_snapshot:
+        yield 'v%s' % version
+        yield 'v.%s' % version
+        yield 'release-%s' % version
+        yield '%s_release' % version.replace('.', '_')
+        yield '%s' % version.replace('.', '_')
+        yield 'version-%s' % version
+        if package:
+            yield '%s-%s-release' % (package, version.replace('.', '_'))
+            yield '%s-v%s' % (package, version)
+
+
 def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
     if version.endswith('+ds'):
@@ -394,22 +413,8 @@ def guess_upstream_revspec(package, version):
     if git_date:
         is_snapshot = True
         yield "date:%s" % git_date
-    yield 'tag:%s' % version
-    if package:
-        for prefix in ['rust-']:
-            if package.startswith(prefix):
-                yield 'tag:%s-%s' % (package[len(prefix):], version)
-        yield 'tag:%s-%s' % (package, version)
-    if not is_snapshot:
-        yield 'tag:v%s' % version
-        yield 'tag:v.%s' % version
-        yield 'tag:release-%s' % version
-        yield 'tag:%s_release' % version.replace('.', '_')
-        yield 'tag:%s' % version.replace('.', '_')
-        yield 'tag:version-%s' % version
-        if package:
-            yield 'tag:%s-%s-release' % (package, version.replace('.', '_'))
-            yield 'tag:%s-v%s' % (package, version)
+    for tag in guess_upstream_tag(package, version, is_snapshot):
+        yield 'tag:%s' % tag
 
 
 class UpstreamBranchSource(UpstreamSource):
