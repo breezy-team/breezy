@@ -162,10 +162,10 @@ async def main():
         target_changes = _build_helper(
             local_tree, subpath, local_tree.branch, td, builder=builder
         )
-        debsign(target_changes)
+        debsign(target_changes['source'])
 
         if not args.dry_run:
-            dput_changes(target_changes)
+            dput_changes(target_changes['source'])
 
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:

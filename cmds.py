@@ -1636,10 +1636,10 @@ class cmd_debrelease(Command):
             release(local_tree, subpath)
 
             with tempfile.TemporaryDirectory() as td:
-                changes_file = _build_helper(
+                changes_files = _build_helper(
                         local_tree, subpath, local_tree.branch,
                         target_dir=(td if not skip_upload else None),
                         builder=builder)
                 if not skip_upload:
-                    dput_changes(changes_file)
+                    dput_changes(changes_files['source'])
             local_tree.branch.push(branch)

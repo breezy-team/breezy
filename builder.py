@@ -134,7 +134,9 @@ def do_build(package_name, version, distiller, local_tree, config,
         builder.build()
         run_hook(local_tree, 'post-build', config, wd=build_source_dir)
         if target_dir is not None:
+            ret = {}
             for kind, entry in find_changes_files(bd, package_name, version):
-                return dget_changes(entry.path, target_dir)
-            else:
+                ret[kind] = dget_changes(entry.path, target_dir)
+            if not ret:
                 raise ChangesFileMissing()
+            return ret
