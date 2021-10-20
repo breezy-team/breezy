@@ -291,9 +291,9 @@ def _get_distiller(
             tree, subpath, upstream_provider, top_level=top_level,
             use_existing=use_existing)
     elif build_type == BUILD_TYPE_NATIVE:
-        return NativeSourceDistiller(tree, subpath)
+        return NativeSourceDistiller(tree, subpath, use_existing=use_existing)
     else:
-        return FullSourceDistiller(tree, subpath, upstream_provider)
+        return FullSourceDistiller(tree, subpath, upstream_provider, use_existing=use_existing)
 
 
 class cmd_builddeb(Command):
@@ -1598,6 +1598,9 @@ def _build_helper(
                     local_tree, config, builder, target_dir)
 
 
+DEFAULT_BUILDER = "sbuild --source --source-only-changes --no-clean-source"
+
+
 class cmd_debrelease(Command):
     """Release a new version of a package.
 
@@ -1618,7 +1621,7 @@ class cmd_debrelease(Command):
         Option('skip-upload', help='Skip upload.'), builder_opt]
 
     def run(self, location='.', strict=True, skip_upload=False,
-            builder="sbuild --source --source-only-changes"):
+            builder=DEFAULT_BUILDER):
         from .release import release
         from .util import (
             dput_changes,

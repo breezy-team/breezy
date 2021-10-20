@@ -69,13 +69,14 @@ class SourceDistiller(object):
 class NativeSourceDistiller(SourceDistiller):
     """A SourceDistiller for unpacking a native package from a branch."""
 
-    def __init__(self, tree, subpath):
+    def __init__(self, tree, subpath, use_existing=False):
         """Create a SourceDistiller to distill from the specified tree.
 
         :param tree: The tree to use as the source.
         :param subpath: subpath in the tree where the package lives
         """
         super(NativeSourceDistiller, self).__init__(tree, subpath)
+        self.use_existing = use_existing
 
     def distill(self, target):
         """Extract the source to a tree rooted at the given location.
@@ -86,15 +87,16 @@ class NativeSourceDistiller(SourceDistiller):
         :param target: a string containing the location at which to
             place the tree containing the buildable source.
         """
-        if os.path.exists(target):
-            raise bzr_errors.FileExists(target)
+        if not self.use_existing:
+            if os.path.exists(target):
+                raise bzr_errors.FileExists(target)
         export(self.tree, target, subdir=self.subpath)
 
 
 class FullSourceDistiller(SourceDistiller):
     """A SourceDistiller for full-source branches, a.k.a. normal mode"""
 
-    def __init__(self, tree, subpath, upstream_provider):
+    def __init__(self, tree, subpath, upstream_provider, use_existing=False):
         """Create a SourceDistiller to distill from the specified tree.
 
         :param tree: The tree to use as the source.
@@ -104,6 +106,7 @@ class FullSourceDistiller(SourceDistiller):
         """
         super(FullSourceDistiller, self).__init__(tree, subpath)
         self.upstream_provider = upstream_provider
+        self.use_existing = use_existing
 
     def distill(self, target):
         """Extract the source to a tree rooted at the given location.
@@ -114,8 +117,9 @@ class FullSourceDistiller(SourceDistiller):
         :param target: a string containing the location at which to
             place the tree containing the buildable source.
         """
-        if os.path.exists(target):
-            raise bzr_errors.FileExists(target)
+        if not self.use_existing:
+            if os.path.exists(target):
+                raise bzr_errors.FileExists(target)
         parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
         export(self.tree, target, subdir=self.subpath)
