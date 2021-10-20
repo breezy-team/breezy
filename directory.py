@@ -159,7 +159,7 @@ def source_package_vcs_url(control):
 class AptDirectory(object):
     """Simple Bazaar directory service which uses dpkg Vcs-* fields."""
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         if "/" in name:
             (name, version) = name.split("/", 1)
         else:
@@ -205,7 +205,7 @@ class AptDirectory(object):
 class DgitDirectory(object):
     """Directory that looks up the URL according to a Dgit control field."""
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         if "/" in name:
             (name, version) = name.split("/", 1)
         else:
@@ -257,7 +257,7 @@ class DgitDirectory(object):
 class VcsDirectory(object):
     """Use local Vcs Directory."""
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         from debian.deb822 import Deb822
         with open('debian/control', 'r') as f:
             source = Deb822(f)
