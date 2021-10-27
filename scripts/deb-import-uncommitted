@@ -253,7 +253,7 @@ async def main():
     except MissingChangelogError as e:
         report_fatal(
             "missing-changelog",
-            "Missing changelog: %s" % e.locations[0])
+            "Missing changelog: %s" % e.location[0])
         return 1
     except NoAptSources:
         report_fatal(
