@@ -1,6 +1,7 @@
 breezy-debian (2.8.64) UNRELEASED; urgency=medium
 
   * Import deb-move-orphaned from silver-platter.
+  * Rebuild source-only. Closes: #998032
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 22 Sep 2021 18:14:34 +0100
 
