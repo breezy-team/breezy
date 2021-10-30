@@ -232,7 +232,8 @@ def parse_gitlab_merge_request_url(url):
 
 def _unexpected_status(path, response):
     raise errors.UnexpectedHttpStatus(
-        path, response.status, response.data.decode('utf-8', 'replace'))
+        path, response.status, response.data.decode('utf-8', 'replace'),
+        headers=response.getheaders())
 
 
 class GitLabMergeProposal(MergeProposal):

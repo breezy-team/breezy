@@ -20,6 +20,8 @@ from io import (
     BytesIO,
     )
 
+import fastbencode as bencode
+
 from .. import lazy_import
 lazy_import.lazy_import(globals(),
                         """
@@ -29,7 +31,6 @@ from breezy.bzr import (
     )
 """)
 from .. import (
-    bencode,
     cache_utf8,
     errors,
     revision as _mod_revision,

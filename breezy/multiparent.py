@@ -28,7 +28,6 @@ import itertools
 import patiencediff
 
 from breezy import (
-    bencode,
     ui,
     )
 """)
@@ -596,12 +595,16 @@ class MultiVersionedFile(BaseVersionedFile):
                 raise
 
     def save(self):
-        open(self._filename + '.mpidx', 'wb').write(bencode.bencode(
-            (self._parents, list(self._snapshots), self._diff_offset)))
+        import fastbencode as bencode
+        with open(self._filename + '.mpidx', 'wb') as f:
+            f.write(bencode.bencode(
+                (self._parents, list(self._snapshots), self._diff_offset)))
 
     def load(self):
-        self._parents, snapshots, self._diff_offset = bencode.bdecode(
-            open(self._filename + '.mpidx', 'rb').read())
+        import fastbencode as bencode
+        with open(self._filename + '.mpidx', 'rb') as f:
+            self._parents, snapshots, self._diff_offset = bencode.bdecode(
+                f.read())
         self._snapshots = set(snapshots)
 
 

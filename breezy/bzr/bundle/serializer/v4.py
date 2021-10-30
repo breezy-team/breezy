@@ -20,8 +20,9 @@ from io import (
     )
 import re
 
+import fastbencode as bencode
+
 from .... import (
-    bencode,
     errors,
     iterablefile,
     lru_cache,
