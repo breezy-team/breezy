@@ -26,7 +26,7 @@ Build-Depends: bash-completion,
                python3-subunit <!nocheck>,
                python3-testtools (>= 0.9.5~) <!nocheck>,
                debhelper-compat (= 13)
-Standards-Version: 4.5.0
+Standards-Version: 4.6.0
 Rules-Requires-Root: no
 Vcs-Bzr: https://code.breezy-vcs.org/breezy/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy/unstable
