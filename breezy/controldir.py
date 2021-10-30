@@ -771,7 +771,7 @@ class ControlDir(ControlComponent):
         return klass.open_containing_from_transport(transport)
 
     @classmethod
-    def open_containing_from_transport(klass, a_transport):
+    def open_containing_from_transport(klass, a_transport, probers=None):
         """Open an existing branch which contains a_transport.base.
 
         This probes for a branch at a_transport, and searches upwards from there.
@@ -789,7 +789,7 @@ class ControlDir(ControlComponent):
         url = a_transport.base
         while True:
             try:
-                result = klass.open_from_transport(a_transport)
+                result = klass.open_from_transport(a_transport, probers=probers)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError:
                 pass

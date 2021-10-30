@@ -18,6 +18,7 @@
 client and server.
 """
 
+
 try:
     from collections.abc import deque
 except ImportError:  # python < 3.7
@@ -29,6 +30,8 @@ import sys
 import _thread
 import time
 
+from fastbencode import bdecode_as_tuple, bencode
+
 import breezy
 from ... import (
     debug,
@@ -37,7 +40,6 @@ from ... import (
     )
 from . import message, request
 from ...trace import log_exception_quietly, mutter
-from ...bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and

@@ -17,6 +17,20 @@ Bug Fixes
  * Fix compatibility with newer versions of Dulwich.
    (Jelmer Vernooĳ)
 
+Testing
+*******
+
+ * Extend test certificate expiry to 1000 years.
+   (Bernhard M. Wiedemann, #1926151)
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+ * Breezy now uses the fastbencode Python package for bencoding.
+   (Jelmer Vernooĳ)
+
 brz 3.2.0
 #########
 

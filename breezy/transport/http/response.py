@@ -218,7 +218,8 @@ class RangeFile(ResponseFile):
         if content_range is None:
             raise errors.InvalidHttpResponse(
                 self._path,
-                'Content-Range header missing in a multi-part response')
+                'Content-Range header missing in a multi-part response',
+                headers=self._headers)
         self.set_range_from_header(content_range)
 
     def set_range_from_header(self, content_range):
