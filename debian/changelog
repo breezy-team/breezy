@@ -8,8 +8,9 @@ breezy (3.2.1+bzr7556-1) UNRELEASED; urgency=medium
   * Re-export upstream signing key without extra signatures.
   * Update standards version to 4.6.0, no changes needed.
   * New upstream snapshot.
+   + Add dependency on python3-fastbencode.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Oct 2021 18:56:37 -0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Oct 2021 18:57:10 +0100
 
 breezy (3.2.1-1) unstable; urgency=low
 
