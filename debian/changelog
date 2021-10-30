@@ -5,6 +5,7 @@ breezy (3.2.1-2) UNRELEASED; urgency=medium
       does this.
     + debian/rules: Drop --fail-missing argument to dh_missing, which is now the
       default.
+  * Re-export upstream signing key without extra signatures.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Oct 2021 18:38:08 -0000
 
