@@ -18,7 +18,6 @@ CONCURRENCY = BRZ_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_
 endif
 
 override_dh_auto_test:
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	[ -d debian/brzhome ] || mkdir debian/brzhome
 	$(CONCURRENCY) \
 	BRZ_HOME=debian/brzhome \
@@ -30,7 +29,6 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	-x breezy.tests.test_transport.TestSSHConnections.test_bzr_connect_to_bzr_ssh -x test_export_pot \
 	-x breezy.tests.blackbox.test_branch.TestRemoteBranch.test_branch_local_remote \
 	-x breezy.tests.blackbox.test_branch.TestRemoteBranch.test_branch_remote_remote
-endif
 
 override_dh_auto_clean:
 	dh_auto_clean
@@ -73,7 +71,7 @@ override_dh_install:
 		  debian/python3-breezy-dbg/usr/man
 
 override_dh_auto_missing:
-	dh_missing --fail-missing
+	dh_missing
 
 override_dh_auto_build:
 	dh_auto_build
