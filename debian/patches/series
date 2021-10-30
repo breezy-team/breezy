@@ -2,3 +2,5 @@
 03_spurious_test_failure
 08_disable_sphinx_epytext
 16_generate_ids
+fix-tests-to-work-with-python-3.9.5.patch
+skip-additional-tests-that-fail-with-py3.9.5.patch

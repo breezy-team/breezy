@@ -10,8 +10,10 @@ breezy (3.2.1+bzr7556-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
    + Add dependency on python3-fastbencode.
   * Source-only build. Closes: #998031
+  * Import patches from Ubuntu to fix Python3.9 compatibility. Closes:
+    #995410
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Oct 2021 18:57:10 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Oct 2021 19:02:58 +0100
 
 breezy (3.2.1-1) unstable; urgency=low
 
