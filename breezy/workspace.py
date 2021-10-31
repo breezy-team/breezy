@@ -25,7 +25,7 @@ from __future__ import absolute_import
 import errno
 import os
 import shutil
-from typing import Optional
+from typing import Optional, List
 
 from .clean_tree import iter_deletables
 from .errors import BzrError, DependencyNotPresent
@@ -46,19 +46,33 @@ class WorkspaceDirty(BzrError):
 
 
 # TODO(jelmer): Move to .clean_tree?
-def reset_tree(local_tree, subpath=''):
+def reset_tree(
+    local_tree: WorkingTree,
+    basis_tree: Optional[Tree] = None,
+    subpath: str = "",
+    dirty_tracker=None,
+) -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
 
     Args:
       local_tree: tree to work on
+      dirty_tracker: Optional dirty tracker
       subpath: Subpath to operate on
     """
-    revert(local_tree, local_tree.branch.basis_tree(),
-           [subpath] if subpath else None)
-    deletables = list(iter_deletables(
-        local_tree, unknown=True, ignored=False, detritus=False))
+    if dirty_tracker and not dirty_tracker.is_dirty():
+        return
+    if basis_tree is None:
+        basis_tree = local_tree.branch.basis_tree()
+    revert(local_tree, basis_tree, [subpath] if not subpath else None)
+    deletables: List[str] = []
+    # TODO(jelmer): Use basis tree
+    for p in local_tree.extras():
+        if not is_inside(subpath, p):
+            continue
+        if not local_tree.is_ignored(p):
+            deletables.append(local_tree.abspath(p))
     delete_items(deletables)
 
 
@@ -117,7 +131,7 @@ def delete_items(deletables, dry_run=False):
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
         warning('unable to remove %s' % path)
-    for path, subp in deletables:
+    for path in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
         else:
@@ -191,7 +205,7 @@ class Workspace(object):
         """
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
-        reset_tree(self.tree, self.subpath)
+        reset_tree(self.tree, subpath=self.subpath)
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
