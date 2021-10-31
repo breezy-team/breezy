@@ -209,7 +209,7 @@ class Workspace(object):
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self):
+    def _stage(self) -> List[str]:
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they
@@ -218,12 +218,19 @@ class Workspace(object):
                 [p for p in sorted(relpaths)
                  if self.tree.has_filename(p) and not
                     self.tree.is_ignored(p)])
-            return [
+            changed = [
                 p for p in relpaths
                 if self.tree.is_versioned(p)]
         else:
             self.tree.smart_add([self.tree.abspath(self.subpath)])
-            return [self.subpath] if self.subpath else None
+            changed = [self.subpath] if self.subpath else None
+
+        if self.tree.supports_setting_file_ids():
+            from .rename_map import RenameMap
+            basis_tree = self.tree.basis_tree()
+            RenameMap.guess_renames(
+                basis_tree, self.tree, dry_run=False)
+        return changed
 
     def iter_changes(self):
         with self.tree.lock_write():
@@ -249,12 +256,6 @@ class Workspace(object):
 
         with self.tree.lock_write():
             specific_files = self._stage()
-
-            if self.tree.supports_setting_file_ids():
-                from .rename_map import RenameMap
-                basis_tree = self.tree.basis_tree()
-                RenameMap.guess_renames(
-                    basis_tree, self.tree, dry_run=False)
 
             kwargs['specific_files'] = specific_files
             revid = self.tree.commit(**kwargs)
