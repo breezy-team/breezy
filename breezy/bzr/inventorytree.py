@@ -141,6 +141,8 @@ class InventoryTree(Tree):
     root_inventory = property(_get_root_inventory,
                               doc="Root inventory of this tree")
 
+    supports_file_ids = True
+
     def _unpack_file_id(self, file_id):
         """Find the inventory and inventory file id for a tree file id.
 

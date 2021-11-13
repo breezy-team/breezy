@@ -160,7 +160,7 @@ class TreeChange(object):
             self.path[0] != self.path[1])
 
     def is_reparented(self):
-        return os.path.dirname(self.path[0]) != os.path.dirname(self.path[1])
+        return osutils.dirname(self.path[0]) != osutils.dirname(self.path[1])
 
     def discard_new(self):
         return self.__class__(
@@ -204,6 +204,12 @@ class Tree(object):
         """Does this tree support symbolic links?
         """
         return osutils.has_symlinks()
+
+    @property
+    def supports_file_ids(self):
+        """Does this tree support file ids?
+        """
+        raise NotImplementedError(self.supports_file_ids)
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
                      extra_trees=None, require_versioned=False, include_root=False,
