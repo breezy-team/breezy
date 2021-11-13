@@ -401,9 +401,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             return None
         return self.mapping.generate_file_id(osutils.safe_unicode(path))
 
-    def all_file_ids(self):
-        raise errors.UnsupportedOperation(self.all_file_ids, self)
-
     def all_versioned_paths(self):
         ret = {u''}
         todo = [(self.store, b'', self.tree)]

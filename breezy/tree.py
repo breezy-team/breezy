@@ -281,10 +281,6 @@ class Tree(object):
         """
         return False
 
-    def all_file_ids(self):
-        """Iterate through all file ids, including ids for missing files."""
-        raise NotImplementedError(self.all_file_ids)
-
     def all_versioned_paths(self):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
