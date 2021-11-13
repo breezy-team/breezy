@@ -24,6 +24,7 @@ from breezy import (
     mutabletree,
     tests,
     )
+from breezy.tree import TreeChange
 from breezy.osutils import has_symlinks
 from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
@@ -1193,27 +1194,25 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         self.assertEqual([], list(tree2.iter_changes(tree1)))
         subtree1.commit('commit', rev_id=b'commit-a')
-        self.assertEqual([
-            InventoryTreeChange(
-                b'root-id',
-                (u'', u''),
-                False,
-                (True, True),
-                (None, None),
-                (u'', u''),
-                ('directory', 'directory'),
-                (False, False)),
-            InventoryTreeChange(
-                b'subtree-id',
-                ('sub', 'sub',),
-                False,
-                (True, True),
-                (b'root-id', b'root-id'),
-                ('sub', 'sub'),
-                ('tree-reference', 'tree-reference'),
-                (False, False))],
-            list(tree2.iter_changes(tree1,
-                                    include_unchanged=True)))
+        self.assertThat(
+            tree2.iter_changes(tree1, include_unchanged=True),
+            TreeChangesMatches(
+                tree1, tree2, [
+                    TreeChange(
+                        (u'', u''),
+                        False,
+                        (True, True),
+                        (u'', u''),
+                        ('directory', 'directory'),
+                        (False, False)),
+                    TreeChange(
+                        ('sub', 'sub',),
+                        False,
+                        (True, True),
+                        ('sub', 'sub'),
+                        ('tree-reference', 'tree-reference'),
+                        (False, False))],
+                    ))
 
     def test_disk_in_subtrees_skipped(self):
         """subtrees are considered not-in-the-current-tree.

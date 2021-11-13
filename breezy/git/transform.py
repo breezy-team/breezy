@@ -1571,6 +1571,8 @@ class GitTransformPreview(GitTreeTransform):
 class GitPreviewTree(PreviewTree, GitTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
+    supports_file_ids = False
+
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
         self.store = transform._tree.store

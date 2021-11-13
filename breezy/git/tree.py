@@ -255,6 +255,8 @@ def ensure_normalized_path(path):
 
 class GitTree(_mod_tree.Tree):
 
+    supports_file_ids = True
+
     def iter_git_objects(self):
         """Iterate over all the objects in the tree.
 
