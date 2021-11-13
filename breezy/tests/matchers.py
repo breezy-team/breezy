@@ -319,6 +319,8 @@ class MatchesTreeChanges(Matcher):
         actual = list(actual)
         if self.use_inventory_tree_changes or (actual and isinstance(actual[0], InventoryTreeChange)):
             expected = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, self.expected)
+        else:
+            expected = self.expected
         if self.use_inventory_tree_changes:
             actual = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, actual)
         return Equals(expected).match(actual)
