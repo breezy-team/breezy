@@ -120,6 +120,8 @@ class TestReference(TestCaseWithTree):
     def test_get_root_id(self):
         # trees should return some kind of root id; it can be none
         tree = self.make_branch_and_tree('tree')
+        if not tree.supports_file_ids:
+            raise tests.TestNotApplicable('file ids not supported')
         root_id = tree.path2id('')
         if root_id is not None:
             self.assertIsInstance(root_id, bytes)
@@ -180,7 +182,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Test lookup without path works
@@ -194,7 +195,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_context_manager(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         with tree.get_file('a') as f:
@@ -203,7 +203,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by path
@@ -212,7 +211,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_lines(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by path
