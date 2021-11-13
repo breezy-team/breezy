@@ -4128,7 +4128,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_treebuilder',
         'breezy.tests.test_treeshape',
         'breezy.tests.test_tsort',
-        'breezy.tests.test_tuned_gzip',
         'breezy.tests.test_ui',
         'breezy.tests.test_uncommit',
         'breezy.tests.test_upgrade',

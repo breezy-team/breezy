@@ -82,6 +82,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_serializer',
         'test_tag',
         'test_testament',
+        'test_tuned_gzip',
         'test_transform',
         'test_versionedfile',
         'test_vf_search',
