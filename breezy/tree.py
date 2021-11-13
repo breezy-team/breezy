@@ -285,13 +285,6 @@ class Tree(object):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
 
-    def id2path(self, file_id, recurse='down'):
-        """Return the path for a file id.
-
-        :raises NoSuchId:
-        """
-        raise NotImplementedError(self.id2path)
-
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
 
