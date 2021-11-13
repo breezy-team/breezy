@@ -66,12 +66,12 @@ from breezy import (
     static_tuple,
     trace,
     tsort,
-    tuned_gzip,
     ui,
     )
 from breezy.bzr import (
     index as _mod_index,
     pack,
+    tuned_gzip,
     )
 
 from breezy.bzr import pack_repo
