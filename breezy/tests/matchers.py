@@ -279,9 +279,6 @@ class MatchesTreeChanges(Matcher):
         Matcher.__init__(self)
         expected = [TreeChange(*x) if isinstance(x, tuple) else x for x in expected]
         self.use_inventory_tree_changes = old_tree.supports_file_ids and new_tree.supports_file_ids
-        if self.use_inventory_tree_changes:
-            expected = self._convert_to_inventory_tree_changes(
-                old_tree, new_tree, expected)
         self.expected = expected
         self.old_tree = old_tree
         self.new_tree = new_tree
@@ -318,6 +315,10 @@ class MatchesTreeChanges(Matcher):
         return '<MatchesTreeChanges(%r)>' % self.expected
 
     def match(self, actual):
+        from ..bzr.inventorytree import InventoryTreeChange
+        actual = list(actual)
+        if self.use_inventory_tree_changes or (actual and isinstance(actual[0], InventoryTreeChange)):
+            expected = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, self.expected)
         if self.use_inventory_tree_changes:
             actual = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, actual)
-        return Equals(self.expected).match(list(actual))
+        return Equals(expected).match(actual)

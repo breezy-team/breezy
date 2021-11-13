@@ -1669,6 +1669,15 @@ class GitPreviewTree(PreviewTree, GitTree):
             return None
         return annotate.reannotate([old_annotation], lines, default_revision)
 
+    def path2id(self, path):
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
+        if not self.is_versioned(path):
+            return None
+        return self._transform._tree.mapping.generate_file_id(path)
+
     def get_file_text(self, path):
         """Return the byte content of a file.
 
