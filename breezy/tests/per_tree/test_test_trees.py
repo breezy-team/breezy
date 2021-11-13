@@ -172,10 +172,11 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
-        if tree.supports_setting_file_ids():
-            tree_root = tree.path2id('')
+        try:
             all_file_ids = set(tree.all_file_ids())
-        else:
+            tree_root = tree.path2id('')
+        except AttributeError:
+            # doesn't support file ids
             all_file_ids = None
         if tree.has_versioned_directories():
             if all_file_ids is not None:
