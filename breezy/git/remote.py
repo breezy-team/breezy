@@ -1011,10 +1011,9 @@ class RemoteGitTagDict(GitTags):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)
-        if result and not isinstance(result, dict):
-            error = result.ref_status.get(ref)
-            if error:
-                raise RemoteGitError(error)
+        error = result.ref_status.get(ref)
+        if error:
+            raise RemoteGitError(error)
 
 
 class RemoteGitBranch(GitBranch):
