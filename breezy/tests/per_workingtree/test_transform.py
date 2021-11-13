@@ -1276,7 +1276,6 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.finalize()
 
     def test_iter_changes_modifications(self):
-        root_id = self.wt.path2id('')
         transform, root = self.transform()
         transform.new_file('old', root, [b'blah'], b'id-1')
         transform.new_file('new', root, [b'blah'])
@@ -1383,7 +1382,6 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertThat(actual, MatchesTreeChanges(tt._tree.basis_tree(), tt._tree, expected))
 
     def test_iter_changes_modified_bleed(self):
-        root_id = self.wt.path2id('')
         """Modified flag should not bleed from one change to another"""
         # unfortunately, we have no guarantee that file1 (which is modified)
         # will be applied before file2.  And if it's applied after file2, it
@@ -1411,7 +1409,6 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def test_iter_changes_move_missing(self):
         """Test moving ids with no files around"""
-        root_id = self.wt.path2id('')
         # Need two steps because versioning a non-existant file is a conflict.
         transform, root = self.transform()
         transform.new_directory('floater', root, b'floater-id')
