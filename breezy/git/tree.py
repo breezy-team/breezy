@@ -382,15 +382,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             raise _mod_tree.FileTimestampUnavailable(path)
         return rev.timestamp
 
-    def id2path(self, file_id, recurse='down'):
-        try:
-            path = self.mapping.parse_file_id(file_id)
-        except ValueError:
-            raise errors.NoSuchId(self, file_id)
-        if self.is_versioned(path):
-            return path
-        raise errors.NoSuchId(self, file_id)
-
     def is_versioned(self, path):
         return self.has_filename(path)
 
@@ -400,9 +391,6 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if not self.is_versioned(path):
             return None
         return self.mapping.generate_file_id(osutils.safe_unicode(path))
-
-    def all_file_ids(self):
-        raise errors.UnsupportedOperation(self.all_file_ids, self)
 
     def all_versioned_paths(self):
         ret = {u''}
@@ -1163,20 +1151,6 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                 return self.mapping.generate_file_id(
                     osutils.safe_unicode(path))
             return None
-
-    def id2path(self, file_id, recurse='down'):
-        if file_id is None:
-            return ''
-        if type(file_id) is not bytes:
-            raise TypeError(file_id)
-        with self.lock_read():
-            try:
-                path = self.mapping.parse_file_id(file_id)
-            except ValueError:
-                raise errors.NoSuchId(self, file_id)
-            if self.is_versioned(path):
-                return path
-            raise errors.NoSuchId(self, file_id)
 
     def _set_root_id(self, file_id):
         raise errors.UnsupportedOperation(self._set_root_id, self)

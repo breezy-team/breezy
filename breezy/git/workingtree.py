@@ -920,9 +920,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     yield (posixpath.relpath(path, from_dir),
                            ("I" if self.is_ignored(path) else "?"), kind, ie)
 
-    def all_file_ids(self):
-        raise errors.UnsupportedOperation(self.all_file_ids, self)
-
     def all_versioned_paths(self):
         with self.lock_read():
             paths = {u""}
