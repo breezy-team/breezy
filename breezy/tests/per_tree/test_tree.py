@@ -138,11 +138,14 @@ class TestReference(TestCaseWithTree):
 
 class TestFileIds(TestCaseWithTree):
 
+    def setUp(self):
+        super(TestFileIds, self).setUp()
+        if not self.workingtree_format.supports_setting_file_ids:
+            raise tests.TestNotApplicable("working tree does not support setting file ids")
+
     def test_id2path(self):
         # translate from file-id back to path
         work_tree = self.make_branch_and_tree('wt')
-        if not work_tree.supports_setting_file_ids():
-            self.skipTest("working tree does not support setting file ids")
         tree = self.get_tree_no_parents_abc_content(work_tree)
         a_id = tree.path2id('a')
         with tree.lock_read():
@@ -155,13 +158,9 @@ class TestFileIds(TestCaseWithTree):
         tree = self.get_tree_no_parents_abc_content(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        try:
-            self.assertEqual(tree.all_file_ids(),
-                             {tree.path2id('a'), tree.path2id(''),
-                              tree.path2id('b'), tree.path2id('b/c')})
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable(
-                'Tree does not support all_file_ids')
+        self.assertEqual(tree.all_file_ids(),
+                         {tree.path2id('a'), tree.path2id(''),
+                          tree.path2id('b'), tree.path2id('b/c')})
 
 
 class TestStoredKind(TestCaseWithTree):
