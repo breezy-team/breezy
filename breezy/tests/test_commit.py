@@ -47,7 +47,7 @@ from . import (
 from .features import (
     SymlinkFeature,
     )
-from .matchers import MatchesAncestry, TreeChangesMatches
+from .matchers import MatchesAncestry, MatchesTreeChanges
 
 
 # TODO: Test commit with some added, and added-but-missing files

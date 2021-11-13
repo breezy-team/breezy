@@ -34,7 +34,7 @@ from ...tree import (
     )
 
 from breezy.tests.per_tree import TestCaseWithTree
-from breezy.tests.matchers import TreeChangesMatches
+from breezy.tests.matchers import MatchesTreeChanges
 
 
 from ..features import (
@@ -145,7 +145,7 @@ class TestTransformPreview(TestCaseWithTree):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         self.assertThat(
             preview_tree.iter_changes(revision_tree),
-            TreeChangesMatches(
+            MatchesTreeChanges(
                 revision_tree, preview_tree,
                 [(('a', 'a'), True, (True, True), ('a', 'a'), ('file', 'file'),
                   (False, False), False)]))
@@ -163,7 +163,7 @@ class TestTransformPreview(TestCaseWithTree):
             ('a', 'a'), ('file', 'file'),
             (False, False), False)
 
-        self.assertThat(changes, TreeChangesMatches(revision_tree, preview_tree, [root_entry, a_entry]))
+        self.assertThat(changes, MatchesTreeChanges(revision_tree, preview_tree, [root_entry, a_entry]))
 
     def test_specific_files(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
@@ -173,7 +173,7 @@ class TestTransformPreview(TestCaseWithTree):
                    ('a', 'a'), ('file', 'file'),
                    (False, False), False)
 
-        self.assertThat(changes, TreeChangesMatches(revision_tree, preview_tree, [a_entry]))
+        self.assertThat(changes, MatchesTreeChanges(revision_tree, preview_tree, [a_entry]))
 
     def test_want_unversioned(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
@@ -184,7 +184,7 @@ class TestTransformPreview(TestCaseWithTree):
             ('a', 'a'), ('file', 'file'),
             (False, False), False)
 
-        self.assertThat(changes, TreeChangesMatches(revision_tree, preview_tree, [a_entry]))
+        self.assertThat(changes, MatchesTreeChanges(revision_tree, preview_tree, [a_entry]))
 
     def test_ignore_extra_trees_no_specific_files(self):
         # extra_trees is harmless without specific_files, so we'll silently

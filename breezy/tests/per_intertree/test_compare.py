@@ -1196,7 +1196,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         subtree1.commit('commit', rev_id=b'commit-a')
         self.assertThat(
             tree2.iter_changes(tree1, include_unchanged=True),
-            TreeChangesMatches(
+            MatchesTreeChanges(
                 tree1, tree2, [
                     TreeChange(
                         (u'', u''),

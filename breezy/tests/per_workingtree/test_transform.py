@@ -72,7 +72,7 @@ from ...transform import (
 from breezy.bzr.transform import resolve_checkout
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.tests.matchers import TreeChangesMatches
+from breezy.tests.matchers import MatchesTreeChanges
 
 
 
@@ -1380,7 +1380,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def assertTreeChanges(self, tt, expected):
         # TODO(jelmer): Turn this into a matcher?
         actual = list(tt.iter_changes())
-        self.assertThat(actual, TreeChangesMatches(tt._tree.basis_tree(), tt._tree, expected))
+        self.assertThat(actual, MatchesTreeChanges(tt._tree.basis_tree(), tt._tree, expected))
 
     def test_iter_changes_modified_bleed(self):
         root_id = self.wt.path2id('')

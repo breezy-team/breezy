@@ -32,7 +32,7 @@ __all__ = [
     'MatchesAncestry',
     'ReturnsUnlockable',
     'RevisionHistoryMatches',
-    'TreeChangesMatches',
+    'MatchesTreeChanges',
     ]
 
 from .. import (
@@ -272,7 +272,7 @@ class RevisionHistoryMatches(Matcher):
         return Equals(self.expected).match(history)
 
 
-class TreeChangesMatches(Matcher):
+class MatchesTreeChanges(Matcher):
     """A matcher that checks that tree changes match expected contents."""
 
     def __init__(self, old_tree, new_tree, expected):
@@ -315,7 +315,7 @@ class TreeChangesMatches(Matcher):
         return rich_expected
 
     def __str__(self):
-        return '<TreeChangesMatches(%r)>' % self.expected
+        return '<MatchesTreeChanges(%r)>' % self.expected
 
     def match(self, actual):
         if self.use_inventory_tree_changes:
