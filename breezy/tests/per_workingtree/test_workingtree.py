@@ -1259,12 +1259,8 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
 
-        e = self.assertListRaises(errors.BadFilenameEncoding,
-                                  tree.iter_changes, tree.basis_tree(),
-                                  want_unversioned=True)
-        # We should display the relative path
-        self.assertEqual(b'subdir/m\xb5', e.filename)
-        self.assertEqual(osutils._fs_enc, e.fs_encoding)
+        changes = list(tree.iter_changes(tree.basis_tree(), want_unversioned=True))
+        self.assertIn('subdir/m\udcb5', [c.path[1] for c in changes])
 
 
 class TestControlComponent(TestCaseWithWorkingTree):

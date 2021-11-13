@@ -219,6 +219,7 @@ desired.
 """
 
 import bisect
+import codecs
 import contextlib
 import errno
 import operator
@@ -1955,17 +1956,10 @@ class DirState(object):
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
-        fs_encoding = osutils._fs_enc
-        if isinstance(abspath, str):
-            # abspath is defined as the path to pass to lstat. readlink is
-            # buggy in python < 2.6 (it doesn't encode unicode path into FS
-            # encoding), so we need to encode ourselves knowing that unicode
-            # paths are produced by UnicodeDirReader on purpose.
-            abspath = abspath.encode(fs_encoding)
         target = os.readlink(abspath)
-        if fs_encoding not in ('utf-8', 'ascii'):
+        if sys.getfilesystemencoding() not in ('utf-8', 'ascii'):
             # Change encoding if needed
-            target = target.decode(fs_encoding).encode('UTF-8')
+            target = os.fsdecode(target).encode('UTF-8')
         return target
 
     def get_ghosts(self):
@@ -3545,7 +3539,7 @@ class ProcessEntryPython(object):
         self.last_target_parent = [None, None]
         self.include_unchanged = include_unchanged
         self.use_filesystem_for_exec = use_filesystem_for_exec
-        self.utf8_decode = cache_utf8._utf8_decode
+        self.utf8_decode = codecs.utf_8_decode
         # for all search_indexs in each path at or under each element of
         # search_specific_files, if the detail is relocated: add the id, and
         # add the relocated path as one to search if its not searched already.
@@ -3750,14 +3744,14 @@ class ProcessEntryPython(object):
             else:
                 if old_path is None:
                     old_path = path = pathjoin(old_dirname, old_basename)
-                    old_path_u = self.utf8_decode(old_path)[0]
+                    old_path_u = self.utf8_decode(old_path, 'surrogateescape')[0]
                     path_u = old_path_u
                 else:
-                    old_path_u = self.utf8_decode(old_path)[0]
+                    old_path_u = self.utf8_decode(old_path, 'surrogateescape')[0]
                     if old_path == path:
                         path_u = old_path_u
                     else:
-                        path_u = self.utf8_decode(path)[0]
+                        path_u = self.utf8_decode(path, 'surrogateescape')[0]
                 source_kind = DirState._minikind_to_kind[source_minikind]
                 return InventoryTreeChange(
                     entry[0][2],
@@ -3765,8 +3759,8 @@ class ProcessEntryPython(object):
                     content_change,
                     (True, True),
                     (source_parent_id, target_parent_id),
-                    (self.utf8_decode(old_basename)[
-                     0], self.utf8_decode(entry[0][1])[0]),
+                    (self.utf8_decode(old_basename, 'surrogateescape')[
+                     0], self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
                     (source_kind, target_kind),
                     (source_exec, target_exec)), changed
         elif source_minikind in b'a' and target_minikind in _fdlt:
@@ -3790,22 +3784,22 @@ class ProcessEntryPython(object):
                     target_exec = target_details[3]
                 return InventoryTreeChange(
                     entry[0][2],
-                    (None, self.utf8_decode(path)[0]),
+                    (None, self.utf8_decode(path, 'surrogateescape')[0]),
                     True,
                     (False, True),
                     (None, parent_id),
-                    (None, self.utf8_decode(entry[0][1])[0]),
+                    (None, self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
                     (None, path_info[2]),
                     (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
                 return InventoryTreeChange(
                     entry[0][2],
-                    (None, self.utf8_decode(path)[0]),
+                    (None, self.utf8_decode(path, 'surrogateescape')[0]),
                     False,
                     (False, True),
                     (None, parent_id),
-                    (None, self.utf8_decode(entry[0][1])[0]),
+                    (None, self.utf8_decode(entry[0][1], 'surrogateescape')[0]),
                     (None, None),
                     (None, False)), True
         elif source_minikind in _fdlt and target_minikind in b'a':
@@ -3821,11 +3815,11 @@ class ProcessEntryPython(object):
                 parent_id = None
             return InventoryTreeChange(
                 entry[0][2],
-                (self.utf8_decode(old_path)[0], None),
+                (self.utf8_decode(old_path, 'surrogateescape')[0], None),
                 True,
                 (True, False),
                 (parent_id, None),
-                (self.utf8_decode(entry[0][1])[0], None),
+                (self.utf8_decode(entry[0][1], 'surrogateescape')[0], None),
                 (DirState._minikind_to_kind[source_minikind], None),
                 (source_details[3], None)), True
         elif source_minikind in _fdlt and target_minikind in b'r':
@@ -3864,14 +3858,14 @@ class ProcessEntryPython(object):
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
-                p.encode('utf8') for p in osutils.parent_directories(new_path))
+                p.encode('utf8', 'surrogateescape') for p in osutils.parent_directories(new_path))
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add(b'')
 
     def iter_changes(self):
         """Iterate over the changes."""
-        utf8_decode = cache_utf8._utf8_decode
+        utf8_decode = codecs.utf_8_decode
         _lt_by_dirs = lt_by_dirs
         _process_entry = self._process_entry
         search_specific_files = self.search_specific_files
@@ -4046,11 +4040,11 @@ class ProcessEntryPython(object):
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
                                 yield InventoryTreeChange(
                                     None,
-                                    (None, utf8_decode(current_path_info[0])[0]),
+                                    (None, utf8_decode(current_path_info[0], 'surrogateescape')[0]),
                                     True,
                                     (False, False),
                                     (None, None),
-                                    (None, utf8_decode(current_path_info[1])[0]),
+                                    (None, utf8_decode(current_path_info[1], 'surrogateescape')[0]),
                                     (None, current_path_info[2]),
                                     (None, new_executable))
                             # dont descend into this unversioned path if it is
@@ -4174,19 +4168,15 @@ class ProcessEntryPython(object):
                                 new_executable = bool(
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
-                                try:
-                                    relpath_unicode = utf8_decode(
-                                        current_path_info[0])[0]
-                                except UnicodeDecodeError:
-                                    raise errors.BadFilenameEncoding(
-                                        current_path_info[0], osutils._fs_enc)
+                                relpath_unicode = utf8_decode(
+                                    current_path_info[0], 'surrogateescape')[0]
                                 yield InventoryTreeChange(
                                     None,
                                     (None, relpath_unicode),
                                     True,
                                     (False, False),
                                     (None, None),
-                                    (None, utf8_decode(current_path_info[1])[0]),
+                                    (None, utf8_decode(current_path_info[1], 'surrogateescape')[0]),
                                     (None, current_path_info[2]),
                                     (None, new_executable))
                             # dont descend into this unversioned path if it is

@@ -35,7 +35,6 @@ import breezy
 from breezy import (
     branch as _mod_branch,
     bugtracker,
-    cache_utf8,
     controldir,
     directory_service,
     delta,
@@ -457,7 +456,7 @@ class cmd_cat_revision(Command):
         with b.repository.lock_read():
             # TODO: jam 20060112 should cat-revision always output utf-8?
             if revision_id is not None:
-                revision_id = cache_utf8.encode(revision_id)
+                revision_id = revision_id.encode('utf-8')
                 try:
                     self.print_revision(revisions, revision_id)
                 except errors.NoSuchRevision:
@@ -5332,7 +5331,7 @@ class cmd_re_sign(Command):
         if revision_id_list is not None:
             with WriteGroup(b.repository):
                 for revision_id in revision_id_list:
-                    revision_id = cache_utf8.encode(revision_id)
+                    revision_id = revision_id.encode('utf-8')
                     b.repository.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             if len(revision) == 1:
