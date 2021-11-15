@@ -205,7 +205,7 @@ def _env_plugins_at(key='BRZ_PLUGINS_AT'):
                 name = osutils.basename(path).split('.', 1)[0]
             name = _expect_identifier(name, key, env)
             if name is not None:
-                plugin_details.append((name, path))
+                plugin_details.append((name, os.path.abspath(path)))
     return plugin_details
 
 
@@ -247,7 +247,7 @@ def _iter_plugin_paths(paths_from_env, core_paths):
     # GZ 2017-06-02: This is kinda horrid, should make better.
     for path, context in paths_from_env:
         if context == 'path':
-            yield path
+            yield os.path.abspath(path)
         elif context == 'user':
             path = get_user_plugin_path()
             if os.path.isdir(path):
@@ -392,7 +392,7 @@ def _get_core_plugin_paths(existing_paths):
             osutils.dirname(__file__), '../../../plugins'))
     else:     # don't look inside library.zip
         for path in existing_paths:
-            yield path
+            yield osutils.abspath(path)
 
 
 def _get_site_plugin_paths(sys_paths):
