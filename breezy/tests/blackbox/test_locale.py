@@ -46,7 +46,7 @@ class TestLocale(tests.TestCaseWithTransport):
         cmd = ['--no-aliases', '--no-plugins', '-Oprogress_bar=none',
                'log', '-q', '--log-format=long']
         cmd.extend(args)
-        return self.run_bzr_subprocess(cmd, env_changes=env_changes)
+        return self.run_brz_subprocess(cmd, env_changes=env_changes)
 
     @unittest.skip("encoding when LANG=C is currently borked")
     def test_log_coerced_utf8(self):
