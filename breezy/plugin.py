@@ -38,26 +38,16 @@ import os
 import re
 import sys
 
-import breezy
-from . import osutils
-
-from .lazy_import import lazy_import
-lazy_import(globals(), """
 import imp
 from importlib import util as importlib_util
 
-from breezy import (
-    bedding,
+import breezy
+from . import (
     debug,
-    help_topics,
+    errors,
+    osutils,
     trace,
     )
-""")
-
-from . import (
-    errors,
-    )
-
 
 _MODULE_PREFIX = "breezy.plugins."
 
@@ -413,7 +403,8 @@ def _get_site_plugin_paths(sys_paths):
 
 
 def get_user_plugin_path():
-    return osutils.pathjoin(bedding.config_dir(), 'plugins')
+    from breezy.bedding import config_dir
+    return osutils.pathjoin(config_dir(), 'plugins')
 
 
 def record_plugin_warning(warning_message):
@@ -540,6 +531,7 @@ class ModuleHelpTopic(object):
         :param additional_see_also: Additional help topics to be
             cross-referenced.
         """
+        from . import help_topics
         if not self.module.__doc__:
             result = "Plugin '%s' has no docstring.\n" % self.module.__name__
         else:
