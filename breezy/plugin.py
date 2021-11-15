@@ -284,6 +284,12 @@ def _load_plugins_from_path(state, paths):
     imported_names = set()
     for name, path in _iter_possible_plugins(paths):
         if name not in imported_names:
+            if not valid_plugin_name(name):
+                sanitised_name = sanitise_plugin_name(name)
+                trace.warning("Unable to load %r in %r as a plugin because the "
+                              "file path isn't a valid module name; try renaming "
+                              "it to %r." % (name, path, sanitised_name))
+                continue
             msg = _load_plugin_module(name, path)
             if msg is not None:
                 state.plugin_warnings.setdefault(name, []).append(msg)
@@ -417,6 +423,17 @@ def record_plugin_warning(warning_message):
     return warning_message
 
 
+def valid_plugin_name(name):
+    return not re.search('\\.|-| ', name)
+
+
+def sanitise_plugin_name(name):
+    sanitised_name = re.sub('[-. ]', '_', name)
+    if sanitised_name.startswith('brz_'):
+        sanitised_name = sanitised_name[len('brz_'):]
+    return sanitised_name
+
+
 def _load_plugin_module(name, dir):
     """Load plugin by name.
 
@@ -437,18 +454,8 @@ def _load_plugin_module(name, dir):
         trace.log_exception_quietly()
         if 'error' in debug.debug_flags:
             trace.print_exception(sys.exc_info(), sys.stderr)
-        # GZ 2017-06-02: Move this name checking up a level, no point trying
-        # to import things with bad names.
-        if re.search('\\.|-| ', name):
-            sanitised_name = re.sub('[-. ]', '_', name)
-            if sanitised_name.startswith('brz_'):
-                sanitised_name = sanitised_name[len('brz_'):]
-            trace.warning("Unable to load %r in %r as a plugin because the "
-                          "file path isn't a valid module name; try renaming "
-                          "it to %r." % (name, dir, sanitised_name))
-        else:
-            return record_plugin_warning(
-                'Unable to load plugin %r from %r: %s' % (name, dir, e))
+        return record_plugin_warning(
+            'Unable to load plugin %r from %r: %s' % (name, dir, e))
 
 
 def plugins():
