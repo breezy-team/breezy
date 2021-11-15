@@ -319,16 +319,14 @@ def _get_package_init(package_path):
 def _iter_possible_plugins(plugin_paths):
     """Generate names and paths of possible plugins from plugin_paths."""
     # Inspect any from BRZ_PLUGINS_AT first.
-    for name, path in getattr(plugin_paths, "extra_details", ()):
-        yield name, path
+    yield from getattr(plugin_paths, "extra_details", ())
     # Then walk over files and directories in the paths from the package.
     for path in plugin_paths:
         if os.path.isfile(path):
             if path.endswith(".zip"):
                 trace.mutter("Don't yet support loading plugins from zip.")
         else:
-            for name, path in _walk_modules(path):
-                yield name, path
+            yield from _walk_modules(path)
 
 
 def _walk_modules(path):
