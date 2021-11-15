@@ -69,10 +69,10 @@ from ...transform import (
     TransformRenameFailed,
 )
 
-from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.bzr.transform import resolve_checkout
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+from breezy.tests.matchers import MatchesTreeChanges
 
 
 
@@ -1216,7 +1216,6 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual([bar1_abspath], stat_paths)
 
     def test_iter_changes(self):
-        root_id = self.wt.path2id('')
         transform, root = self.transform()
         transform.new_file('old', root, [b'blah'], b'id-1', True)
         transform.apply()
@@ -1227,17 +1226,17 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.unversion_file(old)
             self.assertTreeChanges(
                 transform, [
-                    InventoryTreeChange(
-                        b'id-1', ('old', None), False, (True, False),
-                        (root_id, root_id), ('old', 'old'), ('file', 'file'),
+                    TreeChange(
+                        ('old', None), False, (True, False),
+                        ('old', 'old'), ('file', 'file'),
                         (True, True), False)])
             transform.new_directory('new', root, b'id-1')
             if transform._tree.supports_setting_file_ids():
                 self.assertTreeChanges(
                     transform,
-                    [InventoryTreeChange(
-                        b'id-1', ('old', 'new'), True, (True, True),
-                        (root_id, root_id), ('old', 'new'),
+                    [TreeChange(
+                        ('old', 'new'), True, (True, True),
+                        ('old', 'new'),
                         ('file', 'directory'),
                         (True, False), False)])
             else:
@@ -1255,7 +1254,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.finalize()
 
     def test_iter_changes_new(self):
-        root_id = self.wt.path2id('')
+        if self.wt.supports_setting_file_ids():
+            root_id = self.wt.path2id('')
         transform, root = self.transform()
         transform.new_file('old', root, [b'blah'])
         transform.apply()
@@ -1276,7 +1276,6 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.finalize()
 
     def test_iter_changes_modifications(self):
-        root_id = self.wt.path2id('')
         transform, root = self.transform()
         transform.new_file('old', root, [b'blah'], b'id-1')
         transform.new_file('new', root, [b'blah'])
@@ -1293,9 +1292,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.delete_contents(old)
             self.assertTreeChanges(
                 transform,
-                [InventoryTreeChange(
-                    b'id-1', ('old', 'old'), True, (True, True),
-                    (root_id, root_id),
+                [TreeChange(
+                    ('old', 'old'), True, (True, True),
                     ('old', 'old'), ('file', None),
                     (False, False), False)])
 
@@ -1303,17 +1301,15 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.create_file([b'blah'], old)
             self.assertTreeChanges(
                 transform,
-                [InventoryTreeChange(
-                    b'id-1', ('old', 'old'), True, (True, True),
-                    (root_id, root_id),
+                [TreeChange(
+                    ('old', 'old'), True, (True, True),
                     ('old', 'old'), ('file', 'file'),
                     (False, False), False)])
             transform.cancel_deletion(old)
             self.assertTreeChanges(
                 transform,
-                [InventoryTreeChange(
-                    b'id-1', ('old', 'old'), True, (True, True),
-                    (root_id, root_id),
+                [TreeChange(
+                    ('old', 'old'), True, (True, True),
                     ('old', 'old'), ('file', 'file'),
                     (False, False), False)])
             transform.cancel_creation(old)
@@ -1326,9 +1322,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             if transform._tree.supports_setting_file_ids():
                 self.assertTreeChanges(
                     transform,
-                    [InventoryTreeChange(
-                        b'id-1', ('old', 'old'), True, (True, True),
-                        (root_id, root_id),
+                    [TreeChange(
+                        ('old', 'old'), True, (True, True),
                         ('old', 'old'), ('file', 'file'),
                         (False, False), False)])
             else:
@@ -1349,9 +1344,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.set_executability(True, old)
             self.assertTreeChanges(
                 transform,
-                [InventoryTreeChange(
-                    b'id-1', ('old', 'old'), False, (True, True),
-                    (root_id, root_id),
+                [TreeChange(
+                    ('old', 'old'), False, (True, True),
                     ('old', 'old'), ('file', 'file'),
                     (False, True), False)])
             transform.set_executability(None, old)
@@ -1362,9 +1356,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform._new_parent = {}
             self.assertTreeChanges(
                 transform,
-                [InventoryTreeChange(
-                    b'id-1', ('old', 'new'), False, (True, True),
-                    (root_id, root_id),
+                [TreeChange(
+                    ('old', 'new'), False, (True, True),
                     ('old', 'new'), ('file', 'file'),
                     (False, False), False)])
             transform._new_name = {}
@@ -1375,9 +1368,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform._new_name = {}
             self.assertTreeChanges(
                 transform, [
-                    InventoryTreeChange(
-                        b'id-1', ('old', 'subdir/old'), False,
-                        (True, True), (root_id, b'subdir-id'), ('old', 'old'),
+                    TreeChange(
+                        ('old', 'subdir/old'), False,
+                        (True, True), ('old', 'old'),
                         ('file', 'file'), (False, False), False)])
             transform._new_path = {}
         finally:
@@ -1386,23 +1379,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def assertTreeChanges(self, tt, expected):
         # TODO(jelmer): Turn this into a matcher?
         actual = list(tt.iter_changes())
-        if tt._tree.supports_setting_file_ids():
-            self.assertEqual(expected, actual)
-        else:
-            expected = [
-                TreeChange(path=c.path, changed_content=c.changed_content,
-                           versioned=c.versioned, name=c.name,
-                           kind=c.kind, executable=c.executable,
-                           copied=c.copied) for c in expected]
-            actual = [
-                TreeChange(path=c.path, changed_content=c.changed_content,
-                           versioned=c.versioned, name=c.name,
-                           kind=c.kind, executable=c.executable,
-                           copied=c.copied) for c in actual]
-            self.assertEqual(expected, actual)
+        self.assertThat(actual, MatchesTreeChanges(tt._tree.basis_tree(), tt._tree, expected))
 
     def test_iter_changes_modified_bleed(self):
-        root_id = self.wt.path2id('')
         """Modified flag should not bleed from one change to another"""
         # unfortunately, we have no guarantee that file1 (which is modified)
         # will be applied before file2.  And if it's applied after file2, it
@@ -1417,20 +1396,19 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.delete_contents(transform.trans_id_tree_path('file1'))
             transform.set_executability(True, transform.trans_id_tree_path('file2'))
             self.assertTreeChanges(transform, [
-                InventoryTreeChange(
-                b'id-1', (u'file1', u'file1'), True, (True, True),
-                (root_id, root_id), ('file1', u'file1'),
+                TreeChange(
+                (u'file1', u'file1'), True, (True, True),
+                ('file1', u'file1'),
                 ('file', None), (False, False), False),
-                InventoryTreeChange(
-                b'id-2', (u'file2', u'file2'), False, (True, True),
-                (root_id, root_id), ('file2', u'file2'),
+                TreeChange(
+                (u'file2', u'file2'), False, (True, True),
+                ('file2', u'file2'),
                 ('file', 'file'), (False, True), False)])
         finally:
             transform.finalize()
 
     def test_iter_changes_move_missing(self):
         """Test moving ids with no files around"""
-        root_id = self.wt.path2id('')
         # Need two steps because versioning a non-existant file is a conflict.
         transform, root = self.transform()
         transform.new_directory('floater', root, b'floater-id')
@@ -1445,10 +1423,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             if self.wt.has_versioned_directories():
                 self.assertTreeChanges(
                     transform,
-                    [InventoryTreeChange(
-                        b'floater-id', ('floater', 'flitter'), False,
+                    [TreeChange(
+                        ('floater', 'flitter'), False,
                         (True, True),
-                        (root_id, root_id),
                         ('floater', 'flitter'),
                         (None, None), (False, False), False)])
             else:

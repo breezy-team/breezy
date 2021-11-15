@@ -1090,18 +1090,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertFalse(tree.is_executable('filename'))
 
     def test_all_file_ids_with_missing(self):
+        if not self.workingtree_format.supports_setting_file_ids:
+            raise TestNotApplicable('does not support setting file ids')
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a', 'b'])
         os.unlink('tree/a')
-        try:
-            self.assertEqual(
-                {'a', 'b', ''},
-                set(tree.all_versioned_paths()))
-        except errors.UnsupportedOperation:
-            raise TestNotApplicable('tree does not support all_file_ids')
+        self.assertEqual(
+            {'a', 'b', ''},
+            set(tree.all_versioned_paths()))
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)

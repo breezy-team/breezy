@@ -160,7 +160,7 @@ class TreeChange(object):
             self.path[0] != self.path[1])
 
     def is_reparented(self):
-        return os.path.dirname(self.path[0]) != os.path.dirname(self.path[1])
+        return osutils.dirname(self.path[0]) != osutils.dirname(self.path[1])
 
     def discard_new(self):
         return self.__class__(
@@ -204,6 +204,12 @@ class Tree(object):
         """Does this tree support symbolic links?
         """
         return osutils.has_symlinks()
+
+    @property
+    def supports_file_ids(self):
+        """Does this tree support file ids?
+        """
+        raise NotImplementedError(self.supports_file_ids)
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
                      extra_trees=None, require_versioned=False, include_root=False,
@@ -281,20 +287,9 @@ class Tree(object):
         """
         return False
 
-    def all_file_ids(self):
-        """Iterate through all file ids, including ids for missing files."""
-        raise NotImplementedError(self.all_file_ids)
-
     def all_versioned_paths(self):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
-
-    def id2path(self, file_id, recurse='down'):
-        """Return the path for a file id.
-
-        :raises NoSuchId:
-        """
-        raise NotImplementedError(self.id2path)
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.

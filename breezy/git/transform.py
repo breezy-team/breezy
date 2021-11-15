@@ -1571,6 +1571,8 @@ class GitTransformPreview(GitTreeTransform):
 class GitPreviewTree(PreviewTree, GitTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
+    supports_file_ids = False
+
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
         self.store = transform._tree.store
@@ -1666,6 +1668,15 @@ class GitPreviewTree(PreviewTree, GitTree):
         except errors.NoSuchFile:
             return None
         return annotate.reannotate([old_annotation], lines, default_revision)
+
+    def path2id(self, path):
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
+        if not self.is_versioned(path):
+            return None
+        return self._transform._tree.mapping.generate_file_id(path)
 
     def get_file_text(self, path):
         """Return the byte content of a file.
