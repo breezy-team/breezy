@@ -2133,7 +2133,7 @@ class TestCase(testtools.TestCase):
         out, err = self.run_bzr(*args, **kwargs)
         return out, err
 
-    def run_bzr_subprocess(self, *args, **kwargs):
+    def run_brz_subprocess(self, *args, **kwargs):
         """Run brz in a subprocess for testing.
 
         This starts a new Python interpreter and runs brz in there.
@@ -2154,7 +2154,7 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get('env_changes', {})
+        env_changes = kwargs.get('env_changes', None)
         working_dir = kwargs.get('working_dir', None)
         allow_plugins = kwargs.get('allow_plugins', False)
         if len(args) == 1:
@@ -2163,18 +2163,18 @@ class TestCase(testtools.TestCase):
             elif isinstance(args[0], str):
                 args = list(shlex.split(args[0]))
         else:
-            raise ValueError("passing varargs to run_bzr_subprocess")
-        process = self.start_bzr_subprocess(args, env_changes=env_changes,
+            raise ValueError("passing varargs to run_brz_subprocess")
+        process = self.start_brz_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)
         # We distinguish between retcode=None and retcode not passed.
         supplied_retcode = kwargs.get('retcode', 0)
-        return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
+        return self.finish_brz_subprocess(process, retcode=supplied_retcode,
                                           universal_newlines=kwargs.get(
                                               'universal_newlines', False),
                                           process_args=args)
 
-    def start_bzr_subprocess(self, process_args, env_changes=None,
+    def start_brz_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
                              allow_plugins=False, stderr=subprocess.PIPE):
@@ -2212,6 +2212,10 @@ class TestCase(testtools.TestCase):
         # gets set to the computed directory of this parent process.
         if site.USER_BASE is not None:
             env_changes["PYTHONUSERBASE"] = site.USER_BASE
+
+        if 'PYTHONPATH' not in env_changes:
+            env_changes['PYTHONPATH'] = ':'.join(sys.path)
+
         old_env = {}
 
         def cleanup_environment():
@@ -2279,7 +2283,7 @@ class TestCase(testtools.TestCase):
             detail_content = content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
                 lambda: [log_file_bytes])
-            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+            self.addDetail("start_brz_subprocess-log-%d" % (count,),
                            detail_content)
 
     def _popen(self, *args, **kwargs):
@@ -2302,11 +2306,11 @@ class TestCase(testtools.TestCase):
             brz_path = sys.argv[0]
         return brz_path
 
-    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
+    def finish_brz_subprocess(self, process, retcode=0, send_signal=None,
                               universal_newlines=False, process_args=None):
         """Finish the execution of process.
 
-        :param process: the Popen object returned from start_bzr_subprocess.
+        :param process: the Popen object returned from start_brz_subprocess.
         :param retcode: The status code that is expected.  Defaults to 0.  If
             None is supplied, the status code is not checked.
         :param send_signal: an optional signal to send to the process.
