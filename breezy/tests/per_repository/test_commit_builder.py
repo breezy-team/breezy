@@ -270,7 +270,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def _add_commit_check_unchanged(self, tree, name):
         tree.add([name])
-        self._commit_check_unchanged(tree, name, tree.path2id(name))
+        if tree.supports_file_ids:
+            file_id = tree.path2id(name)
+        else:
+            file_id = None
+        self._commit_check_unchanged(tree, name, file_id)
 
     def _commit_check_unchanged(self, tree, name, file_id):
         rev1 = tree.commit('rev1')
@@ -279,9 +283,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
         self.assertEqual(rev1, tree1.get_file_revision(name))
         self.assertEqual(rev1, tree2.get_file_revision(name))
-        expected_graph = {}
-        expected_graph[(file_id, rev1)] = ()
-        self.assertFileGraph(expected_graph, tree, (file_id, rev1))
+        if tree.supports_file_ids:
+            expected_graph = {}
+            expected_graph[(file_id, rev1)] = ()
+            self.assertFileGraph(expected_graph, tree, (file_id, rev1))
 
     def test_last_modified_revision_after_commit_dir_unchanged(self):
         # committing without changing a dir does not change the last modified.
@@ -331,7 +336,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         subtree.commit('')
         try:
             tree.add_reference(subtree)
-            self._commit_check_unchanged(tree, 'reference', subtree.path2id(''))
+            self._commit_check_unchanged(
+                tree, 'reference', subtree.path2id('') if subtree.supports_file_ids else None)
         except errors.UnsupportedOperation:
             return
 
@@ -647,30 +653,33 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # in the inventory.
         # Part 1: change in the merged branch.
         rev1, tree2 = self._commit_sprout(tree1, name)
-        file_id = tree2.path2id(name)
-        self.assertIsNot(None, file_id)
+        if tree2.supports_file_ids:
+            file_id = tree2.path2id(name)
+            self.assertIsNot(None, file_id)
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name, 'rev2')
         tree1.merge_from_branch(tree2.branch)
 
-        def _check_graph(in_tree, changed_in_tree):
-            rev3 = self.mini_commit_record_iter_changes(
-                in_tree, name, 'new_' + name, False,
-                delta_against_basis=changed_in_tree)
-            tree3, = self._get_revtrees(in_tree, [rev2])
-            self.assertEqual(rev2, tree3.get_file_revision('new_' + name))
-            expected_graph = {}
-            expected_graph[(file_id, rev1)] = ()
-            expected_graph[(file_id, rev2)] = ((file_id, rev1),)
-            self.assertFileGraph(expected_graph, in_tree, (file_id, rev2))
-        _check_graph(tree1, True)
+        if tree2.supports_file_ids:
+            def _check_graph(in_tree, changed_in_tree):
+                rev3 = self.mini_commit_record_iter_changes(
+                    in_tree, name, 'new_' + name, False,
+                    delta_against_basis=changed_in_tree)
+                tree3, = self._get_revtrees(in_tree, [rev2])
+                self.assertEqual(rev2, tree3.get_file_revision('new_' + name))
+                expected_graph = {}
+                expected_graph[(file_id, rev1)] = ()
+                expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+                self.assertFileGraph(expected_graph, in_tree, (file_id, rev2))
+            _check_graph(tree1, True)
         # Part 2: change in the merged into branch - we use tree2 that has a
         # change to name, branch tree1 and give it an unrelated change, then
         # merge that to t2.
         other_tree = tree1.controldir.sprout('t3').open_workingtree()
         other_rev = other_tree.commit('other_rev')
         tree2.merge_from_branch(other_tree.branch)
-        _check_graph(tree2, False)
+        if tree2.supports_file_ids:
+            _check_graph(tree2, False)
 
     def _commit_sprout_make_merge(self, tree1, make):
         # Make a merge which incorporates the addition of a new object to

@@ -335,6 +335,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def test_remove_root_fixup(self):
         transform, root = self.transform()
+        if not self.wt.supports_setting_file_ids():
+            self.skipTest('format does not support file ids')
         old_root_id = self.wt.path2id('')
         self.assertNotEqual(b'new-root-id', old_root_id)
         transform.delete_contents(root)

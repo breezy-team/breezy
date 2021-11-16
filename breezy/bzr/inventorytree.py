@@ -208,6 +208,10 @@ class InventoryTree(Tree):
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
 
+
+    def is_versioned(self, path):
+        return self.path2id(path) is not None
+
     def _path2ie(self, path):
         """Lookup an inventory entry by path.
 
