@@ -549,17 +549,13 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def path2id(self, path):
-        """Return the id for path in this tree."""
-        raise NotImplementedError(self.path2id)
-
     def is_versioned(self, path):
         """Check whether path is versioned.
 
         :param path: Path to check
         :return: boolean
         """
-        return self.path2id(path) is not None
+        raise NotImplementedError(self.is_versioned)
 
     def find_related_paths_across_trees(self, paths, trees=[],
                                         require_versioned=True):

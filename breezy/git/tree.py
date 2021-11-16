@@ -826,7 +826,7 @@ def tree_delta_from_git_changes(changes, mappings,
             change.file_id = None
             ret.unversioned.append(change)
         elif change_type == 'add':
-            added.append((newpath, newkind))
+            added.append((newpath, newkind, newsha))
         elif newpath is None or newmode == 0:
             ret.removed.append(change)
         elif change_type == 'delete':
@@ -849,12 +849,12 @@ def tree_delta_from_git_changes(changes, mappings,
             ret.unchanged.append(change)
 
     implicit_dirs = {b''}
-    for path, kind in added:
+    for path, kind, sha in added:
         if kind == 'directory' or path in target_extras:
             continue
         implicit_dirs.update(osutils.parent_directories(path))
 
-    for path, kind in added:
+    for path, kind, sha in added:
         if kind == 'directory' and path not in implicit_dirs:
             continue
         path_decoded = decode_git_path(path)

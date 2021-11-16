@@ -70,7 +70,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
                 raise tests.TestNotApplicable('Cannot create files named %r on'
                                               ' win32' % (filename,))
         tree.smart_add(['tree'])
-        self.assertEqual(None, tree.path2id(filename))
+        self.assertFalse(tree.is_versioned(filename))
 
     def test_path_containing_newline_skips(self):
         self.assertFilenameSkipped('a\nb')
@@ -85,7 +85,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
             self.build_tree(['file'])
             wt.smart_add(['file'], save=False)
             # the file should not be added - no id.
-            self.assertEqual(wt.path2id('file'), None)
+            self.assertFalse(wt.is_versioned('file'))
         # and the disk state should be the same - reopen to check.
         wt = wt.controldir.open_workingtree()
         self.assertFalse(wt.is_versioned('file'))
