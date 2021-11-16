@@ -1956,6 +1956,12 @@ class DirState(object):
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
+        if isinstance(abspath, str):
+            # abspath is defined as the path to pass to lstat. readlink is
+            # buggy in python < 2.6 (it doesn't encode unicode path into FS
+            # encoding), so we need to encode ourselves knowing that unicode
+            # paths are produced by UnicodeDirReader on purpose.
+            abspath = os.fsencode(abspath)
         target = os.readlink(abspath)
         if sys.getfilesystemencoding() not in ('utf-8', 'ascii'):
             # Change encoding if needed
