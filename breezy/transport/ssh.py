@@ -586,7 +586,7 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
     except paramiko.PasswordRequiredException:
         password = ui.ui_factory.get_password(
             prompt=u'SSH %(filename)s password',
-            filename=filename.decode(osutils._fs_enc))
+            filename=os.fsdecode(filename))
         try:
             key = pkey_class.from_private_key_file(filename, password)
             paramiko_transport.auth_publickey(username, key)

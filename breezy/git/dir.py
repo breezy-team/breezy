@@ -18,6 +18,7 @@
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
 import contextlib
+import os
 
 from .. import (
     branch as _mod_branch,
@@ -802,6 +803,6 @@ class LocalGitDir(GitDir):
         except brz_errors.NoSuchFile:
             return self
         else:
-            commondir = commondir.rstrip(b'/.git/').decode(osutils._fs_enc)
+            commondir = os.fsdecode(commondir.rstrip(b'/.git/'))
             return ControlDir.open_from_transport(
                 get_transport_from_path(commondir))

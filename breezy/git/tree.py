@@ -1687,7 +1687,7 @@ def snapshot_workingtree(target, want_unversioned=False):
                             blob.data = f.read()
                     elif stat.S_ISLNK(live_entry.mode):
                         blob = Blob()
-                        blob.data = target.get_symlink_target(rp).encode(osutils._fs_enc)
+                        blob.data = os.fsencode(target.get_symlink_target(rp))
                     else:
                         blob = None
                     if blob is not None:
@@ -1695,11 +1695,7 @@ def snapshot_workingtree(target, want_unversioned=False):
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for extra in target._iter_files_recursive(include_dirs=False):
-            try:
-                extra, accessible = osutils.normalized_filename(extra)
-            except UnicodeDecodeError:
-                raise errors.BadFilenameEncoding(
-                    extra, osutils._fs_enc)
+            extra, accessible = osutils.normalized_filename(extra)
             np = encode_git_path(extra)
             if np in blobs:
                 continue
@@ -1708,7 +1704,7 @@ def snapshot_workingtree(target, want_unversioned=False):
                 blob = Tree()
             elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
                 blob = blob_from_path_and_stat(
-                    target.abspath(extra).encode(osutils._fs_enc), st)
+                    os.fsencode(target.abspath(extra)), st)
             else:
                 continue
             target.store.add_object(blob)
