@@ -76,7 +76,7 @@ from .. import (
 class MissingFeature(errors.BzrError):
 
     _fmt = ("Missing feature %(feature)s not provided by this "
-            "version of Bazaar or any plugin.")
+            "version of Breezy or any plugin.")
 
     def __init__(self, feature):
         self.feature = feature

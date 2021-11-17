@@ -18,7 +18,7 @@ Preferences like these are useful for commands and plugins wishing to
 provide custom behaviour for selected files.  For more information on 
 end of line conversion see :doc:`eol-help`.
 Keyword support is provided by the `keywords plugin
-<http://doc.bazaar.canonical.com/plugins/en/keywords-plugin.html>`_.
+<https://www.breezy-vcs.org/doc/plugins/en/keywords-plugin.html>`_.
 
 Files
 -----

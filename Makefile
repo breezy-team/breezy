@@ -295,9 +295,9 @@ po/brz.pot: $(PYFILES) $(DOCFILES)
 	$(PYTHON) ./brz export-pot --include-duplicates > po/brz.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "brz" \
-	  --msgid-bugs-address "<bazaar@canonical.com>" \
-	  --copyright-holder "Canonical" \
-	  --from-code ISO-8859-1 --join --sort-by-file --add-comments=i18n: \
+	  --msgid-bugs-address "<breezy-vcs@groups.google.com>" \
+	  --copyright-holder "Breezy Developers" \
+	  --from-code UTF-8 --join --sort-by-file --add-comments=i18n: \
 	  -d bzr -p po -o brz.pot
 
 
