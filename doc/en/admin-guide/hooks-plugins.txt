@@ -22,7 +22,7 @@ more ways than just committing).  This too can be used for notification
 purposes, as well as for backups and mirroring.
 
 Information on the whole range of Bazaar plugins is available at
-http://doc.bazaar.canonical.com/plugins/en/.  For purposes of installation,
+https://www.breezy-vcs.org/doc/plugins/en/.  For purposes of installation,
 plugins are simply python packages.  They can be installed alongside Bazaar in
 the ``breezy.plugins`` package using each plugin's ``setup.py``.  They can
 also be installed in the plugin path which is the user's
@@ -59,7 +59,7 @@ in the ``locations.conf`` file or individually in each branch's
 mail should be sent.  If it isn't set, email is sent via ``/usr/bin/mail``.
 It can also be configured to communicate directly with an SMTP server.
 For more details on configuring this plugin, see
-http://doc.bazaar.canonical.com/plugins/en/email-plugin.html.  As examples,
+https://www.breezy-vcs.org/doc/plugins/en/email-plugin.html.  As examples,
 consider the following two possible configurations.  A minimal one (uses
 ``/usr/bin/mail``)
 

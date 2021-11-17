@@ -14,7 +14,7 @@ Most hooks are run on the client, but a few are run on the server.  (Also
 see the `push-and-update plugin`_ that handles one special case of
 server-side operations.)
 
-.. _push-and-update plugin: http://doc.bazaar.canonical.com/plugins/en/push-and-update-plugin.html
+.. _push-and-update plugin: https://www.breezy-vcs.org/doc/plugins/en/push-and-update-plugin.html
 
 Using hooks
 -----------
