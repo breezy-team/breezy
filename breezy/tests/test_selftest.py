@@ -2505,7 +2505,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
 
 
 class StubProcess(object):
-    """A stub process for testing run_bzr_subprocess."""
+    """A stub process for testing run_brz_subprocess."""
 
     def __init__(self, out="", err="", retcode=0):
         self.out = out
@@ -2523,11 +2523,11 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
         super(TestWithFakedStartBzrSubprocess, self).setUp()
         self.subprocess_calls = []
 
-    def start_bzr_subprocess(self, process_args, env_changes=None,
+    def start_brz_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
                              allow_plugins=False):
-        """capture what run_bzr_subprocess tries to do."""
+        """capture what run_brz_subprocess tries to do."""
         self.subprocess_calls.append(
             {'process_args': process_args,
              'env_changes': env_changes,
@@ -2539,15 +2539,15 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
 class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
     def assertRunBzrSubprocess(self, expected_args, process, *args, **kwargs):
-        """Run run_bzr_subprocess with args and kwargs using a stubbed process.
+        """Run run_brz_subprocess with args and kwargs using a stubbed process.
 
-        Inside TestRunBzrSubprocessCommands we use a stub start_bzr_subprocess
+        Inside TestRunBzrSubprocessCommands we use a stub start_brz_subprocess
         that will return static results. This assertion method populates those
-        results and also checks the arguments run_bzr_subprocess generates.
+        results and also checks the arguments run_brz_subprocess generates.
         """
         self.next_subprocess = process
         try:
-            result = self.run_bzr_subprocess(*args, **kwargs)
+            result = self.run_brz_subprocess(*args, **kwargs)
         except BaseException:
             self.next_subprocess = None
             for key, expected in expected_args.items():
@@ -2559,7 +2559,7 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
                 self.assertEqual(expected, self.subprocess_calls[-1][key])
             return result
 
-    def test_run_bzr_subprocess(self):
+    def test_run_brz_subprocess(self):
         """The run_bzr_helper_external command behaves nicely."""
         self.assertRunBzrSubprocess({'process_args': ['--version']},
                                     StubProcess(), '--version')
@@ -2598,7 +2598,7 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
         self.assertRunBzrSubprocess({'working_dir': 'dir'}, StubProcess(), '',
                                     working_dir='dir')
 
-    def test_run_bzr_subprocess_no_plugins(self):
+    def test_run_brz_subprocess_no_plugins(self):
         self.assertRunBzrSubprocess({'allow_plugins': False},
                                     StubProcess(), '')
 
@@ -2609,27 +2609,27 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
 class TestFinishBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
-    def test_finish_bzr_subprocess_with_error(self):
-        """finish_bzr_subprocess allows specification of the desired exit code.
+    def test_finish_brz_subprocess_with_error(self):
+        """finish_brz_subprocess allows specification of the desired exit code.
         """
         process = StubProcess(err="unknown command", retcode=3)
-        result = self.finish_bzr_subprocess(process, retcode=3)
+        result = self.finish_brz_subprocess(process, retcode=3)
         self.assertEqual('', result[0])
         self.assertContainsRe(result[1], 'unknown command')
 
-    def test_finish_bzr_subprocess_ignoring_retcode(self):
-        """finish_bzr_subprocess allows the exit code to be ignored."""
+    def test_finish_brz_subprocess_ignoring_retcode(self):
+        """finish_brz_subprocess allows the exit code to be ignored."""
         process = StubProcess(err="unknown command", retcode=3)
-        result = self.finish_bzr_subprocess(process, retcode=None)
+        result = self.finish_brz_subprocess(process, retcode=None)
         self.assertEqual('', result[0])
         self.assertContainsRe(result[1], 'unknown command')
 
     def test_finish_subprocess_with_unexpected_retcode(self):
-        """finish_bzr_subprocess raises self.failureException if the retcode is
+        """finish_brz_subprocess raises self.failureException if the retcode is
         not the expected one.
         """
         process = StubProcess(err="unknown command", retcode=3)
-        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
+        self.assertRaises(self.failureException, self.finish_brz_subprocess,
                           process)
 
 
@@ -2638,7 +2638,7 @@ class _DontSpawnProcess(Exception):
 
 
 class TestStartBzrSubProcess(tests.TestCase):
-    """Stub test start_bzr_subprocess."""
+    """Stub test start_brz_subprocess."""
 
     def _subprocess_log_cleanup(self):
         """Inhibits the base version as we don't produce a log file."""
@@ -2656,15 +2656,15 @@ class TestStartBzrSubProcess(tests.TestCase):
     def check_popen_state(self):
         """Replace to make assertions when popen is called."""
 
-    def test_run_bzr_subprocess_no_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
+    def test_run_brz_subprocess_no_plugins(self):
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [])
         command = self._popen_args[0]
         self.assertEqual(sys.executable, command[0])
         self.assertEqual(self.get_brz_path(), command[1])
         self.assertEqual(['--no-plugins'], command[2:])
 
     def test_allow_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
@@ -2676,20 +2676,20 @@ class TestStartBzrSubProcess(tests.TestCase):
         def check_environment():
             self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         self.check_popen_state = check_environment
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'EXISTANT_ENV_VAR': 'set variable'})
         # not set in theparent
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
-    def test_run_bzr_subprocess_env_del(self):
-        """run_bzr_subprocess can remove environment variables too."""
+    def test_run_brz_subprocess_env_del(self):
+        """run_brz_subprocess can remove environment variables too."""
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
         def check_environment():
             self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
         self.check_popen_state = check_environment
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'EXISTANT_ENV_VAR': None})
         # Still set in parent
         self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
@@ -2701,7 +2701,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         def check_environment():
             self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
         self.check_popen_state = check_environment
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'NON_EXISTANT_ENV_VAR': None})
 
     def test_working_dir(self):
@@ -2715,7 +2715,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         def getcwd():
             return 'current'
         self.overrideAttr(osutils, 'getcwd', getcwd)
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           working_dir='foo')
         self.assertEqual(['foo', 'current'], chdirs)
 
@@ -2729,14 +2729,14 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
     """Tests that really need to do things with an external bzr."""
 
     def test_start_and_stop_bzr_subprocess_send_signal(self):
-        """finish_bzr_subprocess raises self.failureException if the retcode is
+        """finish_brz_subprocess raises self.failureException if the retcode is
         not the expected one.
         """
         self.disable_missing_extensions_warning()
-        process = self.start_bzr_subprocess(['wait-until-signalled'],
+        process = self.start_brz_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
         self.assertEqual(b'running\n', process.stdout.readline())
-        result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
+        result = self.finish_brz_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
         self.assertEqual(b'', result[0])
         self.assertEqual(b'brz: interrupted\n', result[1])

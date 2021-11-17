@@ -1,4 +1,4 @@
-breezy (3.2.1+bzr7556-1) UNRELEASED; urgency=medium
+breezy (3.2.1+bzr7561-1) UNRELEASED; urgency=medium
 
   * Bump debhelper from old 12 to 13.
     + Drop check for DEB_BUILD_OPTIONS containing "nocheck", since debhelper now
@@ -10,10 +10,10 @@ breezy (3.2.1+bzr7556-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
    + Add dependency on python3-fastbencode.
   * Source-only build. Closes: #998031
-  * Import patches from Ubuntu to fix Python3.9 compatibility. Closes:
-    #995410
+  * New upstream snapshot.
+    + Fixes compatibility with Python 3.9. Closes: #995410
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 Oct 2021 19:02:58 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 17 Nov 2021 08:25:02 -0000
 
 breezy (3.2.1-1) unstable; urgency=low
 

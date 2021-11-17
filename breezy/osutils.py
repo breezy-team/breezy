@@ -335,31 +335,37 @@ def _win32_fixdrive(path):
     drive, path = ntpath.splitdrive(path)
     return drive.upper() + path
 
+def _win32_fix_separators(path):
+    """Return path with directory separators changed to forward slashes"""
+    if isinstance(path, bytes):
+        return path.replace(b'\\', b'/')
+    else:
+        return path.replace('\\', '/')
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.abspath(path)))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
 
 
 def _win32_pathjoin(*args):
-    return ntpath.join(*args).replace('\\', '/')
+    return _win32_fix_separators(ntpath.join(*args))
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.normpath(path)))
 
 
 def _win32_getcwd():
-    return _win32_fixdrive(_getcwd().replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(_getcwd()))
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(tempfile.mkdtemp(*args, **kwargs)))
 
 
 def _win32_rename(old, new):

@@ -70,7 +70,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(ImportTariffTestCase, self).setUp()
 
-    def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
+    def start_brz_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
@@ -89,7 +89,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
             # We don't want to update the whole call chain so we insert stderr
             # *iff* we need to
             kwargs['stderr'] = stderr_file
-        return self.start_bzr_subprocess(args, **kwargs)
+        return self.start_brz_subprocess(args, **kwargs)
 
     def check_forbidden_modules(self, err, forbidden_imports):
         """Check for forbidden modules in stderr.
@@ -110,7 +110,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
             self.fail("command loaded forbidden modules %r"
                       % (bad_modules,))
 
-    def finish_bzr_subprocess_with_import_check(self, process,
+    def finish_brz_subprocess_with_import_check(self, process,
                                                 args, forbidden_imports):
         """Finish subprocess and check specific modules have not been
         imported.
@@ -118,7 +118,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         :param forbidden_imports: List of fully-qualified Python module names
             that should not be loaded while running this command.
         """
-        (out, err) = self.finish_bzr_subprocess(process,
+        (out, err) = self.finish_brz_subprocess(process,
                                                 universal_newlines=False, process_args=args)
         self.check_forbidden_modules(err, forbidden_imports)
         return out, err
@@ -132,8 +132,8 @@ class ImportTariffTestCase(TestCaseWithTransport):
         :param forbidden_imports: List of fully-qualified Python module names
             that should not be loaded while running this command.
         """
-        process = self.start_bzr_subprocess_with_import_check(args)
-        self.finish_bzr_subprocess_with_import_check(process, args,
+        process = self.start_brz_subprocess_with_import_check(args)
+        self.finish_brz_subprocess_with_import_check(process, args,
                                                      forbidden_imports)
 
 
@@ -257,7 +257,7 @@ class TestImportTariffs(ImportTariffTestCase):
         # Capture the bzr serve process' stderr in a file to avoid deadlocks
         # while the smart client interacts with it.
         stderr_file = open('bzr-serve.stderr', 'w')
-        process = self.start_bzr_subprocess_with_import_check(['serve',
+        process = self.start_brz_subprocess_with_import_check(['serve',
                                                                '--inet', '-d', tree.basedir], stderr_file=stderr_file)
         url = 'bzr://localhost/'
         self.permit_url(url)
@@ -268,7 +268,7 @@ class TestImportTariffs(ImportTariffTestCase):
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
-        (out, err) = self.finish_bzr_subprocess(process,
+        (out, err) = self.finish_brz_subprocess(process,
                                                 universal_newlines=False)
         stderr_file.close()
         with open('bzr-serve.stderr', 'rb') as stderr_file:
