@@ -46,7 +46,7 @@ class TestLocale(tests.TestCaseWithTransport):
         cmd = ['--no-aliases', '--no-plugins', '-Oprogress_bar=none',
                'log', '-q', '--log-format=long']
         cmd.extend(args)
-        return self.run_bzr_subprocess(cmd, env_changes=env_changes)
+        return self.run_brz_subprocess(cmd, env_changes=env_changes)
 
     @unittest.skipIf(sys.version_info[:2] < (3, 7), "python < 3.7 doesn't coerce utf-8")
     def test_log_coerced_utf8(self):

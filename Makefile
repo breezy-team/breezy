@@ -253,7 +253,7 @@ exe:
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_brz.bat win32_brz.exe
-	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_brz.exe
+	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/breezy.url win32_brz.exe
 
 # win32 installer for brz.exe
 installer: exe copy-docs
@@ -268,7 +268,8 @@ python-installer: py-inst-37
 
 copy-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytodir README win32_brz.exe/doc
-	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) win32_brz.exe
+	$(PYTHON) tools/win32/ostools.py copydir doc/en/_build/html win32_brz.exe/doc
+	$(PYTHON) tools/win32/ostools.py copydir doc/developers/_build/html win32_brz.exe/doc/developers
 
 # clean on win32 all installer-related files and directories
 clean-win32: clean-docs
