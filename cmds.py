@@ -800,7 +800,10 @@ class cmd_merge_upstream(Command):
                     "give the .orig.tar.gz. Please specify --package.")
 
             if snapshot is None:
-                version_kind = detect_version_kind(current_version)
+                if current_version is not None:
+                    version_kind = detect_version_kind(current_version)
+                else:
+                    version_kind = None
             elif snapshot is True:
                 version_kind = "snapshot"
             elif snapshot is False:
