@@ -38,6 +38,7 @@ from debmutate.changelog import (
     find_last_distribution,
     strip_changelog_message,
     )
+from debmutate.versions import get_snapshot_revision
 
 from ... import (
     bugtracker,
@@ -875,3 +876,11 @@ def full_branch_url(branch):
     if branch.name != "":
         params["branch"] = urlutils.quote(branch.name, "")
     return urlutils.join_segment_parameters(url, params)
+
+
+def detect_version_kind(upstream_version):
+    """Detect the version kind from the upstream version."""
+    snapshot_info = get_snapshot_revision(upstream_version)
+    if snapshot_info is None:
+        return 'release'
+    return 'snapshot'

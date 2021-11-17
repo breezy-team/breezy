@@ -753,7 +753,7 @@ class cmd_merge_upstream(Command):
             distribution: Optional[str] = None, package: Optional[str] = None,
             directory: str = ".", revision=None, merge_type=None,
             last_version: Optional[str] = None,
-            force: Optional[bool] = None, snapshot: bool = False,
+            force: Optional[bool] = None, snapshot: Optional[bool] = None,
             force_pristine_tar: bool = False,
             dist_command: Optional[str] = None,
             guess_upstream_branch_url: bool = False):
@@ -779,15 +779,11 @@ class cmd_merge_upstream(Command):
             NoWatchFile,
             )
         from .util import (
+            detect_version_kind,
             guess_build_type,
             get_files_excluded,
             tree_contains_upstream_source,
             )
-
-        if snapshot:
-            version_kind = "snapshot"
-        else:
-            version_kind = "release"
 
         tree, subpath = WorkingTree.open_containing(directory)
         with tree.lock_write():
@@ -802,6 +798,16 @@ class cmd_merge_upstream(Command):
                     "there is no changelog from which to determine the "
                     "package name, which is needed to know the name to "
                     "give the .orig.tar.gz. Please specify --package.")
+
+            if snapshot is None:
+                version_kind = detect_version_kind(current_version)
+            elif snapshot is True:
+                version_kind = "snapshot"
+            elif snapshot is False:
+                version_kind = "release"
+
+            if version_kind is None:
+                version_kind = "release"
 
             try:
                 files_excluded = get_files_excluded(tree, subpath, top_level)
