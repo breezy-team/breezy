@@ -1,6 +1,7 @@
 use pkg_version::*;
 use pyo3::prelude::*;
 use pyo3::types::*;
+use std::path::*;
 
 const MAJOR: u32 = pkg_version_major!();
 const MINOR: u32 = pkg_version_minor!();
@@ -52,6 +53,31 @@ fn ensure_sane_fs_enc() -> () {
     }
 }
 
+fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
+    let sys = PyModule::import(py, "sys")?;
+
+    let current_path: &pyo3::types::PyList = sys.getattr("path")?.try_into()?;
+
+    current_path.insert(0, el.to_str().expect("invalid local path"))?;
+
+    Ok(())
+}
+
+// Prepend sys.path with the brz path when useful.
+fn update_path(py: Python<'_>) -> PyResult<()> {
+    let mut path = std::env::current_exe()?;
+
+    path.pop();  // Drop executable name
+
+    let mut package_path = path.clone();
+    package_path.push("breezy");
+    if package_path.is_dir() {
+        prepend_path(py, path.as_path())?;
+    }
+
+    Ok(())
+}
+
 fn posix_setup(py: Python<'_>) -> PyResult<()> {
     let os = PyModule::import(py, "os")?;
 
@@ -72,8 +98,11 @@ fn posix_setup(py: Python<'_>) -> PyResult<()> {
 
 fn main() -> PyResult<()> {
     pyo3::prepare_freethreaded_python();
+
     Python::with_gil(|py| {
         posix_setup(py)?;
+
+        update_path(py)?;
 
         check_version(py)?;
 
