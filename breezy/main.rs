@@ -106,6 +106,8 @@ fn main() -> PyResult<()> {
 
         check_version(py)?;
 
+        ensure_sane_fs_enc();
+
         let args: Vec<String> = std::env::args().collect();
 
         if args.contains(&String::from("--profile-imports")) {
