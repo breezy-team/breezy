@@ -1,4 +1,4 @@
-breezy (3.2.1+bzr7561-1) UNRELEASED; urgency=medium
+breezy (3.2.1+bzr7561-1) unstable; urgency=medium
 
   * Bump debhelper from old 12 to 13.
     + Drop check for DEB_BUILD_OPTIONS containing "nocheck", since debhelper now
@@ -15,7 +15,7 @@ breezy (3.2.1+bzr7561-1) UNRELEASED; urgency=medium
   * Add patch 09_disable_logs: fix permission denied errors during test
     run.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 17 Nov 2021 08:25:02 -0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 29 Nov 2021 12:44:51 +0000
 
 breezy (3.2.1-1) unstable; urgency=low
 
