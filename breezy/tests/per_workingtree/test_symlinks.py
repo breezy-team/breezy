@@ -34,7 +34,9 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
     # See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 
-    _test_needs_features = [features.SymlinkFeature(self.test_dir)]
+    def setUp(self):
+        super(TestSmartAddTree, self).setUp()
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_smart_add_symlink(self):
         tree = self.make_branch_and_tree('tree')
