@@ -46,7 +46,7 @@ class TestSymlinkSupportFunction(per_tree.TestCaseWithTree):
 
 class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
 
-    _test_needs_features = [features.SymlinkFeature]
+    _test_needs_features = [features.SymlinkFeature(self.test_dir)]
 
     def setUp(self):
         super(TestTreeWithSymlinks, self).setUp()

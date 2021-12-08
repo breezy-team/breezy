@@ -1151,22 +1151,23 @@ def _delete_file_or_dir(path):
         os.unlink(path)
 
 
-def has_symlinks():
-    if getattr(os, 'symlink', None) is not None:
+def supports_hardlinks(path):
+    if getattr(os, 'link', None) is None:
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
         return True
     else:
-        return False
-
-
-def has_hardlinks():
-    if getattr(os, 'link', None) is not None:
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support hardlinks
+            return False
         return True
-    else:
-        return False
 
 
 def host_os_dereferences_symlinks():
-    return (has_symlinks()
+    return (getattr(os, 'symlink', None) is not None
             and sys.platform not in ('cygwin', 'win32'))
 
 
@@ -1609,7 +1610,7 @@ def supports_symlinks(path):
     """Return if the filesystem at path supports the creation of symbolic links.
 
     """
-    if not has_symlinks():
+    if getattr(os, 'symlink', None) is None:
         return False
     try:
         fs_type = get_fs_type(path)

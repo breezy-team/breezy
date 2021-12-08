@@ -30,7 +30,7 @@ from ..features import (
 
 class TestLinkTreeCommand(tests.TestCaseWithTransport):
 
-    _test_needs_features = [HardlinkFeature]
+    _test_needs_features = [HardlinkFeature(self.test_dir)]
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)

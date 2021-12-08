@@ -247,7 +247,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
                             Note: if you wish to automatically set this
                             parameters depending on underlying system,
                             please use value returned
-                            by breezy.osutils.has_symlinks() function.
+                            by breezy.osutils.supports_symlinks() function.
 
         The returned tree has the following inventory:
             ['',
