@@ -87,7 +87,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 class TestKindChanges(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestSmartAddTree, self).setUp()
+        super(TestKindChanges, self).setUp()
         self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_symlink_changes_to_dir(self):
@@ -139,7 +139,7 @@ class TestKindChanges(TestCaseWithWorkingTree):
 class TestOpenTree(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestSmartAddTree, self).setUp()
+        super(TestOpenTree, self).setUp()
         self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_open_containing_through_symlink(self):
