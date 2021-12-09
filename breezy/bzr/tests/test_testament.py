@@ -103,7 +103,7 @@ class TestamentTests(TestamentSetup):
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         os.symlink('wibble/linktarget', 'link')
         self.wt.add(['link'], [b'link-id'])
         self.wt.commit(message='add symlink',

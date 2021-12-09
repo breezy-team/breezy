@@ -1580,6 +1580,9 @@ class GitPreviewTree(PreviewTree, GitTree):
     def supports_setting_file_ids(self):
         return False
 
+    def supports_symlinks(self):
+        return self._transform._create_symlinks
+
     def _supports_executable(self):
         return self._transform._limbo_supports_executable()
 

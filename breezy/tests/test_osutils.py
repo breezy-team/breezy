@@ -294,7 +294,7 @@ class TestKind(tests.TestCaseInTempDir):
         self.build_tree(['file', 'dir/'])
         self.assertEqual('file', osutils.file_kind('file'))
         self.assertEqual('directory', osutils.file_kind('dir/'))
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('symlink', 'symlink')
             self.assertEqual('symlink', osutils.file_kind('symlink'))
 
@@ -479,7 +479,7 @@ class TestFdatasync(tests.TestCaseInTempDir):
 class TestLinks(tests.TestCaseInTempDir):
 
     def test_dereference_path(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -519,7 +519,7 @@ class TestLinks(tests.TestCaseInTempDir):
         mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0o200)
 
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             # should not error when handed a symlink
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
@@ -1608,7 +1608,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1633,7 +1633,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                     }
 
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target', handlers=handlers)
 
@@ -1643,7 +1643,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                           ('f', 'source/b/c', 'target/b/c'),
                           ], processed_files)
         self.assertPathDoesNotExist('target')
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
@@ -1865,7 +1865,7 @@ class TestDirReader(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, self._filter_out(result))
 
     def test_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
@@ -1889,11 +1889,11 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-    _test_needs_features = [features.SymlinkFeature,
-                            features.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
+        self._test_needs_features.append(features.SymlinkFeature(self.test_dir))
         self.link = u'l\N{Euro Sign}ink'
         self.target = u'targe\N{Euro Sign}t'
         os.symlink(self.target, self.link)

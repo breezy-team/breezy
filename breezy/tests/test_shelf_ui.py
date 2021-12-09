@@ -214,7 +214,7 @@ class TestShelver(ShelfTestCase):
         shelver.expect('Shelve 1 change(s)?', 0)
 
     def test_shelve_modify_target(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
         tree.add('baz', b'baz-id')
@@ -443,7 +443,7 @@ class TestApplyReporter(ShelfTestCase):
         shelver.expect('Apply 1 change(s)?', 0)
 
     def test_shelve_modify_target(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
         tree.add('baz', b'baz-id')

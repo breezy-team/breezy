@@ -38,7 +38,7 @@ class TestTreeShape(tests.TestCaseWithTransport):
         self.assertFileEqual(b'hello', '.bzr/README')
 
     def test_build_tree_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree_contents([('link@', 'target')])
         self.assertEqual('target',
                          os.readlink('link'))

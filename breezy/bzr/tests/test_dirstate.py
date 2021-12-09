@@ -1224,7 +1224,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
         # bzr doesn't support fake symlinks on windows, yet.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink(target, link_name)
         stat = os.lstat(link_name)
         expected_entries = [

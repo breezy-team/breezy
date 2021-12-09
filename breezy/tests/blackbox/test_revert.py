@@ -145,7 +145,7 @@ class TestRevert(TestCaseWithTransport):
         os.rmdir('revertdir')
         self.run_bzr('revert')
 
-        if breezy.osutils.has_symlinks():
+        if breezy.osutils.supports_symlinks(self.test_dir):
             os.symlink('/unlikely/to/exist', 'symlink')
             self.run_bzr('add symlink')
             self.run_bzr('commit -m f')
