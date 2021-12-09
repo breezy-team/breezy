@@ -1131,6 +1131,9 @@ class PreviewTree(object):
     def supports_setting_file_ids(self):
         raise NotImplementedError(self.supports_setting_file_ids)
 
+    def supports_symlinks(self):
+        return self._transform._tree.supports_symlinks()
+
     @property
     def _by_parent(self):
         if self.__by_parent is None:

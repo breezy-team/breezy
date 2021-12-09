@@ -104,16 +104,16 @@ class TestTransformPreview(TestCaseWithTree):
         tree.add('foo')
         revid1 = tree.commit('rev1')
         revision_tree = tree.branch.repository.revision_tree(revid1)
-        preview = revision_tree.preview_transform()
-        self.addCleanup(preview.finalize)
-        preview.delete_versioned(preview.trans_id_tree_path('foo'))
-        preview_tree = preview.get_preview_tree()
-        out = BytesIO()
-        log = BytesIO()
-        trace.push_log_file(log)
         os_symlink = getattr(os, 'symlink', None)
         os.symlink = None
         try:
+            preview = revision_tree.preview_transform()
+            self.addCleanup(preview.finalize)
+            preview.delete_versioned(preview.trans_id_tree_path('foo'))
+            preview_tree = preview.get_preview_tree()
+            out = BytesIO()
+            log = BytesIO()
+            trace.push_log_file(log)
             show_diff_trees(revision_tree, preview_tree, out)
             lines = out.getvalue().splitlines()
         finally:
