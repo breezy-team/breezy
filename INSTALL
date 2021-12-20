@@ -64,7 +64,7 @@ To install system-wide, run (as root)
   python setup.py install
 
 For more information on installation, see
-<http://wiki.bazaar.canonical.com/InstallationFaq> for the Bazaar installation FAQ
+<http://wiki.breezy-vcs.org/InstallationFaq> for the Bazaar installation FAQ
 (that also applies to Breezy)
 or write to bazaar@lists.canonical.com mentioning you use Breezy, or ask a
 question at <https://answers.launchpad.net/brz/>.

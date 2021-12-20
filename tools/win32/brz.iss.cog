@@ -73,8 +73,8 @@ VersionInfoDescription="Windows installer for Breezy"
 AppComments="Breezy: Friendly distributed version control system"
 AppPublisher="Breezy Developers"
 AppPublisherURL="https://www.breezy-vcs.org/"
-AppSupportURL="http://wiki.bazaar.canonical.com/BzrSupport"
-AppUpdatesURL="http://wiki.bazaar.canonical.com/WindowsDownloads"
+AppSupportURL="http://wiki.breezy-vcs.org/BzrSupport"
+AppUpdatesURL="http://wiki.breezy-vcs.org/WindowsDownloads"
 ; [[[cog cog.outl('AppVersion=%s' % VERSION) ]]]
 ; [[[end]]]
 
