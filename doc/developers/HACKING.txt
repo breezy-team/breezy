@@ -240,8 +240,6 @@ the associated branch can be deleted or archived as you wish.
 Navigating the Code Base
 ========================
 
-.. Was at <http://wiki.bazaar.canonical.com/NewDeveloperIntroduction>
-
 Some of the key files in this directory are:
 
 bzr
