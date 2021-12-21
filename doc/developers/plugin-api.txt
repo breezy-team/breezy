@@ -241,7 +241,7 @@ other people.  Here are some steps to consider:
    <https://launchpad.net/bzr-fastimport>
    and publish the branches or tarballs there
 
- * include the plugin in <http://wiki.bazaar.canonical.com/BzrPlugins>
+ * include the plugin in <http://wiki.breezy-vcs.org/Plugins>
 
  * post about it to the ``bazaar-announce`` list at ``lists.canonical.com``
 

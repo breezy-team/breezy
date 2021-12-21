@@ -26,10 +26,10 @@ easy. You can find installation instructions at:
 For other platforms and to install from source code, see the Download_
 and Installation_ pages.
 
-.. _installation instructions for Windows: http://wiki.bazaar.canonical.com/WindowsDownloads
-.. _installation instructions for Mac OS X: http://wiki.bazaar.canonical.com/MacOSXBundle
-.. _Download: http://wiki.bazaar.canonical.com/Download
-.. _Installation: http://wiki.bazaar.canonical.com/InstallationFaq
+.. _installation instructions for Windows: http://wiki.breezy-vcs.org/WindowsDownloads
+.. _installation instructions for Mac OS X: http://wiki.breezy-vcs.org/MacOSXBundle
+.. _Download: http://wiki.breezy-vcs.org/Download
+.. _Installation: http://wiki.breezy-vcs.org/InstallationFaq
 
 
 Introducing yourself

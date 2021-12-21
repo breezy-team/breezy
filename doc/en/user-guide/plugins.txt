@@ -28,7 +28,7 @@ Breezy itself.
 Where to find plugins
 ---------------------
 
-We keep our list of plugins on the http://wiki.bazaar.canonical.com/BzrPlugins page.
+We keep our list of plugins on the http://wiki.breezy-vcs.org/Plugins page.
 
 How to install a plugin
 -----------------------
