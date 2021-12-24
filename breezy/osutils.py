@@ -2363,51 +2363,6 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
 
-
-if sys.platform == 'win32':
-    def open_file(filename, mode='r', bufsize=-1):
-        """This function is used to override the ``open`` builtin.
-
-        But it uses O_NOINHERIT flag so the file handle is not inherited by
-        child processes.  Deleting or renaming a closed file opened with this
-        function is not blocking child processes.
-        """
-        writing = 'w' in mode
-        appending = 'a' in mode
-        updating = '+' in mode
-        binary = 'b' in mode
-
-        flags = O_NOINHERIT
-        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
-        # for flags for each modes.
-        if binary:
-            flags |= O_BINARY
-        else:
-            flags |= O_TEXT
-
-        if writing:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_TRUNC
-        elif appending:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_APPEND
-        else:  # reading
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_RDONLY
-
-        return os.fdopen(os.open(filename, flags), mode, bufsize)
-else:
-    open_file = open
-
-
 def available_backup_name(base, exists):
     """Find a non-existing backup file name.
 
