@@ -468,7 +468,7 @@ if sys.platform == 'win32':
         Helps to remove files and dirs marked as read-only.
         """
         exception = excinfo[1]
-        if function in (os.remove, os.rmdir) \
+        if function in (os.unlink, os.remove, os.rmdir) \
                 and isinstance(exception, OSError) \
                 and exception.errno == errno.EACCES:
             make_writable(path)
