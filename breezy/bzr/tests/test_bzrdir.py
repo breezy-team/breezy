@@ -80,13 +80,16 @@ class TestDefaultFormat(TestCase):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirMetaFormat1
         self.assertIsInstance(old_format, bzrdir.BzrDirMetaFormat1)
-        controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
+        current_default = controldir.format_registry.aliases()['bzr']
+        controldir.format_registry.register('sample', SampleBzrDirFormat, help='Sample')
+        self.addCleanup(controldir.format_registry.remove, 'sample')
+        controldir.format_registry.register_alias('bzr', 'sample')
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
             self.assertIsInstance(result, SampleBzrDir)
         finally:
-            controldir.ControlDirFormat._set_default_format(old_format)
+            controldir.format_registry.register_alias('bzr', current_default)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
