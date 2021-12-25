@@ -187,11 +187,8 @@ cdef class Win32ReadDir:
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
         """See DirReader.top_prefix_to_starting_dir."""
-        global osutils
-        if osutils is None:
-            from . import osutils
-        return (osutils.safe_utf8(prefix), None, None, None,
-                osutils.safe_unicode(top))
+        return (prefix.encode('utf-8'), None, None, None,
+                top.decnde('utf-8'))
 
     cdef object _get_kind(self, WIN32_FIND_DATAW *data):
         if data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY:
