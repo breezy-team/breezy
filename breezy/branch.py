@@ -63,11 +63,12 @@ class UnstackableBranchFormat(errors.BzrError):
 
 class BindingUnsupported(errors.UnsupportedOperation):
 
-    _fmt = "Format for branch %(branch)s does not support bound branches."
+    _fmt = "Branch at %(url)s does not support binding."
 
     def __init__(self, branch):
         errors.BzrError.__init__(self)
         self.branch = branch
+        self.url = branch.user_url
 
 
 class Branch(controldir.ControlComponent):
