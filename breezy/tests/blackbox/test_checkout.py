@@ -40,10 +40,10 @@ class TestCheckout(TestCaseWithTransport):
     def setUp(self):
         super(TestCheckout, self).setUp()
         tree = controldir.ControlDir.create_standalone_workingtree('branch')
-        tree.commit('1', rev_id=b'1', allow_pointless=True)
+        self.rev1 = tree.commit('1', allow_pointless=True)
         self.build_tree(['branch/added_in_2'])
         tree.add('added_in_2')
-        tree.commit('2', rev_id=b'2')
+        self.rev2 = tree.commit('2')
 
     def test_checkout_makes_bound_branch(self):
         self.run_bzr('checkout branch checkout')
@@ -66,7 +66,7 @@ class TestCheckout(TestCaseWithTransport):
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual([b'1'], result.open_workingtree().get_parent_ids())
+        self.assertEqual([self.rev1], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
@@ -75,7 +75,7 @@ class TestCheckout(TestCaseWithTransport):
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual([b'1'], result.open_workingtree().get_parent_ids())
+        self.assertEqual([self.rev1], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_into_empty_dir(self):
@@ -146,7 +146,7 @@ class TestCheckout(TestCaseWithTransport):
         branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 1', working_dir='branch')
         tree = workingtree.WorkingTree.open('branch')
-        self.assertEqual(b'1', tree.last_revision())
+        self.assertEqual(self.rev1, tree.last_revision())
         branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 0', working_dir='branch')
         self.assertEqual(b'null:', tree.last_revision())

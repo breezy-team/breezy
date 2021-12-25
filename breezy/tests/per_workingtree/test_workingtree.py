@@ -663,7 +663,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             # legacy branches cannot bind
             return
         foo = master_tree.commit('foo', allow_pointless=True)
@@ -686,7 +686,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             # legacy branches cannot bind
             return
         # sync with master
@@ -1184,7 +1184,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             final_branch, stop_revision=branch_revid, overwrite=True)
         try:
             wt.branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise TestNotApplicable(
                 "Can't bind %s" % wt.branch._format.__class__)
         return wt, master

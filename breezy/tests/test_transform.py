@@ -90,7 +90,8 @@ class TransformGroup(object):
         self.name = dirname
         os.mkdir(dirname)
         self.wt = ControlDir.create_standalone_workingtree(dirname)
-        self.wt.set_root_id(root_id)
+        if self.wt.supports_file_ids:
+            self.wt.set_root_id(root_id)
         self.b = self.wt.branch
         self.tt = self.wt.transform()
         self.root = self.tt.trans_id_tree_path('')
@@ -140,30 +141,30 @@ class TestTransformMerge(TestCaseInTempDir):
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         # textual merge
-        with this.wt.get_file(this.wt.id2path(b'a')) as f:
+        with this.wt.get_file('a') as f:
             self.assertEqual(f.read(), b'y\nb\nc\nd\bz\n')
         # three-way text conflict
-        with this.wt.get_file(this.wt.id2path(b'b')) as f:
+        with this.wt.get_file('b') as f:
             self.assertEqual(f.read(), conflict_text(b'b', b'b2'))
         # OTHER wins
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'c')).read(), b'c2')
+        self.assertEqual(this.wt.get_file('c').read(), b'c2')
         # THIS wins
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'd')).read(), b'd2')
+        self.assertEqual(this.wt.get_file('d').read(), b'd2')
         # Ambigious clean merge
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'e')).read(), b'e2')
+        self.assertEqual(this.wt.get_file('e').read(), b'e2')
         # No change
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'f')).read(), b'f')
+        self.assertEqual(this.wt.get_file('f').read(), b'f')
         # Correct correct results when THIS == OTHER
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'g')).read(), b'g')
+        self.assertEqual(this.wt.get_file('g').read(), b'g')
         # Text conflict when THIS & OTHER are text and BASE is dir
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'h')).read(),
+        self.assertEqual(this.wt.get_file('h').read(),
                          conflict_text(b'1\n2\n3\n4\n', b'h\ni\nj\nk\n'))
         self.assertEqual(this.wt.get_file('h.THIS').read(),
                          b'1\n2\n3\n4\n')
         self.assertEqual(this.wt.get_file('h.OTHER').read(),
                          b'h\ni\nj\nk\n')
         self.assertEqual(file_kind(this.wt.abspath('h.BASE')), 'directory')
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'i')).read(),
+        self.assertEqual(this.wt.get_file('i').read(),
                          conflict_text(b'1\n2\n3\n4\n', b'h\ni\nj\nk\n'))
         self.assertEqual(this.wt.get_file('i.THIS').read(),
                          b'1\n2\n3\n4\n')
@@ -174,7 +175,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        with open(this.wt.abspath(this.wt.id2path(b'a')), 'wb') as f:
+        with open(this.wt.abspath('a'), 'wb') as f:
             f.write(b'booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()

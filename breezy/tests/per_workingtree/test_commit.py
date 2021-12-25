@@ -239,7 +239,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # older format.
             return
         master.controldir.transport.put_bytes('branch-format', b'garbage')
@@ -258,7 +258,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # older format.
             return
         committed_id = tree.commit('foo', local=True)
