@@ -504,7 +504,7 @@ class BzrFastExporter(object):
         # Map kind changes to a delete followed by an add
         for change in changes.kind_changed:
             path = self._adjust_path_for_renames(
-                path, renamed, tree_new.get_revision_id())
+                change.path[0], renamed, tree_new.get_revision_id())
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.

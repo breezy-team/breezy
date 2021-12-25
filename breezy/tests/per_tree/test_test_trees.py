@@ -204,7 +204,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)

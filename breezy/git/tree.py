@@ -257,6 +257,9 @@ class GitTree(_mod_tree.Tree):
 
     supports_file_ids = False
 
+    def supports_symlinks(self):
+        return True
+
     def iter_git_objects(self):
         """Iterate over all the objects in the tree.
 

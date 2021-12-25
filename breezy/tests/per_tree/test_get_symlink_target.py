@@ -31,7 +31,7 @@ from breezy.tests import (
 class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
 
     def get_tree_with_symlinks(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('tree')
         os.symlink('foo', 'tree/link')
         os.symlink('../bar', 'tree/rel_link')
@@ -53,7 +53,7 @@ class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
                          tree.get_symlink_target('link'))
 
     def test_get_unicode_symlink_target(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
         target = u'targ\N{Euro Sign}t'

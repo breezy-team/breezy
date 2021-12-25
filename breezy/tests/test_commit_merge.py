@@ -106,7 +106,7 @@ class TestCommitMerge(TestCaseWithTransport):
         check.check_dwim(by.base, False, True, True)
 
     def test_merge_with_symlink(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree_a = self.make_branch_and_tree('tree_a')
         os.symlink('target', osutils.pathjoin('tree_a', 'link'))
         tree_a.add('link')

@@ -323,7 +323,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_commit_link_unchanged(self):
         # committing without changing a link does not change the last modified.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link')
@@ -374,7 +374,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_rename_link_changes(self):
         # renaming a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link')
@@ -419,7 +419,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_reparent_link_changes(self):
         # reparenting a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_reparent_check_changed(tree, 'link')
@@ -567,7 +567,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def _test_last_mod_rev_after_content_link_changes(
             self, link, target, newtarget):
         # changing a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         os.symlink(target, link)
 
@@ -642,7 +642,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_merge_link_changes(self):
         # merge a link changes the last modified.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge(tree1, 'link')
@@ -720,7 +720,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_last_modified_revision_after_converged_merge_link_unchanged(self):
         # merge a link that changed preserves the last modified.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link')
@@ -750,7 +750,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.build_tree([name])
 
     def make_link(self, name):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink('target', name)
 
     def make_reference(self, name):

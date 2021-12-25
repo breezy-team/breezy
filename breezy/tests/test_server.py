@@ -350,6 +350,7 @@ class TestingTCPServerMixin(object):
             accepted_errnos = [errno.EBADF,
                                errno.EPIPE,
                                errno.WSAEBADF,
+                               errno.WSAENOTSOCK,
                                errno.WSAECONNRESET,
                                errno.WSAENOTCONN,
                                errno.WSAESHUTDOWN,

@@ -257,7 +257,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -297,7 +297,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def _test_shelve_symlink_target_change(self, link_name,
                                            old_target, new_target,
                                            shelve_change=False):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
