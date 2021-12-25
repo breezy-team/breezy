@@ -282,7 +282,7 @@ def import_archive_to_transform(tree, archive_file, tt):
             tt.create_symlink(member.linkname, trans_id)
         else:
             continue
-        if tt.tree_file_id(trans_id) is None:
+        if not tt.final_is_versioned(trans_id):
             name = basename(member.name.rstrip('/'))
             file_id = generate_ids.gen_file_id(name)
             tt.version_file(trans_id, file_id=file_id)

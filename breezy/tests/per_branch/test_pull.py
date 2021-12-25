@@ -293,7 +293,7 @@ class TestPullHook(per_branch.TestCaseWithBranch):
         local = self.make_branch('local')
         try:
             local.bind(target)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # We can't bind this format to itself- typically it is the local
             # branch that doesn't support binding.  As of May 2007
             # remotebranches can't be bound.  Let's instead make a new local

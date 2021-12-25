@@ -83,7 +83,7 @@ class TestGetTo(TestCaseInTempDir):
         sender, revid = self.get_sender()
         self.assertEqual(
             'At %s\n\n%s' % (sender.url(), sample_log % revid.decode('utf-8')),
-             sender.body())
+            sender.body())
 
     def test_custom_body(self):
         sender, revid = self.get_sender(customized_mail_config)

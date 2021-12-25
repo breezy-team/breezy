@@ -717,7 +717,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch2 = self.make_branch('2')
         try:
             branch.bind(branch2)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.assertTrue(branch.unbind())
         self.assertFalse(branch.unbind())
@@ -745,7 +745,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         tree_b.commit('rev2b')
         try:
             tree_b.branch.bind(tree_a.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
 
     def test_unbind_clears_cached_master_branch(self):
@@ -754,7 +754,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -768,7 +768,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -784,7 +784,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -799,7 +799,7 @@ class TestStrict(per_branch.TestCaseWithBranch):
         tree1 = self.make_branch_and_tree('tree1')
         try:
             tree1.branch.set_append_revisions_only(True)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestSkipped('Format does not support strict history')
         tree1.commit('empty commit')
         tree2 = tree1.controldir.sprout('tree2').open_workingtree()
@@ -883,7 +883,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def bind(self, branch, master):
         try:
             branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Branch cannot be bound.')
 
     def test_store_uncommitted(self):

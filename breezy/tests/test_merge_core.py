@@ -55,7 +55,8 @@ class MergeBuilder(object):
             wt = controldir.ControlDir.create_standalone_workingtree(path)
             # the tests perform pulls, so need a branch that is writeable.
             wt.lock_write()
-            wt.set_root_id(self.tree_root)
+            if wt.supports_file_ids:
+                wt.set_root_id(self.tree_root)
             wt.flush()
             tt = wt.transform()
             return wt, tt
