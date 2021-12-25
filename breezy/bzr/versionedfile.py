@@ -550,13 +550,13 @@ class VersionedFile(object):
         """Check that lines being added to a versioned file are not unicode."""
         for line in lines:
             if not isinstance(line, bytes):
-                raise errors.BzrBadParameterUnicode("lines")
+                raise TypeError(lines)
 
     def _check_lines_are_lines(self, lines):
         """Check that the lines really are full lines without inline EOL."""
         for line in lines:
             if b'\n' in line[:-1]:
-                raise errors.BzrBadParameterContainsNewline("lines")
+                raise ValueError(lines)
 
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
@@ -1171,13 +1171,13 @@ class VersionedFiles(object):
         """Check that lines being added to a versioned file are not unicode."""
         for line in lines:
             if line.__class__ is not bytes:
-                raise errors.BzrBadParameterUnicode("lines")
+                raise TypeError(lines)
 
     def _check_lines_are_lines(self, lines):
         """Check that the lines really are full lines without inline EOL."""
         for line in lines:
             if b'\n' in line[:-1]:
-                raise errors.BzrBadParameterContainsNewline("lines")
+                raise ValueError(lines)
 
     def get_known_graph_ancestry(self, keys):
         """Get a KnownGraph instance with the ancestry of keys."""

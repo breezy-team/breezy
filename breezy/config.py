@@ -941,7 +941,7 @@ class LockableConfig(IniBasedConfig):
 
     def __init__(self, file_name):
         super(LockableConfig, self).__init__(file_name=file_name)
-        self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
+        self.dir = osutils.dirname(self.file_name)
         # FIXME: It doesn't matter that we don't provide possible_transports
         # below since this is currently used only for local config files ;
         # local transports are not shared. But if/when we start using

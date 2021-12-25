@@ -59,7 +59,7 @@ def gather_peeled(refs):
     return ret
 
 
-def branch_name_to_ref(name):
+def branch_name_to_ref(name: str) -> bytes:
     """Map a branch name to a ref.
 
     :param name: Branch name
@@ -68,18 +68,18 @@ def branch_name_to_ref(name):
     if name == "":
         return b"HEAD"
     if not name.startswith("refs/"):
-        return LOCAL_BRANCH_PREFIX + osutils.safe_utf8(name)
+        return LOCAL_BRANCH_PREFIX + name.encode('utf-8')
     else:
-        return osutils.safe_utf8(name)
+        return name.encode('utf-8')
 
 
-def tag_name_to_ref(name):
+def tag_name_to_ref(name: str) -> bytes:
     """Map a tag name to a ref.
 
     :param name: Tag name
     :return: ref string
     """
-    return LOCAL_TAG_PREFIX + osutils.safe_utf8(name)
+    return LOCAL_TAG_PREFIX + name.encode('utf-8')
 
 
 def ref_to_branch_name(ref):

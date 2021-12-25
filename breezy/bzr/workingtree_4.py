@@ -71,7 +71,6 @@ from ..osutils import (
     isdir,
     pathjoin,
     realpath,
-    safe_unicode,
     )
 from ..transport import get_transport_from_path
 from ..transport.local import LocalTransport
@@ -105,7 +104,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """
         self._format = _format
         self.controldir = _controldir
-        basedir = safe_unicode(basedir)
+        basedir = basedir.decode('utf-8') if isinstance(basedir, bytes) else basedir
         trace.mutter("opening working tree %r", basedir)
         self._branch = branch
         self.basedir = realpath(basedir)
@@ -1395,13 +1394,13 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
     def sha1(self, abspath):
         """See dirstate.SHA1Provider.sha1()."""
         filters = self.tree._content_filter_stack(
-            self.tree.relpath(osutils.safe_unicode(abspath)))
+            self.tree.relpath(abspath))
         return _mod_filters.internal_size_sha_file_byname(abspath, filters)[1]
 
     def stat_and_sha1(self, abspath):
         """See dirstate.SHA1Provider.stat_and_sha1()."""
         filters = self.tree._content_filter_stack(
-            self.tree.relpath(osutils.safe_unicode(abspath)))
+            self.tree.relpath(abspath))
         with open(abspath, 'rb', 65000) as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             if filters:

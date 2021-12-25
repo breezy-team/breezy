@@ -402,7 +402,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             return None
         if not self.is_versioned(path):
             return None
-        return self.mapping.generate_file_id(osutils.safe_unicode(path))
+        return self.mapping.generate_file_id(path)
 
     def all_file_ids(self):
         raise errors.UnsupportedOperation(self.all_file_ids, self)
@@ -1163,8 +1163,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         with self.lock_read():
             path = path.rstrip('/')
             if self.is_versioned(path.rstrip('/')):
-                return self.mapping.generate_file_id(
-                    osutils.safe_unicode(path))
+                return self.mapping.generate_file_id(path)
             return None
 
     def id2path(self, file_id, recurse='down'):

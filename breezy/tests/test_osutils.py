@@ -778,46 +778,6 @@ class TestRelpath(tests.TestCase):
                           osutils.relpath, 'C:/', 'H:/path')
 
 
-class TestSafeUnicode(tests.TestCase):
-
-    def test_from_ascii_string(self):
-        self.assertEqual(u'foobar', osutils.safe_unicode(b'foobar'))
-
-    def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual(u'bargam', osutils.safe_unicode(u'bargam'))
-
-    def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual(u'bargam\xae', osutils.safe_unicode(u'bargam\xae'))
-
-    def test_from_utf8_string(self):
-        self.assertEqual(u'foo\xae', osutils.safe_unicode(b'foo\xc2\xae'))
-
-    def test_bad_utf8_string(self):
-        self.assertRaises(errors.BzrBadParameterNotUnicode,
-                          osutils.safe_unicode,
-                          b'\xbb\xbb')
-
-
-class TestSafeUtf8(tests.TestCase):
-
-    def test_from_ascii_string(self):
-        f = b'foobar'
-        self.assertEqual(b'foobar', osutils.safe_utf8(f))
-
-    def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual(b'bargam', osutils.safe_utf8(u'bargam'))
-
-    def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual(b'bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
-
-    def test_from_utf8_string(self):
-        self.assertEqual(b'foo\xc2\xae', osutils.safe_utf8(b'foo\xc2\xae'))
-
-    def test_bad_utf8_string(self):
-        self.assertRaises(errors.BzrBadParameterNotUnicode,
-                          osutils.safe_utf8, b'\xbb\xbb')
-
-
 class TestSendAll(tests.TestCase):
 
     def test_send_with_disconnected_socket(self):
@@ -1136,7 +1096,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
         e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
-        self.assertEqual('./test-unreadable', osutils.safe_unicode(e.filename))
+        self.assertEqual(b'./test-unreadable', e.filename)
         self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\\./test-unreadable")
@@ -1210,7 +1170,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
                 found_bzrdir = True
                 del dirblock[0]
             dirdetail = (dirdetail[0].decode('utf-8'),
-                         osutils.safe_unicode(dirdetail[1]))
+                         dirdetail[1])
             dirblock = [
                 (entry[0].decode('utf-8'), entry[1].decode('utf-8'), entry[2])
                 for entry in dirblock]

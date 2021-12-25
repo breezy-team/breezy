@@ -1474,23 +1474,6 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class BzrBadParameter(InternalBzrError):
-
-    _fmt = "Bad parameter: %(param)r"
-
-    # This exception should never be thrown, but it is a base class for all
-    # parameter-to-function errors.
-
-    def __init__(self, param):
-        BzrError.__init__(self)
-        self.param = param
-
-
-class BzrBadParameterNotUnicode(BzrBadParameter):
-
-    _fmt = "Parameter %(param)s is neither unicode nor utf8."
-
-
 class BzrMoveFailedError(BzrError):
 
     _fmt = ("Could not move %(from_path)s%(operator)s %(to_path)s"
@@ -1534,27 +1517,6 @@ class BzrRenameFailedError(BzrMoveFailedError):
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
-
-
-class BzrBadParameterNotString(BzrBadParameter):
-
-    _fmt = "Parameter %(param)s is not a string or unicode string."
-
-
-class BzrBadParameterMissing(BzrBadParameter):
-
-    _fmt = "Parameter %(param)s is required but not present."
-
-
-class BzrBadParameterUnicode(BzrBadParameter):
-
-    _fmt = ("Parameter %(param)s is unicode but"
-            " only byte-strings are permitted.")
-
-
-class BzrBadParameterContainsNewline(BzrBadParameter):
-
-    _fmt = "Parameter %(param)s contains a newline."
 
 
 class ParamikoNotPresent(DependencyNotPresent):

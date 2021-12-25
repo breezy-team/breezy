@@ -87,7 +87,7 @@ class AllInOneRepository(VersionedFileRepository):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return urlutils.escape(osutils.safe_unicode(file_or_path))
+        return urlutils.escape(file_or_path)
 
     def __init__(self, _format, a_controldir):
         # we reuse one control files instance.

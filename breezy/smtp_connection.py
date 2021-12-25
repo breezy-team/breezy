@@ -157,14 +157,7 @@ class SMTPConnection(object):
             self._smtp_password = auth.get_password(
                 'smtp', self._smtp_server, self._smtp_username)
 
-        # smtplib requires that the username and password be byte
-        # strings.  The CRAM-MD5 spec doesn't give any guidance on
-        # encodings, but the SASL PLAIN spec says UTF-8, so that's
-        # what we'll use.
-        username = osutils.safe_utf8(self._smtp_username)
-        password = osutils.safe_utf8(self._smtp_password)
-
-        self._connection.login(username, password)
+        self._connection.login(self._smtp_username, self._smtp_password)
 
     @staticmethod
     def get_message_addresses(message):

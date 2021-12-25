@@ -22,8 +22,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr, parseaddr
 from . import __version__ as _breezy_version
-from .errors import BzrBadParameterNotUnicode
-from .osutils import safe_unicode
 from .smtp_connection import SMTPConnection
 
 
@@ -66,7 +64,7 @@ class EmailMessage(object):
 
         self._headers['To'] = ', '.join(to_addresses)
         self._headers['From'] = self.address_to_encoded_header(from_address)
-        self._headers['Subject'] = Header(safe_unicode(subject))
+        self._headers['Subject'] = Header(subject)
         self._headers['User-Agent'] = 'Bazaar (%s)' % _breezy_version
 
     def add_inline_attachment(self, body, filename=None, mime_subtype='plain'):
@@ -167,15 +165,14 @@ class EmailMessage(object):
         :return: A possibly RFC2047-encoded string.
         """
         if not isinstance(address, str):
-            raise BzrBadParameterNotUnicode(address)
+            raise TypeError(address)
         # Can't call Header over all the address, because that encodes both the
         # name and the email address, which is not permitted by RFCs.
         user, email = parseaddr(address)
         if not user:
             return email
         else:
-            return formataddr((str(Header(safe_unicode(user))),
-                               email))
+            return formataddr((str(Header(user)), email))
 
     @staticmethod
     def string_with_encoding(string_):

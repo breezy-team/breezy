@@ -114,7 +114,7 @@ class TestExport(TestCaseWithTransport):
         ball = tarfile.open('test.tar')
         # all paths are prefixed with the base name of the tarball
         self.assertEqual([u'test/' + fname],
-                         [osutils.safe_unicode(n) for n in ball.getnames()])
+                         [n for n in ball.getnames()])
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""

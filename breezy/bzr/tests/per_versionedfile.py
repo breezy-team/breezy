@@ -249,10 +249,10 @@ class VersionedFileTestMixIn(object):
         # unicode content is not permitted in versioned files.
         # versioned files version sequences of bytes only.
         vf = self.get_file()
-        self.assertRaises(errors.BzrBadParameterUnicode,
+        self.assertRaises(TypeError,
                           vf.add_lines, b'a', [], [b'a\n', u'b\n', b'c\n'])
         self.assertRaises(
-            (errors.BzrBadParameterUnicode, NotImplementedError),
+            (TypeError, NotImplementedError),
             vf.add_lines_with_ghosts, b'a', [], [b'a\n', u'b\n', b'c\n'])
 
     def test_add_follows_left_matching_blocks(self):
@@ -275,10 +275,10 @@ class VersionedFileTestMixIn(object):
     def test_inline_newline_throws(self):
         # \r characters are not permitted in lines being added
         vf = self.get_file()
-        self.assertRaises(errors.BzrBadParameterContainsNewline,
+        self.assertRaises(ValueError,
                           vf.add_lines, b'a', [], [b'a\n\n'])
         self.assertRaises(
-            (errors.BzrBadParameterContainsNewline, NotImplementedError),
+            (ValueError, NotImplementedError),
             vf.add_lines_with_ghosts, b'a', [], [b'a\n\n'])
         # but inline CR's are allowed
         vf.add_lines(b'a', [], [b'a\r\n'])

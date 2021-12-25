@@ -239,7 +239,7 @@ class GPGStrategy(object):
                 'Set create_signatures=no to disable creating signatures.')
 
         if isinstance(content, str):
-            raise errors.BzrBadParameterUnicode('content')
+            raise TypeError(content)
 
         plain_text = gpg.Data(content)
         try:

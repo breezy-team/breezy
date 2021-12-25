@@ -108,7 +108,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         if not _internal:
             raise errors.BzrError("Please use controldir.open_workingtree or "
                                   "WorkingTree.open() to obtain a WorkingTree.")
-        basedir = osutils.safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
         if branch is not None:
             self._branch = branch

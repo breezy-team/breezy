@@ -1200,8 +1200,9 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                     raise errors.DivergedBranches(self.source, self.target)
             refs = {self.target.ref: new_ref}
             result.new_revid = stop_revision
-            for name, sha in (
+            for utf8_name, sha in (
                     self.source.repository._git.refs.as_dict(b"refs/tags").items()):
+                name = utf8_name.decode('utf-8')
                 if tag_selector and not tag_selector(name):
                     continue
                 if sha not in self.source.repository._git:

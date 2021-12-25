@@ -1335,40 +1335,6 @@ def decode_filename(filename):
         raise errors.BadFilenameEncoding(filename, _fs_enc)
 
 
-def safe_unicode(unicode_or_utf8_string):
-    """Coerce unicode_or_utf8_string into unicode.
-
-    If it is unicode, it is returned.
-    Otherwise it is decoded from utf-8. If decoding fails, the exception is
-    wrapped in a BzrBadParameterNotUnicode exception.
-    """
-    if isinstance(unicode_or_utf8_string, str):
-        return unicode_or_utf8_string
-    try:
-        return unicode_or_utf8_string.decode('utf8')
-    except UnicodeDecodeError:
-        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
-
-
-def safe_utf8(unicode_or_utf8_string):
-    """Coerce unicode_or_utf8_string to a utf8 string.
-
-    If it is a str, it is returned.
-    If it is Unicode, it is encoded into a utf-8 string.
-    """
-    if isinstance(unicode_or_utf8_string, bytes):
-        # TODO: jam 20070209 This is overkill, and probably has an impact on
-        #       performance if we are dealing with lots of apis that want a
-        #       utf-8 revision id
-        try:
-            # Make sure it is a valid utf-8 string
-            unicode_or_utf8_string.decode('utf-8')
-        except UnicodeDecodeError:
-            raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
-        return unicode_or_utf8_string
-    return unicode_or_utf8_string.encode('utf-8')
-
-
 _platform_normalizes_filenames = False
 if sys.platform == 'darwin':
     _platform_normalizes_filenames = True
@@ -1738,7 +1704,7 @@ def walkdirs(top, prefix=""):
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
     _directory = _directory_kind
-    pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
+    pending = [(prefix, "", _directory, None, top)]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
         relroot, _, _, _, top = pending.pop()
@@ -1856,7 +1822,8 @@ class UnicodeDirReader(DirReader):
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
         """See DirReader.top_prefix_to_starting_dir."""
-        return (safe_utf8(prefix), None, None, None, safe_unicode(top))
+        return (prefix.encode('utf-8')
+                if isinstance(prefix, str) else prefix, None, None, None, top)
 
     def read_dir(self, prefix, top):
         """Read a single directory from a non-utf8 file system.
@@ -1885,7 +1852,7 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for entry in scandir(safe_utf8(top)):
+        for entry in scandir(_fs_encode(top)):
             try:
                 name = _fs_decode(entry.name)
             except UnicodeDecodeError:

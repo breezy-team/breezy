@@ -258,7 +258,7 @@ def import_git_tree(texts, mapping, path, name, hexshas,
         # If nothing has changed since the base revision, we're done
         return [], {}
     invdelta = []
-    file_id = lookup_file_id(osutils.safe_unicode(path))
+    file_id = lookup_file_id(path)
     ie = InventoryDirectory(file_id, decode_git_path(name), parent_id)
     tree = lookup_object(hexsha)
     if base_hexsha is None:
