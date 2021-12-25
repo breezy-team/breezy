@@ -1923,6 +1923,9 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
     def supports_setting_file_ids(self):
         return True
 
+    def supports_symlinks(self):
+        return self._transform._create_symlinks
+
     def supports_tree_reference(self):
         # TODO(jelmer): Support tree references in PreviewTree.
         # return self._transform._tree.supports_tree_reference()

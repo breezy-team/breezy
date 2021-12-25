@@ -6,7 +6,7 @@ REM    **  that affects on brz behaviour                   **
 REM    ******************************************************
 
 REM Add the Brz directory to system-wide PATH environment variable
-SET PATH=C:\Program Files\Bazaar;%PATH%
+SET PATH=C:\Program Files\Breezy;%PATH%
 
 REM Change next line to set-up e-mail to identify yourself in brz
 REM SET BZREMAIL=

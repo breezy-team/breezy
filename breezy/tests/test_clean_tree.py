@@ -29,7 +29,7 @@ from ..clean_tree import (
     iter_deletables,
     )
 from ..osutils import (
-    has_symlinks,
+    supports_symlinks,
     )
 from . import (
     TestCaseInTempDir,
@@ -39,7 +39,7 @@ from . import (
 class TestCleanTree(TestCaseInTempDir):
 
     def test_symlinks(self):
-        if has_symlinks() is False:
+        if supports_symlinks(self.test_dir) is False:
             return
         os.mkdir('branch')
         ControlDir.create_standalone_workingtree('branch')

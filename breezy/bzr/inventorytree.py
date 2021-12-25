@@ -135,6 +135,9 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
+    def supports_symlinks(self):
+        return True
+
     def _get_root_inventory(self):
         return self._inventory
 

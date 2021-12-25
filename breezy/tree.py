@@ -203,7 +203,7 @@ class Tree(object):
     def supports_symlinks(self):
         """Does this tree support symbolic links?
         """
-        return osutils.has_symlinks()
+        return True
 
     @property
     def supports_file_ids(self):

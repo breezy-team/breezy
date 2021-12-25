@@ -62,7 +62,7 @@ from .errors import (BzrError,
                      StrictCommitFailed
                      )
 from .osutils import (get_user_encoding,
-                      has_symlinks,
+                      supports_symlinks,
                       is_inside_any,
                       minimum_path_selection,
                       )

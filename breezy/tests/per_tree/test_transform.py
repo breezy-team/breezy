@@ -38,7 +38,6 @@ from breezy.tests.matchers import MatchesTreeChanges
 
 
 from ..features import (
-    HardlinkFeature,
     SymlinkFeature,
     UnicodeFilenameFeature,
     )
@@ -96,7 +95,7 @@ class TestTransformPreview(TestCaseWithTree):
         self.assertEqual(lines[4], b"+content B")
 
     def test_unsupported_symlink_diff(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'content 1')])
         tree.add('a')
@@ -104,16 +103,16 @@ class TestTransformPreview(TestCaseWithTree):
         tree.add('foo')
         revid1 = tree.commit('rev1')
         revision_tree = tree.branch.repository.revision_tree(revid1)
-        preview = revision_tree.preview_transform()
-        self.addCleanup(preview.finalize)
-        preview.delete_versioned(preview.trans_id_tree_path('foo'))
-        preview_tree = preview.get_preview_tree()
-        out = BytesIO()
-        log = BytesIO()
-        trace.push_log_file(log)
         os_symlink = getattr(os, 'symlink', None)
         os.symlink = None
         try:
+            preview = revision_tree.preview_transform()
+            self.addCleanup(preview.finalize)
+            preview.delete_versioned(preview.trans_id_tree_path('foo'))
+            preview_tree = preview.get_preview_tree()
+            out = BytesIO()
+            log = BytesIO()
+            trace.push_log_file(log)
             show_diff_trees(revision_tree, preview_tree, out)
             lines = out.getvalue().splitlines()
         finally:
@@ -253,7 +252,7 @@ class TestTransformPreview(TestCaseWithTree):
             self.assertEqual(b'contents', tree_file.read())
 
     def test_get_symlink_target(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         preview = self.get_empty_preview()
         preview.new_symlink('symlink', preview.root, 'target', b'symlink-id')
         preview_tree = preview.get_preview_tree()
@@ -391,7 +390,7 @@ class TestTransformPreview(TestCaseWithTree):
         self.assertMatchingIterEntries(tt, ['', 'parent/child'])
 
     def test_symlink_content_summary(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         preview = self.get_empty_preview()
         preview.new_symlink('path', preview.root, 'target', b'path-id')
         summary = preview.get_preview_tree().path_content_summary('path')

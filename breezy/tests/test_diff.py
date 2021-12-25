@@ -790,7 +790,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
             br' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree_contents([('old-tree/olddir/',),
                                   ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')

@@ -152,13 +152,13 @@ class PoMerger(merge.PerFileMerger):
         env['result'] = osutils.pathjoin(tmpdir, 'result')
         env['pot_file'] = self.pot_file_abspath
         try:
-            with osutils.open_file(env['this'], 'wb') as f:
+            with open(env['this'], 'wb') as f:
                 f.writelines(params.this_lines)
-            with osutils.open_file(env['other'], 'wb') as f:
+            with open(env['other'], 'wb') as f:
                 f.writelines(params.other_lines)
             command = self.conf.expand_options(self.command, env)
             retcode, out, err = self._invoke(command)
-            with osutils.open_file(env['result'], 'rb') as f:
+            with open(env['result'], 'rb') as f:
                 # FIXME: To avoid the list() construct below which means the
                 # whole 'result' file is kept in memory, there may be a way to
                 # use an iterator that will close the file when it's done, but
