@@ -799,7 +799,7 @@ class TestStrict(per_branch.TestCaseWithBranch):
         tree1 = self.make_branch_and_tree('tree1')
         try:
             tree1.branch.set_append_revisions_only(True)
-        except _mod_branch.BindingUnsupported:
+        except errors.UpgradeRequired:
             raise tests.TestSkipped('Format does not support strict history')
         tree1.commit('empty commit')
         tree2 = tree1.controldir.sprout('tree2').open_workingtree()
