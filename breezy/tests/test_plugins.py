@@ -475,17 +475,17 @@ def load_tests(loader, standard_tests, pattern):
     def test_candidate__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'candidate', 1)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3rc1", plugin.__version__)
+        self.assertEqual("1.2.3.rc1", plugin.__version__)
 
     def test_dev__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 0)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev", plugin.__version__)
+        self.assertEqual("1.2.3.dev", plugin.__version__)
 
     def test_dev_fallback__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev4", plugin.__version__)
+        self.assertEqual("1.2.3.dev4", plugin.__version__)
 
     def test_final__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'final', 0)")
