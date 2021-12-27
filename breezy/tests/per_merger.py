@@ -124,25 +124,23 @@ class TestMergeImplementation(TestCaseWithTransport):
         # the modification should be considered a conflict
         builder = self.make_branch_builder('test')
         builder.start_series()
-        builder.build_snapshot(None,
+        base_id = builder.build_snapshot(None,
                                [('add', ('', None, 'directory', None)),
                                 ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-                                ], revision_id=b'BASE-id')
+                                ])
         # Delete 'b\n'
-        builder.build_snapshot([b'BASE-id'],
-                               [('modify', ('foo', b'a\nc\nd\ne\n'))],
-                               revision_id=b'OTHER-id')
+        other_id = builder.build_snapshot([base_id],
+                               [('modify', ('foo', b'a\nc\nd\ne\n'))])
         # Modify 'b\n', add 'X\n'
-        builder.build_snapshot([b'BASE-id'],
-                               [('modify', ('foo', b'a\nb2\nc\nd\nX\ne\n'))],
-                               revision_id=b'THIS-id')
+        this_id = builder.build_snapshot([base_id],
+                               [('modify', ('foo', b'a\nb2\nc\nd\nX\ne\n'))])
         builder.finish_series()
         branch = builder.get_branch()
         this_tree = branch.controldir.create_workingtree()
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
         other_tree = this_tree.controldir.sprout(
-            'other', b'OTHER-id').open_workingtree()
+            'other', other_id).open_workingtree()
         self.do_merge(this_tree, other_tree)
         if self.merge_type is _mod_merge.LCAMerger:
             self.expectFailure("lca merge doesn't track deleted lines",
