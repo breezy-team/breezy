@@ -3108,8 +3108,8 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         factory = self.get_merger_factory()
         self._install_hook(factory)
         builder = self.make_builder()
-        builder.add_file(builder.root(), file_name, b'text1', True, file_id=b'bar-id')
-        builder.change_contents(b'bar-id', other=b'text4', this=b'text3')
+        trans_ids = builder.add_file(builder.root(), file_name, b'text1', True, file_id=b'bar-id')
+        builder.change_contents(trans_ids, other=b'text4', this=b'text3')
         return builder
 
     def make_kind_change(self):

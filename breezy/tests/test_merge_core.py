@@ -169,7 +169,7 @@ class MergeBuilder(object):
         for val, tt, trans_id in (
                         (base, self.base_tt, trans_ids[0]),
                         (this, self.this_tt, trans_ids[1]),
-                        (other, self.other_tt), trans_ids[2]):
+                        (other, self.other_tt, trans_ids[2])):
             if val is None:
                 continue
             parent_id = tt.final_parent(trans_id)
@@ -266,7 +266,7 @@ class MergeTest(TestCaseWithTransport):
     def test_merge_one(self):
         builder = MergeBuilder(getcwd())
         name1 = builder.add_file(builder.root(), "name1", b"hello1", True, file_id=b'1')
-        builder.change_contents(name, other=b"text4")
+        builder.change_contents(name1, other=b"text4")
         name2 = builder.add_file(builder.root(), "name2", b"hello1", True, file_id=b"2")
         builder.change_contents(name2, other=b"text4")
         builder.merge(interesting_files=["name1"])
@@ -283,7 +283,7 @@ class MergeTest(TestCaseWithTransport):
         file2 = builder.add_file(dir1, "file2", b"hello2", True, file_id=b'4')
         file3 = builder.add_file(dir1, "file3", b"hello3", True, file_id=b'5')
         builder.change_parent(file1, other=b"2")
-        builder.change_parent(file4, this=b"2")
+        builder.change_parent(file2, this=b"2")
         builder.change_parent(file3, base=b"2")
         builder.merge()
         builder.cleanup()
@@ -433,11 +433,11 @@ y
     def test_perms_merge(self):
         builder = MergeBuilder(getcwd())
         name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
-        builder.change_perms(1, other=False)
+        builder.change_perms(name1, other=False)
         name2 = builder.add_file(builder.root(), "name2", b"text2", True, file_id=b"2")
         builder.change_perms(name2, base=False)
         name3 = builder.add_file(builder.root(), "name3", b"text3", True, file_id=b"3")
-        builder.change_perms(3, this=False)
+        builder.change_perms(name3, this=False)
         name4 = builder.add_file(builder.root(), 'name4', b'text4', False, file_id=b'4')
         builder.change_perms(name4, this=True)
         builder.remove_file(name4, base=True)
