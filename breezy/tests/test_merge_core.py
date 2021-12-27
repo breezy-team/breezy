@@ -331,7 +331,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(
-            builder.this.get_file(builder.this.id2path(b"a")).read(),
+            builder.this.get_file_text('blah'),
             expected)
         builder.cleanup()
 
@@ -445,7 +445,7 @@ y
         builder.change_contents(name1, other=b"text3")
         builder.add_file(builder.root(), "name1.new", b"text2", True, file_id=b"2")
         builder.merge()
-        os.lstat(builder.this.abspath(builder.this.id2path(b"2")))
+        os.lstat(builder.this.abspath('name1.new'))
         builder.cleanup()
 
     def test_spurious_conflict(self):
