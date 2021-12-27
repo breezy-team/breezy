@@ -97,15 +97,15 @@ def _format_version_tuple(version_info):
     elif release_type == 'final':
         sub_string = '.' + str(sub)
     elif release_type == 'dev' and sub == 0:
-        sub_string = 'dev'
+        sub_string = '.dev'
     elif release_type == 'dev':
-        sub_string = 'dev' + str(sub)
+        sub_string = '.dev' + str(sub)
     elif release_type in ('alpha', 'beta'):
         if version_info[2] == 0:
             main_version = '%d.%d' % version_info[:2]
-        sub_string = release_type[0] + str(sub)
+        sub_string = '.' + release_type[0] + str(sub)
     elif release_type == 'candidate':
-        sub_string = 'rc' + str(sub)
+        sub_string = '.rc' + str(sub)
     else:
         return '.'.join(map(str, version_info))
 
