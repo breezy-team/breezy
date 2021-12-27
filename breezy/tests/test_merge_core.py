@@ -39,7 +39,7 @@ from ..bzr import (
     generate_ids,
     )
 from ..osutils import getcwd, pathjoin
-from . import TestCaseWithTransport, TestSkipped
+from . import TestCaseWithTransport, TestSkipped, features
 from ..workingtree import WorkingTree
 
 
@@ -79,10 +79,6 @@ class MergeBuilder(object):
 
     def add_file(self, parent, name, contents, executable, this=True,
                  base=True, other=True, file_id=None):
-        if isinstance(parent, str):
-            parent = [
-                tt.trans_id_tree_path(parent)
-                for tt in [self.this_tt, self.base_tt, self.other_tt]]
         ret = []
         for i, (option, tt) in enumerate(self.selected_transforms(this, base, other)):
             if option is True:
@@ -138,10 +134,6 @@ class MergeBuilder(object):
         return [(v, tt) for (v, tt) in pairs if v is not None]
 
     def add_symlink(self, parent, name, contents, file_id=None):
-        if isinstance(parent, str):
-            parent = [
-                tt.trans_id_tree_path(parent)
-                for tt in [self.this_tt, self.base_tt, self.other_tt]]
         ret = []
         for i, tt in enumerate(self.list_transforms()):
             trans_id = tt.new_symlink(name, parent[i], contents, file_id=file_id)
@@ -398,7 +390,7 @@ y
     def test_symlink_conflicts(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            name2 = builder.add_symlink('', "name2", "target1", file_id=b"2")
+            name2 = builder.add_symlink(builder.root(), "name2", "target1", file_id=b"2")
             builder.change_target(name2, other="target4", base="text3")
             conflicts = builder.merge()
             self.assertEqual(conflicts, [ContentsConflict('name2',
@@ -408,9 +400,9 @@ y
     def test_symlink_merge(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            name1 = builder.add_symlink('', "name1", "target1", file_id=b"1")
-            name2 = builder.add_symlink('', "name2", "target1", file_id=b"2")
-            name3 = builder.add_symlink('', "name3", "target1", file_id=b'3')
+            name1 = builder.add_symlink(builder.root(), "name1", "target1", file_id=b"1")
+            name2 = builder.add_symlink(builder.root(), "name2", "target1", file_id=b"2")
+            name3 = builder.add_symlink(builder.root(), "name3", "target1", file_id=b'3')
             builder.change_target(name1, this=b"target2")
             builder.change_target(name2, base=b"target2")
             builder.change_target(name3, other=b"target2")
@@ -545,23 +537,19 @@ class FunctionalMergeTest(TestCaseWithTransport):
         # current code uses A as the global base and 'foo' doesn't exist there.
         # It isn't trivial to create foo.BASE because it tries to look up
         # attributes like 'executable' in A.
-        builder.build_snapshot(None, [
-            ('add', ('', b'TREE_ROOT', 'directory', None))],
-            revision_id=b'A-id')
-        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot([b'A-id'], [
-            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\n'))],
-            revision_id=b'C-id')
-        builder.build_snapshot([b'B-id', b'C-id'], [
-            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\nand D\n'))],
-            revision_id=b'D-id')
-        builder.build_snapshot([b'C-id', b'B-id'], [
-            ('modify', ('foo', b'orig\ncontents\nand E\n'))],
-            revision_id=b'E-id')
+        a_id = builder.build_snapshot(None, [
+            ('add', ('', b'TREE_ROOT', 'directory', None))])
+        b_id = builder.build_snapshot([a_id], [])
+        c_id = builder.build_snapshot([a_id], [
+            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\n'))])
+        d_id = builder.build_snapshot([b_id, c_id], [
+            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\nand D\n'))])
+        e_id = builder.build_snapshot([c_id, b_id], [
+            ('modify', ('foo', b'orig\ncontents\nand E\n'))])
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         self.assertEqual(1, len(tree.merge_from_branch(tree.branch,
-                                                   to_revision=b'D-id',
+                                                   to_revision=d_id,
                                                    merge_type=WeaveMerger)))
         self.assertPathExists('tree/foo.THIS')
         self.assertPathExists('tree/foo.OTHER')
@@ -647,8 +635,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
             f.write(b'UN')
         with open('a/deux', 'wb') as f:
             f.write(b'DEUX')
-        a_wt.add('un', b'un-id')
-        a_wt.add('deux', b'deux-id')
+        a_wt.add('un')
+        a_wt.add('deux')
         a_wt.commit('r0', rev_id=b'r0')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
