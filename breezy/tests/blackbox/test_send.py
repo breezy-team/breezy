@@ -282,16 +282,17 @@ class TestSendStrictMixin(TestSendMixin):
         self.parent_tree = ControlDir.create_standalone_workingtree('parent')
         self.build_tree_contents([('parent/file', b'parent')])
         self.parent_tree.add('file')
-        self.parent_tree.commit('first commit', rev_id=b'parent')
+        parent = self.parent_tree.commit('first commit')
         # Branch 'local' from parent and do a change
         local_bzrdir = self.parent_tree.controldir.sprout('local')
         self.local_tree = local_bzrdir.open_workingtree()
         self.build_tree_contents([('local/file', b'local')])
-        self.local_tree.commit('second commit', rev_id=b'local')
+        local = self.local_tree.commit('second commit')
+        return parent, local
 
     _default_command = ['send', '-o-', '../parent']
     _default_wd = 'local'
-    _default_sent_revs = [b'local']
+    _default_sent_revs = None
     _default_errors = ['Working tree ".*/local/" has uncommitted '
                        'changes \\(See brz status\\)\\.', ]
     _default_additional_error = 'Use --no-strict to force the send.\n'
@@ -311,7 +312,7 @@ class TestSendStrictMixin(TestSendMixin):
         else:
             err_re = []
         if revs is None:
-            revs = self._default_sent_revs
+            revs = self._default_sent_revs or [self.local]
         out, err = self.run_send(args, err_re=err_re)
         if len(revs) == 1:
             bundling_revs = 'Bundling %d revision.\n' % len(revs)
@@ -324,7 +325,7 @@ class TestSendStrictMixin(TestSendMixin):
             self.assertEqual(bundling_revs, err)
         md = merge_directive.MergeDirective.from_lines(
             BytesIO(out.encode('utf-8')))
-        self.assertEqual(b'parent', md.base_revision_id)
+        self.assertEqual(self.parent, md.base_revision_id)
         br = serializer.read_bundle(BytesIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
 
@@ -334,7 +335,7 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestSendStrictWithoutChanges, self).setUp()
-        self.make_parent_and_local_branches()
+        self.parent, self.local = self.make_parent_and_local_branches()
 
     def test_send_without_workingtree(self):
         ControlDir.open("local").destroy_workingtree()
@@ -383,12 +384,12 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         do_changes_func()
 
     def _uncommitted_changes(self):
-        self.make_parent_and_local_branches()
+        self.parent, self.local = self.make_parent_and_local_branches()
         # Make a change without committing it
         self.build_tree_contents([('local/file', b'modified')])
 
     def _pending_merges(self):
-        self.make_parent_and_local_branches()
+        self.parent, self.local = self.make_parent_and_local_branches()
         # Create 'other' branch containing a new file
         other_bzrdir = self.parent_tree.controldir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
@@ -400,7 +401,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.local_tree.revert(filenames=['other-file'], backups=False)
 
     def _out_of_sync_trees(self):
-        self.make_parent_and_local_branches()
+        self.parent, self.local = self.make_parent_and_local_branches()
         self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
         # Make a change and commit it
         self.build_tree_contents([('local/file', b'modified in local')])
@@ -409,13 +410,13 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
                                 " 'brz update'\\.", ]
-        self._default_sent_revs = [b'modified-in-local', b'local']
+        self._default_sent_revs = [b'modified-in-local', self.local]
 
     def test_send_default(self):
         self.assertSendSucceeds([], with_warning=True)
 
     def test_send_with_revision(self):
-        self.assertSendSucceeds(['-r', 'revid:local'], revs=[b'local'])
+        self.assertSendSucceeds(['-r', 'revid:' + self.local.decode('utf-8')], revs=[self.local])
 
     def test_send_no_strict(self):
         self.assertSendSucceeds(['--no-strict'])

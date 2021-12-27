@@ -351,7 +351,11 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         builder = self.make_merge_builder()
         self.create_file_needing_contents_merge(builder, "name1")
         conflicts = builder.merge(self.merge_type)
-        self.assertEqual(conflicts, [TextConflict('name1', file_id=b'name1-id')])
+        self.assertEqual(1, len(conflicts))
+        [conflict] = conflicts
+        self.assertEqual('text conflict', conflict.typestring)
+        if builder.this.supports_file_ids:
+            self.assertEqual(conflict.file_id, builder.this.path2id('name1'))
         # The hook still gets to set the file contents in this case, so that it
         # can insert custom conflict markers.
         with builder.this.get_file('name1') as f:

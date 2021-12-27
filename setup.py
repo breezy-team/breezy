@@ -588,8 +588,9 @@ elif 'py2exe' in sys.argv:
         version=version_str,
         description=META_INFO['description'],
         maintainer=META_INFO['maintainer'],
-        copyright="Copyright 2005-2012 Canonical Ltd.\n"
-            "Copyright 2017-2021 Breezy developers",
+        copyright=(
+            "Copyright 2005-2012 Canonical Ltd.\n"
+            "Copyright 2017-2021 Breezy developers"),
         company_name="Canonical Ltd.",
         comments=META_INFO['description'],
     )

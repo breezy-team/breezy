@@ -351,7 +351,11 @@ class TestPushHook(per_branch.TestCaseWithBranch):
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
             local = controldir.ControlDir.create_branch_convenience('local2')
-            local.bind(target)
+            try:
+                local.bind(target)
+            except branch.BindingUnsupported:
+                raise tests.TestNotApplicable(
+                    'default format does not support binding')
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(
             'post_push', self.capture_post_push_hook, None)
