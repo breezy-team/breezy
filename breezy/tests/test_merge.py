@@ -3108,19 +3108,18 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         factory = self.get_merger_factory()
         self._install_hook(factory)
         builder = self.make_builder()
-        builder.add_file(b'bar-id', builder.tree_root,
-                         file_name, b'text1', True)
-        builder.change_contents(b'bar-id', other=b'text4', this=b'text3')
+        trans_ids = builder.add_file(builder.root(), file_name, b'text1', True, file_id=b'bar-id')
+        builder.change_contents(trans_ids, other=b'text4', this=b'text3')
         return builder
 
     def make_kind_change(self):
         factory = self.get_merger_factory()
         self._install_hook(factory)
         builder = self.make_builder()
-        builder.add_file(b'bar-id', builder.tree_root, 'bar', b'text1', True,
-                         this=False)
-        builder.add_dir(b'bar-dir', builder.tree_root, 'bar-id',
-                        base=False, other=False)
+        builder.add_file(builder.root(), 'bar', b'text1', True,
+                         this=False, file_id=b'bar-id')
+        builder.add_dir(builder.root(), 'bar-id',
+                        base=False, other=False, file_id=b'bar-dir')
         return builder
 
     def test_uses_this_branch(self):
