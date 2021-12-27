@@ -124,25 +124,23 @@ class TestMergeImplementation(TestCaseWithTransport):
         # the modification should be considered a conflict
         builder = self.make_branch_builder('test')
         builder.start_series()
-        builder.build_snapshot(None,
+        base_id = builder.build_snapshot(None,
                                [('add', ('', None, 'directory', None)),
                                 ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-                                ], revision_id=b'BASE-id')
+                                ])
         # Delete 'b\n'
-        builder.build_snapshot([b'BASE-id'],
-                               [('modify', ('foo', b'a\nc\nd\ne\n'))],
-                               revision_id=b'OTHER-id')
+        other_id = builder.build_snapshot([base_id],
+                               [('modify', ('foo', b'a\nc\nd\ne\n'))])
         # Modify 'b\n', add 'X\n'
-        builder.build_snapshot([b'BASE-id'],
-                               [('modify', ('foo', b'a\nb2\nc\nd\nX\ne\n'))],
-                               revision_id=b'THIS-id')
+        this_id = builder.build_snapshot([base_id],
+                               [('modify', ('foo', b'a\nb2\nc\nd\nX\ne\n'))])
         builder.finish_series()
         branch = builder.get_branch()
         this_tree = branch.controldir.create_workingtree()
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
         other_tree = this_tree.controldir.sprout(
-            'other', b'OTHER-id').open_workingtree()
+            'other', other_id).open_workingtree()
         self.do_merge(this_tree, other_tree)
         if self.merge_type is _mod_merge.LCAMerger:
             self.expectFailure("lca merge doesn't track deleted lines",
@@ -311,15 +309,15 @@ class TestHookMergeFileContent(TestCaseWithTransport):
 
     def create_file_needing_contents_merge(self, builder, name):
         file_id = name.encode('ascii') + b'-id'
-        builder.add_file(file_id, builder.tree_root, name, b"text1", True)
-        builder.change_contents(file_id, other=b"text4", this=b"text3")
+        transid = builder.add_file(builder.root(), name, b"text1", True, file_id=file_id)
+        builder.change_contents(transid, other=b"text4", this=b"text3")
 
     def test_change_vs_change(self):
         """Hook is used for (changed, changed)"""
         self.install_hook_success()
         builder = self.make_merge_builder()
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_contents(b"1", other=b"text4", this=b"text3")
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.change_contents(name1, other=b"text4", this=b"text3")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         with builder.this.get_file('name1') as f:
@@ -329,9 +327,9 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         """Hook is used for (changed, deleted)"""
         self.install_hook_success()
         builder = self.make_merge_builder()
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_contents(b"1", this=b"text2")
-        builder.remove_file(b"1", other=True)
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.change_contents(name1, this=b"text2")
+        builder.remove_file(name1, other=True)
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         with builder.this.get_file('name1') as f:
@@ -365,8 +363,8 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         """
         self.install_hook_log_lines()
         builder = self.make_merge_builder()
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_contents(b"1", this=b"text2", other=b"text3")
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.change_contents(name1, this=b"text2", other=b"text3")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(
             [('log_lines', [b'text2'], [b'text3'], [b'text1'])], self.hook_log)

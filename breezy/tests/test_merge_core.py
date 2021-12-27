@@ -39,7 +39,7 @@ from ..bzr import (
     generate_ids,
     )
 from ..osutils import getcwd, pathjoin
-from . import TestCaseWithTransport, TestSkipped
+from . import TestCaseWithTransport, TestSkipped, features
 from ..workingtree import WorkingTree
 
 
@@ -64,6 +64,12 @@ class MergeBuilder(object):
         self.this, self.this_tt = wt('this')
         self.other, self.other_tt = wt('other')
 
+    def root(self):
+        ret = []
+        for tt in [self.this_tt, self.base_tt, self.other_tt]:
+            ret.append(tt.trans_id_tree_path(''))
+        return tuple(ret)
+
     def get_cset_path(self, parent, name):
         if name is None:
             if parent is not None:
@@ -71,14 +77,16 @@ class MergeBuilder(object):
             return None
         return pathjoin(self.cset.entries[parent].path, name)
 
-    def add_file(self, id, parent, name, contents, executable, this=True,
-                 base=True, other=True):
-        def new_file(tt):
-            parent_id = tt.trans_id_file_id(parent)
-            tt.new_file(name, parent_id, [contents], id, executable)
-        for option, tt in self.selected_transforms(this, base, other):
+    def add_file(self, parent, name, contents, executable, this=True,
+                 base=True, other=True, file_id=None):
+        ret = []
+        for i, (option, tt) in enumerate(self.selected_transforms(this, base, other)):
             if option is True:
-                new_file(tt)
+                trans_id = tt.new_file(name, parent[i], [contents], executable=executable, file_id=file_id)
+            else:
+                trans_id = None
+            ret.append(trans_id)
+        return tuple(ret)
 
     def merge(self, merge_type=Merge3Merger, interesting_files=None, **kwargs):
         merger = self.make_merger(merge_type, interesting_files, **kwargs)
@@ -125,60 +133,59 @@ class MergeBuilder(object):
                  (other, self.other_tt)]
         return [(v, tt) for (v, tt) in pairs if v is not None]
 
-    def add_symlink(self, id, parent, name, contents):
-        for tt in self.list_transforms():
-            parent_id = tt.trans_id_file_id(parent)
-            tt.new_symlink(name, parent_id, contents, id)
+    def add_symlink(self, parent, name, contents, file_id=None):
+        ret = []
+        for i, tt in enumerate(self.list_transforms()):
+            trans_id = tt.new_symlink(name, parent[i], contents, file_id=file_id)
+            ret.append(trans_id)
+        return ret
 
-    def remove_file(self, file_id, base=False, this=False, other=False):
-        for option, tt in self.selected_transforms(this, base, other):
+    def remove_file(self, trans_ids, base=False, this=False, other=False):
+        for trans_id, (option, tt) in zip(trans_ids, self.selected_transforms(this, base, other)):
             if option is True:
-                trans_id = tt.trans_id_file_id(file_id)
                 tt.cancel_creation(trans_id)
                 tt.cancel_versioning(trans_id)
                 tt.set_executability(None, trans_id)
 
-    def add_dir(self, file_id, parent, name, this=True, base=True, other=True):
-        for option, tt in self.selected_transforms(this, base, other):
+    def add_dir(self, parent, name, this=True, base=True, other=True, file_id=None):
+        ret = []
+        for i, (option, tt) in enumerate(self.selected_transforms(this, base, other)):
             if option is True:
-                parent_id = tt.trans_id_file_id(parent)
-                tt.new_directory(name, parent_id, file_id)
+                trans_id = tt.new_directory(name, parent[i], file_id)
+            else:
+                trans_id = None
+            ret.append(trans_id)
+        return tuple(ret)
 
-    def change_name(self, id, base=None, this=None, other=None):
-        for val, tt in ((base, self.base_tt), (this, self.this_tt),
-                        (other, self.other_tt)):
+    def change_name(self, trans_ids, base=None, this=None, other=None):
+        for val, tt, trans_id in (
+                        (base, self.base_tt, trans_ids[0]),
+                        (this, self.this_tt, trans_ids[1]),
+                        (other, self.other_tt, trans_ids[2])):
             if val is None:
                 continue
-            trans_id = tt.trans_id_file_id(id)
             parent_id = tt.final_parent(trans_id)
             tt.adjust_path(val, parent_id, trans_id)
 
-    def change_parent(self, file_id, base=None, this=None, other=None):
-        for parent, tt in self.selected_transforms(this, base, other):
-            trans_id = tt.trans_id_file_id(file_id)
+    def change_parent(self, trans_ids, base=None, this=None, other=None):
+        for trans_id, (parent, tt) in zip(trans_ids, self.selected_transforms(this, base, other)):
             parent_id = tt.trans_id_file_id(parent)
             tt.adjust_path(tt.final_name(trans_id), parent_id, trans_id)
 
-    def change_contents(self, file_id, base=None, this=None, other=None):
-        for contents, tt in self.selected_transforms(this, base, other):
-            trans_id = tt.trans_id_file_id(file_id)
+    def change_contents(self, trans_id, base=None, this=None, other=None):
+        for trans_id, (contents, tt) in zip(trans_id, self.selected_transforms(this, base, other)):
             tt.cancel_creation(trans_id)
             tt.create_file([contents], trans_id)
 
-    def change_target(self, id, base=None, this=None, other=None):
-        for target, tt in self.selected_transforms(this, base, other):
-            trans_id = tt.trans_id_file_id(id)
+    def change_target(self, trans_ids, base=None, this=None, other=None):
+        for trans_id, (target, tt) in zip(trans_ids, self.selected_transforms(this, base, other)):
             tt.cancel_creation(trans_id)
             tt.create_symlink(target, trans_id)
 
-    def change_perms(self, id, base=None, this=None, other=None):
-        for executability, tt in self.selected_transforms(this, base, other):
-            trans_id = tt.trans_id_file_id(id)
+    def change_perms(self, trans_ids, base=None, this=None, other=None):
+        for trans_id, (executability, tt) in zip(trans_ids, self.selected_transforms(this, base, other)):
             tt.set_executability(None, trans_id)
             tt.set_executability(executability, trans_id)
-
-    def change_perms_tree(self, id, tree, mode):
-        os.chmod(tree.full_path(id), mode)
 
     def apply_inv_change(self, inventory_change, orig_inventory):
         orig_inventory_by_path = {}
@@ -233,27 +240,27 @@ class MergeTest(TestCaseWithTransport):
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"hello1", True)
-        builder.change_name(b"1", other="name2")
-        builder.add_file(b"2", builder.tree_root, "name3", b"hello2", True)
-        builder.change_name(b"2", base="name4")
-        builder.add_file(b"3", builder.tree_root, "name5", b"hello3", True)
-        builder.change_name(b"3", this="name6")
+        name1 = builder.add_file(builder.root(), "name1", b"hello1", True, file_id=b"1")
+        builder.change_name(name1, other="name2")
+        name3 = builder.add_file(builder.root(), "name3", b"hello2", True, file_id=b"2")
+        builder.change_name(name3, base="name4")
+        name5 = builder.add_file(builder.root(), "name5", b"hello3", True, file_id=b"3")
+        builder.change_name(name5, this="name6")
         builder.merge()
         builder.cleanup()
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"hello1", False)
-        builder.change_name(b"1", other="name2", this="name3")
+        name1 = builder.add_file(builder.root(), "name1", b"hello1", False, file_id=b"1")
+        builder.change_name(name1, other="name2", this="name3")
         conflicts = builder.merge()
         self.assertEqual(conflicts, [PathConflict('name3', 'name2', b'1')])
         builder.cleanup()
 
     def test_merge_one(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"hello1", True)
-        builder.change_contents(b"1", other=b"text4")
-        builder.add_file(b"2", builder.tree_root, "name2", b"hello1", True)
-        builder.change_contents(b"2", other=b"text4")
+        name1 = builder.add_file(builder.root(), "name1", b"hello1", True, file_id=b'1')
+        builder.change_contents(name1, other=b"text4")
+        name2 = builder.add_file(builder.root(), "name2", b"hello1", True, file_id=b"2")
+        builder.change_contents(name2, other=b"text4")
         builder.merge(interesting_files=["name1"])
         self.assertEqual(builder.this.get_file("name1").read(), b"text4")
         self.assertEqual(builder.this.get_file("name2").read(), b"hello1")
@@ -262,23 +269,23 @@ class MergeTest(TestCaseWithTransport):
     def test_file_moves(self):
         """Test moves"""
         builder = MergeBuilder(getcwd())
-        builder.add_dir(b"1", builder.tree_root, "dir1")
-        builder.add_dir(b"2", builder.tree_root, "dir2")
-        builder.add_file(b"3", b"1", "file1", b"hello1", True)
-        builder.add_file(b"4", b"1", "file2", b"hello2", True)
-        builder.add_file(b"5", b"1", "file3", b"hello3", True)
-        builder.change_parent(b"3", other=b"2")
-        builder.change_parent(b"4", this=b"2")
-        builder.change_parent(b"5", base=b"2")
+        dir1 = builder.add_dir(builder.root(), "dir1", file_id=b"1")
+        dir2 = builder.add_dir(builder.root(), "dir2", file_id=b"2")
+        file1 = builder.add_file(dir1, "file1", b"hello1", True, file_id=b"3")
+        file2 = builder.add_file(dir1, "file2", b"hello2", True, file_id=b'4')
+        file3 = builder.add_file(dir1, "file3", b"hello3", True, file_id=b'5')
+        builder.change_parent(file1, other=b"2")
+        builder.change_parent(file2, this=b"2")
+        builder.change_parent(file3, base=b"2")
         builder.merge()
         builder.cleanup()
 
         builder = MergeBuilder(getcwd())
-        builder.add_dir(b"1", builder.tree_root, "dir1")
-        builder.add_dir(b"2", builder.tree_root, "dir2")
-        builder.add_dir(b"3", builder.tree_root, "dir3")
-        builder.add_file(b"4", b"1", "file1", b"hello1", False)
-        builder.change_parent(b"4", other=b"2", this=b"3")
+        dir1 = builder.add_dir(builder.root(), "dir1", file_id=b'1')
+        builder.add_dir(builder.root(), "dir2", file_id=b'2')
+        builder.add_dir(builder.root(), "dir3", file_id=b'3')
+        file1 = builder.add_file(dir1, "file1", b"hello1", False, file_id=b"4")
+        builder.change_parent(file1, other=b"2", this=b"3")
         conflicts = builder.merge()
         path2 = pathjoin('dir2', 'file1')
         path3 = pathjoin('dir3', 'file1')
@@ -306,9 +313,9 @@ class MergeTest(TestCaseWithTransport):
     def test_reprocess_weave(self):
         # Reprocess works on weaves, and behaves as expected
         builder = MergeBuilder(getcwd())
-        builder.add_file(b'a', builder.tree_root, 'blah', b'a', False)
+        blah = builder.add_file(builder.root(), 'blah', b'a', False, file_id=b'a')
         builder.change_contents(
-            b'a', this=b'b\nc\nd\ne\n', other=b'z\nc\nd\ny\n')
+            blah, this=b'b\nc\nd\ne\n', other=b'z\nc\nd\ny\n')
         builder.merge(WeaveMerger, reprocess=True)
         expected = b"""<<<<<<< TREE
 b
@@ -324,7 +331,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(
-            builder.this.get_file(builder.this.id2path(b"a")).read(),
+            builder.this.get_file_text('blah'),
             expected)
         builder.cleanup()
 
@@ -336,16 +343,16 @@ y
 
     def contents_test_success(self, merge_factory):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_contents(b"1", other=b"text4")
-        builder.add_file(b"2", builder.tree_root, "name3", b"text2", False)
-        builder.change_contents(b"2", base=b"text5")
-        builder.add_file(b"3", builder.tree_root, "name5", b"text3", True)
-        builder.add_file(b"4", builder.tree_root, "name6", b"text4", True)
-        builder.remove_file(b"4", base=True)
-        builder.add_file(b"5", builder.tree_root, "name7", b"a\nb\nc\nd\ne\nf\n",
-                         True)
-        builder.change_contents(b"5", other=b"a\nz\nc\nd\ne\nf\n",
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.change_contents(name1, other=b"text4")
+        name3 = builder.add_file(builder.root(), "name3", b"text2", False, file_id=b"2")
+        builder.change_contents(name3, base=b"text5")
+        builder.add_file(builder.root(), "name5", b"text3", True, file_id=b"3")
+        name6 = builder.add_file(builder.root(), "name6", b"text4", True, file_id=b"4")
+        builder.remove_file(name6, base=True)
+        name7 = builder.add_file(builder.root(), "name7", b"a\nb\nc\nd\ne\nf\n",
+                         True, file_id=b"5")
+        builder.change_contents(name7, other=b"a\nz\nc\nd\ne\nf\n",
                                 this=b"a\nb\nc\nd\ne\nz\n")
         conflicts = builder.merge(merge_factory)
         try:
@@ -364,14 +371,14 @@ y
 
     def contents_test_conflicts(self, merge_factory):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_contents(b"1", other=b"text4", this=b"text3")
-        builder.add_file(b"2", builder.tree_root, "name2", b"text1", True)
-        builder.change_contents(b"2", other=b"\x00", this=b"text3")
-        builder.add_file(b"3", builder.tree_root, "name3", b"text5", False)
-        builder.change_perms(b"3", this=True)
-        builder.change_contents(b'3', this=b'moretext')
-        builder.remove_file(b'3', other=True)
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.change_contents(name1, other=b"text4", this=b"text3")
+        name2 = builder.add_file(builder.root(), "name2", b"text1", True, file_id=b"2")
+        builder.change_contents(name2, other=b"\x00", this=b"text3")
+        name3 = builder.add_file(builder.root(), "name3", b"text5", False, file_id=b"3")
+        builder.change_perms(name3, this=True)
+        builder.change_contents(name3, this=b'moretext')
+        builder.remove_file(name3, other=True)
         conflicts = builder.merge(merge_factory)
         self.assertEqual(conflicts, [TextConflict('name1', file_id=b'1'),
                                      ContentsConflict('name2', file_id=b'2'),
@@ -383,8 +390,8 @@ y
     def test_symlink_conflicts(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            builder.add_symlink(b"2", builder.tree_root, "name2", "target1")
-            builder.change_target(b"2", other="target4", base="text3")
+            name2 = builder.add_symlink(builder.root(), "name2", "target1", file_id=b"2")
+            builder.change_target(name2, other="target4", base="text3")
             conflicts = builder.merge()
             self.assertEqual(conflicts, [ContentsConflict('name2',
                                                           file_id=b'2')])
@@ -393,12 +400,12 @@ y
     def test_symlink_merge(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            builder.add_symlink(b"1", builder.tree_root, "name1", "target1")
-            builder.add_symlink(b"2", builder.tree_root, "name2", "target1")
-            builder.add_symlink(b"3", builder.tree_root, "name3", "target1")
-            builder.change_target(b"1", this=b"target2")
-            builder.change_target(b"2", base=b"target2")
-            builder.change_target(b"3", other=b"target2")
+            name1 = builder.add_symlink(builder.root(), "name1", "target1", file_id=b"1")
+            name2 = builder.add_symlink(builder.root(), "name2", "target1", file_id=b"2")
+            name3 = builder.add_symlink(builder.root(), "name3", "target1", file_id=b'3')
+            builder.change_target(name1, this=b"target2")
+            builder.change_target(name2, base=b"target2")
+            builder.change_target(name3, other=b"target2")
             builder.merge()
             self.assertEqual(
                 builder.this.get_symlink_target("name1"), "target2")
@@ -410,22 +417,22 @@ y
 
     def test_no_passive_add(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.remove_file(b"1", this=True)
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.remove_file(name1, this=True)
         builder.merge()
         builder.cleanup()
 
     def test_perms_merge(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_perms(b"1", other=False)
-        builder.add_file(b"2", builder.tree_root, "name2", b"text2", True)
-        builder.change_perms(b"2", base=False)
-        builder.add_file(b"3", builder.tree_root, "name3", b"text3", True)
-        builder.change_perms(b"3", this=False)
-        builder.add_file(b'4', builder.tree_root, 'name4', b'text4', False)
-        builder.change_perms(b'4', this=True)
-        builder.remove_file(b'4', base=True)
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.change_perms(name1, other=False)
+        name2 = builder.add_file(builder.root(), "name2", b"text2", True, file_id=b"2")
+        builder.change_perms(name2, base=False)
+        name3 = builder.add_file(builder.root(), "name3", b"text3", True, file_id=b"3")
+        builder.change_perms(name3, this=False)
+        name4 = builder.add_file(builder.root(), 'name4', b'text4', False, file_id=b'4')
+        builder.change_perms(name4, this=True)
+        builder.remove_file(name4, base=True)
         builder.merge()
         self.assertIs(builder.this.is_executable("name1"), False)
         self.assertIs(builder.this.is_executable("name2"), True)
@@ -434,28 +441,28 @@ y
 
     def test_new_suffix(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_contents(b"1", other=b"text3")
-        builder.add_file(b"2", builder.tree_root, "name1.new", b"text2", True)
+        name1 = builder.add_file(builder.root(), "name1", b"text1", True, file_id=b"1")
+        builder.change_contents(name1, other=b"text3")
+        builder.add_file(builder.root(), "name1.new", b"text2", True, file_id=b"2")
         builder.merge()
-        os.lstat(builder.this.abspath(builder.this.id2path(b"2")))
+        os.lstat(builder.this.abspath('name1.new'))
         builder.cleanup()
 
     def test_spurious_conflict(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b"1", builder.tree_root, "name1", b"text1", False)
-        builder.remove_file(b"1", other=True)
-        builder.add_file(b"2", builder.tree_root, "name1", b"text1", False,
-                         this=False, base=False)
+        name1 = builder.add_file(builder.root(), "name1", b"text1", False, file_id=b"1")
+        builder.remove_file(name1, other=True)
+        builder.add_file(builder.root(), "name1", b"text1", False,
+                         this=False, base=False, file_id=b"2")
         conflicts = builder.merge()
         self.assertEqual(conflicts, [])
         builder.cleanup()
 
     def test_merge_one_renamed(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file(b'1', builder.tree_root, 'name1', b'text1a', False)
-        builder.change_name(b'1', this='name2')
-        builder.change_contents(b'1', other=b'text2')
+        name1 = builder.add_file(builder.root(), 'name1', b'text1a', False, file_id=b'1')
+        builder.change_name(name1, this='name2')
+        builder.change_contents(name1, other=b'text2')
         builder.merge(interesting_files=['name2'])
         self.assertEqual(b'text2', builder.this.get_file('name2').read())
         builder.cleanup()
@@ -530,23 +537,19 @@ class FunctionalMergeTest(TestCaseWithTransport):
         # current code uses A as the global base and 'foo' doesn't exist there.
         # It isn't trivial to create foo.BASE because it tries to look up
         # attributes like 'executable' in A.
-        builder.build_snapshot(None, [
-            ('add', ('', b'TREE_ROOT', 'directory', None))],
-            revision_id=b'A-id')
-        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot([b'A-id'], [
-            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\n'))],
-            revision_id=b'C-id')
-        builder.build_snapshot([b'B-id', b'C-id'], [
-            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\nand D\n'))],
-            revision_id=b'D-id')
-        builder.build_snapshot([b'C-id', b'B-id'], [
-            ('modify', ('foo', b'orig\ncontents\nand E\n'))],
-            revision_id=b'E-id')
+        a_id = builder.build_snapshot(None, [
+            ('add', ('', b'TREE_ROOT', 'directory', None))])
+        b_id = builder.build_snapshot([a_id], [])
+        c_id = builder.build_snapshot([a_id], [
+            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\n'))])
+        d_id = builder.build_snapshot([b_id, c_id], [
+            ('add', ('foo', b'foo-id', 'file', b'orig\ncontents\nand D\n'))])
+        e_id = builder.build_snapshot([c_id, b_id], [
+            ('modify', ('foo', b'orig\ncontents\nand E\n'))])
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         self.assertEqual(1, len(tree.merge_from_branch(tree.branch,
-                                                   to_revision=b'D-id',
+                                                   to_revision=d_id,
                                                    merge_type=WeaveMerger)))
         self.assertPathExists('tree/foo.THIS')
         self.assertPathExists('tree/foo.OTHER')
@@ -632,8 +635,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
             f.write(b'UN')
         with open('a/deux', 'wb') as f:
             f.write(b'DEUX')
-        a_wt.add('un', b'un-id')
-        a_wt.add('deux', b'deux-id')
+        a_wt.add('un')
+        a_wt.add('deux')
         a_wt.commit('r0', rev_id=b'r0')
         self.run_bzr('branch a b')
         b_wt = WorkingTree.open('b')
