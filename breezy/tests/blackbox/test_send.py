@@ -280,19 +280,19 @@ class TestSendStrictMixin(TestSendMixin):
     def make_parent_and_local_branches(self):
         # Create a 'parent' branch as the base
         self.parent_tree = ControlDir.create_standalone_workingtree('parent')
-        self.build_tree_contents([('parent/file', self.parent)])
+        self.build_tree_contents([('parent/file', b'parent')])
         self.parent_tree.add('file')
         parent = self.parent_tree.commit('first commit')
         # Branch 'local' from parent and do a change
         local_bzrdir = self.parent_tree.controldir.sprout('local')
         self.local_tree = local_bzrdir.open_workingtree()
-        self.build_tree_contents([('local/file', self.local)])
+        self.build_tree_contents([('local/file', b'local')])
         local = self.local_tree.commit('second commit')
         return parent, local
 
     _default_command = ['send', '-o-', '../parent']
     _default_wd = 'local'
-    _default_sent_revs = [self.local]
+    _default_sent_revs = None
     _default_errors = ['Working tree ".*/local/" has uncommitted '
                        'changes \\(See brz status\\)\\.', ]
     _default_additional_error = 'Use --no-strict to force the send.\n'
@@ -312,7 +312,7 @@ class TestSendStrictMixin(TestSendMixin):
         else:
             err_re = []
         if revs is None:
-            revs = self._default_sent_revs
+            revs = self._default_sent_revs or [self.local]
         out, err = self.run_send(args, err_re=err_re)
         if len(revs) == 1:
             bundling_revs = 'Bundling %d revision.\n' % len(revs)
@@ -416,7 +416,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.assertSendSucceeds([], with_warning=True)
 
     def test_send_with_revision(self):
-        self.assertSendSucceeds(['-r', 'revid:local'], revs=[self.local])
+        self.assertSendSucceeds(['-r', 'revid:' + self.local.decode('utf-8')], revs=[self.local])
 
     def test_send_no_strict(self):
         self.assertSendSucceeds(['--no-strict'])
