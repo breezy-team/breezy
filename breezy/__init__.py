@@ -72,7 +72,7 @@ def _format_version_tuple(version_info):
     >>> print(_format_version_tuple((1, 1, 1, 'candidate', 2)))
     1.1.1.rc2
     >>> print(_format_version_tuple((2, 1, 0, 'beta', 1)))
-    2.1b1
+    2.1.b1
     >>> print(_format_version_tuple((1, 4, 0)))
     1.4.0
     >>> print(_format_version_tuple((1, 4)))
