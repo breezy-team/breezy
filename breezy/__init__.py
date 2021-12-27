@@ -66,11 +66,11 @@ def _format_version_tuple(version_info):
     >>> print(_format_version_tuple((1, 0, 0, 'final', 0)))
     1.0.0
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 0)))
-    1.2.0dev
+    1.2.0.dev
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 1)))
-    1.2.0dev1
+    1.2.0.dev1
     >>> print(_format_version_tuple((1, 1, 1, 'candidate', 2)))
-    1.1.1rc2
+    1.1.1.rc2
     >>> print(_format_version_tuple((2, 1, 0, 'beta', 1)))
     2.1b1
     >>> print(_format_version_tuple((1, 4, 0)))
