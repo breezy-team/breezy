@@ -468,7 +468,7 @@ if sys.platform == 'win32':
         Helps to remove files and dirs marked as read-only.
         """
         exception = excinfo[1]
-        if function in (os.remove, os.rmdir) \
+        if function in (os.unlink, os.remove, os.rmdir) \
                 and isinstance(exception, OSError) \
                 and exception.errno == errno.EACCES:
             make_writable(path)
@@ -1151,22 +1151,23 @@ def _delete_file_or_dir(path):
         os.unlink(path)
 
 
-def has_symlinks():
-    if getattr(os, 'symlink', None) is not None:
+def supports_hardlinks(path):
+    if getattr(os, 'link', None) is None:
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
         return True
     else:
-        return False
-
-
-def has_hardlinks():
-    if getattr(os, 'link', None) is not None:
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support hardlinks
+            return False
         return True
-    else:
-        return False
 
 
 def host_os_dereferences_symlinks():
-    return (has_symlinks()
+    return (getattr(os, 'symlink', None) is not None
             and sys.platform not in ('cygwin', 'win32'))
 
 
@@ -1609,7 +1610,7 @@ def supports_symlinks(path):
     """Return if the filesystem at path supports the creation of symbolic links.
 
     """
-    if not has_symlinks():
+    if getattr(os, 'symlink', None) is None:
         return False
     try:
         fs_type = get_fs_type(path)
@@ -2361,51 +2362,6 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
-
-
-if sys.platform == 'win32':
-    def open_file(filename, mode='r', bufsize=-1):
-        """This function is used to override the ``open`` builtin.
-
-        But it uses O_NOINHERIT flag so the file handle is not inherited by
-        child processes.  Deleting or renaming a closed file opened with this
-        function is not blocking child processes.
-        """
-        writing = 'w' in mode
-        appending = 'a' in mode
-        updating = '+' in mode
-        binary = 'b' in mode
-
-        flags = O_NOINHERIT
-        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
-        # for flags for each modes.
-        if binary:
-            flags |= O_BINARY
-        else:
-            flags |= O_TEXT
-
-        if writing:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_TRUNC
-        elif appending:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_APPEND
-        else:  # reading
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_RDONLY
-
-        return os.fdopen(os.open(filename, flags), mode, bufsize)
-else:
-    open_file = open
-
 
 def available_backup_name(base, exists):
     """Find a non-existing backup file name.

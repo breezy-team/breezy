@@ -677,7 +677,7 @@ create_signatures=always
             basis.unlock()
 
     def test_unsupported_symlink_commit(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello'])
         tree.add('hello')
@@ -706,7 +706,7 @@ create_signatures=always
             b'supported on this filesystem\\.')
 
     def test_commit_kind_changes(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'name')
         tree.add('name', b'a-file-id')

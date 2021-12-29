@@ -162,7 +162,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
     def test_walkdirs_type_changes(self):
         """Walkdir shows the actual kinds on disk and the recorded kinds."""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         paths = ['file1', 'file2', 'dir1/', 'dir2/']
         self.build_tree(paths)
