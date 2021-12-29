@@ -1,6 +1,7 @@
 breezy (3.2.1+bzr7561-2) UNRELEASED; urgency=medium
 
-  * New.
+  * Add patch 09_disable_logs: fix permission denied errors during test
+    run.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 29 Dec 2021 19:18:45 +0000
 

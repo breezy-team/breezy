@@ -1,0 +1,22 @@
+=== modified file 'breezy/plugins/bash_completion/tests/test_bashcomp.py'
+--- old/breezy/plugins/bash_completion/tests/test_bashcomp.py	2021-08-20 12:42:42 +0000
++++ new/breezy/plugins/bash_completion/tests/test_bashcomp.py	2021-11-29 12:43:32 +0000
+@@ -38,12 +38,16 @@
+         """
+         if self.script is None:
+             self.script = self.get_script()
++        if sys.platform == 'win32':
++            log_path = 'NUL'
++        else:
++            log_path = '/dev/null'
+         proc = subprocess.Popen([features.bash_feature.path,
+                                  '--noprofile'],
+                                 stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+-                                env={'PYTHONPATH': ':'.join(sys.path)})
++                                env={'PYTHONPATH': ':'.join(sys.path), 'BRZ_LOG': log_path})
+         if cword < 0:
+             cword = len(words) + cword
+         encoding = osutils.get_user_encoding()
+
