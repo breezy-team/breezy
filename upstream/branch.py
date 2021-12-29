@@ -76,7 +76,7 @@ from ....workingtree import (
 class PreviousVersionTagMissing(BzrError):
 
     _fmt = ("Unable to find the tag for the "
-            "previous upstream version (%(version)s) in the branch: "
+            "previous upstream version (%(version)s) in the upstream branch: "
             "%(tag_name)s")
 
     def __init__(self, version, tag_name):
