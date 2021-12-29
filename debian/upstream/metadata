@@ -4,3 +4,4 @@ Repository: https://code.launchpad.net/~brz/brz/3.2
 Repository-Browse: https://code.launchpad.net/brz/3.2
 Bug-Database: https://bugs.launchpad.net/brz
 Repository-Tag-Prefix: brz-
+Security-Contact: https://bazaar.launchpad.net/~brz/brz/3.2/view/head:/SECURITY.md
