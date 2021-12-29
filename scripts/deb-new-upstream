@@ -1037,17 +1037,18 @@ def merge_upstream(  # noqa: C901
                 else:
                     upstream_revid = None
                 try:
-                    conflicts = tree.merge_from_branch(
-                        pristine_tar_source.branch, to_revision=upstream_revid
-                    )
+                    try:
+                        conflicts = tree.merge_from_branch(
+                            pristine_tar_source.branch, to_revision=upstream_revid
+                        )
+                    except NoCommits:
+                        # Maybe it's somewhere in our history, but
+                        # there isn't a viable upstream branch.
+                        conflicts = tree.merge_from_branch(
+                            tree.branch, to_revision=upstream_revid
+                        )
                 except PointlessMerge:
                     raise UpstreamAlreadyMerged(new_upstream_version)
-                except NoCommits:
-                    # Maybe it's somewhere in our history, but
-                    # there isn't a viable upstream branch.
-                    conflicts = tree.merge_from_branch(
-                        tree.branch, to_revision=upstream_revid
-                    )
     else:
         conflicts = 0
         imported_revids = []

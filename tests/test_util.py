@@ -182,7 +182,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
     def test_find_changelog_lq_unversioned_debian_symlink(self):
         # LarstiQ mode, but with an unversioned "debian" -> "." symlink.
         # Bug 619295
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
         tree.add(['changelog'])
@@ -209,7 +209,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
 
     def test_find_changelog_symlink(self):
         """When there was a symlink debian -> . then the code used to break"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
         tree.add(['changelog'])

@@ -1897,7 +1897,7 @@ class DistributionBranchTests(BuilddebTestCase):
     def test_import_symlink(self):
         version = Version("1.0-1")
         self.requireFeature(PristineTarFeature)
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         builder = SourcePackageBuilder("package", version)
         builder.add_default_control()
         builder.add_upstream_symlink("a", "b")
