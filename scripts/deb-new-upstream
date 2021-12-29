@@ -1339,11 +1339,19 @@ async def main():
             report_fatal("memory-error", str(e))
             return 1
         except UpstreamAlreadyImported as e:
-            report_fatal(
-                "nothing-to-do",
-                "Last upstream version %s already imported." % e.version,
-                upstream_version=e.version
-            )
+            if args.snapshot:
+                report_fatal(
+                    "nothing-to-do",
+                    "Last upstream version %s already imported." % e.version,
+                    upstream_version=e.version
+                )
+            else:
+                report_fatal(
+                    "nothing-to-do",
+                    "Last upstream version %s already imported. "
+                    "Import a snapshot by specifying --snapshot." % e.version,
+                    upstream_version=e.version
+                )
             return 1
         except UpstreamBranchLocationInvalid as e:
             report_fatal(
