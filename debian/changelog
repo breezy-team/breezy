@@ -1,3 +1,9 @@
+breezy-debian (2.8.65) UNRELEASED; urgency=medium
+
+  * Improve compatibility with newer versions of Breezy.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 29 Dec 2021 19:37:36 +0000
+
 breezy-debian (2.8.64) unstable; urgency=medium
 
   * Import deb-move-orphaned from silver-platter.
