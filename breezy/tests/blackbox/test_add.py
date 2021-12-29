@@ -211,7 +211,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
 
     def test_add_via_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.make_branch_and_tree('source')
         self.build_tree(['source/top.txt'])
         os.symlink('source', 'link')
@@ -219,7 +219,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEqual(out, 'adding top.txt\n')
 
     def test_add_symlink_to_abspath(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.make_branch_and_tree('tree')
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]

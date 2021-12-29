@@ -952,7 +952,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1149,7 +1149,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_file_to_symlink(self):
         """File becomes a symlink"""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The file sha1 won't be cached unless the file is old
         state.adjust_time(+10)
@@ -1168,7 +1168,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_dir_to_symlink(self):
         """Directory becomes a symlink"""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)
@@ -1178,7 +1178,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_symlink_to_file(self):
         """Symlink becomes a file"""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink and file info won't be cached unless old
         state.adjust_time(+10)
@@ -1188,7 +1188,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_symlink_to_dir(self):
         """Symlink becomes a directory"""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)

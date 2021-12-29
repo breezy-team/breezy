@@ -29,7 +29,6 @@ from breezy.tests import (
     )
 from breezy.tests.features import (
     CaseInsensitiveFilesystemFeature,
-    SymlinkFeature,
     UnicodeFilenameFeature,
     )
 

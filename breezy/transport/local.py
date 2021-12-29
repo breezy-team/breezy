@@ -152,7 +152,7 @@ class LocalTransport(transport.Transport):
             transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
-            return osutils.open_file(path, 'rb')
+            return open(path, 'rb')
         except (IOError, OSError) as e:
             if e.errno == errno.EISDIR:
                 return LateReadError(relpath)
@@ -323,7 +323,7 @@ class LocalTransport(transport.Transport):
         """See Transport.open_write_stream."""
         abspath = self._abspath(relpath)
         try:
-            handle = osutils.open_file(abspath, 'wb')
+            handle = open(abspath, 'wb')
         except (IOError, OSError) as e:
             self._translate_error(e, abspath)
         handle.truncate()

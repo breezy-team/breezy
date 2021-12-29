@@ -184,7 +184,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.wt.revert()
 
     def test_file_merge(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
@@ -358,14 +358,14 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, [b'contents'], b'file-id')
         trans_id = tt.new_directory('dir', tt.root, b'dir-id')
-        if SymlinkFeature.available():
+        if SymlinkFeature(self.test_dir).available():
             tt.new_symlink('symlink', trans_id, 'target', b'symlink-id')
         tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path(b'file-id'))
         self.assertEqual(b'contents', tree.get_file_text('file'))
         self.assertEqual('dir', tree.id2path(b'dir-id'))
-        if SymlinkFeature.available():
+        if SymlinkFeature(self.test_dir).available():
             self.assertEqual('dir/symlink', tree.id2path(b'symlink-id'))
             self.assertEqual('target', tree.get_symlink_target('dir/symlink'))
 
@@ -802,13 +802,13 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         return self.make_records(attribs, contents)
 
     def test_serialize_symlink_creation(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tt = self.get_preview()
         tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
         abspath = tt._limbo_name('new-1')
@@ -1115,10 +1115,9 @@ class TestTransformHooks(tests.TestCaseWithTransport):
 
 class TestLinkTree(tests.TestCaseWithTransport):
 
-    _test_needs_features = [HardlinkFeature]
-
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         self.parent_tree = self.make_branch_and_tree('parent')
         self.parent_tree.lock_write()
         self.addCleanup(self.parent_tree.unlock)

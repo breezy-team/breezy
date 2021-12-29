@@ -157,7 +157,7 @@ class TestCheckout(TestCaseWithTransport):
                       'branch'])
 
     def test_checkout_hardlink(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file1'])
         source.add('file1')
@@ -168,7 +168,7 @@ class TestCheckout(TestCaseWithTransport):
         self.assertEqual(source_stat, target_stat)
 
     def test_checkout_hardlink_files_from(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file1'])
         source.add('file1')
