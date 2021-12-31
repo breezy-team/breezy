@@ -52,6 +52,7 @@ from ..transport import (
     FileFileStream,
     _file_streams,
     ssh,
+    lookup_srv_single,
     ConnectedTransport,
     )
 
@@ -407,8 +408,10 @@ class SFTPTransport(ConnectedTransport):
             auth = config.AuthenticationConfig()
             user = auth.get_user('ssh', self._parsed_url.host,
                                  self._parsed_url.port)
-        connection = vendor.connect_sftp(self._parsed_url.user, password,
-                                         self._parsed_url.host, self._parsed_url.port)
+        (host, port) = lookup_srv_single(
+            '_sftp._tcp', self._parsed_url.host, self._parsed_url.port)
+        connection = vendor.connect_sftp(
+            self._parsed_url.user, password, host, port)
         return connection, (user, password)
 
     def disconnect(self):

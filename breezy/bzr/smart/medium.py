@@ -51,7 +51,7 @@ from breezy import (
     )
 from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
-from breezy.transport import ssh
+from breezy.transport import ssh, lookup_srv_single
 """)
 from ... import (
     errors,
@@ -1029,9 +1029,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             vendor = ssh._get_ssh_vendor()
         else:
             vendor = self._vendor
+        (host, port) = lookup_srv_single('_bzr+ssh._tcp', self._ssh_params.host, self._ssh_params.port)
         self._ssh_connection = vendor.connect_ssh(self._ssh_params.username,
-                                                  self._ssh_params.password, self._ssh_params.host,
-                                                  self._ssh_params.port,
+                                                  self._ssh_params.password, host, port,
                                                   command=[self._ssh_params.bzr_remote_path, 'serve', '--inet',
                                                            '--directory=/', '--allow-writes'])
         io_kind, io_object = self._ssh_connection.get_sock_or_pipes()

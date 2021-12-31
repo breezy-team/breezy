@@ -1629,6 +1629,24 @@ def do_catching_redirections(action, transport, redirected):
         raise errors.TooManyRedirections
 
 
+def lookup_srv_single(service, host, port=None):
+    """Lookup a single host/port combination to connect to."""
+    try:
+        import dns.resolver
+    except ModuleNotFoundError:
+        mutter('dns.resolver not found, ignoring SRV record')
+        return (host, port)
+    srv_name = service + '.' + host
+    try:
+        srv_records = dns.resolver.query(srv_name, 'SRV')
+    except dns.resolver.NXDOMAIN:
+        mutter('srv record %s not found', srv_name)
+        return (host, port)
+    for srv in srv_records:
+        return (str(srv.target).rstrip('.'), port or srv.port)
+    return (host, port)
+
+
 class Server(object):
     """A Transport Server.
 
