@@ -414,3 +414,24 @@ def _breezy_ssl_cert_reqs():
 
 _dromedary_http.ssl_ca_certs = _breezy_ssl_ca_certs
 _dromedary_http.ssl_cert_reqs = _breezy_ssl_cert_reqs
+
+
+def lookup_srv_single(service, host, port=None):
+    """Lookup a single host/port combination to connect to."""
+    from breezy import trace
+
+    try:
+        import dns.resolver
+    except ModuleNotFoundError:
+        trace.mutter("dns.resolver not found, ignoring SRV record")
+        return (host, port)
+    srv_name = service + "." + host
+    try:
+        srv_records = dns.resolver.resolve(srv_name, "SRV")
+    except dns.resolver.NXDOMAIN:
+        trace.mutter("srv record %s not found", srv_name)
+        return (host, port)
+    for srv in srv_records:
+        return (str(srv.target).rstrip("."), port or srv.port)
+    return (host, port)
+
