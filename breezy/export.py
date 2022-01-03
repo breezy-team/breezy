@@ -31,27 +31,29 @@ from . import (
 
 
 def export(tree, dest, format=None, root=None, subdir=None,
-           per_file_timestamps=False, fileobj=None):
+           per_file_timestamps=False, fileobj=None,
+           recurse_nested=False):
     """Export the given Tree to the specific destination.
 
-    :param tree: A Tree (such as RevisionTree) to export
-    :param dest: The destination where the files,etc should be put
-    :param format: The format (dir, zip, etc), if None, it will check the
-                   extension on dest, looking for a match
-    :param root: The root location inside the format.
-                 It is common practise to have zipfiles and tarballs
-                 extract into a subdirectory, rather than into the
-                 current working directory.
-                 If root is None, the default root will be
-                 selected as the destination without its
-                 extension.
-    :param subdir: A starting directory within the tree. None means to export
-        the entire tree, and anything else should specify the relative path to
-        a directory to start exporting from.
-    :param per_file_timestamps: Whether to use the timestamp stored in the
-        tree rather than now(). This will do a revision lookup
-        for every file so will be significantly slower.
-    :param fileobj: Optional file object to use
+    Args:
+      tree: A Tree (such as RevisionTree) to export
+      dest: The destination where the files,etc should be put
+      format: The format (dir, zip, etc), if None, it will check the
+              extension on dest, looking for a match
+      root: The root location inside the format.
+            It is common practise to have zipfiles and tarballs
+            extract into a subdirectory, rather than into the
+            current working directory.
+            If root is None, the default root will be
+            selected as the destination without its
+            extension.
+      subdir: A starting directory within the tree. None means to export the
+              entire tree, and anything else should specify the relative path
+              to a directory to start exporting from.
+      per_file_timestamps: Whether to use the timestamp stored in the tree
+          rather than now(). This will do a revision lookup for every file so will
+          be significantly slower.
+      fileobj: Optional file object to use
     """
     if format is None and dest is not None:
         format = guess_format(dest)
@@ -79,13 +81,15 @@ def export(tree, dest, format=None, root=None, subdir=None,
         # then we should stream a tar file and unpack that on the fly.
         with tree.lock_read():
             for unused in dir_exporter_generator(tree, dest, root, subdir,
-                                                 force_mtime):
+                                                 force_mtime,
+                                                 recurse_nested=recurse_nested):
                 pass
         return
 
     with tree.lock_read():
         chunks = tree.archive(format, dest, root=root,
-                              subdir=subdir, force_mtime=force_mtime)
+                              subdir=subdir, force_mtime=force_mtime,
+                              recurse_nested=recurse_nested)
         if dest == '-':
             for chunk in chunks:
                 getattr(sys.stdout, 'buffer', sys.stdout).write(chunk)
@@ -126,7 +130,7 @@ def get_root_name(dest):
     return dest
 
 
-def _export_iter_entries(tree, subdir, skip_special=True):
+def _export_iter_entries(tree, subdir, skip_special=True, recurse_nested=False):
     """Iter the entries for tree suitable for exporting.
 
     :param tree: A tree object.
@@ -139,7 +143,7 @@ def _export_iter_entries(tree, subdir, skip_special=True):
         subdir = None
     if subdir is not None:
         subdir = subdir.rstrip('/')
-    entries = tree.iter_entries_by_dir()
+    entries = tree.iter_entries_by_dir(recurse_nested=recurse_nested)
     for path, entry in entries:
         if path == '':
             continue
@@ -166,7 +170,8 @@ def _export_iter_entries(tree, subdir, skip_special=True):
 
 
 def dir_exporter_generator(tree, dest, root, subdir=None,
-                           force_mtime=None, fileobj=None):
+                           force_mtime=None, fileobj=None,
+                           recurse_nested=False):
     """Return a generator that exports this tree to a new directory.
 
     `dest` should either not exist or should be empty. If it does not exist it
@@ -192,7 +197,8 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     # Note in the case of revision trees, this does trigger a double inventory
     # lookup, hopefully it isn't too expensive.
     to_fetch = []
-    for dp, tp, ie in _export_iter_entries(tree, subdir):
+    for dp, tp, ie in _export_iter_entries(
+            tree, subdir, recurse_nested=recurse_nested):
         file_id = getattr(ie, 'file_id', None)
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":

@@ -351,6 +351,9 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
                 posixpath.join('modules', decode_git_path(info[1])))
+            if not nested_repo_transport.has('.'):
+                nested_repo_transport = self._repository.controldir.user_transport.clone(
+                    posixpath.join(decode_git_path(info[1]), '.git'))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
@@ -574,14 +577,16 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 child_path_decoded = decode_git_path(child_path)
                 if recurse_nested and S_ISGITLINK(mode):
                     mode = stat.S_IFDIR
-                    store = self._get_submodule_store(child_path)
-                    hexsha = store[hexsha].tree
+                    substore = self._get_submodule_store(child_path)
+                    hexsha = substore[hexsha].tree
+                else:
+                    substore = store
                 if stat.S_ISDIR(mode):
                     if (specific_files is None or
                             any([p for p in specific_files if p.startswith(
                                 child_path)])):
                         extradirs.append(
-                            (store, child_path, hexsha,
+                            (substore, child_path, hexsha,
                              self.path2id(child_path_decoded)))
                 if specific_files is None or child_path in specific_files:
                     if stat.S_ISDIR(mode):
@@ -589,7 +594,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                                self._get_dir_ie(child_path, parent_id))
                     else:
                         yield (child_path_decoded,
-                               self._get_file_ie(store, child_path, name, mode,
+                               self._get_file_ie(substore, child_path, name, mode,
                                                  hexsha, parent_id))
             todo.extendleft(reversed(extradirs))
 
