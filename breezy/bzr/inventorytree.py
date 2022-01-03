@@ -302,9 +302,11 @@ class InventoryTree(Tree):
             def iter_entries(inv):
                 for p, e in inv.iter_entries_by_dir(specific_file_ids=inventory_file_ids):
                     if e.kind == 'tree-reference' and recurse_nested:
-                        subinv = self._get_nested_tree(p, e.file_id, e.reference_revision).root_inventory
-                        for subp, e in iter_entries(subinv):
-                            yield (osutils.pathjoin(p, subp) if subp else p), e
+                        subtree = self._get_nested_tree(p, e.file_id, e.reference_revision)
+                        with subtree.lock_read():
+                            subinv = subtree.root_inventory
+                            for subp, e in iter_entries(subinv):
+                                yield (osutils.pathjoin(p, subp) if subp else p), e
                     else:
                         yield p, e
             return iter_entries(self.root_inventory)

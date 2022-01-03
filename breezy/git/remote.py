@@ -421,7 +421,9 @@ class RemoteGitDir(GitDir):
         return RemoteGitRepository
 
     def archive(self, format, committish, write_data, progress=None,
-                write_error=None, subdirs=None, prefix=None):
+                write_error=None, subdirs=None, prefix=None, recurse_nested=False):
+        if recurse_nested:
+            raise NotImplementedError('recurse_nested is not yet supported')
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress = DefaultProgressReporter(pb).progress
@@ -882,7 +884,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
 class GitRemoteRevisionTree(RevisionTree):
 
-    def archive(self, format, name, root=None, subdir=None, force_mtime=None):
+    def archive(self, format, name, root=None, subdir=None, force_mtime=None, recurse_nested=False):
         """Create an archive of this tree.
 
         :param format: Format name (e.g. 'tar')
@@ -891,6 +893,8 @@ class GitRemoteRevisionTree(RevisionTree):
         :param subdir: Subdirectory to export (or None)
         :return: Iterator over archive chunks
         """
+        if recurse_nested:
+            raise NotImplementedError('recurse_nested is not yet supported')
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
         import tempfile

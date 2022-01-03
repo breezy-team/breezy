@@ -3368,11 +3368,13 @@ class cmd_export(Command):
                      Option('uncommitted',
                             help='Export the working tree contents rather than that of the '
                             'last revision.'),
+                     Option('recurse-nested',
+                            help='Include contents of nested trees.'),
                      ]
 
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
             root=None, filters=False, per_file_timestamps=False, uncommitted=False,
-            directory=u'.'):
+            directory=u'.', recurse_nested=False):
         from .export import export, guess_format, get_root_name
 
         if branch_or_subdir is None:
@@ -3411,7 +3413,8 @@ class cmd_export(Command):
 
         try:
             export(export_tree, dest, format, root, subdir,
-                   per_file_timestamps=per_file_timestamps)
+                   per_file_timestamps=per_file_timestamps,
+                   recurse_nested=recurse_nested)
         except errors.NoSuchExportFormat as e:
             raise errors.CommandError(
                 gettext('Unsupported export format: %s') % e.format)
