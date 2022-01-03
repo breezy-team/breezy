@@ -73,6 +73,7 @@ from .. import (
     errors,
     osutils,
     )
+from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..trace import mutter, note
@@ -508,6 +509,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
+
+    def _get_nested_tree(self, path, file_id, reference_revision):
+        return self.get_nested_tree(path)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
@@ -1756,7 +1760,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-            specific_files=specific_files)
+            specific_files=specific_files, recurse_nested=recurse_nested)
         if not self.supports_tree_reference():
             return iterator
         else:
