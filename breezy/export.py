@@ -192,17 +192,16 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             raise
     # Iterate everything, building up the files we will want to export, and
     # creating the directories and symlinks that we need.
-    # This tracks (file_id, (destination_path, executable))
+    # This tracks (None, (destination_path, executable))
     # This matches the api that tree.iter_files_bytes() wants
     # Note in the case of revision trees, this does trigger a double inventory
     # lookup, hopefully it isn't too expensive.
     to_fetch = []
     for dp, tp, ie in _export_iter_entries(
             tree, subdir, recurse_nested=recurse_nested):
-        file_id = getattr(ie, 'file_id', None)
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
-            to_fetch.append((tp, (dp, tp, file_id)))
+            to_fetch.append((tp, (dp, tp, None)))
         elif ie.kind in ("directory", "tree-reference"):
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
@@ -221,7 +220,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
     # The data returned here can be in any order, but we've already created all
     # the directories
     flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
-    for (relpath, treepath, file_id), chunks in tree.iter_files_bytes(to_fetch):
+    for (relpath, treepath, unused_none), chunks in tree.iter_files_bytes(to_fetch):
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0o666
