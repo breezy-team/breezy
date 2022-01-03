@@ -962,13 +962,19 @@ class RemoteInventoryTree(InventoryRevisionTree):
     def __init__(self, repository, inv, revision_id):
         super(RemoteInventoryTree, self).__init__(repository, inv, revision_id)
 
-    def archive(self, format, name, root=None, subdir=None, force_mtime=None):
+    def archive(self, format, name, root=None, subdir=None, force_mtime=None, recurse_nested=False):
+        if recurse_nested:
+            # For now, just fall back to non-HPSS mode if nested trees are involved.
+            return super(RemoteInventoryTree, self).archive(
+                format, name, root, subdir, force_mtime=force_mtime,
+                recurse_nested=recurse_nested)
         ret = self._repository._revision_archive(
             self.get_revision_id(), format, name, root, subdir,
             force_mtime=force_mtime)
         if ret is None:
             return super(RemoteInventoryTree, self).archive(
-                format, name, root, subdir, force_mtime=force_mtime)
+                format, name, root, subdir, force_mtime=force_mtime,
+                recurse_nested=recurse_nested)
         return ret
 
     def annotate_iter(self, path,
