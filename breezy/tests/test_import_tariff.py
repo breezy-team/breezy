@@ -191,6 +191,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'tarfile',
             'termios',
             'tty',
+            'ctypes',
             ] + old_format_modules
         self.run_command_check_imports(['st'], forbidden_modules)
         # TODO: similar test for repository-only operations, checking we avoid
