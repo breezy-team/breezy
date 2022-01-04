@@ -41,7 +41,6 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
 
     Returns a (tarinfo, fileobj) tuple
     """
-    file_id = getattr(entry, 'file_id', None)
     filename = osutils.pathjoin(root, final_path)
     item = tarfile.TarInfo(filename)
     if force_mtime is not None:
@@ -75,7 +74,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         fileobj = None
     else:
         raise errors.BzrError("don't know how to export {%s} of kind %r"
-                              % (file_id, entry.kind))
+                              % (final_path, entry.kind))
     return (item, fileobj)
 
 
