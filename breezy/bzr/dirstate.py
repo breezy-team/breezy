@@ -2141,6 +2141,8 @@ class DirState(object):
             (absent) paths.
         :return: The dirstate entry tuple for path, or (None, None)
         """
+        if path_utf8 == b'sub/one':
+            import pdb; pdb.set_trace()
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
             if not isinstance(path_utf8, bytes):
