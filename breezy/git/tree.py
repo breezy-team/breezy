@@ -37,7 +37,6 @@ from dulwich.index import (
     IndexEntry,
     )
 from dulwich.object_store import (
-    tree_lookup_path,
     OverlayObjectStore,
     )
 from dulwich.objects import (
@@ -374,21 +373,21 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         change_scanner = self._repository._file_change_scanner
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
-        (unused_path, commit_id) = change_scanner.find_last_change_revision(
+        (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
             encode_git_path(path), self.commit_id)
-        return self._repository.lookup_foreign_revision_id(
-            commit_id, self.mapping)
+        return self.mapping.revision_id_foreign_to_bzr(commit_id)
 
     def get_file_mtime(self, path):
+        change_scanner = self._repository._file_change_scanner
+        if self.commit_id == ZERO_SHA:
+            return NULL_REVISION
         try:
-            revid = self.get_file_revision(path)
+            (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
+                encode_git_path(path), self.commit_id)
         except KeyError:
             raise errors.NoSuchFile(path)
-        try:
-            rev = self._repository.get_revision(revid)
-        except errors.NoSuchRevision:
-            raise _mod_tree.FileTimestampUnavailable(path)
-        return rev.timestamp
+        commit = store[commit_id]
+        return commit.commit_time
 
     def is_versioned(self, path):
         return self.has_filename(path)

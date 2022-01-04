@@ -66,13 +66,13 @@ def _format_version_tuple(version_info):
     >>> print(_format_version_tuple((1, 0, 0, 'final', 0)))
     1.0.0
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 0)))
-    1.2.0dev
+    1.2.0.dev
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 1)))
-    1.2.0dev1
+    1.2.0.dev1
     >>> print(_format_version_tuple((1, 1, 1, 'candidate', 2)))
-    1.1.1rc2
+    1.1.1.rc2
     >>> print(_format_version_tuple((2, 1, 0, 'beta', 1)))
-    2.1b1
+    2.1.b1
     >>> print(_format_version_tuple((1, 4, 0)))
     1.4.0
     >>> print(_format_version_tuple((1, 4)))
@@ -97,15 +97,15 @@ def _format_version_tuple(version_info):
     elif release_type == 'final':
         sub_string = '.' + str(sub)
     elif release_type == 'dev' and sub == 0:
-        sub_string = 'dev'
+        sub_string = '.dev'
     elif release_type == 'dev':
-        sub_string = 'dev' + str(sub)
+        sub_string = '.dev' + str(sub)
     elif release_type in ('alpha', 'beta'):
         if version_info[2] == 0:
             main_version = '%d.%d' % version_info[:2]
-        sub_string = release_type[0] + str(sub)
+        sub_string = '.' + release_type[0] + str(sub)
     elif release_type == 'candidate':
-        sub_string = 'rc' + str(sub)
+        sub_string = '.rc' + str(sub)
     else:
         return '.'.join(map(str, version_info))
 

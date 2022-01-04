@@ -37,9 +37,6 @@ from dulwich.index import (
     validate_path,
     write_index_dict,
     )
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
 from dulwich.objects import (
     S_ISGITLINK,
     )
@@ -75,6 +72,7 @@ from ..mutabletree import (
 
 from .dir import (
     LocalGitDir,
+    BareLocalGitControlDirFormat,
     )
 from .tree import (
     MutableGitIndexTree,
@@ -219,10 +217,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             info = self._submodule_info()[relpath]
         except KeyError:
             submodule_transport = self.user_transport.clone(decode_git_path(relpath))
+            submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
         else:
             submodule_transport = self.control_transport.clone(
                 posixpath.join('modules', decode_git_path(info[1])))
-        submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
+            submodule_dir = BareLocalGitControlDirFormat().open(submodule_transport)
         return Index(submodule_dir.control_transport.local_abspath('index'))
 
     def lock_read(self):
