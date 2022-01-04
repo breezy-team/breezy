@@ -1928,6 +1928,9 @@ class DirStateRevisionTree(InventoryTree):
         # Make sure the file exists
         entry = self._get_entry(path=path)
         if entry == (None, None): # do we raise?
+            nested_tree, subpath = self.get_containing_nested_tree(path)
+            if nested_tree is not None:
+                return nested_tree.get_file_mtime(subpath)
             raise errors.NoSuchFile(path)
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]
