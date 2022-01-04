@@ -46,6 +46,7 @@ from ... import (
     osutils,
     urlutils,
     )
+from ...export import export
 from ...trace import (
     mutter,
     note,
@@ -884,3 +885,17 @@ def detect_version_kind(upstream_version):
     if snapshot_info is None:
         return 'release'
     return 'snapshot'
+
+
+def export_with_nested(tree, dest, **kwargs):
+    try:
+        try:
+            return export(tree, dest, recurse_nested=True, **kwargs)
+        except TypeError:  # brz < 3.3
+            if any(tree.iter_references()):
+                raise NotImplementedError('unable to export tree references')
+            return export(tree, dest, **kwargs)
+    except BaseException:
+        if os.path.isfile(dest):
+            os.unlink(dest)
+        raise
