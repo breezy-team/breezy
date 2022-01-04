@@ -49,7 +49,7 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
             raise TestNotApplicable('subtrees not supported')
         tree.commit('sub')
 
-        with tree.lock_read():
+        with tree.lock_read(), subtree.lock_read():
             self.assertEqual(
                 tree.get_file_mtime('sub/one'),
                 subtree.get_file_mtime('one'))
