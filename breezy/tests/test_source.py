@@ -371,11 +371,6 @@ class TestSource(TestSourceHelper):
         """bzr shouldn't use the 'assert' statement."""
         # assert causes too much variation between -O and not, and tends to
         # give bad errors to the user
-        def search(x):
-            for entry in ast.walk(x):
-                if isinstance(entry, ast.Assert):
-                    return True
-            return False
         badfiles = []
         assert_re = re.compile(r'\bassert\b')
         for fname, text in self.get_source_file_contents():
@@ -384,8 +379,10 @@ class TestSource(TestSourceHelper):
             if not assert_re.search(text):
                 continue
             tree = ast.parse(text)
-            if search(tree):
-                badfiles.append(fname)
+            for entry in ast.walk(tree):
+                if isinstance(entry, ast.Assert):
+                    badfiles.append(fname)
+                    break
         if badfiles:
             self.fail(
                 "these files contain an assert statement and should not:\n%s"
