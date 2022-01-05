@@ -40,8 +40,8 @@ from . import (
     PackageVersionNotPresent,
     UpstreamSource,
     )
-from ....export import export
 from ..util import (
+    export_with_nested,
     subprocess_setup,
     )
 
@@ -229,7 +229,7 @@ def make_pristine_tar_delta_from_tree(
     with tempfile.TemporaryDirectory(prefix="builddeb-pristine-") as tmpdir:
         dest = os.path.join(tmpdir, "orig")
         with tree.lock_read():
-            export(tree, dest, format='dir', subdir=subdir)
+            export_with_nested(tree, dest, format='dir', subdir=subdir)
         try:
             return make_pristine_tar_delta(dest, tarball_path)
         except PristineTarDeltaTooLarge:
@@ -564,11 +564,11 @@ class BzrPristineTarSource(BasePristineTarSource):
             delta = self.get_pristine_tar_delta(
                 package, version, dest_filename, revid)
         except PristineTarDeltaAbsent:
-            export(tree, dest_filename, per_file_timestamps=True)
+            export_with_nested(tree, dest_filename, per_file_timestamps=True)
         else:
             with tempfile.TemporaryDirectory(prefix="bd-pristine-") as tmpdir:
                 dest = os.path.join(tmpdir, "orig")
-                export(tree, dest, format='dir')
+                export_with_nested(tree, dest, format='dir')
                 reconstruct_pristine_tar(dest, delta, dest_filename)
 
     def _has_revision(self, revid, md5=None):
@@ -925,7 +925,7 @@ class GitPristineTarSource(BasePristineTarSource):
             tree = self.branch.repository.revision_tree(revid)
             dest_filename = self._tarball_path(
                 package, version, component, target_dir, format='gz')
-            export(tree, dest_filename, per_file_timestamps=True)
+            export_with_nested(tree, dest_filename, per_file_timestamps=True)
             return dest_filename
         else:
             dest_filename = os.path.join(target_dir, dest_filename)

@@ -1,6 +1,5 @@
 BRZ ?= $(shell which brz)
 BRZ_OPTIONS ?= -Derror
-PYTHON ?= $(shell which python3)
 SETUP ?= $(PYTHON) ./setup.py
 TESTS ?= "^breezy.plugins.debian." "^unittest"
 
@@ -24,4 +23,4 @@ po/breezy-debian.pot: $(PYFILES) $(DOCFILES)
 	  -d breezy-debian -p po -o breezy-debian.pot
 
 check:
-	BRZ_PLUGINS_AT=debian@$(shell pwd) $(PYTHON) $(PYTHON_OPTIONS) $(BRZ) $(BRZ_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
+	BRZ_PLUGINS_AT=debian@$(shell pwd) $(BRZ) $(BRZ_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)

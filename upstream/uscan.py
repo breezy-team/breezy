@@ -29,9 +29,9 @@ from debmutate.watch import parse_watch_file
 
 from ....errors import BzrError, NoSuchFile
 from .... import osutils
-from ....export import export
 from ....trace import note, warning
 from . import UpstreamSource, PackageVersionNotPresent
+from ..util import export_with_nested
 
 
 class UScanError(BzrError):
@@ -173,8 +173,9 @@ class UScanSource(UpstreamSource):
             if self.subpath:
                 subdir = osutils.pathjoin(self.subpath, subdir)
             # Just export all of debian/, since e.g. uupdate needs more of it.
-            export(self.tree, os.path.join(container, 'debian'), format='dir',
-                   subdir=subdir)
+            export_with_nested(
+                self.tree, os.path.join(container, 'debian'), format='dir',
+                subdir=subdir)
             if self.auto_fix:
                 self._do_auto_fix(os.path.join(container, 'debian', 'watch'))
             args = ["--force-download", "--rename",

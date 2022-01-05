@@ -39,9 +39,6 @@ from ... import (
     controldir,
     osutils,
     )
-from ...export import (
-    export,
-    )
 from ...config import ConfigObj
 from ...errors import (
     BzrError,
@@ -63,6 +60,7 @@ from .errors import (
     )
 from .extract import extract
 from .util import (
+    export_with_nested,
     extract_orig_tarballs,
     get_commit_info_from_changelog,
     md5sum_filename,
@@ -214,8 +212,9 @@ def checkout_upstream_version(tree, package, version, revisions):
         revid = revisions[component]
         if component is not None:
             component_tree = tree.branch.repository.revision_tree(revid)
-            export(component_tree, os.path.join(tree.basedir, component),
-                   format='dir')
+            export_with_nested(
+               component_tree, os.path.join(tree.basedir, component),
+               format='dir')
         parent_ids.append(revid)
     tree.set_parent_ids(parent_ids)
 

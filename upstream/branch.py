@@ -60,13 +60,11 @@ from ..errors import (
     MultipleUpstreamTarballsNotSupported,
     )
 from .. import gettext
+from ..util import export_with_nested
 from . import (
     UpstreamSource,
     PackageVersionNotPresent,
     new_tarball_name,
-    )
-from ....export import (
-    export,
     )
 from ....workingtree import (
     WorkingTree,
@@ -609,7 +607,8 @@ class UpstreamBranchSource(UpstreamSource):
             target_filename = self._tarball_path(
                 package, version, None, target_dir)
             try:
-                export(rev_tree, target_filename, 'tgz', tarball_base)
+                export_with_nested(
+                    rev_tree, target_filename, format='tgz', root=tarball_base)
             except UnsupportedOperation as e:
                 note('Not exporting revision from upstream branch: %s', e)
                 raise PackageVersionNotPresent(package, version, self)
@@ -718,7 +717,7 @@ def run_dist_command(
         if include_controldir:
             _dupe_vcs_tree(rev_tree, package_dir)
         else:
-            export(rev_tree, package_dir, 'dir')
+            export_with_nested(rev_tree, package_dir, format='dir')
         existing_files = os.listdir(package_dir)
         try:
             _run_and_interpret(dist_command, env, package_dir)

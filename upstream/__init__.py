@@ -32,7 +32,6 @@ from debmutate.versions import debianize_upstream_version
 
 from ....errors import BzrError, DependencyNotPresent, NoSuchFile
 from .... import osutils
-from ....export import export
 from ....trace import (
     note,
     warning,
@@ -44,6 +43,7 @@ from ..repack_tarball import (
     )
 from ..util import (
     component_from_orig_tarball,
+    export_with_nested,
     tarball_name,
     )
 
@@ -209,7 +209,7 @@ class SelfSplitSource(UpstreamSource):
                 prefix="builddeb-get-orig-source-") as tmpdir:
             export_dir = os.path.join(
                 tmpdir, "%s-%s" % (package, upstream_version))
-            export(self.tree, export_dir, format="dir")
+            export_with_nested(self.tree, export_dir, format="dir")
             shutil.rmtree(os.path.join(export_dir, "debian"))
             with tarfile.open(target_filename, "w:gz") as tar:
                 tar.add(export_dir, "%s-%s" % (package, upstream_version))

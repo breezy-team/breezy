@@ -26,12 +26,10 @@ import sys
 import tempfile
 
 from ... import errors as bzr_errors
-from ...export import (
-    export,
-    )
 from ...trace import note
 
 from .util import (
+    export_with_nested,
     extract_orig_tarballs,
     get_parent_dir,
     recursive_copy,
@@ -90,7 +88,7 @@ class NativeSourceDistiller(SourceDistiller):
         if not self.use_existing:
             if os.path.exists(target):
                 raise bzr_errors.FileExists(target)
-        export(self.tree, target, subdir=self.subpath)
+        export_with_nested(self.tree, target, subdir=self.subpath)
 
 
 class FullSourceDistiller(SourceDistiller):
@@ -122,7 +120,7 @@ class FullSourceDistiller(SourceDistiller):
                 raise bzr_errors.FileExists(target)
         parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
-        export(self.tree, target, subdir=self.subpath)
+        export_with_nested(self.tree, target, subdir=self.subpath)
         # TODO(jelmer): Unapply patches, if they're applied.
 
 
@@ -180,7 +178,7 @@ class MergeModeDistiller(SourceDistiller):
                 export_dir = os.path.join(tempdir, 'debian')
             else:
                 export_dir = tempdir
-            export(self.tree, export_dir, subdir=self.subpath)
+            export_with_nested(self.tree, export_dir, subdir=self.subpath)
             # Remove any upstream debian dir, or from previous export with
             # use_existing
             if os.path.exists(os.path.join(target, 'debian')):
