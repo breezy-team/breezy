@@ -20,7 +20,7 @@ They are useful for testing code quality, checking coverage metric etc.
 """
 
 import os
-import parser
+import ast
 import re
 import symbol
 import sys
@@ -372,15 +372,8 @@ class TestSource(TestSourceHelper):
         # assert causes too much variation between -O and not, and tends to
         # give bad errors to the user
         def search(x):
-            # scan down through x for assert statements, report any problems
-            # this is a bit cheesy; it may get some false positives?
-            if x[0] == symbol.assert_stmt:
-                return True
-            elif x[0] == token.NAME:
-                # can't search further down
-                return False
-            for sub in x[1:]:
-                if sub and search(sub):
+            for entry in ast.walk(x):
+                if isinstance(entry, ast.Assert):
                     return True
             return False
         badfiles = []
@@ -390,9 +383,8 @@ class TestSource(TestSourceHelper):
                 continue
             if not assert_re.search(text):
                 continue
-            st = parser.suite(text)
-            code = parser.st2tuple(st)
-            if search(code):
+            tree = ast.parse(text)
+            if search(tree):
                 badfiles.append(fname)
         if badfiles:
             self.fail(

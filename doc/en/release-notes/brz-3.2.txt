@@ -17,6 +17,10 @@ Bug Fixes
  * Fix compatibility with newer versions of Dulwich.
    (Jelmer Vernooĳ)
 
+ * Avoid using the ``parser`` module, which
+   has been removed in Python 3.10.
+   (Jelmer Vernooĳ, #1956500)
+
 Testing
 *******
 
