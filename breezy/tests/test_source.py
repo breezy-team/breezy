@@ -20,7 +20,7 @@ They are useful for testing code quality, checking coverage metric etc.
 """
 
 import os
-import parser
+import ast
 import re
 import symbol
 import sys
@@ -345,18 +345,6 @@ class TestSource(TestSourceHelper):
         """bzr shouldn't use the 'assert' statement."""
         # assert causes too much variation between -O and not, and tends to
         # give bad errors to the user
-        def search(x):
-            # scan down through x for assert statements, report any problems
-            # this is a bit cheesy; it may get some false positives?
-            if x[0] == symbol.assert_stmt:
-                return True
-            elif x[0] == token.NAME:
-                # can't search further down
-                return False
-            for sub in x[1:]:
-                if sub and search(sub):
-                    return True
-            return False
         badfiles = []
         assert_re = re.compile(r'\bassert\b')
         for fname, text in self.get_source_file_contents():
@@ -364,10 +352,11 @@ class TestSource(TestSourceHelper):
                 continue
             if not assert_re.search(text):
                 continue
-            st = parser.suite(text)
-            code = parser.st2tuple(st)
-            if search(code):
-                badfiles.append(fname)
+            tree = ast.parse(text)
+            for entry in ast.walk(tree):
+                if isinstance(entry, ast.Assert):
+                    badfiles.append(fname)
+                    break
         if badfiles:
             self.fail(
                 "these files contain an assert statement and should not:\n%s"

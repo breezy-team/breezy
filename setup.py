@@ -86,6 +86,7 @@ META_INFO = {
         'testtools',
         'testtools<=2.4.0;python_version<"3.0"',
         'python-subunit',
+        'dulwich>=0.20.29',
     ],
     'python_requires': '>=3.5',
 }
