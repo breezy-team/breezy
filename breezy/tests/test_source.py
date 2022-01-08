@@ -22,9 +22,7 @@ They are useful for testing code quality, checking coverage metric etc.
 import os
 import ast
 import re
-import symbol
 import sys
-import token
 
 from breezy import (
     osutils,
