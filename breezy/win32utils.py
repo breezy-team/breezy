@@ -321,7 +321,8 @@ def get_app_path(appname):
         basename = appname + '.exe'
 
     try:
-        hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+        hkey = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
             'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\'
             + basename)
     except EnvironmentError:

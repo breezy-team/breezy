@@ -1418,13 +1418,13 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.set_executability(True, transform.trans_id_tree_path('file2'))
             self.assertTreeChanges(transform, [
                 InventoryTreeChange(
-                b'id-1', (u'file1', u'file1'), True, (True, True),
-                (root_id, root_id), ('file1', u'file1'),
-                ('file', None), (False, False), False),
+                    b'id-1', (u'file1', u'file1'), True, (True, True),
+                    (root_id, root_id), ('file1', u'file1'),
+                    ('file', None), (False, False), False),
                 InventoryTreeChange(
-                b'id-2', (u'file2', u'file2'), False, (True, True),
-                (root_id, root_id), ('file2', u'file2'),
-                ('file', 'file'), (False, True), False)])
+                    b'id-2', (u'file2', u'file2'), False, (True, True),
+                    (root_id, root_id), ('file2', u'file2'),
+                    ('file', 'file'), (False, True), False)])
         finally:
             transform.finalize()
 

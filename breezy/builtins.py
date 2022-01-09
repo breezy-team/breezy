@@ -441,7 +441,7 @@ class cmd_cat_revision(Command):
     def run(self, revision_id=None, revision=None, directory=u'.'):
         if revision_id is not None and revision is not None:
             raise errors.CommandError(gettext('You can only supply one of'
-                                                 ' revision_id or --revision'))
+                                              ' revision_id or --revision'))
         if revision_id is None and revision is None:
             raise errors.CommandError(
                 gettext('You must supply either --revision or a revision_id'))
@@ -1079,8 +1079,8 @@ class cmd_mv(Command):
         else:
             if len(names_list) != 2:
                 raise errors.CommandError(gettext('to mv multiple files the'
-                                                     ' destination must be a versioned'
-                                                     ' directory'))
+                                                  ' destination must be a versioned'
+                                                  ' directory'))
 
             # for cicp file-systems: the src references an existing inventory
             # item:
@@ -1222,7 +1222,7 @@ class cmd_pull(Command):
         if location is None:
             if stored_loc is None:
                 raise errors.CommandError(gettext("No pull location known or"
-                                                     " specified."))
+                                                  " specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                                                             self.outf.encoding)
@@ -1504,7 +1504,7 @@ class cmd_branch(Command):
             except errors.NotBranchError:
                 if not use_existing_dir:
                     raise errors.CommandError(gettext('Target directory "%s" '
-                                                         'already exists.') % to_location)
+                                                      'already exists.') % to_location)
                 else:
                     to_dir = None
             else:
@@ -1516,7 +1516,7 @@ class cmd_branch(Command):
                     raise errors.AlreadyBranchError(to_location)
         except errors.NoSuchFile:
             raise errors.CommandError(gettext('Parent of "%s" does not exist.')
-                                         % to_location)
+                                      % to_location)
         else:
             to_dir = None
         if to_dir is None:
@@ -2116,10 +2116,10 @@ class cmd_init(Command):
         except errors.NoSuchFile:
             if not create_prefix:
                 raise errors.CommandError(gettext("Parent directory of %s"
-                                                     " does not exist."
-                                                     "\nYou may supply --create-prefix to create all"
-                                                     " leading parent directories.")
-                                             % location)
+                                                  " does not exist."
+                                                  "\nYou may supply --create-prefix to create all"
+                                                  " leading parent directories.")
+                                          % location)
             to_transport.create_prefix()
 
         try:
@@ -2151,7 +2151,7 @@ class cmd_init(Command):
                 branch.set_append_revisions_only(True)
             except errors.UpgradeRequired:
                 raise errors.CommandError(gettext('This branch format cannot be set'
-                                                     ' to append-revisions-only.  Try --default.'))
+                                                  ' to append-revisions-only.  Try --default.'))
         if not is_quiet():
             from .info import describe_layout, describe_format
             try:
@@ -2400,7 +2400,7 @@ class cmd_diff(Command):
 
         if revision and len(revision) > 2:
             raise errors.CommandError(gettext('brz diff --revision takes exactly'
-                                                 ' one or two revision specifiers'))
+                                              ' one or two revision specifiers'))
 
         if using is not None and format is not None:
             raise errors.CommandError(gettext(
@@ -3059,7 +3059,7 @@ class cmd_ls(Command):
         else:
             if from_root:
                 raise errors.CommandError(gettext('cannot specify both --from-root'
-                                                     ' and PATH'))
+                                                  ' and PATH'))
             fs_path = path
         tree, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(fs_path, directory)
@@ -3236,7 +3236,7 @@ class cmd_ignore(Command):
             return
         if not name_pattern_list:
             raise errors.CommandError(gettext("ignore requires at least one "
-                                                 "NAME_PATTERN or --default-rules."))
+                                              "NAME_PATTERN or --default-rules."))
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
         bad_patterns = ''
@@ -3316,7 +3316,7 @@ class cmd_lookup_revision(Command):
             revno = int(revno)
         except ValueError:
             raise errors.CommandError(gettext("not a valid revision-number: %r")
-                                         % revno)
+                                      % revno)
         revid = WorkingTree.open_containing(
             directory)[0].branch.get_rev_id(revno)
         self.outf.write("%s\n" % revid.decode('utf-8'))
@@ -3443,7 +3443,7 @@ class cmd_cat(Command):
             filters=False, directory=None):
         if revision is not None and len(revision) != 1:
             raise errors.CommandError(gettext("brz cat --revision takes exactly"
-                                                 " one revision specifier"))
+                                              " one revision specifier"))
         tree, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
         self.enter_context(branch.lock_read())
@@ -3742,12 +3742,12 @@ class cmd_commit(Command):
                                                              start_message=start_message)
                 if my_message is None:
                     raise errors.CommandError(gettext("please specify a commit"
-                                                         " message with either --message or --file"))
+                                                      " message with either --message or --file"))
                 if my_message == "":
                     raise errors.CommandError(gettext("Empty commit message specified."
-                                                         " Please specify a commit message with either"
-                                                         " --message or --file or leave a blank message"
-                                                         " with --message \"\"."))
+                                                      " Please specify a commit message with either"
+                                                      " --message or --file or leave a blank message"
+                                                      " with --message \"\"."))
             return my_message
 
         # The API permits a commit with a filter of [] to mean 'select nothing'
@@ -3765,15 +3765,15 @@ class cmd_commit(Command):
                         lossy=lossy)
         except PointlessCommit:
             raise errors.CommandError(gettext("No changes to commit."
-                                                 " Please 'brz add' the files you want to commit, or use"
-                                                 " --unchanged to force an empty commit."))
+                                              " Please 'brz add' the files you want to commit, or use"
+                                              " --unchanged to force an empty commit."))
         except ConflictsInTree:
             raise errors.CommandError(gettext('Conflicts detected in working '
-                                                 'tree.  Use "brz conflicts" to list, "brz resolve FILE" to'
-                                                 ' resolve.'))
+                                              'tree.  Use "brz conflicts" to list, "brz resolve FILE" to'
+                                              ' resolve.'))
         except StrictCommitFailed:
             raise errors.CommandError(gettext("Commit refused because there are"
-                                                 " unknown files in the working tree."))
+                                              " unknown files in the working tree."))
         except errors.BoundBranchOutOfDate as e:
             e.extra_help = (gettext("\n"
                                     'To commit to master branch, run update and then commit.\n'
@@ -3955,7 +3955,7 @@ class cmd_whoami(Command):
 
         if email:
             raise errors.CommandError(gettext("--email can only be used to display existing "
-                                                 "identity"))
+                                              "identity"))
 
         # display a warning if an email address isn't included in the given name.
         try:
@@ -4225,7 +4225,7 @@ class cmd_selftest(Command):
             from . import tests
         except ImportError as e:
             raise errors.CommandError("tests not available. Install the "
-                                         "breezy tests to run the breezy testsuite.")
+                                      "breezy tests to run the breezy testsuite.")
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -4490,7 +4490,7 @@ class cmd_merge(Command):
         tree = WorkingTree.open_containing(directory)[0]
         if tree.branch.last_revision() == _mod_revision.NULL_REVISION:
             raise errors.CommandError(gettext('Merging into empty branches not currently supported, '
-                                                 'https://bugs.launchpad.net/bzr/+bug/308562'))
+                                              'https://bugs.launchpad.net/bzr/+bug/308562'))
 
         # die as quickly as possible if there are uncommitted changes
         if not force:
@@ -4512,7 +4512,7 @@ class cmd_merge(Command):
             else:
                 if uncommitted:
                     raise errors.CommandError(gettext('Cannot use --uncommitted'
-                                                         ' with bundles or merge directives.'))
+                                                      ' with bundles or merge directives.'))
 
                 if revision is not None:
                     raise errors.CommandError(gettext(
@@ -4523,7 +4523,7 @@ class cmd_merge(Command):
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
                 raise errors.CommandError(gettext('Cannot use --uncommitted and'
-                                                     ' --revision at the same time.'))
+                                                  ' --revision at the same time.'))
             merger = self.get_merger_from_uncommitted(tree, location, None)
             allow_pending = False
 
@@ -4616,7 +4616,7 @@ class cmd_merge(Command):
         if (merger.show_base and
                 merger.merge_type is not _mod_merge.Merge3Merger):
             raise errors.CommandError(gettext("Show-base is not supported for this"
-                                                 " merge type. %s") % merger.merge_type)
+                                              " merge type. %s") % merger.merge_type)
         if merger.reprocess is None:
             if merger.show_base:
                 merger.reprocess = False
@@ -4625,11 +4625,11 @@ class cmd_merge(Command):
                 merger.reprocess = merger.merge_type.supports_reprocess
         if merger.reprocess and not merger.merge_type.supports_reprocess:
             raise errors.CommandError(gettext("Conflict reduction is not supported"
-                                                 " for merge type %s.") %
-                                         merger.merge_type)
+                                              " for merge type %s.") %
+                                      merger.merge_type)
         if merger.reprocess and merger.show_base:
             raise errors.CommandError(gettext("Cannot do conflict reduction and"
-                                                 " show base."))
+                                              " show base."))
 
         if (merger.merge_type.requires_file_merge_plan and
             (not getattr(merger.this_tree, 'plan_file_merge', None) or
@@ -5070,7 +5070,7 @@ class cmd_missing(Command):
             other_branch = parent
             if other_branch is None:
                 raise errors.CommandError(gettext("No peer location known"
-                                                     " or specified."))
+                                                  " or specified."))
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
             message(gettext("Using saved parent location: {0}\n").format(
@@ -6253,7 +6253,7 @@ class cmd_reconfigure(Command):
                 return
             else:
                 raise errors.CommandError(gettext('No target configuration '
-                                                     'specified'))
+                                                  'specified'))
         reconfiguration = None
         if tree_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
@@ -6332,7 +6332,7 @@ class cmd_switch(Command):
         if to_location is None:
             if revision is None:
                 raise errors.CommandError(gettext('You must supply either a'
-                                                     ' revision or a location'))
+                                                  ' revision or a location'))
             to_location = tree_location
         try:
             branch = control_dir.open_branch(
@@ -6989,7 +6989,7 @@ class cmd_grep(Command):
 
         if color not in ['always', 'never', 'auto']:
             raise errors.CommandError('Valid values for --color are '
-                                         '"always", "never" or "auto".')
+                                      '"always", "never" or "auto".')
 
         if levels is None:
             levels = 1

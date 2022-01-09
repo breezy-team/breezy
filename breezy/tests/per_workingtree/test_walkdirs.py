@@ -236,7 +236,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
                 ('',
                  [('dir1', 'dir1', 'file', dir1_stat, 'directory'),
                   ('file1', 'file1', 'directory', file1_stat, 'file'),
-                 ]),
+                  ]),
                 ('dir1', []),
                 ('file1', []),
                 ]

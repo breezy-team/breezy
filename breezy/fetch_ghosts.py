@@ -30,7 +30,7 @@ class GhostFetcher(object):
             other = this_branch.get_parent()
             if other is None:
                 raise CommandError('No branch specified and no location'
-                                      ' saved.')
+                                   ' saved.')
             else:
                 note("Using saved location %s.", other)
         other_branch = Branch.open_containing(other)[0]

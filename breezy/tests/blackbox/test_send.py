@@ -446,4 +446,3 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
 class TestBundleStrictWithoutChanges(TestSendStrictWithoutChanges):
 
     _default_command = ['bundle-revisions', '../parent']
-

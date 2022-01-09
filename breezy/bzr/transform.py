@@ -2487,6 +2487,3 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                                              ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id, sha1=text_sha1)
         pb.update(gettext('Adding file contents'), count + offset, total)
-
-
-

@@ -579,8 +579,9 @@ elif 'py2exe' in sys.argv:
         version=version_str,
         description=META_INFO['description'],
         maintainer=META_INFO['maintainer'],
-        copyright="Copyright 2005-2012 Canonical Ltd.\n"
-            "Copyright 2017-2021 Breezy developers",
+        copyright=(
+            "Copyright 2005-2012 Canonical Ltd.\n"
+            "Copyright 2017-2021 Breezy developers"),
         company_name="Canonical Ltd.",
         comments=META_INFO['description'],
     )
@@ -670,9 +671,11 @@ elif 'py2exe' in sys.argv:
     (packs, mods) = mf.get_result()
     # Don't add the plugins packages and modules,
     # as they are listed in excluded
-    additional_packages.update(pack for pack in packs
+    additional_packages.update(
+        pack for pack in packs
         if not (pack.startswith('breezy.plugins.') or pack in excludes))
-    includes.extend(mod for mod in mods
+    includes.extend(
+        mod for mod in mods
         if not (mod.startswith('breezy.plugins.') or mod in excludes))
 
     console_targets = [target,
