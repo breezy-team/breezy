@@ -55,7 +55,8 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
             # AttributeError: 'NoneType' object has no attribute 'is_package')
             # Ignore errors here and bail out in the collection loop.
             try:
-                self.import_module(partname, ".".join(path),
+                self.import_module(
+                    partname, ".".join(path),
                     self.modules.get(parent_path, None))
             except:
                 pass
@@ -83,7 +84,8 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
                     continue
                 # We only accept .py files, so could use [:-3] too - faster...
                 partname = os.path.splitext(filename)[0]
-                self.import_module(partname,
+                self.import_module(
+                    partname,
                     ".".join((package, partname)), pkg_module)
 
     def get_result(self):

@@ -345,8 +345,7 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
     format = elt.get('format')
     if ((format is None and format_num is not None) or
             format.encode() != format_num):
-        raise serializer.UnexpectedInventoryFormat('Invalid format version %r'
-                                               % format)
+        raise serializer.UnexpectedInventoryFormat('Invalid format version %r' % format)
     revision_id = elt.get('revision_id')
     if revision_id is not None:
         revision_id = cache_utf8.encode(revision_id)

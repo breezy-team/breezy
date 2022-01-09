@@ -414,7 +414,7 @@ class KnitContentFactory(ContentFactory):
             elif storage_kind == 'fulltext':
                 return self._knit.get_text(self.key[0])
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         return iter(self.get_bytes_as(storage_kind))
@@ -462,7 +462,7 @@ class LazyKnitContentFactory(ContentFactory):
             else:
                 return b''.join(chunks)
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind in ('chunked', 'lines'):
