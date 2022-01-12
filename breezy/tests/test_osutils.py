@@ -525,9 +525,6 @@ class TestLinks(tests.TestCaseInTempDir):
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
 
-    def test_host_os_dereferences_symlinks(self):
-        osutils.host_os_dereferences_symlinks()
-
 
 class TestCanonicalRelPath(tests.TestCaseInTempDir):
 

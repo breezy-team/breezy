@@ -514,13 +514,23 @@ class LocalTransport(transport.Transport):
         except (IOError, OSError) as e:
             self._translate_error(e, path)
 
-    if osutils.host_os_dereferences_symlinks():
-        def readlink(self, relpath):
-            """See Transport.readlink."""
-            try:
-                return osutils.readlink(self._abspath(relpath))
-            except (IOError, OSError) as e:
-                self._translate_error(e, relpath)
+    def symlink(self, source, link_name):
+        """See Transport.symlink."""
+        abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
+        source_rel = urlutils.file_relpath(
+            abs_link_dirpath, self.abspath(source))
+
+        try:
+            os.symlink(source_rel, self._abspath(link_name))
+        except (IOError, OSError) as e:
+            self._translate_error(e, source_rel)
+
+    def readlink(self, relpath):
+        """See Transport.readlink."""
+        try:
+            return osutils.readlink(self._abspath(relpath))
+        except (IOError, OSError) as e:
+            self._translate_error(e, relpath)
 
     if osutils.hardlinks_good():
         def hardlink(self, source, link_name):
@@ -529,18 +539,6 @@ class LocalTransport(transport.Transport):
                 os.link(self._abspath(source), self._abspath(link_name))
             except (IOError, OSError) as e:
                 self._translate_error(e, source)
-
-    if getattr(os, 'symlink', None) is not None:
-        def symlink(self, source, link_name):
-            """See Transport.symlink."""
-            abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
-            source_rel = urlutils.file_relpath(
-                abs_link_dirpath, self.abspath(source))
-
-            try:
-                os.symlink(source_rel, self._abspath(link_name))
-            except (IOError, OSError) as e:
-                self._translate_error(e, source_rel)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':

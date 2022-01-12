@@ -1166,11 +1166,6 @@ def supports_hardlinks(path):
         return True
 
 
-def host_os_dereferences_symlinks():
-    return (getattr(os, 'symlink', None) is not None
-            and sys.platform not in ('cygwin', 'win32'))
-
-
 def readlink(abspath):
     """Return a string representing the path to which the symbolic link points.
 
