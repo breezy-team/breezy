@@ -96,7 +96,13 @@ def _config_dir():
         if base is None:
             base = win32utils.get_appdata_location()
         if base is None:
-            base = win32utils.get_home_location()
+            # Assume that AppData location is ALWAYS DEFINED,
+            # and don't look for %HOME%, as we aren't sure about
+            # where the files should be stored in %HOME%:
+            # on other platforms the directory is ~/.config/,
+            # but that would be incompatible with older Bazaar versions.
+            raise RuntimeError('Unable to determin AppData location')
+
     if base is None:
         base = os.environ.get('XDG_CONFIG_HOME')
         if base is None:
