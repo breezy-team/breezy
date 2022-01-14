@@ -101,7 +101,7 @@ def _config_dir():
             # where the files should be stored in %HOME%:
             # on other platforms the directory is ~/.config/,
             # but that would be incompatible with older Bazaar versions.
-            raise RuntimeError('Unable to determin AppData location')
+            raise RuntimeError('Unable to determine AppData location')
 
     if base is None:
         base = os.environ.get('XDG_CONFIG_HOME')
