@@ -310,8 +310,11 @@ class BzrGitMapping(foreign.VcsMapping):
             pass
         commit.committer = fix_person_identifier(rev.committer.encode(
             encoding))
+        first_author = rev.get_apparent_authors()[0]
+        if ',' in first_author and first_author.count('>') > 1:
+            first_author = first_author.split(',')[0]
         commit.author = fix_person_identifier(
-            rev.get_apparent_authors()[0].encode(encoding))
+            first_author.encode(encoding))
         # TODO(jelmer): Don't use this hack.
         long = getattr(__builtins__, 'long', int)
         commit.commit_time = long(rev.timestamp)
