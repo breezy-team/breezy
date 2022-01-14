@@ -2246,7 +2246,7 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
     def test_returns_most_specific(self):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
-            osutils.FilesystemFinder(
+            osutils.MtabFilesystemFinder(
                 [(b'/', 'ext4'), (b'/home', 'vfat'),
                  (b'/home/jelmer', 'ext2')]))
         self.assertEqual(osutils.get_fs_type(b'/home/jelmer/blah'), 'ext2')
@@ -2259,7 +2259,7 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
     def test_returns_none(self):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
-            osutils.FilesystemFinder([]))
+            osutils.MtabFilesystemFinder([]))
         self.assertIs(osutils.get_fs_type('/home/jelmer/blah'), None)
         self.assertIs(osutils.get_fs_type(b'/home/jelmer/blah'), None)
         self.assertIs(osutils.get_fs_type('/home/jelmer'), None)

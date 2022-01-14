@@ -2569,7 +2569,7 @@ class Win32FilesystemFinder(FilesystemFinder):
         if fs_type is None:
             return None
         return {
-            'FAT32': 'fat',
+            'FAT32': 'vfat',
             'NTFS': 'ntfs',
             }.get(fs_type, fs_type)
 
