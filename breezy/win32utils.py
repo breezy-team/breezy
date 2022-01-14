@@ -420,10 +420,10 @@ def get_fs_type(drive):
     """Return file system type for a drive on the system.
     """
     MAX_FS_TYPE_LENGTH = 16
+    kernel32 = ctypes.windll.kernel32
     GetVolumeInformation = kernel32.GetVolumeInformationW
     fs_type = ctypes.create_unicode_buffer(MAX_FS_TYPE_LENGTH + 1)
-    rv = []
-    if ctypes.windll.GetVolumeInformation(
+    if GetVolumeInformation(
         drive,
         None, 0, # lpVolumeName
         None, # lpVolumeSerialNumber

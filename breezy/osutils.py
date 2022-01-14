@@ -2564,8 +2564,14 @@ class MtabFilesystemFinder(FilesystemFinder):
 class Win32FilesystemFinder(FilesystemFinder):
 
     def find(self, path):
-        drive = os.path.splitdrive(path)[0]
-        return win32utils.get_fs_type(drive)
+        drive = os.path.splitdrive(os.path.abspath(path))[0]
+        fs_type = win32utils.get_fs_type(drive + "\\")
+        if fs_type is None:
+            return None
+        return {
+            'FAT32': 'fat',
+            'NTFS': 'ntfs',
+            }.get(fs_type, fs_type)
 
 
 _FILESYSTEM_FINDER = None
