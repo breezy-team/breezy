@@ -451,6 +451,10 @@ class TransportRepo(BaseRepo):
     def commondir(self):
         return self._commontransport.local_abspath('.')
 
+    def close(self):
+        """Close any files opened by this repository."""
+        self.object_store.close()
+
     @property
     def path(self):
         return self.transport.local_abspath('.')
