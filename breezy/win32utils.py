@@ -418,6 +418,13 @@ is_local_pid_dead = _ctypes_is_local_pid_dead
 
 def get_fs_type(drive):
     """Return file system type for a drive on the system.
+
+    Args:
+      drive: Unicode string with drive including trailing backslash (e.g.
+         "C:\\")
+    Returns:
+      Windows filesystem type name (e.g. "FAT32", "NTFS") or None
+      if the drive can not be found
     """
     MAX_FS_TYPE_LENGTH = 16
     kernel32 = ctypes.windll.kernel32
