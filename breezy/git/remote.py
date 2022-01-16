@@ -519,10 +519,9 @@ class RemoteGitDir(GitDir):
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
         result = self.send_pack(get_changed_refs, generate_pack_data)
-        if result is not None and not isinstance(result, dict):
-            error = result.ref_status.get(refname)
-            if error:
-                raise RemoteGitError(error)
+        error = result.ref_status.get(refname)
+        if error:
+            raise RemoteGitError(error)
 
     @property
     def user_url(self):
@@ -678,17 +677,14 @@ class RemoteGitDir(GitDir):
                     return source_store.generate_pack_data(
                         have, want, progress=progress, ofs_delta=ofs_delta)
             dw_result = self.send_pack(get_changed_refs, generate_pack_data)
-            if not isinstance(dw_result, dict):
-                new_refs = dw_result.refs
-                error = dw_result.ref_status.get(actual_refname)
+            new_refs = dw_result.refs
+            error = dw_result.ref_status.get(actual_refname)
+            if error:
+                raise RemoteGitError(error)
+            for ref, error in dw_result.ref_status.items():
                 if error:
-                    raise RemoteGitError(error)
-                for ref, error in dw_result.ref_status.items():
-                    if error:
-                        trace.warning('unable to open ref %s: %s',
-                                      ref, error)
-            else:  # dulwich < 0.20.4
-                new_refs = dw_result
+                    trace.warning('unable to open ref %s: %s',
+                                  ref, error)
         push_result.new_revid = repo.lookup_foreign_revision_id(
             new_refs[actual_refname])
         if old_sha is not None:
@@ -1011,10 +1007,9 @@ class RemoteGitTagDict(GitTags):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)
-        if result and not isinstance(result, dict):
-            error = result.ref_status.get(ref)
-            if error:
-                raise RemoteGitError(error)
+        error = result.ref_status.get(ref)
+        if error:
+            raise RemoteGitError(error)
 
 
 class RemoteGitBranch(GitBranch):
@@ -1100,10 +1095,9 @@ class RemoteGitBranch(GitBranch):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)
-        if result is not None and not isinstance(result, dict):
-            error = result.ref_status.get(self.ref)
-            if error:
-                raise RemoteGitError(error)
+        error = result.ref_status.get(self.ref)
+        if error:
+            raise RemoteGitError(error)
         self._sha = sha
 
 
