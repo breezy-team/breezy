@@ -16,16 +16,17 @@
 
 """Win32-specific helper functions"""
 
-import ctypes
 import glob
 import os
 import struct
-import sys
 
-from breezy import (
-    cmdline,
-    )
+from .lazy_import import lazy_import
+lazy_import(globals(), """
+import ctypes
+
+from breezy import cmdline
 from breezy.i18n import gettext
+""")
 
 
 # Special Win32 API constants
@@ -344,7 +345,6 @@ def get_app_path(appname):
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     from ctypes.wintypes import BOOL, DWORD, LPWSTR
-    import ctypes
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
     SetFileAttributes = ctypes.windll.kernel32.SetFileAttributesW
     SetFileAttributes.argtypes = LPWSTR, DWORD
@@ -399,8 +399,8 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
 
 
 def _ctypes_is_local_pid_dead(pid):
-    kernel32 = ctypes.windll.kernel32
     """True if pid doesn't correspond to live process on this machine"""
+    kernel32 = ctypes.windll.kernel32
     handle = kernel32.OpenProcess(1, False, pid)
     if not handle:
         errorcode = ctypes.GetLastError()
@@ -414,3 +414,29 @@ def _ctypes_is_local_pid_dead(pid):
     return False
 
 is_local_pid_dead = _ctypes_is_local_pid_dead
+
+
+def get_fs_type(drive):
+    """Return file system type for a drive on the system.
+
+    Args:
+      drive: Unicode string with drive including trailing backslash (e.g.
+         "C:\\")
+    Returns:
+      Windows filesystem type name (e.g. "FAT32", "NTFS") or None
+      if the drive can not be found
+    """
+    MAX_FS_TYPE_LENGTH = 16
+    kernel32 = ctypes.windll.kernel32
+    GetVolumeInformation = kernel32.GetVolumeInformationW
+    fs_type = ctypes.create_unicode_buffer(MAX_FS_TYPE_LENGTH + 1)
+    if GetVolumeInformation(
+        drive,
+        None, 0, # lpVolumeName
+        None, # lpVolumeSerialNumber
+        None, # lpMaximumComponentLength
+        None, # lpFileSystemFlags
+        fs_type, MAX_FS_TYPE_LENGTH,
+    ):
+        return fs_type.value
+    return None

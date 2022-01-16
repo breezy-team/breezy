@@ -1160,6 +1160,8 @@ def supports_hardlinks(path):
         trace.mutter('Unable to get fs type for %r: %s', path, e)
         return True
     else:
+        if fs_type is None:
+            return sys.platform != 'win32'
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support hardlinks
             return False
@@ -1595,6 +1597,8 @@ def supports_executable(path):
     except errors.DependencyNotPresent as e:
         trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
+        if fs_type is None:
+            return sys.platform != 'win32'
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support executable bit
             return False
@@ -1612,6 +1616,8 @@ def supports_symlinks(path):
     except errors.DependencyNotPresent as e:
         trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
+        if fs_type is None:
+            return sys.platform != 'win32'
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support symlinks
             return False
@@ -2510,10 +2516,17 @@ def read_mtab(path):
             yield cols[1], cols[2].decode('ascii', 'replace')
 
 
-MTAB_PATH = '/etc/mtab'
-
 class FilesystemFinder(object):
     """Find the filesystem for a particular path."""
+
+    def find(self, path):
+        raise NotImplementedError
+
+
+class MtabFilesystemFinder(FilesystemFinder):
+    """Find the filesystem for a particular path."""
+
+    MTAB_PATH = '/etc/mtab'
 
     def __init__(self, mountpoints):
         def key(x):
@@ -2530,7 +2543,7 @@ class FilesystemFinder(object):
         # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
         # we need to re-read it.
         try:
-            return cls(read_mtab(MTAB_PATH))
+            return cls(read_mtab(cls.MTAB_PATH))
         except EnvironmentError as e:
             trace.mutter('Unable to read mtab: %s', e)
             return cls([])
@@ -2542,10 +2555,27 @@ class FilesystemFinder(object):
         :return: Filesystem name (as text type) or None, if the filesystem is
             unknown.
         """
+        if not isinstance(path, bytes):
+            path = path.encode(_fs_enc)
         for mountpoint, filesystem in self._mountpoints:
             if is_inside(mountpoint, path):
                 return filesystem
         return None
+
+
+class Win32FilesystemFinder(FilesystemFinder):
+
+    def find(self, path):
+        drive = os.path.splitdrive(os.path.abspath(path))[0]
+        if isinstance(drive, bytes):
+            drive = drive.decode(_fs_enc)
+        fs_type = win32utils.get_fs_type(drive + "\\")
+        if fs_type is None:
+            return None
+        return {
+            'FAT32': 'vfat',
+            'NTFS': 'ntfs',
+            }.get(fs_type, fs_type)
 
 
 _FILESYSTEM_FINDER = None
@@ -2559,10 +2589,10 @@ def get_fs_type(path):
     """
     global _FILESYSTEM_FINDER
     if _FILESYSTEM_FINDER is None:
-        _FILESYSTEM_FINDER = FilesystemFinder.from_mtab()
-
-    if not isinstance(path, bytes):
-        path = path.encode(_fs_enc)
+        if sys.platform == 'win32':
+            _FILESYSTEM_FINDER = Win32FilesystemFinder()
+        else:
+            _FILESYSTEM_FINDER = MtabFilesystemFinder.from_mtab()
 
     return _FILESYSTEM_FINDER.find(path)
 
