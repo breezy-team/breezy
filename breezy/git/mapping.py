@@ -367,9 +367,11 @@ class BzrGitMapping(foreign.VcsMapping):
             i += 1
             propname = u'git-mergetag-%d' % i
         if u'git-extra' in rev.properties:
-            commit.extra.extend(
-                [l.split(b' ', 1)
-                 for l in rev.properties[u'git-extra'].splitlines()])
+            for l in rev.properties['git-extra'].splitlines():
+                (k, v) = l.split(' ', 1)
+                commit.extra.append(
+                    (k.encode('utf-8', 'surrogateescape'),
+                     v.encode('utf-8', 'surrogateescape')))
         return commit
 
     def get_revision_id(self, commit):
@@ -460,12 +462,16 @@ class BzrGitMapping(foreign.VcsMapping):
         extra_lines = []
         for k, v in commit.extra:
             if k == HG_RENAME_SOURCE:
-                extra_lines.append(k + b' ' + v + b'\n')
+                extra_lines.append(
+                    k.decode('utf-8', 'surrogateescape') + ' ' +
+                    v.decode('utf-8', 'surrogateescape') + '\n')
             elif k == HG_EXTRA:
                 hgk, hgv = v.split(b':', 1)
                 if hgk not in (HG_EXTRA_AMEND_SOURCE, ) and strict:
                     raise UnknownMercurialCommitExtra(commit, [hgk])
-                extra_lines.append(k + b' ' + v + b'\n')
+                extra_lines.append(
+                    k.decode('utf-8', 'surrogateescape') + ' ' +
+                    v.decode('utf-8', 'surrogateescape') + '\n')
             else:
                 unknown_extra_fields.append(k)
         if unknown_extra_fields and strict:
@@ -473,7 +479,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 commit,
                 [f.decode('ascii', 'replace') for f in unknown_extra_fields])
         if extra_lines:
-            rev.properties[u'git-extra'] = b''.join(extra_lines)
+            rev.properties['git-extra'] = ''.join(extra_lines)
         return rev, roundtrip_revid, verifiers
 
 
@@ -482,7 +488,7 @@ class BzrGitMappingv1(BzrGitMapping):
     experimental = False
 
     def __str__(self):
-        return self.revid_prefix
+        return self.revid_prefix.decode('utf-8')
 
 
 class BzrGitMappingExperimental(BzrGitMappingv1):
