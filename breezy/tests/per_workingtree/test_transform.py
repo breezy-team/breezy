@@ -1402,7 +1402,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                     (u'file1', u'file1'), True, (True, True),
                     ('file1', u'file1'),
                     ('file', None), (False, False), False),
-                    TreeChange(
+                TreeChange(
                     (u'file2', u'file2'), False, (True, True),
                     ('file2', u'file2'),
                     ('file', 'file'), (False, True), False)])
