@@ -102,4 +102,3 @@ class TestRemoveBranch(TestCaseWithTransport):
         self.run_bzr('rmbranch --force otherbranch -d %s' %
                      branch.controldir.user_url)
         self.assertFalse(dir.has_branch('otherbranch'))
-

@@ -22,9 +22,7 @@ They are useful for testing code quality, checking coverage metric etc.
 import os
 import ast
 import re
-import symbol
 import sys
-import token
 
 from breezy import (
     osutils,
@@ -317,29 +315,6 @@ class TestSource(TestSourceHelper):
                             % ('\n    '.join(no_newline_at_eof)))
         if problems:
             self.fail('\n\n'.join(problems))
-
-    def test_flake8(self):
-        self.requireFeature(features.flake8)
-        try:
-            from flake8.api.legacy import get_style_guide
-            from flake8.main.options import JobsArgument
-            from flake8.formatting.default import Default
-
-            style = get_style_guide(jobs=JobsArgument("1"))
-        except Exception as e:
-            self.skipTest('broken flake8: %r' % e)
-
-        with self.text_log_file() as log_file:
-
-            class Formatter(Default):
-
-                def after_init(self):
-                    self.output_fd = log_file
-
-            style.init_report(Formatter)
-            report = style.check_files()
-
-        self.assertEqual(report.total_errors, 0)
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""

@@ -127,4 +127,3 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
                      % osutils.dirname(self.config_file_name),
                      stdin="y\n")
         self.assertRaises(errors.LockBroken, self.config.unlock)
-

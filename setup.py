@@ -681,9 +681,11 @@ elif 'py2exe' in sys.argv:
     (packs, mods) = mf.get_result()
     # Don't add the plugins packages and modules,
     # as they are listed in excluded
-    additional_packages.update(pack for pack in packs
+    additional_packages.update(
+        pack for pack in packs
         if not (pack.startswith('breezy.plugins.') or pack in excludes))
-    includes.extend(mod for mod in mods
+    includes.extend(
+        mod for mod in mods
         if not (mod.startswith('breezy.plugins.') or mod in excludes))
 
     console_targets = [target,

@@ -516,8 +516,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertPathExists('b/file.BASE')
         self.assertPathExists('b/file.OTHER')
         wtb.revert()
-        self.assertEqual(1, len(wtb.merge_from_branch(wta.branch,
-                                                  merge_type=WeaveMerger)))
+        self.assertEqual(1, len(wtb.merge_from_branch(wta.branch, merge_type=WeaveMerger)))
         self.assertPathExists('b/file')
         self.assertPathExists('b/file.THIS')
         self.assertPathExists('b/file.BASE')
@@ -548,9 +547,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
             ('modify', ('foo', b'orig\ncontents\nand E\n'))])
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
-        self.assertEqual(1, len(tree.merge_from_branch(tree.branch,
-                                                   to_revision=d_id,
-                                                   merge_type=WeaveMerger)))
+        self.assertEqual(1, len(tree.merge_from_branch(
+            tree.branch, to_revision=d_id, merge_type=WeaveMerger)))
         self.assertPathExists('tree/foo.THIS')
         self.assertPathExists('tree/foo.OTHER')
         self.expectFailure('fail to create .BASE in some criss-cross merges',

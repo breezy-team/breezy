@@ -231,9 +231,8 @@ class WorkingTree2(PreDirStateWorkingTree):
                             break
                 ctype = {True: 'text conflict',
                          False: 'contents conflict'}[text]
-                conflicts.append(_mod_bzr_conflicts.Conflict.factory(ctype,
-                                                                 path=conflicted,
-                                                                 file_id=self.path2id(conflicted)))
+                conflicts.append(_mod_bzr_conflicts.Conflict.factory(
+                    ctype, path=conflicted, file_id=self.path2id(conflicted)))
             return conflicts
 
     def set_conflicts(self, arg):

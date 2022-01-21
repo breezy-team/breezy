@@ -100,7 +100,8 @@ def main(argv=None):
         def _copy(src, dest, follow_symlinks=True):
             shutil.copy(src, dest, follow_symlinks=follow_symlinks)
             print("Copied:", src, "=>", dest)
-        shutil.copytree(argv[0], argv[1],
+        shutil.copytree(
+            argv[0], argv[1],
             copy_function=_copy, dirs_exist_ok=True)
 
         return 0
