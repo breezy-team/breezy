@@ -1783,37 +1783,21 @@ register_transport_proto('nosmart+')
 register_lazy_transport('nosmart+', 'breezy.transport.nosmart',
                         'NoSmartTransportDecorator')
 
-register_transport_proto('bzr://',
-                         help="Fast access using the Bazaar smart server.",
-                         register_netloc=True)
 
-register_lazy_transport('bzr://', 'breezy.transport.remote',
-                        'RemoteTCPTransport')
-register_transport_proto('bzr-v2://', register_netloc=True)
+class HintingSSHTransport(Transport):
+    """Simple transport that handles ssh:// and points out bzr+ssh:// and git+ssh://."""
 
-register_lazy_transport('bzr-v2://', 'breezy.transport.remote',
-                        'RemoteTCPTransportV2Only')
-register_transport_proto('bzr+http://',
-                         #                help="Fast access using the Bazaar smart server over HTTP."
-                         register_netloc=True)
-register_lazy_transport('bzr+http://', 'breezy.transport.remote',
-                        'RemoteHTTPTransport')
-register_transport_proto('bzr+https://',
-                         #                help="Fast access using the Bazaar smart server over HTTPS."
-                         register_netloc=True)
-register_lazy_transport('bzr+https://',
-                        'breezy.transport.remote',
-                        'RemoteHTTPTransport')
-register_transport_proto('bzr+ssh://',
-                         help="Fast access using the Bazaar smart server over SSH.",
-                         register_netloc=True)
-register_lazy_transport('bzr+ssh://', 'breezy.transport.remote',
-                        'RemoteSSHTransport')
+    # TODO(jelmer): Implement support for detecting whether the repository at the
+    # other end is a git or bzr repository.
+
+    def __init__(self, url):
+        raise UnsupportedProtocol(
+            url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
+            'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
+
 
 register_transport_proto('ssh:')
-register_lazy_transport('ssh:', 'breezy.transport.remote',
-                        'HintingSSHTransport')
-
+register_transport('ssh:', HintingSSHTransport)
 
 transport_server_registry = registry.Registry[str, Callable]()
 transport_server_registry.register_lazy('bzr', 'breezy.bzr.smart.server',

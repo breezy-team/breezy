@@ -129,6 +129,8 @@ import urllib.parse as urlparse
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
 register_urlparse_netloc_protocol('git+ssh')
+register_urlparse_netloc_protocol('git+http')
+register_urlparse_netloc_protocol('git+https')
 
 
 class GitPushResult(PushResult):

@@ -395,3 +395,33 @@ controldir.format_registry.register_alias('bzr', '2a')
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalStack().get('default_format')
 controldir.format_registry.set_default(format_name)
+
+
+_mod_transport.register_transport_proto('bzr://',
+                         help="Fast access using the Bazaar smart server.",
+                         register_netloc=True)
+
+_mod_transport.register_lazy_transport('bzr://', 'breezy.bzr.remote_transport',
+                        'RemoteTCPTransport')
+_mod_transport.register_transport_proto('bzr-v2://', register_netloc=True)
+
+_mod_transport.register_lazy_transport('bzr-v2://', 'breezy.bzr.remote_transport',
+                        'RemoteTCPTransportV2Only')
+_mod_transport.register_transport_proto('bzr+http://',
+                         #                help="Fast access using the Bazaar smart server over HTTP."
+                         register_netloc=True)
+_mod_transport.register_lazy_transport('bzr+http://', 'breezy.bzr.remote_transport',
+                        'RemoteHTTPTransport')
+_mod_transport.register_transport_proto('bzr+https://',
+                         #                help="Fast access using the Bazaar smart server over HTTPS."
+                         register_netloc=True)
+_mod_transport.register_lazy_transport('bzr+https://',
+                        'breezy.bzr.remote_transport',
+                        'RemoteHTTPTransport')
+_mod_transport.register_transport_proto('bzr+ssh://',
+                         help="Fast access using the Bazaar smart server over SSH.",
+                         register_netloc=True)
+_mod_transport.register_lazy_transport('bzr+ssh://', 'breezy.bzr.remote_transport',
+                        'RemoteSSHTransport')
+
+

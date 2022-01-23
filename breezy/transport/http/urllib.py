@@ -1760,10 +1760,10 @@ class HttpTransport(ConnectedTransport):
 
     def __init__(self, base, _from_transport=None, ca_certs=None):
         """Set the base path where files will be stored."""
-        proto_match = re.match(r'^(https?)(\+\w+)?://', base)
+        proto_match = re.match(r'^(.+\+)?(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
-        self._unqualified_scheme = proto_match.group(1)
+        self._unqualified_scheme = proto_match.group(2)
         super().__init__(
             base, _from_transport=_from_transport)
         self._medium = None
