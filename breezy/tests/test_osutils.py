@@ -879,8 +879,10 @@ class TestWin32Funcs(tests.TestCase):
         self.requireFeature(features.win32_feature)
         self.assertEqual('C:/foo', osutils._win32_abspath('C:\\foo'))
         self.assertEqual('C:/foo', osutils._win32_abspath('C:/foo'))
-        self.assertEqual('//HOST/path', osutils._win32_abspath(r'\\HOST\path'))
-        self.assertEqual('//HOST/path', osutils._win32_abspath('//HOST/path'))
+        self.assertEqual('//HOST/SHARE/path',
+            osutils._win32_abspath(r'\\HOST\share\path'))
+        self.assertEqual('//HOST/SHARE/path',
+            osutils._win32_abspath('//host/SHARE/path'))
 
     def test_realpath(self):
         self.assertEqual('C:/foo', osutils._win32_realpath('C:\\foo'))
@@ -1071,10 +1073,30 @@ class TestSplitLines(tests.TestCase):
 
 class TestWalkDirs(tests.TestCaseInTempDir):
 
+    if sys.platform == 'win32':
+        @staticmethod
+        def _normalize_path_separators(path):
+            return path.replace("\\", "/")
+    else:
+        @staticmethod
+        def _normalize_path_separators(path):
+            return path
+
     def assertExpectedBlocks(self, expected, result):
-        self.assertEqual(expected,
-                         [(dirinfo, [line[0:3] for line in block])
-                          for dirinfo, block in result])
+        # This is randomly called with result obtained from _walkdirs_utf8
+        # which always uses forward slashes for path separators,
+        # and simple walkdirs, which relies on os.scandir,
+        # so yields paths with backslashes on Windows.
+        # We don't compare the "path-from-top" members here,
+        # but in deeper trees it appears in the "directory-path-from-top".
+        # We have to normalize the slashes in that element.
+        _normalize_walkdirs_result = lambda spec: [(
+            (relpath, self._normalize_path_separators(fromtop)),
+            [line[:3] for line in block],
+        ) for ((relpath, fromtop), block) in spec]
+        self.assertEqual(
+            _normalize_walkdirs_result(expected),
+            _normalize_walkdirs_result(result))
 
     def test_walkdirs(self):
         tree = [
@@ -1226,13 +1248,23 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertExpectedBlocks(expected_dirblocks[1:], result)
 
     def _filter_out_stat(self, result):
-        """Filter out the stat value from the walkdirs result"""
-        for dirdetail, dirblock in result:
+        """Filter out the stat value from the walkdirs result
+
+        If needed, also change the directory separators
+        in the path-from-top elements to be forward slashes.
+
+        """
+        new_result = []
+        for ((relpath, fromtop), dirblock) in result:
             new_dirblock = []
             for info in dirblock:
                 # Ignore info[3] which is the stat
-                new_dirblock.append((info[0], info[1], info[2], info[4]))
-            dirblock[:] = new_dirblock
+                new_dirblock.append((info[0], info[1], info[2],
+                    self._normalize_path_separators(info[4])))
+            new_result.append((
+                (relpath, self._normalize_path_separators(fromtop)),
+                new_dirblock))
+        return new_result
 
     def _save_platform_info(self):
         self.overrideAttr(osutils, '_fs_enc')
@@ -1260,6 +1292,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             UTF8DirReaderFeature.module.UTF8DirReader, b".")
 
     def test_force_walkdirs_utf8_fs_latin1(self):
+        if sys.platform == "win32":
+            self.skipTest("On Windows, FS functions use wide chars")
         self._save_platform_info()
         osutils._fs_enc = 'iso-8859-1'
         self.assertDirReaderIs(osutils.UnicodeDirReader, ".")
@@ -1304,11 +1338,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
                 ]
              ),
             ]
-        result = list(osutils.walkdirs('.'))
-        self._filter_out_stat(result)
+        result = self._filter_out_stat(osutils.walkdirs('.'))
         self.assertEqual(expected_dirblocks, result)
-        result = list(osutils.walkdirs(u'./' + name1, name1))
-        self._filter_out_stat(result)
+        result = self._filter_out_stat(osutils.walkdirs(u'./' + name1, name1))
         self.assertEqual(expected_dirblocks[1:], result)
 
     def test_unicode__walkdirs_utf8(self):
@@ -1418,8 +1450,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
                 ]
              ),
             ]
-        result = list(osutils._walkdirs_utf8('.'))
-        self._filter_out_stat(result)
+        result = self._filter_out_stat(osutils._walkdirs_utf8('.'))
         self.assertEqual(expected_dirblocks, result)
 
     def test__walkdirs_utf8_win32readdir(self):
@@ -1446,26 +1477,25 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # All of the abspaths should be in unicode, all of the relative paths
         # should be in utf8
         expected_dirblocks = [
-            (('', '.'),
+            ((b'', '.'),
              [(name0, name0, 'file', './' + name0u),
               (name1, name1, 'directory', './' + name1u),
               (name2, name2, 'file', './' + name2u),
               ]
              ),
             ((name1, './' + name1u),
-             [(name1 + '/' + name0, name0, 'file', './' + name1u
+             [(name1 + b'/' + name0, name0, 'file', './' + name1u
                + '/' + name0u),
-              (name1 + '/' + name1, name1, 'directory', './' + name1u
+              (name1 + b'/' + name1, name1, 'directory', './' + name1u
                + '/' + name1u),
               ]
              ),
-            ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+            ((name1 + b'/' + name1, './' + name1u + '/' + name1u),
              [
                 ]
              ),
             ]
-        result = list(osutils._walkdirs_utf8(u'.'))
-        self._filter_out_stat(result)
+        result = self._filter_out_stat(osutils._walkdirs_utf8(u'.'))
         self.assertEqual(expected_dirblocks, result)
 
     def assertStatIsCorrect(self, path, win32stat):
@@ -1474,8 +1504,10 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertAlmostEqual(os_stat.st_mtime, win32stat.st_mtime, places=4)
         self.assertAlmostEqual(os_stat.st_ctime, win32stat.st_ctime, places=4)
         self.assertAlmostEqual(os_stat.st_atime, win32stat.st_atime, places=4)
-        self.assertEqual(os_stat.st_dev, win32stat.st_dev)
-        self.assertEqual(os_stat.st_ino, win32stat.st_ino)
+        # win32stat is built from WIN32_FIND_DATA structure
+        # which contains neither dwVolumeSerialNumber nor nFileIndex
+        #self.assertEqual(os_stat.st_dev, win32stat.st_dev)
+        #self.assertEqual(os_stat.st_ino, win32stat.st_ino)
         self.assertEqual(os_stat.st_mode, win32stat.st_mode)
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
@@ -1492,7 +1524,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         with open(name0u, 'ab') as f:
             f.write(b'just a small update')
 
-        result = Win32ReadDir().read_dir('', u'.')
+        result = Win32ReadDir().read_dir(b'', u'.')
         entry = result[0]
         self.assertEqual((name0, name0, 'file'), entry[:3])
         self.assertEqual(u'./' + name0u, entry[4])
@@ -1620,13 +1652,17 @@ class TestCopyTree(tests.TestCaseInTempDir):
         processed_links = []
 
         def file_handler(from_path, to_path):
-            processed_files.append(('f', from_path, to_path))
+            processed_files.append(
+                ('f', osutils.normpath(from_path), osutils.normpath(to_path)))
 
         def dir_handler(from_path, to_path):
-            processed_files.append(('d', from_path, to_path))
+            processed_files.append(
+                ('d', osutils.normpath(from_path), osutils.normpath(to_path)))
 
         def link_handler(from_path, to_path):
-            processed_links.append((from_path, to_path))
+            processed_links.append(
+                (osutils.normpath(from_path), osutils.normpath(to_path)))
+
         handlers = {'file': file_handler,
                     'directory': dir_handler,
                     'symlink': link_handler,
@@ -1893,7 +1929,7 @@ class TestReadLink(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
-        self._test_needs_features.append(features.SymlinkFeature(self.test_dir))
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.link = u'l\N{Euro Sign}ink'
         self.target = u'targe\N{Euro Sign}t'
         os.symlink(self.target, self.link)

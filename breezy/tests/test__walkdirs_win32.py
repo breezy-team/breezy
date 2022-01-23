@@ -37,9 +37,7 @@ class TestWin32Finder(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestWin32Finder, self).setUp()
-        from ._walkdirs_win32 import (
-            Win32ReadDir,
-            )
+        from .._walkdirs_win32 import Win32ReadDir
         self.reader = Win32ReadDir()
 
     def _remove_stat_from_dirblock(self, dirblock):
@@ -58,45 +56,44 @@ class TestWin32Finder(tests.TestCaseInTempDir):
         finally:
             osutils._selected_dir_reader = old_selected_dir_reader
 
-    def assertReadDir(self, expected, prefix, top_unicode):
+    def assertReadDir(self, expected, prefix, top):
         result = self._remove_stat_from_dirblock(
-            self.reader.read_dir(prefix, top_unicode))
+            self.reader.read_dir(prefix, top))
         self.assertEqual(expected, result)
 
     def test_top_prefix_to_starting_dir(self):
         # preparing an iteration should create a unicode native path.
         self.assertEqual(
-            ('prefix', None, None, None, u'\x12'),
+            (b'prefix', None, None, None, u'\x12'),
             self.reader.top_prefix_to_starting_dir(
                 u'\x12'.encode('utf8'), 'prefix'))
 
     def test_empty_directory(self):
-        self.assertReadDir([], 'prefix', u'.')
-        self.assertWalkdirs([(('', u'.'), [])], u'.')
+        self.assertReadDir([], b'prefix', b'.')
+        self.assertWalkdirs([((b'', u'.'), [])], b'.')
 
     def test_file(self):
         self.build_tree(['foo'])
-        self.assertReadDir([('foo', 'foo', 'file', u'./foo')],
+        self.assertReadDir([(b'foo', b'foo', 'file', u'./foo')],
                            '', u'.')
 
     def test_directory(self):
         self.build_tree(['bar/'])
-        self.assertReadDir([('bar', 'bar', 'directory', u'./bar')],
+        self.assertReadDir([(b'bar', b'bar', 'directory', u'./bar')],
                            '', u'.')
 
     def test_prefix(self):
         self.build_tree(['bar/', 'baf'])
         self.assertReadDir([
-            ('xxx/baf', 'baf', 'file', u'./baf'),
-            ('xxx/bar', 'bar', 'directory', u'./bar'),
+            (b'xxx/baf', b'baf', 'file', u'./baf'),
+            (b'xxx/bar', b'bar', 'directory', u'./bar'),
             ],
             'xxx', u'.')
 
     def test_missing_dir(self):
         e = self.assertRaises(WindowsError,
-                              self.reader.read_dir, 'prefix', u'no_such_dir')
-        self.assertEqual(errno.ENOENT, e.errno)
-        self.assertEqual(3, e.winerror)
+            self.reader.read_dir, b'prefix', u'no_such_dir')
+        # 3 is ERROR_PATH_NOT_FOUND, see WinError.h
         self.assertEqual((3, u'no_such_dir/*'), e.args)
 
 
@@ -106,7 +103,7 @@ class Test_Win32Stat(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(Test_Win32Stat, self).setUp()
-        from ._walkdirs_win32 import lstat
+        from .._walkdirs_win32 import lstat
         self.win32_lstat = lstat
 
     def test_zero_members_present(self):

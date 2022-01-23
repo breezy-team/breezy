@@ -109,6 +109,16 @@ class UploadUtilsMixin(object):
         self.assertFileEqual(content, osutils.pathjoin(base, path))
 
     def assertUpPathModeEqual(self, path, expected_mode, base=upload_dir):
+        # FIXME: at present, the upload is tested locally,
+        # so if local FS doesn't support the mode bits,
+        # all mode tests will fail.  The only mode bit
+        # that is reported as unsupported by the osutils module
+        # is the executable bit.  So skip if not supports_executable.
+        # This should better be tested with a dummy transport
+        # and not an actual file system.
+        if not osutils.supports_executable(path):
+            self.skipTest("Cannot determine mode bits for %s" % path)
+            return
         # FIXME: the tests needing that assertion should depend on the server
         # ability to handle chmod so that they don't fail (or be skipped)
         # against servers that can't. Note that some breezy transports define
@@ -387,6 +397,9 @@ class TestUploadMixin(UploadUtilsMixin):
         self.assertUpFileEqual(b'bar', 'hello')
 
     def _test_make_file_executable(self, file_name):
+        if not osutils.supports_executable(file_name)
+            self.skipTest("%s cannot be marked executable" % filename)
+            return
         self.make_branch_and_working_tree()
         self.add_file(file_name, b'foo')
         self.chmod_file(file_name, 0o664)

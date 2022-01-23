@@ -1012,12 +1012,12 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         """Creating a new entry in config uses a local path."""
         branch = self.make_branch('branch', format='knit')
         branch.set_push_location('http://foobar')
-        local_path = osutils.getcwd().encode('utf8')
+        local_path = osutils.getcwd()
         # Surprisingly ConfigObj doesn't create a trailing newline
         self.check_file_contents(bedding.locations_config_path(),
-                                 b'[%s/branch]\n'
-                                 b'push_location = http://foobar\n'
-                                 b'push_location:policy = norecurse\n'
+                                 '[%s/branch]\n'
+                                 'push_location = http://foobar\n'
+                                 'push_location:policy = norecurse\n'
                                  % (local_path,))
 
     def test_autonick_urlencoded(self):
@@ -3190,11 +3190,22 @@ foo:policy = appendpath
 
     def test_branch_name_basename(self):
         store = self.get_store(self)
-        store._load_from_string(dedent("""\
-            [/]
-            push_location=my{branchname}
-        """).encode('ascii'))
-        matcher = config.LocationMatcher(store, 'file:///parent/example%3c')
+        if sys.platform == "win32":
+            # Win32 file urls start with file:///x:/,
+            # where x is a valid drive letter
+            store._load_from_string(dedent("""\
+                [C:/]
+                push_location=my{branchname}
+            """).encode('ascii'))
+            matcher = config.LocationMatcher(store,
+                'file:///c:/parent/example%3c')
+        else:
+            store._load_from_string(dedent("""\
+                [/]
+                push_location=my{branchname}
+            """).encode('ascii'))
+            matcher = config.LocationMatcher(store,
+                'file:///parent/example%3c')
         self.assertEqual('example<', matcher.branch_name)
         ((_, section),) = matcher.get_sections()
         self.assertEqual('example<', section.locals['branchname'])
@@ -3220,19 +3231,31 @@ class TestStartingPathMatcher(TestStore):
 
     def test_url_vs_local_paths(self):
         # The matcher location is an url and the section names are local paths
-        self.assertSectionIDs(['/foo/bar', '/foo'],
-                              'file:///foo/bar/baz', b'''\
-[/foo]
-[/foo/bar]
-''')
+        if sys.platform == "win32":
+            # Win32 file urls start with file:///x:/,
+            # where x is a valid drive letter
+            self.assertSectionIDs(['C:/foo/bar', 'C:/foo'],
+                'file:///c:/foo/bar/baz',
+                b'[C:/foo]\n'
+                b'[C:/foo/bar]\n')
+        else:
+            self.assertSectionIDs(['/foo/bar', '/foo'],
+                'file:///foo/bar/baz',
+                b'[/foo]\n'
+                b'[/foo/bar]\n')
 
     def test_local_path_vs_url(self):
         # The matcher location is a local path and the section names are urls
-        self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
-                              '/foo/bar/baz', b'''\
-[file:///foo]
-[file:///foo/bar]
-''')
+        if sys.platform == "win32":
+            self.assertSectionIDs(['file:///C:/foo/bar', 'file:///C:/foo'],
+                'C:/foo/bar/baz',
+                b'[file:///C:/foo]\n'
+                b'[file:///C:/foo/bar]\n')
+        else:
+            self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
+                '/foo/bar/baz',
+                b'[file:///foo]\n'
+                b'[file:///foo/bar]\n')
 
     def test_no_name_section_included_when_present(self):
         # Note that other tests will cover the case where the no-name section

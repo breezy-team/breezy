@@ -134,6 +134,15 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
 class TestDefaultMailDomain(tests.TestCaseInTempDir):
     """Test retrieving default domain from mailname file"""
 
+    def setUp(self):
+        if sys.platform == 'win32':
+            # The function deliberately returns None on Windows.
+            # Could run C:\Windows\System32\whoami.exe /upn, but that
+            # only works when the user is logged in to an AD domain.
+            # Why we don't just read /etc/maildomain, same as on all platforms?
+            raise tests.TestNotApplicable
+        super(TestDefaultMailDomain, self).setUp()
+
     def test_default_mail_domain_simple(self):
         with open('simple', 'w') as f:
             f.write("domainname.com\n")
