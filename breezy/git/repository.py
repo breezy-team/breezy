@@ -186,6 +186,7 @@ class GitRepository(ForeignRepository):
             transaction = self._transaction
             self._transaction = None
             transaction.finish()
+            self._git.close()
 
     def is_write_locked(self):
         return (self._lock_mode == 'w')

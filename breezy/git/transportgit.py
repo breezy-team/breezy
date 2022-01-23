@@ -451,6 +451,10 @@ class TransportRepo(BaseRepo):
     def commondir(self):
         return self._commontransport.local_abspath('.')
 
+    def close(self):
+        """Close any files opened by this repository."""
+        self.object_store.close()
+
     @property
     def path(self):
         return self.transport.local_abspath('.')
@@ -515,25 +519,6 @@ class TransportRepo(BaseRepo):
             writable = None
         backends.extend(StackedConfig.default_backends())
         return StackedConfig(backends, writable=writable)
-
-    # Here for compatibility with dulwich < 0.19.17
-    def generate_pack_data(self, have, want, progress=None, ofs_delta=None):
-        """Generate pack data objects for a set of wants/haves.
-
-        Args:
-          have: List of SHA1s of objects that should not be sent
-          want: List of SHA1s of objects that should be sent
-          ofs_delta: Whether OFS deltas can be included
-          progress: Optional progress reporting method
-        """
-        shallow = self.get_shallow()
-        if shallow:
-            return self.object_store.generate_pack_data(
-                have, want, shallow=shallow,
-                progress=progress, ofs_delta=ofs_delta)
-        else:
-            return self.object_store.generate_pack_data(
-                have, want, progress=progress, ofs_delta=ofs_delta)
 
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__, self.transport)

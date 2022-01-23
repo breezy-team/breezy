@@ -1399,13 +1399,13 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.set_executability(True, transform.trans_id_tree_path('file2'))
             self.assertTreeChanges(transform, [
                 TreeChange(
-                (u'file1', u'file1'), True, (True, True),
-                ('file1', u'file1'),
-                ('file', None), (False, False), False),
+                    (u'file1', u'file1'), True, (True, True),
+                    ('file1', u'file1'),
+                    ('file', None), (False, False), False),
                 TreeChange(
-                (u'file2', u'file2'), False, (True, True),
-                ('file2', u'file2'),
-                ('file', 'file'), (False, True), False)])
+                    (u'file2', u'file2'), False, (True, True),
+                    ('file2', u'file2'),
+                    ('file', 'file'), (False, True), False)])
         finally:
             transform.finalize()
 

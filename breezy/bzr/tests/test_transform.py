@@ -461,6 +461,3 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual(entry2_sha, target.get_file_sha1('dir/file2'))
         self.assertEqual(entry1_state, entry1[1][0])
         self.assertEqual(entry2_state, entry2[1][0])
-
-
-
