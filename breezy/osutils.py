@@ -2527,7 +2527,7 @@ class MtabFilesystemFinder(FilesystemFinder):
             unknown.
         """
         if not isinstance(path, bytes):
-            path = path.encode(_fs_enc)
+            path = os.fsencode(path)
         for mountpoint, filesystem in self._mountpoints:
             if is_inside(mountpoint, path):
                 return filesystem
@@ -2539,7 +2539,7 @@ class Win32FilesystemFinder(FilesystemFinder):
     def find(self, path):
         drive = os.path.splitdrive(os.path.abspath(path))[0]
         if isinstance(drive, bytes):
-            drive = drive.decode(_fs_enc)
+            drive = os.fsdecode(drive)
         fs_type = win32utils.get_fs_type(drive + "\\")
         if fs_type is None:
             return None
