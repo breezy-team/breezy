@@ -212,7 +212,13 @@ class GitDir(ControlDir):
                         trace.warning("Unable to find submodule info for %s", path)
                         continue
                     remote_url = urlutils.join(self.user_url, sublocation)
-                    subbranch = _mod_branch.Branch.open(remote_url, possible_transports=possible_transports)
+                    try:
+                        subbranch = _mod_branch.Branch.open(remote_url, possible_transports=possible_transports)
+                    except brz_errors.NotBranchError as e:
+                        trace.warning(
+                            'Unable to clone submodule %s from %s: %s',
+                            path, remote_url, e)
+                        continue
                     subbranch.controldir.sprout(
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,
