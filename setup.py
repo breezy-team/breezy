@@ -75,20 +75,19 @@ META_INFO = {
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
-        'fastimport': ['fastimport<0.9.8;python_version<"3.0"', 'fastimport;python_version>="3.5"'],
+        'fastimport': ['fastimport'],
         'git': ['dulwich>=0.20.23'],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
-        'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
+        'doc': ['setuptools', 'sphinx', 'sphinx_epytext'],
         },
     'rust_extensions': [RustExtension("brz", binding=Binding.Exec, strip=Strip.All)],
     'tests_require': [
         'testtools',
-        'testtools<=2.4.0;python_version<"3.0"',
         'python-subunit',
         'dulwich>=0.20.29',
     ],
-    'python_requires': '>=3.5',
+    'python_requires': '>=3.6',
 }
 
 # The list of packages is automatically generated later. Add other things
