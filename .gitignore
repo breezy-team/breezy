@@ -11,4 +11,5 @@ build/
 *_pyx.cpython-*.c
 *~
 /target
-./brz
+/brz
+/Cargo.lock
