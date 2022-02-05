@@ -31,7 +31,7 @@ from breezy.plugins.debian.util import (
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import format_date, get_maintainer
-from debmutate.changelog import ChangelogEditor, changeblock_add_line
+from debmutate.changelog import ChangelogEditor, changelog_add_entry
 
 
 DEFAULT_BUILDER = "sbuild --no-clean-source"
@@ -112,10 +112,10 @@ def backport_package(local_tree, subpath, target_release, author=None):
             date=format_date(),
             version=create_bpo_version(since_version, version_suffix),
         )
-        block = cl[0]
-        changeblock_add_line(
-            block,
-            ["Backport to %s." % target_release] + [" +" + line for line in changes],
+        changelog_add_entry(
+            cl,
+            ["Backport to %s." % target_release] +
+            [" +" + line for line in changes],
         )
 
     return BackportResult(
@@ -128,6 +128,9 @@ def backport_package(local_tree, subpath, target_release, author=None):
 async def main():
     import argparse
 
+    import breezy.bzr
+    import breezy.git
+
     parser = argparse.ArgumentParser()
     distro_info = DebianDistroInfo()
     parser.add_argument(
@@ -137,6 +140,7 @@ async def main():
         default=distro_info.stable(),
     )
     parser.add_argument("--dry-run", action="store_true", help="Do a dry run.")
+    parser.add_argument('--build', action='store_true')
     parser.add_argument(
         "--builder",
         type=str,
@@ -157,15 +161,17 @@ async def main():
         local_tree, subpath, args.target_release, author=committer
     )
 
-    with tempfile.TemporaryDirectory() as td:
-        builder = args.builder.replace("${LAST_VERSION}", str(result.since_version))
-        target_changes = _build_helper(
-            local_tree, subpath, local_tree.branch, td, builder=builder
-        )
-        debsign(target_changes['source'])
+    if args.build:
+        with tempfile.TemporaryDirectory() as td:
+            builder = args.builder.replace(
+                "${LAST_VERSION}", str(result.since_version))
+            target_changes = _build_helper(
+                local_tree, subpath, local_tree.branch, td, builder=builder
+            )
+            debsign(target_changes['source'])
 
-        if not args.dry_run:
-            dput_changes(target_changes['source'])
+            if not args.dry_run:
+                dput_changes(target_changes['source'])
 
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
