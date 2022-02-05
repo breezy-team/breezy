@@ -25,6 +25,9 @@ import subprocess
 import tempfile
 
 from breezy.plugins.debian.cmds import _build_helper
+from breezy.plugins.debian.changelog import (
+    debcommit,
+    )
 from breezy.plugins.debian.util import (
     dput_changes,
 )
@@ -118,6 +121,8 @@ def backport_package(local_tree, subpath, target_release, author=None):
             ["Backport to %s." % target_release] +
             [" +" + line for line in changes],
         )
+
+    debcommit(local_tree, subpath=subpath)
 
     return BackportResult(
         source=cl[0].package,
