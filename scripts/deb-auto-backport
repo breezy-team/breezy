@@ -31,7 +31,7 @@ from breezy.plugins.debian.util import (
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import format_date, get_maintainer
-from debmutate.changelog import ChangelogEditor, changelog_add_entry
+from debmutate.changelog import ChangelogEditor, changeblock_add_line
 
 
 DEFAULT_BUILDER = "sbuild --no-clean-source"
@@ -111,9 +111,10 @@ def backport_package(local_tree, subpath, target_release, author=None):
             author=author,
             date=format_date(),
             version=create_bpo_version(since_version, version_suffix),
+            changes=[''],
         )
-        changelog_add_entry(
-            cl,
+        changeblock_add_line(
+            cl[0],
             ["Backport to %s." % target_release] +
             [" +" + line for line in changes],
         )
