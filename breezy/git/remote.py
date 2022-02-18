@@ -44,6 +44,7 @@ from ..errors import (
     NotBranchError,
     NotLocalUrl,
     PermissionDenied,
+    TransportError,
     UninitializableFormat,
     )
 from ..revision import NULL_REVISION
@@ -215,6 +216,8 @@ def parse_git_error(url, message):
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
         return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
+    if message == 'Host key verification failed.':
+        return TransportError('Host key verification failed')
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 

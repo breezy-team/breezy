@@ -27,6 +27,7 @@ from ...errors import (
     NotBranchError,
     NoSuchTag,
     PermissionDenied,
+    TransportError,
     )
 
 from ...tests import (
@@ -163,6 +164,14 @@ Email support@github.com for help
                 RemoteGitError(
                     'GitLab: You are not allowed to push code to '
                     'protected branches on this project.')))
+
+    def test_host_key_verification(self):
+        self.assertEqual(
+            TransportError('Host key verification failed'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'Host key verification failed.')))
 
 
 class ParseHangupTests(TestCase):
