@@ -35,6 +35,7 @@ from ..push import (
 from ..errors import (
     AlreadyBranchError,
     BzrError,
+    ConnectionReset,
     DivergedBranches,
     InProcessTransport,
     InvalidRevisionId,
@@ -44,6 +45,7 @@ from ..errors import (
     NotBranchError,
     NotLocalUrl,
     PermissionDenied,
+    TransportError,
     UninitializableFormat,
     )
 from ..revision import NULL_REVISION
@@ -215,6 +217,10 @@ def parse_git_error(url, message):
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
         return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
+    if message == 'Host key verification failed.':
+        return TransportError('Host key verification failed')
+    if message == '[Errno 104] Connection reset by peer':
+        return ConnectionReset(message)
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 

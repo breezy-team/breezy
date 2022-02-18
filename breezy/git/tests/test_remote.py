@@ -23,10 +23,12 @@ import time
 
 from ...controldir import ControlDir
 from ...errors import (
+    ConnectionReset,
     DivergedBranches,
     NotBranchError,
     NoSuchTag,
     PermissionDenied,
+    TransportError,
     )
 
 from ...tests import (
@@ -163,6 +165,22 @@ Email support@github.com for help
                 RemoteGitError(
                     'GitLab: You are not allowed to push code to '
                     'protected branches on this project.')))
+
+    def test_host_key_verification(self):
+        self.assertEqual(
+            TransportError('Host key verification failed'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'Host key verification failed.')))
+
+    def test_connection_reset_by_peer(self):
+        self.assertEqual(
+            ConnectionReset('[Errno 104] Connection reset by peer'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    '[Errno 104] Connection reset by peer')))
 
 
 class ParseHangupTests(TestCase):
