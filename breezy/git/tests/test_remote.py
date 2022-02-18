@@ -23,6 +23,7 @@ import time
 
 from ...controldir import ControlDir
 from ...errors import (
+    ConnectionReset,
     DivergedBranches,
     NotBranchError,
     NoSuchTag,
@@ -172,6 +173,14 @@ Email support@github.com for help
                 'url',
                 RemoteGitError(
                     'Host key verification failed.')))
+
+    def test_connection_reset_by_peer(self):
+        self.assertEqual(
+            ConnectionReset('[Errno 104] Connection reset by peer'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    '[Errno 104] Connection reset by peer')))
 
 
 class ParseHangupTests(TestCase):
