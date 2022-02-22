@@ -328,13 +328,13 @@ class BasePristineTarSource(UpstreamSource):
         return ret
 
     def has_version(
-            self, package: Optional[str], version: Version, tarballs=None):
+            self, package: Optional[str], version: Version, tarballs=None, try_hard=True):
         if tarballs is None:
-            return self.has_version_component(package, version, component=None)
+            return self.has_version_component(package, version, component=None, try_hard=try_hard)
         else:
             for (tarball, component, md5) in tarballs:
                 if not self.has_version_component(
-                        package, version, component, md5):
+                        package, version, component, md5, try_hard=try_hard):
                     return False
             return True
 
@@ -389,9 +389,9 @@ class BasePristineTarSource(UpstreamSource):
 
     def has_version_component(
             self, package: Optional[str], version: Version, component,
-            md5=None):
+            md5=None, try_hard=True):
         for tag_name in self.possible_tag_names(
-                package, version, component=component):
+                package, version, component=component, try_hard=try_hard):
             try:
                 revid = self.branch.tags.lookup_tag(tag_name)
             except NoSuchTag:
@@ -547,8 +547,9 @@ class BzrPristineTarSource(BasePristineTarSource):
 
     def possible_tag_names(
             self, package: Optional[str], version: Version,
-            component: Optional[str]):
-        return possible_upstream_tag_names(package, version, component)
+            component: Optional[str],
+            try_hard: bool = True):
+        return possible_upstream_tag_names(package, version, component, try_hard=try_hard)
 
     def get_pristine_tar_delta(self, package, version, dest_filename,
                                revid=None):
@@ -881,12 +882,12 @@ class GitPristineTarSource(BasePristineTarSource):
                 return False
         return True
 
-    def possible_tag_names(self, package: Optional[str], version: Version, component: Optional[str]):
+    def possible_tag_names(self, package: Optional[str], version: Version, component: Optional[str], try_hard: bool = True):
         tags = []
         if self.gbp_tag_format:
             tags.append(gbp_expand_tag_name(self.gbp_tag_format, mangle_version_for_git(version)))
 
-        tags.extend(possible_upstream_tag_names(package, version, component))
+        tags.extend(possible_upstream_tag_names(package, version, component, try_hard=try_hard))
 
         return tags
 

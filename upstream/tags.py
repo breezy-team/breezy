@@ -32,7 +32,7 @@ from ....errors import (
 from debmutate.versions import mangle_version_for_git
 
 
-def possible_upstream_tag_names(package: Optional[str], version: Version, component: Optional[str] = None):
+def possible_upstream_tag_names(package: Optional[str], version: Version, component: Optional[str] = None, try_hard=True):
     tags = []
     if component is None:
         # compatibility with git-buildpackage
@@ -44,16 +44,17 @@ def possible_upstream_tag_names(package: Optional[str], version: Version, compon
         # compatibility with svn-buildpackage
         tags.append("upstream_%s" % version)
 
-        # common upstream names
-        tags.append("%s" % version)
-        tags.append("v%s" % version)
-        if '~' not in str(version) and '+' not in str(version):
-            tags.append("release-%s" % version)
-            tags.append("v%s-release" % version)
-        if package:
-            tags.append("%s-%s" % (package, version))
-        tags.append("v/%s" % version)
-        tags.append("v.%s" % version)
+        if try_hard:
+            # common upstream names
+            tags.append("%s" % version)
+            tags.append("v%s" % version)
+            if '~' not in str(version) and '+' not in str(version):
+                tags.append("release-%s" % version)
+                tags.append("v%s-release" % version)
+            if package:
+                tags.append("%s-%s" % (package, version))
+            tags.append("v/%s" % version)
+            tags.append("v.%s" % version)
     else:
         tags.append('upstream-%s/%s' % (version, component))
         tags.append('upstream/%s/%s' % (mangle_version_for_git(version), component))

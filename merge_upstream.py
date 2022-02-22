@@ -129,7 +129,7 @@ def do_import(
                 package, current_version, tempdir)
         else:
             db.create_empty_upstream_tree(tempdir)
-        if db.pristine_upstream_source.has_version(package, version):
+        if db.pristine_upstream_source.has_version(package, version, try_hard=False):
             raise UpstreamAlreadyImported(version)
 
         parents = {None: []}
