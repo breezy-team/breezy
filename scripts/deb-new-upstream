@@ -385,7 +385,7 @@ class ImportUpstreamResult(object):
 
 
 def detect_include_upstream_history(
-    tree, upstream_branch_source, package, old_upstream_version
+    packaging_branch, upstream_branch_source, package, old_upstream_version
 ):
     # Simple heuristic: Find the old upstream version and see if it's present
     # in the history of the packaging branch
@@ -403,8 +403,8 @@ def detect_include_upstream_history(
         )
         return False
 
-    graph = tree.branch.repository.get_graph()
-    ret = graph.is_ancestor(revision, tree.last_revision())
+    graph = packaging_branch.repository.get_graph()
+    ret = graph.is_ancestor(revision, packaging_branch.last_revision())
     if ret:
         logging.info(
             "Including upstream history, since previous upstream version "
@@ -632,7 +632,7 @@ def find_new_upstream(  # noqa: C901
 
     if include_upstream_history is None and upstream_branch_source is not None:
         include_upstream_history = detect_include_upstream_history(
-            tree, upstream_branch_source, package, old_upstream_version
+            tree.branch, upstream_branch_source, package, old_upstream_version
         )
 
     if include_upstream_history is False:
