@@ -394,6 +394,8 @@ def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
     if version.endswith('+ds'):
         version = str(version)[:-len('+ds')]
+    if version.endswith('~ds'):
+        version = str(version)[:-len('~ds')]
     if version.endswith('+dfsg'):
         version = str(version)[:-len('+dfsg')]
     if version.endswith('+repack'):
