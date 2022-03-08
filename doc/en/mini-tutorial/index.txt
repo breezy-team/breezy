@@ -20,16 +20,12 @@ This guide doesn't describe how to install Breezy but it's usually very
 easy. You can find installation instructions at:
 
 - **GNU/Linux:** Breezy is probably in your GNU/Linux distribution already.
-- **Windows:** `installation instructions for Windows`_.
-- **Mac OS X:** `installation instructions for Mac OS X`_.
 
 For other platforms and to install from source code, see the Download_
 and Installation_ pages.
 
-.. _installation instructions for Windows: http://wiki.bazaar.canonical.com/WindowsDownloads
-.. _installation instructions for Mac OS X: http://wiki.bazaar.canonical.com/MacOSXBundle
-.. _Download: http://wiki.bazaar.canonical.com/Download
-.. _Installation: http://wiki.bazaar.canonical.com/InstallationFaq
+.. _Download: https://breezy-vcs.org/pages/download.html
+.. _Installation: https://breezy-vcs.org/pages/installation.html
 
 
 Introducing yourself
