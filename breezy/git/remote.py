@@ -501,8 +501,9 @@ class RemoteGitDir(GitDir):
             result = self._client.send_pack(
                 self._client_path, get_changed_refs_wrapper,
                 generate_pack_data, progress)
-            for ref, error in result.ref_status.items():
-                result.ref_status[ref] = RemoteGitError(error)
+            for ref, msg in list(result.ref_status.items()):
+                if msg:
+                    result.ref_status[ref] = RemoteGitError(msg=msg)
             if progress_reporter:
                 for error in progress_reporter.errors:
                     m = _LOCK_REF_ERROR_MATCHER.match(error)
