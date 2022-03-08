@@ -35,15 +35,18 @@ from ..push import (
 from ..errors import (
     AlreadyBranchError,
     BzrError,
+    ConnectionReset,
     DivergedBranches,
     InProcessTransport,
     InvalidRevisionId,
+    LockContention,
     NoSuchFile,
     NoSuchRevision,
     NoSuchTag,
     NotBranchError,
     NotLocalUrl,
     PermissionDenied,
+    TransportError,
     UninitializableFormat,
     )
 from ..revision import NULL_REVISION
@@ -215,6 +218,10 @@ def parse_git_error(url, message):
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
         return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
+    if message == 'Host key verification failed.':
+        return TransportError('Host key verification failed')
+    if message == '[Errno 104] Connection reset by peer':
+        return ConnectionReset(message)
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 
@@ -383,12 +390,15 @@ class DefaultProgressReporter(object):
 
     def __init__(self, pb):
         self.pb = pb
+        self.errors = []
 
     def progress(self, text):
         text = text.rstrip(b"\r\n")
         text = text.decode('utf-8', 'surrogateescape')
         if text.lower().startswith('error: '):
-            trace.show_error('git: %s', text[len(b'error: '):])
+            error = text[len(b'error: '):]
+            self.errors.append(error)
+            trace.show_error('git: %s', error)
         else:
             trace.mutter("git: %s", text)
             g = self._GIT_PROGRESS_PARTIAL_RE.match(text)
@@ -402,6 +412,9 @@ class DefaultProgressReporter(object):
                     self.pb.update(text, None, int(total))
                 else:
                     trace.note("%s", text)
+
+
+_LOCK_REF_ERROR_MATCHER = re.compile(b'cannot lock ref \'(.*)\': (.*)')
 
 
 class RemoteGitDir(GitDir):
@@ -476,8 +489,10 @@ class RemoteGitDir(GitDir):
     def send_pack(self, get_changed_refs, generate_pack_data, progress=None):
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
-            progress = DefaultProgressReporter(pb).progress
+            progress_reporter = DefaultProgressReporter(pb)
+            progress = progress_reporter.progress
         else:
+            progress_reporter = None
             pb = None
 
         def get_changed_refs_wrapper(remote_refs):
@@ -485,9 +500,18 @@ class RemoteGitDir(GitDir):
                 update_refs_container(self._refs, remote_refs)
             return get_changed_refs(remote_refs)
         try:
-            return self._client.send_pack(
+            result = self._client.send_pack(
                 self._client_path, get_changed_refs_wrapper,
                 generate_pack_data, progress)
+            for ref, msg in list(result.ref_status.items()):
+                if msg:
+                    result.ref_status[ref] = RemoteGitError(msg=msg)
+            if progress_reporter:
+                for error in progress_reporter.errors:
+                    m = _LOCK_REF_ERROR_MATCHER.match(error)
+                    if m:
+                        result.ref_status[m.group(1)] = LockContention(m.group(1), m.group(2))
+            return result
         except HangupException as e:
             raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
@@ -523,7 +547,7 @@ class RemoteGitDir(GitDir):
         result = self.send_pack(get_changed_refs, generate_pack_data)
         error = result.ref_status.get(refname)
         if error:
-            raise RemoteGitError(error)
+            raise error
 
     @property
     def user_url(self):
@@ -682,7 +706,7 @@ class RemoteGitDir(GitDir):
             new_refs = dw_result.refs
             error = dw_result.ref_status.get(actual_refname)
             if error:
-                raise RemoteGitError(error)
+                raise error
             for ref, error in dw_result.ref_status.items():
                 if error:
                     trace.warning('unable to open ref %s: %s',
@@ -1013,7 +1037,7 @@ class RemoteGitTagDict(GitTags):
             get_changed_refs, generate_pack_data)
         error = result.ref_status.get(ref)
         if error:
-            raise RemoteGitError(error)
+            raise error
 
 
 class RemoteGitBranch(GitBranch):
@@ -1101,7 +1125,7 @@ class RemoteGitBranch(GitBranch):
             get_changed_refs, generate_pack_data)
         error = result.ref_status.get(self.ref)
         if error:
-            raise RemoteGitError(error)
+            raise error
         self._sha = sha
 
 

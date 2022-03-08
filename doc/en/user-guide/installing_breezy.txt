@@ -11,18 +11,13 @@ See https://www.breezy-vcs.org/pages/download.html for the latest instructions.
 Windows
 -------
 
-For Windows users, an installer is available that includes
-the core Breezy package together with necessary pre-requisites
-and some useful plug-ins.
-See https://www.breezy-vcs.org/pages/download.html for the latest instructions.
-
-Note: If you are running Cygwin on Windows, a Breezy for Cygwin package
-is available and ought to be used instead of the Windows version.
+Windows is currently not supported. See
+https://bugs.launchpad.net/brz/+bug/1951124 for details.
 
 Other operating systems
 -----------------------
 
-Beyond Linux and Windows, Breezy packages are available for a large
+Beyond Linux, Breezy packages are available for a large
 range of other operating systems include Mac OS X, FreeBSD and Solaris.
 See https://www.breezy-vcs.org/pages/download.html for the latest instructions.
 
