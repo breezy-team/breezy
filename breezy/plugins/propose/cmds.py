@@ -255,7 +255,7 @@ class cmd_my_merge_proposals(Command):
 
     hidden = True
 
-    takes_args = ['base-url?']
+    takes_args = ['base_url?']
     takes_options = [
         'verbose',
         RegistryOption.from_kwargs(

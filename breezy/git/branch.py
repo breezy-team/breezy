@@ -86,6 +86,19 @@ from .urls import (
     )
 
 
+
+def _update_tip(source, target, revid, overwrite=False):
+    if not overwrite:
+        last_rev = target.last_revision()
+        graph = target.repository.get_graph(source.repository)
+        if graph.is_ancestor(revid, last_rev):
+            # target is ahead of revid
+            return
+        target.generate_revision_history(revid, last_rev, other_branch=source)
+    else:
+        target.generate_revision_history(revid)
+
+
 def _calculate_revnos(branch):
     if branch._format.stores_revno():
         return True
@@ -1027,13 +1040,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     def _update_revisions(self, stop_revision=None, overwrite=False, tag_selector=None):
         head, refs = self.fetch_objects(stop_revision, fetch_tags=None, tag_selector=tag_selector)
-        if overwrite:
-            prev_last_revid = None
-        else:
-            prev_last_revid = self.target.last_revision()
-        self.target.generate_revision_history(
-            self._last_revid, last_rev=prev_last_revid,
-            other_branch=self.source)
+        _update_tip(
+            self.source, self.target,
+            self._last_revid, overwrite)
         return head, refs
 
     def update_references(self, revid=None):
@@ -1260,10 +1269,10 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
-        self.target.generate_revision_history(
+        _update_tip(
+            self.source, self.target,
             stop_revision,
-            (result.old_revid if ("history" not in overwrite) else None),
-            other_branch=self.source)
+            "history" in overwrite)
         tags_ret = self.source.tags.merge_to(
             self.target.tags,
             overwrite=("tags" in overwrite),
@@ -1311,10 +1320,10 @@ class InterGitLocalGitBranch(InterGitBranch):
         with self.target.lock_write(), self.source.lock_read():
             result.old_revid = self.target.last_revision()
             refs, stop_revision = self.update_refs(stop_revision)
-            self.target.generate_revision_history(
+            _update_tip(
+                self.source, self.target,
                 stop_revision,
-                (result.old_revid if ("history" not in overwrite) else None),
-                other_branch=self.source)
+                "history" in overwrite)
             tags_ret = self.source.tags.merge_to(
                 self.target.tags, overwrite=("tags" in overwrite),
                 selector=tag_selector)
