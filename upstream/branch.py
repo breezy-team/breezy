@@ -19,17 +19,19 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 from contextlib import ExitStack
-from debian.changelog import Version
+from datetime import date
 import os
 import re
 import subprocess
 import tempfile
 from typing import Optional, Tuple, Iterable
 
+from debian.changelog import Version
 from debmutate.versions import (
     git_snapshot_data_from_version,
     get_snapshot_revision as _get_snapshot_revision,
     debianize_upstream_version,
+    upstream_version_add_revision as _upstream_version_add_revision,
     )
 
 from .... import osutils
@@ -221,7 +223,6 @@ def extract_svn_revno(rev):
             return svn_revno
 
 
-# TODO(jelmer): Rely on version from debmutate
 def upstream_version_add_revision(
         upstream_branch, version_string, revid, sep='+'):
     """Update the revision in a upstream version string.
@@ -234,52 +235,24 @@ def upstream_version_add_revision(
     try:
         revno = upstream_branch.revision_id_to_dotted_revno(revid)
     except GhostRevisionsHaveNoRevno:
-        pass
+        bzr_revno = None
     else:
-        revno_str = '.'.join(map(str, revno))
-
-        m = re.match(r"^(.*)([\+~])bzr(\d+)$", version_string)
-        if m:
-            return "%s%sbzr%s" % (m.group(1), m.group(2), revno_str)
+        bzr_revno = '.'.join(map(str, revno))
 
     rev = upstream_branch.repository.get_revision(revid)
     gitid = extract_gitid(rev)
     if gitid:
-        gitid = gitid[:7].decode('ascii')
-        gitdate = osutils.format_date(
-            rev.timestamp, rev.timezone, date_fmt='%Y%m%d', show_offset=False)
-
-    m = re.match(r"^(.*)([\+~-])git(\d{8})\.([a-f0-9]{7})$", version_string)
-    if m and gitid:
-        return "%s%sgit%s.%s" % (m.group(1), m.group(2), gitdate, gitid)
-
-    m = re.match(r"^(.*)([\+~-])git(\d{8})\.(\d+)\.([a-f0-9]{7})$",
-                 version_string)
-    if m and gitid:
-        if gitdate == m.group(3):
-            snapshot = int(m.group(4)) + 1
-        else:
-            snapshot = 0
-        return "%s%sgit%s.%d.%s" % (
-            m.group(1), m.group(2), gitdate, snapshot, gitid)
-
-    m = re.match(r"^(.*)([\+~-])git(\d{8})$", version_string)
-    if m and gitid:
-        return "%s%sgit%s" % (m.group(1), m.group(2), gitdate)
+        gitdate = date.fromisoformat(osutils.format_date(
+            rev.timestamp, rev.timezone, date_fmt='%Y-%m-%d',
+            show_offset=False))
+    else:
+        gitdate = None
 
     svn_revno = extract_svn_revno(rev)
 
-    m = re.match(r"^(.*)([\+~])svn(\d+)$", version_string)
-    # FIXME: Raise error if +svn/~svn is present and svn_revno is not set?
-    if m and svn_revno:
-        return "%s%ssvn%d" % (m.group(1), m.group(2), svn_revno)
-
-    if svn_revno:
-        return "%s%ssvn%d" % (version_string, sep, svn_revno)
-    elif gitid:
-        return "%s%sgit%s.1.%s" % (version_string, sep, gitdate, gitid)
-    else:
-        return "%s%sbzr%s" % (version_string, sep, revno_str)
+    return _upstream_version_add_revision(
+        version_string, gitid=gitid, gitdate=gitdate, bzr_revno=bzr_revno,
+        svn_revno=svn_revno)
 
 
 def get_snapshot_revision(upstream_version):
