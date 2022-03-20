@@ -1,6 +1,6 @@
 #! /bin/zsh -e
 
-# upload a release file to Launchpad 
+# upload a release file to Launchpad
 #
 # usage: lp-upload-release [--staging] bzr-1.2.3.tgz
 
@@ -16,7 +16,7 @@ fi
 
 if [ $# -ne 1 ]
 then
-	echo "usage: lp-upload-release VERSION FILENAME"
+	echo "usage: lp-upload-release FILENAME"
 	exit 2
 fi
 
@@ -33,7 +33,7 @@ then
 	exit 2
 fi
 
-sigfile="$upfile.sig"
+sigfile="$upfile.asc"
 if [ \! -f "$sigfile" ]
 then
 	echo "couldn't find gpg signature $sigfile"

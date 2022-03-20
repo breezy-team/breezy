@@ -41,7 +41,7 @@ import sys
 
 __copyright__ = (
     "Copyright 2005-2012 Canonical Ltd.\n"
-    "Copyright 2017-2020 Breezy developers"
+    "Copyright 2017-2022 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of
