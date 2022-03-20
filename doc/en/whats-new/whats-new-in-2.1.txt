@@ -124,8 +124,8 @@ With these plugins installed, most Git and Mercurial repositories
 can now be read by standard Bazaar clients. Changes can also
 be written back via the dpush command.
 
-.. _git: http://doc.bazaar.canonical.com/plugins/en/git-plugin.html
-.. _hg: http://doc.bazaar.canonical.com/plugins/en/hg-plugin.html
+.. _git: https://www.breezy-vcs.org/doc/plugins/en/git-plugin.html
+.. _hg: https://www.breezy-vcs.org/doc/plugins/en/hg-plugin.html
 
 
 Metaprojects
@@ -144,9 +144,9 @@ from smaller ones. These include:
    be useful for building test images for a QA team or disk images
    for installers, say.
 
-.. _builder: http://doc.bazaar.canonical.com/plugins/en/builder-plugin.html
-.. _externals: http://doc.bazaar.canonical.com/plugins/en/externals-plugin.html
-.. _builddeb: http://doc.bazaar.canonical.com/plugins/en/builddeb-plugin.html
+.. _builder: https://www.breezy-vcs.org/doc/plugins/en/builder-plugin.html
+.. _externals: https://www.breezy-vcs.org/doc/plugins/en/externals-plugin.html
+.. _builddeb: https://www.breezy-vcs.org/doc/plugins/en/builddeb-plugin.html
 
 
 Colocated branch workspaces
@@ -156,7 +156,7 @@ A colocated workspace is one where a single working tree is used
 across one or more branches managed at that same location. This
 is now supported by the new colo_ plugin and by Bazaar Explorer.
 
-.. _colo: http://doc.bazaar.canonical.com/plugins/en/colo-plugin.html
+.. _colo: https://www.breezy-vcs.org/doc/plugins/en/colo-plugin.html
 
 
 Better documentation
@@ -173,7 +173,7 @@ has been organized into topics making it easier to
 navigate through and print selected sections of.
 
 To assist users migrating from other tools, a
-`Survival Guide <http://doc.bazaar.canonical.com/migration/en/survival/index.html>`_
+`Survival Guide <https://www.breezy-vcs.org/doc/migration/en/survival/index.html>`_
 has been published explaining Bazaar to users of other tools in terms they
 already know. Sections are provided for existing users of 
 CVS, Subversion, ClearCase, Perforce, Visual SourceSafe, Git, Mercurial,
@@ -195,7 +195,7 @@ support for all bzr commands (including those in plugins),
 a better working tree browser and a submit delta report showing the
 cumulative effect of a series of commits.
 See `What's New in Bazaar Explorer 1.0?
-<http://doc.bazaar.canonical.com/explorer/en/whats-new/whats-new-in-1.0.html>`_
+<https://www.breezy-vcs.org/doc/explorer/en/whats-new/whats-new-in-1.0.html>`_
 for more information.
 
 

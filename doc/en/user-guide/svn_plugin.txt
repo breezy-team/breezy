@@ -20,7 +20,7 @@ this is a common interim step for teams looking to adopt Breezy but
 who are unable to do so yet for timing or non-technical reasons.
 
 For installation instructions, see the brz-svn home page:
-http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion.
+http://wiki.breezy-vcs.org/ForeignBranches/Subversion.
 
 
 A simple example
@@ -110,5 +110,5 @@ Here are some examples current as of brz-svn 0.5.4:
  * Breezy doesn't support tracking of file copies.
 
 See the brz-svn web page,
-http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion,
+http://wiki.breezy-vcs.org/ForeignBranches/Subversion,
 for the current list of constraints.

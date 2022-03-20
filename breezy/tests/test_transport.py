@@ -1063,10 +1063,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         self.start_server(ssh_server)
         port = ssh_server.port
 
-        if sys.platform == 'win32':
-            bzr_remote_path = sys.executable + ' ' + self.get_brz_path()
-        else:
-            bzr_remote_path = self.get_brz_path()
+        bzr_remote_path = self.get_brz_path()
         self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
         self.overrideEnv('PYTHONPATH', ':'.join(sys.path))
 
