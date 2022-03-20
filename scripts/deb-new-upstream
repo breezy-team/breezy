@@ -284,6 +284,14 @@ class ChangelogGeneratedFile(Exception):
 RELEASE_BRANCH_NAME = "new-upstream-release"
 SNAPSHOT_BRANCH_NAME = "new-upstream-snapshot"
 DEFAULT_DISTRIBUTION = "unstable"
+VALUE_IMPORT = {
+    'release': 20,
+    'snapshot': 10
+}
+VALUE_MERGE = {
+    'release': 40,
+    'snapshot': 30,
+}
 
 
 def is_big_version_jump(old_upstream_version, new_upstream_version):
@@ -487,7 +495,7 @@ def find_new_upstream(  # noqa: C901
     old_upstream_version=None,
     new_upstream_version=None,
     trust_package=False,
-    snapshot=False,
+    version_kind: str = "release",
     allow_ignore_upstream_branch=False,
     top_level=False,
     create_dist=None,
@@ -512,7 +520,7 @@ def find_new_upstream(  # noqa: C901
         try:
             upstream_branch = open_branch(upstream_branch_url)
         except BranchOpenError as e:
-            if not snapshot and allow_ignore_upstream_branch:
+            if version_kind != "snapshot" and allow_ignore_upstream_branch:
                 logging.warning(
                     "Upstream branch %s inaccessible; ignoring. %s",
                     upstream_branch_location,
@@ -523,7 +531,7 @@ def find_new_upstream(  # noqa: C901
             upstream_branch = None
             upstream_branch_browse = None
         except urlutils.InvalidURL as e:
-            if not snapshot and allow_ignore_upstream_branch:
+            if version_kind != "snapshot" and allow_ignore_upstream_branch:
                 logging.warning(
                     "Upstream branch location %s invalid; ignoring. %s",
                     e.path, e)
@@ -545,7 +553,7 @@ def find_new_upstream(  # noqa: C901
                 config=config,
                 local_dir=tree.controldir,
                 create_dist=create_dist,
-                version_kind=("snapshot" if snapshot else "release")
+                version_kind=version_kind
             )
         except InvalidHttpResponse as e:
             raise UpstreamBranchUnavailable(upstream_branch_location, str(e))
@@ -566,10 +574,10 @@ def find_new_upstream(  # noqa: C901
                 config=config,
                 local_dir=tree.controldir,
                 create_dist=create_dist,
-                version_kind=("snapshot" if snapshot else "release")
+                version_kind=version_kind
             )
     else:
-        if snapshot:
+        if version_kind == "snapshot":
             if upstream_branch_source is None:
                 raise UpstreamBranchUnknown()
             primary_upstream_source = upstream_branch_source
@@ -615,7 +623,7 @@ def find_new_upstream(  # noqa: C901
         if old_upstream_version == new_upstream_version:
             raise UpstreamAlreadyImported(new_upstream_version)
         if old_upstream_version > new_upstream_version:
-            if not snapshot and matches_release(
+            if version_kind == "release" and matches_release(
                 str(old_upstream_version), str(new_upstream_version)
             ):
                 raise UpstreamAlreadyImported(new_upstream_version)
@@ -768,7 +776,7 @@ def import_upstream(
         old_upstream_version=old_upstream_version,
         new_upstream_version=new_upstream_version,
         trust_package=trust_package,
-        snapshot=snapshot,
+        version_kind=version_kind,
         allow_ignore_upstream_branch=allow_ignore_upstream_branch,
         top_level=top_level,
         include_upstream_history=include_upstream_history,
@@ -878,7 +886,7 @@ class MergeUpstreamResult(object):
 
 def merge_upstream(  # noqa: C901
     tree: Tree,
-    snapshot: bool = False,
+    version_kind: str = "release",
     location: Optional[str] = None,
     new_upstream_version: Optional[str] = None,
     force: bool = False,
@@ -962,7 +970,7 @@ def merge_upstream(  # noqa: C901
         old_upstream_version=old_upstream_version,
         new_upstream_version=new_upstream_version,
         trust_package=trust_package,
-        snapshot=snapshot,
+        version_kind=version_kind,
         allow_ignore_upstream_branch=allow_ignore_upstream_branch,
         top_level=top_level,
         include_upstream_history=include_upstream_history,
@@ -1298,12 +1306,17 @@ async def main():
         elif os.environ.get('DEB_UPDATE_CHANGELOG') == 'update':
             update_changelog = True
 
+        if args.snapshot:
+            version_kind = "snapshot"
+        else:
+            version_kind = "release"
+
         try:
             if not args.import_only:
                 try:
                     result = merge_upstream(
                         tree=local_tree,
-                        snapshot=args.snapshot,
+                        version_kind=version_kind,
                         trust_package=args.trust_package,
                         update_changelog=update_changelog,
                         subpath=subpath,
@@ -1328,7 +1341,7 @@ async def main():
             else:
                 result = import_upstream(
                     tree=local_tree,
-                    snapshot=args.snapshot,
+                    version_kind=version_kind,
                     trust_package=args.trust_package,
                     subpath=subpath,
                     committer=committer,
@@ -1340,7 +1353,7 @@ async def main():
             report_fatal("memory-error", str(e))
             return 1
         except UpstreamAlreadyImported as e:
-            if args.snapshot:
+            if version_kind == "snapshot":
                 report_fatal(
                     "nothing-to-do",
                     "Last upstream version %s already imported." % e.version,
@@ -1580,6 +1593,7 @@ async def main():
             if os.environ.get('SVP_API') == '1':
                 with open(os.environ['SVP_RESULT'], 'w') as f:
                     json.dump({
+                        'value': VALUE_IMPORT[version_kind],
                         'description': "Imported new upstream version %s" % (
                             result.new_upstream_version),
                         'context': svp_context,
@@ -1637,6 +1651,7 @@ async def main():
             if os.environ.get('SVP_API') == '1':
                 with open(os.environ['SVP_RESULT'], 'w') as f:
                     json.dump({
+                        'value': VALUE_MERGE[version_kind],
                         'description': "Merged new upstream version %s" % (
                             result.new_upstream_version),
                         'commit-message': proposed_commit_message,
