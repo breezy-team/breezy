@@ -28,7 +28,7 @@ perhaps someone else has already fixed it?
 To answer these questions and more, take a moment to explore the
 overall Breezy Platform. Here are some links to browse:
 
-* The Plugins page on the Wiki - http://wiki.bazaar.canonical.com/BzrPlugins
+* The Plugins page on the Wiki - http://wiki.breezy-vcs.org/Plugins
 
 * The Breezy product family on Launchpad - https://launchpad.net/breezy
 
@@ -72,8 +72,6 @@ friendly, helpful and always keen to welcome newcomers.
 
 Breezy Development in a Nutshell
 ================================
-
-.. was from http://wiki.bazaar.canonical.com/BzrGivingBack
 
 One of the fun things about working on a version control system like Breezy is
 that the users have a high level of proficiency in contributing back into
@@ -212,7 +210,7 @@ Preparing a Sandbox for Making Changes to Breezy
 ================================================
 
 Breezy supports many ways of organising your work. See
-http://wiki.bazaar.canonical.com/SharedRepositoryLayouts for a summary of the
+http://wiki.breezy-vcs.org/SharedRepositoryLayouts for a summary of the
 popular alternatives.
 
 Of course, the best choice for you will depend on numerous factors:
@@ -239,8 +237,6 @@ the associated branch can be deleted or archived as you wish.
 
 Navigating the Code Base
 ========================
-
-.. Was at <http://wiki.bazaar.canonical.com/NewDeveloperIntroduction>
 
 Some of the key files in this directory are:
 
@@ -513,7 +509,7 @@ changes need to be present in the .pyx file.
 Making Installers for OS Windows
 ================================
 To build a win32 installer, see the instructions on the wiki page:
-http://wiki.bazaar.canonical.com/BzrWin32Installer
+http://wiki.breezy-vcs.org/Win32Installer
 
 Core Developer Tasks
 ####################

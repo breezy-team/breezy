@@ -89,7 +89,7 @@ Other advantages include:
  * in companies, easier to work with distributed and outsourced teams.
 
 For a detailed look at the advantages of distributed VCS tools over
-centralized VCS tools, see http://wiki.bazaar.canonical.com/BzrWhy.
+centralized VCS tools, see http://wiki.breezy-vcs.org/Why.
 
 
 Key features of Breezy
@@ -98,7 +98,7 @@ Key features of Breezy
 While Breezy is not the only distributed VCS tool around, it does have some
 notable features that make it an excellent choice for many teams and
 communities. A summary of these and comparisons with other VCS tools
-can be found on the Bazaar Wiki, http://wiki.bazaar.canonical.com.
+can be found on the Breezy Wiki, https://wiki.breezy-vcs.org/.
 
 Of the many features, one in particular is worth highlighting:
 Breezy is completely free software written in Python. As a result,
