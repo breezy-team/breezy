@@ -1148,8 +1148,8 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
 
 
 def update_packaging(
-    tree: Tree, old_tree: Tree, subpath: str = "",
-    committer: Optional[str] = None) -> List[str]:
+        tree: Tree, old_tree: Tree, subpath: str = "",
+        committer: Optional[str] = None) -> List[str]:
     """Update packaging to take in changes between upstream trees.
 
     Args:
@@ -1169,7 +1169,7 @@ def update_packaging(
             continue
         if not path.startswith(subpath):
             continue
-        path = path[len(subpath) :]
+        path = path[len(subpath):]
         if path == "autogen.sh":
             if override_dh_autoreconf_add_arguments(tree.basedir, [b"./autogen.sh"]):
                 logging.info(
@@ -1177,7 +1177,9 @@ def update_packaging(
                 )
                 with ChangelogEditor(
                         tree.abspath(os.path.join(subpath, 'debian/changelog'))) as cl:
-                    cl.add_entry(["Invoke autogen.sh from dh_autoreconf."], maintainer=maintainer)
+                    cl.add_entry(
+                        ["Invoke autogen.sh from dh_autoreconf."],
+                        maintainer=maintainer)
                 debcommit(
                     tree,
                     committer=committer,
@@ -1185,11 +1187,14 @@ def update_packaging(
                     paths=["debian/changelog", "debian/rules"],
                 )
         elif path.startswith("LICENSE") or path.startswith("COPYING"):
-            notes.append("License file %s has changed." % os.path.join(subpath, path))
+            notes.append(
+                "License file %s has changed." % os.path.join(subpath, path))
     return notes
 
 
-def report_fatal(code, description, upstream_version=None, conflicts=None):
+def report_fatal(
+        code: str, description: str, upstream_version: Optional[str] = None,
+        conflicts=None, hint: Optional[str] = None):
     if os.environ.get('SVP_API') == '1':
         context = {}
         if upstream_version is not None:
@@ -1202,6 +1207,8 @@ def report_fatal(code, description, upstream_version=None, conflicts=None):
                 'description': description,
                 'context': context}, f)
     logging.fatal('%s', description)
+    if hint:
+        logging.info('%s', hint)
 
 
 async def main():
@@ -1362,9 +1369,9 @@ async def main():
             else:
                 report_fatal(
                     "nothing-to-do",
-                    "Last upstream version %s already imported. "
-                    "Import a snapshot by specifying --snapshot." % e.version,
-                    upstream_version=e.version
+                    "Last upstream version %s already imported. " % e.version,
+                    upstream_version=e.version,
+                    hint="Import a snapshot by specifying --snapshot."
                 )
             return 1
         except UpstreamBranchLocationInvalid as e:
