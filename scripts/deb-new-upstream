@@ -1204,6 +1204,7 @@ def report_fatal(
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
+                'hint': hint,
                 'description': description,
                 'context': context}, f)
     logging.fatal('%s', description)
