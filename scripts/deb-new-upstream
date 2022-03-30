@@ -1451,11 +1451,11 @@ async def main():
                     error_code = "upstream-unsupported-vcs"
             report_fatal(error_code, error_description)
             return 1
-        except UpstreamBranchUnknown as e:
+        except UpstreamBranchUnknown:
             report_fatal(
                 "upstream-branch-unknown",
-                "Upstream branch location unknown. "
-                "Set 'Repository' field in debian/upstream/metadata?",
+                "Upstream branch location unknown.",
+                hint="Set 'Repository' field in debian/upstream/metadata?",
             )
             return 1
         except UpstreamMergeConflicted as e:
