@@ -52,11 +52,7 @@ from . import (
 from ..tests.test_server import TestServer
 
 try:
-    import glib
-except ImportError as e:
-    raise errors.DependencyNotPresent('glib', e)
-try:
-    import gio
+    from gi.repository import Gio as gio
 except ImportError as e:
     raise errors.DependencyNotPresent('gio', e)
 
