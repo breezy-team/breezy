@@ -1,9 +1,9 @@
-breezy-debian (2.8.66) UNRELEASED; urgency=medium
+breezy-debian (2.8.66) unstable; urgency=medium
 
   * Fix locking behaviour in export_with_nested.
   * Rely on upstream_version_add_revision from debmutate.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 22 Feb 2022 16:46:13 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 10 Apr 2022 17:32:44 +0100
 
 breezy-debian (2.8.65) unstable; urgency=medium
 
