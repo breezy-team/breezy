@@ -696,7 +696,7 @@ def find_new_upstream(  # noqa: C901
 
 def import_upstream(
     tree: Tree,
-    snapshot: bool = False,
+    version_kind: str = "release",
     location: Optional[str] = None,
     new_upstream_version: Optional[Union[Version, str]] = None,
     force: bool = False,
