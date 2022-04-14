@@ -31,11 +31,20 @@ class AptSourceError(Exception):
 
 class Apt:
 
+    def iter_sources(self, distribution):
+        raise NotImplementedError(self.iter_sources)
+
+    def iter_binaries(self, distribution):
+        raise NotImplementedError(self.iter_binaries)
+
     def retrieve_source(self, package_name, target_directory):
         raise NotImplementedError(self.retrieve_source)
 
 
 class LocalApt(Apt):
+
+    def iter_sources(self, distribution):
+        raise NotImplementedError(self.iter_sources)
 
     def retrieve_source(self, package_name, target):
         try:
@@ -48,7 +57,7 @@ class LocalApt(Apt):
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.splitlines()
             if stderr[-1] == (
-                b"E: You must put some 'source' URIs in your " b"sources.list"
+                b"E: You must put some 'source' URIs in your sources.list"
             ):
                 raise NoAptSources()
             CS = b"\x1b[1;31mE: \x1b[0m"
@@ -65,3 +74,9 @@ class LocalApt(Apt):
             raise AptSourceError(
                 [line.decode("utf-8", "surrogateescape") for line in stderr]
             )
+
+
+class RemoteApt(Apt):
+
+    def __init__(self, mirror_uri):
+        self.mirror_uri = mirror_uri
