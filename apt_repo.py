@@ -44,7 +44,28 @@ class Apt:
 class LocalApt(Apt):
 
     def iter_sources(self, distribution):
-        raise NotImplementedError(self.iter_sources)
+        import apt_pkg
+        from debian.deb822 import Deb822
+        apt_pkg.init()
+
+        # TODO(jelmer): Filter by distribution
+
+        sources = apt_pkg.SourceRecords()
+        sources.restart()
+        while sources.step():
+            source = Deb822(sources.record)
+            yield source
+
+    def iter_binaries(self, distribution):
+        import apt
+        from debian.deb822 import Deb822
+
+        # TODO(jelmer): Filter by distribution
+
+        cache = apt.Cache()
+        for pkg in cache:
+            for version in pkg.versions:
+                yield version._records
 
     def retrieve_source(self, package_name, target):
         try:
