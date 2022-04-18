@@ -1,3 +1,9 @@
+breezy-debian (2.8.67) UNRELEASED; urgency=medium
+
+  * Cope with multiple documents in debian/upstream/metadata.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 18 Apr 2022 17:06:22 +0100
+
 breezy-debian (2.8.66) unstable; urgency=medium
 
   * Fix locking behaviour in export_with_nested.

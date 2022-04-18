@@ -98,6 +98,28 @@ class DebBuildConfigTests(TestCaseWithTransport):
         self.assertEquals(
             "tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
 
+    def test_upstream_metadata_multidoc(self):
+        cfg = DebBuildConfig([], tree=self.branch.basis_tree())
+        self.assertIs(None, cfg.upstream_branch)
+
+        self.build_tree_contents([
+          ('debian/',),
+          ('debian/upstream/',),
+          ('debian/upstream/metadata',
+           b'---\n'
+           b'---\n'
+           b'Name: example\n'
+           b'Repository: http://example.com/foo\n'
+           b'Repository-Tag-Prefix: exampl-\n'
+           )])
+        self.tree.add(
+            ['debian', 'debian/upstream', 'debian/upstream/metadata'])
+
+        cfg = DebBuildConfig([], tree=self.tree)
+        self.assertEquals("http://example.com/foo", cfg.upstream_branch)
+        self.assertEquals(
+            "tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
+
     def test_invalid_upstream_metadata(self):
         cfg = DebBuildConfig([], tree=self.branch.basis_tree())
         self.assertIs(None, cfg.upstream_branch)

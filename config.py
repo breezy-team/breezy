@@ -75,6 +75,13 @@ class UpstreamMetadataConfig(object):
     def __init__(self, text):
         try:
             self.metadata = yaml.safe_load(text)
+        except yaml.composer.ComposerError as e:
+            all_metadata = [x for x in yaml.safe_load_all(text) if x is not None]
+            if len(all_metadata) != 1:
+                raise UpstreamMetadataSyntaxError(
+                    'debian/upstream/metadata', Exception('multiple documents found'))
+            warning('ignoring empty extra documents in debian/upstream/metadata')
+            self.metadata = all_metadata[0]
         except (yaml.scanner.ScannerError, yaml.composer.ComposerError,
                 yaml.parser.ParserError) as e:
             raise UpstreamMetadataSyntaxError('debian/upstream/metadata', e)
