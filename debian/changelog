@@ -1,8 +1,8 @@
-breezy-debian (2.8.67) UNRELEASED; urgency=medium
+breezy-debian (2.8.67) unstable; urgency=medium
 
   * Cope with multiple documents in debian/upstream/metadata.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 18 Apr 2022 17:06:22 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 20 Apr 2022 23:15:53 +0100
 
 breezy-debian (2.8.66) unstable; urgency=medium
 
