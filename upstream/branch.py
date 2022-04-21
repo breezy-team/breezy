@@ -668,6 +668,8 @@ def run_dist_command(
         except subprocess.CalledProcessError as e:
             if e.returncode == 2:
                 raise NotImplementedError
+            if e.returncode == 137:
+                raise MemoryError(str(e))
             try:
                 import json
                 with open(env['DIST_RESULT'], 'r') as f:
