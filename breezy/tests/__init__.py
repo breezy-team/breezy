@@ -2842,7 +2842,15 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        with open(filename, 'rb') as f:
+        # This seems to be called for text files only,
+        # but most of the existing tests check the contents
+        # against binary strings.  Now there are cases
+        # when we need to normalize the line endings; expect a string then.
+        if isinstance(expect, str):
+            args = {"mode": "rt", "encoding": "utf-8"}
+        else:
+            args = {"mode": "rb"}
+        with open(filename, **args) as f:
             contents = f.read()
         if contents != expect:
             self.log("expected: %r" % expect)
@@ -4458,11 +4466,9 @@ def _rmtree_temp_dir(dirname, test_id=None):
         if test_id is not None:
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
-        # Ugly, but the last thing we want here is fail, so bear with it.
-        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
-                                    ).encode('ascii', 'replace')
+        # 21-nov-2021 [a1s] Revert revision 5231: in Python3, str has no decode
         sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), printable_e))
+                         % (os.path.basename(dirname), e))
 
 
 def probe_unicode_in_user_encoding():

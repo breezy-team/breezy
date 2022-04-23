@@ -24,6 +24,7 @@ import codecs
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import ctypes
 from datetime import datetime
 import getpass
 import locale
@@ -1301,7 +1302,7 @@ def _cicp_canonical_relpath(base, path):
 # filesystems), for example, so could probably benefit from the same basic
 # support there.  For now though, only Windows and OSX get that support, and
 # they get it for *all* file-systems!
-if sys.platform in ('win32', 'darwin'):
+if sys.platform in ('win32', 'darwin', 'cygwin'):
     canonical_relpath = _cicp_canonical_relpath
 else:
     canonical_relpath = relpath

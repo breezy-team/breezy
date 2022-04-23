@@ -30,13 +30,12 @@ import shutil
 
 from breezy import (
     atomicfile,
-    osutils,
     urlutils,
     )
 from breezy.transport import LateReadError
 """)
 
-from .. import transport
+from .. import osutils, transport
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
@@ -154,7 +153,10 @@ class LocalTransport(transport.Transport):
             path = self._abspath(relpath)
             return open(path, 'rb')
         except (IOError, OSError) as e:
-            if e.errno == errno.EISDIR:
+            if e.errno == errno.EISDIR or (
+                (sys.platform == "win32") and (e.errno == errno.EACCES)
+                and os.path.isdir(path)
+            ):
                 return LateReadError(relpath)
             self._translate_error(e, path)
 

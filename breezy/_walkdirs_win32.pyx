@@ -58,14 +58,11 @@ cdef extern from "python-compat.h":
 
     int GetLastError()
 
-    # Wide character functions
-    DWORD wcslen(WCHAR *)
-
 
 cdef extern from "Python.h":
-    WCHAR *PyUnicode_AS_UNICODE(object)
-    Py_ssize_t PyUnicode_GET_SIZE(object)
-    object PyUnicode_FromUnicode(WCHAR *, Py_ssize_t)
+    WCHAR *PyUnicode_AsWideCharString(object, Py_ssize_t *size)
+    Py_ssize_t PyUnicode_GET_LENGTH(object)
+    object PyUnicode_FromWideChar(WCHAR *, Py_ssize_t)
     int PyList_Append(object, object) except -1
     object PyUnicode_AsUTF8String(object)
 
@@ -118,12 +115,6 @@ cdef class _Win32Stat:
         """
         return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, self.st_atime,
                      self.st_mtime, self.st_ctime))
-
-
-cdef object _get_name(WIN32_FIND_DATAW *data):
-    """Extract the Unicode name for this file/dir."""
-    return PyUnicode_FromUnicode(data.cFileName,
-                                 wcslen(data.cFileName))
 
 
 cdef int _get_mode_bits(WIN32_FIND_DATAW *data): # cannot_raise
@@ -213,25 +204,36 @@ cdef class Win32ReadDir:
     def read_dir(self, prefix, top):
         """Win32 implementation of DirReader.read_dir.
 
+        :param prefix: A utf8 prefix to be preprended to the path basenames.
+        :param top: A Unicode or UTF8-encoded path to read.
+
+        :return: A list of the directories contents. Each item contains:
+            (utf8_relpath, utf8_name, kind, lstatvalue, unicode_abspath)
+
         :seealso: DirReader.read_dir
+
         """
         cdef WIN32_FIND_DATAW search_data
         cdef HANDLE hFindFile
         cdef int last_err
         cdef WCHAR *query
         cdef int result
+        cdef Py_ssize_t length
 
+        global osutils
+        if osutils is None:
+            from . import osutils
         if prefix:
-            relprefix = prefix + '/'
+            relprefix = osutils.safe_utf8(prefix) + b'/'
         else:
-            relprefix = ''
-        top_slash = top + '/'
+            relprefix = b''
+        top_slash = osutils.safe_unicode(top) + '/'
 
         top_star = top_slash + '*'
 
         dirblock = []
 
-        query = PyUnicode_AS_UNICODE(top_star)
+        query = PyUnicode_AsWideCharString(top_star, &length)
         hFindFile = FindFirstFileW(query, &search_data)
         if hFindFile == INVALID_HANDLE_VALUE:
             # Raise an exception? This path doesn't seem to exist
@@ -244,7 +246,7 @@ cdef class Win32ReadDir:
                 if _should_skip(&search_data):
                     result = FindNextFileW(hFindFile, &search_data)
                     continue
-                name_unicode = _get_name(&search_data)
+                name_unicode = PyUnicode_FromWideChar(search_data.cFileName, -1)
                 name_utf8 = PyUnicode_AsUTF8String(name_unicode)
                 PyList_Append(dirblock,
                     (relprefix + name_utf8, name_utf8,
