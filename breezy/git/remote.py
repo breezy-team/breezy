@@ -234,7 +234,7 @@ def parse_git_hangup(url, e):
     """
     stderr_lines = getattr(e, 'stderr_lines', None)
     if not stderr_lines:
-        return e
+        return ConnectionReset('Connection closed early', e)
     if all(line.startswith(b'remote: ') for line in stderr_lines):
         stderr_lines = [
             line[len(b'remote: '):] for line in stderr_lines]
