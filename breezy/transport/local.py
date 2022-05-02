@@ -181,7 +181,7 @@ class LocalTransport(transport.Transport):
             fp.close()
         return length
 
-    def put_bytes(self, relpath, raw_bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Copy the string into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -198,7 +198,7 @@ class LocalTransport(transport.Transport):
         except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
-            if bytes:
+            if raw_bytes:
                 fp.write(raw_bytes)
             fp.commit()
         finally:
@@ -277,11 +277,11 @@ class LocalTransport(transport.Transport):
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
 
-    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
                              create_parent_dir=False, dir_mode=None):
         def writer(fd):
-            if bytes:
-                os.write(fd, bytes)
+            if raw_bytes:
+                os.write(fd, raw_bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)

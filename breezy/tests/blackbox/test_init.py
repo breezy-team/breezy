@@ -199,7 +199,6 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
                          """Created a standalone branch (format: pack-0.92)\n""")
-        self.assertEqual('', err)
 
     def test_init_existing_branch(self):
         # when there is already a branch present, make mention
