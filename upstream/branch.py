@@ -588,8 +588,9 @@ class UpstreamBranchSource(UpstreamSource):
                 note('Not exporting revision from upstream branch: %s', e)
                 raise PackageVersionNotPresent(package, version, self)
             else:
-                note("Exporting upstream branch revision %s to create "
-                     "the tarball", revid)
+                mutter(
+                    "Exporting upstream branch revision %s to create "
+                    "the tarball", revid)
         return [target_filename]
 
     def __repr__(self):
