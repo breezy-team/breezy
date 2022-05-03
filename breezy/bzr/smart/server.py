@@ -277,19 +277,17 @@ class SmartTCPServer(object):
         thread_name = 'smart-server-child' + thread_name_suffix
         handler = self._make_handler(conn)
         connection_thread = threading.Thread(
-            None, handler.serve, name=thread_name)
+            None, handler.serve, name=thread_name, daemon=True)
         self._active_connections.append((handler, connection_thread))
-        connection_thread.setDaemon(True)
         connection_thread.start()
         return connection_thread
 
     def start_background_thread(self, thread_name_suffix=''):
         self._started.clear()
-        self._server_thread = threading.Thread(None,
-                                               self.serve, args=(
-                                                   thread_name_suffix,),
-                                               name='server-' + self.get_url())
-        self._server_thread.setDaemon(True)
+        self._server_thread = threading.Thread(
+            None, self.serve, args=(thread_name_suffix,),
+            name='server-' + self.get_url(),
+            daemon=True)
         self._server_thread.start()
         self._started.wait()
 
@@ -307,7 +305,7 @@ class SmartTCPServer(object):
         except self._socket_error:
             # ignore errors on close
             pass
-        if not self._stopped.isSet():
+        if not self._stopped.is_set():
             # server has not stopped (though it may be stopping)
             # its likely in accept(), so give it a connection
             temp_socket = socket.socket()
