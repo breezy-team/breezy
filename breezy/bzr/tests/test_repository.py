@@ -267,8 +267,9 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def assertHasKnit(self, t, knit_name, extra_content=b''):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff(b'# bzr knit index 8\n' + extra_content,
-                             t.get(knit_name + '.kndx').read())
+        with t.get(knit_name + '.kndx') as f:
+            self.assertEqualDiff(b'# bzr knit index 8\n' + extra_content,
+                                 f.read())
 
     def check_knits(self, t):
         """check knit content for a repository."""
@@ -292,7 +293,8 @@ class TestFormatKnit1(TestCaseWithTransport):
                                  f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff(b'', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
@@ -314,8 +316,10 @@ class TestFormatKnit1(TestCaseWithTransport):
                                  f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff(b'', t.get('shared-storage').read())
-        self.assertEqualDiff(b'', t.get('no-working-trees').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
+        with t.get('no-working-trees') as f:
+            self.assertEqualDiff(b'', f.read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))

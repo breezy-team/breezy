@@ -51,7 +51,8 @@ class TestRemerge(TestCaseWithTransport):
         self.create_conflicts()
         self.run_bzr('merge ../other --show-base',
                      retcode=1, working_dir='this')
-        conflict_text = open('this/hello').read()
+        with open('this/hello') as f:
+            conflict_text = f.read()
         self.assertTrue('|||||||' in conflict_text)
         self.assertTrue('hi world' in conflict_text)
 
