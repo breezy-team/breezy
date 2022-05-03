@@ -86,7 +86,7 @@ META_INFO = {
         'python-subunit',
         'dulwich>=0.20.29',
     ],
-    'python_requires': '>=3.6',
+    'python_requires': '>=3.7',
 }
 
 # The list of packages is automatically generated later. Add other things
