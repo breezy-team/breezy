@@ -725,6 +725,9 @@ class cmd_merge_upstream(Command):
         'snapshot', help="Merge a snapshot from the "
         "upstream branch rather than a new upstream release.")
 
+    release_opt = Option(
+        'release', help='Merge a release from the upstream branch.')
+
     force_pristine_tar_opt = Option(
         'force-pristine-tar', help=(
             'Force the use of pristine-tar, even if no '
@@ -745,7 +748,7 @@ class cmd_merge_upstream(Command):
         distribution_opt, directory_opt, last_version_opt,
         force_opt, 'revision', 'merge-type',
         snapshot_opt, force_pristine_tar_opt,
-        dist_command_opt, guess_upstream_branch_url_opt]
+        dist_command_opt, guess_upstream_branch_url_opt, release_opt]
 
     def run(self, location: Optional[str] = None,
             upstream_branch: Optional[str] = None,
@@ -754,6 +757,7 @@ class cmd_merge_upstream(Command):
             directory: str = ".", revision=None, merge_type=None,
             last_version: Optional[str] = None,
             force: Optional[bool] = None, snapshot: Optional[bool] = None,
+            release: Optional[bool] = None,
             force_pristine_tar: bool = False,
             dist_command: Optional[str] = None,
             guess_upstream_branch_url: bool = False):
@@ -799,14 +803,17 @@ class cmd_merge_upstream(Command):
                     "package name, which is needed to know the name to "
                     "give the .orig.tar.gz. Please specify --package.")
 
-            if snapshot is None:
+            if snapshot is None and release is None:
                 if current_version is not None:
                     version_kind = detect_version_kind(current_version)
                 else:
                     version_kind = None
-            elif snapshot is True:
+            elif snapshot is not None and release is not None:
+                raise BzrCommandError(
+                    '--release and --snapshot are incompatible')
+            elif snapshot:
                 version_kind = "snapshot"
-            elif snapshot is False:
+            elif release:
                 version_kind = "release"
 
             if version_kind is None:
