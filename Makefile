@@ -45,7 +45,7 @@ check: docs check-nodocs
 check-nodocs:
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --strict \
 	  --subunit2 $(tests) | tee selftest.log | subunit2pyunit
 	echo `date` ": selftest ends" 1>&2
@@ -61,7 +61,7 @@ check-ci: docs extensions
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
 	set -o pipefail; \
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
+	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python3."
 
