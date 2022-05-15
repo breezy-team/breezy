@@ -17,7 +17,6 @@
 """Remote dirs, repositories and branches."""
 
 import gzip
-from io import BytesIO
 import re
 
 from .. import (
@@ -814,13 +813,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             raise GitProtocolError("unexpected http resp %d for %s" %
                                    (response.status, url))
 
-        # TODO: Optimization available by adding `preload_content=False` to the
-        # request and just passing the `read` method on instead of going via
-        # `BytesIO`, if we can guarantee that the entire response is consumed
-        # before issuing the next to still allow for connection reuse from the
-        # pool.
         if response.getheader("Content-Encoding") == "gzip":
-            read = gzip.GzipFile(fileobj=BytesIO(response.read())).read
+            read = gzip.GzipFile(fileobj=response).read
         else:
             read = response.read
 
