@@ -695,18 +695,11 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
         try:
             method = request.get_method()
             url = request.selector
-            if sys.version_info[:2] >= (3, 6):
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers, encode_chunked=False)
-            else:
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers)
+            connection._send_request(method, url,
+                                     # FIXME: implements 100-continue
+                                     # None, # We don't send the body yet
+                                     request.data,
+                                     headers, encode_chunked=False)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
