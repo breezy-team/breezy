@@ -32,22 +32,14 @@ import socket
 import ssl
 import sys
 import time
-import urllib
+import urllib3
 import weakref
 
-try:
-    import http.client as http_client
-except ImportError:
-    import httplib as http_client
-try:
-    import urllib.request as urllib_request
-except ImportError:  # python < 3
-    import urllib2 as urllib_request
-try:
-    from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
-except ImportError:
-    from urlparse import urljoin
-    from urllib import splitport, splittype, splithost, urlencode
+import http.client as http_client
+
+import urllib.request as urllib_request
+
+from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -1399,7 +1391,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         if kerberos is None and not checked_kerberos:
             try:
                 import kerberos
-            except ImportError:
+            except ModuleNotFoundError:
                 kerberos = None
             checked_kerberos = True
         if kerberos is None:

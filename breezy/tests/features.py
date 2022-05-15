@@ -241,7 +241,7 @@ class _HTTPSServerFeature(Feature):
         try:
             import ssl  # noqa: F401
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
     def feature_name(self):
