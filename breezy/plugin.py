@@ -38,7 +38,6 @@ import os
 import re
 import sys
 
-import imp
 from importlib import util as importlib_util
 
 import breezy
