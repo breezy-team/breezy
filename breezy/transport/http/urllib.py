@@ -32,7 +32,7 @@ import socket
 import ssl
 import sys
 import time
-import urllib3
+import urllib
 import weakref
 
 import http.client as http_client
