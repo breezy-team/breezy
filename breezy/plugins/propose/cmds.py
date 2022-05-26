@@ -89,8 +89,8 @@ class cmd_publish_derived(Command):
         _check_already_merged(local_branch, submit_branch)
         if name is None:
             name = branch_name(local_branch)
-        hoster = _mod_propose.get_hoster(submit_branch)
-        remote_branch, public_url = hoster.publish_derived(
+        forge = _mod_propose.get_forge(submit_branch)
+        remote_branch, public_url = forge.publish_derived(
             local_branch, submit_branch, name=name, project=project,
             owner=owner, allow_lossy=not no_allow_lossy,
             overwrite=overwrite)
@@ -141,9 +141,9 @@ class cmd_propose_merge(Command):
     takes_options = [
         'directory',
         RegistryOption(
-            'hoster',
-            help='Use the hoster.',
-            lazy_registry=('breezy.propose', 'hosters')),
+            'forge',
+            help='Use the forge.',
+            lazy_registry=('breezy.propose', 'forges')),
         ListOption('reviewers', short_name='R', type=str,
                    help='Requested reviewers.'),
         Option('name', help='Name of the new remote branch.', type=str),
@@ -167,7 +167,7 @@ class cmd_propose_merge(Command):
 
     aliases = ['propose']
 
-    def run(self, submit_branch=None, directory='.', hoster=None,
+    def run(self, submit_branch=None, directory='.', forge=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
             allow_collaboration=False, allow_empty=False, overwrite=False):
@@ -183,13 +183,13 @@ class cmd_propose_merge(Command):
         target = _mod_branch.Branch.open(submit_branch)
         if not allow_empty:
             _check_already_merged(branch, target)
-        if hoster is None:
-            hoster = _mod_propose.get_hoster(target)
+        if forge is None:
+            forge = _mod_propose.get_forge(target)
         else:
-            hoster = hoster.probe(target)
+            forge = forge.probe(target)
         if name is None:
             name = branch_name(branch)
-        remote_branch, public_branch_url = hoster.publish_derived(
+        remote_branch, public_branch_url = forge.publish_derived(
             branch, target, name=name, allow_lossy=not no_allow_lossy,
             overwrite=overwrite)
         branch.set_push_location(remote_branch.user_url)
@@ -199,7 +199,7 @@ class cmd_propose_merge(Command):
             prerequisite_branch = _mod_branch.Branch.open(prerequisite)
         else:
             prerequisite_branch = None
-        proposal_builder = hoster.get_proposer(remote_branch, target)
+        proposal_builder = forge.get_proposer(remote_branch, target)
         if description is None:
             body = proposal_builder.get_initial_body()
             info = proposal_builder.get_infotext()
@@ -243,8 +243,8 @@ class cmd_find_merge_proposal(Command):
                 gettext("No target location specified or remembered"))
         else:
             target = _mod_branch.Branch.open(submit_branch)
-        hoster = _mod_propose.get_hoster(branch)
-        for mp in hoster.iter_proposals(branch, target):
+        forge = _mod_propose.get_forge(branch)
+        for mp in forge.iter_proposals(branch, target):
             self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
 
 
@@ -269,14 +269,14 @@ class cmd_my_merge_proposals(Command):
             merged='Merged merge proposals',
             closed='Closed merge proposals'),
         RegistryOption(
-            'hoster',
-            help='Use the hoster.',
-            lazy_registry=('breezy.propose', 'hosters')),
+            'forge',
+            help='Use the forge.',
+            lazy_registry=('breezy.propose', 'forges')),
         ]
 
-    def run(self, status='open', verbose=False, hoster=None, base_url=None):
+    def run(self, status='open', verbose=False, forge=None, base_url=None):
 
-        for instance in _mod_propose.iter_hoster_instances(hoster=hoster):
+        for instance in _mod_propose.iter_forge_instances(forge=forge):
             if base_url is not None and instance.base_url != base_url:
                 continue
             try:
@@ -299,7 +299,7 @@ class cmd_my_merge_proposals(Command):
                                 ['\t%s\n' % l
                                  for l in description.splitlines()])
                         self.outf.write('\n')
-            except _mod_propose.HosterLoginRequired as e:
+            except _mod_propose.ForgeLoginRequired as e:
                 warning('Skipping %s, login required.', instance)
 
 
@@ -315,13 +315,13 @@ class cmd_land_merge_proposal(Command):
         proposal.merge(commit_message=message)
 
 
-class cmd_hosters(Command):
+class cmd_forges(Command):
     __doc__ = """List all known hosting sites and user details."""
 
     hidden = True
 
     def run(self):
-        for instance in _mod_propose.iter_hoster_instances():
+        for instance in _mod_propose.iter_forge_instances():
             current_user = instance.get_current_user()
             if current_user is not None:
                 current_user_url = instance.get_user_url(current_user)

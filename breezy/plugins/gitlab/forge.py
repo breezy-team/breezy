@@ -34,15 +34,15 @@ from ...transport import get_transport
 
 from ...propose import (
     determine_title,
-    Hoster,
+    Forge,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
     SourceNotDerivedFromTarget,
-    UnsupportedHoster,
-    HosterLoginRequired,
+    UnsupportedForge,
+    ForgeLoginRequired,
     )
 
 
@@ -107,9 +107,9 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-class GitLabLoginMissing(HosterLoginRequired):
+class GitLabLoginMissing(ForgeLoginRequired):
 
-    _fmt = ("Please log into GitLab instance at %(hoster)s")
+    _fmt = ("Please log into GitLab instance at %(forge)s")
 
 
 class GitlabLoginError(errors.BzrError):
@@ -354,8 +354,8 @@ def gitlab_url_to_bzr_url(url, name):
     return git_url_to_bzr_url(url, branch=name)
 
 
-class GitLab(Hoster):
-    """GitLab hoster implementation."""
+class GitLab(Forge):
+    """GitLab forge implementation."""
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
@@ -708,14 +708,14 @@ class GitLab(Hoster):
                 raise GitLabLoginMissing(self.base_url)
             else:
                 raise GitlabLoginError(response.text)
-        raise UnsupportedHoster(self.base_url)
+        raise UnsupportedForge(self.base_url)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         try:
             (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         transport = get_transport(
             'https://%s' % host, possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
@@ -727,13 +727,13 @@ class GitLab(Hoster):
             resp = transport.request(
                 'GET', 'https://%s/api/v4/projects/%s' % (host, urlutils.quote(str(project), '')))
         except errors.UnexpectedHttpStatus as e:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         else:
             if not resp.getheader('X-Gitlab-Feature-Category'):
-                raise UnsupportedHoster(url)
+                raise UnsupportedForge(url)
             if resp.status in (200, 401):
                 raise GitLabLoginMissing('https://%s/' % host)
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
 
     @classmethod
     def iter_instances(cls):
@@ -764,14 +764,14 @@ class GitLab(Hoster):
         try:
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         except NotMergeRequestUrl as e:
             if self.base_hostname == e.host:
                 raise
             else:
-                raise UnsupportedHoster(url)
+                raise UnsupportedForge(url)
         if self.base_hostname != host:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         project = self._get_project(project)
         mr = self._get_merge_request(project['path_with_namespace'], merge_id)
         return GitLabMergeProposal(self, mr)
