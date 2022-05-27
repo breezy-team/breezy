@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from .. import (
-    cache_utf8,
     errors,
     osutils,
     )
@@ -52,7 +51,7 @@ class Serializer_v5(xml6.Serializer_v6):
                                       % format)
         data_revision_id = elt.get('revision_id')
         if data_revision_id is not None:
-            revision_id = cache_utf8.encode(data_revision_id)
+            revision_id = data_revision_id.encode('utf-8')
         inv = inventory.Inventory(root_id, revision_id=revision_id)
         # Optimizations tested
         #   baseline w/entry cache  2.85s

@@ -135,11 +135,16 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
+    def supports_symlinks(self):
+        return True
+
     def _get_root_inventory(self):
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
                               doc="Root inventory of this tree")
+
+    supports_file_ids = True
 
     def _unpack_file_id(self, file_id):
         """Find the inventory and inventory file id for a tree file id.
@@ -205,6 +210,10 @@ class InventoryTree(Tree):
         """Return the id for path in this tree."""
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
+
+
+    def is_versioned(self, path):
+        return self.path2id(path) is not None
 
     def _path2ie(self, path):
         """Lookup an inventory entry by path.
@@ -293,9 +302,11 @@ class InventoryTree(Tree):
             def iter_entries(inv):
                 for p, e in inv.iter_entries_by_dir(specific_file_ids=inventory_file_ids):
                     if e.kind == 'tree-reference' and recurse_nested:
-                        subinv = self._get_nested_tree(p, e.file_id, e.reference_revision).root_inventory
-                        for subp, e in iter_entries(subinv):
-                            yield (osutils.pathjoin(p, subp) if subp else p), e
+                        subtree = self._get_nested_tree(p, e.file_id, e.reference_revision)
+                        with subtree.lock_read():
+                            subinv = subtree.root_inventory
+                            for subp, e in iter_entries(subinv):
+                                yield (osutils.pathjoin(p, subp) if subp else p), e
                     else:
                         yield p, e
             return iter_entries(self.root_inventory)

@@ -302,7 +302,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
                 gettext('unknown command "%s". Perhaps you meant "%s"')
                 % (cmd_name, candidate))
         raise errors.CommandError(gettext('unknown command "%s"')
-                                     % cmd_name)
+                                  % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):

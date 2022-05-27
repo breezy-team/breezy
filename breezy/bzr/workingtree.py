@@ -73,6 +73,7 @@ from .. import (
     errors,
     osutils,
     )
+from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..trace import mutter, note
@@ -508,6 +509,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
+
+    def _get_nested_tree(self, path, file_id, reference_revision):
+        return self.get_nested_tree(path)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
@@ -1530,26 +1534,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 continue
 
             fl = []
-            for subf in os.listdir(dirabs.encode(osutils._fs_enc)):
-                try:
-                    subf = subf.decode(osutils._fs_enc)
-                except UnicodeDecodeError:
-                    path_os_enc = path.encode(osutils._fs_enc)
-                    relpath = path_os_enc + b'/' + subf
-                    raise errors.BadFilenameEncoding(relpath,
-                                                     osutils._fs_enc)
+            for subf in os.listdir(os.fsencode(dirabs)):
+                subf = os.fsdecode(subf)
 
                 if self.controldir.is_control_filename(subf):
                     continue
                 if subf not in dir_entry.children:
-                    try:
-                        (subf_norm,
-                         can_access) = osutils.normalized_filename(subf)
-                    except UnicodeDecodeError:
-                        path_os_enc = path.encode(osutils._fs_enc)
-                        relpath = path_os_enc + '/' + subf
-                        raise errors.BadFilenameEncoding(relpath,
-                                                         osutils._fs_enc)
+                    (subf_norm,
+                     can_access) = osutils.normalized_filename(subf)
                     if subf_norm != subf and can_access:
                         if subf_norm not in dir_entry.children:
                             fl.append(subf_norm)
@@ -1768,7 +1760,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-            specific_files=specific_files)
+            specific_files=specific_files, recurse_nested=recurse_nested)
         if not self.supports_tree_reference():
             return iterator
         else:

@@ -205,7 +205,7 @@ def quilt_applied(tree):
 
     """
     try:
-        return [patch.rstrip(b"\n").decode(osutils._fs_enc)
+        return [os.fsdecode(patch.rstrip(b"\n"))
                 for patch in tree.get_file_lines(".pc/applied-patches")
                 if patch.strip() != b""]
     except errors.NoSuchFile:
@@ -234,7 +234,7 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
             series_file=series_file).splitlines()
         patch_names = []
         for patch in unapplied_patches:
-            patch = patch.decode(osutils._fs_enc)
+            patch = os.fsdecode(patch)
             patch_names.append(os.path.relpath(patch, patches_dir))
         return patch_names
     except QuiltError as e:
@@ -249,7 +249,7 @@ def quilt_series(tree, series_path):
     :param tree: Tree to read from
     """
     try:
-        return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
+        return [os.fsdecode(patch.rstrip(b"\n")) for patch in
                 tree.get_file_lines(series_path)
                 if patch.strip() != b""]
     except (IOError, OSError) as e:

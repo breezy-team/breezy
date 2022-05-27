@@ -1571,6 +1571,8 @@ class GitTransformPreview(GitTreeTransform):
 class GitPreviewTree(PreviewTree, GitTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
+    supports_file_ids = False
+
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
         self.store = transform._tree.store
@@ -1579,6 +1581,9 @@ class GitPreviewTree(PreviewTree, GitTree):
 
     def supports_setting_file_ids(self):
         return False
+
+    def supports_symlinks(self):
+        return self._transform._create_symlinks
 
     def _supports_executable(self):
         return self._transform._limbo_supports_executable()
@@ -1667,6 +1672,15 @@ class GitPreviewTree(PreviewTree, GitTree):
             return None
         return annotate.reannotate([old_annotation], lines, default_revision)
 
+    def path2id(self, path):
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
+        if not self.is_versioned(path):
+            return None
+        return self._transform._tree.mapping.generate_file_id(path)
+
     def get_file_text(self, path):
         """Return the byte content of a file.
 
@@ -1721,7 +1735,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name)
                 if not isinstance(link_or_sha1, str):
-                    link_or_sha1 = link_or_sha1.decode(osutils._fs_enc)
+                    link_or_sha1 = os.fsdecode(link_or_sha1)
         executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 

@@ -22,13 +22,14 @@ high performance in large trees with a small number of changes.
 
 from __future__ import absolute_import
 
+from contextlib import ExitStack
 import errno
 import os
 import shutil
 from typing import Optional, List
 
 from .clean_tree import iter_deletables
-from .errors import BzrError, DependencyNotPresent
+from .errors import BzrError, DependencyNotPresent, NoSuchFile
 from .osutils import is_inside
 from .trace import warning
 from .transform import revert
@@ -50,7 +51,7 @@ def reset_tree(
     local_tree: WorkingTree,
     basis_tree: Optional[Tree] = None,
     subpath: str = "",
-    dirty_tracker=None,
+    dirty_tracker: "DirtyTracker" = None,
 ) -> None:
     """Reset a tree back to its basis tree.
 
@@ -65,7 +66,7 @@ def reset_tree(
         return
     if basis_tree is None:
         basis_tree = local_tree.branch.basis_tree()
-    revert(local_tree, basis_tree, [subpath] if not subpath else None)
+    revert(local_tree, basis_tree, [subpath] if subpath else None)
     deletables: List[str] = []
     # TODO(jelmer): Use basis tree
     for p in local_tree.extras():
@@ -74,6 +75,30 @@ def reset_tree(
         if not local_tree.is_ignored(p):
             deletables.append(local_tree.abspath(p))
     delete_items(deletables)
+
+
+def delete_items(deletables, dry_run: bool = False):
+    """Delete files in the deletables iterable"""
+
+    def onerror(function, path, excinfo):
+        """Show warning for errors seen by rmtree."""
+        # Handle only permission error while removing files.
+        # Other errors are re-raised.
+        if function is not os.remove or excinfo[1].errno != errno.EACCES:
+            raise
+        warning("unable to remove %s", path)
+
+    for path in deletables:
+        if os.path.isdir(path):
+            shutil.rmtree(path, onerror=onerror)
+        else:
+            try:
+                os.unlink(path)
+            except OSError as e:
+                # We handle only permission error here
+                if e.errno != errno.EACCES:
+                    raise e
+                warning('unable to remove "%s": %s.', path, e.strerror)
 
 
 # TODO(jelmer): Move to .clean_tree?
@@ -85,14 +110,15 @@ def check_clean_tree(
 
     Args:
       local_tree: The tree to check
-      basis_tree: Tree to check against (defaults to local_tree.basis_tree())
-      subpath: Subpath of the tree to check (defaults to tree root)
+      basis_tree: Tree to check against
+      subpath: Subpath of the tree to check
     Raises:
       PendingChanges: When there are pending changes
     """
-    if basis_tree is None:
-        basis_tree = local_tree.basis_tree()
-    with local_tree.lock_read(), basis_tree.lock_read():
+    with ExitStack() as es:
+        if basis_tree is None:
+            es.enter_context(local_tree.lock_read())
+            basis_tree = local_tree.basis_tree()
         # Just check there are no changes to begin with
         changes = local_tree.iter_changes(
             basis_tree,
@@ -109,8 +135,11 @@ def check_clean_tree(
                 return False
             if t.is_ignored(p):
                 return False
-            if not t.has_versioned_directories() and t.kind(p) == "directory":
-                return False
+            try:
+                if not t.has_versioned_directories() and t.kind(p) == "directory":
+                    return False
+            except NoSuchFile:
+                return True
             return True
 
         if any(
@@ -119,29 +148,6 @@ def check_clean_tree(
             if relevant(change.path[0], basis_tree) or relevant(change.path[1], local_tree)
         ):
             raise WorkspaceDirty(local_tree, subpath)
-
-
-def delete_items(deletables, dry_run=False):
-    """Delete files in the deletables iterable"""
-    def onerror(function, path, excinfo):
-        """Show warning for errors seen by rmtree.
-        """
-        # Handle only permission error while removing files.
-        # Other errors are re-raised.
-        if function is not os.remove or excinfo[1].errno != errno.EACCES:
-            raise
-        warning('unable to remove %s' % path)
-    for path in deletables:
-        if os.path.isdir(path):
-            shutil.rmtree(path, onerror=onerror)
-        else:
-            try:
-                os.unlink(path)
-            except OSError as e:
-                # We handle only permission error here
-                if e.errno != errno.EACCES:
-                    raise e
-                warning('unable to remove "%s": %s.', path, e.strerror)
 
 
 def get_dirty_tracker(local_tree, subpath='', use_inotify=None):

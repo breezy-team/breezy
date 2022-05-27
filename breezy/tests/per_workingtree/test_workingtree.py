@@ -41,7 +41,7 @@ from ...errors import (
     )
 from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
-from ...osutils import pathjoin, getcwd, has_symlinks
+from ...osutils import pathjoin, getcwd, supports_symlinks
 from .. import (
     features,
     TestSkipped,
@@ -83,7 +83,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_list_files(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'file'])
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'symlink')
         tree.lock_read()
         files = list(tree.list_files())
@@ -91,7 +91,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(
             files.pop(0), ('dir', '?', 'directory', TreeDirectory()))
         self.assertEqual(files.pop(0), ('file', '?', 'file', TreeFile()))
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             self.assertEqual(
                 files.pop(0), ('symlink', '?', 'symlink', TreeLink()))
 
@@ -570,12 +570,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # and update checkout
         self.assertEqual(0, checkout.update())
         self.assertPathExists('checkout/file')
-        self.assertEqual(wt.path2id(''), checkout.path2id(''))
-        self.assertNotEqual(None, wt.path2id(''))
+        if wt.supports_setting_file_ids():
+            self.assertEqual(wt.path2id(''), checkout.path2id(''))
+            self.assertNotEqual(None, wt.path2id(''))
 
     def test_update_sets_updated_root_id(self):
         wt = self.make_branch_and_tree('tree')
-        if not wt._format.supports_setting_file_ids:
+        if not wt.supports_setting_file_ids():
             self.assertRaises(SettingFileIdUnsupported, wt.set_root_id,
                               'first_root_id')
             return
@@ -662,7 +663,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             # legacy branches cannot bind
             return
         foo = master_tree.commit('foo', allow_pointless=True)
@@ -685,7 +686,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             # legacy branches cannot bind
             return
         # sync with master
@@ -861,7 +862,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # ensure that foo.pyc is ignored
         self.build_tree_contents([('.bzrignore', b'foo.pyc')])
         tree.add('foo.pyc')
-        anid = tree.path2id('foo.pyc')
         tree.lock_read()
         files = sorted(list(tree.list_files()))
         tree.unlock()
@@ -870,8 +870,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             (files[0][0], files[0][1], files[0][2],
                 getattr(files[0][3], 'file_id', None)))
         self.assertEqual(
-            (u'foo.pyc', 'V', 'file', anid),
-            (files[1][0], files[1][1], files[1][2], files[1][3].file_id))
+            (u'foo.pyc', 'V', 'file'),
+            (files[1][0], files[1][1], files[1][2]))
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
@@ -977,7 +977,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.build_tree(['file', 'directory/'])
         names = ['file', 'directory']
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'symlink')
             names.append('symlink')
         tree.add(names)
@@ -1090,18 +1090,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertFalse(tree.is_executable('filename'))
 
     def test_all_file_ids_with_missing(self):
+        if not self.workingtree_format.supports_setting_file_ids:
+            raise TestNotApplicable('does not support setting file ids')
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a', 'b'])
         os.unlink('tree/a')
-        try:
-            self.assertEqual(
-                {'a', 'b', ''},
-                set(tree.all_versioned_paths()))
-        except errors.UnsupportedOperation:
-            raise TestNotApplicable('tree does not support all_file_ids')
+        self.assertEqual(
+            {'a', 'b', ''},
+            set(tree.all_versioned_paths()))
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)
@@ -1185,7 +1184,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             final_branch, stop_revision=branch_revid, overwrite=True)
         try:
             wt.branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise TestNotApplicable(
                 "Can't bind %s" % wt.branch._format.__class__)
         return wt, master
@@ -1259,12 +1258,8 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
 
-        e = self.assertListRaises(errors.BadFilenameEncoding,
-                                  tree.iter_changes, tree.basis_tree(),
-                                  want_unversioned=True)
-        # We should display the relative path
-        self.assertEqual(b'subdir/m\xb5', e.filename)
-        self.assertEqual(osutils._fs_enc, e.fs_encoding)
+        changes = list(tree.iter_changes(tree.basis_tree(), want_unversioned=True))
+        self.assertIn('subdir/m\udcb5', [c.path[1] for c in changes])
 
 
 class TestControlComponent(TestCaseWithWorkingTree):

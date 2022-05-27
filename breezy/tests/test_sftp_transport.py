@@ -195,19 +195,19 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         t = controldir.ControlDir.create_standalone_workingtree('a')
         b = t.branch
         t.add('foo')
-        t.commit('foo', rev_id=b'a1')
+        revid1 = t.commit('foo')
 
         b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), b'a1')
+        self.assertEqual(b2.last_revision(), revid1)
 
         with open('a/foo', 'wt') as f:
             f.write('something new in foo\n')
-        t.commit('new', rev_id=b'a2')
+        revid2 = t.commit('new')
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), b'a2')
+        self.assertEqual(b2.last_revision(), revid2)
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):

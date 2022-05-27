@@ -43,10 +43,10 @@ from ... import (
     lockdir,
     osutils,
     trace,
-    tuned_gzip,
     urlutils,
     )
 from ...bzr import (
+    tuned_gzip,
     versionedfile,
     weave,
     weavefile,

@@ -34,7 +34,9 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
     # See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 
-    _test_needs_features = [features.SymlinkFeature]
+    def setUp(self):
+        super(TestSmartAddTree, self).setUp()
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_smart_add_symlink(self):
         tree = self.make_branch_and_tree('tree')
@@ -84,7 +86,9 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
 class TestKindChanges(TestCaseWithWorkingTree):
 
-    _test_needs_features = [features.SymlinkFeature]
+    def setUp(self):
+        super(TestKindChanges, self).setUp()
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_symlink_changes_to_dir(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
@@ -134,7 +138,9 @@ class TestKindChanges(TestCaseWithWorkingTree):
 
 class TestOpenTree(TestCaseWithWorkingTree):
 
-    _test_needs_features = [features.SymlinkFeature]
+    def setUp(self):
+        super(TestOpenTree, self).setUp()
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_open_containing_through_symlink(self):
         self.make_test_tree()

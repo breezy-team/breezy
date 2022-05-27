@@ -860,7 +860,7 @@ class Transport(object):
             coalesced_offsets.append(cur)
         return coalesced_offsets
 
-    def put_bytes(self, relpath, raw_bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
         :param relpath: The location to put the contents, relative to the
@@ -874,7 +874,7 @@ class Transport(object):
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
         return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, raw_bytes: bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         """Copy the string into the target location.
@@ -998,7 +998,8 @@ class Transport(object):
         Override this for efficiency if a specific transport can do it
         faster than this default implementation.
         """
-        self.put_file(rel_to, self.get(rel_from))
+        with self.get(rel_from) as f:
+            self.put_file(rel_to, f)
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.

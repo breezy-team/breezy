@@ -110,7 +110,7 @@ Other web interfaces
 --------------------
 
 There are a number of other web interfaces available for Bazaar branches (see
-the list at http://wiki.bazaar.canonical.com/WebInterfaces) and we will just
+the list at http://wiki.breezy-vcs.org/WebInterfaces) and we will just
 mention a couple of them here for their advantages in particular situations.
 
 trac+bzr (http://launchpad.net/trac-bzr)

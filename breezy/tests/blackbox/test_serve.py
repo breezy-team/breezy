@@ -141,14 +141,14 @@ class TestBzrServe(TestBzrServeBase):
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
-        result = self.finish_bzr_subprocess(process)
+        result = self.finish_brz_subprocess(process)
         self.assertEqual(b'', result[0])
         self.assertEqual(b'', result[1])
 
     def assertServerFinishesCleanly(self, process):
         """Shutdown the brz serve instance process looking for errors."""
         # Shutdown the server
-        result = self.finish_bzr_subprocess(process, retcode=3,
+        result = self.finish_brz_subprocess(process, retcode=3,
                                             send_signal=signal.SIGINT)
         self.assertEqual(b'', result[0])
         self.assertEqual(b'brz: interrupted\n', result[1])
@@ -165,12 +165,12 @@ class TestBzrServe(TestBzrServeBase):
 
         :param extra_options: extra options to give the server.
         :return: a tuple with the brz process handle for passing to
-            finish_bzr_subprocess, a client for the server, and a transport.
+            finish_brz_subprocess, a client for the server, and a transport.
         """
         # Serve from the current directory
         args = ['serve', '--inet']
         args.extend(extra_options)
-        process = self.start_bzr_subprocess(args)
+        process = self.start_brz_subprocess(args)
 
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
@@ -187,12 +187,12 @@ class TestBzrServe(TestBzrServeBase):
 
         :param extra_options: extra options to give the server.
         :return: a tuple with the brz process handle for passing to
-            finish_bzr_subprocess, and the base url for the server.
+            finish_brz_subprocess, and the base url for the server.
         """
         # Serve from the current directory
         args = ['serve', '--listen', 'localhost', '--port', '0']
         args.extend(extra_options)
-        process = self.start_bzr_subprocess(args, skip_if_plan_to_signal=True)
+        process = self.start_brz_subprocess(args, skip_if_plan_to_signal=True)
         port_line = process.stderr.readline()
         prefix = b'listening on port: '
         self.assertStartsWith(port_line, prefix)

@@ -444,7 +444,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.add(['sfile'])
         wt.add(["afile"], [b"somefileid"])
         wt.commit("bla", rev_id=b"oldgrandparent")
-        open("old/afile", "w").write("data")
+        with open("old/afile", "w") as f:
+            f.write("data")
         wt.commit("bla", rev_id=b"oldparent")
         wt.add(["notherfile"])
         wt.commit("bla", rev_id=b"oldcommit")
@@ -455,7 +456,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.add(['sfile'])
         wt.add(["afile"], [b"afileid"])
         wt.commit("bla", rev_id=b"newgrandparent")
-        open("new/afile", "w").write("data")
+        with open("new/afile", "w") as f:
+            f.write("data")
         wt.commit("bla", rev_id=b"newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.branch.repository.lock_write()

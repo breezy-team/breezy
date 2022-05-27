@@ -254,7 +254,7 @@ class TestSetParents(TestParents):
 
     def test_unicode_symlink(self):
         # this tests bug #272444
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')

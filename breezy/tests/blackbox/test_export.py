@@ -93,11 +93,11 @@ class TestExport(TestCaseWithTransport):
         self.assertTrue(tree.has_filename('.bzr-adir'))
         self.assertTrue(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.tar.gz -d tree')
-        ball = tarfile.open('test.tar.gz')
-        # Make sure the tarball contains 'a', but does not contain
-        # '.bzrignore'.
-        self.assertEqual(['test/a'],
-                         sorted(ball.getnames()))
+        with tarfile.open('test.tar.gz') as ball:
+            # Make sure the tarball contains 'a', but does not contain
+            # '.bzrignore'.
+            self.assertEqual(['test/a'],
+                             sorted(ball.getnames()))
 
     def test_tar_export_unicode_filename(self):
         self.requireFeature(features.UnicodeFilenameFeature)
@@ -111,10 +111,10 @@ class TestExport(TestCaseWithTransport):
         tree.commit('first')
 
         self.run_bzr('export test.tar -d tar')
-        ball = tarfile.open('test.tar')
-        # all paths are prefixed with the base name of the tarball
-        self.assertEqual([u'test/' + fname],
-                         [osutils.safe_unicode(n) for n in ball.getnames()])
+        with tarfile.open('test.tar') as ball:
+            # all paths are prefixed with the base name of the tarball
+            self.assertEqual([u'test/' + fname],
+                             [osutils.safe_unicode(n) for n in ball.getnames()])
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
@@ -179,12 +179,12 @@ class TestExport(TestCaseWithTransport):
         fname = 'test.%s' % (extension,)
         self.run_bzr('export -d tree %s' % (fname,))
         mode = 'r|%s' % (tarfile_flags,)
-        ball = tarfile.open(fname, mode=mode)
-        self.assertTarANameAndContent(ball, root='test/')
+        with tarfile.open(fname, mode=mode) as ball:
+            self.assertTarANameAndContent(ball, root='test/')
         content = self.run_bzr_raw(
             'export -d tree --format=%s -' % (extension,))[0]
-        ball = tarfile.open(mode=mode, fileobj=BytesIO(content))
-        self.assertTarANameAndContent(ball, root='')
+        with tarfile.open(mode=mode, fileobj=BytesIO(content)) as ball:
+            self.assertTarANameAndContent(ball, root='')
 
     def test_tar_export(self):
         self.run_tar_export_disk_and_stdout('tar', '')
@@ -240,6 +240,23 @@ class TestExport(TestCaseWithTransport):
 
         d_info = zfile.getinfo(names[3])
         self.assertEqual(dir_attr, d_info.external_attr)
+
+    def test_dir_export_nested(self):
+        tree = self.make_branch_and_tree('dir')
+        self.build_tree(['dir/a'])
+        tree.add('a')
+
+        subtree = self.make_branch_and_tree('dir/subdir')
+        tree.add_reference(subtree)
+
+        self.build_tree(['dir/subdir/b'])
+        subtree.add('b')
+
+        self.run_bzr('export --uncommitted direxport1 dir')
+        self.assertFalse(os.path.exists('direxport1/subdir/b'))
+
+        self.run_bzr('export --recurse-nested --uncommitted direxport2 dir')
+        self.assertTrue(os.path.exists('direxport2/subdir/b'))
 
     def test_dir_export(self):
         tree = self.make_branch_and_tree('dir')

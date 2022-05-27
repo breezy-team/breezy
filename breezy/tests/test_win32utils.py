@@ -314,4 +314,3 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.assertCommandLine([u"rm", u"x*"], "-m pdb rm x*", ["rm", u"x*"])
         self.assertCommandLine([u"add", u"d/f1", u"d/f2"], "-m pdb add d/*",
                                ["add", u"d/*"])
-

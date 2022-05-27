@@ -122,7 +122,7 @@ class AnnotateProvider(object):
         path = encode_git_path(path)
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = (
+                (store, path, text_parent) = (
                     self.change_scanner.find_last_change_revision(
                         path, commit_parent))
             except KeyError:

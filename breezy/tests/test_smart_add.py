@@ -18,7 +18,6 @@ from io import StringIO
 
 from .. import (
     add,
-    cache_utf8,
     errors,
     tests,
     )
@@ -32,7 +31,7 @@ class AddCustomIDAction(add.AddAction):
     def __call__(self, inv, parent_ie, path, kind):
         # The first part just logs if appropriate
         # Now generate a custom id
-        file_id = cache_utf8.encode(kind + '-' + path.replace('/', '%'))
+        file_id = (kind + '-' + path.replace('/', '%')).encode('utf-8')
         if self.should_print:
             self._to_file.write('added %s with id %s\n'
                                 % (path, file_id.decode('utf-8')))

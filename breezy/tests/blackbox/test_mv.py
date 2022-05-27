@@ -192,7 +192,7 @@ class TestMove(TestCaseWithTransport):
             'mv . a')
 
     def test_mv_through_symlinks(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         os.symlink('a', 'c')

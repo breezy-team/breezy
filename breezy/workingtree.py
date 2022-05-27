@@ -367,8 +367,12 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
             if filters:
-                file_obj, size = _mod_filters.filtered_input_file(
-                    file_obj, filters)
+                orig_file_obj = file_obj
+                try:
+                    file_obj, size = _mod_filters.filtered_input_file(
+                        file_obj, filters)
+                finally:
+                    orig_file_obj.close()
                 stat_value = _mod_filters.FilteredStat(
                     stat_value, st_size=size)
         return (file_obj, stat_value)

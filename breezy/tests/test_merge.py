@@ -2290,7 +2290,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertTrue(wt.is_executable('foo'))
 
     def test_create_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A
         #  / \
         # B   C
@@ -2361,7 +2361,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                              wt.get_file_text('foo'))
 
     def test_modified_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2406,7 +2406,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_renamed_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B renames foo => barry
@@ -2463,7 +2463,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('blah', wt.id2path(b'foo-id'))
 
     def test_symlink_no_content_change(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2513,7 +2513,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_symlink_this_changed_kind(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Nothing
         #  / \
         # B   C     B creates symlink foo => bar
@@ -2567,7 +2567,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
 
     def test_symlink_all_wt(self):
         """Check behavior if all trees are Working Trees."""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         # The big issue is that entry.symlink_target is None for WorkingTrees.
         # So we need to make sure we handle that case correctly.
         #   A   foo => bar
@@ -3108,19 +3108,18 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         factory = self.get_merger_factory()
         self._install_hook(factory)
         builder = self.make_builder()
-        builder.add_file(b'bar-id', builder.tree_root,
-                         file_name, b'text1', True)
-        builder.change_contents(b'bar-id', other=b'text4', this=b'text3')
+        trans_ids = builder.add_file(builder.root(), file_name, b'text1', True, file_id=b'bar-id')
+        builder.change_contents(trans_ids, other=b'text4', this=b'text3')
         return builder
 
     def make_kind_change(self):
         factory = self.get_merger_factory()
         self._install_hook(factory)
         builder = self.make_builder()
-        builder.add_file(b'bar-id', builder.tree_root, 'bar', b'text1', True,
-                         this=False)
-        builder.add_dir(b'bar-dir', builder.tree_root, 'bar-id',
-                        base=False, other=False)
+        builder.add_file(builder.root(), 'bar', b'text1', True,
+                         this=False, file_id=b'bar-id')
+        builder.add_dir(builder.root(), 'bar-id',
+                        base=False, other=False, file_id=b'bar-dir')
         return builder
 
     def test_uses_this_branch(self):

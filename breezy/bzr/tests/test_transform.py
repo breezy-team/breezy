@@ -62,7 +62,7 @@ class TestInventoryAltered(TestCaseWithTransport):
 class TestBuildTree(TestCaseWithTransport):
 
     def test_build_tree_with_symlinks(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.mkdir('a')
         a = ControlDir.create_standalone_workingtree('a')
         os.mkdir('a/foo')
@@ -113,7 +113,7 @@ class TestBuildTree(TestCaseWithTransport):
 
     def test_symlink_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         os.symlink('foo', 'source/symlink')
         source.add('symlink', b'new-symlink')
@@ -272,7 +272,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_wrong_kind(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', b'')])
         self.build_tree_contents([('source/file2', b'')])
@@ -300,7 +300,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_hardlink(self):
-        self.requireFeature(features.HardlinkFeature)
+        self.requireFeature(features.HardlinkFeature(self.test_dir))
         source = self.create_ab_tree()
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
@@ -342,7 +342,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_hardlinks_preserve_execute(self):
-        self.requireFeature(features.HardlinkFeature)
+        self.requireFeature(features.HardlinkFeature(self.test_dir))
         source = self.create_ab_tree()
         tt = source.transform()
         trans_id = tt.trans_id_tree_path('file1')
@@ -393,7 +393,7 @@ class TestBuildTree(TestCaseWithTransport):
         applied to them (but will still hardlink other files from the same tree
         if it can).
         """
-        self.requireFeature(features.HardlinkFeature)
+        self.requireFeature(features.HardlinkFeature(self.test_dir))
         self.install_rot13_content_filter(b'file1')
         source = self.create_ab_tree()
         target = self.make_branch_and_tree('target')
@@ -461,6 +461,3 @@ class TestBuildTree(TestCaseWithTransport):
         self.assertEqual(entry2_sha, target.get_file_sha1('dir/file2'))
         self.assertEqual(entry1_state, entry1[1][0])
         self.assertEqual(entry2_state, entry2[1][0])
-
-
-

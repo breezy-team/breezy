@@ -37,9 +37,6 @@ from dulwich.index import (
     validate_path,
     write_index_dict,
     )
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
 from dulwich.objects import (
     S_ISGITLINK,
     )
@@ -75,6 +72,7 @@ from ..mutabletree import (
 
 from .dir import (
     LocalGitDir,
+    BareLocalGitControlDirFormat,
     )
 from .tree import (
     MutableGitIndexTree,
@@ -219,10 +217,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             info = self._submodule_info()[relpath]
         except KeyError:
             submodule_transport = self.user_transport.clone(decode_git_path(relpath))
+            submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
         else:
             submodule_transport = self.control_transport.clone(
                 posixpath.join('modules', decode_git_path(info[1])))
-        submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
+            submodule_dir = BareLocalGitControlDirFormat().open(submodule_transport)
         return Index(submodule_dir.control_transport.local_abspath('index'))
 
     def lock_read(self):
@@ -627,27 +626,21 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             from_dir = u""
         if not isinstance(from_dir, str):
             raise TypeError(from_dir)
-        encoded_from_dir = self.abspath(from_dir).encode(osutils._fs_enc)
+        encoded_from_dir = os.fsencode(self.abspath(from_dir))
         for (dirpath, dirnames, filenames) in os.walk(encoded_from_dir):
             dir_relpath = dirpath[len(self.basedir):].strip(b"/")
-            if self.controldir.is_control_filename(
-                    dir_relpath.decode(osutils._fs_enc)):
+            if self.controldir.is_control_filename(os.fsdecode(dir_relpath)):
                 continue
             for name in list(dirnames):
-                if self.controldir.is_control_filename(
-                        name.decode(osutils._fs_enc)):
+                if self.controldir.is_control_filename(os.fsdecode(name)):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
-                if not recurse_nested and self._directory_is_tree_reference(relpath.decode(osutils._fs_enc)):
+                if not recurse_nested and self._directory_is_tree_reference(os.fsdecode(relpath)):
                     dirnames.remove(name)
                 if include_dirs:
-                    try:
-                        yield relpath.decode(osutils._fs_enc)
-                    except UnicodeDecodeError:
-                        raise errors.BadFilenameEncoding(
-                            relpath, osutils._fs_enc)
-                    if not self.is_versioned(relpath.decode(osutils._fs_enc)):
+                    yield os.fsdecode(relpath)
+                    if not self.is_versioned(os.fsdecode(os.fsdecode(relpath))):
                         try:
                             dirnames.remove(name)
                         except ValueError:
@@ -655,15 +648,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             for name in filenames:
                 if self.mapping.is_special_file(name):
                     continue
-                if self.controldir.is_control_filename(
-                        name.decode(osutils._fs_enc, 'replace')):
+                if self.controldir.is_control_filename(os.fsdecode(name)):
                     continue
                 yp = os.path.join(dir_relpath, name)
-                try:
-                    yield yp.decode(osutils._fs_enc)
-                except UnicodeDecodeError:
-                    raise errors.BadFilenameEncoding(
-                        yp, osutils._fs_enc)
+                yield os.fsdecode(yp)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -821,8 +809,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return os.lstat(self.abspath(path))
 
     def _live_entry(self, path):
-        encoded_path = self.abspath(decode_git_path(path)).encode(
-            osutils._fs_enc)
+        encoded_path = os.fsencode(self.abspath(decode_git_path(path)))
         return index_entry_from_path(encoded_path)
 
     def is_executable(self, path):
@@ -864,21 +851,16 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         from_dir, include_dirs=True,
                         recurse_nested=recurse_nested))
             else:
-                encoded_from_dir = self.abspath(from_dir).encode(
-                    osutils._fs_enc)
+                encoded_from_dir = os.fsencode(self.abspath(from_dir))
                 path_iterator = sorted(
-                    [os.path.join(from_dir, name.decode(osutils._fs_enc))
+                    [os.path.join(from_dir, os.fsdecode(name))
                      for name in os.listdir(encoded_from_dir)
                      if not self.controldir.is_control_filename(
-                         name.decode(osutils._fs_enc)) and
+                         os.fsdecode(name)) and
                      not self.mapping.is_special_file(
-                         name.decode(osutils._fs_enc))])
+                         os.fsdecode(name))])
             for path in path_iterator:
-                try:
-                    encoded_path = encode_git_path(path)
-                except UnicodeEncodeError:
-                    raise errors.BadFilenameEncoding(
-                        path, osutils._fs_enc)
+                encoded_path = encode_git_path(path)
                 (index, index_path) = self._lookup_index(encoded_path)
                 try:
                     value = index[index_path]
@@ -919,9 +901,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         continue
                     yield (posixpath.relpath(path, from_dir),
                            ("I" if self.is_ignored(path) else "?"), kind, ie)
-
-    def all_file_ids(self):
-        raise errors.UnsupportedOperation(self.all_file_ids, self)
 
     def all_versioned_paths(self):
         with self.lock_read():

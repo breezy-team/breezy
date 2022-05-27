@@ -1923,6 +1923,9 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
     def supports_setting_file_ids(self):
         return True
 
+    def supports_symlinks(self):
+        return self._transform._create_symlinks
+
     def supports_tree_reference(self):
         # TODO(jelmer): Support tree references in PreviewTree.
         # return self._transform._tree.supports_tree_reference()
@@ -2149,7 +2152,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name)
                 if not isinstance(link_or_sha1, str):
-                    link_or_sha1 = link_or_sha1.decode(osutils._fs_enc)
+                    link_or_sha1 = os.fsdecode(link_or_sha1)
         executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 
@@ -2484,6 +2487,3 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                                              ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id, sha1=text_sha1)
         pb.update(gettext('Adding file contents'), count + offset, total)
-
-
-

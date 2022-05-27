@@ -47,7 +47,9 @@ def parse_rcp_location(location):
     :return: A URL, e.g. "ssh://foo/bar"
     :raises ValueError: if this is not a RCP-style URL
     """
-    m = re.match('^(?P<user>[^@:/]+@)?(?P<host>[^/:]+):(?P<path>.*)$', location)
+    m = re.match(
+        '^(?P<user>[^@:/]+@)?(?P<host>[^/:]{2,}):(?P<path>.*)$',
+        location)
     if not m:
         raise ValueError("Not a RCP URL")
     if m.group('path').startswith('//'):

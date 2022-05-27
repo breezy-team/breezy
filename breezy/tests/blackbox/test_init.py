@@ -183,7 +183,7 @@ Using shared repository: %s
 default_format = 1.9
 ''')
         g_store.save()
-        out, err = self.run_bzr_subprocess('init')
+        out, err = self.run_brz_subprocess('init')
         self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
@@ -199,7 +199,6 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
                          """Created a standalone branch (format: pack-0.92)\n""")
-        self.assertEqual('', err)
 
     def test_init_existing_branch(self):
         # when there is already a branch present, make mention

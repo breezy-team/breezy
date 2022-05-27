@@ -264,6 +264,9 @@ class Merger(object):
 
     hooks = MergeHooks()
 
+    # TODO(jelmer): There should probably be a merger base type
+    merge_type: object
+
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, change_reporter=None,
                  recurse='down', revision_graph=None):
@@ -1048,18 +1051,18 @@ class Merge3Merger(object):
 
             # If we have gotten this far, that means something has changed
             yield (file_id, content_changed,
-                           ((base_path, lca_paths),
-                            other_path, this_path),
-                           ((base_ie.parent_id, lca_parent_ids),
-                            other_ie.parent_id, this_ie.parent_id),
-                           ((base_ie.name, lca_names),
-                            other_ie.name, this_ie.name),
-                           ((base_ie.executable, lca_executable),
-                            other_ie.executable, this_ie.executable),
-                           # Copy detection is not yet supported, so nothing is
-                           # a copy:
-                           False
-                           )
+                   ((base_path, lca_paths),
+                    other_path, this_path),
+                   ((base_ie.parent_id, lca_parent_ids),
+                    other_ie.parent_id, this_ie.parent_id),
+                   ((base_ie.name, lca_names),
+                    other_ie.name, this_ie.name),
+                   ((base_ie.executable, lca_executable),
+                    other_ie.executable, this_ie.executable),
+                   # Copy detection is not yet supported, so nothing is
+                   # a copy:
+                   False
+                   )
 
     def write_modified(self, results):
         if not self.working_tree.supports_merge_modified():

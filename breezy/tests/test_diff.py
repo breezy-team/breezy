@@ -790,7 +790,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
             br' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree_contents([('old-tree/olddir/',),
                                   ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
@@ -981,7 +981,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual(b'oldcontent', old_path)
         self.assertFileEqual(b'newcontent', new_path)
-        if osutils.host_os_dereferences_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('oldname2', 'newname2')

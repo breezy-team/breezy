@@ -626,7 +626,7 @@ class SFTPTransport(ConnectedTransport):
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         if not isinstance(raw_bytes, bytes):

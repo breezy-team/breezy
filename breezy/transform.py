@@ -50,7 +50,6 @@ from .osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_symlinks,
     )
 from .progress import ProgressPhase
 from .tree import (
@@ -776,7 +775,6 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
     for id_num, change in enumerate(change_list):
         target_path, wt_path = change.path
         target_versioned, wt_versioned = change.versioned
-        target_parent = change.parent_id[0]
         target_name, wt_name = change.name
         target_kind, wt_kind = change.kind
         target_executable, wt_executable = change.executable
@@ -865,6 +863,7 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
             if target_path == '':
                 parent_trans = ROOT_PARENT
             else:
+                target_parent = change.parent_id[0]
                 parent_trans = tt.trans_id_file_id(target_parent)
             if wt_path == '' and wt_versioned:
                 tt.adjust_root_path(target_name, parent_trans)
@@ -1131,6 +1130,9 @@ class PreviewTree(object):
 
     def supports_setting_file_ids(self):
         raise NotImplementedError(self.supports_setting_file_ids)
+
+    def supports_symlinks(self):
+        return self._transform._tree.supports_symlinks()
 
     @property
     def _by_parent(self):

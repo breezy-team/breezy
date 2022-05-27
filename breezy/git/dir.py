@@ -18,6 +18,7 @@
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
 import contextlib
+import os
 
 from .. import (
     branch as _mod_branch,
@@ -207,14 +208,19 @@ class GitDir(ControlDir):
                     subtrees = []
                 for path in subtrees:
                     target = urlutils.join(url, urlutils.escape(path))
-                    sublocation = wt.reference_parent(
-                        path, possible_transports=possible_transports)
+                    sublocation = wt.get_reference_info(path)
                     if sublocation is None:
-                        trace.warning(
-                            'Ignoring nested tree %s, parent location unknown.',
-                            path)
+                        trace.warning("Unable to find submodule info for %s", path)
                         continue
-                    sublocation.controldir.sprout(
+                    remote_url = urlutils.join(self.user_url, sublocation)
+                    try:
+                        subbranch = _mod_branch.Branch.open(remote_url, possible_transports=possible_transports)
+                    except brz_errors.NotBranchError as e:
+                        trace.warning(
+                            'Unable to clone submodule %s from %s: %s',
+                            path, remote_url, e)
+                        continue
+                    subbranch.controldir.sprout(
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,
                         stacked=stacked)
@@ -802,6 +808,6 @@ class LocalGitDir(GitDir):
         except brz_errors.NoSuchFile:
             return self
         else:
-            commondir = commondir.rstrip(b'/.git/').decode(osutils._fs_enc)
+            commondir = os.fsdecode(commondir.rstrip(b'/.git/'))
             return ControlDir.open_from_transport(
                 get_transport_from_path(commondir))

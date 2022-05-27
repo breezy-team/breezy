@@ -55,7 +55,7 @@ class ReadonlyTransportDecorator(decorator.TransportDecorator):
         """See Transport.put_file()."""
         raise TransportNotPossible('readonly transport')
 
-    def put_bytes(self, relpath, bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """See Transport.put_bytes()."""
         raise TransportNotPossible('readonly transport')
 

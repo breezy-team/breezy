@@ -152,7 +152,7 @@ class LocalTransport(transport.Transport):
             transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
-            return osutils.open_file(path, 'rb')
+            return open(path, 'rb')
         except (IOError, OSError) as e:
             if e.errno == errno.EISDIR:
                 return LateReadError(relpath)
@@ -181,7 +181,7 @@ class LocalTransport(transport.Transport):
             fp.close()
         return length
 
-    def put_bytes(self, relpath, raw_bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Copy the string into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -198,7 +198,7 @@ class LocalTransport(transport.Transport):
         except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
-            if bytes:
+            if raw_bytes:
                 fp.write(raw_bytes)
             fp.commit()
         finally:
@@ -277,11 +277,11 @@ class LocalTransport(transport.Transport):
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
 
-    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
                              create_parent_dir=False, dir_mode=None):
         def writer(fd):
-            if bytes:
-                os.write(fd, bytes)
+            if raw_bytes:
+                os.write(fd, raw_bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
@@ -323,7 +323,7 @@ class LocalTransport(transport.Transport):
         """See Transport.open_write_stream."""
         abspath = self._abspath(relpath)
         try:
-            handle = osutils.open_file(abspath, 'wb')
+            handle = open(abspath, 'wb')
         except (IOError, OSError) as e:
             self._translate_error(e, abspath)
         handle.truncate()
@@ -514,13 +514,23 @@ class LocalTransport(transport.Transport):
         except (IOError, OSError) as e:
             self._translate_error(e, path)
 
-    if osutils.host_os_dereferences_symlinks():
-        def readlink(self, relpath):
-            """See Transport.readlink."""
-            try:
-                return osutils.readlink(self._abspath(relpath))
-            except (IOError, OSError) as e:
-                self._translate_error(e, relpath)
+    def symlink(self, source, link_name):
+        """See Transport.symlink."""
+        abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
+        source_rel = urlutils.file_relpath(
+            abs_link_dirpath, self.abspath(source))
+
+        try:
+            os.symlink(source_rel, self._abspath(link_name))
+        except (IOError, OSError) as e:
+            self._translate_error(e, source_rel)
+
+    def readlink(self, relpath):
+        """See Transport.readlink."""
+        try:
+            return osutils.readlink(self._abspath(relpath))
+        except (IOError, OSError) as e:
+            self._translate_error(e, relpath)
 
     if osutils.hardlinks_good():
         def hardlink(self, source, link_name):
@@ -529,18 +539,6 @@ class LocalTransport(transport.Transport):
                 os.link(self._abspath(source), self._abspath(link_name))
             except (IOError, OSError) as e:
                 self._translate_error(e, source)
-
-    if getattr(os, 'symlink', None) is not None:
-        def symlink(self, source, link_name):
-            """See Transport.symlink."""
-            abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
-            source_rel = urlutils.file_relpath(
-                abs_link_dirpath, self.abspath(source))
-
-            try:
-                os.symlink(source_rel, self._abspath(link_name))
-            except (IOError, OSError) as e:
-                self._translate_error(e, source_rel)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':

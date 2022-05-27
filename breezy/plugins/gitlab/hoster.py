@@ -392,7 +392,7 @@ class GitLab(Hoster):
     def __init__(self, transport, private_token):
         self.transport = transport
         self.headers = {"Private-Token": private_token}
-        self.check()
+        self._current_user = None
 
     def _get_user(self, username):
         path = 'users/%s' % urlutils.quote(str(username), '')
@@ -494,6 +494,8 @@ class GitLab(Hoster):
         raise MergeRequestConflict(reason)
 
     def get_current_user(self):
+        if not self._current_user:
+            self._retrieve_user()
         return self._current_user['username']
 
     def get_user_url(self, username):
@@ -593,7 +595,7 @@ class GitLab(Hoster):
             raise GitLabConflict(json.loads(response.data).get('message'))
         if response.status == 422:
             data = json.loads(response.data)
-            raise GitLabUnprocessable(data.get('error'), data)
+            raise GitLabUnprocessable(data.get('error') or data.get('message'), data)
         if response.status != 201:
             _unexpected_status(path, response)
         return json.loads(response.data)
@@ -689,7 +691,9 @@ class GitLab(Hoster):
             return False
         return self.base_hostname == host
 
-    def check(self):
+    def _retrieve_user(self):
+        if self._current_user:
+            return
         try:
             response = self._api_request('GET', 'user')
         except errors.UnexpectedHttpStatus as e:
@@ -716,7 +720,9 @@ class GitLab(Hoster):
             'https://%s' % host, possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
-            return cls(transport, credentials.get('private_token'))
+            instance = cls(transport, credentials.get('private_token'))
+            instance._retrieve_user()
+            return instance
         try:
             resp = transport.request(
                 'GET', 'https://%s/api/v4/projects/%s' % (host, urlutils.quote(str(project), '')))

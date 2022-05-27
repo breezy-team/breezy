@@ -24,12 +24,14 @@ from breezy import (
     mutabletree,
     tests,
     )
-from breezy.osutils import has_symlinks
+from breezy.tree import TreeChange
+from breezy.osutils import supports_symlinks
 from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
 from breezy.tests import (
     features,
     )
+from breezy.tests.matchers import MatchesTreeChanges
 
 # TODO: test the include_root option.
 # TODO: test that renaming a directory x->y does not emit a rename for the
@@ -388,7 +390,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('tree2')
         tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/file', 'tree2/dir/'])
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'tree2/link')
             links_supported = True
         else:
@@ -1193,27 +1195,25 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         self.assertEqual([], list(tree2.iter_changes(tree1)))
         subtree1.commit('commit', rev_id=b'commit-a')
-        self.assertEqual([
-            InventoryTreeChange(
-                b'root-id',
-                (u'', u''),
-                False,
-                (True, True),
-                (None, None),
-                (u'', u''),
-                ('directory', 'directory'),
-                (False, False)),
-            InventoryTreeChange(
-                b'subtree-id',
-                ('sub', 'sub',),
-                False,
-                (True, True),
-                (b'root-id', b'root-id'),
-                ('sub', 'sub'),
-                ('tree-reference', 'tree-reference'),
-                (False, False))],
-            list(tree2.iter_changes(tree1,
-                                    include_unchanged=True)))
+        self.assertThat(
+            tree2.iter_changes(tree1, include_unchanged=True),
+            MatchesTreeChanges(
+                tree1, tree2, [
+                    TreeChange(
+                        (u'', u''),
+                        False,
+                        (True, True),
+                        (u'', u''),
+                        ('directory', 'directory'),
+                        (False, False)),
+                    TreeChange(
+                        ('sub', 'sub',),
+                        False,
+                        (True, True),
+                        ('sub', 'sub'),
+                        ('tree-reference', 'tree-reference'),
+                        (False, False))],
+                    ))
 
     def test_disk_in_subtrees_skipped(self):
         """subtrees are considered not-in-the-current-tree.
@@ -1267,7 +1267,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('tree2')
         tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/file', 'tree2/dir/'])
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'tree2/link')
             links_supported = True
         else:
@@ -1288,7 +1288,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
         self.build_tree(['tree2/file', 'tree2/dir/'])
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'tree2/link')
             links_supported = True
         else:
@@ -1322,7 +1322,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.build_tree(['tree2/file', 'tree2/dir/',
                          'tree1/file', 'tree2/movedfile',
                          'tree1/dir/', 'tree2/moveddir/'])
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'tree1/link')
             os.symlink('target', 'tree2/link')
             os.symlink('target', 'tree2/movedlink')
@@ -1459,7 +1459,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         return self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
     def test_versioned_symlinks(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1, tree2 = self.make_trees_with_symlinks()
         self.not_applicable_if_cannot_represent_unversioned(tree2)
         root_id = tree1.path2id('')
@@ -1482,7 +1482,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.check_has_changes(True, tree1, tree2)
 
     def test_versioned_symlinks_specific_files(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         expected = [
