@@ -47,7 +47,6 @@ commands = {
         "dep3_patch": [],
         "import_dsc": [],
         "import_upstream": [],
-        "mark_uploaded": [],
         "merge_upstream": ["mu"],
         "debrelease": [],
         }
@@ -172,12 +171,13 @@ def changelog_merge_hook_factory(merger):
     return merge_changelog.ChangeLogFileMerge(merger)
 
 
-def tree_debian_tag_name(tree, branch, subpath=''):
+def tree_debian_tag_name(tree, branch, subpath='', vendor=None):
     from .config import BUILD_TYPE_MERGE
     from .import_dsc import (
         DistributionBranch, DistributionBranchSet)
     from .util import (
-        debuild_config, find_changelog, MissingChangelogError)
+        debuild_config, find_changelog, MissingChangelogError,
+        suite_to_distribution)
     config = debuild_config(tree, subpath=subpath)
     try:
         (changelog, top_level) = find_changelog(
@@ -190,16 +190,19 @@ def tree_debian_tag_name(tree, branch, subpath=''):
         # The changelog still targets 'UNRELEASED', so apparently hasn't been
         # uploaded. XXX: Give a warning of some sort here?
         return None
+    if vendor is None:
+        vendor = suite_to_distribution(changelog.distributions)
+        # TODO(jelmer): Default to local vendor?
     db = DistributionBranch(branch, None)
     dbs = DistributionBranchSet()
     dbs.add_branch(db)
-    return db.tag_name(changelog.version)
+    return db.tag_name(changelog.version, vendor)
 
 
 def debian_tag_name(branch, revid):
     subpath = ''
     t = branch.repository.revision_tree(revid)
-    return tree_debian_tag_name(t, branch, subpath)
+    return tree_debian_tag_name(t, branch, subpath, vendor=None)
 
 
 def pre_merge_fix_ancestry(merger):

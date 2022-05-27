@@ -1,3 +1,10 @@
+breezy-debian (2.8.68) UNRELEASED; urgency=medium
+
+  * Drop mark-uploaded command; use 'bzr tag' (without arguments)
+    instead.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 May 2022 21:44:33 +0100
+
 breezy-debian (2.8.67) unstable; urgency=medium
 
   * Cope with multiple documents in debian/upstream/metadata.

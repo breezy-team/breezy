@@ -25,5 +25,4 @@ brz_commands = [
     "merge_upstream",
     "import_dsc",
     "bd_do",
-    "mark_uploaded",
     ]

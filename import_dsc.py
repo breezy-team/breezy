@@ -30,6 +30,7 @@ from contextlib import contextmanager, ExitStack
 import os
 import stat
 import tempfile
+from typing import Optional
 
 from debian import deb822
 from debian.changelog import Version, Changelog, VersionError
@@ -295,7 +296,7 @@ class DistributionBranch(object):
         """
         return self.get_lesser_branches() + self.get_greater_branches()
 
-    def tag_name(self, version, vendor=None):
+    def tag_name(self, version, vendor: Optional[str]):
         """Gets the name of the tag that is used for the version.
 
         :param version: the Version object that the tag should refer to.

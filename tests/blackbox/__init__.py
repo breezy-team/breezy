@@ -27,7 +27,6 @@ def load_tests(loader, basic_tests, pattern):
           'test_get_tar',
           'test_import_dsc',
           'test_import_upstream',
-          'test_mark_uploaded',
           'test_merge_package',
           'test_merge_upstream',
           ]

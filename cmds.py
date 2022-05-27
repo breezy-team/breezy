@@ -1406,53 +1406,6 @@ class cmd_builddeb_do(Command):
                      '"bzr add" or "bzr rm" as appropriate.'))
 
 
-class cmd_mark_uploaded(Command):
-    """Mark that this branch has been uploaded, prior to pushing it.
-
-    When a package has been uploaded we want to mark the revision
-    that it was uploaded in. This command automates doing that
-    by marking the current tip revision with the version indicated
-    in debian/changelog.
-    """
-    force = Option(
-        'force', help="Mark the upload even if it is already marked.")
-
-    takes_options = [merge_opt, force]
-    hidden = True
-
-    def run(self, merge=None, force=None):
-        from .import_dsc import (
-            DistributionBranch,
-            DistributionBranchSet,
-            )
-        from .util import (
-            find_changelog,
-            )
-        t, subpath = WorkingTree.open_containing('.')
-        with t.lock_write():
-            _check_uncommitted(t, subpath)
-            config = debuild_config(t, subpath)
-            if merge is None:
-                merge = (config.build_type == BUILD_TYPE_MERGE)
-            (changelog, top_level) = find_changelog(t, subpath, merge=merge)
-            if changelog.distributions == 'UNRELEASED':
-                if not force:
-                    raise BzrCommandError(gettext(
-                        "The changelog still targets "
-                        "'UNRELEASED', so apparently hasn't been uploaded."))
-            db = DistributionBranch(t.branch, None)
-            dbs = DistributionBranchSet()
-            dbs.add_branch(db)
-            if db.has_version(changelog.version):
-                if not force:
-                    raise BzrCommandError(gettext(
-                        "This version has already been "
-                        "marked uploaded. Use --force to force marking "
-                        "this new version."))
-            tag_name = db.tag_version(changelog.version)
-            self.outf.write(gettext("Tag '%s' created.\n") % tag_name)
-
-
 class cmd_dep3_patch(Command):
     """Format the changes in a branch as a DEP-3 patch.
 
