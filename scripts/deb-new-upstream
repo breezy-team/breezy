@@ -1278,6 +1278,12 @@ async def main():
         help=("Require that uscan provides a tarball"
               "(if --snapshot is not specified)"))
     parser.add_argument(
+        "--upstream-location",
+        type=str,
+        default=None,
+        help="Location of the upstream location "
+        "(defaults to reading debian/upstream/metadata or guessing)")
+    parser.add_argument(
         "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -1334,6 +1340,7 @@ async def main():
                         force_big_version_jump=args.force_big_version_jump,
                         debian_revision=args.debian_revision,
                         require_uscan=args.require_uscan,
+                        location=args.location,
                     )
                 except MalformedTransform:
                     traceback.print_exc()
