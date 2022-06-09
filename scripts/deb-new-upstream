@@ -1340,7 +1340,7 @@ async def main():
                         force_big_version_jump=args.force_big_version_jump,
                         debian_revision=args.debian_revision,
                         require_uscan=args.require_uscan,
-                        location=args.location,
+                        location=args.upstream_location,
                     )
                 except MalformedTransform:
                     traceback.print_exc()
