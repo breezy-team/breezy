@@ -286,6 +286,25 @@ install_lazy_named_hook(
     "RioVersionInfoBuilder.hooks", "revision", update_stanza,
     "git commits")
 
+
+def rewrite_instead_of(location, purpose):
+    try:
+        from dulwich.client import apply_instead_of
+    except ImportError:
+        return location
+
+    from dulwich.config import StackedConfig
+
+    config = StackedConfig.default()
+
+    return apply_instead_of(config, location, push=(purpose=="push"))
+
+
+from ..location import hooks as location_hooks
+location_hooks.install_named_hook(
+    "rewrite_location", rewrite_instead_of,
+    "apply Git insteadOf / pushInsteadOf")
+
 transport_server_registry.register_lazy(
     'git', __name__ + '.server', 'serve_git',
     'Git Smart server protocol over TCP. (default port: 9418)')
