@@ -297,7 +297,7 @@ def rewrite_instead_of(location, purpose):
 
     config = StackedConfig.default()
 
-    return apply_instead_of(config, location, push=(purpose=="push"))
+    return apply_instead_of(config, location, push=(purpose == "push"))
 
 
 from ..location import hooks as location_hooks
