@@ -289,11 +289,10 @@ install_lazy_named_hook(
 
 def rewrite_instead_of(location, purpose):
     try:
-        from dulwich.client import apply_instead_of
+        from dulwich.config import apply_instead_of, StackedConfig
     except ImportError:
+        # Version of dulwich too old (<< 0.20.44)
         return location
-
-    from dulwich.config import StackedConfig
 
     config = StackedConfig.default()
 
