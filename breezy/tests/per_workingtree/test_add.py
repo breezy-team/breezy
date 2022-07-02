@@ -51,7 +51,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b'])
         tree.add(['a'])
         self.assertRaises(
-            inventory.DuplicateFileId, tree.add, ['b'], [tree.path2id('a')])
+            inventory.DuplicateFileId, tree.add, ['b'], ids=[tree.path2id('a')])
         # And the entry should not have been added.
         self.assertTreeLayout(['', 'a'], tree)
 
