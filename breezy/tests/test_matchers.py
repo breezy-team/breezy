@@ -116,7 +116,7 @@ class TestHasLayout(TestCaseWithTransport):
     def test_match(self):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
+        t.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
         self.assertThat(t, HasLayout(['', 'a', 'b/', 'b/c']))
         self.assertThat(t, HasLayout(
             [('', t.path2id('')),
@@ -127,7 +127,7 @@ class TestHasLayout(TestCaseWithTransport):
     def test_mismatch(self):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
+        t.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
@@ -139,7 +139,7 @@ class TestHasLayout(TestCaseWithTransport):
         t = self.make_branch_and_tree('.')
         t.has_versioned_directories = lambda: False
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
+        t.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c']).match(t))
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)

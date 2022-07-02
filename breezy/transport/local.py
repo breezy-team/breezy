@@ -25,7 +25,6 @@ from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
 
 from .. import (
-    atomicfile,
     osutils,
     urlutils,
     )
@@ -160,12 +159,13 @@ class LocalTransport(transport.Transport):
         :param mode: The mode for the newly created file,
                      None means just use the default
         """
+        from ..atomicfile import AtomicFile
 
         path = relpath
         try:
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
-            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
+            fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
@@ -181,6 +181,7 @@ class LocalTransport(transport.Transport):
         :param relpath: Location to put the contents, relative to base.
         :param raw_bytes:   String
         """
+        from ..atomicfile import AtomicFile
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
                 'raw_bytes must be bytes, not %s' % type(raw_bytes))
@@ -188,7 +189,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
-            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
+            fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
