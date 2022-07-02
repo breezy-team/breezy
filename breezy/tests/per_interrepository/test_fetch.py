@@ -495,7 +495,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # start by adding a file so the data knit for the file exists in
         # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])
-        source_tree.add(['id'], [b'id'])
+        source_tree.add(['id'], ids=[b'id'])
         source_tree.commit('a', rev_id=b'a')
         # now we manually insert a revision with an inventory referencing
         # file 'id' at revision 'b', but we do not insert revision b.
@@ -533,7 +533,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         if not from_tree.supports_setting_file_ids():
             raise TestNotApplicable(
                 'from tree format can not create custom file ids')
-        from_tree.add('filename', b'funky-chars<>%&;"\'')
+        from_tree.add('filename', ids=b'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
         try:

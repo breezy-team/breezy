@@ -259,7 +259,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Check per-file knits.
         control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
+        tree.add(['foo'], ['file'], [b'Nasty-IdC:'])
         tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
@@ -640,7 +640,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
     def test_inventories_use_chk_map_with_parent_base_dict(self):
         tree = self.make_branch_and_memory_tree('repo', format="2a")
         tree.lock_write()
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         revid = tree.commit("foo")
         tree.unlock()
         tree.lock_read()
@@ -661,7 +661,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('tree', format='2a')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         for pos in range(20):
             tree.commit(str(pos))
 
@@ -669,7 +669,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('tree', format='2a')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         # 1 commit to leave untouched
         tree.commit('1')
         to_keep = tree.branch.repository._pack_collection.names()

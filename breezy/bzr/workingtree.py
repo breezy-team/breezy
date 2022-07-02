@@ -62,6 +62,7 @@ from breezy import (
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
+    generate_ids,
     inventory,
     serializer,
     xml5,
@@ -793,7 +794,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return self._is_executable_from_path_and_stat_from_stat(
                 path, stat_result)
 
-    def _add(self, files, ids, kinds):
+    def _add(self, files, kinds, ids):
         """See MutableTree._add."""
         with self.lock_tree_write():
             # TODO: Re-adding a file that is removed in the working copy
@@ -808,6 +809,19 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 else:
                     inv.add_path(f, kind=kind, file_id=file_id)
                 self._inventory_is_modified = True
+
+    def mkdir(self, path, file_id=None):
+        """See MutableTree.mkdir()."""
+        if file_id is None:
+            if self.supports_setting_file_ids():
+                file_id = generate_ids.gen_file_id(os.path.basename(path))
+        else:
+            if not self.supports_setting_file_ids():
+                raise SettingFileIdUnsupported()
+        with self.lock_write():
+            os.mkdir(self.abspath(path))
+            self.add([path], ['directory'], ids=[file_id])
+            return file_id
 
     def revision_tree(self, revision_id):
         """See WorkingTree.revision_id."""

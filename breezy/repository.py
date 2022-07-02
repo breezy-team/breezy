@@ -20,17 +20,16 @@ import time
 
 from breezy import (
     config,
-    controldir,
     debug,
     graph,
     osutils,
     revision as _mod_revision,
-    gpg,
     )
 from breezy.i18n import gettext
 """)
 
 from . import (
+    controldir,
     errors,
     registry,
     ui,
