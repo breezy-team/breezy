@@ -53,7 +53,7 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
 
     def _add(self, tree, ps, fids=None):
         if tree.supports_setting_file_ids():
-            tree.add(ps, fids)
+            tree.add(ps, ids=fids)
         else:
             tree.add(ps)
 

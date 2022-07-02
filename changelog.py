@@ -77,6 +77,18 @@ def changelog_commit_message(
 def debcommit(
         tree, committer=None, subpath="", paths=None, reporter=None,
         message=None):
+    """Create a git commit with message based on the new entries in changelog.
+
+    Args:
+      tree: Tree to commit in
+      committer: Optional committer identity
+      subpath: subpath to commit in
+      paths: specifics paths to commit, if any
+      reporter: CommitReporter to use
+      message: Override commit message
+    Returns:
+      Created revision id
+    """
     if message is None:
         message = changelog_commit_message(
             tree, tree.basis_tree(),
@@ -88,7 +100,7 @@ def debcommit(
         specific_files = [subpath]
     else:
         specific_files = None
-    tree.commit(
+    return tree.commit(
         committer=committer, message=message, specific_files=specific_files,
         reporter=reporter)
 
