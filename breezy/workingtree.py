@@ -434,7 +434,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                     other_tree = self.branch.repository.revision_tree(
                         revision_id)
 
-                merge.transform_tree(tree, other_tree)
+                transform_tree(tree, other_tree)
                 if revision_id == _mod_revision.NULL_REVISION:
                     new_parents = []
                 else:
