@@ -19,22 +19,15 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
+import errno
 import os
 from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
 
-from ..lazy_import import lazy_import
-lazy_import(globals(), """
-import errno
-import shutil
-
-from breezy import (
-    atomicfile,
+from .. import (
     osutils,
     urlutils,
     )
-from breezy.transport import LateReadError
-""")
 
 from .. import transport
 
@@ -155,7 +148,7 @@ class LocalTransport(transport.Transport):
             return open(path, 'rb')
         except (IOError, OSError) as e:
             if e.errno == errno.EISDIR:
-                return LateReadError(relpath)
+                return transport.LateReadError(relpath)
             self._translate_error(e, path)
 
     def put_file(self, relpath, f, mode=None):
@@ -166,12 +159,13 @@ class LocalTransport(transport.Transport):
         :param mode: The mode for the newly created file,
                      None means just use the default
         """
+        from ..atomicfile import AtomicFile
 
         path = relpath
         try:
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
-            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
+            fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
@@ -187,6 +181,7 @@ class LocalTransport(transport.Transport):
         :param relpath: Location to put the contents, relative to base.
         :param raw_bytes:   String
         """
+        from ..atomicfile import AtomicFile
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
                 'raw_bytes must be bytes, not %s' % type(raw_bytes))
@@ -194,7 +189,7 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             osutils.check_legal_path(path)
-            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
+            fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError) as e:
             self._translate_error(e, path)
         try:
@@ -388,6 +383,7 @@ class LocalTransport(transport.Transport):
         """Copy the item at rel_from to the location at rel_to"""
         path_from = self._abspath(rel_from)
         path_to = self._abspath(rel_to)
+        import shutil
         try:
             shutil.copy(path_from, path_to)
         except (IOError, OSError) as e:
@@ -438,6 +434,7 @@ class LocalTransport(transport.Transport):
         :param relpaths: A list/generator of entries to be copied.
         """
         if isinstance(other, LocalTransport):
+            import shutil
             # Both from & to are on the local filesystem
             # Unfortunately, I can't think of anything faster than just
             # copying them across, one by one :(

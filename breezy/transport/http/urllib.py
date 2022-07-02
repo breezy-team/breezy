@@ -65,7 +65,6 @@ from ... import (
     config,
     debug,
     errors,
-    lazy_import,
     osutils,
     trace,
     transport,

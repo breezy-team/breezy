@@ -258,7 +258,7 @@ class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree', format='development-subtree')
         self.build_tree(['tree/a/', 'tree/a/b/', 'tree/a/b/c'])
         tree.set_root_id(b'root-id')
-        tree.add(['a', 'a/b', 'a/b/c'], [b'a-id', b'b-id', b'c-id'])
+        tree.add(['a', 'a/b', 'a/b/c'], ids=[b'a-id', b'b-id', b'c-id'])
         tree.commit('initial')
         return tree
 
@@ -421,7 +421,7 @@ class TestAutoResolve(TestCaseWithTransport):
     def test_auto_resolve(self):
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', b'Hello')])
-        base.add('hello', b'hello_id')
+        base.add('hello', ids=b'hello_id')
         base.commit('Hello')
         other = base.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('other/hello', b'hELLO')])
@@ -460,12 +460,12 @@ class TestAutoResolve(TestCaseWithTransport):
         self.requireFeature(SymlinkFeature(self.test_dir))
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', 'Hello')])
-        base.add('hello', b'hello_id')
+        base.add('hello', ids=b'hello_id')
         base.commit('commit 0')
         other = base.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('other/hello', 'Hello')])
         os.symlink('other/hello', 'other/foo')
-        other.add('foo', b'foo_id')
+        other.add('foo', ids=b'foo_id')
         other.commit('commit symlink')
         this = base.controldir.sprout('this').open_workingtree()
         self.assertPathExists('this/hello')
@@ -487,7 +487,7 @@ class TestAutoResolve(TestCaseWithTransport):
     def test_auto_resolve_dir(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
-        tree.add('hello', b'hello-id')
+        tree.add('hello', ids=b'hello-id')
         file_conflict = _mod_bzr_conflicts.TextConflict('hello', b'hello-id')
         tree.set_conflicts([file_conflict])
         remaining, resolved = self._auto_resolve(tree)
@@ -513,7 +513,7 @@ class TestStoredUncommitted(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         tree.commit('get root in there')
         self.build_tree_contents([('tree/file', b'content')])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.store_uncommitted()
         return tree
 

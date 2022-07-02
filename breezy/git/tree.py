@@ -1164,7 +1164,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
     def _set_root_id(self, file_id):
         raise errors.UnsupportedOperation(self._set_root_id, self)
 
-    def _add(self, files, ids, kinds):
+    def _add(self, files, kinds, ids):
         for (path, file_id, kind) in zip(files, ids, kinds):
             if file_id is not None:
                 raise workingtree.SettingFileIdUnsupported()

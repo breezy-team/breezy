@@ -235,7 +235,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_funky_id(self):
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
-        t.add('filename', b'funky-chars<>%&;"\'')
+        t.add('filename', ids=b'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push -d tree new-tree')
 
@@ -295,7 +295,7 @@ class TestPush(tests.TestCaseWithTransport):
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], [b'a-id'])
+        tree.add(['a'], ids=[b'a-id'])
         tree.commit('one', rev_id=b'r1')
         return tree
 

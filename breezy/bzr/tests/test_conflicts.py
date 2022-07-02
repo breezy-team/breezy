@@ -84,7 +84,7 @@ class TestConflicts(tests.TestCaseWithTransport):
                                   ('hello.BASE', b'hello world1'),
                                   ])
         os.mkdir('hello.OTHER')
-        tree.add('hello', b'q')
+        tree.add('hello', ids=b'q')
         l = bzr_conflicts.ConflictList([bzr_conflicts.TextConflict('hello')])
         l.remove_files(tree)
 

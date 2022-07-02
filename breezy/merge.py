@@ -22,33 +22,28 @@ import patiencediff
 
 from breezy import (
     branch as _mod_branch,
-    conflicts as _mod_conflicts,
     debug,
     graph as _mod_graph,
-    merge3,
-    osutils,
     revision as _mod_revision,
     textfile,
-    trace,
     tree as _mod_tree,
-    tsort,
     ui,
     workingtree,
     )
 from breezy.bzr import (
-    conflicts as _mod_bzr_conflicts,
     generate_ids,
     versionedfile,
     )
 from breezy.i18n import gettext
 """)
-from breezy.bzr.conflicts import Conflict as BzrConflict
 from . import (
     decorators,
     errors,
     hooks,
+    osutils,
     registry,
     transform,
+    trace,
     )
 # TODO: Report back as changes are merged in
 
@@ -1411,14 +1406,14 @@ class Merge3Merger(object):
 
     def text_merge(self, trans_id, paths):
         """Perform a three-way text merge on a file"""
+        from .merge3 import Merge3
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
         base_path, other_path, this_path = paths
         base_lines = self.get_lines(self.base_tree, base_path)
         other_lines = self.get_lines(self.other_tree, other_path)
         this_lines = self.get_lines(self.this_tree, this_path)
-        m3 = merge3.Merge3(base_lines, this_lines, other_lines,
-                           is_cherrypick=self.cherrypick)
+        m3 = Merge3(base_lines, this_lines, other_lines, is_cherrypick=self.cherrypick)
         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = b'|' * 7
@@ -2251,6 +2246,7 @@ class _PlanMerge(_PlanMergeBase):
 
     def _build_weave(self):
         from .bzr import weave
+        from .tsort import merge_sort
         self._weave = weave.Weave(weave_name='in_memory_weave',
                                   allow_reserved=True)
         parent_map = self._find_recursive_lcas()
@@ -2267,8 +2263,7 @@ class _PlanMerge(_PlanMergeBase):
         tip_key = self._key_prefix + (_mod_revision.CURRENT_REVISION,)
         parent_map[tip_key] = (self.a_key, self.b_key)
 
-        for seq_num, key, depth, eom in reversed(tsort.merge_sort(parent_map,
-                                                                  tip_key)):
+        for seq_num, key, depth, eom in reversed(merge_sort(parent_map, tip_key)):
             if key == tip_key:
                 continue
         # for key in tsort.topo_sort(parent_map):

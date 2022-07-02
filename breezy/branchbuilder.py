@@ -261,15 +261,15 @@ class BranchBuilder(object):
                     # We're overwriting this path, no need to unversion
                     pending.to_unversion_paths.discard(path)
                 # Special case, because the path already exists
-                tree.add([path], [file_id], ['directory'])
+                tree.add([path], ['directory'], ids=[file_id])
             else:
                 tree.mkdir(path, file_id)
         for from_relpath, to_relpath in pending.to_rename:
             tree.rename_one(from_relpath, to_relpath)
         if pending.to_unversion_paths:
             tree.unversion(pending.to_unversion_paths)
-        tree.add(pending.to_add_files, pending.to_add_file_ids,
-                 pending.to_add_kinds)
+        tree.add(pending.to_add_files,
+                 pending.to_add_kinds, pending.to_add_file_ids)
         for path, content in pending.new_contents.items():
             tree.put_file_bytes_non_atomic(path, content)
 

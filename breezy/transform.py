@@ -32,10 +32,7 @@ from . import (
     )
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    multiparent,
-    revision as _mod_revision,
     ui,
-    urlutils,
     )
 from breezy.i18n import gettext
 """)

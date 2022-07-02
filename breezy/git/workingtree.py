@@ -1295,7 +1295,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 raise BadReferenceTarget(
                     self, sub_tree, 'Target not inside tree.')
 
-            self._add([sub_tree_path], [None], ['tree-reference'])
+            self._add([sub_tree_path], ['tree-reference'], [None])
 
     def _read_submodule_head(self, path):
         return read_submodule_head(self.abspath(path))

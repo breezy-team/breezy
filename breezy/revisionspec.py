@@ -15,18 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-import bisect
-import datetime
-
 from breezy import (
-    branch as _mod_branch,
     revision,
     workingtree,
     )
 from breezy.i18n import gettext
-""")
 
 from . import (
     errors,
@@ -421,8 +414,9 @@ class RevisionSpec_revno(RevisionSpec):
                 dotted = True
 
         if branch_spec:
+            from .branch import Branch
             # the user has overriden the branch to look in.
-            branch = _mod_branch.Branch.open(branch_spec)
+            branch = Branch.open(branch_spec)
 
         if dotted:
             try:
@@ -647,6 +641,7 @@ class _RevListToTimestamps(object):
 
     def __getitem__(self, index):
         """Get the date of the index'd item"""
+        import datetime
         r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
         # TODO: Handle timezone.
         return datetime.datetime.fromtimestamp(r.timestamp)
@@ -689,6 +684,8 @@ class RevisionSpec_date(RevisionSpec):
           matches the first entry after a given date (either at midnight or
           at a specified time).
         """
+        import bisect
+        import datetime
         #  XXX: This doesn't actually work
         #  So the proper way of saying 'give me all entries for today' is:
         #      -r date:yesterday..date:today
@@ -949,7 +946,8 @@ class RevisionSpec_mainline(RevisionIDSpec):
         if revspec.get_branch() is None:
             spec_branch = context_branch
         else:
-            spec_branch = _mod_branch.Branch.open(revspec.get_branch())
+            from .branch import Branch
+            spec_branch = Branch.open(revspec.get_branch())
         revision_id = revspec.as_revision_id(spec_branch)
         graph = context_branch.repository.get_graph()
         result = graph.find_lefthand_merger(revision_id,
