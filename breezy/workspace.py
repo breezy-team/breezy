@@ -26,9 +26,9 @@ from contextlib import ExitStack
 import errno
 import os
 import shutil
-from typing import Optional
+from typing import Optional, List
 
-
+from .clean_tree import iter_deletables
 from .errors import BzrError, DependencyNotPresent, NoSuchFile
 from .osutils import is_inside
 from .trace import warning
@@ -40,8 +40,10 @@ from .workingtree import WorkingTree
 class WorkspaceDirty(BzrError):
     _fmt = "The directory %(path)s has pending changes."
 
-    def __init__(self, path):
-        BzrError.__init__(self, path=path)
+    def __init__(self, tree, subpath):
+        self.tree = tree
+        self.subpath = subpath
+        BzrError.__init__(self, path=tree.abspath(subpath))
 
 
 # TODO(jelmer): Move to .clean_tree?
@@ -145,7 +147,7 @@ def check_clean_tree(
             for change in changes
             if relevant(change.path[0], basis_tree) or relevant(change.path[1], local_tree)
         ):
-            raise WorkspaceDirty(local_tree.abspath(subpath))
+            raise WorkspaceDirty(local_tree, subpath)
 
 
 def get_dirty_tracker(local_tree, subpath='', use_inotify=None):
@@ -213,7 +215,7 @@ class Workspace(object):
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self):
+    def _stage(self) -> List[str]:
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they
@@ -222,12 +224,19 @@ class Workspace(object):
                 [p for p in sorted(relpaths)
                  if self.tree.has_filename(p) and not
                     self.tree.is_ignored(p)])
-            return [
+            changed = [
                 p for p in relpaths
                 if self.tree.is_versioned(p)]
         else:
             self.tree.smart_add([self.tree.abspath(self.subpath)])
-            return [self.subpath] if self.subpath else None
+            changed = [self.subpath] if self.subpath else None
+
+        if self.tree.supports_setting_file_ids():
+            from .rename_map import RenameMap
+            basis_tree = self.tree.basis_tree()
+            RenameMap.guess_renames(
+                basis_tree, self.tree, dry_run=False)
+        return changed
 
     def iter_changes(self):
         with self.tree.lock_write():
@@ -253,12 +262,6 @@ class Workspace(object):
 
         with self.tree.lock_write():
             specific_files = self._stage()
-
-            if self.tree.supports_setting_file_ids():
-                from .rename_map import RenameMap
-                basis_tree = self.tree.basis_tree()
-                RenameMap.guess_renames(
-                    basis_tree, self.tree, dry_run=False)
 
             kwargs['specific_files'] = specific_files
             revid = self.tree.commit(**kwargs)
