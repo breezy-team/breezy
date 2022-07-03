@@ -25,6 +25,7 @@ from . import (
     errors,
     lazy_regex,
     registry,
+    revision as _mod_revision,
     trace,
     )
 
@@ -641,13 +642,56 @@ class _RevListToTimestamps(object):
 
     def __getitem__(self, index):
         """Get the date of the index'd item"""
-        import datetime
         r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
-        # TODO: Handle timezone.
-        return datetime.datetime.fromtimestamp(r.timestamp)
+        return r.datetime()
 
-    def __len__(self):
-        return self.branch.revno()
+
+_date_regex = lazy_regex.lazy_compile(
+    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
+    r'(,|T)?\s*'
+    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
+    )
+
+
+def _parse_datespec(spec):
+    import datetime
+    #  XXX: This doesn't actually work
+    #  So the proper way of saying 'give me all entries for today' is:
+    #      -r date:yesterday..date:today
+    today = datetime.datetime.fromordinal(
+        datetime.date.today().toordinal())
+    if spec.lower() == 'yesterday':
+        return today - datetime.timedelta(days=1)
+    elif spec.lower() == 'today':
+        return today
+    elif spec.lower() == 'tomorrow':
+        return today + datetime.timedelta(days=1)
+    else:
+        m = _date_regex.match(spec)
+        if not m or (not m.group('date') and not m.group('time')):
+            raise ValueError
+
+        if m.group('date'):
+            year = int(m.group('year'))
+            month = int(m.group('month'))
+            day = int(m.group('day'))
+        else:
+            year = today.year
+            month = today.month
+            day = today.day
+
+        if m.group('time'):
+            hour = int(m.group('hour'))
+            minute = int(m.group('minute'))
+            if m.group('second'):
+                second = int(m.group('second'))
+            else:
+                second = 0
+        else:
+            hour, minute, second = 0, 0, 0
+
+        return datetime.datetime(year=year, month=month, day=day,
+                               hour=hour, minute=minute, second=second)
 
 
 class RevisionSpec_date(RevisionSpec):
@@ -671,11 +715,28 @@ class RevisionSpec_date(RevisionSpec):
                                    August 14th, 2006 at 5:10pm.
     """
     prefix = 'date:'
-    _date_regex = lazy_regex.lazy_compile(
-        r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
-        r'(,|T)?\s*'
-        r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
-        )
+
+    def _scan_backwards(self, branch, dt):
+        with branch.lock_read():
+            graph = branch.repository.get_graph()
+            last_match = None
+            for revid in graph.iter_lefthand_ancestry(
+                    branch.last_revision(), (_mod_revision.NULL_REVISION,)):
+                r = branch.repository.get_revision(revid)
+                if r.datetime() < dt:
+                    if last_match is None:
+                        raise InvalidRevisionSpec(self.user_spec, branch)
+                    return RevisionInfo(branch, None, last_match)
+                last_match = revid
+            return RevisionInfo(branch, None, last_match)
+
+    def _bisect_backwards(self, branch, dt, hi):
+        import bisect
+        with branch.lock_read():
+            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1, hi)
+        if rev == branch.revno():
+            raise InvalidRevisionSpec(self.user_spec, branch)
+        return RevisionInfo(branch, rev)
 
     def _match_on(self, branch, revs):
         """Spec for date revisions:
@@ -684,55 +745,16 @@ class RevisionSpec_date(RevisionSpec):
           matches the first entry after a given date (either at midnight or
           at a specified time).
         """
-        import bisect
-        import datetime
-        #  XXX: This doesn't actually work
-        #  So the proper way of saying 'give me all entries for today' is:
-        #      -r date:yesterday..date:today
-        today = datetime.datetime.fromordinal(
-            datetime.date.today().toordinal())
-        if self.spec.lower() == 'yesterday':
-            dt = today - datetime.timedelta(days=1)
-        elif self.spec.lower() == 'today':
-            dt = today
-        elif self.spec.lower() == 'tomorrow':
-            dt = today + datetime.timedelta(days=1)
+        try:
+            dt = _parse_datespec(self.spec)
+        except ValueError:
+            raise InvalidRevisionSpec(
+                self.user_spec, branch, 'invalid date')
+        revno = branch.revno()
+        if revno is None:
+            return self._scan_backwards(branch, dt)
         else:
-            m = self._date_regex.match(self.spec)
-            if not m or (not m.group('date') and not m.group('time')):
-                raise InvalidRevisionSpec(
-                    self.user_spec, branch, 'invalid date')
-
-            try:
-                if m.group('date'):
-                    year = int(m.group('year'))
-                    month = int(m.group('month'))
-                    day = int(m.group('day'))
-                else:
-                    year = today.year
-                    month = today.month
-                    day = today.day
-
-                if m.group('time'):
-                    hour = int(m.group('hour'))
-                    minute = int(m.group('minute'))
-                    if m.group('second'):
-                        second = int(m.group('second'))
-                    else:
-                        second = 0
-                else:
-                    hour, minute, second = 0, 0, 0
-            except ValueError:
-                raise InvalidRevisionSpec(
-                    self.user_spec, branch, 'invalid date')
-
-            dt = datetime.datetime(year=year, month=month, day=day,
-                                   hour=hour, minute=minute, second=second)
-        with branch.lock_read():
-            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1)
-        if rev == branch.revno():
-            raise InvalidRevisionSpec(self.user_spec, branch)
-        return RevisionInfo(branch, rev)
+            return self._bisect_backwards(branch, dt, revno)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
