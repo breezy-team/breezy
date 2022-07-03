@@ -25,6 +25,7 @@ from . import (
     errors,
     lazy_regex,
     registry,
+    revision as _mod_revision,
     trace,
     )
 
@@ -641,13 +642,8 @@ class _RevListToTimestamps(object):
 
     def __getitem__(self, index):
         """Get the date of the index'd item"""
-        import datetime
         r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
-        # TODO: Handle timezone.
-        return datetime.datetime.fromtimestamp(r.timestamp)
-
-    def __len__(self):
-        return self.branch.revno()
+        return r.datetime()
 
 
 _date_regex = lazy_regex.lazy_compile(
@@ -720,6 +716,28 @@ class RevisionSpec_date(RevisionSpec):
     """
     prefix = 'date:'
 
+    def _scan_backwards(self, branch, dt):
+        with branch.lock_read():
+            graph = branch.repository.get_graph()
+            last_match = None
+            for revid in graph.iter_lefthand_ancestry(
+                    branch.last_revision(), (_mod_revision.NULL_REVISION,)):
+                r = branch.repository.get_revision(revid)
+                if r.datetime() < dt:
+                    if last_match is None:
+                        raise InvalidRevisionSpec(self.user_spec, branch)
+                    return RevisionInfo(branch, None, last_match)
+                last_match = revid
+            return RevisionInfo(branch, None, last_match)
+
+    def _bisect_backwards(self, branch, dt, hi):
+        import bisect
+        with branch.lock_read():
+            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1, hi)
+        if rev == branch.revno():
+            raise InvalidRevisionSpec(self.user_spec, branch)
+        return RevisionInfo(branch, rev)
+
     def _match_on(self, branch, revs):
         """Spec for date revisions:
           date:value
@@ -732,12 +750,11 @@ class RevisionSpec_date(RevisionSpec):
         except ValueError:
             raise InvalidRevisionSpec(
                 self.user_spec, branch, 'invalid date')
-        import bisect
-        with branch.lock_read():
-            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1)
-        if rev == branch.revno():
-            raise InvalidRevisionSpec(self.user_spec, branch)
-        return RevisionInfo(branch, rev)
+        revno = branch.revno()
+        if revno is None:
+            return self._scan_backwards(branch, dt)
+        else:
+            return self._bisect_backwards(branch, dt, revno)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
