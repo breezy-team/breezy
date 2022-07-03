@@ -650,6 +650,54 @@ class _RevListToTimestamps(object):
         return self.branch.revno()
 
 
+_date_regex = lazy_regex.lazy_compile(
+    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
+    r'(,|T)?\s*'
+    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
+    )
+
+
+def _parse_datespec(spec):
+    import datetime
+    #  XXX: This doesn't actually work
+    #  So the proper way of saying 'give me all entries for today' is:
+    #      -r date:yesterday..date:today
+    today = datetime.datetime.fromordinal(
+        datetime.date.today().toordinal())
+    if spec.lower() == 'yesterday':
+        return today - datetime.timedelta(days=1)
+    elif spec.lower() == 'today':
+        return today
+    elif spec.lower() == 'tomorrow':
+        return today + datetime.timedelta(days=1)
+    else:
+        m = _date_regex.match(spec)
+        if not m or (not m.group('date') and not m.group('time')):
+            raise ValueError
+
+        if m.group('date'):
+            year = int(m.group('year'))
+            month = int(m.group('month'))
+            day = int(m.group('day'))
+        else:
+            year = today.year
+            month = today.month
+            day = today.day
+
+        if m.group('time'):
+            hour = int(m.group('hour'))
+            minute = int(m.group('minute'))
+            if m.group('second'):
+                second = int(m.group('second'))
+            else:
+                second = 0
+        else:
+            hour, minute, second = 0, 0, 0
+
+        return datetime.datetime(year=year, month=month, day=day,
+                               hour=hour, minute=minute, second=second)
+
+
 class RevisionSpec_date(RevisionSpec):
     """Selects a revision on the basis of a datestamp."""
 
@@ -671,11 +719,6 @@ class RevisionSpec_date(RevisionSpec):
                                    August 14th, 2006 at 5:10pm.
     """
     prefix = 'date:'
-    _date_regex = lazy_regex.lazy_compile(
-        r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
-        r'(,|T)?\s*'
-        r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
-        )
 
     def _match_on(self, branch, revs):
         """Spec for date revisions:
@@ -684,50 +727,12 @@ class RevisionSpec_date(RevisionSpec):
           matches the first entry after a given date (either at midnight or
           at a specified time).
         """
+        try:
+            dt = _parse_datespec(self.spec)
+        except ValueError:
+            raise InvalidRevisionSpec(
+                self.user_spec, branch, 'invalid date')
         import bisect
-        import datetime
-        #  XXX: This doesn't actually work
-        #  So the proper way of saying 'give me all entries for today' is:
-        #      -r date:yesterday..date:today
-        today = datetime.datetime.fromordinal(
-            datetime.date.today().toordinal())
-        if self.spec.lower() == 'yesterday':
-            dt = today - datetime.timedelta(days=1)
-        elif self.spec.lower() == 'today':
-            dt = today
-        elif self.spec.lower() == 'tomorrow':
-            dt = today + datetime.timedelta(days=1)
-        else:
-            m = self._date_regex.match(self.spec)
-            if not m or (not m.group('date') and not m.group('time')):
-                raise InvalidRevisionSpec(
-                    self.user_spec, branch, 'invalid date')
-
-            try:
-                if m.group('date'):
-                    year = int(m.group('year'))
-                    month = int(m.group('month'))
-                    day = int(m.group('day'))
-                else:
-                    year = today.year
-                    month = today.month
-                    day = today.day
-
-                if m.group('time'):
-                    hour = int(m.group('hour'))
-                    minute = int(m.group('minute'))
-                    if m.group('second'):
-                        second = int(m.group('second'))
-                    else:
-                        second = 0
-                else:
-                    hour, minute, second = 0, 0, 0
-            except ValueError:
-                raise InvalidRevisionSpec(
-                    self.user_spec, branch, 'invalid date')
-
-            dt = datetime.datetime(year=year, month=month, day=day,
-                                   hour=hour, minute=minute, second=second)
         with branch.lock_read():
             rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1)
         if rev == branch.revno():
