@@ -71,7 +71,7 @@ META_INFO = {
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'dulwich>=0.20.23',
-        'urllib3',
+        'urllib3>=1.24.1',
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
