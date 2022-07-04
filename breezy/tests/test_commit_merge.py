@@ -81,8 +81,8 @@ class TestCommitMerge(TestCaseWithTransport):
 
         self.build_tree(['x/ecks', 'y/why'])
 
-        wtx.add(['ecks'], [b'ecks-id'])
-        wty.add(['why'], [b'why-id'])
+        wtx.add(['ecks'], ids=[b'ecks-id'])
+        wty.add(['why'], ids=[b'why-id'])
 
         wtx.commit('commit one', rev_id=b'x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id=b'y@u-0-1', allow_pointless=True)

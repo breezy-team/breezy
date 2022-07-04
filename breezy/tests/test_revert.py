@@ -29,7 +29,7 @@ class TestRevert(tests.TestCaseWithTransport):
         target_tree = source_tree.controldir.sprout(
             'target').open_workingtree()
         self.build_tree(['source/dir/', 'source/dir/contents'])
-        source_tree.add(['dir', 'dir/contents'], [b'dir-id', b'contents-id'])
+        source_tree.add(['dir', 'dir/contents'], ids=[b'dir-id', b'contents-id'])
         source_tree.commit('added dir')
         target_tree.lock_write()
         self.addCleanup(target_tree.unlock)
@@ -141,7 +141,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
         tree.add(['dir', 'dir/file1', 'dir/file2'],
-                 [b'dir-id', b'file1-id', b'file2-id'])
+                 ids=[b'dir-id', b'file1-id', b'file2-id'])
         tree.commit("Added files")
         os.unlink('dir/file1')
         os.unlink('dir/file2')

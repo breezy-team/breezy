@@ -205,7 +205,7 @@ class TestMerge(TestCaseWithTransport):
     def test_rmdir_conflict(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/b/'])
-        tree_a.add('b', b'b-id')
+        tree_a.add('b', ids=b'b-id')
         tree_a.commit('added b')
         # basis_tree() is only guaranteed to be valid as long as it is actually
         # the basis tree. This mutates the tree after grabbing basis, so go to
@@ -274,7 +274,7 @@ class TestMerge(TestCaseWithTransport):
     def test_merge_kind_change(self):
         tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', b'content_1')])
-        tree_a.add('file', b'file-id')
+        tree_a.add('file', ids=b'file-id')
         tree_a.commit('added file')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         os.unlink('tree_a/file')
@@ -463,7 +463,7 @@ class TestMerge(TestCaseWithTransport):
     def test_make_preview_transform(self):
         this_tree = self.make_branch_and_tree('this')
         self.build_tree_contents([('this/file', b'1\n')])
-        this_tree.add('file', b'file-id')
+        this_tree.add('file', ids=b'file-id')
         this_tree.commit('rev1', rev_id=b'rev1')
         other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('this/file', b'1\n2a\n')])
@@ -486,7 +486,7 @@ class TestMerge(TestCaseWithTransport):
     def test_do_merge(self):
         this_tree = self.make_branch_and_tree('this')
         self.build_tree_contents([('this/file', b'1\n')])
-        this_tree.add('file', b'file-id')
+        this_tree.add('file', ids=b'file-id')
         this_tree.commit('rev1', rev_id=b'rev1')
         other_tree = this_tree.controldir.sprout('other').open_workingtree()
         self.build_tree_contents([('this/file', b'1\n2a\n')])
@@ -524,13 +524,13 @@ class TestMerge(TestCaseWithTransport):
         # Yes, people actually do this.  And report bugs if it breaks.
         source = self.make_branch_and_tree('source', format='rich-root-pack')
         self.build_tree(['source/foo/'])
-        source.add('foo', b'foo-id')
+        source.add('foo', ids=b'foo-id')
         source.commit('Add foo')
         target = source.controldir.sprout('target').open_workingtree()
         subtree = target.extract('foo')
         subtree.commit('Delete root')
         self.build_tree(['source/bar'])
-        source.add('bar', b'bar-id')
+        source.add('bar', ids=b'bar-id')
         source.commit('Add bar')
         subtree.merge_from_branch(source.branch)
 
@@ -2313,7 +2313,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
         os.symlink('bar', 'path/foo')
-        wt.add(['foo'], [b'foo-id'])
+        wt.add(['foo'], ids=[b'foo-id'])
         self.assertEqual('bar', wt.get_symlink_target('foo'))
         wt.commit('add symlink', rev_id=b'F-id')
         # Reset to D, so that we can merge F
@@ -2381,7 +2381,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         os.symlink('bar', 'path/foo')
-        wt.add(['foo'], [b'foo-id'])
+        wt.add(['foo'], ids=[b'foo-id'])
         wt.commit('add symlink', rev_id=b'A-id')
         os.remove('path/foo')
         os.symlink('baz', 'path/foo')
@@ -2424,7 +2424,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         os.symlink('bar', 'path/foo')
-        wt.add(['foo'], [b'foo-id'])
+        wt.add(['foo'], ids=[b'foo-id'])
         wt.commit('A add symlink', rev_id=b'A-id')
         wt.rename_one('foo', 'barry')
         wt.commit('B foo => barry', rev_id=b'B-id')
@@ -2480,7 +2480,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         os.symlink('bar', 'path/foo')
-        wt.add(['foo'], [b'foo-id'])
+        wt.add(['foo'], ids=[b'foo-id'])
         wt.commit('add symlink', rev_id=b'A-id')
         os.remove('path/foo')
         os.symlink('baz', 'path/foo')
@@ -2529,7 +2529,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.addCleanup(wt.unlock)
         wt.commit('base', rev_id=b'A-id')
         os.symlink('bar', 'path/foo')
-        wt.add(['foo'], [b'foo-id'])
+        wt.add(['foo'], ids=[b'foo-id'])
         wt.commit('add symlink foo => bar', rev_id=b'B-id')
         wt.set_last_revision(b'A-id')
         wt.branch.set_last_revision_info(1, b'A-id')
@@ -2584,7 +2584,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         os.symlink('bar', 'path/foo')
-        wt.add(['foo'], [b'foo-id'])
+        wt.add(['foo'], ids=[b'foo-id'])
         wt.commit('add symlink', rev_id=b'A-id')
         os.remove('path/foo')
         os.symlink('baz', 'path/foo')
@@ -3397,7 +3397,7 @@ class TestMergeHooks(TestCaseWithTransport):
         super(TestMergeHooks, self).setUp()
         self.tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', b'content_1')])
-        self.tree_a.add('file', b'file-id')
+        self.tree_a.add('file', ids=b'file-id')
         self.tree_a.commit('added file')
 
         self.tree_b = self.tree_a.controldir.sprout(

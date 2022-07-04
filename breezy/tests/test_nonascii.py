@@ -37,7 +37,7 @@ class NonAsciiTest(TestCaseWithTransport):
             return
         with open(pathjoin(br_dir, "a"), "w") as f:
             f.write("hello")
-        wt.add(["a"], [b"a-id"])
+        wt.add(["a"], ids=[b"a-id"])
 
 
 a_circle_c = u'\xe5'

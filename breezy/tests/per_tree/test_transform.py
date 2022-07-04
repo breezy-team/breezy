@@ -265,7 +265,7 @@ class TestTransformPreview(TestCaseWithTree):
                 'format does not support setting file ids')
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c'])
-        tree.add(['a', 'b', 'c'], [b'a-id', b'b-id', b'c-id'])
+        tree.add(['a', 'b', 'c'], ids=[b'a-id', b'b-id', b'c-id'])
         preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.unversion_file(preview.trans_id_file_id(b'b-id'))

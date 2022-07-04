@@ -62,7 +62,7 @@ class MemoryTree(MutableInventoryTree):
         # Memory tree doesn't have any control filenames
         return False
 
-    def _add(self, files, ids, kinds):
+    def _add(self, files, kinds, ids):
         """See MutableTree._add."""
         with self.lock_tree_write():
             for f, file_id, kind in zip(files, ids, kinds):
@@ -162,7 +162,7 @@ class MemoryTree(MutableInventoryTree):
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
-        self.add(path, file_id, 'directory')
+        self.add(path, 'directory', file_id)
         if file_id is None:
             file_id = self.path2id(path)
         self._file_transport.mkdir(path)
