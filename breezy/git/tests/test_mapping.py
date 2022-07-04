@@ -235,7 +235,7 @@ class TestImportCommit(tests.TestCase):
         rev, roundtrip_revid, verifiers = mapping.import_commit(
             c, mapping.revision_id_foreign_to_bzr)
         self.assertEqual(
-            rev.properties[u'git-mergetag-0'], tag.as_raw_string())
+            rev.properties[u'git-mergetag-0'].encode('utf-8'), tag.as_raw_string())
 
     def test_unknown_hg_fields(self):
         c = Commit()
