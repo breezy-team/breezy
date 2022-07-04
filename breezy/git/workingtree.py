@@ -1295,7 +1295,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 raise BadReferenceTarget(
                     self, sub_tree, 'Target not inside tree.')
 
-            self._add([sub_tree_path], ['tree-reference'], [None])
+            path, can_access = osutils.normalized_filename(sub_tree_path)
+            if not can_access:
+                raise errors.InvalidNormalization(path)
+            self._index_add_entry(path, 'tree-reference')
 
     def _read_submodule_head(self, path):
         return read_submodule_head(self.abspath(path))

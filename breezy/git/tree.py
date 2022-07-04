@@ -58,12 +58,15 @@ from .. import (
     revisiontree,
     trace,
     tree as _mod_tree,
+    urlutils,
     workingtree,
     )
 from ..revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
+from ..transport import get_transport
+from ..tree import MissingNestedTree
 
 from .mapping import (
     encode_git_path,
@@ -314,6 +317,11 @@ class GitTree(_mod_tree.Tree):
         return Branch.open(url.decode('utf-8'))
 
 
+class RemoteNestedTree(MissingNestedTree):
+
+    _fmt = "Unable to access remote nested tree at %(path)s"
+
+
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     """Revision tree implementation based on Git objects."""
 
@@ -343,22 +351,28 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if not isinstance(relpath, bytes):
             raise TypeError(relpath)
         try:
-            info = self._submodule_info()[relpath]
+            url, section = self._submodule_info()[relpath]
         except KeyError:
-            nested_repo_transport = self._repository.controldir.user_transport.clone(
-                decode_git_path(relpath))
+            nested_repo_transport = None
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
-                posixpath.join('modules', decode_git_path(info[1])))
+                posixpath.join('modules', decode_git_path(section)))
             if not nested_repo_transport.has('.'):
-                nested_repo_transport = self._repository.controldir.user_transport.clone(
-                    posixpath.join(decode_git_path(info[1]), '.git'))
+                nested_url = urlutils.join(
+                    self._repository.controldir.user_url, decode_git_path(url))
+                nested_repo_transport = get_transport(nested_url)
+        if nested_repo_transport is None:
+            nested_repo_transport = self._repository.controldir.user_transport.clone(
+                posixpath.join(decode_git_path(relpath), '.git'))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
 
     def _get_submodule_store(self, relpath):
-        return self._get_submodule_repository(relpath)._git.object_store
+        repo = self._get_submodule_repository(relpath)
+        if not hasattr(repo, '_git'):
+            raise RemoteNestedTree(relpath)
+        return repo._git.object_store
 
     def get_nested_tree(self, path):
         encoded_path = encode_git_path(path)
@@ -1164,14 +1178,54 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
     def _set_root_id(self, file_id):
         raise errors.UnsupportedOperation(self._set_root_id, self)
 
-    def _add(self, files, kinds, ids):
-        for (path, file_id, kind) in zip(files, ids, kinds):
-            if file_id is not None:
-                raise workingtree.SettingFileIdUnsupported()
-            path, can_access = osutils.normalized_filename(path)
-            if not can_access:
-                raise errors.InvalidNormalization(path)
-            self._index_add_entry(path, kind)
+    def add(self, files, kinds=None):
+        """Add paths to the set of versioned paths.
+
+        Note that the command line normally calls smart_add instead,
+        which can automatically recurse.
+
+        This adds the files to the tree, so that they will be
+        recorded by the next commit.
+
+        Args:
+          files: List of paths to add, relative to the base of the tree.
+          kinds: Optional parameter to specify the kinds to be used for
+            each file.
+        """
+        if isinstance(files, str):
+            # XXX: Passing a single string is inconsistent and should be
+            # deprecated.
+            if not (kinds is None or isinstance(kinds, str)):
+                raise AssertionError()
+            files = [files]
+            if kinds is not None:
+                kinds = [kinds]
+
+        files = [path.strip('/') for path in files]
+
+        if kinds is None:
+            kinds = [None] * len(files)
+        elif not len(kinds) == len(files):
+            raise AssertionError()
+        with self.lock_tree_write():
+            for f in files:
+                # generic constraint checks:
+                if self.is_control_filename(f):
+                    raise errors.ForbiddenControlFileError(filename=f)
+                fp = osutils.splitpath(f)
+            # fill out file kinds for all files [not needed when we stop
+            # caring about the instantaneous file kind within a uncommmitted tree
+            #
+            self._gather_kinds(files, kinds)
+            for (path, kind) in zip(files, kinds):
+                path, can_access = osutils.normalized_filename(path)
+                if not can_access:
+                    raise errors.InvalidNormalization(path)
+                self._index_add_entry(path, kind)
+
+    def _gather_kinds(self, files, kinds):
+        """Helper function for add - sets the entries of kinds."""
+        raise NotImplementedError(self._gather_kinds)
 
     def _read_submodule_head(self, path):
         raise NotImplementedError(self._read_submodule_head)
