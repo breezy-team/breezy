@@ -58,6 +58,12 @@ HG_EXTRA = b"HG:extra"
 
 # This HG extra is used to indicate the commit that this commit was based on.
 HG_EXTRA_AMEND_SOURCE = b"amend_source"
+HG_EXTRA_REBASE_SOURCE = b"rebase_source"
+HG_EXTRA_ABSORB_SOURCE = b"absorb_source"
+HG_EXTRA_SOURCE = b"source"
+HG_EXTRA_INTERMEDIATE_SOURCE = b"intermediate-source"
+HG_EXTRA_TOPIC = b"topic"
+HG_EXTRA_REWRITE_NOISE = b"_rewrite_noise"
 
 FILE_ID_PREFIX = b'git:'
 
@@ -363,7 +369,8 @@ class BzrGitMapping(foreign.VcsMapping):
         i = 0
         propname = u'git-mergetag-0'
         while propname in rev.properties:
-            commit.mergetag.append(Tag.from_string(rev.properties[propname]))
+            commit.mergetag.append(
+                Tag.from_string(rev.properties[propname].encode('utf-8', 'surrogateescape')))
             i += 1
             propname = u'git-mergetag-%d' % i
         if u'git-extra' in rev.properties:
@@ -436,7 +443,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 'utf-8', 'surrogateescape')
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
-                rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string()
+                rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string().decode('utf-8', 'surrogateescape')
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         rev.parent_ids = None
@@ -467,7 +474,10 @@ class BzrGitMapping(foreign.VcsMapping):
                     v.decode('utf-8', 'surrogateescape') + '\n')
             elif k == HG_EXTRA:
                 hgk, hgv = v.split(b':', 1)
-                if hgk not in (HG_EXTRA_AMEND_SOURCE, ) and strict:
+                if hgk not in (HG_EXTRA_AMEND_SOURCE, HG_EXTRA_REBASE_SOURCE,
+                               HG_EXTRA_ABSORB_SOURCE, HG_EXTRA_INTERMEDIATE_SOURCE,
+                               HG_EXTRA_SOURCE, HG_EXTRA_TOPIC,
+                               HG_EXTRA_REWRITE_NOISE) and strict:
                     raise UnknownMercurialCommitExtra(commit, [hgk])
                 extra_lines.append(
                     k.decode('utf-8', 'surrogateescape') + ' ' +
