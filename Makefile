@@ -80,8 +80,7 @@ check-ci: docs extensions
 	# anymore -- vila 2017-05-24
 	set -o pipefail; \
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) \
-	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
-	  | subunit-filter -s --passthrough --rename "^" "python3."
+	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2
 
 # Run Python style checker (apt-get install flake8)
 #
