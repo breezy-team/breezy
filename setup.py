@@ -80,7 +80,10 @@ META_INFO = {
         'workspace': ['pyinotify'],
         'doc': ['setuptools', 'sphinx', 'sphinx_epytext'],
         },
-    'rust_extensions': [RustExtension("brz", binding=Binding.Exec, strip=Strip.All)],
+    'rust_extensions': [
+        RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
+        RustExtension("breezy._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+        ],
     'tests_require': [
         'testtools',
         'python-subunit',
@@ -242,12 +245,13 @@ class build_ext_if_possible(build_ext):
         ]
 
     def initialize_options(self):
-        build_ext.initialize_options(self)
+        super(build_ext_if_possible, self).initialize_options()
+        self.ext_map = {}
         self.allow_python_fallback = False
 
     def run(self):
         try:
-            build_ext.run(self)
+            super(build_ext_if_possible, self).run()
         except DistutilsPlatformError:
             e = sys.exc_info()[1]
             if not self.allow_python_fallback:
@@ -261,7 +265,7 @@ class build_ext_if_possible(build_ext):
 
     def build_extension(self, ext):
         try:
-            build_ext.build_extension(self, ext)
+            super(build_ext_if_possible, self).build_extension(ext)
         except CCompilerError:
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extension "%s".\n'
