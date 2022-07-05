@@ -42,32 +42,14 @@ extensions:
 
 check: docs check-nodocs
 
-check-nodocs: check-nodocs2 check-nodocs3
-
-check-nodocs3:
-	# Generate a stream for PQM to watch.
+check-nodocs:
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
 	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) \
 	  ./brz selftest -Oselftest.timeout=120 --strict \
-	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
+	  --subunit2 $(tests) | tee selftest.log | subunit2pyunit
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
-	# command above (the '|' swallow any errors since 'make'
-	# sees the 'tee' exit code for the whole line
-	if [ ! -s selftest.log ] ; then exit 1 ; fi
-	# Check that there were no errors reported.
-	subunit-stats < selftest.log
-
-check-nodocs2: extensions
-	# Generate a stream for PQM to watch.
-	-$(RM) -f selftest.log
-	echo `date` ": selftest starts" 1>&2
-	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) \
-	  ./brz selftest -Oselftest.timeout=120 \
-	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
-	echo `date` ": selftest ends" 1>&2
-	# An empty log file should catch errors in the $(PYTHON)
 	# command above (the '|' swallow any errors since 'make'
 	# sees the 'tee' exit code for the whole line
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
