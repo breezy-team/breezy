@@ -32,10 +32,7 @@ from . import (
     )
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    multiparent,
-    revision as _mod_revision,
     ui,
-    urlutils,
     )
 from breezy.i18n import gettext
 """)
@@ -50,7 +47,6 @@ from .osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_symlinks,
     )
 from .progress import ProgressPhase
 from .tree import (
@@ -1131,6 +1127,9 @@ class PreviewTree(object):
 
     def supports_setting_file_ids(self):
         raise NotImplementedError(self.supports_setting_file_ids)
+
+    def supports_symlinks(self):
+        return self._transform._tree.supports_symlinks()
 
     @property
     def _by_parent(self):

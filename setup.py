@@ -14,13 +14,13 @@ import glob
 
 try:
     import setuptools
-except ImportError as e:
+except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
 try:
     from setuptools_rust import Binding, RustExtension, Strip
-except ImportError as e:
+except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
     sys.exit(1)
 
@@ -58,7 +58,6 @@ META_INFO = {
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: GNU General Public License (GPL)',
-        'Operating System :: Microsoft :: Windows',
         'Operating System :: OS Independent',
         'Operating System :: POSIX',
         'Programming Language :: Python',
@@ -72,22 +71,26 @@ META_INFO = {
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'dulwich>=0.20.23',
+        'urllib3>=1.24.1',
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
-        'fastimport': ['fastimport<0.9.8;python_version<"3.0"', 'fastimport;python_version>="3.5"'],
+        'fastimport': ['fastimport'],
         'git': ['dulwich>=0.20.23'],
         'launchpad': ['launchpadlib>=1.6.3'],
         'workspace': ['pyinotify'],
-        'doc': ['setuptools<45;python_version<"3.0"', 'sphinx==1.8.5;python_version<"3.0"', 'sphinx_epytext'],
+        'doc': ['setuptools', 'sphinx', 'sphinx_epytext'],
         },
-    'rust_extensions': [RustExtension("brz", binding=Binding.Exec, strip=Strip.All)],
+    'rust_extensions': [
+        RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
+        RustExtension("breezy._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+        ],
     'tests_require': [
         'testtools',
-        'testtools<=2.4.0;python_version<"3.0"',
         'python-subunit',
+        'dulwich>=0.20.29',
     ],
-    'python_requires': '>=3.5',
+    'python_requires': '>=3.6',
 }
 
 # The list of packages is automatically generated later. Add other things
@@ -210,7 +213,7 @@ ext_modules = []
 try:
     from Cython.Distutils import build_ext
     from Cython.Compiler.Version import version as cython_version
-except ImportError:
+except ModuleNotFoundError:
     have_cython = False
     # try to build the extension from the prior generated source.
     print("")
@@ -243,12 +246,13 @@ class build_ext_if_possible(build_ext):
         ]
 
     def initialize_options(self):
-        build_ext.initialize_options(self)
+        super(build_ext_if_possible, self).initialize_options()
+        self.ext_map = {}
         self.allow_python_fallback = False
 
     def run(self):
         try:
-            build_ext.run(self)
+            super(build_ext_if_possible, self).run()
         except DistutilsPlatformError:
             e = sys.exc_info()[1]
             if not self.allow_python_fallback:
@@ -262,7 +266,7 @@ class build_ext_if_possible(build_ext):
 
     def build_extension(self, ext):
         try:
-            build_ext.build_extension(self, ext)
+            super(build_ext_if_possible, self).build_extension(ext)
         except CCompilerError:
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extension "%s".\n'
@@ -376,7 +380,8 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     ico_root = os.path.join(tbzr_root, 'tbreezy', 'resources')
     icos = [] # list of (path_root, relative_ico_path)
     # First always brz's icon and its in the root of the brz tree.
-    icos.append(('', 'brz.ico'))
+    # FIXME: There's no such thing as brz.ico
+    #icos.append(('', 'brz.ico'))
     for root, dirs, files in os.walk(ico_root):
         icos.extend([(ico_root, os.path.join(root, f)[len(ico_root) + 1:])
                      for f in files if f.endswith('.ico')])
@@ -457,7 +462,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
         base_dirs_to_check.append(pyqt_dir)
     try:
         import PyQt4
-    except ImportError:
+    except ModuleNotFoundError:
         pass
     else:
         pyqt4_base_dir = os.path.dirname(PyQt4.__file__)
@@ -534,7 +539,7 @@ if 'bdist_wininst' in sys.argv:
 
 elif 'py2exe' in sys.argv:
     # py2exe setup
-    import py2exe
+    from py2exe import distutils_buildexe as py2exe
 
     # pick real brz version
     import breezy
@@ -578,15 +583,18 @@ elif 'py2exe' in sys.argv:
             self.outfiles.extend([f + 'o' for f in compile_names])
     # end of class install_data_with_bytecompile
 
-    target = py2exe.build_exe.Target(
+    target = py2exe.runtime.Target(
         script="brz",
         dest_base="brz",
-        icon_resources=[(0, 'brz.ico')],
+        # FIXME: There's no such thing as brz.ico
+        #icon_resources=[(0, 'brz.ico')],
         name=META_INFO['name'],
         version=version_str,
         description=META_INFO['description'],
-        author=META_INFO['author'],
-        copyright="(c) Canonical Ltd, 2005-2010",
+        maintainer=META_INFO['maintainer'],
+        copyright=(
+            "Copyright 2005-2012 Canonical Ltd.\n"
+            "Copyright 2017-2021 Breezy developers"),
         company_name="Canonical Ltd.",
         comments=META_INFO['description'],
     )
@@ -647,6 +655,14 @@ elif 'py2exe' in sys.argv:
             # rest of the svn plugin wasn't. So we tell py2exe to leave the
             # plugins out of the .zip file
             excludes.extend(["breezy.plugins." + d for d in dirs])
+            # svn plugin requires subvertpy,
+            # and pip cannot install it on Windows.
+            # When subvertpy is not available, remove svn from plugins
+            if "svn" in dirs:
+                try:
+                    import subvertpy
+                except ModuleNotFoundError:
+                    dirs.remove("svn")
         x = []
         for i in files:
             # Throw away files we don't want packaged. Note that plugins may
@@ -661,16 +677,22 @@ elif 'py2exe' in sys.argv:
         if x:
             target_dir = root[len('breezy/'):]  # install to 'plugins/...'
             plugins_files.append((target_dir, x))
-    # find modules for built-in plugins
+    # find modules required by built-in plugins
     import tools.package_mf
-    mf = tools.package_mf.CustomModuleFinder()
-    mf.run_package('breezy/plugins')
-    packs, mods = mf.get_result()
-    additional_packages.update(packs)
-    includes.extend(mods)
+    mf = tools.package_mf.CustomModuleFinder('.')
+    mf.load_package_recursive('breezy.plugins')
+    (packs, mods) = mf.get_result()
+    # Don't add the plugins packages and modules,
+    # as they are listed in excluded
+    additional_packages.update(
+        pack for pack in packs
+        if not (pack.startswith('breezy.plugins.') or pack in excludes))
+    includes.extend(
+        mod for mod in mods
+        if not (mod.startswith('breezy.plugins.') or mod in excludes))
 
     console_targets = [target,
-                       'tools/win32/bzr_postinstall.py',
+                       'tools/win32/brz_postinstall.py',
                        ]
     gui_targets = [gui_target]
     data_files = topics_files + plugins_files + I18N_FILES
@@ -725,7 +747,7 @@ elif 'py2exe' in sys.argv:
                                "includes": includes,
                                "excludes": excludes,
                                "dll_excludes": dll_excludes,
-                               "dist_dir": "win32_bzr.exe",
+                               "dist_dir": "win32_brz.exe",
                                "optimize": 2,
                                "custom_boot_script":
                                    "tools/win32/py2exe_boot_common.py",
@@ -735,10 +757,10 @@ elif 'py2exe' in sys.argv:
     # We want the libaray.zip to have optimize = 2, but the exe to have
     # optimize = 1, so that .py files that get compilied at run time
     # (e.g. user installed plugins) dont have their doc strings removed.
-    class py2exe_no_oo_exe(py2exe.build_exe.py2exe):
-        def build_executable(self, *args, **kwargs):
+    class py2exe_no_oo_exe(py2exe.py2exe):
+        def run(self, *args, **kwargs):
             self.optimize = 1
-            py2exe.build_exe.py2exe.build_executable(self, *args, **kwargs)
+            super(py2exe_no_oo_exe, self).run(*args, **kwargs)
             self.optimize = 2
 
     if __name__ == '__main__':

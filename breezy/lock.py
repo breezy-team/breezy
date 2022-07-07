@@ -138,7 +138,7 @@ def cant_unlock_not_held(locked_object):
 try:
     import fcntl
     have_fcntl = True
-except ImportError:
+except ModuleNotFoundError:
     have_fcntl = False
 
 have_ctypes_win32 = False

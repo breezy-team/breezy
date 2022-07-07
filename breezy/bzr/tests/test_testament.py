@@ -49,7 +49,7 @@ class TestamentSetup(TestCaseWithTransport):
                                   ('src/', ),
                                   ('src/foo.c', b'int main()\n{\n}\n')])
         self.wt.add(['hello', 'src', 'src/foo.c'],
-                    [b'hello-id', b'src-id', b'foo.c-id'])
+                    ids=[b'hello-id', b'src-id', b'foo.c-id'])
         tt = self.wt.transform()
         trans_id = tt.trans_id_tree_path('hello')
         tt.set_executability(True, trans_id)
@@ -103,9 +103,9 @@ class TestamentTests(TestamentSetup):
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         os.symlink('wibble/linktarget', 'link')
-        self.wt.add(['link'], [b'link-id'])
+        self.wt.add(['link'], ids=[b'link-id'])
         self.wt.commit(message='add symlink',
                        timestamp=1129025493,
                        timezone=36000,

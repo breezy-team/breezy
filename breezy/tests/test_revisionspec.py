@@ -517,10 +517,10 @@ class TestRevisionSpec_date(TestRevisionSpec):
         super(TestRevisionSpec, self).setUp()
 
         new_tree = self.make_branch_and_tree('new_tree')
-        new_tree.commit('Commit one', rev_id=b'new_r1',
-                        timestamp=time.time() - 60 * 60 * 24)
-        new_tree.commit('Commit two', rev_id=b'new_r2')
-        new_tree.commit('Commit three', rev_id=b'new_r3')
+        self.revid1 = new_tree.commit(
+            'Commit one', timestamp=time.time() - 60 * 60 * 24)
+        self.revid2 = new_tree.commit('Commit two')
+        self.revid3 = new_tree.commit('Commit three')
 
         self.tree = new_tree
 
@@ -528,11 +528,11 @@ class TestRevisionSpec_date(TestRevisionSpec):
         self.assertInvalid('date:tomorrow')
 
     def test_today(self):
-        self.assertInHistoryIs(2, b'new_r2', 'date:today')
-        self.assertInHistoryIs(1, b'new_r1', 'before:date:today')
+        self.assertInHistoryIs(2, self.revid2, 'date:today')
+        self.assertInHistoryIs(1, self.revid1, 'before:date:today')
 
     def test_yesterday(self):
-        self.assertInHistoryIs(1, b'new_r1', 'date:yesterday')
+        self.assertInHistoryIs(1, self.revid1, 'date:yesterday')
 
     def test_invalid(self):
         self.assertInvalid('date:foobar', extra='\ninvalid date')
@@ -543,11 +543,27 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
     def test_day(self):
         now = datetime.datetime.now()
-        self.assertInHistoryIs(2, b'new_r2',
+        self.assertInHistoryIs(2, self.revid2,
                                'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId(b'new_r2', 'date:today')
+        self.assertAsRevisionId(self.revid2, 'date:today')
+
+
+class TestRevisionSpec_date_no_revno(TestRevisionSpec_date):
+
+    # some formats don't implement .revno(), so it triggers a different codepath
+
+    def get_in_history(self, revision_spec):
+        old_revno = self.overrideAttr(self.tree.branch, 'revno', lambda: None)
+        try:
+            return spec_in_history(revision_spec, self.tree.branch)
+        finally:
+            self.tree.branch.revno = old_revno
+
+    def test_today(self):
+        self.assertInHistoryIs(2, self.revid2, 'date:today')
+        # Drop before: since it messes with our monkeypatching of Branch.revno.
 
 
 class TestRevisionSpec_ancestor(TestRevisionSpec):

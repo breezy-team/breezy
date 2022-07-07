@@ -259,7 +259,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Check per-file knits.
         control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
+        tree.add(['foo'], ['file'], [b'Nasty-IdC:'])
         tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
@@ -267,8 +267,9 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def assertHasKnit(self, t, knit_name, extra_content=b''):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff(b'# bzr knit index 8\n' + extra_content,
-                             t.get(knit_name + '.kndx').read())
+        with t.get(knit_name + '.kndx') as f:
+            self.assertEqualDiff(b'# bzr knit index 8\n' + extra_content,
+                                 f.read())
 
     def check_knits(self, t):
         """check knit content for a repository."""
@@ -292,7 +293,8 @@ class TestFormatKnit1(TestCaseWithTransport):
                                  f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff(b'', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
@@ -314,8 +316,10 @@ class TestFormatKnit1(TestCaseWithTransport):
                                  f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff(b'', t.get('shared-storage').read())
-        self.assertEqualDiff(b'', t.get('no-working-trees').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
+        with t.get('no-working-trees') as f:
+            self.assertEqualDiff(b'', f.read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
@@ -636,7 +640,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
     def test_inventories_use_chk_map_with_parent_base_dict(self):
         tree = self.make_branch_and_memory_tree('repo', format="2a")
         tree.lock_write()
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         revid = tree.commit("foo")
         tree.unlock()
         tree.lock_read()
@@ -657,7 +661,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('tree', format='2a')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         for pos in range(20):
             tree.commit(str(pos))
 
@@ -665,7 +669,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('tree', format='2a')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         # 1 commit to leave untouched
         tree.commit('1')
         to_keep = tree.branch.repository._pack_collection.names()

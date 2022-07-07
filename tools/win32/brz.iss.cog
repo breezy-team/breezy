@@ -73,11 +73,19 @@ VersionInfoDescription="Windows installer for Breezy"
 AppComments="Breezy: Friendly distributed version control system"
 AppPublisher="Breezy Developers"
 AppPublisherURL="https://www.breezy-vcs.org/"
-AppSupportURL="http://wiki.bazaar.canonical.com/BzrSupport"
-AppUpdatesURL="http://wiki.bazaar.canonical.com/WindowsDownloads"
+AppSupportURL="http://wiki.breezy-vcs.org/BzrSupport"
+AppUpdatesURL="http://wiki.breezy-vcs.org/WindowsDownloads"
 ; [[[cog cog.outl('AppVersion=%s' % VERSION) ]]]
 ; [[[end]]]
 
+; [[[cog
+; import platform
+;
+; if platform.machine().endswith("64"):
+;     cog.outl('ArchitecturesAllowed=x64')
+;     cog.outl('ArchitecturesInstallIn64BitMode=x64')
+; ]]]
+; [[[end]]]
 ChangesEnvironment=yes
 ; MARKH: PrivilegesRequired=none means it can't be installed by a non-admin
 ; user - but sadly we still need admin - eg, tortoise overlays, installing
@@ -115,8 +123,12 @@ PrivilegesRequired=admin
 Source: "plugins\*.*"; DestDir: "{app}\\plugins"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete; Components: plugins
 Source: "*.bat"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
 Source: "*.url"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
-Source: "msvc*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
-Source: "bz*.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+; Python3 includes vcruntime*.dll which is not packed in by py2exe.
+; I'm not sure if the installer has to contain it.
+; It looks like the binaries work OK without vcruntime dll.
+; Delete this dll line when we're sure.
+;Source: "msvc*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
+Source: "brz*.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
 Source: "Python*.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete;
 Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;
 Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;
@@ -141,7 +153,7 @@ Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion r
 ; imageformats plugins for PyQt4
 ; [[[cog
 ; plug_dir = os.path.join(os.path.dirname(cog.inFile), # $(bzr_src_root)/tools/win32
-;                         '..', '..', 'win32_bzr.exe', 'imageformats')
+;                         '..', '..', 'win32_brz.exe', 'imageformats')
 ; if os.path.isdir(plug_dir):
 ;     cog.outl('Source: "imageformats\\*.*"; DestDir: "{app}\\imageformats"; '
 ;              'Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;')
@@ -179,9 +191,9 @@ Name: "{app}\plugins"; Flags: uninsalwaysuninstall
 [Icons]
 Name: "{group}\Documentation index"; Filename: "{app}\doc\index.html"; WorkingDir: "{app}\doc";
 Name: "{group}\Breezy Home Page"; Filename: "{app}\breezy.url"; Comment: "https://www.breezy-vcs.org/";
-Name: "{group}\Start Bzr in cmd shell"; Filename: "{cmd}"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
+Name: "{group}\Start Bzr in cmd shell"; Filename: "{cmd}"; Parameters: "/K start_brz.bat"; WorkingDir: "{app}"; IconFilename: "{app}\brz.exe"; Comment: "Open new Bzr session";
 ; NOTE: Intent is to change the log file location - the line below will need to change to reflect that.
-Name: "{group}\Open Bzr log file"; Filename: "notepad.exe"; Parameters: "{userdocs}\.bzr.log"; Comment: "Launch notepad to view the bzr log file";
+Name: "{group}\Open Bzr log file"; Filename: "notepad.exe"; Parameters: "{userdocs}\.brz.log"; Comment: "Launch notepad to view the brz log file";
 
 ; [[[cog
 ; if "TBZR" in os.environ:
@@ -224,7 +236,7 @@ Filename: "{app}\brz_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Fl
 
 
 [UninstallRun]
-Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden;
+Filename: "{app}\brz_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden;
 ; [[[cog
 ; if "TBZR" in os.environ:
 ;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s /i: tbzrshellext_x86.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering Tortoise"; Flags: skipifdoesntexist')
@@ -320,7 +332,7 @@ begin
                              ewWaitUntilTerminated, ErrorCode) then
                 MsgBox('Failed to install TortoiseOverlays: ' + SysErrorMessage(ErrorCode),
                         mbInformation, MB_OK);
-            // Ideally we could be bzr_postinstall.exe this way too, but
+            // Ideally we could be brz_postinstall.exe this way too, but
             // its needed at uninstall time.
         end;
         // cause explorer to re-fetch handlers.

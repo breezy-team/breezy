@@ -216,7 +216,7 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_aborted_does_not_apply_automatic_changes_bug_282402(self):
         wt = self.make_branch_and_tree('.')
-        wt.add(['a'], None, ['file'])
+        wt.add(['a'], ['file'])
         self.assertTrue(wt.is_versioned('a'))
         if wt.supports_setting_file_ids():
             a_id = wt.path2id('a')
@@ -239,7 +239,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # older format.
             return
         master.controldir.transport.put_bytes('branch-format', b'garbage')
@@ -258,7 +258,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # older format.
             return
         committed_id = tree.commit('foo', local=True)

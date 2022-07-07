@@ -329,31 +329,37 @@ def _win32_fixdrive(path):
     drive, path = ntpath.splitdrive(path)
     return drive.upper() + path
 
+def _win32_fix_separators(path):
+    """Return path with directory separators changed to forward slashes"""
+    if isinstance(path, bytes):
+        return path.replace(b'\\', b'/')
+    else:
+        return path.replace('\\', '/')
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.abspath(path)))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
 
 
 def _win32_pathjoin(*args):
-    return ntpath.join(*args).replace('\\', '/')
+    return _win32_fix_separators(ntpath.join(*args))
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.normpath(path)))
 
 
 def _win32_getcwd():
-    return _win32_fixdrive(_getcwd().replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(_getcwd()))
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(tempfile.mkdtemp(*args, **kwargs)))
 
 
 def _win32_rename(old, new):
@@ -456,7 +462,7 @@ if sys.platform == 'win32':
         Helps to remove files and dirs marked as read-only.
         """
         exception = excinfo[1]
-        if function in (os.remove, os.rmdir) \
+        if function in (os.unlink, os.remove, os.rmdir) \
                 and isinstance(exception, OSError) \
                 and exception.errno == errno.EACCES:
             make_writable(path)
@@ -1139,23 +1145,21 @@ def _delete_file_or_dir(path):
         os.unlink(path)
 
 
-def has_symlinks():
-    if getattr(os, 'symlink', None) is not None:
+def supports_hardlinks(path):
+    if getattr(os, 'link', None) is None:
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
         return True
     else:
-        return False
-
-
-def has_hardlinks():
-    if getattr(os, 'link', None) is not None:
+        if fs_type is None:
+            return sys.platform != 'win32'
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support hardlinks
+            return False
         return True
-    else:
-        return False
-
-
-def host_os_dereferences_symlinks():
-    return (has_symlinks()
-            and sys.platform not in ('cygwin', 'win32'))
 
 
 def readlink(abspath):
@@ -1572,6 +1576,8 @@ def supports_executable(path):
     except errors.DependencyNotPresent as e:
         trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
+        if fs_type is None:
+            return sys.platform != 'win32'
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support executable bit
             return False
@@ -1582,13 +1588,15 @@ def supports_symlinks(path):
     """Return if the filesystem at path supports the creation of symbolic links.
 
     """
-    if not has_symlinks():
+    if getattr(os, 'symlink', None) is None:
         return False
     try:
         fs_type = get_fs_type(path)
     except errors.DependencyNotPresent as e:
         trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
+        if fs_type is None:
+            return sys.platform != 'win32'
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support symlinks
             return False
@@ -2327,51 +2335,6 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
 
-
-if sys.platform == 'win32':
-    def open_file(filename, mode='r', bufsize=-1):
-        """This function is used to override the ``open`` builtin.
-
-        But it uses O_NOINHERIT flag so the file handle is not inherited by
-        child processes.  Deleting or renaming a closed file opened with this
-        function is not blocking child processes.
-        """
-        writing = 'w' in mode
-        appending = 'a' in mode
-        updating = '+' in mode
-        binary = 'b' in mode
-
-        flags = O_NOINHERIT
-        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
-        # for flags for each modes.
-        if binary:
-            flags |= O_BINARY
-        else:
-            flags |= O_TEXT
-
-        if writing:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_TRUNC
-        elif appending:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_APPEND
-        else:  # reading
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_RDONLY
-
-        return os.fdopen(os.open(filename, flags), mode, bufsize)
-else:
-    open_file = open
-
-
 def available_backup_name(base, exists):
     """Find a non-existing backup file name.
 
@@ -2524,10 +2487,17 @@ def read_mtab(path):
             yield cols[1], cols[2].decode('ascii', 'replace')
 
 
-MTAB_PATH = '/etc/mtab'
-
 class FilesystemFinder(object):
     """Find the filesystem for a particular path."""
+
+    def find(self, path):
+        raise NotImplementedError
+
+
+class MtabFilesystemFinder(FilesystemFinder):
+    """Find the filesystem for a particular path."""
+
+    MTAB_PATH = '/etc/mtab'
 
     def __init__(self, mountpoints):
         def key(x):
@@ -2544,7 +2514,7 @@ class FilesystemFinder(object):
         # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
         # we need to re-read it.
         try:
-            return cls(read_mtab(MTAB_PATH))
+            return cls(read_mtab(cls.MTAB_PATH))
         except EnvironmentError as e:
             trace.mutter('Unable to read mtab: %s', e)
             return cls([])
@@ -2556,10 +2526,27 @@ class FilesystemFinder(object):
         :return: Filesystem name (as text type) or None, if the filesystem is
             unknown.
         """
+        if not isinstance(path, bytes):
+            path = os.fsencode(path)
         for mountpoint, filesystem in self._mountpoints:
             if is_inside(mountpoint, path):
                 return filesystem
         return None
+
+
+class Win32FilesystemFinder(FilesystemFinder):
+
+    def find(self, path):
+        drive = os.path.splitdrive(os.path.abspath(path))[0]
+        if isinstance(drive, bytes):
+            drive = os.fsdecode(drive)
+        fs_type = win32utils.get_fs_type(drive + "\\")
+        if fs_type is None:
+            return None
+        return {
+            'FAT32': 'vfat',
+            'NTFS': 'ntfs',
+            }.get(fs_type, fs_type)
 
 
 _FILESYSTEM_FINDER = None
@@ -2573,10 +2560,10 @@ def get_fs_type(path):
     """
     global _FILESYSTEM_FINDER
     if _FILESYSTEM_FINDER is None:
-        _FILESYSTEM_FINDER = FilesystemFinder.from_mtab()
-
-    if not isinstance(path, bytes):
-        path = os.fsencode(path)
+        if sys.platform == 'win32':
+            _FILESYSTEM_FINDER = Win32FilesystemFinder()
+        else:
+            _FILESYSTEM_FINDER = MtabFilesystemFinder.from_mtab()
 
     return _FILESYSTEM_FINDER.find(path)
 

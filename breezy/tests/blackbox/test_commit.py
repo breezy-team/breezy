@@ -893,4 +893,3 @@ altered in u2
         tree.rename_one(u'abc\xa7', 'abc')
 
         self.run_bzr('ci -m "non-ascii mv"')
-

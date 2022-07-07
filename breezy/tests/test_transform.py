@@ -90,7 +90,8 @@ class TransformGroup(object):
         self.name = dirname
         os.mkdir(dirname)
         self.wt = ControlDir.create_standalone_workingtree(dirname)
-        self.wt.set_root_id(root_id)
+        if self.wt.supports_file_ids:
+            self.wt.set_root_id(root_id)
         self.b = self.wt.branch
         self.tt = self.wt.transform()
         self.root = self.tt.trans_id_tree_path('')
@@ -140,30 +141,30 @@ class TestTransformMerge(TestCaseInTempDir):
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         # textual merge
-        with this.wt.get_file(this.wt.id2path(b'a')) as f:
+        with this.wt.get_file('a') as f:
             self.assertEqual(f.read(), b'y\nb\nc\nd\bz\n')
         # three-way text conflict
-        with this.wt.get_file(this.wt.id2path(b'b')) as f:
+        with this.wt.get_file('b') as f:
             self.assertEqual(f.read(), conflict_text(b'b', b'b2'))
         # OTHER wins
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'c')).read(), b'c2')
+        self.assertEqual(this.wt.get_file('c').read(), b'c2')
         # THIS wins
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'd')).read(), b'd2')
+        self.assertEqual(this.wt.get_file('d').read(), b'd2')
         # Ambigious clean merge
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'e')).read(), b'e2')
+        self.assertEqual(this.wt.get_file('e').read(), b'e2')
         # No change
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'f')).read(), b'f')
+        self.assertEqual(this.wt.get_file('f').read(), b'f')
         # Correct correct results when THIS == OTHER
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'g')).read(), b'g')
+        self.assertEqual(this.wt.get_file('g').read(), b'g')
         # Text conflict when THIS & OTHER are text and BASE is dir
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'h')).read(),
+        self.assertEqual(this.wt.get_file('h').read(),
                          conflict_text(b'1\n2\n3\n4\n', b'h\ni\nj\nk\n'))
         self.assertEqual(this.wt.get_file('h.THIS').read(),
                          b'1\n2\n3\n4\n')
         self.assertEqual(this.wt.get_file('h.OTHER').read(),
                          b'h\ni\nj\nk\n')
         self.assertEqual(file_kind(this.wt.abspath('h.BASE')), 'directory')
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'i')).read(),
+        self.assertEqual(this.wt.get_file('i').read(),
                          conflict_text(b'1\n2\n3\n4\n', b'h\ni\nj\nk\n'))
         self.assertEqual(this.wt.get_file('i.THIS').read(),
                          b'1\n2\n3\n4\n')
@@ -174,7 +175,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        with open(this.wt.abspath(this.wt.id2path(b'a')), 'wb') as f:
+        with open(this.wt.abspath('a'), 'wb') as f:
             f.write(b'booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
@@ -184,7 +185,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.wt.revert()
 
     def test_file_merge(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
@@ -358,14 +359,14 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, [b'contents'], b'file-id')
         trans_id = tt.new_directory('dir', tt.root, b'dir-id')
-        if SymlinkFeature.available():
+        if SymlinkFeature(self.test_dir).available():
             tt.new_symlink('symlink', trans_id, 'target', b'symlink-id')
         tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path(b'file-id'))
         self.assertEqual(b'contents', tree.get_file_text('file'))
         self.assertEqual('dir', tree.id2path(b'dir-id'))
-        if SymlinkFeature.available():
+        if SymlinkFeature(self.test_dir).available():
             self.assertEqual('dir/symlink', tree.id2path(b'symlink-id'))
             self.assertEqual('target', tree.get_symlink_target('dir/symlink'))
 
@@ -682,7 +683,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
     def make_tt_with_versioned_dir(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['dir/', ])
-        wt.add(['dir'], [b'dir-id'])
+        wt.add(['dir'], ids=[b'dir-id'])
         wt.commit('Create dir')
         tt = wt.transform()
         self.addCleanup(tt.finalize)
@@ -802,13 +803,13 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         return self.make_records(attribs, contents)
 
     def test_serialize_symlink_creation(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tt = self.get_preview()
         tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
         abspath = tt._limbo_name('new-1')
@@ -818,7 +819,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def make_destruction_preview(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree([u'foo\u1234', 'bar'])
-        tree.add([u'foo\u1234', 'bar'], [b'foo-id', b'bar-id'])
+        tree.add([u'foo\u1234', 'bar'], ids=[b'foo-id', b'bar-id'])
         return self.get_preview(tree)
 
     def destruction_records(self):
@@ -875,7 +876,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_TWO = b'z\nbb\nx\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         return self.get_preview(tree), [LINES_TWO]
 
     def modification_records(self):
@@ -905,7 +906,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES = b'a\nb\nc\nd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo/'])
-        tree.add('foo', b'foo-id')
+        tree.add('foo', ids=b'foo-id')
         return self.get_preview(tree), [LINES]
 
     def kind_change_records(self):
@@ -964,7 +965,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_ONE = b'aa\nbb\ncc\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual(([b'aa\n', b'bb\n', b'cc\n', b'dd\n'],),
@@ -974,7 +975,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_ONE = b'aa\nbb\ncc\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual((LINES_ONE,),
@@ -995,7 +996,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 
     def _prepare_orphan(self, wt):
         self.build_tree(['dir/', 'dir/file', 'dir/foo'])
-        wt.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        wt.add(['dir', 'dir/file'], ids=[b'dir-id', b'file-id'])
         wt.commit('add dir and file ignoring foo')
         tt = wt.transform()
         self.addCleanup(tt.finalize)
@@ -1115,10 +1116,9 @@ class TestTransformHooks(tests.TestCaseWithTransport):
 
 class TestLinkTree(tests.TestCaseWithTransport):
 
-    _test_needs_features = [HardlinkFeature]
-
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         self.parent_tree = self.make_branch_and_tree('parent')
         self.parent_tree.lock_write()
         self.addCleanup(self.parent_tree.unlock)

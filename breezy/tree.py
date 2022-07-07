@@ -203,7 +203,7 @@ class Tree(object):
     def supports_symlinks(self):
         """Does this tree support symbolic links?
         """
-        return osutils.has_symlinks()
+        return True
 
     @property
     def supports_file_ids(self):
@@ -713,19 +713,21 @@ class Tree(object):
         return searcher
 
     def archive(self, format, name, root='', subdir=None,
-                force_mtime=None):
+                force_mtime=None, recurse_nested=False):
         """Create an archive of this tree.
 
-        :param format: Format name (e.g. 'tar')
-        :param name: target file name
-        :param root: Root directory name (or None)
-        :param subdir: Subdirectory to export (or None)
-        :return: Iterator over archive chunks
+        Args:
+          format: Format name (e.g. 'tar')
+          name: target file name
+          root: Root directory name (or None)
+          subdir: Subdirectory to export (or None)
+        Returns: Iterator over archive chunks
         """
         from .archive import create_archive
         with self.lock_read():
             return create_archive(format, self, name, root,
-                                  subdir, force_mtime=force_mtime)
+                                  subdir, force_mtime=force_mtime,
+                                  recurse_nested=recurse_nested)
 
     @classmethod
     def versionable_kind(cls, kind):
@@ -796,10 +798,7 @@ class InterTree(InterObject):
                      require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
 
-        A tuple is returned:
-        (file_id, (path_in_source, path_in_target),
-         changed_content, versioned, parent, name, kind,
-         executable)
+        A TreeChange object is returned.
 
         Changed_content is True if the file's content has changed.  This
         includes changes to its kind, and to a symlink's target.

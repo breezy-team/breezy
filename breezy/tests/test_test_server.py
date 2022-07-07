@@ -16,10 +16,7 @@
 
 import errno
 import socket
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
+import socketserver
 import threading
 
 

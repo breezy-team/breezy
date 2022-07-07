@@ -485,7 +485,7 @@ class _LazyGroupCompressFactory(object):
             else:
                 return osutils.chunks_to_lines(self._chunks)
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if self._chunks is None:
@@ -495,7 +495,7 @@ class _LazyGroupCompressFactory(object):
         elif storage_kind == 'lines':
             return iter(osutils.chunks_to_lines(self._chunks))
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
 
 class _LazyGroupContentManager(object):

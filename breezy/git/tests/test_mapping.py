@@ -235,7 +235,7 @@ class TestImportCommit(tests.TestCase):
         rev, roundtrip_revid, verifiers = mapping.import_commit(
             c, mapping.revision_id_foreign_to_bzr)
         self.assertEqual(
-            rev.properties[u'git-mergetag-0'], tag.as_raw_string())
+            rev.properties[u'git-mergetag-0'].encode('utf-8'), tag.as_raw_string())
 
     def test_unknown_hg_fields(self):
         c = Commit()
@@ -300,6 +300,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
             self.assertEqual(list(orig_rev.parent_ids), list(rev.parent_ids))
         else:
             self.assertEqual({}, verifiers)
+        return commit
 
     def test_simple_commit(self):
         r = Revision(self.mapping.revision_id_foreign_to_bzr(
@@ -341,6 +342,34 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timestamp = 453543543
         r.timezone = 0
         self.assertRoundtripRevision(r)
+
+    def test_multiple_authors(self):
+        r = Revision(b"myrevid")
+        r.message = u"MyCommitMessage"
+        r.parent_ids = []
+        r.properties = {
+            u"authors":
+                "Jelmer Vernooij <jelmer@jelmer.uk>\n"
+                "Alex <alexa@example.com>"}
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        c = self.assertRoundtripRevision(r)
+        self.assertEqual(c.author, b'Jelmer Vernooij <jelmer@jelmer.uk>')
+
+    def test_multiple_authors_comma(self):
+        r = Revision(b"myrevid")
+        r.message = u"MyCommitMessage"
+        r.parent_ids = []
+        r.properties = {
+            u"authors":
+                "Jelmer Vernooij <jelmer@jelmer.uk>, "
+                "Alex <alexa@example.com>"}
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        c = self.assertRoundtripRevision(r)
+        self.assertEqual(c.author, b'Jelmer Vernooij <jelmer@jelmer.uk>')
 
 
 class RoundtripRevisionsFromGit(tests.TestCase):

@@ -31,13 +31,13 @@ class TestWorkingTree(tests.TestCaseWithTransport):
                          'tree/subtree/',
                          'tree/subtree/file2'])
         base_tree = self.make_branch_and_tree('tree', format=format)
-        base_tree.add('file', b'file-id')
+        base_tree.add('file', ids=b'file-id')
         base_tree.commit('first commit', rev_id=b'tree-1')
         sub_tree = self.make_branch_and_tree('tree/subtree',
                                              format='development-subtree')
         if same_root is True:
             sub_tree.set_root_id(base_tree.path2id(''))
-        sub_tree.add('file2', b'file2-id')
+        sub_tree.add('file2', ids=b'file2-id')
         sub_tree.commit('first commit', rev_id=b'subtree-1')
         return base_tree, sub_tree
 

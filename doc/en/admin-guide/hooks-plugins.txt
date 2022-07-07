@@ -166,8 +166,8 @@ To use it, simply install the plugin and set your feed reader to follow the
 ``branch.atom`` files.
 
 In addition, there are other tools that are not plugins for creating news
-feeds from Bazaar branches.  See
-http://wiki.bazaar.canonical.com/FeedGenerators for more on those tools.
+feeds from Breezy branches.  See
+http://wiki.breezy-vcs.org/FeedGenerators for more on those tools.
 
 Mirroring
 ---------

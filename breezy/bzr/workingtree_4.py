@@ -130,7 +130,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             self._branch.repository._format, "supports_tree_reference",
             False)
 
-    def _add(self, files, ids, kinds):
+    def _add(self, files, kinds, ids):
         """See MutableTree._add."""
         with self.lock_tree_write():
             state = self.current_dirstate()
@@ -185,7 +185,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             else:
                 raise BadReferenceTarget(
                     self, sub_tree, 'Root id already present in tree')
-            self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
+            self._add([sub_tree_path], ['tree-reference'], [sub_tree_id])
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -1928,6 +1928,9 @@ class DirStateRevisionTree(InventoryTree):
         # Make sure the file exists
         entry = self._get_entry(path=path)
         if entry == (None, None): # do we raise?
+            nested_tree, subpath = self.get_containing_nested_tree(path)
+            if nested_tree is not None:
+                return nested_tree.get_file_mtime(subpath)
             raise errors.NoSuchFile(path)
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]

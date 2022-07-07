@@ -667,7 +667,7 @@ category so that whole bugfix releases can more easily be
 approved.
 
 Progress on these realeases is tracked on the `SRU wiki
-<http://wiki.bazaar.canonical.com/UbuntuStableReleaseUpdates>`_
+<http://wiki.breezy-vcs.org/UbuntuStableReleaseUpdates>`_
 page.
 
 **After making a brz stable-release release, nominate the most serious bug

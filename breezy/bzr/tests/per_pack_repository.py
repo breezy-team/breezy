@@ -96,9 +96,10 @@ class TestPackRepository(TestCaseWithTransport):
         self.check_databases(t)
 
     def check_format(self, t):
-        self.assertEqualDiff(
-            self.format_string.encode('ascii'),  # from scenario
-            t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(
+                self.format_string.encode('ascii'),  # from scenario
+                f.read())
 
     def assertHasNoKndx(self, t, knit_name):
         """Assert that knit_name has no index on t."""

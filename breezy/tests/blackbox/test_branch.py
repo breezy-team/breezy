@@ -227,31 +227,31 @@ class TestBranch(tests.TestCaseWithTransport):
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
-        tree_a.commit('commit a-1', rev_id=b'a-1')
+        a1 = tree_a.commit('commit a-1')
         with open('repo/a/file', 'ab') as f:
             f.write(b'more stuff\n')
-        tree_a.commit('commit a-2', rev_id=b'a-2')
+        a2 = tree_a.commit('commit a-2')
 
         tree_b = make_shared_tree('b')
         self.build_tree(['repo/b/file'])
         tree_b.add('file')
-        tree_b.commit('commit b-1', rev_id=b'b-1')
+        b1 = tree_b.commit('commit b-1')
 
-        self.assertTrue(shared_repo.has_revision(b'a-1'))
-        self.assertTrue(shared_repo.has_revision(b'a-2'))
-        self.assertTrue(shared_repo.has_revision(b'b-1'))
+        self.assertTrue(shared_repo.has_revision(a1))
+        self.assertTrue(shared_repo.has_revision(a2))
+        self.assertTrue(shared_repo.has_revision(b1))
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'branch'
         self.run_bzr('branch repo/b branch-b')
         pushed_tree = WorkingTree.open('branch-b')
         pushed_repo = pushed_tree.branch.repository
-        self.assertFalse(pushed_repo.has_revision(b'a-1'))
-        self.assertFalse(pushed_repo.has_revision(b'a-2'))
-        self.assertTrue(pushed_repo.has_revision(b'b-1'))
+        self.assertFalse(pushed_repo.has_revision(a1))
+        self.assertFalse(pushed_repo.has_revision(a2))
+        self.assertTrue(pushed_repo.has_revision(b1))
 
     def test_branch_hardlink(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file1'])
         source.add('file1')
@@ -270,7 +270,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertPathExists('target/file1')
 
     def test_branch_files_from_hardlink(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file1'])
         source.add('file1')

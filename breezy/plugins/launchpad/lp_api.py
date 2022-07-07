@@ -49,7 +49,7 @@ class LaunchpadlibMissing(errors.DependencyNotPresent):
 
 try:
     import launchpadlib
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
 from launchpadlib.credentials import RequestTokenAuthorizationEngine

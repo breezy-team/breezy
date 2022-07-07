@@ -15,7 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ...controldir import ControlDir
-from ...commands import Command, Option
+from ...commands import Command
+from ...option import Option
 from ... import errors
 from ...bzr.vf_search import PendingAncestryResult
 from ...repository import WriteGroup

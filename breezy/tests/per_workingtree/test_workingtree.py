@@ -41,7 +41,7 @@ from ...errors import (
     )
 from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
-from ...osutils import pathjoin, getcwd, has_symlinks
+from ...osutils import pathjoin, getcwd, supports_symlinks
 from .. import (
     features,
     TestSkipped,
@@ -83,7 +83,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_list_files(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'file'])
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'symlink')
         tree.lock_read()
         files = list(tree.list_files())
@@ -91,7 +91,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(
             files.pop(0), ('dir', '?', 'directory', TreeDirectory()))
         self.assertEqual(files.pop(0), ('file', '?', 'file', TreeFile()))
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             self.assertEqual(
                 files.pop(0), ('symlink', '?', 'symlink', TreeLink()))
 
@@ -663,7 +663,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             # legacy branches cannot bind
             return
         foo = master_tree.commit('foo', allow_pointless=True)
@@ -686,7 +686,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             # legacy branches cannot bind
             return
         # sync with master
@@ -941,7 +941,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         if tree.supports_setting_file_ids():
-            tree.add(['foo'], [b'foo-id'])
+            tree.add(['foo'], ids=[b'foo-id'])
             self.assertEqual(b'foo-id', tree.path2id('foo'))
             # the next assertion is for backwards compatibility with
             # WorkingTree3, though its probably a bad idea, it makes things
@@ -977,7 +977,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.build_tree(['file', 'directory/'])
         names = ['file', 'directory']
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'symlink')
             names.append('symlink')
         tree.add(names)
@@ -1184,7 +1184,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
             final_branch, stop_revision=branch_revid, overwrite=True)
         try:
             wt.branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise TestNotApplicable(
                 "Can't bind %s" % wt.branch._format.__class__)
         return wt, master

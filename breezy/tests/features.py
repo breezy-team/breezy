@@ -59,28 +59,31 @@ class Feature(object):
         return self.__class__.__name__
 
 
-class _SymlinkFeature(Feature):
+class SymlinkFeature(Feature):
+    """Whether symlinks can be created by the current user."""
+
+    def __init__(self, path):
+        super(SymlinkFeature, self).__init__()
+        self.path = path
 
     def _probe(self):
-        return osutils.has_symlinks()
+        return osutils.supports_symlinks(self.path)
 
     def feature_name(self):
         return 'symlinks'
 
 
-SymlinkFeature = _SymlinkFeature()
+class HardlinkFeature(Feature):
 
-
-class _HardlinkFeature(Feature):
+    def __init__(self, path):
+        super(HardlinkFeature, self).__init__()
+        self.path = path
 
     def _probe(self):
-        return osutils.has_hardlinks()
+        return osutils.supports_hardlinks(self.path)
 
     def feature_name(self):
         return 'hardlinks'
-
-
-HardlinkFeature = _HardlinkFeature()
 
 
 class _OsFifoFeature(Feature):
@@ -238,7 +241,7 @@ class _HTTPSServerFeature(Feature):
         try:
             import ssl  # noqa: F401
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
     def feature_name(self):

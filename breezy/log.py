@@ -689,7 +689,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
             # A merge was never detected so the lower revision limit can't
             # be nested down somewhere
             raise errors.CommandError(gettext('Start revision not found in'
-                                                 ' history of end revision.'))
+                                              ' history of end revision.'))
 
     # We exit the loop above because we encounter a revision with merges, from
     # this revision, we need to switch to _graph_view_revisions.
@@ -1214,7 +1214,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         raise errors.CommandError(gettext('Logging revision 0 is invalid.'))
     if start_revno > end_revno:
         raise errors.CommandError(gettext("Start revision must be older "
-                                             "than the end revision."))
+                                          "than the end revision."))
 
     if end_revno < start_revno:
         return None, None, None, None

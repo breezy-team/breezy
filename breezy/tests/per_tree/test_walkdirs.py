@@ -20,7 +20,7 @@ import os
 
 from breezy import tests
 from breezy.mutabletree import MutableTree
-from breezy.osutils import has_symlinks
+from breezy.osutils import supports_symlinks
 from breezy.tests.per_tree import TestCaseWithTree
 
 
@@ -55,10 +55,10 @@ class TestWalkdirs(TestCaseWithTree):
 
     def test_walkdir_root(self):
         tree = self.get_tree_with_subdirs_and_all_supported_content_types(
-            has_symlinks())
+            supports_symlinks(self.test_dir))
         with tree.lock_read():
             expected_dirblocks = self.get_all_subdirs_expected(
-                tree, has_symlinks())
+                tree, supports_symlinks(self.test_dir))
             # test that its iterable by iterating
             result = []
             for dirinfo, block in tree.walkdirs():
@@ -76,12 +76,12 @@ class TestWalkdirs(TestCaseWithTree):
 
     def test_walkdir_subtree(self):
         tree = self.get_tree_with_subdirs_and_all_supported_content_types(
-            has_symlinks())
+            supports_symlinks(self.test_dir))
         # test that its iterable by iterating
         result = []
         with tree.lock_read():
             expected_dirblocks = self.get_all_subdirs_expected(
-                tree, has_symlinks())[1:]
+                tree, supports_symlinks(self.test_dir))[1:]
             for dirinfo, block in tree.walkdirs('1top-dir'):
                 newblock = []
                 for row in block:
