@@ -58,15 +58,12 @@ from .. import (
     revisiontree,
     trace,
     tree as _mod_tree,
-    urlutils,
     workingtree,
     )
 from ..revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
-from ..transport import get_transport
-from ..tree import MissingNestedTree
 
 from .mapping import (
     encode_git_path,
@@ -317,11 +314,6 @@ class GitTree(_mod_tree.Tree):
         return Branch.open(url.decode('utf-8'))
 
 
-class RemoteNestedTree(MissingNestedTree):
-
-    _fmt = "Unable to access remote nested tree at %(path)s"
-
-
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     """Revision tree implementation based on Git objects."""
 
@@ -351,28 +343,22 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if not isinstance(relpath, bytes):
             raise TypeError(relpath)
         try:
-            url, section = self._submodule_info()[relpath]
+            info = self._submodule_info()[relpath]
         except KeyError:
-            nested_repo_transport = None
+            nested_repo_transport = self._repository.controldir.user_transport.clone(
+                decode_git_path(relpath))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
-                posixpath.join('modules', decode_git_path(section)))
+                posixpath.join('modules', decode_git_path(info[1])))
             if not nested_repo_transport.has('.'):
-                nested_url = urlutils.join(
-                    self._repository.controldir.user_url, decode_git_path(url))
-                nested_repo_transport = get_transport(nested_url)
-        if nested_repo_transport is None:
-            nested_repo_transport = self._repository.controldir.user_transport.clone(
-                posixpath.join(decode_git_path(relpath), '.git'))
+                nested_repo_transport = self._repository.controldir.user_transport.clone(
+                    posixpath.join(decode_git_path(info[1]), '.git'))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
 
     def _get_submodule_store(self, relpath):
-        repo = self._get_submodule_repository(relpath)
-        if not hasattr(repo, '_git'):
-            raise RemoteNestedTree(relpath)
-        return repo._git.object_store
+        return self._get_submodule_repository(relpath)._git.object_store
 
     def get_nested_tree(self, path):
         encoded_path = encode_git_path(path)
