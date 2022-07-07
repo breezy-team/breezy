@@ -97,6 +97,11 @@ class ParseGitErrorTests(TestCase):
         e = parse_git_error("url", "foo")
         self.assertIsInstance(e, RemoteGitError)
 
+    def test_connection_closed(self):
+        e = parse_git_error(
+            "url", "The remote server unexpectedly closed the connection.")
+        self.assertIsInstance(e, TransportError)
+
     def test_notbrancherror(self):
         e = parse_git_error("url", "\n Could not find Repository foo/bar")
         self.assertIsInstance(e, NotBranchError)
