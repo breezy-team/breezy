@@ -48,7 +48,7 @@ class SubversionBranchUrlFinder(object):
                 return root
         try:
             from subvertpy.ra import RemoteAccess
-        except ImportError:
+        except ModuleNotFoundError:
             return None
         c = RemoteAccess(url)
         root = c.get_repos_root()

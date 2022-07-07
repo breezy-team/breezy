@@ -975,8 +975,8 @@ class WeaveFile(Weave):
         self._transport = transport
         self._filemode = filemode
         try:
-            f = self._transport.get(name + WeaveFile.WEAVE_SUFFIX)
-            _read_weave_v5(BytesIO(f.read()), self)
+            with self._transport.get(name + WeaveFile.WEAVE_SUFFIX) as f:
+                _read_weave_v5(BytesIO(f.read()), self)
         except errors.NoSuchFile:
             if not create:
                 raise

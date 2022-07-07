@@ -41,9 +41,6 @@ BIG_FILE_CHUNK_SIZE = 1024
 RESOURCE = resource.RLIMIT_AS
 LIMIT = 1024 * 1024 * 100
 
-if sys.version_info[0] == 2:
-    range = xrange
-
 
 def make_big_file(path):
     blob_1mb = BIG_FILE_CHUNK_SIZE * b'\x0c'

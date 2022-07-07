@@ -51,7 +51,7 @@ class BzrProber(controldir.Prober):
             raise errors.NotBranchError(path=transport.base)
         except errors.BadHttpRequest as e:
             if e.reason == 'no such method: .bzr':
-                # hgweb 
+                # hgweb
                 raise errors.NotBranchError(path=transport.base)
             raise
 

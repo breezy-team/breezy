@@ -111,9 +111,8 @@ class SMTPConnection(object):
 
     def _create_connection(self):
         """Create an SMTP connection."""
-        self._connection = self._smtp_factory()
         try:
-            self._connection.connect(self._smtp_server)
+            self._connection = self._smtp_factory(host=self._smtp_server)
         except socket.error as e:
             if e.args[0] == errno.ECONNREFUSED:
                 if self._config_smtp_server is None:

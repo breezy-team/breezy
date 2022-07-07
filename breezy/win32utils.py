@@ -14,20 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Win32-specific helper functions
-
-Only one dependency: ctypes should be installed.
-"""
+"""Win32-specific helper functions"""
 
 import glob
 import os
 import struct
-import sys
 
-from breezy import (
-    cmdline,
-    )
+from .lazy_import import lazy_import
+lazy_import(globals(), """
+import ctypes
+
+from breezy import cmdline
 from breezy.i18n import gettext
+""")
 
 
 # Special Win32 API constants
@@ -54,7 +53,6 @@ REG_EXPAND_SZ = 2
 
 def debug_memory_win32api(message='', short=True):
     """Use trace.note() to dump the running memory info."""
-    import ctypes
     from breezy import trace
     class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
         """Used by GetProcessMemoryInfo"""
@@ -119,7 +117,6 @@ def get_console_size(defaultx=80, defaulty=25):
     console window and return tuple (sizex, sizey) if success,
     or default size (defaultx, defaulty) otherwise.
     """
-    import ctypes
     # To avoid problem with redirecting output via pipe
     # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
@@ -142,7 +139,6 @@ def _get_sh_special_folder_path(csidl):
 
     Result is always unicode (or None).
     """
-    import ctypes
     try:
         SHGetSpecialFolderPath = \
             ctypes.windll.shell32.SHGetSpecialFolderPathW
@@ -242,7 +238,6 @@ def get_host_name():
 
     :return: A unicode string representing the host name.
     """
-    import ctypes
     buf = ctypes.create_unicode_buffer(MAX_COMPUTERNAME_LENGTH + 1)
     n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
 
@@ -320,26 +315,27 @@ def get_app_path(appname):
     :return:    full path to aplication executable from registry,
                 or appname itself if nothing found.
     """
-    import _winreg
+    import winreg
 
     basename = appname
     if not os.path.splitext(basename)[1]:
         basename = appname + '.exe'
 
     try:
-        hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
-                               'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' +
-                               basename)
+        hkey = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\'
+            + basename)
     except EnvironmentError:
         return appname
 
     try:
         try:
-            path, type_id = _winreg.QueryValueEx(hkey, '')
+            path, type_id = winreg.QueryValueEx(hkey, '')
         except WindowsError:
             return appname
     finally:
-        _winreg.CloseKey(hkey)
+        winreg.CloseKey(hkey)
 
     if type_id == REG_SZ:
         return path
@@ -349,7 +345,6 @@ def get_app_path(appname):
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     from ctypes.wintypes import BOOL, DWORD, LPWSTR
-    import ctypes
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
     SetFileAttributes = ctypes.windll.kernel32.SetFileAttributesW
     SetFileAttributes.argtypes = LPWSTR, DWORD
@@ -404,9 +399,8 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
 
 
 def _ctypes_is_local_pid_dead(pid):
-    import ctypes
-    kernel32 = ctypes.wintypes.windll.kernel32
     """True if pid doesn't correspond to live process on this machine"""
+    kernel32 = ctypes.windll.kernel32
     handle = kernel32.OpenProcess(1, False, pid)
     if not handle:
         errorcode = ctypes.GetLastError()
@@ -416,7 +410,33 @@ def _ctypes_is_local_pid_dead(pid):
         elif errorcode == 87:  # ERROR_INVALID_PARAMETER
             return True
         raise ctypes.WinError(errorcode)
-    Kernel32.CloseHandle(handle)
+    kernel32.CloseHandle(handle)
     return False
 
 is_local_pid_dead = _ctypes_is_local_pid_dead
+
+
+def get_fs_type(drive):
+    """Return file system type for a drive on the system.
+
+    Args:
+      drive: Unicode string with drive including trailing backslash (e.g.
+         "C:\\")
+    Returns:
+      Windows filesystem type name (e.g. "FAT32", "NTFS") or None
+      if the drive can not be found
+    """
+    MAX_FS_TYPE_LENGTH = 16
+    kernel32 = ctypes.windll.kernel32
+    GetVolumeInformation = kernel32.GetVolumeInformationW
+    fs_type = ctypes.create_unicode_buffer(MAX_FS_TYPE_LENGTH + 1)
+    if GetVolumeInformation(
+        drive,
+        None, 0, # lpVolumeName
+        None, # lpVolumeSerialNumber
+        None, # lpMaximumComponentLength
+        None, # lpFileSystemFlags
+        fs_type, MAX_FS_TYPE_LENGTH,
+    ):
+        return fs_type.value
+    return None

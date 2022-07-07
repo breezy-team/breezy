@@ -229,7 +229,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
                     b'd-id', b'e-id', b'b-c-id', b'f-id']
         self.build_tree(['tree/' + p for p in paths])
         tree.set_root_id(b'TREE_ROOT')
-        tree.add([p.rstrip('/') for p in paths], file_ids)
+        tree.add([p.rstrip('/') for p in paths], ids=file_ids)
         tree.commit('initial', rev_id=b'rev-1')
         revision_id = b'rev-1'
         # a_packed_stat = dirstate.pack_stat(os.stat('tree/a'))
@@ -318,7 +318,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         # per entry. Unversion in reverse order so we handle subdirs
         tree.unversion(['f', 'b-c', 'b/d/e', 'b/d', 'b/c', 'b', 'a'])
         tree.add(['a', 'b', 'b/c', 'b/d', 'b/d/e', 'b-c', 'f'],
-                 [b'a-id2', b'b-id2', b'c-id2', b'd-id2', b'e-id2', b'b-c-id2', b'f-id2'])
+                 ids=[b'a-id2', b'b-id2', b'c-id2', b'd-id2', b'e-id2', b'b-c-id2', b'f-id2'])
 
         # Update the expected dictionary.
         for path in [b'a', b'b', b'b/c', b'b/d', b'b/d/e', b'b-c', b'f']:
@@ -455,7 +455,7 @@ class TestTreeToDirState(TestCaseWithDirState):
     def get_tree_with_a_file(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a file'])
-        tree.add('a file', b'a-file-id')
+        tree.add('a file', ids=b'a-file-id')
         return tree
 
     def test_non_empty_no_parents_to_dirstate(self):
@@ -533,7 +533,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         for i in range(7):
             tree = self.make_branch_and_tree('tree%d' % i)
             self.build_tree(['tree%d/name' % i, ])
-            tree.add(['name'], [b'file-id%d' % i])
+            tree.add(['name'], ids=[b'file-id%d' % i])
             revision_id = b'revid-%d' % i
             tree.commit('message', rev_id=revision_id)
             parents.append((revision_id,
@@ -552,7 +552,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
     def create_updated_dirstate(self):
         self.build_tree(['a-file'])
         tree = self.make_branch_and_tree('.')
-        tree.add(['a-file'], [b'a-id'])
+        tree.add(['a-file'], ids=[b'a-id'])
         tree.commit('add a-file')
         # Save and unlock the state, re-open it in readonly mode
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -845,7 +845,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             # file on disk, but that's not needed for this test
             foo_contents = b'contents of foo'
             self.build_tree_contents([('foo', foo_contents)])
-            tree.add('foo', b'foo-id')
+            tree.add('foo', ids=b'foo-id')
 
             foo_stat = os.stat('foo')
             foo_packed = dirstate.pack_stat(foo_stat)
@@ -897,7 +897,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree1.lock_write()
         try:
             tree1.add(['a', 'a/b', 'a-b', 'a/b/foo', 'a-b/bar'],
-                      [b'a-id', b'b-id', b'a-b-id', b'foo-id', b'bar-id'])
+                      ids=[b'a-id', b'b-id', b'a-b-id', b'foo-id', b'bar-id'])
             tree1.commit('rev1', rev_id=b'rev1')
             root_id = tree1.path2id('')
             inv = tree1.root_inventory
@@ -1105,7 +1105,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree1.lock_write()
         try:
             tree1.add('')
-            tree1.add(['a file'], [b'file-id'], ['file'])
+            tree1.add(['a file'], ['file'], [b'file-id'])
             tree1.put_file_bytes_non_atomic('a file', b'file-content')
             revid1 = tree1.commit('foo')
         finally:
@@ -1224,7 +1224,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
         # bzr doesn't support fake symlinks on windows, yet.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink(target, link_name)
         stat = os.lstat(link_name)
         expected_entries = [
@@ -1338,7 +1338,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree(['tree1/b'])
         with tree1.lock_write():
-            tree1.add(['b'], [b'b-id'])
+            tree1.add(['b'], ids=[b'b-id'])
             root_id = tree1.path2id('')
             inv = tree1.root_inventory
             state = dirstate.DirState.initialize('dirstate')
@@ -1383,7 +1383,7 @@ class TestDirStateHashUpdates(TestCaseWithDirState):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['c', 'd'])
         tree.lock_write()
-        tree.add(['c', 'd'], [b'c-id', b'd-id'])
+        tree.add(['c', 'd'], ids=[b'c-id', b'd-id'])
         tree.commit('add c and d')
         state = InstrumentedDirState.on_file(tree.current_dirstate()._filename,
                                              worth_saving_limit=2)

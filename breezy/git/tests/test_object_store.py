@@ -171,7 +171,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertEqual(b, self.store[b.id])
 
     def test_directory_converted_to_symlink(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         b = Blob()
         b.data = b'trgt'
         self.store.lock_read()

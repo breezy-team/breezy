@@ -17,6 +17,8 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
+from io import BytesIO
+
 from .. import (
     check,
     errors,
@@ -184,6 +186,8 @@ class GitRepository(ForeignRepository):
             transaction = self._transaction
             self._transaction = None
             transaction.finish()
+            if hasattr(self, '_git'):
+                self._git.close()
 
     def is_write_locked(self):
         return (self._lock_mode == 'w')
@@ -258,6 +262,11 @@ class LocalGitRepository(GitRepository):
         self.start_write_group()
         return builder
 
+    def _write_git_config(self, cs):
+        f = BytesIO()
+        cs.write_to_file(f)
+        self._git._put_named_file('config', f.getvalue())
+
     def get_file_graph(self):
         return _mod_graph.Graph(GitFileParentProvider(
             self._file_change_scanner))
@@ -301,12 +310,10 @@ class LocalGitRepository(GitRepository):
                 except ValueError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 try:
-                    obj = tree_lookup_path(
+                    mode, item_id = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree,
                         encode_git_path(path))
-                    if isinstance(obj, tuple):
-                        (mode, item_id) = obj
-                        obj = self._git.object_store[item_id]
+                    obj = self._git.object_store[item_id]
                 except KeyError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 else:

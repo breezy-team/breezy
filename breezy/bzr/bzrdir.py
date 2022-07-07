@@ -76,7 +76,7 @@ from .. import (
 class MissingFeature(errors.BzrError):
 
     _fmt = ("Missing feature %(feature)s not provided by this "
-            "version of Bazaar or any plugin.")
+            "version of Breezy or any plugin.")
 
     def __init__(self, feature):
         self.feature = feature
@@ -780,6 +780,8 @@ class BzrDir(controldir.ControlDir):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the "
                                  "default format, not one of %r" % cls)
+        if format is None:
+            format = BzrDirFormat.get_default_format()
         return controldir.ControlDir.create(
             base, format=format, possible_transports=possible_transports)
 

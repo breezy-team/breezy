@@ -54,6 +54,9 @@ Improvements
    but it prevents the DWIM revision specifier from treating "svn:"
    as a URL. (Jelmer Vernooĳ)
 
+ * New `pypi` directory that can be used to access remote repositories
+   declared in pypi. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -95,6 +98,10 @@ API Changes
 
  * File ids are no longer returned in ``Tree.walkdirs``.
    (Jelmer Vernooĳ)
+
+ * ``WorkingTree.merge_from_branch``, ``Merge.do_merge`` and
+   ``merge_inner`` now return a list of conflicts rather than number of
+   conflicts.  (Jelmer Vernooĳ)
 
 Internals
 *********

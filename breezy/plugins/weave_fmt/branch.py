@@ -28,6 +28,7 @@ from ...lock import LogicalLockResult
 from ...trace import mutter
 
 from ...branch import (
+    BindingUnsupported,
     BranchFormat,
     BranchWriteLockResult,
     )
@@ -105,7 +106,7 @@ class BzrBranch4(FullHistoryBzrBranch):
         raise errors.UpgradeRequired(self.user_url)
 
     def bind(self, other):
-        raise errors.UpgradeRequired(self.user_url)
+        raise BindingUnsupported(self)
 
     def set_bound_location(self, location):
         raise NotImplementedError(self.set_bound_location)

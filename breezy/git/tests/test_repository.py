@@ -124,6 +124,15 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = Repository.open('.')
         repo.pack()
 
+    def test_unlock_closes(self):
+        commit_id = self.simple_commit()
+        repo = Repository.open('.')
+        repo.pack()
+        with repo.lock_read():
+            repo.all_revision_ids()
+            self.assertTrue(len(repo._git.object_store._pack_cache) > 0)
+        self.assertEqual(len(repo._git.object_store._pack_cache), 0)
+
     def test_revision_tree(self):
         commit_id = self.simple_commit()
         revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
@@ -184,11 +193,10 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(list(inv.iter_entries()), [])
 
     def test_revision_tree_none(self):
-        # GitRepository.revision_tree(None) returns the null tree.
+        # GitRepository.revision_tree('null':') returns the null tree.
         repo = self.git_repo
         tree = repo.revision_tree(revision.NULL_REVISION)
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
-        self.assertIs(None, tree.path2id(''))
 
     def test_get_parent_map_null(self):
         self.assertEqual({revision.NULL_REVISION: ()},

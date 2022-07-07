@@ -53,13 +53,6 @@ class TestErrors(tests.TestCase):
                 self.assertFalse(True, ('"message" not allowed in '
                                         '"errors.%s._fmt"' % c.__name__))
 
-    def test_bad_filename_encoding(self):
-        error = errors.BadFilenameEncoding(b'bad/filen\xe5me', 'UTF-8')
-        self.assertContainsRe(
-            str(error),
-            "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
-            " filesystem encoding UTF-8$")
-
     def test_duplicate_help_prefix(self):
         error = errors.DuplicateHelpPrefix('foo')
         self.assertEqualDiff('The prefix foo is in the help search path twice.',

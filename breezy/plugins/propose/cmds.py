@@ -255,7 +255,7 @@ class cmd_my_merge_proposals(Command):
 
     hidden = True
 
-    takes_args = ['base-url?']
+    takes_args = ['base_url?']
     takes_options = [
         'verbose',
         RegistryOption.from_kwargs(
@@ -300,7 +300,7 @@ class cmd_my_merge_proposals(Command):
                                  for l in description.splitlines()])
                         self.outf.write('\n')
             except _mod_propose.HosterLoginRequired as e:
-                warning('Skipping %r, login required.', instance)
+                warning('Skipping %s, login required.', instance)
 
 
 class cmd_land_merge_proposal(Command):

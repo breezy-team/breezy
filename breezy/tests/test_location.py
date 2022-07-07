@@ -81,7 +81,8 @@ class TestLocationToUrl(tests.TestCase):
             'cvs+pserver://anonymous@odessa.cvs.sourceforge.net/cvsroot/odess',
             location_to_url(
                 ':pserver:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
-        self.assertRaises(ValueError, location_to_url, ':pserver:blah')
+        self.assertRaises(urlutils.InvalidURL, location_to_url, ':pserver:blah')
+        self.assertRaises(urlutils.InvalidURL, location_to_url, ':pserver:blah:bloe')
 
     def test_extssh(self):
         self.assertEqual(
@@ -130,3 +131,5 @@ class RCPLocationTests(tests.TestCase):
     def test_invalid(self):
         self.assertRaises(ValueError, rcp_location_to_url, "http://srv/git/bar")
         self.assertRaises(ValueError, rcp_location_to_url, "git/bar")
+        # rcp host names cannot be shorter than two characters
+        self.assertRaises(ValueError, rcp_location_to_url, "c:/git/bar")

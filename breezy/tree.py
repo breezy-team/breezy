@@ -160,7 +160,7 @@ class TreeChange(object):
             self.path[0] != self.path[1])
 
     def is_reparented(self):
-        return os.path.dirname(self.path[0]) != os.path.dirname(self.path[1])
+        return osutils.dirname(self.path[0]) != osutils.dirname(self.path[1])
 
     def discard_new(self):
         return self.__class__(
@@ -203,7 +203,13 @@ class Tree(object):
     def supports_symlinks(self):
         """Does this tree support symbolic links?
         """
-        return osutils.has_symlinks()
+        return True
+
+    @property
+    def supports_file_ids(self):
+        """Does this tree support file ids?
+        """
+        raise NotImplementedError(self.supports_file_ids)
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
                      extra_trees=None, require_versioned=False, include_root=False,
@@ -281,20 +287,9 @@ class Tree(object):
         """
         return False
 
-    def all_file_ids(self):
-        """Iterate through all file ids, including ids for missing files."""
-        raise NotImplementedError(self.all_file_ids)
-
     def all_versioned_paths(self):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
-
-    def id2path(self, file_id, recurse='down'):
-        """Return the path for a file id.
-
-        :raises NoSuchId:
-        """
-        raise NotImplementedError(self.id2path)
 
     def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
@@ -554,17 +549,13 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def path2id(self, path):
-        """Return the id for path in this tree."""
-        raise NotImplementedError(self.path2id)
-
     def is_versioned(self, path):
         """Check whether path is versioned.
 
         :param path: Path to check
         :return: boolean
         """
-        return self.path2id(path) is not None
+        raise NotImplementedError(self.is_versioned)
 
     def find_related_paths_across_trees(self, paths, trees=[],
                                         require_versioned=True):
@@ -722,19 +713,21 @@ class Tree(object):
         return searcher
 
     def archive(self, format, name, root='', subdir=None,
-                force_mtime=None):
+                force_mtime=None, recurse_nested=False):
         """Create an archive of this tree.
 
-        :param format: Format name (e.g. 'tar')
-        :param name: target file name
-        :param root: Root directory name (or None)
-        :param subdir: Subdirectory to export (or None)
-        :return: Iterator over archive chunks
+        Args:
+          format: Format name (e.g. 'tar')
+          name: target file name
+          root: Root directory name (or None)
+          subdir: Subdirectory to export (or None)
+        Returns: Iterator over archive chunks
         """
         from .archive import create_archive
         with self.lock_read():
             return create_archive(format, self, name, root,
-                                  subdir, force_mtime=force_mtime)
+                                  subdir, force_mtime=force_mtime,
+                                  recurse_nested=recurse_nested)
 
     @classmethod
     def versionable_kind(cls, kind):
@@ -805,10 +798,7 @@ class InterTree(InterObject):
                      require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
 
-        A tuple is returned:
-        (file_id, (path_in_source, path_in_target),
-         changed_content, versioned, parent, name, kind,
-         executable)
+        A TreeChange object is returned.
 
         Changed_content is True if the file's content has changed.  This
         includes changes to its kind, and to a symlink's target.

@@ -34,6 +34,9 @@ from breezy.git.tree import (
 from breezy.git.mapping import default_mapping
 
 
+REG_MODE = stat.S_IFREG | 0o644
+
+
 class ChangesFromGitChangesTests(TestCase):
 
     def setUp(self):
@@ -61,8 +64,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
                 (False, False), False)
             ], self.transform([
-            ('modify',
-            (b'a', stat.S_IFREG|0o644, a), (b'a', stat.S_IFREG|0o644, b))]))
+                ('modify',
+                 (b'a', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFREG | 0o644, b))]))
 
     def test_kind_changed(self):
         a = Blob.from_string(b'a')
@@ -73,8 +76,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', 'symlink'),
                 (False, False), False)
             ], self.transform([
-            ('modify',
-            (b'a', stat.S_IFREG|0o644, a), (b'a', stat.S_IFLNK, b))]))
+                ('modify',
+                 (b'a', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFLNK, b))]))
 
     def test_rename_no_changes(self):
         a = Blob.from_string(b'a')
@@ -84,8 +87,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('old', 'a'),
                 ('file', 'file'), (False, False), False)
             ], self.transform([
-            ('rename',
-            (b'old', stat.S_IFREG|0o644, a), (b'a', stat.S_IFREG|0o644, a))]))
+                ('rename',
+                 (b'old', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFREG | 0o644, a))]))
 
     def test_rename_and_modify(self):
         a = Blob.from_string(b'a')
@@ -96,8 +99,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'b'),
                 ('file', 'file'), (False, False), False)
             ], self.transform([
-            ('rename',
-            (b'a', stat.S_IFREG|0o644, a), (b'b', stat.S_IFREG|0o644, b))]))
+                ('rename',
+                 (b'a', stat.S_IFREG | 0o644, a), (b'b', stat.S_IFREG | 0o644, b))]))
 
     def test_copy_no_changes(self):
         a = Blob.from_string(b'a')
@@ -107,8 +110,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('old', 'a'),
                 ('file', 'file'), (False, False), True)
             ], self.transform([
-            ('copy',
-            (b'old', stat.S_IFREG|0o644, a), (b'a', stat.S_IFREG|0o644, a))]))
+                ('copy',
+                 (b'old', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFREG | 0o644, a))]))
 
     def test_copy_and_modify(self):
         a = Blob.from_string(b'a')
@@ -119,8 +122,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'b'),
                 ('file', 'file'), (False, False), True)
             ], self.transform([
-            ('copy',
-            (b'a', stat.S_IFREG|0o644, a), (b'b', stat.S_IFREG|0o644, b))]))
+                ('copy',
+                 (b'a', stat.S_IFREG | 0o644, a), (b'b', stat.S_IFREG | 0o644, b))]))
 
     def test_add(self):
         b = Blob.from_string(b'b')
@@ -129,8 +132,8 @@ class ChangesFromGitChangesTests(TestCase):
                 b'git:a', (None, 'a'), True, (False, True), (None, b'TREE_ROOT'),
                 (None, 'a'), (None, 'file'), (None, False), False)
             ], self.transform([
-            ('add',
-            (None, None, None), (b'a', stat.S_IFREG|0o644, b))]))
+                ('add',
+                 (None, None, None), (b'a', stat.S_IFREG | 0o644, b))]))
 
     def test_delete(self):
         b = Blob.from_string(b'b')
@@ -139,8 +142,8 @@ class ChangesFromGitChangesTests(TestCase):
                 b'git:a', ('a', None), True, (True, False), (b'TREE_ROOT', None),
                 ('a', None), ('file', None), (False, None), False)
             ], self.transform([
-            ('remove',
-            (b'a', stat.S_IFREG|0o644, b), (None, None, None))]))
+                ('remove',
+                 (b'a', stat.S_IFREG | 0o644, b), (None, None, None))]))
 
     def test_unchanged(self):
         b = Blob.from_string(b'b')
@@ -150,12 +153,12 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
                 (False, False), False)
             ], self.transform([
-            ('unchanged',
-            (b'a', stat.S_IFREG|0o644, b), (b'a', stat.S_IFREG|0o644, b))],
+                ('unchanged',
+                 (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))],
             include_unchanged=True))
         self.assertEqual([], self.transform([
             ('unchanged',
-            (b'a', stat.S_IFREG|0o644, b), (b'a', stat.S_IFREG|0o644, b))],
+             (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))],
             include_unchanged=False))
 
     def test_unversioned(self):
@@ -166,8 +169,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (None, b'TREE_ROOT'), (None, 'a'), (None, 'file'),
                 (None, False), False)
             ], self.transform([
-            ('add',
-            (None, None, None), (b'a', stat.S_IFREG|0o644, b))],
+                ('add',
+                 (None, None, None), (b'a', stat.S_IFREG | 0o644, b))],
             target_extras=set([b'a'])))
         self.assertEqual([
             TreeChange(
@@ -175,8 +178,8 @@ class ChangesFromGitChangesTests(TestCase):
                 (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
                 (False, False), False)
             ], self.transform([
-            ('add',
-            (b'a', stat.S_IFREG|0o644, b), (b'a', stat.S_IFREG|0o644, b))],
+                ('add',
+                 (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))],
             source_extras=set([b'a']),
             target_extras=set([b'a'])))
 
@@ -206,7 +209,7 @@ class DeltaFromGitChangesTests(TestCase):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('modify',
-            (b'a', stat.S_IFREG|0o644, a), (b'a', stat.S_IFREG|0o644, b))])
+             (b'a', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFREG | 0o644, b))])
         expected_delta = TreeDelta()
         expected_delta.modified.append(TreeChange(
             b'git:a', ('a', 'a'), True, (True, True),
@@ -218,7 +221,7 @@ class DeltaFromGitChangesTests(TestCase):
         a = Blob.from_string(b'a')
         delta = self.transform([
             ('rename',
-            (b'old', stat.S_IFREG|0o644, a), (b'a', stat.S_IFREG|0o644, a))])
+             (b'old', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFREG | 0o644, a))])
         expected_delta = TreeDelta()
         expected_delta.renamed.append(
             TreeChange(
@@ -232,7 +235,7 @@ class DeltaFromGitChangesTests(TestCase):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('rename',
-            (b'a', stat.S_IFREG|0o644, a), (b'b', stat.S_IFREG|0o644, b))])
+             (b'a', stat.S_IFREG | 0o644, a), (b'b', stat.S_IFREG | 0o644, b))])
         expected_delta = TreeDelta()
         expected_delta.renamed.append(
             TreeChange(
@@ -245,12 +248,12 @@ class DeltaFromGitChangesTests(TestCase):
         a = Blob.from_string(b'a')
         delta = self.transform([
             ('copy',
-            (b'old', stat.S_IFREG|0o644, a), (b'a', stat.S_IFREG|0o644, a))])
+             (b'old', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFREG | 0o644, a))])
         expected_delta = TreeDelta()
         expected_delta.copied.append(TreeChange(
-                b'git:a', ('old', 'a'), False, (True, True),
-                (b'TREE_ROOT', b'TREE_ROOT'), ('old', 'a'),
-                ('file', 'file'), (False, False), True))
+            b'git:a', ('old', 'a'), False, (True, True),
+            (b'TREE_ROOT', b'TREE_ROOT'), ('old', 'a'),
+            ('file', 'file'), (False, False), True))
         self.assertEqual(expected_delta, delta)
 
     def test_copy_and_modify(self):
@@ -258,52 +261,53 @@ class DeltaFromGitChangesTests(TestCase):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('copy',
-            (b'a', stat.S_IFREG|0o644, a), (b'b', stat.S_IFREG|0o644, b))])
+             (b'a', stat.S_IFREG | 0o644, a),
+             (b'b', stat.S_IFREG | 0o644, b))])
         expected_delta = TreeDelta()
         expected_delta.copied.append(TreeChange(
-                b'git:b', ('a', 'b'), True, (True, True),
-                (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'b'),
-                ('file', 'file'), (False, False), True))
+            b'git:b', ('a', 'b'), True, (True, True),
+            (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'b'),
+            ('file', 'file'), (False, False), True))
         self.assertEqual(expected_delta, delta)
 
     def test_add(self):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('add',
-            (None, None, None), (b'a', stat.S_IFREG|0o644, b))])
+             (None, None, None), (b'a', stat.S_IFREG | 0o644, b))])
         expected_delta = TreeDelta()
         expected_delta.added.append(TreeChange(
-                b'git:a', (None, 'a'), True, (False, True), (None, b'TREE_ROOT'),
-                (None, 'a'), (None, 'file'), (None, False), False))
+            b'git:a', (None, 'a'), True, (False, True), (None, b'TREE_ROOT'),
+            (None, 'a'), (None, 'file'), (None, False), False))
         self.assertEqual(delta, expected_delta)
 
     def test_delete(self):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('remove',
-            (b'a', stat.S_IFREG|0o644, b), (None, None, None))])
+             (b'a', stat.S_IFREG | 0o644, b), (None, None, None))])
         expected_delta = TreeDelta()
         expected_delta.removed.append(TreeChange(
-                b'git:a', ('a', None), True, (True, False), (b'TREE_ROOT', None),
-                ('a', None), ('file', None), (False, None), False))
+            b'git:a', ('a', None), True, (True, False), (b'TREE_ROOT', None),
+            ('a', None), ('file', None), (False, None), False))
         self.assertEqual(delta, expected_delta)
 
     def test_unchanged(self):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('unchanged',
-            (b'a', stat.S_IFREG|0o644, b), (b'a', stat.S_IFREG|0o644, b))])
+             (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))])
         expected_delta = TreeDelta()
         expected_delta.unchanged.append(TreeChange(
-                b'git:a', ('a', 'a'), False, (True, True),
-                (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
-                (False, False), False))
+            b'git:a', ('a', 'a'), False, (True, True),
+            (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
+            (False, False), False))
 
     def test_unversioned(self):
         b = Blob.from_string(b'b')
         delta = self.transform([
             ('add',
-            (None, None, None), (b'a', stat.S_IFREG|0o644, b))],
+             (None, None, None), (b'a', stat.S_IFREG | 0o644, b))],
             target_extras=set([b'a']))
         expected_delta = TreeDelta()
         expected_delta.unversioned.append(
@@ -314,7 +318,7 @@ class DeltaFromGitChangesTests(TestCase):
         self.assertEqual(delta, expected_delta)
         delta = self.transform([
             ('add',
-            (b'a', stat.S_IFREG|0o644, b), (b'a', stat.S_IFREG|0o644, b))],
+             (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))],
             source_extras=set([b'a']),
             target_extras=set([b'a']))
         expected_delta = TreeDelta()
@@ -329,7 +333,7 @@ class DeltaFromGitChangesTests(TestCase):
         b = Blob.from_string(b'target')
         delta = self.transform([
             ('modify',
-             (b'a', stat.S_IFREG|0o644, a), (b'a', stat.S_IFLNK, b))])
+             (b'a', stat.S_IFREG | 0o644, a), (b'a', stat.S_IFLNK, b))])
         expected_delta = TreeDelta()
         expected_delta.kind_changed.append(TreeChange(
             b'git:a', ('a', 'a'), True, (True, True),

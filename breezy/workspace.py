@@ -22,69 +22,73 @@ high performance in large trees with a small number of changes.
 
 from __future__ import absolute_import
 
+from contextlib import ExitStack
 import errno
 import os
 import shutil
-
+from typing import Optional, List
 
 from .clean_tree import iter_deletables
-from .errors import BzrError, DependencyNotPresent
+from .errors import BzrError, DependencyNotPresent, NoSuchFile
+from .osutils import is_inside
 from .trace import warning
 from .transform import revert
+from .tree import Tree
 from .workingtree import WorkingTree
 
 
 class WorkspaceDirty(BzrError):
     _fmt = "The directory %(path)s has pending changes."
 
-    def __init__(self, path):
-        BzrError.__init__(self, path=path)
+    def __init__(self, tree, subpath):
+        self.tree = tree
+        self.subpath = subpath
+        BzrError.__init__(self, path=tree.abspath(subpath))
 
 
 # TODO(jelmer): Move to .clean_tree?
-def reset_tree(local_tree, subpath=''):
+def reset_tree(
+    local_tree: WorkingTree,
+    basis_tree: Optional[Tree] = None,
+    subpath: str = "",
+    dirty_tracker: "DirtyTracker" = None,
+) -> None:
     """Reset a tree back to its basis tree.
 
     This will leave ignored and detritus files alone.
 
     Args:
       local_tree: tree to work on
+      dirty_tracker: Optional dirty tracker
       subpath: Subpath to operate on
     """
-    revert(local_tree, local_tree.branch.basis_tree(),
-           [subpath] if subpath not in ('.', '') else None)
-    deletables = list(iter_deletables(
-        local_tree, unknown=True, ignored=False, detritus=False))
+    if dirty_tracker and not dirty_tracker.is_dirty():
+        return
+    if basis_tree is None:
+        basis_tree = local_tree.branch.basis_tree()
+    revert(local_tree, basis_tree, [subpath] if subpath else None)
+    deletables: List[str] = []
+    # TODO(jelmer): Use basis tree
+    for p in local_tree.extras():
+        if not is_inside(subpath, p):
+            continue
+        if not local_tree.is_ignored(p):
+            deletables.append(local_tree.abspath(p))
     delete_items(deletables)
 
 
-# TODO(jelmer): Move to .clean_tree?
-def check_clean_tree(local_tree):
-    """Check that a tree is clean and has no pending changes or unknown files.
-
-    Args:
-      local_tree: The tree to check
-    Raises:
-      PendingChanges: When there are pending changes
-    """
-    # Just check there are no changes to begin with
-    if local_tree.has_changes():
-        raise WorkspaceDirty(local_tree.abspath('.'))
-    if list(local_tree.unknowns()):
-        raise WorkspaceDirty(local_tree.abspath('.'))
-
-
-def delete_items(deletables, dry_run=False):
+def delete_items(deletables, dry_run: bool = False):
     """Delete files in the deletables iterable"""
+
     def onerror(function, path, excinfo):
-        """Show warning for errors seen by rmtree.
-        """
+        """Show warning for errors seen by rmtree."""
         # Handle only permission error while removing files.
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        warnings.warn('unable to remove %s' % path)
-    for path, subp in deletables:
+        warning("unable to remove %s", path)
+
+    for path in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
         else:
@@ -95,6 +99,55 @@ def delete_items(deletables, dry_run=False):
                 if e.errno != errno.EACCES:
                     raise e
                 warning('unable to remove "%s": %s.', path, e.strerror)
+
+
+# TODO(jelmer): Move to .clean_tree?
+def check_clean_tree(
+    local_tree: WorkingTree, basis_tree: Optional[Tree] = None,
+    subpath: str = ""
+) -> None:
+    """Check that a tree is clean and has no pending changes or unknown files.
+
+    Args:
+      local_tree: The tree to check
+      basis_tree: Tree to check against
+      subpath: Subpath of the tree to check
+    Raises:
+      PendingChanges: When there are pending changes
+    """
+    with ExitStack() as es:
+        if basis_tree is None:
+            es.enter_context(local_tree.lock_read())
+            basis_tree = local_tree.basis_tree()
+        # Just check there are no changes to begin with
+        changes = local_tree.iter_changes(
+            basis_tree,
+            include_unchanged=False,
+            require_versioned=False,
+            want_unversioned=True,
+            specific_files=[subpath],
+        )
+
+        def relevant(p, t):
+            if not p:
+                return False
+            if not is_inside(subpath, p):
+                return False
+            if t.is_ignored(p):
+                return False
+            try:
+                if not t.has_versioned_directories() and t.kind(p) == "directory":
+                    return False
+            except NoSuchFile:
+                return True
+            return True
+
+        if any(
+            change
+            for change in changes
+            if relevant(change.path[0], basis_tree) or relevant(change.path[1], local_tree)
+        ):
+            raise WorkspaceDirty(local_tree, subpath)
 
 
 def get_dirty_tracker(local_tree, subpath='', use_inotify=None):
@@ -158,11 +211,11 @@ class Workspace(object):
         """
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
-        reset_tree(self.tree, self.subpath)
+        reset_tree(self.tree, subpath=self.subpath)
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self):
+    def _stage(self) -> List[str]:
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they
@@ -171,18 +224,24 @@ class Workspace(object):
                 [p for p in sorted(relpaths)
                  if self.tree.has_filename(p) and not
                     self.tree.is_ignored(p)])
-            return [
+            changed = [
                 p for p in relpaths
                 if self.tree.is_versioned(p)]
         else:
             self.tree.smart_add([self.tree.abspath(self.subpath)])
-            return [self.subpath] if self.subpath else None
+            changed = [self.subpath] if self.subpath else None
+
+        if self.tree.supports_setting_file_ids():
+            from .rename_map import RenameMap
+            basis_tree = self.tree.basis_tree()
+            RenameMap.guess_renames(
+                basis_tree, self.tree, dry_run=False)
+        return changed
 
     def iter_changes(self):
         with self.tree.lock_write():
             specific_files = self._stage()
             basis_tree = self.tree.basis_tree()
-            # TODO(jelmer): After Python 3.3, use 'yield from'
             for change in self.tree.iter_changes(
                     basis_tree, specific_files=specific_files,
                     want_unversioned=False, require_versioned=True):
@@ -203,12 +262,6 @@ class Workspace(object):
 
         with self.tree.lock_write():
             specific_files = self._stage()
-
-            if self.tree.supports_setting_file_ids():
-                from .rename_map import RenameMap
-                basis_tree = self.tree.basis_tree()
-                RenameMap.guess_renames(
-                    basis_tree, self.tree, dry_run=False)
 
             kwargs['specific_files'] = specific_files
             revid = self.tree.commit(**kwargs)

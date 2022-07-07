@@ -35,6 +35,10 @@ class LocationHooks(Hooks):
             'rewrite_url',
             "Possibly rewrite a URL. Called with a URL to rewrite and the "
             "purpose of the URL.", (3, 0))
+        self.add_hook(
+            'rewrite_location',
+            "Possibly rewrite a location. Called with a location string to "
+            "rewrite and the purpose of the URL.", (3, 2))
 
 
 hooks = LocationHooks()
@@ -47,7 +51,9 @@ def parse_rcp_location(location):
     :return: A URL, e.g. "ssh://foo/bar"
     :raises ValueError: if this is not a RCP-style URL
     """
-    m = re.match('^(?P<user>[^@:/]+@)?(?P<host>[^/:]+):(?P<path>.*)$', location)
+    m = re.match(
+        '^(?P<user>[^@:/]+@)?(?P<host>[^/:]{2,}):(?P<path>.*)$',
+        location)
     if not m:
         raise ValueError("Not a RCP URL")
     if m.group('path').startswith('//'):
@@ -87,7 +93,10 @@ def parse_cvs_location(location):
     scheme = parts[1]
     if scheme == 'extssh':
         scheme = 'ssh'
-    path = parts[3]
+    try:
+        path = parts[3]
+    except IndexError:
+        raise ValueError('no path element in CVS location %s' % location)
     return (scheme, hostname, username, path)
 
 
@@ -97,7 +106,10 @@ def cvs_to_url(location):
     :param location: pserver URL
     :return: A cvs+pserver URL
     """
-    (scheme, host, user, path) = parse_cvs_location(location)
+    try:
+        (scheme, host, user, path) = parse_cvs_location(location)
+    except ValueError as e:
+        raise urlutils.InvalidURL(path=location, extra=str(e))
     return str(urlutils.URL(
         scheme='cvs+' + scheme,
         quoted_user=urlutils.quote(user) if user else None,
@@ -120,6 +132,9 @@ def location_to_url(location, purpose=None):
     """
     if not isinstance(location, str):
         raise AssertionError("location not a byte or unicode string")
+
+    for hook in hooks['rewrite_location']:
+        location = hook(location, purpose=purpose)
 
     if location.startswith(':pserver:') or location.startswith(':extssh:'):
         return cvs_to_url(location)

@@ -35,19 +35,11 @@ import time
 import urllib
 import weakref
 
-try:
-    import http.client as http_client
-except ImportError:
-    import httplib as http_client
-try:
-    import urllib.request as urllib_request
-except ImportError:  # python < 3
-    import urllib2 as urllib_request
-try:
-    from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
-except ImportError:
-    from urlparse import urljoin
-    from urllib import splitport, splittype, splithost, urlencode
+import http.client as http_client
+
+import urllib.request as urllib_request
+
+from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -65,7 +57,6 @@ from ... import (
     config,
     debug,
     errors,
-    lazy_import,
     osutils,
     trace,
     transport,
@@ -73,7 +64,7 @@ from ... import (
     urlutils,
 )
 from ...bzr.smart import medium
-from ...trace import mutter
+from ...trace import mutter, mutter_callsite
 from ...transport import (
     ConnectedTransport,
     UnusableRedirect,
@@ -176,7 +167,7 @@ class Response(http_client.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301, 302, 303, 307, 308, 400, 401, 403, 404, 501]
+    _body_ignored_responses = [301, 302, 303, 307, 308, 403, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -695,18 +686,11 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
         try:
             method = request.get_method()
             url = request.selector
-            if sys.version_info[:2] >= (3, 6):
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers, encode_chunked=False)
-            else:
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers)
+            connection._send_request(method, url,
+                                     # FIXME: implements 100-continue
+                                     # None, # We don't send the body yet
+                                     request.data,
+                                     headers, encode_chunked=False)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
@@ -1406,7 +1390,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         if kerberos is None and not checked_kerberos:
             try:
                 import kerberos
-            except ImportError:
+            except ModuleNotFoundError:
                 kerberos = None
             checked_kerberos = True
         if kerberos is None:
@@ -1732,7 +1716,8 @@ class HTTPDefaultErrorHandler(urllib_request.HTTPDefaultErrorHandler):
         else:
             raise errors.UnexpectedHttpStatus(
                 req.get_full_url(), code,
-                'Unable to handle http code: %s' % msg)
+                'Unable to handle http code: %s' % msg,
+                headers=hdrs)
 
 
 class Opener(object):
@@ -1910,6 +1895,8 @@ class HttpTransport(ConnectedTransport):
                     return self.data.decode()
 
             def read(self, amt=None):
+                if amt is None and 'evil' in debug.debug_flags:
+                    mutter_callsite(4, "reading full response.")
                 return self._actual.read(amt)
 
             def readlines(self):
@@ -1983,7 +1970,7 @@ class HttpTransport(ConnectedTransport):
             else:
                 raise errors.BadHttpRequest(abspath, response.reason)
         elif response.status not in (200, 206):
-            raise errors.UnexpectedHttpStatus(abspath, response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
 
         data = handle_response(
             abspath, response.status, response.getheader, response)
@@ -2214,7 +2201,7 @@ class HttpTransport(ConnectedTransport):
             'POST', abspath, body=body_bytes,
             headers={'Content-Type': 'application/octet-stream'})
         if response.status not in (200, 403):
-            raise errors.UnexpectedHttpStatus(abspath, response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)
@@ -2228,7 +2215,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         response = self.request('HEAD', abspath)
         if response.status not in (200, 404):
-            raise errors.UnexpectedHttpStatus(abspath, response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
 
         return response
 
@@ -2457,7 +2444,8 @@ class HttpTransport(ConnectedTransport):
         if resp.status in (403, 405):
             raise errors.InvalidHttpResponse(
                 abspath,
-                "OPTIONS not supported or forbidden for remote URL")
+                "OPTIONS not supported or forbidden for remote URL",
+                headers=resp.getheaders())
         return resp.getheaders()
 
 

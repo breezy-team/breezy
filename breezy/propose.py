@@ -199,6 +199,10 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.post_comment)
 
+    def reopen(self):
+        """Reopen the merge proposal if it is closed."""
+        raise NotImplementedError(self.reopen)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.
@@ -286,7 +290,7 @@ class Hoster(object):
         """
         raise NotImplementedError(self.publish_derived)
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         """Get a derived branch ('a fork').
         """
         raise NotImplementedError(self.get_derived_branch)
@@ -388,7 +392,11 @@ class Hoster(object):
 
 def determine_title(description):
     """Determine the title for a merge proposal based on full description."""
-    firstline = description.splitlines()[0]
+    for firstline in description.splitlines():
+        if firstline.strip():
+            break
+    else:
+        raise ValueError
     try:
         i = firstline.index('. ')
     except ValueError:

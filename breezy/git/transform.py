@@ -25,6 +25,7 @@ import time
 
 from .mapping import encode_git_path, mode_kind, mode_is_executable, object_mode
 from .tree import GitTree, GitTreeDirectory, GitTreeSymlink, GitTreeFile
+from .mapping import decode_git_path
 
 from .. import (
     annotate,
@@ -723,6 +724,9 @@ class TreeTransformBase(TreeTransform):
         """
         raise NotImplementedError(self.create_symlink)
 
+    def create_tree_reference(self, target, trans_id):
+        raise NotImplementedError(self.create_tree_reference)
+
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
         raise NotImplementedError(self.create_hardlink)
@@ -989,6 +993,16 @@ class DiskTreeTransform(TreeTransformBase):
         # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink
         unique_add(self._new_contents, trans_id, 'symlink')
+
+    def create_tree_reference(self, reference_revision, trans_id):
+        """Schedule creation of a new symbolic link.
+
+        target is a bytestring.
+        See also new_symlink.
+        """
+        os.mkdir(self._limbo_name(trans_id))
+        unique_add(self._new_reference_revision, trans_id, reference_revision)
+        unique_add(self._new_contents, trans_id, 'tree-reference')
 
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
@@ -1425,6 +1439,22 @@ class GitTreeTransform(DiskTreeTransform):
                     o_sha1, o_st_val = self._observed_sha1s[trans_id]
                     st = osutils.lstat(full_path)
                     self._observed_sha1s[trans_id] = (o_sha1, st)
+                if trans_id in self._new_reference_revision:
+                    for (submodule_path, submodule_url, submodule_name) in self._tree._submodule_config():
+                        if decode_git_path(submodule_path) == path:
+                            break
+                    else:
+                        trace.warning(
+                            'unable to find submodule for path %s', path)
+                        continue
+                    submodule_transport = self._tree.controldir.control_transport.clone(
+                        os.path.join('modules', submodule_name.decode('utf-8')))
+                    submodule_transport.create_prefix()
+                    from .dir import BareLocalGitControlDirFormat
+                    BareLocalGitControlDirFormat().initialize_on_transport(submodule_transport)
+                    with open(os.path.join(full_path, '.git'), 'w') as f:
+                        submodule_abspath = submodule_transport.local_abspath('.')
+                        f.write('gitdir: %s\n' % os.path.relpath(submodule_abspath, full_path))
         for path, trans_id in new_paths:
             # new_paths includes stuff like workingtree conflicts. Only the
             # stuff in new_contents actually comes from limbo.
@@ -1440,7 +1470,7 @@ class GitTreeTransform(DiskTreeTransform):
         changes = {}
         changed_ids = set()
         for id_set in [self._new_name, self._new_parent,
-                       self._new_executability]:
+                       self._new_executability, self._new_contents]:
             changed_ids.update(id_set)
         for id_set in [self._new_name, self._new_parent]:
             removed_id.update(id_set)
@@ -1497,7 +1527,7 @@ class GitTransformPreview(GitTreeTransform):
 
     def __init__(self, tree, pb=None, case_sensitive=True):
         tree.lock_read()
-        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
+        limbodir = osutils.mkdtemp(prefix='git-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):
@@ -1541,6 +1571,8 @@ class GitTransformPreview(GitTreeTransform):
 class GitPreviewTree(PreviewTree, GitTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
+    supports_file_ids = False
+
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
         self.store = transform._tree.store
@@ -1549,6 +1581,9 @@ class GitPreviewTree(PreviewTree, GitTree):
 
     def supports_setting_file_ids(self):
         return False
+
+    def supports_symlinks(self):
+        return self._transform._create_symlinks
 
     def _supports_executable(self):
         return self._transform._limbo_supports_executable()
@@ -1637,6 +1672,15 @@ class GitPreviewTree(PreviewTree, GitTree):
             return None
         return annotate.reannotate([old_annotation], lines, default_revision)
 
+    def path2id(self, path):
+        if isinstance(path, list):
+            if path == []:
+                path = [""]
+            path = osutils.pathjoin(*path)
+        if not self.is_versioned(path):
+            return None
+        return self._transform._tree.mapping.generate_file_id(path)
+
     def get_file_text(self, path):
         """Return the byte content of a file.
 
@@ -1691,7 +1735,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name)
                 if not isinstance(link_or_sha1, str):
-                    link_or_sha1 = link_or_sha1.decode(osutils._fs_enc)
+                    link_or_sha1 = os.fsdecode(link_or_sha1)
         executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 

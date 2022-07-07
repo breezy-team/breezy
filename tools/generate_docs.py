@@ -43,6 +43,7 @@ from breezy import (
     commands,
     doc_generate,
     )
+from contextlib import ExitStack
 
 
 def main(argv):
@@ -76,7 +77,7 @@ Available OUTPUT_FORMAT:
         parser.print_help()
         sys.exit(1)
 
-    with breezy.initialize():
+    with breezy.initialize(), ExitStack() as es:
         # Import breezy.bzr for format registration, see <http://pad.lv/956860>
         from breezy import bzr as _
         commands.install_bzr_command_hooks()
@@ -89,7 +90,7 @@ Available OUTPUT_FORMAT:
         if outfilename == "-":
             outfile = sys.stdout
         else:
-            outfile = open(outfilename, "w")
+            outfile = es.enter_context(open(outfilename, "w"))
         if options.show_filename and (outfilename != "-"):
             sys.stdout.write(outfilename)
             sys.stdout.write('\n')
