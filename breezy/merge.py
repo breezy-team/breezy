@@ -1418,6 +1418,9 @@ class Merge3Merger(object):
         base_lines = self.get_lines(self.base_tree, base_path)
         other_lines = self.get_lines(self.other_tree, other_path)
         this_lines = self.get_lines(self.this_tree, this_path)
+        textfile.check_text_lines(base_lines)
+        textfile.check_text_lines(other_lines)
+        textfile.check_text_lines(this_lines)
         m3 = Merge3(
             base_lines, this_lines, other_lines,
             is_cherrypick=self.cherrypick,
@@ -1432,12 +1435,13 @@ class Merge3Merger(object):
             retval["text_conflicts"] = False
             if base_marker and self.reprocess:
                 raise CantReprocessAndShowBase()
-            for line in m3.merge_lines(name_a=b"TREE",
+            lines = list(m3.merge_lines(name_a=b"TREE",
                                        name_b=b"MERGE-SOURCE",
                                        name_base=b"BASE-REVISION",
                                        start_marker=start_marker,
                                        base_marker=base_marker,
-                                       reprocess=self.reprocess):
+                                       reprocess=self.reprocess))
+            for line in lines:
                 if line.startswith(start_marker):
                     retval["text_conflicts"] = True
                     yield line.replace(start_marker, b'<' * 7)
