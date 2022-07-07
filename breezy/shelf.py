@@ -275,7 +275,11 @@ class ShelfCreator(object):
         work_path = self.work_tree.id2path(file_id)
         work_lines = self.work_tree.get_file_lines(work_path)
         from merge3 import Merge3
-        return Merge3(new_lines, target_lines, work_lines).merge_lines()
+        import patiencediff
+        return Merge3(
+            new_lines, target_lines, work_lines,
+            sequence_matcher=patiencediff.PatienceSequenceMatcher,
+            ).merge_lines()
 
     def finalize(self):
         """Release all resources used by this ShelfCreator."""

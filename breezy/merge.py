@@ -45,6 +45,12 @@ from . import (
 # TODO: Report back as changes are merged in
 
 
+class CantReprocessAndShowBase(errors.BzrError):
+
+    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
+            "the relationship of conflicting lines to the base")
+
+
 def transform_tree(from_tree, to_tree, interesting_files=None):
     with from_tree.lock_tree_write():
         merge_inner(from_tree.branch, to_tree, from_tree,
@@ -1412,7 +1418,10 @@ class Merge3Merger(object):
         base_lines = self.get_lines(self.base_tree, base_path)
         other_lines = self.get_lines(self.other_tree, other_path)
         this_lines = self.get_lines(self.this_tree, this_path)
-        m3 = Merge3(base_lines, this_lines, other_lines, is_cherrypick=self.cherrypick)
+        m3 = Merge3(
+            base_lines, this_lines, other_lines,
+            is_cherrypick=self.cherrypick,
+            sequence_matcher=patiencediff.PatienceSequenceMatcher)
         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = b'|' * 7
@@ -1421,6 +1430,8 @@ class Merge3Merger(object):
 
         def iter_merge3(retval):
             retval["text_conflicts"] = False
+            if base_marker and self.reprocess:
+                raise CantReprocessAndShowBase()
             for line in m3.merge_lines(name_a=b"TREE",
                                        name_b=b"MERGE-SOURCE",
                                        name_base=b"BASE-REVISION",

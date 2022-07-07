@@ -17,6 +17,7 @@
 """Merge logic for changelog_merge plugin."""
 
 import difflib
+import patiencediff
 
 from ... import (
     debug,
@@ -150,7 +151,9 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=b''.join):
 def merge_entries(base_entries, this_entries, other_entries,
                   guess_edits=default_guess_edits):
     """Merge changelog given base, this, and other versions."""
-    m3 = Merge3(base_entries, this_entries, other_entries)
+    m3 = Merge3(
+        base_entries, this_entries, other_entries,
+        sequence_matcher=patiencediff.PatienceSequenceMatcher)
     result_entries = []
     at_top = True
     for group in m3.merge_groups():
