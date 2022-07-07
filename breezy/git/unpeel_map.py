@@ -16,7 +16,6 @@
 
 """Unpeel map storage."""
 
-from __future__ import absolute_import
 
 from collections import defaultdict
 from io import BytesIO

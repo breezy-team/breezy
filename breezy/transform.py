@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+import contextlib
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
@@ -33,7 +32,6 @@ from . import (
     )
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    cleanup,
     multiparent,
     revision as _mod_revision,
     ui,
@@ -52,14 +50,8 @@ from .osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_symlinks,
     )
 from .progress import ProgressPhase
-from .sixish import (
-    text_type,
-    viewitems,
-    viewvalues,
-    )
 from .tree import (
     InterTree,
     find_previous_path,
@@ -221,7 +213,7 @@ class TreeTransform(object):
         Only new paths and parents of tree files with assigned ids are used.
         """
         by_parent = {}
-        items = list(viewitems(self._new_parent))
+        items = list(self._new_parent.items())
         items.extend((t, self.final_parent(t))
                      for t in list(self._tree_id_paths))
         for trans_id, parent_id in items:
@@ -521,6 +513,9 @@ class TreeTransform(object):
         """
         raise NotImplementedError(self.create_symlink)
 
+    def create_tree_reference(self, reference_revision, trans_id):
+        raise NotImplementedError(self.create_tree_reference)
+
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
         raise NotImplementedError(self.create_hardlink)
@@ -710,6 +705,8 @@ def create_from_tree(tt, trans_id, tree, path, chunks=None,
                 f.close()
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(path), trans_id)
+    elif kind == "tree-reference":
+        tt.create_tree_reference(tree.get_reference_revision(path), trans_id)
     else:
         raise AssertionError('Unknown kind %r' % kind)
 
@@ -736,10 +733,10 @@ def _prepare_revert_transform(es, working_tree, target_tree, tt, filenames,
     return conflicts, merge_modified
 
 
-def revert(working_tree, target_tree, filenames, backups=False,
+def revert(working_tree, target_tree, filenames=None, backups=False,
            pb=None, change_reporter=None, merge_modified=None, basis_tree=None):
     """Revert a working tree's contents to those of a target tree."""
-    with cleanup.ExitStack() as es:
+    with contextlib.ExitStack() as es:
         pb = es.enter_context(ui.ui_factory.nested_progress_bar())
         es.enter_context(target_tree.lock_read())
         tt = es.enter_context(working_tree.transform(pb))
@@ -752,7 +749,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
-            trace.warning(text_type(conflict))
+            trace.warning(str(conflict))
         pp.next_phase()
         tt.apply()
         if working_tree.supports_merge_modified():
@@ -1133,6 +1130,9 @@ class PreviewTree(object):
 
     def supports_setting_file_ids(self):
         raise NotImplementedError(self.supports_setting_file_ids)
+
+    def supports_symlinks(self):
+        return self._transform._tree.supports_symlinks()
 
     @property
     def _by_parent(self):

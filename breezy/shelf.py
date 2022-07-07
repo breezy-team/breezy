@@ -14,16 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
 import re
+
+import fastbencode as bencode
 
 from . import errors
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    bencode,
     merge,
     merge3,
     transform,

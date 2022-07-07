@@ -15,8 +15,6 @@
 
 """Test the command implementations."""
 
-from __future__ import absolute_import
-
 import os
 import re
 import tempfile
@@ -158,7 +156,7 @@ class TestFastExport(ExternalBase):
 
     def test_symlink(self):
         tree = self.make_branch_and_tree("br")
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink('symlink-target', 'br/symlink')
         tree.add('symlink')
         tree.commit("add a symlink")

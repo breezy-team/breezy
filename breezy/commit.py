@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # The newly committed revision is going to have a shape corresponding
 # to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -57,14 +55,14 @@ from . import (
     ui,
     )
 from .branch import Branch
-from .cleanup import ExitStack
+from contextlib import ExitStack
 import breezy.config
 from .errors import (BzrError,
                      ConflictsInTree,
                      StrictCommitFailed
                      )
 from .osutils import (get_user_encoding,
-                      has_symlinks,
+                      supports_symlinks,
                       is_inside_any,
                       minimum_path_selection,
                       )

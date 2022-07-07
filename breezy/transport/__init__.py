@@ -26,18 +26,12 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
-from __future__ import absolute_import
-
 import errno
+from io import BytesIO
 import sys
 
 from stat import S_ISDIR
 
-from ..sixish import (
-    BytesIO,
-    PY3,
-    string_types,
-    )
 from ..trace import (
     mutter,
     )

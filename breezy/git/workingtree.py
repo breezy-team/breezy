@@ -17,8 +17,6 @@
 
 """An adapter between a Git index and a Bazaar Working Tree"""
 
-from __future__ import absolute_import
-
 import itertools
 from collections import defaultdict
 import errno
@@ -29,6 +27,7 @@ from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import GitFile, FileLocked
 from dulwich.index import (
     Index,
+    IndexEntry,
     SHA1Writer,
     build_index_from_tree,
     index_entry_from_path,
@@ -37,9 +36,6 @@ from dulwich.index import (
     read_submodule_head,
     validate_path,
     write_index_dict,
-    )
-from dulwich.object_store import (
-    tree_lookup_path,
     )
 from dulwich.objects import (
     S_ISGITLINK,
@@ -72,11 +68,11 @@ from ..mutabletree import (
     BadReferenceTarget,
     MutableTree,
     )
-from ..sixish import text_type
 
 
 from .dir import (
     LocalGitDir,
+    BareLocalGitControlDirFormat,
     )
 from .tree import (
     MutableGitIndexTree,
@@ -220,11 +216,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             info = self._submodule_info()[relpath]
         except KeyError:
-            index_path = os.path.join(self.basedir, decode_git_path(relpath), '.git', 'index')
+            submodule_transport = self.user_transport.clone(decode_git_path(relpath))
+            submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
         else:
-            index_path = self.control_transport.local_abspath(
-                posixpath.join('modules', decode_git_path(info[1]), 'index'))
-        return Index(index_path)
+            submodule_transport = self.control_transport.clone(
+                posixpath.join('modules', decode_git_path(info[1])))
+            submodule_dir = BareLocalGitControlDirFormat().open(submodule_transport)
+        return Index(submodule_dir.control_transport.local_abspath('index'))
 
     def lock_read(self):
         """Lock the repository for read operations.
@@ -626,7 +624,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                               recurse_nested=False):
         if from_dir is None:
             from_dir = u""
-        if not isinstance(from_dir, text_type):
+        if not isinstance(from_dir, str):
             raise TypeError(from_dir)
         encoded_from_dir = self.abspath(from_dir).encode(osutils._fs_enc)
         for (dirpath, dirnames, filenames) in os.walk(encoded_from_dir):
@@ -649,7 +647,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         raise errors.BadFilenameEncoding(
                             relpath, osutils._fs_enc)
                     if not self.is_versioned(relpath.decode(osutils._fs_enc)):
-                        dirnames.remove(name)
+                        try:
+                            dirnames.remove(name)
+                        except ValueError:
+                            pass  # removed earlier
             for name in filenames:
                 if self.mapping.is_special_file(name):
                     continue
@@ -984,9 +985,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         value = self.index[path]
         self._index_dirty = True
         if conflicted:
-            self.index[path] = (value[:9] + (value[9] | FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags | FLAG_STAGEMASK)
         else:
-            self.index[path] = (value[:9] + (value[9] & ~ FLAG_STAGEMASK, ))
+            self.index[path] = self.index[path]._replace(flags=self.index[path].flags & ~FLAG_STAGEMASK)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
@@ -1142,7 +1143,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             add_entry(dirname, 'directory')
             dirname = decode_git_path(dirname)
             dir_file_id = self.path2id(dirname)
-            if not isinstance(value, tuple) or len(value) != 10:
+            if not isinstance(value, (tuple, IndexEntry)):
                 raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
                 (decode_git_path(path), decode_git_path(child_name),
@@ -1521,7 +1522,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         #
         with self.lock_tree_write():
             from .. import merge
-            nb_conflicts = 0
+            nb_conflicts = []
             try:
                 last_rev = self.get_parent_ids()[0]
             except IndexError:
@@ -1542,7 +1543,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                                  show_base=show_base)
                 if nb_conflicts:
                     self.add_parent_tree((old_tip, other_tree))
-                    return nb_conflicts
+                    return len(nb_conflicts)
 
             if last_rev != _mod_revision.ensure_null(revision):
                 to_tree = self.branch.repository.revision_tree(revision)
@@ -1575,7 +1576,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         (old_tip, self.branch.repository.revision_tree(old_tip)))
                 self.set_parent_trees(parent_trees)
                 last_rev = parent_trees[0][0]
-            return nb_conflicts
+            return len(nb_conflicts)
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

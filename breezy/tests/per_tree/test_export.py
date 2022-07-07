@@ -40,7 +40,7 @@ class ExportTest(object):
         export(tree_a, 'output', self.exporter)
 
     def prepare_symlink_export(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         work_a = self.make_branch_and_tree('wta')
         os.symlink('target', 'wta/link')
         work_a.add('link')

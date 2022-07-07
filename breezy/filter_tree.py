@@ -17,8 +17,6 @@
 """Content-filtered view of any tree.
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from . import (

@@ -16,10 +16,9 @@
 
 """Tests for WSGI application"""
 
+from io import BytesIO
+
 from .. import tests
-from ..sixish import (
-    BytesIO,
-    )
 from ..bzr.smart import medium, protocol
 from ..transport.http import wsgi
 from ..transport import chroot, memory

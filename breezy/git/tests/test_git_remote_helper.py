@@ -18,8 +18,6 @@
 
 """Tests for the git remote helper."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import os
 import subprocess

@@ -24,7 +24,6 @@ from breezy import (
     tests,
     urlutils,
     )
-from breezy.sixish import PY3
 from breezy.tests import EncodingAdapter
 from breezy.tests.scenarios import load_tests_apply_scenarios
 
@@ -43,11 +42,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
-        if sys.version_info[0] == 2:
-            self.overrideEnv('BRZ_EMAIL', email.encode(
-                osutils.get_user_encoding()))
-        else:
-            self.overrideEnv('BRZ_EMAIL', email)
+        self.overrideEnv('BRZ_EMAIL', email)
         self.create_base()
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,

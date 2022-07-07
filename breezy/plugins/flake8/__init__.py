@@ -20,8 +20,6 @@ to enable this.
 """
 
 
-from __future__ import absolute_import
-
 from breezy.errors import BzrError, DependencyNotPresent
 
 

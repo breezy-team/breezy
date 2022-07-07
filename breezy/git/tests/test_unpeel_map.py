@@ -16,8 +16,6 @@
 
 """Tests for the unpeel map."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ...tests import (

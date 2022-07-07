@@ -42,7 +42,7 @@ class TestCat(tests.TestCaseWithTransport):
         # recorded (by default.)  That problem can't be reproduced in-process,
         # so we need just one test here that
         self.assertEqual(b'foo\n',
-                         self.run_bzr_subprocess(['cat', 'a'],
+                         self.run_brz_subprocess(['cat', 'a'],
                                                  working_dir='branch')[0])
 
         tree.commit(message='2')

@@ -16,8 +16,6 @@
 
 """Support for GitHub."""
 
-from __future__ import absolute_import
-
 import json
 import os
 
@@ -51,7 +49,6 @@ from ...errors import (
     )
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
-from ...sixish import PY3
 from ...trace import note
 from ...transport import get_transport
 from ...transport.http import default_user_agent
@@ -171,7 +168,8 @@ class GitHubMergeProposal(MergeProposal):
         if response.status == 422:
             raise ValidationFailed(json.loads(response.text))
         if response.status != 200:
-            raise UnexpectedHttpStatus(self._pr['url'], response.status)
+            raise UnexpectedHttpStatus(
+                self._pr['url'], response.status, headers=response.getheaders())
         self._pr = json.loads(response.text)
 
     def set_description(self, description):
@@ -208,7 +206,8 @@ class GitHubMergeProposal(MergeProposal):
         if response.status == 422:
             raise ValidationFailed(json.loads(response.text))
         if response.status != 200:
-            raise UnexpectedHttpStatus(self._pr['url'], response.status)
+            raise UnexpectedHttpStatus(
+                self._pr['url'], response.status, headers=response.getheaders())
 
     def get_merged_by(self):
         merged_by = self._pr.get('merged_by')
@@ -231,7 +230,7 @@ class GitHubMergeProposal(MergeProposal):
             raise ValidationFailed(json.loads(response.text))
         if response.status != 201:
             raise UnexpectedHttpStatus(
-                self._pr['comments_url'], response.status)
+                self._pr['comments_url'], response.status, headers=response.getheaders())
         json.loads(response.text)
 
 
@@ -253,8 +252,6 @@ def parse_github_branch_url(branch):
 
 
 def github_url_to_bzr_url(url, branch_name):
-    if not PY3:
-        branch_name = branch_name.encode('utf-8')
     return git_url_to_bzr_url(url, branch_name)
 
 
@@ -286,11 +283,11 @@ class GitHub(Hoster):
                 headers=headers, body=body, retries=3)
         except UnexpectedHttpStatus as e:
             if e.code == 401:
-                raise GitHubLoginRequired(self)
+                raise GitHubLoginRequired(self.base_url)
             else:
                 raise
         if response.status == 401:
-            raise GitHubLoginRequired(self)
+            raise GitHubLoginRequired(self.base_url)
         return response
 
     def _get_repo(self, owner, repo):
@@ -300,7 +297,8 @@ class GitHub(Hoster):
             raise NoSuchProject(path)
         if response.status == 200:
             return json.loads(response.text)
-        raise UnexpectedHttpStatus(path, response.status)
+        raise UnexpectedHttpStatus(
+            path, response.status, headers=response.getheaders())
 
     def _get_repo_pulls(self, path, head=None, state=None):
         path = path + '?'
@@ -316,7 +314,7 @@ class GitHub(Hoster):
             raise NoSuchProject(path)
         if response.status == 200:
             return json.loads(response.text)
-        raise UnexpectedHttpStatus(path, response.status)
+        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
 
     def _create_pull(self, path, title, head, base, body=None, labels=None,
                      assignee=None, draft=False, maintainer_can_modify=False):
@@ -338,15 +336,17 @@ class GitHub(Hoster):
             'POST', path, body=json.dumps(data).encode('utf-8'))
         if response.status == 403:
             raise PermissionDenied(path, response.text)
+        if response.status == 422:
+            raise ValidationFailed(json.loads(response.text))
         if response.status != 201:
-            raise UnexpectedHttpStatus(path, response.status)
+            raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
         return json.loads(response.text)
 
     def _get_user_by_email(self, email):
         path = 'search/users?q=%s+in:email' % email
         response = self._api_request('GET', path)
         if response.status != 200:
-            raise UnexpectedHttpStatus(path, response.status)
+            raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
         ret = json.loads(response.text)
         if ret['total_count'] == 0:
             raise KeyError('no user with email %s' % email)
@@ -361,14 +361,14 @@ class GitHub(Hoster):
             path = 'user'
         response = self._api_request('GET', path)
         if response.status != 200:
-            raise UnexpectedHttpStatus(path, response.status)
+            raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
         return json.loads(response.text)
 
     def _get_organization(self, name):
         path = 'orgs/%s' % name
         response = self._api_request('GET', path)
         if response.status != 200:
-            raise UnexpectedHttpStatus(path, response.status)
+            raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
         return json.loads(response.text)
 
     def _list_paged(self, path, parameters=None, per_page=None):
@@ -387,7 +387,7 @@ class GitHub(Hoster):
                 ';'.join(['%s=%s' % (k, urlutils.quote(v))
                           for (k, v) in parameters.items()]))
             if response.status != 200:
-                raise UnexpectedHttpStatus(path, response.status)
+                raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
             data = json.loads(response.text)
             for entry in data['items']:
                 i += 1
@@ -405,7 +405,7 @@ class GitHub(Hoster):
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
         if response.status != 202:
-            raise UnexpectedHttpStatus(path, response.status)
+            raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
         return json.loads(response.text)
 
     @property
@@ -461,7 +461,7 @@ class GitHub(Hoster):
         repo = self._get_repo(owner, project)
         return github_url_to_bzr_url(repo['ssh_url'], branch_name)
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
@@ -470,10 +470,24 @@ class GitHub(Hoster):
             project = base_repo['name']
         try:
             remote_repo = self._get_repo(owner, project)
-            full_url = github_url_to_bzr_url(remote_repo['ssh_url'], name)
-            return _mod_branch.Branch.open(full_url)
         except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (WEB_GITHUB_URL, owner, project))
+        if preferred_schemes is None:
+            preferred_schemes = ['git+ssh']
+        for scheme in preferred_schemes:
+            if scheme == 'git+ssh':
+                github_url = remote_repo['ssh_url']
+                break
+            if scheme == 'https':
+                github_url = remote_repo['clone_url']
+                break
+            if scheme == 'git':
+                github_url = remote_repo['git_url']
+                break
+        else:
+            raise AssertionError
+        full_url = github_url_to_bzr_url(github_url, name)
+        return _mod_branch.Branch.open(full_url)
 
     def get_proposer(self, source_branch, target_branch):
         return GitHubMergeProposalBuilder(self, source_branch, target_branch)
@@ -547,7 +561,7 @@ class GitHub(Hoster):
             url = issue['pull_request']['url']
             response = self._api_request('GET', url)
             if response.status != 200:
-                raise UnexpectedHttpStatus(url, response.status)
+                raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
             yield GitHubMergeProposal(self, json.loads(response.text))
 
     def get_proposal_by_url(self, url):
@@ -560,7 +574,8 @@ class GitHub(Hoster):
             path = '/user/repos'
         response = self._api_request('GET', path)
         if response.status != 200:
-            raise UnexpectedHttpStatus(self.transport.user_url, response.status)
+            raise UnexpectedHttpStatus(
+                self.transport.user_url, response.status, headers=response.getheaders())
         for project in json.loads(response.text):
             if not project['fork']:
                 continue
@@ -575,7 +590,7 @@ class GitHub(Hoster):
             return
         if response.status == 200:
             return json.loads(response.text)
-        raise UnexpectedHttpStatus(path, response.status)
+        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
 
     def get_current_user(self):
         if self._token is not None:
@@ -650,5 +665,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 maintainer_can_modify=allow_collaboration,
                 )
         except ValidationFailed:
+            # TODO(jelmer): Check the actual error message rather than assuming
+            # a merge proposal exists?
             raise MergeProposalExists(self.source_branch.user_url)
         return GitHubMergeProposal(self.gh, pull_request)

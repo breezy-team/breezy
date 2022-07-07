@@ -22,9 +22,7 @@
 
 SHELL=bash
 PYTHON?=python3
-PYTHON2?=python2
 PYTHON3?=python3
-PYTHON27=python27
 BRZ_TARGET=release
 PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
@@ -38,38 +36,22 @@ sw = $(sort $(wildcard $(1)))
 
 all: extensions
 
+IGNORE_WARNINGS = ImportWarning PendingDeprecationWarning DeprecationWarning FutureWarning ResourceWarning
+
 extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
 check: docs check-nodocs
 
-check-nodocs: check-nodocs2 check-nodocs3
-
-check-nodocs3:
-	# Generate a stream for PQM to watch.
+check-nodocs:
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror $(patsubst %,-Wignore::%,$(IGNORE_WARNINGS)) -O \
 	  ./brz selftest -Oselftest.timeout=120 --strict \
-	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
+	  --subunit2 $(tests) | tee selftest.log | subunit2pyunit
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
-	# command above (the '|' swallow any errors since 'make'
-	# sees the 'tee' exit code for the whole line
-	if [ ! -s selftest.log ] ; then exit 1 ; fi
-	# Check that there were no errors reported.
-	subunit-stats < selftest.log
-
-check-nodocs2: extensions
-	# Generate a stream for PQM to watch.
-	-$(RM) -f selftest.log
-	echo `date` ": selftest starts" 1>&2
-	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
-	  ./brz selftest -Oselftest.timeout=120 \
-	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
-	echo `date` ": selftest ends" 1>&2
-	# An empty log file should catch errors in the $(PYTHON)
 	# command above (the '|' swallow any errors since 'make'
 	# sees the 'tee' exit code for the whole line
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
@@ -81,10 +63,7 @@ check-ci: docs extensions
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
 	set -o pipefail; \
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON2) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -O \
-	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
-	  | subunit-filter -s --passthrough --rename "^" "python2."; \
-	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
+		BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror $(patsubst %,-Wignore::%,$(IGNORE_WARNINGS)) -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python3."
 
@@ -258,7 +237,7 @@ exe:
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_brz.bat win32_brz.exe
-	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_brz.exe
+	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/breezy.url win32_brz.exe
 
 # win32 installer for brz.exe
 installer: exe copy-docs
@@ -266,15 +245,15 @@ installer: exe copy-docs
 	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/brz.iss tools/win32/brz.iss.cog
 	iscc /Q tools/win32/brz.iss
 
-py-inst-27: docs
-	$(PYTHON27) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
+py-inst-37: docs
+	$(PYTHON37) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
 
-python-installer: py-inst-27
-
+python-installer: py-inst-37
 
 copy-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytodir README win32_brz.exe/doc
-	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) win32_brz.exe
+	$(PYTHON) tools/win32/ostools.py copydir doc/en/_build/html win32_brz.exe/doc
+	$(PYTHON) tools/win32/ostools.py copydir doc/developers/_build/html win32_brz.exe/doc/developers
 
 # clean on win32 all installer-related files and directories
 clean-win32: clean-docs
@@ -301,9 +280,9 @@ po/brz.pot: $(PYFILES) $(DOCFILES)
 	$(PYTHON) ./brz export-pot --include-duplicates > po/brz.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "brz" \
-	  --msgid-bugs-address "<bazaar@canonical.com>" \
-	  --copyright-holder "Canonical" \
-	  --from-code ISO-8859-1 --join --sort-by-file --add-comments=i18n: \
+	  --msgid-bugs-address "<breezy-vcs@groups.google.com>" \
+	  --copyright-holder "Breezy Developers" \
+	  --from-code UTF-8 --join --sort-by-file --add-comments=i18n: \
 	  -d bzr -p po -o brz.pot
 
 

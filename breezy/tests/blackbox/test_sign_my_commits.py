@@ -114,4 +114,3 @@ class SignMyCommits(tests.TestCaseWithTransport):
         self.assertUnsigned(repo, b'C')
         self.assertUnsigned(repo, b'D')
         self.assertUnsigned(repo, b'E')
-

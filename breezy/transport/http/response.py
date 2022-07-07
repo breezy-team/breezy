@@ -21,26 +21,15 @@ to standard HTTP responses, single range responses and multipart range
 responses.
 """
 
-from __future__ import absolute_import
-
 import cgi
+from io import BytesIO
 import os
-try:
-    import http.client as http_client
-except ImportError:  # python < 3
-    import httplib as http_client
-try:
-    import email.utils as email_utils
-except ImportError:  # python < 3
-    import rfc822 as email_utils
+import http.client as http_client
+import email.utils as email_utils
 
 from ... import (
     errors,
     osutils,
-    )
-from ...sixish import (
-    BytesIO,
-    PY3,
     )
 
 
@@ -80,8 +69,6 @@ class ResponseFile(object):
         :param size:  The number of bytes to read.  Leave unspecified or pass
             -1 to read to EOF.
         """
-        if size is None and not PY3:
-            size = -1
         data = self._file.read(size)
         self._pos += len(data)
         return data
@@ -225,16 +212,14 @@ class RangeFile(ResponseFile):
         Parse the headers including the empty line following them so that we
         are ready to read the data itself.
         """
-        if PY3:
-            self._headers = http_client.parse_headers(self._file)
-        else:
-            self._headers = http_client.HTTPMessage(self._file, seekable=0)
+        self._headers = http_client.parse_headers(self._file)
         # Extract the range definition
         content_range = self._headers.get('content-range', None)
         if content_range is None:
             raise errors.InvalidHttpResponse(
                 self._path,
-                'Content-Range header missing in a multi-part response')
+                'Content-Range header missing in a multi-part response',
+                headers=self._headers)
         self.set_range_from_header(content_range)
 
     def set_range_from_header(self, content_range):

@@ -16,9 +16,8 @@
 
 """Export a tree to a tarball."""
 
-from __future__ import absolute_import
-
 from contextlib import closing
+from io import BytesIO
 import os
 import sys
 import tarfile
@@ -28,9 +27,6 @@ from .. import (
     osutils,
     )
 from ..export import _export_iter_entries
-from ..sixish import (
-    BytesIO,
-    )
 
 
 def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
@@ -45,7 +41,6 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
 
     Returns a (tarinfo, fileobj) tuple
     """
-    file_id = getattr(entry, 'file_id', None)
     filename = osutils.pathjoin(root, final_path)
     item = tarfile.TarInfo(filename)
     if force_mtime is not None:
@@ -79,7 +74,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         fileobj = None
     else:
         raise errors.BzrError("don't know how to export {%s} of kind %r"
-                              % (file_id, entry.kind))
+                              % (final_path, entry.kind))
     return (item, fileobj)
 
 
@@ -185,16 +180,12 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
     except ImportError as e:
         raise errors.DependencyNotPresent('lzma', e)
 
-    if sys.version_info[0] == 2:
-        compressor = lzma.LZMACompressor(
-            options={"format": compression_format})
-    else:
-        compressor = lzma.LZMACompressor(
-            format={
-                'xz': lzma.FORMAT_XZ,
-                'raw': lzma.FORMAT_RAW,
-                'alone': lzma.FORMAT_ALONE,
-                }[compression_format])
+    compressor = lzma.LZMACompressor(
+        format={
+            'xz': lzma.FORMAT_XZ,
+            'raw': lzma.FORMAT_RAW,
+            'alone': lzma.FORMAT_ALONE,
+            }[compression_format])
 
     for chunk in tarball_generator(
             tree, root, subdir, force_mtime=force_mtime):

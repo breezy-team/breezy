@@ -19,8 +19,6 @@
 Currently only tells the user that Subversion is not supported.
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 
 from ... import (

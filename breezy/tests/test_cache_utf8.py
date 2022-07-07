@@ -19,7 +19,6 @@
 from .. import (
     cache_utf8,
     )
-from ..sixish import text_type
 from . import TestCase
 
 
@@ -109,7 +108,7 @@ class TestEncodeCache(TestCase):
         # objects.
         uni_x = cache_utf8.decode(x)
         self.assertEqual(u'simple text', uni_x)
-        self.assertIsInstance(uni_x, text_type)
+        self.assertIsInstance(uni_x, str)
 
         utf8_x = cache_utf8.encode(uni_x)
         self.assertIs(utf8_x, x)

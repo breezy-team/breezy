@@ -16,8 +16,6 @@
 
 """Tests for bzr-fastimport."""
 
-from __future__ import absolute_import
-
 from .... import errors as bzr_errors
 from ....tests import TestLoader
 from ....tests.features import Feature

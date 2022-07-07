@@ -16,8 +16,6 @@
 
 """Tests for url handling."""
 
-from __future__ import absolute_import
-
 from ...tests import TestCase
 from ..urls import (
     git_url_to_bzr_url,

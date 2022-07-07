@@ -36,7 +36,6 @@ from ..conflicts import (
     Conflict as BaseConflict,
     ConflictList as BaseConflictList,
     )
-from ..sixish import text_type
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
@@ -52,7 +51,7 @@ class Conflict(BaseConflict):
         super(Conflict, self).__init__(path)
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
-        if isinstance(file_id, text_type):
+        if isinstance(file_id, str):
             file_id = cache_utf8.encode(file_id)
         self.file_id = file_id
 
@@ -485,7 +484,7 @@ class HandledPathConflict(HandledConflict):
         self.conflict_path = conflict_path
         # the factory blindly transfers the Stanza values to __init__,
         # so they can be unicode.
-        if isinstance(conflict_file_id, text_type):
+        if isinstance(conflict_file_id, str):
             conflict_file_id = cache_utf8.encode(conflict_file_id)
         self.conflict_file_id = conflict_file_id
 

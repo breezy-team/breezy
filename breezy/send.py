@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import os
 import time
 
@@ -75,7 +73,7 @@ def send(target_branch, revision, public_branch, remember,
             remembered_target_branch = "parent"
         if target_branch is None:
             raise errors.CommandError(gettext('No submit branch known or'
-                                                 ' specified'))
+                                              ' specified'))
         if remembered_target_branch is not None:
             trace.note(gettext('Using saved {0} location "{1}" to determine '
                                'what changes to submit.').format(
@@ -106,13 +104,13 @@ def send(target_branch, revision, public_branch, remember,
             branch.set_public_branch(public_branch)
         if no_bundle and public_branch is None:
             raise errors.CommandError(gettext('No public branch specified or'
-                                                 ' known'))
+                                              ' known'))
         base_revision_id = None
         revision_id = None
         if revision is not None:
             if len(revision) > 2:
                 raise errors.CommandError(gettext('bzr send takes '
-                                                     'at most two one revision identifiers'))
+                                                  'at most two one revision identifiers'))
             revision_id = revision[-1].as_revision_id(branch)
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)
@@ -137,7 +135,7 @@ def send(target_branch, revision, public_branch, remember,
             if directive.multiple_output_files:
                 if output == '-':
                     raise errors.CommandError(gettext('- not supported for '
-                                                         'merge directives that use more than one output file.'))
+                                                      'merge directives that use more than one output file.'))
                 if not os.path.exists(output):
                     os.mkdir(output, 0o755)
                 for (filename, lines) in directive.to_files():
@@ -178,7 +176,7 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
             patch_type = 'bundle'
         else:
             raise errors.CommandError(gettext('Format 0.9 does not'
-                                                 ' permit bundle with no patch'))
+                                              ' permit bundle with no patch'))
     else:
         if not no_patch:
             patch_type = 'diff'

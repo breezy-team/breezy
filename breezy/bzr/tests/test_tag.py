@@ -40,6 +40,3 @@ class TestTagSerialization(TestCase):
         expected = br'd6:boring12:boring-revid6:stable12:stable-revide'
         self.assertEqualDiff(packed, expected)
         self.assertEqual(store._deserialize_tag_dict(packed), td)
-
-
-

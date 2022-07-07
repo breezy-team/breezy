@@ -16,10 +16,7 @@
 
 import errno
 import socket
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
+import socketserver
 import sys
 import threading
 
@@ -353,6 +350,7 @@ class TestingTCPServerMixin(object):
             accepted_errnos = [errno.EBADF,
                                errno.EPIPE,
                                errno.WSAEBADF,
+                               errno.WSAENOTSOCK,
                                errno.WSAECONNRESET,
                                errno.WSAENOTCONN,
                                errno.WSAESHUTDOWN,

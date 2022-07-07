@@ -16,14 +16,12 @@
 
 """Test read_bundle works properly across various transports."""
 
+from io import BytesIO
+
 import breezy.mergeable
 from ..bundle.serializer import write_bundle
 import breezy.bzr.bzrdir
 from ... import errors
-from ...sixish import (
-    BytesIO,
-    text_type,
-    )
 from ... import tests
 from ...tests.test_transport import TestTransportImplementation
 from ...tests.per_transport import transport_test_permutations
@@ -88,7 +86,7 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
 
     def test_read_mergeable_from_url(self):
         info = self.read_mergeable_from_url(
-            text_type(self.get_url(self.bundle_name)))
+            str(self.get_url(self.bundle_name)))
         revision = info.real_revisions[-1]
         self.assertEqual(b'commit-1', revision.revision_id)
 
@@ -107,6 +105,6 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
             # transports (the test will fail even).
             raise tests.TestSkipped(
                 'Need a ConnectedTransport to test transport reuse')
-        url = text_type(self.get_url(self.bundle_name))
+        url = str(self.get_url(self.bundle_name))
         self.read_mergeable_from_url(url)
         self.assertEqual(1, len(self.possible_transports))

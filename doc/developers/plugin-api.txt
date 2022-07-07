@@ -189,19 +189,6 @@ shown by ``bzr help PLUGIN_NAME``.
 This is a user-visible docstring so should be prefixed with ``__doc__ =``
 to ensure help works under ``python -OO`` with docstrings stripped.
 
-API version
------------
-
-Plugins can and should declare that they depend on a particular version of
-breezy like so::
-
-    from breezy.api import require_api
-
-    require_api(breezy, (1, 11, 0))
-
-Please see `API versioning <api-versioning.html>`_ for more details on the API
-metadata protocol used by breezy.
-
 Plugin version
 --------------
 
@@ -254,7 +241,7 @@ other people.  Here are some steps to consider:
    <https://launchpad.net/bzr-fastimport>
    and publish the branches or tarballs there
 
- * include the plugin in <http://wiki.bazaar.canonical.com/BzrPlugins>
+ * include the plugin in <http://wiki.breezy-vcs.org/Plugins>
 
  * post about it to the ``bazaar-announce`` list at ``lists.canonical.com``
 

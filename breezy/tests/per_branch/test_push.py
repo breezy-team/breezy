@@ -16,6 +16,7 @@
 
 """Tests for branch.push behaviour."""
 
+from io import BytesIO
 import os
 
 from ... import (
@@ -31,9 +32,6 @@ from ... import (
     )
 from ...bzr import (
     branch as bzrbranch,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from ...bzr.smart import (
     client,

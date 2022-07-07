@@ -17,18 +17,12 @@
 
 """UI location string handling."""
 
-from __future__ import absolute_import
-
 import re
 
 from . import (
     urlutils,
     )
 from .hooks import Hooks
-from .sixish import (
-    PY3,
-    string_types,
-    )
 
 
 class LocationHooks(Hooks):
@@ -53,7 +47,9 @@ def parse_rcp_location(location):
     :return: A URL, e.g. "ssh://foo/bar"
     :raises ValueError: if this is not a RCP-style URL
     """
-    m = re.match('^(?P<user>[^@:/]+@)?(?P<host>[^/:]+):(?P<path>.*)$', location)
+    m = re.match(
+        '^(?P<user>[^@:/]+@)?(?P<host>[^/:]{2,}):(?P<path>.*)$',
+        location)
     if not m:
         raise ValueError("Not a RCP URL")
     if m.group('path').startswith('//'):
@@ -93,7 +89,10 @@ def parse_cvs_location(location):
     scheme = parts[1]
     if scheme == 'extssh':
         scheme = 'ssh'
-    path = parts[3]
+    try:
+        path = parts[3]
+    except IndexError:
+        raise ValueError('no path element in CVS location %s' % location)
     return (scheme, hostname, username, path)
 
 
@@ -103,7 +102,10 @@ def cvs_to_url(location):
     :param location: pserver URL
     :return: A cvs+pserver URL
     """
-    (scheme, host, user, path) = parse_cvs_location(location)
+    try:
+        (scheme, host, user, path) = parse_cvs_location(location)
+    except ValueError as e:
+        raise urlutils.InvalidURL(path=location, extra=str(e))
     return str(urlutils.URL(
         scheme='cvs+' + scheme,
         quoted_user=urlutils.quote(user) if user else None,
@@ -124,7 +126,7 @@ def location_to_url(location, purpose=None):
     :raise InvalidURL: If the location is already a URL, but not valid.
     :return: Byte string with resulting URL
     """
-    if not isinstance(location, string_types):
+    if not isinstance(location, str):
         raise AssertionError("location not a byte or unicode string")
 
     if location.startswith(':pserver:') or location.startswith(':extssh:'):
@@ -142,8 +144,7 @@ def location_to_url(location, purpose=None):
                 path=location, extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
     else:
-        if PY3:
-            location = location.decode('ascii')
+        location = location.decode('ascii')
 
     if location.startswith("file:") and not location.startswith("file://"):
         return urlutils.join(urlutils.local_path_to_url("."), location[5:])

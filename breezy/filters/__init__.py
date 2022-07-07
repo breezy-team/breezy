@@ -38,7 +38,6 @@ where:
 Note that context is currently only supported for write converters.
 """
 
-from __future__ import absolute_import
 
 from io import (
     BytesIO,

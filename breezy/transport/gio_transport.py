@@ -24,23 +24,15 @@ It provides the gio+XXX:// protocols where XXX is any of the protocols
 supported by gio.
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import os
 import random
 import stat
 import time
-try:
-    from urllib.parse import (
-        urlparse,
-        urlunparse,
-        )
-except ImportError:
-    from urlparse import (
-        urlparse,
-        urlunparse,
-        )
+from urllib.parse import (
+    urlparse,
+    urlunparse,
+    )
 
 from .. import (
     config,
@@ -49,9 +41,6 @@ from .. import (
     urlutils,
     debug,
     ui,
-    )
-from ..sixish import (
-    text_type,
     )
 from ..trace import mutter
 from . import (
@@ -154,7 +143,7 @@ class GioTransport(ConnectedTransport):
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
-        if isinstance(full_url, text_type):
+        if isinstance(full_url, str):
             raise urlutils.InvalidURL(full_url)
         return full_url
 

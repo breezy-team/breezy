@@ -17,8 +17,6 @@
 
 """Support for Launchpad."""
 
-from __future__ import absolute_import
-
 import re
 import shutil
 import tempfile
@@ -410,7 +408,8 @@ class Launchpad(Hoster):
         else:
             raise AssertionError('not a valid Launchpad URL')
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
+        # TODO(jelmer): honor preferred_schemes
         if owner is None:
             owner = self.launchpad.me.name
         (base_vcs, base_user, base_password, base_path,

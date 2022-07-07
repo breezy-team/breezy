@@ -51,9 +51,8 @@ in the deltas to provide line annotation
 
 """
 
-from __future__ import absolute_import
-
 import operator
+from io import BytesIO
 import os
 
 from ..lazy_import import lazy_import
@@ -94,12 +93,6 @@ from ..osutils import (
     sha_string,
     sha_strings,
     split_lines,
-    )
-from ..sixish import (
-    BytesIO,
-    range,
-    viewitems,
-    viewvalues,
     )
 from ..bzr.versionedfile import (
     _KeyRefs,
@@ -421,7 +414,7 @@ class KnitContentFactory(ContentFactory):
             elif storage_kind == 'fulltext':
                 return self._knit.get_text(self.key[0])
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         return iter(self.get_bytes_as(storage_kind))
@@ -469,7 +462,7 @@ class LazyKnitContentFactory(ContentFactory):
             else:
                 return b''.join(chunks)
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind in ('chunked', 'lines'):
@@ -956,7 +949,7 @@ def _get_total_build_size(self, keys, positions):
                 next_keys.add(compression_parent)
         build_keys = next_keys
     return sum(index_memo[2]
-               for index_memo in viewvalues(all_build_index_memos))
+               for index_memo in all_build_index_memos.values())
 
 
 class KnitVersionedFiles(VersionedFilesWithFallbacks):
@@ -1289,7 +1282,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             build_details = self._index.get_build_details(pending_components)
             current_components = set(pending_components)
             pending_components = set()
-            for key, details in viewitems(build_details):
+            for key, details in build_details.items():
                 (index_memo, compression_parent, parents,
                  record_details) = details
                 if compression_parent is not None:
@@ -1396,7 +1389,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # key = component_id, r = record_details, i_m = index_memo,
                 # n = next
                 records = [(key, i_m) for key, (r, i_m, n)
-                           in viewitems(position_map)]
+                           in position_map.items()]
                 # Sort by the index memo, so that we request records from the
                 # same pack file together, and in forward-sorted order
                 records.sort(key=operator.itemgetter(1))
@@ -1528,7 +1521,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             # map from key to
             # (record_details, access_memo, compression_parent_key)
             positions = dict((key, self._build_details_to_components(details))
-                             for key, details in viewitems(build_details))
+                             for key, details in build_details.items())
         absent_keys = keys.difference(set(positions))
         # There may be more absent keys : if we're missing the basis component
         # and are trying to include the delta closure.
@@ -1643,7 +1636,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         missing = set(keys)
         record_map = self._get_record_map(missing, allow_missing=True)
         result = {}
-        for key, details in viewitems(record_map):
+        for key, details in record_map.items():
             if key not in missing:
                 continue
             # record entry 2 is the 'digest'.
@@ -1873,7 +1866,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # we need key, position, length
                 key_records = []
                 build_details = self._index.get_build_details(keys)
-                for key, details in viewitems(build_details):
+                for key, details in build_details.items():
                     if key in keys:
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
@@ -2283,8 +2276,8 @@ class _ContentMapGenerator(object):
         # one line with next ('' for None)
         # one line with byte count of the record bytes
         # the record bytes
-        for key, (record_bytes, (method, noeol), next) in viewitems(
-                self._raw_record_map):
+        for key, (record_bytes, (method, noeol), next) in (
+                self._raw_record_map.items()):
             key_bytes = b'\x00'.join(key)
             parents = self.global_map.get(key, None)
             if parents is None:
@@ -3014,10 +3007,10 @@ class _KnitGraphIndex(object):
                 del keys[key]
         result = []
         if self._parents:
-            for key, (value, node_refs) in viewitems(keys):
+            for key, (value, node_refs) in keys.items():
                 result.append((key, value, node_refs))
         else:
-            for key, (value, node_refs) in viewitems(keys):
+            for key, (value, node_refs) in keys.items():
                 result.append((key, value))
         self._add_callback(result)
         if missing_compression_parents:
@@ -3408,7 +3401,7 @@ class _KnitAnnotator(annotate.Annotator):
             self._all_build_details.update(build_details)
             # new_nodes = self._vf._index._get_entries(this_iteration)
             pending = set()
-            for key, details in viewitems(build_details):
+            for key, details in build_details.items():
                 (index_memo, compression_parent, parent_keys,
                  record_details) = details
                 self._parent_map[key] = parent_keys

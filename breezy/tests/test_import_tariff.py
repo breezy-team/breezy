@@ -27,7 +27,6 @@ from .. import (
     )
 from ..controldir import ControlDir
 from ..bzr.smart import medium
-from ..sixish import PY3
 from ..transport import remote
 
 from . import (
@@ -71,7 +70,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(ImportTariffTestCase, self).setUp()
 
-    def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
+    def start_brz_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
@@ -90,7 +89,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
             # We don't want to update the whole call chain so we insert stderr
             # *iff* we need to
             kwargs['stderr'] = stderr_file
-        return self.start_bzr_subprocess(args, **kwargs)
+        return self.start_brz_subprocess(args, **kwargs)
 
     def check_forbidden_modules(self, err, forbidden_imports):
         """Check for forbidden modules in stderr.
@@ -104,18 +103,14 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if PY3:
-                if err.find("\nimport '%s' " % module_name) != -1:
-                    bad_modules.append(module_name)
-            else:
-                if err.find("\nimport %s " % module_name) != -1:
-                    bad_modules.append(module_name)
+            if err.find("\nimport '%s' " % module_name) != -1:
+                bad_modules.append(module_name)
 
         if bad_modules:
             self.fail("command loaded forbidden modules %r"
                       % (bad_modules,))
 
-    def finish_bzr_subprocess_with_import_check(self, process,
+    def finish_brz_subprocess_with_import_check(self, process,
                                                 args, forbidden_imports):
         """Finish subprocess and check specific modules have not been
         imported.
@@ -123,7 +118,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         :param forbidden_imports: List of fully-qualified Python module names
             that should not be loaded while running this command.
         """
-        (out, err) = self.finish_bzr_subprocess(process,
+        (out, err) = self.finish_brz_subprocess(process,
                                                 universal_newlines=False, process_args=args)
         self.check_forbidden_modules(err, forbidden_imports)
         return out, err
@@ -137,8 +132,8 @@ class ImportTariffTestCase(TestCaseWithTransport):
         :param forbidden_imports: List of fully-qualified Python module names
             that should not be loaded while running this command.
         """
-        process = self.start_bzr_subprocess_with_import_check(args)
-        self.finish_bzr_subprocess_with_import_check(process, args,
+        process = self.start_brz_subprocess_with_import_check(args)
+        self.finish_brz_subprocess_with_import_check(process, args,
                                                      forbidden_imports)
 
 
@@ -159,7 +154,7 @@ class TestImportTariffs(ImportTariffTestCase):
     def test_simple_local_bzr(self):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.', format='bzr')
-        self.run_command_check_imports(['st'], [
+        forbidden_modules = [
             'breezy.annotate',
             'breezy.atomicfile',
             'breezy.bugtracker',
@@ -194,10 +189,11 @@ class TestImportTariffs(ImportTariffTestCase):
             'socket',
             'smtplib',
             'tarfile',
-            'tempfile',
             'termios',
             'tty',
-            ] + old_format_modules)
+            'ctypes',
+            ] + old_format_modules
+        self.run_command_check_imports(['st'], forbidden_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #
@@ -206,14 +202,6 @@ class TestImportTariffs(ImportTariffTestCase):
     def test_simple_local_git(self):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.', format='git')
-        from dulwich import __version__ as dulwich_version
-
-        if dulwich_version >= (0, 20, 4):
-            forbidden = ['shutil', 'tempfile', 'ssl']
-        elif PY3:
-            forbidden = ['ssl']
-        else:
-            forbidden = []
 
         self.run_command_check_imports(['st'], [
             'breezy.annotate',
@@ -249,11 +237,14 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.git.commit',
             'getpass',
             'kerberos',
+            'shutil',
             'smtplib',
+            'ssl',
+            'tempfile',
             'tarfile',
             'termios',
             'tty',
-            ] + old_format_modules + forbidden)
+            ] + old_format_modules)
 
     def test_help_commands(self):
         # See https://bugs.launchpad.net/bzr/+bug/663773
@@ -267,7 +258,7 @@ class TestImportTariffs(ImportTariffTestCase):
         # Capture the bzr serve process' stderr in a file to avoid deadlocks
         # while the smart client interacts with it.
         stderr_file = open('bzr-serve.stderr', 'w')
-        process = self.start_bzr_subprocess_with_import_check(['serve',
+        process = self.start_brz_subprocess_with_import_check(['serve',
                                                                '--inet', '-d', tree.basedir], stderr_file=stderr_file)
         url = 'bzr://localhost/'
         self.permit_url(url)
@@ -278,7 +269,7 @@ class TestImportTariffs(ImportTariffTestCase):
         process.stdin.close()
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
-        (out, err) = self.finish_bzr_subprocess(process,
+        (out, err) = self.finish_brz_subprocess(process,
                                                 universal_newlines=False)
         stderr_file.close()
         with open('bzr-serve.stderr', 'rb') as stderr_file:

@@ -4,13 +4,16 @@ Breezy install instructions
 Dependencies
 ------------
 
-Breezy requires Python 2.7 or newer, or Python 3.4 or newer.
+Breezy requires Python 3.5 or newer.
 
-It also requires the `configobj` Python module to be installed. It can be
-installed either from your operating system's package manager, using pip
-or by downloading it from:
+It also requires the `configobj` and `patiencediff` Python modules to be
+installed.
 
-  https://github.com/DiffSK/configobj
+These can be installed either from your operating system's package
+manager, using pip or by downloading them from:
+
+  configobj: https://github.com/DiffSK/configobj
+  patiencediff: https://github.com/breezy-team/patiencediff
 
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
@@ -21,7 +24,15 @@ pycrypto:
   http://www.lag.net/paramiko/
 
 To PGP sign commits and verify PGP signatures on commits, install
-python-gpg.
+python-gpgme.
+
+For Git support, install Dulwich:
+
+  https://www.dulwich.io/
+
+For fastimport support, install python-fastimport:
+
+  https://github.com/jelmer/python-fastimport
 
 brz can optionally use compiled versions of some parts of the code
 for increased speed. When installing brz you need the ability to

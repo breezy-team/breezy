@@ -18,7 +18,6 @@
 
 import re
 
-from breezy.sixish import PY3
 from breezy.bzr.tests.test_testament import (
     osutils,
     REV_1_SHORT,

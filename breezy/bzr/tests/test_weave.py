@@ -21,15 +21,13 @@
 
 """test suite for weave algorithm"""
 
+from io import BytesIO
 from pprint import pformat
 
 from ... import (
     errors,
     )
 from ...osutils import sha_string
-from ...sixish import (
-    BytesIO,
-    )
 from . import TestCase, TestCaseInTempDir
 from ..weave import Weave, WeaveFormatError, WeaveInvalidChecksum
 from ..weavefile import write_weave, read_weave

@@ -33,8 +33,6 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-from __future__ import absolute_import
-
 import breezy
 from breezy import (
     config,

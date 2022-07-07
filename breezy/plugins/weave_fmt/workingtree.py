@@ -16,8 +16,7 @@
 
 """Weave-era working tree objects."""
 
-from __future__ import absolute_import
-
+from io import BytesIO
 
 from ... import (
     conflicts as _mod_conflicts,
@@ -33,9 +32,6 @@ from ...bzr import (
     xml5,
     )
 from ...mutabletree import MutableTree
-from ...sixish import (
-    BytesIO,
-    )
 from ...transport.local import LocalTransport
 from ...workingtree import (
     WorkingTreeFormat,
@@ -235,9 +231,8 @@ class WorkingTree2(PreDirStateWorkingTree):
                             break
                 ctype = {True: 'text conflict',
                          False: 'contents conflict'}[text]
-                conflicts.append(_mod_bzr_conflicts.Conflict.factory(ctype,
-                                                                 path=conflicted,
-                                                                 file_id=self.path2id(conflicted)))
+                conflicts.append(_mod_bzr_conflicts.Conflict.factory(
+                    ctype, path=conflicted, file_id=self.path2id(conflicted)))
             return conflicts
 
     def set_conflicts(self, arg):

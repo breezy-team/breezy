@@ -20,11 +20,6 @@ from .. import (
     fifo_cache,
     tests,
     )
-from ..sixish import (
-    viewitems,
-    viewkeys,
-    viewvalues,
-    )
 
 
 class TestFIFOCache(tests.TestCase):
@@ -39,9 +34,9 @@ class TestFIFOCache(tests.TestCase):
         self.assertEqual(2, c.get(1))
         self.assertEqual(2, c.get(1, None))
         self.assertEqual([1], list(c))
-        self.assertEqual({1}, viewkeys(c))
-        self.assertEqual([(1, 2)], sorted(viewitems(c)))
-        self.assertEqual([2], sorted(viewvalues(c)))
+        self.assertEqual({1}, c.keys())
+        self.assertEqual([(1, 2)], sorted(c.items()))
+        self.assertEqual([2], sorted(c.values()))
         self.assertEqual({1: 2}, c)
 
     def test_cache_size(self):
@@ -58,9 +53,9 @@ class TestFIFOCache(tests.TestCase):
         self.assertEqual(None, c.get(1))
         self.assertEqual(None, c.get(1, None))
         self.assertEqual([], list(c))
-        self.assertEqual(set(), viewkeys(c))
-        self.assertEqual([], list(viewitems(c)))
-        self.assertEqual([], list(viewvalues(c)))
+        self.assertEqual(set(), c.keys())
+        self.assertEqual([], list(c.items()))
+        self.assertEqual([], list(c.values()))
         self.assertEqual({}, c)
 
     def test_add_maintains_fifo(self):
@@ -69,16 +64,16 @@ class TestFIFOCache(tests.TestCase):
         c[2] = 3
         c[3] = 4
         c[4] = 5
-        self.assertEqual({1, 2, 3, 4}, viewkeys(c))
+        self.assertEqual({1, 2, 3, 4}, c.keys())
         c[5] = 6
         # This should pop out the oldest entry
-        self.assertEqual({2, 3, 4, 5}, viewkeys(c))
+        self.assertEqual({2, 3, 4, 5}, c.keys())
         # Replacing an item doesn't change the stored keys
         c[2] = 7
-        self.assertEqual({2, 3, 4, 5}, viewkeys(c))
+        self.assertEqual({2, 3, 4, 5}, c.keys())
         # But it does change the position in the FIFO
         c[6] = 7
-        self.assertEqual({2, 4, 5, 6}, viewkeys(c))
+        self.assertEqual({2, 4, 5, 6}, c.keys())
         self.assertEqual([4, 5, 2, 6], list(c._queue))
 
     def test_default_after_cleanup_count(self):
@@ -90,10 +85,10 @@ class TestFIFOCache(tests.TestCase):
         c[4] = 5
         c[5] = 6
         # So far, everything fits
-        self.assertEqual({1, 2, 3, 4, 5}, viewkeys(c))
+        self.assertEqual({1, 2, 3, 4, 5}, c.keys())
         c[6] = 7
         # But adding one more should shrink down to after_cleanup_count
-        self.assertEqual({3, 4, 5, 6}, viewkeys(c))
+        self.assertEqual({3, 4, 5, 6}, c.keys())
 
     def test_clear(self):
         c = fifo_cache.FIFOCache(5)
@@ -103,9 +98,9 @@ class TestFIFOCache(tests.TestCase):
         c[4] = 5
         c[5] = 6
         c.cleanup()
-        self.assertEqual({2, 3, 4, 5}, viewkeys(c))
+        self.assertEqual({2, 3, 4, 5}, c.keys())
         c.clear()
-        self.assertEqual(set(), viewkeys(c))
+        self.assertEqual(set(), c.keys())
         self.assertEqual([], list(c._queue))
         self.assertEqual({}, c)
 
@@ -250,9 +245,9 @@ class TestFIFOSizeCache(tests.TestCase):
         self.assertEqual('2', c.get(1))
         self.assertEqual('2', c.get(1, None))
         self.assertEqual([1], list(c))
-        self.assertEqual({1}, viewkeys(c))
-        self.assertEqual([(1, '2')], sorted(viewitems(c)))
-        self.assertEqual(['2'], sorted(viewvalues(c)))
+        self.assertEqual({1}, c.keys())
+        self.assertEqual([(1, '2')], sorted(c.items()))
+        self.assertEqual(['2'], sorted(c.values()))
         self.assertEqual({1: '2'}, c)
         self.assertEqual(1024 * 1024, c.cache_size())
 
@@ -264,9 +259,9 @@ class TestFIFOSizeCache(tests.TestCase):
         self.assertEqual(None, c.get(1))
         self.assertEqual(None, c.get(1, None))
         self.assertEqual([], list(c))
-        self.assertEqual(set(), viewkeys(c))
-        self.assertEqual([], list(viewitems(c)))
-        self.assertEqual([], list(viewvalues(c)))
+        self.assertEqual(set(), c.keys())
+        self.assertEqual([], list(c.items()))
+        self.assertEqual([], list(c.values()))
         self.assertEqual({}, c)
 
     def test_add_maintains_fifo(self):

@@ -16,8 +16,6 @@
 
 """Tests for bzr-git's object store."""
 
-from __future__ import absolute_import
-
 import os
 import shutil
 import stat
@@ -173,7 +171,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertEqual(b, self.store[b.id])
 
     def test_directory_converted_to_symlink(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         b = Blob()
         b.data = b'trgt'
         self.store.lock_read()

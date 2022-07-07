@@ -160,8 +160,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.tree.branch.tags.set_tag('footag', b'r1')
         self.assertAsRevisionId(b'r1', 'footag')
         self.tree.branch.tags.delete_tag('footag')
-        self.assertRaises(InvalidRevisionSpec,
-                          self.get_in_history, 'footag')
+        self.assertRaises(InvalidRevisionSpec, self.get_in_history, 'footag')
 
     def test_dwim_spec_tag_that_looks_like_revno(self):
         # Test that we slip past revno with things that look like revnos,
@@ -679,8 +678,8 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
         self.assertAsRevisionId(b'r2', 'mainline:1.1.1')
         self.assertAsRevisionId(b'r2', 'mainline:revid:alt_r2')
         spec = RevisionSpec.from_string('mainline:revid:alt_r22')
-        e = self.assertRaises(InvalidRevisionSpec,
-                              spec.as_revision_id, self.tree.branch)
+        e = self.assertRaises(
+            InvalidRevisionSpec, spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               "Requested revision: 'mainline:revid:alt_r22' does not exist in"
                               " branch: ")
@@ -709,8 +708,8 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def test_as_revision_id_uncommitted(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:3')
-        e = self.assertRaises(InvalidRevisionSpec,
-                              spec.as_revision_id, self.tree.branch)
+        e = self.assertRaises(
+            InvalidRevisionSpec, spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               r"Requested revision: \'annotate:annotate-tree/file1:3\' does not"
                               " exist in branch: .*\nLine 3 has not been committed.")

@@ -16,12 +16,10 @@
 
 """Tests for eol conversion."""
 
+from io import BytesIO
 import sys
 
 from ... import rules, status
-from ...sixish import (
-    BytesIO,
-    )
 from .. import TestSkipped
 from . import TestCaseWithWorkingTree
 from ...workingtree import WorkingTree

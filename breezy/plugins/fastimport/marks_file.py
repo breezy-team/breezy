@@ -15,8 +15,6 @@
 
 """Routines for reading/writing a marks file."""
 
-from __future__ import absolute_import
-
 from ...trace import warning
 
 

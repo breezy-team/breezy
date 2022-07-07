@@ -29,5 +29,3 @@ class ErrorTests(TestCase):
                              "be repred' has been modified, so a clean inventory cannot be "
                              "read without data loss.",
                              str(error))
-
-

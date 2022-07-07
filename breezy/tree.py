@@ -17,8 +17,6 @@
 """Tree classes, representing directory at point in time.
 """
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     lock,
@@ -27,10 +25,6 @@ from . import (
     trace,
     )
 from .inter import InterObject
-from .sixish import (
-    text_type,
-    viewvalues,
-    )
 
 
 class FileTimestampUnavailable(errors.BzrError):
@@ -209,7 +203,7 @@ class Tree(object):
     def supports_symlinks(self):
         """Does this tree support symbolic links?
         """
-        return osutils.has_symlinks()
+        return True
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
                      extra_trees=None, require_versioned=False, include_root=False,

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from .. import (
@@ -36,7 +34,6 @@ from .xml_serializer import (
     unpack_inventory_flat,
     )
 from ..revision import Revision
-from ..sixish import unichr
 from ..errors import BzrError
 
 
@@ -56,7 +53,7 @@ def _unescaper(match, _map=_xml_unescape_map):
     except KeyError:
         if not code.startswith(b'#'):
             raise
-        return unichr(int(code[1:])).encode('utf8')
+        return chr(int(code[1:])).encode('utf8')
 
 
 _unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
@@ -244,9 +241,10 @@ class Serializer_v8(XMLSerializer):
                        revision_id=get_cached(elt.get('revision_id')),
                        inventory_sha1=elt.get('inventory_sha1').encode('ascii')
                        )
-        parents = elt.find('parents') or []
-        for p in parents:
-            rev.parent_ids.append(get_cached(p.get('revision_id')))
+        parents = elt.find('parents')
+        if parents is not None:
+            for p in parents:
+                rev.parent_ids.append(get_cached(p.get('revision_id')))
         self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
         if v is None:
