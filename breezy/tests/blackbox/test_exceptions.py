@@ -42,7 +42,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err, br'\nAssertionError: always fails\n')
         self.assertContainsRe(
-            err, br'Bazaar has encountered an internal error')
+            err, br'Breezy has encountered an internal error')
 
     def test_utf8_default_fs_enc(self):
         """In the C locale brz treats a posix filesystem as UTF-8 encoded"""
