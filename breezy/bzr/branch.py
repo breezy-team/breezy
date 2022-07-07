@@ -25,7 +25,6 @@ from breezy import (
     config as _mod_config,
     lockable_files,
     lockdir,
-    rio,
     shelf,
     )
 from breezy.bzr import (
@@ -33,7 +32,7 @@ from breezy.bzr import (
     )
 """)
 
-from . import bzrdir
+from . import bzrdir, rio
 from .. import (
     controldir,
     errors,

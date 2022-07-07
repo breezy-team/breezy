@@ -83,7 +83,7 @@ META_INFO = {
         },
     'rust_extensions': [
         RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
-        RustExtension("breezy._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+        RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
         ],
     'tests_require': [
         'testtools',
@@ -331,7 +331,7 @@ add_cython_extension('breezy.bzr._groupcompress_pyx',
                      extra_source=['breezy/bzr/diff-delta.c'])
 add_cython_extension('breezy.bzr._knit_load_data_pyx')
 add_cython_extension('breezy._known_graph_pyx')
-add_cython_extension('breezy._rio_pyx')
+add_cython_extension('breezy.bzr._rio_pyx')
 if sys.platform == 'win32':
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx',
                          libraries=['Ws2_32'])

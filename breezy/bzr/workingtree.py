@@ -58,12 +58,12 @@ from breezy import (
     ignores,
     merge,
     revision as _mod_revision,
-    rio as _mod_rio,
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
     generate_ids,
     inventory,
+    rio as _mod_rio,
     serializer,
     xml5,
     xml7,

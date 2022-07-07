@@ -23,7 +23,7 @@ from breezy import (
 from breezy.revision import (
     NULL_REVISION,
     )
-from breezy.rio import RioWriter, Stanza
+from breezy.bzr.rio import RioWriter, Stanza
 
 from breezy.version_info_formats import (
     create_date_str,

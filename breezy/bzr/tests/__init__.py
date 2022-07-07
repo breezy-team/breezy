@@ -75,6 +75,8 @@ def load_tests(loader, basic_tests, pattern):
         'test_read_bundle',
         'test_remote',
         'test_repository',
+        'test_rio',
+        'test__rio',
         'test_smart',
         'test_smart_request',
         'test_smart_signals',

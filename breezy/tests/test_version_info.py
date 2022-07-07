@@ -30,7 +30,7 @@ from .. import (
     version_info_formats,
     )
 from . import TestCaseWithTransport
-from ..rio import read_stanzas
+from ..bzr.rio import read_stanzas
 
 from ..version_info_formats.format_custom import (
     CustomVersionInfoBuilder,
