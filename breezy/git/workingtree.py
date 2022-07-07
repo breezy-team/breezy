@@ -1257,10 +1257,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             show_base=False):
         basis_tree = self.revision_tree(old_revision)
         if new_revision != old_revision:
-            from .. import merge
+            from ..merge import merge_inner
             with basis_tree.lock_read():
                 new_basis_tree = self.branch.basis_tree()
-                merge.merge_inner(
+                merge_inner(
                     self.branch,
                     new_basis_tree,
                     basis_tree,
@@ -1295,7 +1295,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 raise BadReferenceTarget(
                     self, sub_tree, 'Target not inside tree.')
 
-            self._add([sub_tree_path], ['tree-reference'], [None])
+            path, can_access = osutils.normalized_filename(sub_tree_path)
+            if not can_access:
+                raise errors.InvalidNormalization(path)
+            self._index_add_entry(sub_tree_path, 'tree-reference')
 
     def _read_submodule_head(self, path):
         return read_submodule_head(self.abspath(path))
@@ -1501,7 +1504,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         # local work is unreferenced and will appear to have been lost.
         #
         with self.lock_tree_write():
-            from .. import merge
+            from ..merge import merge_inner
             nb_conflicts = []
             try:
                 last_rev = self.get_parent_ids()[0]
@@ -1517,10 +1520,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 # merge those changes in first
                 base_tree = self.basis_tree()
                 other_tree = self.branch.repository.revision_tree(old_tip)
-                nb_conflicts = merge.merge_inner(self.branch, other_tree,
-                                                 base_tree, this_tree=self,
-                                                 change_reporter=change_reporter,
-                                                 show_base=show_base)
+                nb_conflicts = merge_inner(self.branch, other_tree,
+                                           base_tree, this_tree=self,
+                                           change_reporter=change_reporter,
+                                           show_base=show_base)
                 if nb_conflicts:
                     self.add_parent_tree((old_tip, other_tree))
                     return len(nb_conflicts)
@@ -1534,10 +1537,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                                     last_rev)
                 base_tree = self.branch.repository.revision_tree(base_rev_id)
 
-                nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
-                                                 this_tree=self,
-                                                 change_reporter=change_reporter,
-                                                 show_base=show_base)
+                nb_conflicts = merge_inner(self.branch, to_tree, base_tree,
+                                           this_tree=self,
+                                           change_reporter=change_reporter,
+                                           show_base=show_base)
                 self.set_last_revision(revision)
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the tree we've updated to to set the basis:
