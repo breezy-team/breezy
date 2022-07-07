@@ -51,7 +51,7 @@ from ..plugins.fastimport import exporter as fastexporter
 
 try:
     import fastimport  # noqa: F401
-except ModuleNotFoundError
+except ModuleNotFoundError:
     pass
 else:
     CAPABILITIES.append("import")
