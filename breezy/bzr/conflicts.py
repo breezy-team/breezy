@@ -63,7 +63,7 @@ class Conflict(BaseConflict):
         return s
 
     def _cmp_list(self):
-        return [type(self), self.path, self.file_id]
+        return [self.typestring, self.path, self.file_id]
 
     def __cmp__(self, other):
         if getattr(other, "_cmp_list", None) is None:

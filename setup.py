@@ -68,6 +68,7 @@ META_INFO = {
         'configobj',
         'fastbencode',
         'patiencediff',
+        'merge3',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'dulwich>=0.20.23',
