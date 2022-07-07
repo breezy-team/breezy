@@ -429,7 +429,7 @@ class TestLockDir(TestCaseWithTransport):
         finally:
             ld1.unlock()
         self.assertEqual(info_list['user'], u'jrandom@example.com')
-        self.assertContainsRe(info_list['pid'], '^\\d+$')
+        self.assertIsInstance(info_list['pid'], int)
         self.assertContainsRe(info_list['time_ago'], '^\\d+ seconds? ago$')
 
     def test_lock_without_email(self):
