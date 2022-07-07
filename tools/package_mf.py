@@ -16,9 +16,11 @@
 
 """Custom module finder for entire package"""
 
-import modulefinder
 import os
 import sys
+
+# At present, this is only used on Windows (see setup.py)
+from py2exe import mf310 as modulefinder
 
 
 class CustomModuleFinder(modulefinder.ModuleFinder):
@@ -35,27 +37,56 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
         modulefinder.ModuleFinder.__init__(
             self, path, debug, excludes, replace_paths)
 
-    def run_package(self, package_path):
-        """Recursively process each module in package with run_script method.
+    def load_package_recursive(self, fqname):
+        """Recursively process each module in package
 
-        :param  package_path:   path to package directory.
+        :param  fqname:   name of the package.
         """
-        stack = [package_path]
+        # Load all the parents
+        parent = None
+        path = []
+        for partname in fqname.split("."):
+            parent_path = ".".join(path)
+            path.append(partname)
+            # import_module works recursively,
+            # and some of the dependencies may try
+            # to import modules not present on the system.
+            # (The actual error is
+            # AttributeError: 'NoneType' object has no attribute 'is_package')
+            # Ignore errors here and bail out in the collection loop.
+            try:
+                self.import_module(
+                    partname, ".".join(path),
+                    self.modules.get(parent_path, None))
+            except:
+                pass
+        stack = [(fqname, parent_path)]
         while stack:
-            curdir = stack.pop(0)
-            py = os.listdir(curdir)
-            for i in py:
-                full = os.path.join(curdir, i)
+            (package, parent_path) = stack.pop(0)
+            # Here we assume that all parents have already been imported.
+            # Abort when a parent is missing.
+            parent = self.modules[parent_path]
+            pkg_module = self.import_module(package, package, parent)
+            curdir = pkg_module.__file__
+            dirlist = os.listdir(curdir)
+            for filename in dirlist:
+                full = os.path.join(curdir, filename)
                 if os.path.isdir(full):
+                    if filename == "tests":
+                        continue
                     init = os.path.join(full, '__init__.py')
                     if os.path.isfile(init):
-                        stack.append(full)
+                        stack.append((".".join((package, filename)), package))
                     continue
-                if not i.endswith('.py'):
+                if not filename.endswith('.py'):
                     continue
-                if i == 'setup.py':     # skip
+                if filename == 'setup.py':     # skip
                     continue
-                self.run_script(full)
+                # We only accept .py files, so could use [:-3] too - faster...
+                partname = os.path.splitext(filename)[0]
+                self.import_module(
+                    partname,
+                    ".".join((package, partname)), pkg_module)
 
     def get_result(self):
         """Return 2-tuple: (list of packages, list of modules)"""

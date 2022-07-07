@@ -16,6 +16,7 @@
 
 """Tests for versioning of breezy."""
 
+from io import StringIO
 import platform
 import re
 
@@ -23,10 +24,6 @@ from .. import (
     tests,
     version,
     workingtree,
-    )
-from ..sixish import (
-    PY3,
-    StringIO,
     )
 from .scenarios import load_tests_apply_scenarios
 
@@ -78,6 +75,5 @@ class TestPlatformUse(tests.TestCase):
         version.show_version(show_config=False, show_copyright=False,
                              to_file=out)
         expected = r'(?m)^  Platform: %s' % self._platform
-        if PY3:
-            expected = expected.encode('utf-8')
+        expected = expected.encode('utf-8')
         self.assertContainsRe(out.getvalue(), expected)

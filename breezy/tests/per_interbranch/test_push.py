@@ -16,6 +16,8 @@
 
 """Tests for branch.push behaviour."""
 
+from io import BytesIO
+
 from testtools.matchers import (
     Equals,
     MatchesAny,
@@ -36,9 +38,6 @@ from ...bzr import (
 from ...branch import Branch
 from ...controldir import ControlDir
 from ...revision import NULL_REVISION
-from ...sixish import (
-    BytesIO,
-    )
 from ...bzr.smart.repository import SmartServerRepositoryGetParentMap
 from . import (
     TestCaseWithInterBranch,

@@ -16,8 +16,6 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
-from __future__ import absolute_import
-
 from . import (
     lock,
     iterablefile,

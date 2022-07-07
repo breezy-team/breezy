@@ -16,22 +16,18 @@
 
 """Server-side repository related request implementations."""
 
-from __future__ import absolute_import
-
 import bz2
 import itertools
 import os
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 import sys
 import tempfile
 import threading
 import zlib
 
+import fastbencode as bencode
+
 from ... import (
-    bencode,
     errors,
     estimate_compressed_size,
     osutils,
@@ -45,9 +41,6 @@ from .. import (
     vf_search,
     )
 from ..bzrdir import BzrDir
-from ...sixish import (
-    reraise,
-)
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -919,8 +912,9 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         if self.insert_thread is not None:
             self.insert_thread.join()
         if not self.insert_ok:
+            (exc_type, exc_val, exc_tb) = self.insert_exception
             try:
-                reraise(*self.insert_exception)
+                raise exc_val
             finally:
                 del self.insert_exception
         write_group_tokens, missing_keys = self.insert_result

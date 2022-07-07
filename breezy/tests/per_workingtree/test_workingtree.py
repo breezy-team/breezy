@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
+from io import StringIO
 import os
 
 from ... import (
@@ -40,10 +41,7 @@ from ...errors import (
     )
 from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
-from ...osutils import pathjoin, getcwd, has_symlinks
-from ...sixish import (
-    StringIO,
-    )
+from ...osutils import pathjoin, getcwd, supports_symlinks
 from .. import (
     features,
     TestSkipped,
@@ -85,7 +83,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_list_files(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'file'])
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'symlink')
         tree.lock_read()
         files = list(tree.list_files())
@@ -93,7 +91,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(
             files.pop(0), ('dir', '?', 'directory', TreeDirectory()))
         self.assertEqual(files.pop(0), ('file', '?', 'file', TreeFile()))
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             self.assertEqual(
                 files.pop(0), ('symlink', '?', 'symlink', TreeLink()))
 
@@ -979,7 +977,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.build_tree(['file', 'directory/'])
         names = ['file', 'directory']
-        if has_symlinks():
+        if supports_symlinks(self.test_dir):
             os.symlink('target', 'symlink')
             names.append('symlink')
         tree.add(names)

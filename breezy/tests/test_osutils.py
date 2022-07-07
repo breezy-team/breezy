@@ -16,9 +16,8 @@
 
 """Tests for the osutils wrapper."""
 
-from __future__ import absolute_import, division
-
 import errno
+from io import BytesIO
 import os
 import select
 import socket
@@ -32,11 +31,6 @@ from .. import (
     tests,
     trace,
     win32utils,
-    )
-from ..sixish import (
-    BytesIO,
-    PY3,
-    text_type,
     )
 from . import (
     features,
@@ -300,7 +294,7 @@ class TestKind(tests.TestCaseInTempDir):
         self.build_tree(['file', 'dir/'])
         self.assertEqual('file', osutils.file_kind('file'))
         self.assertEqual('directory', osutils.file_kind('dir/'))
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('symlink', 'symlink')
             self.assertEqual('symlink', osutils.file_kind('symlink'))
 
@@ -405,7 +399,7 @@ class TestDateTime(tests.TestCase):
         self.assertRaises(osutils.UnsupportedTimezoneFormat,
                           osutils.format_date, 0, timezone='foo')
         self.assertIsInstance(osutils.format_date(0), str)
-        self.assertIsInstance(osutils.format_local_date(0), text_type)
+        self.assertIsInstance(osutils.format_local_date(0), str)
         # Testing for the actual value of the local weekday without
         # duplicating the code from format_date is difficult.
         # Instead blackbox.test_locale should check for localized
@@ -485,7 +479,7 @@ class TestFdatasync(tests.TestCaseInTempDir):
 class TestLinks(tests.TestCaseInTempDir):
 
     def test_dereference_path(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -525,14 +519,11 @@ class TestLinks(tests.TestCaseInTempDir):
         mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0o200)
 
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             # should not error when handed a symlink
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
-
-    def test_host_os_dereferences_symlinks(self):
-        osutils.host_os_dereferences_symlinks()
 
 
 class TestCanonicalRelPath(tests.TestCaseInTempDir):
@@ -903,10 +894,7 @@ class TestWin32Funcs(tests.TestCase):
                          osutils._win32_pathjoin('path/to/', 'foo'))
 
     def test_pathjoin_late_bugfix(self):
-        if sys.version_info < (2, 7, 6):
-            expected = '/foo'
-        else:
-            expected = 'C:/foo'
+        expected = 'C:/foo'
         self.assertEqual(expected,
                          osutils._win32_pathjoin('C:/path/to/', '/foo'))
         self.assertEqual(expected,
@@ -1365,11 +1353,11 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # all abspaths are Unicode, and encode them back into utf8.
         for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
             self.assertIsInstance(dirdetail[0], bytes)
-            if isinstance(dirdetail[1], text_type):
+            if isinstance(dirdetail[1], str):
                 dirdetail = (dirdetail[0], dirdetail[1].encode('utf8'))
                 dirblock = [list(info) for info in dirblock]
                 for info in dirblock:
-                    self.assertIsInstance(info[4], text_type)
+                    self.assertIsInstance(info[4], str)
                     info[4] = info[4].encode('utf8')
             new_dirblock = []
             for info in dirblock:
@@ -1617,7 +1605,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1642,7 +1630,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                     }
 
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target', handlers=handlers)
 
@@ -1652,7 +1640,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                           ('f', 'source/b/c', 'target/b/c'),
                           ], processed_files)
         self.assertPathDoesNotExist('target')
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
@@ -1696,10 +1684,7 @@ class TestSetUnsetEnv(tests.TestCase):
                 % (osutils.get_user_encoding(),))
 
         osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
-        if PY3:
-            self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
-        else:
-            self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
+        self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unset(self):
         """Test that passing None will remove the env var"""
@@ -1877,7 +1862,7 @@ class TestDirReader(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, self._filter_out(result))
 
     def test_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
@@ -1901,11 +1886,11 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-    _test_needs_features = [features.SymlinkFeature,
-                            features.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
+        self._test_needs_features.append(features.SymlinkFeature(self.test_dir))
         self.link = u'l\N{Euro Sign}ink'
         self.target = u'targe\N{Euro Sign}t'
         os.symlink(self.target, self.link)
@@ -1960,13 +1945,9 @@ class TestFailedToLoadExtension(tests.TestCase):
     def test_failure_to_load(self):
         self._try_loading()
         self.assertLength(1, osutils._extension_load_failures)
-        if PY3:
-            self.assertEqual(
-                osutils._extension_load_failures[0],
-                "No module named 'breezy._fictional_extension_py'")
-        else:
-            self.assertEqual(osutils._extension_load_failures[0],
-                             "No module named _fictional_extension_py")
+        self.assertEqual(
+            osutils._extension_load_failures[0],
+            "No module named 'breezy._fictional_extension_py'")
 
     def test_report_extension_load_failures_no_warning(self):
         self.assertTrue(self._try_loading())
@@ -2109,55 +2090,21 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEqual(self.gid, s.st_gid)
 
 
-class TestPathFromEnviron(tests.TestCase):
-
-    def test_is_unicode(self):
-        self.overrideEnv('BRZ_TEST_PATH', './anywhere at all/')
-        path = osutils.path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(path, text_type)
-        self.assertEqual(u'./anywhere at all/', path)
-
-    def test_posix_path_env_ascii(self):
-        self.overrideEnv('BRZ_TEST_PATH', '/tmp')
-        home = osutils._posix_path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(home, text_type)
-        self.assertEqual(u'/tmp', home)
-
-    def test_posix_path_env_unicode(self):
-        self.requireFeature(features.ByteStringNamedFilesystem)
-        self.overrideEnv('BRZ_TEST_PATH', '/home/\xa7test')
-        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
-        self.assertEqual(u'/home/\xa7test',
-                         osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-        osutils._fs_enc = "iso8859-5"
-        if PY3:
-            # In Python 3, os.environ returns unicode.
-            self.assertEqual(u'/home/\xa7test',
-                             osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-        else:
-            self.assertEqual(u'/home/\u0407test',
-                             osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-            osutils._fs_enc = "utf-8"
-            self.assertRaises(
-                errors.BadFilenameEncoding,
-                osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
-
-
 class TestGetHomeDir(tests.TestCase):
 
     def test_is_unicode(self):
         home = osutils._get_home_dir()
-        self.assertIsInstance(home, text_type)
+        self.assertIsInstance(home, str)
 
     def test_posix_homeless(self):
         self.overrideEnv('HOME', None)
         home = osutils._get_home_dir()
-        self.assertIsInstance(home, text_type)
+        self.assertIsInstance(home, str)
 
     def test_posix_home_ascii(self):
         self.overrideEnv('HOME', '/home/test')
         home = osutils._posix_get_home_dir()
-        self.assertIsInstance(home, text_type)
+        self.assertIsInstance(home, str)
         self.assertEqual(u'/home/test', home)
 
     def test_posix_home_unicode(self):
@@ -2166,27 +2113,20 @@ class TestGetHomeDir(tests.TestCase):
         self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
         self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
         osutils._fs_enc = "iso8859-5"
-        if PY3:
-            # In python 3, os.environ returns unicode
-            self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
-        else:
-            self.assertEqual(u'/home/\u0407test',
-                             osutils._posix_get_home_dir())
-            osutils._fs_enc = "utf-8"
-            self.assertRaises(errors.BadFilenameEncoding,
-                              osutils._posix_get_home_dir)
+        # In python 3, os.environ returns unicode
+        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
 
 
 class TestGetuserUnicode(tests.TestCase):
 
     def test_is_unicode(self):
         user = osutils.getuser_unicode()
-        self.assertIsInstance(user, text_type)
+        self.assertIsInstance(user, str)
 
     def envvar_to_override(self):
         if sys.platform == "win32":
             # Disable use of platform calls on windows so envvar is used
-            self.overrideAttr(win32utils, 'has_ctypes', False)
+            self.overrideAttr(win32utils.ctypes, 'windll', None)
             return 'USERNAME'  # only variable used on windows
         return 'LOGNAME'  # first variable checked by getpass.getuser()
 
@@ -2203,10 +2143,7 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        if PY3:
-            self.overrideEnv(self.envvar_to_override(), uni_username)
-        else:
-            self.overrideEnv(self.envvar_to_override(), encoded_username)
+        self.overrideEnv(self.envvar_to_override(), uni_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
 
 
@@ -2272,32 +2209,6 @@ class TestFindExecutableInPath(tests.TestCase):
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
 
 
-class TestEnvironmentErrors(tests.TestCase):
-    """Test handling of environmental errors"""
-
-    def test_is_oserror(self):
-        self.assertTrue(osutils.is_environment_error(
-            OSError(errno.EINVAL, "Invalid parameter")))
-
-    def test_is_ioerror(self):
-        self.assertTrue(osutils.is_environment_error(
-            IOError(errno.EINVAL, "Invalid parameter")))
-
-    def test_is_socket_error(self):
-        self.assertTrue(osutils.is_environment_error(
-            socket.error(errno.EINVAL, "Invalid parameter")))
-
-    def test_is_select_error(self):
-        self.assertTrue(osutils.is_environment_error(
-            select.error(errno.EINVAL, "Invalid parameter")))
-
-    def test_is_pywintypes_error(self):
-        self.requireFeature(features.pywintypes)
-        import pywintypes
-        self.assertTrue(osutils.is_environment_error(
-            pywintypes.error(errno.EINVAL, "Invalid parameter", "Caller")))
-
-
 class SupportsExecutableTests(tests.TestCaseInTempDir):
 
     def test_returns_bool(self):
@@ -2306,8 +2217,36 @@ class SupportsExecutableTests(tests.TestCaseInTempDir):
 
 class SupportsSymlinksTests(tests.TestCaseInTempDir):
 
+    def setUp(self):
+        super(SupportsSymlinksTests, self).setUp()
+        self.overrideAttr(
+            osutils, '_FILESYSTEM_FINDER',
+            osutils.MtabFilesystemFinder([
+                (b'/usr', 'ext4'),
+                (b'/home', 'vfat'),
+                (b'/home/jelmer/smb', 'ntfs'),
+                (b'/home/jelmer', 'ext2'),
+            ]))
+
     def test_returns_bool(self):
         self.assertIsInstance(osutils.supports_symlinks(self.test_dir), bool)
+
+    def test_known(self):
+        self.assertTrue(osutils.supports_symlinks("/usr"))
+        self.assertFalse(osutils.supports_symlinks("/home/bogus"))
+        self.assertTrue(osutils.supports_symlinks("/home/jelmer/osx"))
+        self.assertFalse(osutils.supports_symlinks("/home/jelmer/smb"))
+
+    def test_unknown(self):
+        have_symlinks = sys.platform != "win32"
+        self.assertIs(osutils.supports_symlinks("/var"), have_symlinks)
+
+    def test_error(self):
+        have_symlinks = sys.platform != "win32"
+        def raise_error(path):
+            raise errors.DependencyNotPresent('FS', 'TEST')
+        self.overrideAttr(osutils, 'get_fs_type', raise_error)
+        self.assertIs(osutils.supports_symlinks("/var"), have_symlinks)
 
 
 class MtabReader(tests.TestCaseInTempDir):
@@ -2330,12 +2269,12 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
 
     def test_returns_string_or_none(self):
         ret = osutils.get_fs_type(self.test_dir)
-        self.assertTrue(isinstance(ret, text_type) or ret is None)
+        self.assertTrue(isinstance(ret, str) or ret is None)
 
     def test_returns_most_specific(self):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
-            osutils.FilesystemFinder(
+            osutils.MtabFilesystemFinder(
                 [(b'/', 'ext4'), (b'/home', 'vfat'),
                  (b'/home/jelmer', 'ext2')]))
         self.assertEqual(osutils.get_fs_type(b'/home/jelmer/blah'), 'ext2')
@@ -2348,7 +2287,7 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
     def test_returns_none(self):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
-            osutils.FilesystemFinder([]))
+            osutils.MtabFilesystemFinder([]))
         self.assertIs(osutils.get_fs_type('/home/jelmer/blah'), None)
         self.assertIs(osutils.get_fs_type(b'/home/jelmer/blah'), None)
         self.assertIs(osutils.get_fs_type('/home/jelmer'), None)

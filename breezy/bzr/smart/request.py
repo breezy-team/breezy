@@ -26,18 +26,13 @@ Interesting module attributes:
       of times during a request).
 """
 
-from __future__ import absolute_import
-
 # XXX: The class names are a little confusing: the protocol will instantiate a
 # SmartServerRequestHandler, whose dispatch_command method creates an instance
 # of a SmartServerRequest subclass.
 
 
 import threading
-try:
-    from _thread import get_ident
-except ImportError:  # Python < 3
-    from thread import get_ident
+from _thread import get_ident
 
 from ... import (
     branch as _mod_branch,
@@ -49,7 +44,6 @@ from ... import (
     trace,
     urlutils,
     )
-from ...sixish import text_type
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.bzr import bzrdir
@@ -449,7 +443,7 @@ def _translate_error(err):
         # If it is a DecodeError, than most likely we are starting
         # with a plain string
         str_or_unicode = err.object
-        if isinstance(str_or_unicode, text_type):
+        if isinstance(str_or_unicode, str):
             # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
             # byte) in it, so this encoding could cause broken responses.
             # Newer clients use protocol v3, so will be fine.

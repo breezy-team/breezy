@@ -23,6 +23,10 @@ interface later, they will be non blackbox tests.
 """
 
 import codecs
+from io import (
+    BytesIO,
+    StringIO,
+    )
 from os import mkdir, chdir, rmdir, unlink
 import sys
 
@@ -38,11 +42,6 @@ from breezy.bzr import (
 import breezy.branch
 from ...osutils import pathjoin
 from ...revisionspec import RevisionSpec
-from ...sixish import (
-    BytesIO,
-    StringIO,
-    PY3,
-    )
 from ...status import show_tree_status
 from .. import TestCaseWithTransport, TestSkipped
 from ...workingtree import WorkingTree
@@ -802,6 +801,4 @@ added:
 added:
   hell\u00d8
 """
-        if not PY3:
-            expected = expected.encode('latin-1')
         self.assertEqual(stdout, expected)

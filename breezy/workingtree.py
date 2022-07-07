@@ -27,8 +27,7 @@ To get a WorkingTree, call controldir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from __future__ import absolute_import
-
+import contextlib
 import errno
 import os
 import sys
@@ -41,7 +40,6 @@ import shutil
 import stat
 
 from breezy import (
-    cleanup,
     conflicts as _mod_conflicts,
     filters as _mod_filters,
     merge,
@@ -1006,7 +1004,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from .conflicts import resolve
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.lock_tree_write())
             if old_tree is None:
                 basis_tree = self.basis_tree()

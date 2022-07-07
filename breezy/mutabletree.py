@@ -19,8 +19,6 @@
 See MutableTree for more details.
 """
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     hooks,
@@ -29,9 +27,6 @@ from . import (
     tree,
     )
 
-from .sixish import (
-    text_type,
-    )
 
 
 class BadReferenceTarget(errors.InternalBzrError):
@@ -101,12 +96,12 @@ class MutableTree(tree.Tree):
 
         TODO: Perhaps callback with the ids and paths as they're added.
         """
-        if isinstance(files, (str, text_type)):
+        if isinstance(files, str):
             # XXX: Passing a single string is inconsistent and should be
             # deprecated.
             if not (ids is None or isinstance(ids, bytes)):
                 raise AssertionError()
-            if not (kinds is None or isinstance(kinds, (str, text_type))):
+            if not (kinds is None or isinstance(kinds, str)):
                 raise AssertionError()
             files = [files]
             if ids is not None:

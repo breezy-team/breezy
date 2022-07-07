@@ -22,20 +22,18 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import os
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
 import errno
 import stat
 
 from breezy import (
     branch as _mod_branch,
     cache_utf8,
-    cleanup,
     controldir,
     debug,
     filters as _mod_filters,
@@ -74,9 +72,6 @@ from ..osutils import (
     pathjoin,
     realpath,
     safe_unicode,
-    )
-from ..sixish import (
-    viewitems,
     )
 from ..transport import get_transport_from_path
 from ..transport.local import LocalTransport
@@ -707,7 +702,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
             # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
             # missing those added here, but there's also no test coverage for this.
-            rollbacks = cleanup.ExitStack()
+            rollbacks = contextlib.ExitStack()
 
             def move_one(old_entry, from_path_utf8, minikind, executable,
                          fingerprint, packed_stat, size,
@@ -1051,7 +1046,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     raise errors.PathsNotVersionedError(
                         [p.decode('utf-8') for p in paths])
 
-        for dir_name_id, trees_info in viewitems(found):
+        for dir_name_id, trees_info in found.items():
             for index in search_indexes:
                 if trees_info[index][0] not in (b'r', b'a'):
                     found_ids.add(dir_name_id[2])
@@ -1933,6 +1928,9 @@ class DirStateRevisionTree(InventoryTree):
         # Make sure the file exists
         entry = self._get_entry(path=path)
         if entry == (None, None): # do we raise?
+            nested_tree, subpath = self.get_containing_nested_tree(path)
+            if nested_tree is not None:
+                return nested_tree.get_file_mtime(subpath)
             raise errors.NoSuchFile(path)
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]

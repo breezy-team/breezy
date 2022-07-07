@@ -16,6 +16,7 @@
 
 """Test that we can use smart_add on all Tree implementations."""
 
+from io import StringIO
 import os
 import sys
 
@@ -27,9 +28,6 @@ from ... import (
     tests,
     trace,
     workingtree,
-    )
-from ...sixish import (
-    StringIO,
     )
 from .. import (
     features,

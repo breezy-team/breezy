@@ -49,9 +49,6 @@ from ...osutils import (
     file_kind,
     pathjoin,
 )
-from ...sixish import (
-    text_type,
-    )
 from .. import (
     features,
     TestSkipped,
@@ -381,7 +378,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(old_root_id, self.wt.path2id(''))
 
     def test_hardlink(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         transform, root = self.transform()
         transform.new_file('file1', root, [b'contents'])
         transform.apply()
@@ -831,7 +828,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         def ozpath(p):
             return 'oz/' + p
 
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         transform, root = self.transform()
         oz_id = transform.new_directory('oz', root, b'oz-id')
         transform.new_symlink(link_name1, oz_id, link_target1, b'wizard-id')
@@ -957,7 +954,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = list(tt.cook_conflicts(raw_conflicts))
         tt.finalize()
-        conflicts_s = [text_type(c) for c in cooked_conflicts]
+        conflicts_s = [str(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         if self.wt.supports_setting_file_ids():
             self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
@@ -1421,13 +1418,13 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             transform.set_executability(True, transform.trans_id_tree_path('file2'))
             self.assertTreeChanges(transform, [
                 InventoryTreeChange(
-                b'id-1', (u'file1', u'file1'), True, (True, True),
-                (root_id, root_id), ('file1', u'file1'),
-                ('file', None), (False, False), False),
+                    b'id-1', (u'file1', u'file1'), True, (True, True),
+                    (root_id, root_id), ('file1', u'file1'),
+                    ('file', None), (False, False), False),
                 InventoryTreeChange(
-                b'id-2', (u'file2', u'file2'), False, (True, True),
-                (root_id, root_id), ('file2', u'file2'),
-                ('file', 'file'), (False, True), False)])
+                    b'id-2', (u'file2', u'file2'), False, (True, True),
+                    (root_id, root_id), ('file2', u'file2'),
+                    ('file', 'file'), (False, True), False)])
         finally:
             transform.finalize()
 
@@ -1724,7 +1721,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertFalse(changes.has_changed(), changes)
 
     def test_file_to_symlink(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         wt.add(['foo'])
@@ -1777,7 +1774,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(wt.kind("foo"), "file")
 
     def test_dir_to_hardlink(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/', 'foo/bar'])
         wt.add(['foo', 'foo/bar'])
@@ -1831,7 +1828,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertFileEqual(b'qux', 'tree2/foo')
 
     def test_create_from_tree_symlink(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree1 = self.make_branch_and_tree('tree1')
         os.symlink('bar', 'tree1/foo')
         tree1.add('foo')

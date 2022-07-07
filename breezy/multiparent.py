@@ -14,9 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
+from io import (
+    BytesIO,
+    )
 import os
 
 from .lazy_import import lazy_import
@@ -27,7 +28,6 @@ import itertools
 import patiencediff
 
 from breezy import (
-    bencode,
     ui,
     )
 """)
@@ -35,10 +35,6 @@ from . import (
     errors,
     )
 from .i18n import gettext
-from .sixish import (
-    BytesIO,
-    range,
-    )
 
 
 def topo_iter_keys(vf, keys=None):
@@ -599,12 +595,16 @@ class MultiVersionedFile(BaseVersionedFile):
                 raise
 
     def save(self):
-        open(self._filename + '.mpidx', 'wb').write(bencode.bencode(
-            (self._parents, list(self._snapshots), self._diff_offset)))
+        import fastbencode as bencode
+        with open(self._filename + '.mpidx', 'wb') as f:
+            f.write(bencode.bencode(
+                (self._parents, list(self._snapshots), self._diff_offset)))
 
     def load(self):
-        self._parents, snapshots, self._diff_offset = bencode.bdecode(
-            open(self._filename + '.mpidx', 'rb').read())
+        import fastbencode as bencode
+        with open(self._filename + '.mpidx', 'rb') as f:
+            self._parents, snapshots, self._diff_offset = bencode.bdecode(
+                f.read())
         self._snapshots = set(snapshots)
 
 

@@ -16,8 +16,6 @@
 
 """Import upstream source into a branch"""
 
-from __future__ import absolute_import
-
 import errno
 from io import (
     BytesIO,
@@ -34,9 +32,6 @@ from .controldir import ControlDir, is_control_filename
 from .errors import (BzrError, NoSuchFile, CommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
-from .sixish import (
-    text_type,
-    )
 from .trace import warning
 from .transform import resolve_conflicts
 from .transport import get_transport
@@ -258,7 +253,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         # interpret relative to fs encoding, which would match native
         # behaviour better.
         relative_path = member.name
-        if not isinstance(relative_path, text_type):
+        if not isinstance(relative_path, str):
             relative_path = relative_path.decode('utf-8')
         if prefix is not None:
             relative_path = relative_path[len(prefix) + 1:]

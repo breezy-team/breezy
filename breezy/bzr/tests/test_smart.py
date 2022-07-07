@@ -29,8 +29,9 @@ from io import BytesIO
 import tarfile
 import zlib
 
+import fastbencode as bencode
+
 from breezy import (
-    bencode,
     branch as _mod_branch,
     controldir,
     errors,

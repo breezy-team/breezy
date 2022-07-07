@@ -17,19 +17,14 @@
 
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
-from __future__ import absolute_import
+import contextlib
 
 from .. import (
     branch as _mod_branch,
-    cleanup,
     errors as brz_errors,
     trace,
     osutils,
     urlutils,
-    )
-from ..sixish import (
-    PY3,
-    viewitems,
     )
 from ..transport import (
     do_catching_redirections,
@@ -166,7 +161,8 @@ class GitDir(ControlDir):
             result = ControlDir.open_from_transport(target_transport)
         except brz_errors.NotBranchError:
             result = cloning_format.initialize_on_transport(target_transport)
-        source_branch = self.open_branch()
+        if source_branch is None:
+            source_branch = self.open_branch()
         source_repository = self.find_repository()
         try:
             result_repo = result.find_repository()
@@ -196,7 +192,7 @@ class GitDir(ControlDir):
         else:
             wt = None
         if recurse == 'down':
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 basis = None
                 if wt is not None:
                     basis = wt.basis_tree()
@@ -211,14 +207,19 @@ class GitDir(ControlDir):
                     subtrees = []
                 for path in subtrees:
                     target = urlutils.join(url, urlutils.escape(path))
-                    sublocation = wt.reference_parent(
-                        path, possible_transports=possible_transports)
+                    sublocation = wt.get_reference_info(path)
                     if sublocation is None:
-                        trace.warning(
-                            'Ignoring nested tree %s, parent location unknown.',
-                            path)
+                        trace.warning("Unable to find submodule info for %s", path)
                         continue
-                    sublocation.controldir.sprout(
+                    remote_url = urlutils.join(self.user_url, sublocation)
+                    try:
+                        subbranch = _mod_branch.Branch.open(remote_url, possible_transports=possible_transports)
+                    except brz_errors.NotBranchError as e:
+                        trace.warning(
+                            'Unable to clone submodule %s from %s: %s',
+                            path, remote_url, e)
+                        continue
+                    subbranch.controldir.sprout(
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,
                         stacked=stacked)
@@ -238,13 +239,13 @@ class GitDir(ControlDir):
         from ..repository import InterRepository
         from .mapping import default_mapping
         from ..transport.local import LocalTransport
-        if stacked_on is not None:
-            raise _mod_branch.UnstackableBranchFormat(
-                self._format, self.user_url)
+        from .refs import is_peeled
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:
             format = LocalGitControlDirFormat()
+        if stacked_on is not None:
+            raise _mod_branch.UnstackableBranchFormat(format, self.user_url)
         (target_repo, target_controldir, stacking,
          repo_policy) = format.initialize_on_transport_ex(
             transport, use_existing_dir=use_existing_dir,
@@ -261,11 +262,22 @@ class GitDir(ControlDir):
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
-        for name, val in viewitems(refs):
-            target_git_repo.refs[name] = val
+        for name, val in refs.items():
+            if is_peeled(name):
+                continue
+            if val in target_git_repo.object_store:
+                target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
+        result_branch = result_dir.open_branch()
+        try:
+            parent = self.open_branch().get_parent()
+        except brz_errors.InaccessibleParent:
+            pass
+        else:
+            if parent:
+                result_branch.set_parent(parent)
         if revision_id is not None:
-            result_dir.open_branch().set_last_revision(revision_id)
+            result_branch.set_last_revision(revision_id)
         if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
                 try:
@@ -592,8 +604,6 @@ class LocalGitDir(GitDir):
             else:
                 base_url = urlutils.local_path_to_url(
                     decode_git_path(commondir)).rstrip('/.git/') + '/'
-            if not PY3:
-                params = {k: v.encode('utf-8') for (k, v) in viewitems(params)}
             return urlutils.join_segment_parameters(base_url, params)
         return None
 
@@ -633,7 +643,12 @@ class LocalGitDir(GitDir):
         if not nascent_ok and ref not in self._git.refs:
             raise brz_errors.NotBranchError(
                 self.root_transport.base, controldir=self)
-        ref_chain, unused_sha = self._git.refs.follow(ref)
+        try:
+            ref_chain, unused_sha = self._git.refs.follow(ref)
+        except KeyError as e:
+            raise brz_errors.NotBranchError(
+                self.root_transport.base, controldir=self,
+                detail='intermediate ref %s missing' % e.args[0])
         if ref_chain[-1] == b'HEAD':
             controldir = self
         else:

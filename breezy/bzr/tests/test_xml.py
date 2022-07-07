@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import BytesIO
 
 from ... import (
     errors,
@@ -25,10 +26,6 @@ from .. import (
     xml6,
     xml7,
     xml8,
-    )
-from ...sixish import (
-    BytesIO,
-    text_type,
     )
 from ..inventory import Inventory
 from . import TestCase
@@ -492,7 +489,7 @@ class TestSerializer(TestCase):
         for parent_id in rev.parent_ids:
             self.assertIsInstance(parent_id, bytes)
         self.assertEqual(u'Include \xb5nicode characters\n', rev.message)
-        self.assertIsInstance(rev.message, text_type)
+        self.assertIsInstance(rev.message, str)
 
         # ie.revision should either be None or a utf-8 revision id
         inv = s_v5.read_inventory_from_lines(breezy.osutils.split_lines(_inventory_utf8_v5))
@@ -514,7 +511,7 @@ class TestSerializer(TestCase):
         for ((exp_path, exp_file_id, exp_parent_id, exp_rev_id),
              (act_path, act_ie)) in zip(expected, actual):
             self.assertEqual(exp_path, act_path)
-            self.assertIsInstance(act_path, text_type)
+            self.assertIsInstance(act_path, str)
             self.assertEqual(exp_file_id, act_ie.file_id)
             self.assertIsInstance(act_ie.file_id, bytes)
             self.assertEqual(exp_parent_id, act_ie.parent_id)

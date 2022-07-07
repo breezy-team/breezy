@@ -503,13 +503,12 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree_contents([('b/file', b'this contents contents\n')])
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
-        self.assertEqual(1, wtb.merge_from_branch(wta.branch))
+        self.assertEqual(1, len(wtb.merge_from_branch(wta.branch)))
         self.assertPathExists('b/file.THIS')
         self.assertPathExists('b/file.BASE')
         self.assertPathExists('b/file.OTHER')
         wtb.revert()
-        self.assertEqual(1, wtb.merge_from_branch(wta.branch,
-                                                  merge_type=WeaveMerger))
+        self.assertEqual(1, len(wtb.merge_from_branch(wta.branch, merge_type=WeaveMerger)))
         self.assertPathExists('b/file')
         self.assertPathExists('b/file.THIS')
         self.assertPathExists('b/file.BASE')
@@ -544,9 +543,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
             revision_id=b'E-id')
         builder.finish_series()
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
-        self.assertEqual(1, tree.merge_from_branch(tree.branch,
-                                                   to_revision=b'D-id',
-                                                   merge_type=WeaveMerger))
+        self.assertEqual(1, len(tree.merge_from_branch(
+            tree.branch, to_revision=b'D-id', merge_type=WeaveMerger)))
         self.assertPathExists('tree/foo.THIS')
         self.assertPathExists('tree/foo.OTHER')
         self.expectFailure('fail to create .BASE in some criss-cross merges',
@@ -640,8 +638,10 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b_wt.rename_one('deux', 'un')
         b_wt.rename_one('tmp', 'deux')
         b_wt.commit('r1', rev_id=b'r1')
-        self.assertEqual(0, a_wt.merge_from_branch(b_wt.branch,
-                                                   b_wt.branch.last_revision(), b_wt.branch.get_rev_id(1)))
+        self.assertEqual(
+            0, len(a_wt.merge_from_branch(
+                b_wt.branch, b_wt.branch.last_revision(),
+                b_wt.branch.get_rev_id(1))))
         self.assertPathExists('a/un')
         self.assertTrue('a/deux')
         self.assertFalse(os.path.exists('a/tmp'))

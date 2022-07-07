@@ -18,8 +18,6 @@
 
 """Tests for interfacing with a Git Branch"""
 
-from __future__ import absolute_import
-
 import dulwich
 from dulwich.objects import (
     Commit,
@@ -331,6 +329,17 @@ class BranchTests(tests.TestCaseInTempDir):
         self.assertEqual(
             revid,
             wt.branch.get_master_branch().last_revision())
+
+    def test_interbranch_pull_older(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        oldrepo = Repository.open(path)
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        newbranch = self.make_branch('g')
+        inter_branch = InterBranch.get(Branch.open(path), newbranch)
+        inter_branch.pull(stop_revision=revid2)
+        inter_branch.pull(stop_revision=revid1)
+        self.assertEqual(revid2, newbranch.last_revision())
 
 
 class ForeignTestsBranchFactory(object):

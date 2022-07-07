@@ -16,8 +16,6 @@
 
 "bash_completion.py - create bash completion script from built-in brz help"
 
-from __future__ import absolute_import
-
 import breezy
 import breezy.help
 import breezy.commands

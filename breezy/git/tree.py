@@ -17,8 +17,6 @@
 
 """Git Trees."""
 
-from __future__ import absolute_import
-
 from collections import deque
 import errno
 from io import BytesIO
@@ -36,9 +34,9 @@ from dulwich.index import (
     commit_tree,
     index_entry_from_stat,
     Index,
+    IndexEntry,
     )
 from dulwich.object_store import (
-    tree_lookup_path,
     OverlayObjectStore,
     )
 from dulwich.objects import (
@@ -66,10 +64,6 @@ from ..revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
-from ..sixish import (
-    text_type,
-    viewitems,
-    )
 
 from .mapping import (
     encode_git_path,
@@ -77,10 +71,6 @@ from .mapping import (
     mode_is_executable,
     mode_kind,
     default_mapping,
-    )
-from .transportgit import (
-    TransportObjectStore,
-    TransportRepo,
     )
 from ..bzr.inventorytree import InventoryTreeChange
 
@@ -264,6 +254,9 @@ def ensure_normalized_path(path):
 
 class GitTree(_mod_tree.Tree):
 
+    def supports_symlinks(self):
+        return True
+
     def iter_git_objects(self):
         """Iterate over all the objects in the tree.
 
@@ -299,17 +292,24 @@ class GitTree(_mod_tree.Tree):
                 raise errors.PathsNotVersionedError(unversioned)
         return filter(self.is_versioned, paths)
 
-    def _submodule_info(self):
+    def _submodule_config(self):
         if self._submodules is None:
             try:
                 with self.get_file('.gitmodules') as f:
                     config = GitConfigFile.from_file(f)
-                    self._submodules = {
-                        path: (url, section)
-                        for path, url, section in parse_submodules(config)}
+                    self._submodules = list(parse_submodules(config))
             except errors.NoSuchFile:
-                self._submodules = {}
+                self._submodules = []
         return self._submodules
+
+    def _submodule_info(self):
+        return {path: (url, section)
+                for path, url, section in self._submodule_config()}
+
+    def reference_parent(self, path):
+        from ..branch import Branch
+        (url, section) = self._submodule_info()[encode_git_path(path)]
+        return Branch.open(url.decode('utf-8'))
 
 
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
@@ -368,21 +368,21 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         change_scanner = self._repository._file_change_scanner
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
-        (unused_path, commit_id) = change_scanner.find_last_change_revision(
+        (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
             encode_git_path(path), self.commit_id)
-        return self._repository.lookup_foreign_revision_id(
-            commit_id, self.mapping)
+        return self.mapping.revision_id_foreign_to_bzr(commit_id)
 
     def get_file_mtime(self, path):
+        change_scanner = self._repository._file_change_scanner
+        if self.commit_id == ZERO_SHA:
+            return NULL_REVISION
         try:
-            revid = self.get_file_revision(path)
+            (store, unused_path, commit_id) = change_scanner.find_last_change_revision(
+                encode_git_path(path), self.commit_id)
         except KeyError:
             raise errors.NoSuchFile(path)
-        try:
-            rev = self._repository.get_revision(revid)
-        except errors.NoSuchRevision:
-            raise _mod_tree.FileTimestampUnavailable(path)
-        return rev.timestamp
+        commit = store[commit_id]
+        return commit.commit_time
 
     def id2path(self, file_id, recurse='down'):
         try:
@@ -652,7 +652,10 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             except errors.NotBranchError:
                 return self.mapping.revision_id_foreign_to_bzr(hexsha)
             else:
-                return nested_repo.lookup_foreign_revision_id(hexsha)
+                try:
+                    return nested_repo.lookup_foreign_revision_id(hexsha)
+                except KeyError:
+                    return self.mapping.revision_id_foreign_to_bzr(hexsha)
         else:
             return None
 
@@ -1207,12 +1210,11 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             for i in range(1, len(parts)):
                 basepath = b'/'.join(parts[:i])
                 try:
-                    (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
-                     flags) = index[basepath]
+                    value = index[basepath]
                 except KeyError:
                     continue
                 else:
-                    if S_ISGITLINK(mode):
+                    if S_ISGITLINK(value.mode):
                         index = self._get_submodule_index(basepath)
                         remaining_path = b'/'.join(parts[i:])
                         break
@@ -1324,9 +1326,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             if index is None:
                 index = self.index
             for path, value in index.items():
-                (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
-                 flags) = value
-                if S_ISGITLINK(mode) and recurse_nested:
+                if S_ISGITLINK(value.mode) and recurse_nested:
                     subindex = self._get_submodule_index(path)
                     for entry in self._recurse_index_entries(
                             index=subindex, basepath=path,
@@ -1371,7 +1371,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     key = (posixpath.dirname(path), path)
                     if key not in ret and self.is_versioned(path):
                         ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
-            return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
+            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
     def iter_references(self):
         if self.supports_tree_reference():
@@ -1386,26 +1386,25 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                                 posixpath.basename(path).strip("/"), parent_id)
 
     def _get_file_ie(self, name, path, value, parent_id):
-        if not isinstance(name, text_type):
+        if not isinstance(name, str):
             raise TypeError(name)
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             raise TypeError(path)
-        if not isinstance(value, tuple) or len(value) != 10:
+        if not isinstance(value, tuple) and not isinstance(value, IndexEntry):
             raise TypeError(value)
-        (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
         file_id = self.path2id(path)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
-        kind = mode_kind(mode)
+        kind = mode_kind(value.mode)
         ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path)
         elif kind == 'tree-reference':
             ie.reference_revision = self.get_reference_revision(path)
         else:
-            ie.git_sha1 = sha
-            ie.text_size = size
-            ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+            ie.git_sha1 = value.sha
+            ie.text_size = value.size
+            ie.executable = bool(stat.S_ISREG(value.mode) and stat.S_IEXEC & value.mode)
         return ie
 
     def _add_missing_parent_ids(self, path, dir_ids):

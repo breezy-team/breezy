@@ -23,12 +23,8 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: Should be renamed to breezy.transport.http.tests?
 # TODO: What about renaming to breezy.tests.transport.http ?
 
-try:
-    from http.client import UnknownProtocol, parse_headers
-    from http.server import SimpleHTTPRequestHandler
-except ImportError:  # python < 3
-    from httplib import UnknownProtocol
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
+from http.client import UnknownProtocol, parse_headers
+from http.server import SimpleHTTPRequestHandler
 import io
 import socket
 import sys
@@ -50,7 +46,6 @@ from .. import (
 from ..bzr import (
     remote as _mod_remote,
     )
-from ..sixish import PY3
 from . import (
     features,
     http_server,
@@ -1956,19 +1951,10 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     def _handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
-        if PY3:
-            headers = parse_headers(self.rfile)
-            bytes_read = len(headers.as_bytes())
-            bytes_read += headers.as_bytes().count(b'\n')
-            bytes_read += len(requestline)
-        else:
-            headers = self.MessageClass(self.rfile, 0)
-            # We just read: the request, the headers, an empty line indicating the
-            # end of the headers.
-            bytes_read = len(requestline)
-            for line in headers.headers:
-                bytes_read += len(line)
-            bytes_read += len(b'\r\n')
+        headers = parse_headers(self.rfile)
+        bytes_read = len(headers.as_bytes())
+        bytes_read += headers.as_bytes().count(b'\n')
+        bytes_read += len(requestline)
         if requestline.startswith(b'POST'):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)

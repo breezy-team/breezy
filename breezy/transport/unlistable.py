@@ -16,8 +16,6 @@
 
 """Transport implementation that disables listing to simulate HTTP cheaply."""
 
-from __future__ import absolute_import
-
 from ..transport import Transport
 from ..transport import decorator
 

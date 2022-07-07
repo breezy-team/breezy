@@ -16,8 +16,6 @@
 
 """A generator which creates a rio stanza of the current tree info"""
 
-from __future__ import absolute_import
-
 from breezy import (
     errors,
     hooks,
@@ -75,16 +73,16 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 log.add('id', revision_id)
                 log.add('message', message)
                 log.add('date', create_date_str(timestamp, timezone))
-            info.add('revisions', log.to_unicode())
+            info.add('revisions', log)
 
         if self._include_file_revs:
             files = Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add('path', path)
                 files.add('revision', self._file_revisions[path])
-            info.add('file-revisions', files.to_unicode())
+            info.add('file-revisions', files)
 
-        to_file.write(info.to_unicode())
+        to_file.write(info.to_string())
 
 
 class RioVersionInfoBuilderHooks(hooks.Hooks):

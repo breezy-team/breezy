@@ -18,13 +18,12 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from __future__ import absolute_import
-
 import base64
 import stat
 
+import fastbencode as bencode
+
 from .. import (
-    bencode,
     errors,
     foreign,
     trace,
@@ -38,11 +37,6 @@ from ..foreign import (
 from ..revision import (
     NULL_REVISION,
     Revision,
-    )
-from ..sixish import (
-    PY3,
-    text_type,
-    viewitems,
     )
 from .errors import (
     NoPushSupport,
@@ -135,22 +129,12 @@ def fix_person_identifier(text):
 
 def decode_git_path(path):
     """Take a git path and decode it."""
-    try:
-        return path.decode('utf-8')
-    except UnicodeDecodeError:
-        if PY3:
-            return path.decode('utf-8', 'surrogateescape')
-        raise
+    return path.decode('utf-8', 'surrogateescape')
 
 
 def encode_git_path(path):
     """Take a regular path and encode it for git."""
-    try:
-        return path.encode('utf-8')
-    except UnicodeEncodeError:
-        if PY3:
-            return path.encode('utf-8', 'surrogateescape')
-        raise
+    return path.encode('utf-8', 'surrogateescape')
 
 
 def warn_escaped(commit, num_escaped):
@@ -197,7 +181,7 @@ class BzrGitMapping(foreign.VcsMapping):
     def generate_file_id(self, path):
         # Git paths are just bytestrings
         # We must just hope they are valid UTF-8..
-        if isinstance(path, text_type):
+        if isinstance(path, str):
             path = encode_git_path(path)
         if path == b"":
             return ROOT_ID
@@ -266,11 +250,11 @@ class BzrGitMapping(foreign.VcsMapping):
         (message, renames, branch, extra) = extract_hg_metadata(message)
         if branch is not None:
             rev.properties[u'hg:extra:branch'] = branch
-        for name, value in viewitems(extra):
+        for name, value in extra.items():
             rev.properties[u'hg:extra:' + name] = base64.b64encode(value)
         if renames:
             rev.properties[u'hg:renames'] = base64.b64encode(bencode.bencode(
-                [(new, old) for (old, new) in viewitems(renames)]))
+                [(new, old) for (old, new) in renames.items()]))
         return message
 
     def _extract_bzr_metadata(self, rev, message):
@@ -326,8 +310,11 @@ class BzrGitMapping(foreign.VcsMapping):
             pass
         commit.committer = fix_person_identifier(rev.committer.encode(
             encoding))
+        first_author = rev.get_apparent_authors()[0]
+        if ',' in first_author and first_author.count('>') > 1:
+            first_author = first_author.split(',')[0]
         commit.author = fix_person_identifier(
-            rev.get_apparent_authors()[0].encode(encoding))
+            first_author.encode(encoding))
         # TODO(jelmer): Don't use this hack.
         long = getattr(__builtins__, 'long', int)
         commit.commit_time = long(rev.timestamp)
@@ -361,7 +348,7 @@ class BzrGitMapping(foreign.VcsMapping):
                  u'commit-timezone-neg-utc', u'git-implicit-encoding',
                  u'git-gpg-signature', u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
-            for k, v in viewitems(rev.properties):
+            for k, v in rev.properties.items():
                 if k not in mapping_properties:
                     metadata.properties[k] = v
         if not lossy and metadata:
@@ -380,9 +367,11 @@ class BzrGitMapping(foreign.VcsMapping):
             i += 1
             propname = u'git-mergetag-%d' % i
         if u'git-extra' in rev.properties:
-            commit.extra.extend(
-                [l.split(b' ', 1)
-                 for l in rev.properties[u'git-extra'].splitlines()])
+            for l in rev.properties['git-extra'].splitlines():
+                (k, v) = l.split(' ', 1)
+                commit.extra.append(
+                    (k.encode('utf-8', 'surrogateescape'),
+                     v.encode('utf-8', 'surrogateescape')))
         return commit
 
     def get_revision_id(self, commit):
@@ -473,12 +462,16 @@ class BzrGitMapping(foreign.VcsMapping):
         extra_lines = []
         for k, v in commit.extra:
             if k == HG_RENAME_SOURCE:
-                extra_lines.append(k + b' ' + v + b'\n')
+                extra_lines.append(
+                    k.decode('utf-8', 'surrogateescape') + ' ' +
+                    v.decode('utf-8', 'surrogateescape') + '\n')
             elif k == HG_EXTRA:
                 hgk, hgv = v.split(b':', 1)
                 if hgk not in (HG_EXTRA_AMEND_SOURCE, ) and strict:
                     raise UnknownMercurialCommitExtra(commit, [hgk])
-                extra_lines.append(k + b' ' + v + b'\n')
+                extra_lines.append(
+                    k.decode('utf-8', 'surrogateescape') + ' ' +
+                    v.decode('utf-8', 'surrogateescape') + '\n')
             else:
                 unknown_extra_fields.append(k)
         if unknown_extra_fields and strict:
@@ -486,7 +479,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 commit,
                 [f.decode('ascii', 'replace') for f in unknown_extra_fields])
         if extra_lines:
-            rev.properties[u'git-extra'] = b''.join(extra_lines)
+            rev.properties['git-extra'] = ''.join(extra_lines)
         return rev, roundtrip_revid, verifiers
 
 
@@ -495,7 +488,7 @@ class BzrGitMappingv1(BzrGitMapping):
     experimental = False
 
     def __str__(self):
-        return self.revid_prefix
+        return self.revid_prefix.decode('utf-8')
 
 
 class BzrGitMappingExperimental(BzrGitMappingv1):
@@ -590,7 +583,7 @@ default_mapping = mapping_registry.get_default()()
 def symlink_to_blob(symlink_target):
     from dulwich.objects import Blob
     blob = Blob()
-    if isinstance(symlink_target, text_type):
+    if isinstance(symlink_target, str):
         symlink_target = encode_git_path(symlink_target)
     blob.data = symlink_target
     return blob

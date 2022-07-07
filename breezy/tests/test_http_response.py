@@ -37,23 +37,15 @@ Some properties are common to all kinds:
   InvalidHttpResponse.
 """
 
-try:
-    import http.client as http_client
-except ImportError:  # python < 3 without future
-    import httplib as http_client
+from io import BytesIO
 
-try:
-    parse_headers = http_client.parse_headers
-except AttributeError:  # python 2
-    parse_headers = http_client.HTTPMessage
+import http.client as http_client
+
+parse_headers = http_client.parse_headers
 
 from .. import (
     errors,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
-    PY3,
     )
 from ..transport.http import (
     response,
@@ -730,10 +722,7 @@ class TestHandleResponse(tests.TestCase):
         # Get rid of the status line
         status_and_headers.readline()
         msg = parse_headers(status_and_headers)
-        if PY3:
-            return msg.get
-        else:
-            return msg.getheader
+        return msg.get
 
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""

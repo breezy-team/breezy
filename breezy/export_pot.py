@@ -26,8 +26,6 @@ extracting those strings, as is done in the bzr Makefile. Sorting the output
 is also left to that stage of the process.
 """
 
-from __future__ import absolute_import
-
 import inspect
 import os
 import sys
@@ -40,7 +38,6 @@ from . import (
     option,
     plugin as _mod_plugin,
     )
-from .sixish import PY3
 from .trace import (
     mutter,
     note,
@@ -159,8 +156,6 @@ class _PotExporter(object):
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
-        if not PY3:
-            line = line.decode('utf-8')
         self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):

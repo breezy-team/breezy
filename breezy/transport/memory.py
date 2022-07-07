@@ -20,8 +20,6 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-from __future__ import absolute_import
-
 import contextlib
 from io import (
     BytesIO,

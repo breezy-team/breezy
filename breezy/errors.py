@@ -17,11 +17,6 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-from __future__ import absolute_import
-
-from .sixish import (
-    PY3,
-    )
 
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
@@ -108,13 +103,7 @@ class BzrError(Exception):
                getattr(self, '_fmt', None),
                err)
 
-    if PY3:
-        __str__ = _format
-    else:
-        def __str__(self):
-            return self._format().encode('utf-8')
-
-        __unicode__ = _format
+    __str__ = _format
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, str(self))
@@ -180,15 +169,6 @@ class InProcessTransport(BzrError):
 
     def __init__(self, transport):
         self.transport = transport
-
-
-class InvalidEntryName(InternalBzrError):
-
-    _fmt = "Invalid entry name: %(name)s"
-
-    def __init__(self, name):
-        BzrError.__init__(self)
-        self.name = name
 
 
 class InvalidRevisionNumber(BzrError):
@@ -1289,7 +1269,7 @@ class InvalidHttpResponse(TransportError):
 
     _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
 
-    def __init__(self, path, msg, orig_error=None):
+    def __init__(self, path, msg, orig_error=None, headers=None):
         self.path = path
         if orig_error is None:
             orig_error = ''
@@ -1297,6 +1277,7 @@ class InvalidHttpResponse(TransportError):
             # This is reached for obscure and unusual errors so we want to
             # preserve as much info as possible to ease debug.
             orig_error = ': %r' % (orig_error,)
+        self.headers = headers
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
@@ -1304,7 +1285,7 @@ class UnexpectedHttpStatus(InvalidHttpResponse):
 
     _fmt = "Unexpected HTTP status %(code)d for %(path)s: %(extra)s"
 
-    def __init__(self, path, code, extra=None):
+    def __init__(self, path, code, extra=None, headers=None):
         self.path = path
         self.code = code
         self.extra = extra or ''
@@ -1312,7 +1293,7 @@ class UnexpectedHttpStatus(InvalidHttpResponse):
         if extra is not None:
             full_msg += ': ' + extra
         InvalidHttpResponse.__init__(
-            self, path, full_msg)
+            self, path, full_msg, headers=headers)
 
 
 class BadHttpRequest(UnexpectedHttpStatus):

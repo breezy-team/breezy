@@ -17,8 +17,6 @@
 
 """Compatibility for hg-git."""
 
-from __future__ import absolute_import
-
 import urllib
 
 

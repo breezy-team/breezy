@@ -251,7 +251,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertTrue(pushed_repo.has_revision(b'b-1'))
 
     def test_branch_hardlink(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file1'])
         source.add('file1')
@@ -270,7 +270,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertPathExists('target/file1')
 
     def test_branch_files_from_hardlink(self):
-        self.requireFeature(HardlinkFeature)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file1'])
         source.add('file1')

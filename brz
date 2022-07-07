@@ -16,8 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Breezy -- a free distributed version-control tool"""
 
 import os
@@ -25,15 +23,7 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (3, 1, 0)
-
-NEED_VERS = (2, 7)
-
-if sys.version_info < NEED_VERS:
-    sys.stderr.write("brz: error: cannot find a suitable python interpreter\n")
-    sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
-    sys.exit(1)
-
+_script_version = (3, 2, 3)
 
 profiling = False
 if '--profile-imports' in sys.argv:

@@ -17,8 +17,6 @@
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
-from __future__ import absolute_import
-
 import errno
 import os
 import re
@@ -40,7 +38,6 @@ from . import (
     registry,
     trace,
     )
-from .sixish import text_type
 
 
 class cmd_conflicts(commands.Command):
@@ -72,7 +69,7 @@ class cmd_conflicts(commands.Command):
                     continue
                 self.outf.write(conflict.path + '\n')
             else:
-                self.outf.write(text_type(conflict) + '\n')
+                self.outf.write(str(conflict) + '\n')
 
 
 resolve_action_registry = registry.Registry()
@@ -149,7 +146,7 @@ class cmd_resolve(commands.Command):
                     before - after)
                 trace.note(gettext('Remaining conflicts:'))
                 for conflict in tree.conflicts():
-                    trace.note(text_type(conflict))
+                    trace.note(str(conflict))
                 return 1
             else:
                 trace.note(gettext('All conflicts resolved.'))
@@ -269,7 +266,7 @@ class ConflictList(object):
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
-            yield text_type(conflict)
+            yield str(conflict)
 
     def remove_files(self, tree):
         """Remove the THIS, BASE and OTHER files for listed conflicts"""

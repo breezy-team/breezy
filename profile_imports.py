@@ -17,8 +17,6 @@
 
 """A custom importer and regex compiler which logs time spent."""
 
-from __future__ import absolute_import
-
 import re
 import sys
 import time
@@ -108,8 +106,6 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
     # /usr/lib/python2.6/email/__init__.py then there may be only one
     # parameter
     # level has different default between Python 2 and 3, but codebase
-    # uses `from __future__ import absolute_import` so can just use 0.
-
     if globals is None:
         # can't determine the scope name afaics; we could peek up the stack to
         # see where this is being called from, but it should be a rare case.

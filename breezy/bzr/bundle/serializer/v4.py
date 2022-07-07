@@ -14,13 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import bz2
+from io import (
+    BytesIO,
+    )
 import re
 
+import fastbencode as bencode
+
 from .... import (
-    bencode,
     errors,
     iterablefile,
     lru_cache,
@@ -38,10 +40,6 @@ from ... import (
     )
 from .. import bundle_data, serializer as bundle_serializer
 from ....i18n import ngettext
-from ....sixish import (
-    BytesIO,
-    viewitems,
-    )
 
 
 class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
@@ -335,7 +333,7 @@ class BundleWriteOperation(object):
         text_keys = []
         altered_fileids = self.repository.fileids_altered_by_revision_ids(
             self.revision_ids)
-        for file_id, revision_ids in viewitems(altered_fileids):
+        for file_id, revision_ids in altered_fileids.items():
             for revision_id in revision_ids:
                 text_keys.append((file_id, revision_id))
         self._add_mp_records_keys('file', self.repository.texts, text_keys)

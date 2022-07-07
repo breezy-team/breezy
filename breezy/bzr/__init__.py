@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .. import (
     config,
     errors,
@@ -53,7 +51,7 @@ class BzrProber(controldir.Prober):
             raise errors.NotBranchError(path=transport.base)
         except errors.BadHttpRequest as e:
             if e.reason == 'no such method: .bzr':
-                # hgweb 
+                # hgweb
                 raise errors.NotBranchError(path=transport.base)
             raise
 

@@ -47,7 +47,7 @@ class ArchiveTests(object):
         self.assertIn('dir', names)
 
     def test_export_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         work_a = self.make_branch_and_tree('wta')
         os.symlink('target', 'wta/link')
         work_a.add('link')
@@ -99,7 +99,7 @@ class TestZip(ArchiveTests, TestCaseWithTree):
             zf.close()
 
     def test_export_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         work_a = self.make_branch_and_tree('wta')
         os.symlink('target', 'wta/link')
         work_a.add('link')

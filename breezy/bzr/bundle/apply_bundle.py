@@ -18,8 +18,6 @@
 This contains functionality for installing bundles into repositories
 """
 
-from __future__ import absolute_import
-
 from ... import ui
 from ...i18n import gettext
 from ...merge import Merger

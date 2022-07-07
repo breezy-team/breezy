@@ -16,14 +16,8 @@
 
 """A simple least-recently-used (LRU) cache."""
 
-from __future__ import absolute_import, division
-
 from . import (
     trace,
-    )
-from .sixish import (
-    viewitems,
-    viewkeys,
     )
 
 
@@ -136,11 +130,11 @@ class LRUCache(object):
         :return: An unordered list of keys that are currently cached.
         """
         # GZ 2016-06-04: Maybe just make this return the view?
-        return list(viewkeys(self._cache))
+        return list(self._cache.keys())
 
     def as_dict(self):
         """Get a new dict with the same key:value pairs as the cache"""
-        return dict((k, n.value) for k, n in viewitems(self._cache))
+        return dict((k, n.value) for k, n in self._cache.items())
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.

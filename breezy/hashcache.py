@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # TODO: Up-front, stat all files in order and remove those which are deleted or
 # out-of-date.  Don't actually re-read them until they're needed.  That ought
 # to bring all the inodes into core so that future stats to them are fast, and
@@ -40,10 +38,6 @@ from . import (
     filters as _mod_filters,
     osutils,
     trace,
-    )
-from .sixish import (
-    text_type,
-    viewitems,
     )
 
 
@@ -97,7 +91,7 @@ class HashCache(object):
             parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         """
-        if not isinstance(root, text_type):
+        if not isinstance(root, str):
             raise ValueError("Base dir for hashcache must be text")
         self.root = root
         self.hit_count = 0
@@ -131,7 +125,7 @@ class HashCache(object):
         # Stat in inode order as optimisation for at least linux.
         def inode_order(path_and_cache):
             return path_and_cache[1][1][3]
-        for path, cache_val in sorted(viewitems(self._cache), key=inode_order):
+        for path, cache_val in sorted(self._cache.items(), key=inode_order):
             abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
@@ -223,7 +217,7 @@ class HashCache(object):
                                    new_mode=self._mode) as outf:
             outf.write(CACHE_HEADER)
 
-            for path, c in viewitems(self._cache):
+            for path, c in self._cache.items():
                 line_info = [path.encode('utf-8'), b'// ', c[0], b' ']
                 line_info.append(b'%d %d %d %d %d %d' % c[1])
                 line_info.append(b'\n')

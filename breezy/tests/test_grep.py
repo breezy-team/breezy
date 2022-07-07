@@ -14,14 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import os
 import re
 import unicodedata as ud
 
 from .. import tests, osutils
-from ..sixish import PY3
 from .._termcolor import color_string, FG
 
 from ..tests.features import (
@@ -390,22 +387,16 @@ class TestGrep(GrepTestBase):
 
         out, err = self.run_bzr(
             ['grep', '-r', 'last:1', '--null', 'line[1-3]'])
-        if not PY3:
-            out = out.decode('utf-8', 'ignore')
         nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '-Z', 'line[1-3]'])
-        if not PY3:
-            out = out.decode('utf-8', 'ignore')
         nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line'])
-        if not PY3:
-            out = out.decode('utf-8', 'ignore')
         nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)

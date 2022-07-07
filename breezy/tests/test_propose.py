@@ -127,3 +127,9 @@ Release version 5.1
 
 And here are some more details.
 """))
+        self.assertEqual('Release version 5.1', determine_title("""\
+
+Release version 5.1
+
+And here are some more details.
+"""))

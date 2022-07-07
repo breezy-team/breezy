@@ -457,7 +457,7 @@ class TestAutoResolve(TestCaseWithTransport):
         self.assertPathDoesNotExist('this/hello.BASE')
 
     def test_unsupported_symlink_auto_resolve(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', 'Hello')])
         base.add('hello', b'hello_id')

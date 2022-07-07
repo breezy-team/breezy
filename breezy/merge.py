@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+import contextlib
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -22,7 +22,6 @@ import patiencediff
 
 from breezy import (
     branch as _mod_branch,
-    cleanup,
     conflicts as _mod_conflicts,
     debug,
     graph as _mod_graph,
@@ -50,9 +49,6 @@ from . import (
     hooks,
     registry,
     transform,
-    )
-from .sixish import (
-    viewitems,
     )
 # TODO: Report back as changes are merged in
 
@@ -449,7 +445,7 @@ class Merger(object):
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             for revision_id in new_parents:
                 try:
                     tree = self.revision_tree(revision_id)
@@ -641,22 +637,28 @@ class Merger(object):
                     relpath)
                 if other_revision == sub_tree.last_revision():
                     continue
-                sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
-                sub_merge.merge_type = self.merge_type
                 other_branch = self.other_tree.reference_parent(relpath)
-                sub_merge.set_other_revision(other_revision, other_branch)
-                base_tree_path = _mod_tree.find_previous_path(
-                    self.this_tree, self.base_tree, relpath)
-                base_revision = self.base_tree.get_reference_revision(
-                    base_tree_path)
-                sub_merge.base_tree = \
-                    sub_tree.branch.repository.revision_tree(base_revision)
-                sub_merge.base_rev_id = base_revision
-                sub_merge.do_merge()
+                graph = self.this_tree.branch.repository.get_graph(other_branch.repository)
+                if graph.is_ancestor(sub_tree.last_revision(), other_revision):
+                    sub_tree.pull(other_branch, stop_revision=other_revision)
+                else:
+                    sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
+                    sub_merge.merge_type = self.merge_type
+                    sub_merge.set_other_revision(other_revision, other_branch)
+                    base_tree_path = _mod_tree.find_previous_path(
+                        self.this_tree, self.base_tree, relpath)
+                    if base_tree_path is None:
+                        raise NotImplementedError
+                    base_revision = self.base_tree.get_reference_revision(
+                        base_tree_path)
+                    sub_merge.base_tree = \
+                        sub_tree.branch.repository.revision_tree(base_revision)
+                    sub_merge.base_rev_id = base_revision
+                    sub_merge.do_merge()
         return merge
 
     def do_merge(self):
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             stack.enter_context(self.this_tree.lock_tree_write())
             if self.base_tree is not None:
                 stack.enter_context(self.base_tree.lock_read())
@@ -670,7 +672,7 @@ class Merger(object):
             trace.note(gettext("%d conflicts encountered.")
                        % len(merge.cooked_conflicts))
 
-        return len(merge.cooked_conflicts)
+        return merge.cooked_conflicts
 
 
 class _InventoryNoneEntry(object):
@@ -759,7 +761,7 @@ class Merge3Merger(object):
             self.do_merge()
 
     def do_merge(self):
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             stack.enter_context(self.working_tree.lock_tree_write())
             stack.enter_context(self.this_tree.lock_read())
             stack.enter_context(self.base_tree.lock_read())
@@ -1046,18 +1048,18 @@ class Merge3Merger(object):
 
             # If we have gotten this far, that means something has changed
             yield (file_id, content_changed,
-                           ((base_path, lca_paths),
-                            other_path, this_path),
-                           ((base_ie.parent_id, lca_parent_ids),
-                            other_ie.parent_id, this_ie.parent_id),
-                           ((base_ie.name, lca_names),
-                            other_ie.name, this_ie.name),
-                           ((base_ie.executable, lca_executable),
-                            other_ie.executable, this_ie.executable),
-                           # Copy detection is not yet supported, so nothing is
-                           # a copy:
-                           False
-                           )
+                   ((base_path, lca_paths),
+                    other_path, this_path),
+                   ((base_ie.parent_id, lca_parent_ids),
+                    other_ie.parent_id, this_ie.parent_id),
+                   ((base_ie.name, lca_names),
+                    other_ie.name, this_ie.name),
+                   ((base_ie.executable, lca_executable),
+                    other_ie.executable, this_ie.executable),
+                   # Copy detection is not yet supported, so nothing is
+                   # a copy:
+                   False
+                   )
 
     def write_modified(self, results):
         if not self.working_tree.supports_merge_modified():
@@ -2189,7 +2191,7 @@ class _PlanMerge(_PlanMergeBase):
         filtered_parent_map = {}
         child_map = {}
         tails = []
-        for key, parent_keys in viewitems(parent_map):
+        for key, parent_keys in parent_map.items():
             culled_parent_keys = [p for p in parent_keys if p in parent_map]
             if not culled_parent_keys:
                 tails.append(key)

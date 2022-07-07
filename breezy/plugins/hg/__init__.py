@@ -19,8 +19,6 @@
 Currently only tells the user that Mercurial is not supported.
 """
 
-from __future__ import absolute_import
-
 from ... import (
     controldir,
     errors,

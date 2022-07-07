@@ -16,8 +16,6 @@
 
 """Python implementations of Dirstate Helper functions."""
 
-from __future__ import absolute_import
-
 import binascii
 import os
 import struct
@@ -25,9 +23,6 @@ import struct
 # We cannot import the dirstate module, because it loads this module
 # All we really need is the IN_MEMORY_MODIFIED constant
 from .dirstate import DirState, DirstateCorrupt
-from ..sixish import (
-    range,
-    )
 
 
 def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):

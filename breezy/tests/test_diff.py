@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+from io import BytesIO
 import os
 import re
 import subprocess
@@ -21,7 +23,6 @@ import sys
 import tempfile
 
 from .. import (
-    cleanup,
     diff,
     errors,
     osutils,
@@ -29,10 +30,6 @@ from .. import (
     revisionspec,
     revisiontree,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
-    unichr,
     )
 from ..tests import (
     features,
@@ -793,7 +790,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
             br' \@\@\n-old\n\+new\n\n')
 
     def test_diff_kind_change(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree_contents([('old-tree/olddir/',),
                                   ('old-tree/olddir/oldfile', b'old\n')])
         self.old_tree.add('olddir')
@@ -984,7 +981,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual(b'oldcontent', old_path)
         self.assertFileEqual(b'newcontent', new_path)
-        if osutils.host_os_dereferences_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('oldname2', 'newname2')
@@ -1034,7 +1031,7 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
         """Call get_trees_and_branches_to_diff_locked."""
-        exit_stack = cleanup.ExitStack()
+        exit_stack = contextlib.ExitStack()
         self.addCleanup(exit_stack.close)
         return diff.get_trees_and_branches_to_diff_locked(
             path_list, revision_specs, old_url, new_url, exit_stack)

@@ -40,9 +40,6 @@ from ..lockdir import (
     LockDir,
     LockHeldInfo,
     )
-from ..sixish import (
-    text_type,
-    )
 from . import (
     features,
     TestCase,
@@ -668,7 +665,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
 
     def test_unicode(self):
         info = LockHeldInfo.for_this_process(None)
-        self.assertContainsRe(text_type(info),
+        self.assertContainsRe(str(info),
                               r'held by .* on .* \(process #\d+\), acquired .* ago')
 
     def test_is_locked_by_this_process(self):

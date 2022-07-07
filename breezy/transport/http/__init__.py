@@ -19,8 +19,7 @@
 There are separate implementation modules for each http client implementation.
 """
 
-from __future__ import absolute_import
-
+DEBUG = 0
 
 import os
 import ssl
@@ -35,18 +34,6 @@ from ... import (
 
 def default_user_agent():
     return 'Breezy/%s' % breezy_version
-
-
-try:
-    _ = (ssl.match_hostname, ssl.CertificateError)
-except AttributeError:
-    # Provide fallbacks for python < 2.7.9
-    def match_hostname(cert, host):
-        trace.warning(
-            '%s cannot be verified, https certificates verification is only'
-            ' available for python versions >= 2.7.9' % (host,))
-    ssl.match_hostname = match_hostname
-    ssl.CertificateError = ValueError
 
 
 # Note for packagers: if there is no package providing certs for your platform,

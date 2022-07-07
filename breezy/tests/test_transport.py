@@ -16,6 +16,7 @@
 
 
 import errno
+from io import BytesIO
 import os
 import subprocess
 import sys
@@ -27,9 +28,6 @@ from .. import (
     tests,
     transport,
     urlutils,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from ..transport import (
     chroot,
@@ -1065,11 +1063,9 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         self.start_server(ssh_server)
         port = ssh_server.port
 
-        if sys.platform == 'win32':
-            bzr_remote_path = sys.executable + ' ' + self.get_brz_path()
-        else:
-            bzr_remote_path = self.get_brz_path()
+        bzr_remote_path = self.get_brz_path()
         self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
+        self.overrideEnv('PYTHONPATH', ':'.join(sys.path))
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.

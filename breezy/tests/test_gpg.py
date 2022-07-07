@@ -17,6 +17,8 @@
 
 """Tests for signing and verifying blobs of data via gpg."""
 
+from io import BytesIO
+
 # import system imports here
 import sys
 
@@ -27,9 +29,6 @@ from .. import (
     tests,
     trace,
     ui,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from . import (
     TestCase,

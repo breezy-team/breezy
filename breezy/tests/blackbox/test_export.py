@@ -18,6 +18,7 @@
 """Black-box tests for brz export.
 """
 
+from io import BytesIO
 import os
 import stat
 import tarfile
@@ -29,9 +30,6 @@ from ...archive import zip
 from ... import (
     export,
     osutils,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from .. import (
     features,

@@ -16,8 +16,6 @@
 
 """Commands for generating snapshot information about a brz tree."""
 
-from __future__ import absolute_import
-
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
@@ -34,7 +32,6 @@ from . import (
     )
 from .commands import Command
 from .option import Option, RegistryOption
-from .sixish import text_type
 
 
 def _parse_version_info_format(format):
@@ -87,7 +84,7 @@ class cmd_version_info(Command):
                             help='Include the revision-history.'),
                      Option('include-file-revisions',
                             help='Include the last revision for each file.'),
-                     Option('template', type=text_type,
+                     Option('template', type=str,
                             help='Template for the output.'),
                      'revision',
                      ]

@@ -670,7 +670,7 @@ class BundleTester(object):
     def _test_symlink_bundle(self, link_name, link_target, new_link_target):
         link_id = b'link-1'
 
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 

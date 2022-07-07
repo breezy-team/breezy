@@ -20,8 +20,6 @@
 
 """Support in "brz send" for git-am style patches."""
 
-from __future__ import absolute_import
-
 import time
 from .. import __version__ as brz_version
 from .. import (

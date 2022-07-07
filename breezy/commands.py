@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.  They could also provide
@@ -23,6 +21,7 @@ from __future__ import absolute_import
 
 # TODO: Specific "examples" property on commands for consistent formatting.
 
+import contextlib
 import os
 import sys
 
@@ -38,7 +37,6 @@ import errno
 
 import breezy
 from breezy import (
-    cleanup,
     cmdline,
     debug,
     trace,
@@ -52,9 +50,6 @@ from .i18n import gettext
 from .option import Option
 from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
-from .sixish import (
-    string_types,
-    )
 
 
 class BzrOptionError(errors.CommandError):
@@ -307,7 +302,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
                 gettext('unknown command "%s". Perhaps you meant "%s"')
                 % (cmd_name, candidate))
         raise errors.CommandError(gettext('unknown command "%s"')
-                                     % cmd_name)
+                                  % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
@@ -716,7 +711,7 @@ class Command(object):
         r = Option.STD_OPTIONS.copy()
         std_names = set(r)
         for o in self.takes_options:
-            if isinstance(o, string_types):
+            if isinstance(o, str):
                 o = option.Option.OPTIONS[o]
             r[o.name] = o
             if o.name in std_names:
@@ -783,7 +778,7 @@ class Command(object):
             for hook in Command.hooks['pre_command']:
                 hook(self)
             try:
-                with cleanup.ExitStack() as self._exit_stack:
+                with contextlib.ExitStack() as self._exit_stack:
                     return class_run(*args, **kwargs)
             finally:
                 for hook in Command.hooks['post_command']:
@@ -1260,18 +1255,15 @@ def install_bzr_command_hooks():
 
 def _specified_or_unicode_argv(argv):
     # For internal or testing use, argv can be passed.  Otherwise, get it from
-    # the process arguments in a unicode-safe way.
+    # the process arguments.
     if argv is None:
-        return osutils.get_unicode_argv()
+        return sys.argv[1:]
     new_argv = []
     try:
         # ensure all arguments are unicode strings
         for a in argv:
-            if not isinstance(a, string_types):
+            if not isinstance(a, str):
                 raise ValueError('not native str or unicode: %r' % (a,))
-            if isinstance(a, bytes):
-                # For Python 2 only allow ascii native strings
-                a = a.decode('ascii')
             new_argv.append(a)
     except (ValueError, UnicodeDecodeError):
         raise errors.BzrError("argv should be list of unicode strings.")

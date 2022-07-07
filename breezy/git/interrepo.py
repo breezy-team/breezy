@@ -16,8 +16,6 @@
 
 """InterRepository operations."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import itertools
 
@@ -51,10 +49,6 @@ from ..repository import (
     )
 from ..revision import (
     NULL_REVISION,
-    )
-from ..sixish import (
-    viewitems,
-    viewvalues,
     )
 from .. import (
     config,
@@ -230,7 +224,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         new_stop_revids.append(revid)
                 stop_revids = set()
                 parent_map = graph.get_parent_map(new_stop_revids)
-                for parent_revids in viewvalues(parent_map):
+                for parent_revids in parent_map.values():
                     stop_revids.update(parent_revids)
                 pb.update("determining revisions to fetch", len(missing))
         return graph.iter_topo_order(missing)
@@ -273,7 +267,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                  for (git_sha, bzr_revid) in new_refs.values()
                  if git_sha is None or not git_sha.startswith(SYMREF)],
                 lossy=lossy)
-            for name, (gitid, revid) in viewitems(new_refs):
+            for name, (gitid, revid) in new_refs.items():
                 if gitid is None:
                     try:
                         gitid = revidmap[revid][0]
@@ -362,9 +356,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
         def git_update_refs(old_refs):
             ret = {}
             self.old_refs = {
-                k: (v, None) for (k, v) in viewitems(old_refs)}
+                k: (v, None) for (k, v) in old_refs.items()}
             new_refs = update_refs(self.old_refs)
-            for name, (gitid, revid) in viewitems(new_refs):
+            for name, (gitid, revid) in new_refs.items():
                 if gitid is None:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
                     gitid = unpeel_map.re_unpeel_tag(
@@ -379,14 +373,11 @@ class InterToRemoteGitRepository(InterToGitRepository):
         with self.source_store.lock_read():
             result = self.target.send_pack(
                 git_update_refs, self.source_store.generate_lossy_pack_data)
-            if result is not None and not isinstance(result, dict):
-                for ref, error in result.ref_status.items():
-                    if error:
-                        raise RemoteGitError(
-                            'unable to update ref %r: %s' % (ref, error))
-                new_refs = result.refs
-            else:  # dulwich < 0.20.3
-                new_refs = result
+            for ref, error in result.ref_status.items():
+                if error:
+                    raise RemoteGitError(
+                        'unable to update ref %r: %s' % (ref, error))
+            new_refs = result.refs
         # FIXME: revidmap?
         return revidmap, self.old_refs, new_refs
 
@@ -423,12 +414,12 @@ class InterFromGitRepository(InterRepository):
 
         def determine_wants(refs):
             unpeel_lookup = {}
-            for k, v in viewitems(refs):
+            for k, v in refs.items():
                 if k.endswith(ANNOTATED_TAG_SUFFIX):
                     unpeel_lookup[v] = refs[k[:-len(ANNOTATED_TAG_SUFFIX)]]
             potential = set([unpeel_lookup.get(w, w) for w in wants])
             if include_tags:
-                for k, sha in viewitems(refs):
+                for k, sha in refs.items():
                     if k.endswith(ANNOTATED_TAG_SUFFIX):
                         continue
                     try:
@@ -471,8 +462,8 @@ class InterFromGitRepository(InterRepository):
             if if_present_ids is not None:
                 todo.update(if_present_ids)
         result_set = todo.difference(self.target.all_revision_ids())
-        result_parents = set(itertools.chain.from_iterable(viewvalues(
-            self.source.get_graph().get_parent_map(result_set))))
+        result_parents = set(itertools.chain.from_iterable(
+            self.source.get_graph().get_parent_map(result_set).values()))
         included_keys = result_set.intersection(result_parents)
         start_keys = result_set.difference(included_keys)
         exclude_keys = result_parents.difference(result_set)
@@ -497,7 +488,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
     def determine_wants_all(self, refs):
         potential = set()
-        for k, v in viewitems(refs):
+        for k, v in refs.items():
             # For non-git target repositories, only worry about peeled
             if v == ZERO_SHA:
                 continue
@@ -571,7 +562,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         all_revs = self.target.all_revision_ids()
         parent_map = self.target.get_parent_map(all_revs)
         all_parents = set()
-        for values in viewvalues(parent_map):
+        for values in parent_map.values():
             all_parents.update(values)
         return set(all_revs) - all_parents
 
@@ -655,12 +646,12 @@ class InterGitGitRepository(InterFromGitRepository):
 
         def determine_wants(heads):
             old_refs = dict([(k, (v, None))
-                             for (k, v) in viewitems(heads)])
+                             for (k, v) in heads.items()])
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
-            return [sha1 for (sha1, bzr_revid) in viewvalues(new_refs)]
+            return [sha1 for (sha1, bzr_revid) in new_refs.values()]
         self.fetch_objects(determine_wants, lossy=lossy)
-        for k, (git_sha, bzr_revid) in viewitems(ref_changes):
+        for k, (git_sha, bzr_revid) in ref_changes.items():
             self.target._git.refs[k] = git_sha
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
@@ -714,7 +705,7 @@ class InterGitGitRepository(InterFromGitRepository):
     def get_determine_wants_branches(self, branches, include_tags=False):
         def determine_wants(refs):
             ret = []
-            for name, value in viewitems(refs):
+            for name, value in refs.items():
                 if value == ZERO_SHA:
                     continue
 
