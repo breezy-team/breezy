@@ -36,7 +36,7 @@ sw = $(sort $(wildcard $(1)))
 
 all: extensions
 
-IGNORE_WARNINGS = ImportWarning PendingDeprecationWarning DeprecationWarning FutureWarning ResourceWarning cryptography.utils.CryptographyDeprecationWarning
+IGNORE_WARNINGS = ImportWarning PendingDeprecationWarning DeprecationWarning FutureWarning ResourceWarning
 
 extensions:
 	@echo "building extension modules."
