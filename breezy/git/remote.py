@@ -396,7 +396,7 @@ class DefaultProgressReporter(object):
         text = text.rstrip(b"\r\n")
         text = text.decode('utf-8', 'surrogateescape')
         if text.lower().startswith('error: '):
-            error = text[len(b'error: '):]
+            error = text[len('error: '):]
             self.errors.append(error)
             trace.show_error('git: %s', error)
         else:
@@ -414,7 +414,7 @@ class DefaultProgressReporter(object):
                     trace.note("%s", text)
 
 
-_LOCK_REF_ERROR_MATCHER = re.compile(b'cannot lock ref \'(.*)\': (.*)')
+_LOCK_REF_ERROR_MATCHER = re.compile('cannot lock ref \'(.*)\': (.*)')
 
 
 class RemoteGitDir(GitDir):
