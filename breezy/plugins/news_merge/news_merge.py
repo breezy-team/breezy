@@ -19,7 +19,7 @@
 from .parser import simple_parse_lines
 from ... import merge
 from merge3 import Merge3
-import partiencediff
+import patiencediff
 
 
 class NewsMerger(merge.ConfigurableFileMerger):
