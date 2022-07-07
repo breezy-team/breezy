@@ -40,13 +40,11 @@ from breezy.tests import (
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
 COPYRIGHT_EXCEPTIONS = [
-    'breezy/_bencode_py.py',
     'breezy/doc_generate/conf.py',
     'breezy/lsprof.py',
     ]
 
 LICENSE_EXCEPTIONS = [
-    'breezy/_bencode_py.py',
     'breezy/doc_generate/conf.py',
     'breezy/lsprof.py',
     ]
@@ -126,10 +124,6 @@ class TestSource(TestSourceHelper):
         breezy_dir = self.get_breezy_dir()
         if extensions is None:
             extensions = ('.py',)
-
-        # This is the front-end 'bzr' script
-        bzr_path = self.get_brz_path()
-        yield bzr_path
 
         for root, dirs, files in os.walk(breezy_dir):
             for d in dirs:
@@ -325,49 +319,27 @@ class TestSource(TestSourceHelper):
             self.fail('\n\n'.join(problems))
 
     def test_flake8(self):
+        self.requireFeature(features.flake8)
         try:
-            self.requireFeature(features.flake8)
-        except (SyntaxError, NameError):
-            # importlib_metadata uses ModuleNotFoundError, which is
-            # python 3.6 only
-            if sys.version_info[:2] <= (3, 5):
-                self.skipTest('python version too old')
-            raise
-        # Older versions of flake8 don't support the 'paths'
-        # variable
-        new_path = list(sys.path)
-        new_path.insert(
-            0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
-        self.overrideAttr(sys, 'path', new_path)
-        import argparse
-        from flake8.main.application import Application
-        from flake8.formatting.base import BaseFormatter
-        app = Application()
-        app.config = u'setup.cfg'
-        app.jobs = 1
+            from flake8.api.legacy import get_style_guide
+            from flake8.main.options import JobsArgument
+            from flake8.formatting.default import Default
 
-        class Formatter(BaseFormatter):
-
-            def __init__(self):
-                self.errors = []
-
-            def start(self):
-                pass
-
-            def stop(self):
-                app.file_checker_manager.report()
-
-            def handle(self, error):
-                self.errors.append(error)
-
-        try:
-            app.initialize([])
-        except argparse.ArgumentError as e:
+            style = get_style_guide(jobs=JobsArgument("1"))
+        except Exception as e:
             self.skipTest('broken flake8: %r' % e)
-        app.formatter = Formatter()
-        app.run_checks()
-        app.report()
-        self.assertEqual(app.formatter.errors, [])
+
+        with self.text_log_file() as log_file:
+
+            class Formatter(Default):
+
+                def after_init(self):
+                    self.output_fd = log_file
+
+            style.init_report(Formatter)
+            report = style.check_files()
+
+        self.assertEqual(report.total_errors, 0)
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""

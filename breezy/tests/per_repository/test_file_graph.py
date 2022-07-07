@@ -19,6 +19,7 @@
 
 
 from breezy.tests.per_repository import TestCaseWithRepository
+from breezy.tests import TestNotApplicable
 
 
 class TestPerFileGraph(TestCaseWithRepository):
@@ -27,6 +28,8 @@ class TestPerFileGraph(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([("a", b"contents")])
         tree.add(["a"])
+        if not tree.supports_file_ids:
+            raise TestNotApplicable('file ids not supported')
         fileid = tree.path2id("a")
         revid1 = tree.commit("msg")
         self.build_tree_contents([("a", b"new contents")])

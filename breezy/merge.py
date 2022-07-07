@@ -264,6 +264,9 @@ class Merger(object):
 
     hooks = MergeHooks()
 
+    # TODO(jelmer): There should probably be a merger base type
+    merge_type: object
+
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, change_reporter=None,
                  recurse='down', revision_graph=None):
@@ -637,18 +640,24 @@ class Merger(object):
                     relpath)
                 if other_revision == sub_tree.last_revision():
                     continue
-                sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
-                sub_merge.merge_type = self.merge_type
                 other_branch = self.other_tree.reference_parent(relpath)
-                sub_merge.set_other_revision(other_revision, other_branch)
-                base_tree_path = _mod_tree.find_previous_path(
-                    self.this_tree, self.base_tree, relpath)
-                base_revision = self.base_tree.get_reference_revision(
-                    base_tree_path)
-                sub_merge.base_tree = \
-                    sub_tree.branch.repository.revision_tree(base_revision)
-                sub_merge.base_rev_id = base_revision
-                sub_merge.do_merge()
+                graph = self.this_tree.branch.repository.get_graph(other_branch.repository)
+                if graph.is_ancestor(sub_tree.last_revision(), other_revision):
+                    sub_tree.pull(other_branch, stop_revision=other_revision)
+                else:
+                    sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
+                    sub_merge.merge_type = self.merge_type
+                    sub_merge.set_other_revision(other_revision, other_branch)
+                    base_tree_path = _mod_tree.find_previous_path(
+                        self.this_tree, self.base_tree, relpath)
+                    if base_tree_path is None:
+                        raise NotImplementedError
+                    base_revision = self.base_tree.get_reference_revision(
+                        base_tree_path)
+                    sub_merge.base_tree = \
+                        sub_tree.branch.repository.revision_tree(base_revision)
+                    sub_merge.base_rev_id = base_revision
+                    sub_merge.do_merge()
         return merge
 
     def do_merge(self):
@@ -666,7 +675,7 @@ class Merger(object):
             trace.note(gettext("%d conflicts encountered.")
                        % len(merge.cooked_conflicts))
 
-        return len(merge.cooked_conflicts)
+        return merge.cooked_conflicts
 
 
 class _InventoryNoneEntry(object):

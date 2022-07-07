@@ -18,6 +18,7 @@
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
 import contextlib
+import os
 
 from .. import (
     branch as _mod_branch,
@@ -161,7 +162,8 @@ class GitDir(ControlDir):
             result = ControlDir.open_from_transport(target_transport)
         except brz_errors.NotBranchError:
             result = cloning_format.initialize_on_transport(target_transport)
-        source_branch = self.open_branch()
+        if source_branch is None:
+            source_branch = self.open_branch()
         source_repository = self.find_repository()
         try:
             result_repo = result.find_repository()
@@ -233,13 +235,13 @@ class GitDir(ControlDir):
         from ..repository import InterRepository
         from .mapping import default_mapping
         from ..transport.local import LocalTransport
-        if stacked_on is not None:
-            raise _mod_branch.UnstackableBranchFormat(
-                self._format, self.user_url)
+        from .refs import is_peeled
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:
             format = LocalGitControlDirFormat()
+        if stacked_on is not None:
+            raise _mod_branch.UnstackableBranchFormat(format, self.user_url)
         (target_repo, target_controldir, stacking,
          repo_policy) = format.initialize_on_transport_ex(
             transport, use_existing_dir=use_existing_dir,
@@ -257,10 +259,21 @@ class GitDir(ControlDir):
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
         for name, val in refs.items():
-            target_git_repo.refs[name] = val
+            if is_peeled(name):
+                continue
+            if val in target_git_repo.object_store:
+                target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
+        result_branch = result_dir.open_branch()
+        try:
+            parent = self.open_branch().get_parent()
+        except brz_errors.InaccessibleParent:
+            pass
+        else:
+            if parent:
+                result_branch.set_parent(parent)
         if revision_id is not None:
-            result_dir.open_branch().set_last_revision(revision_id)
+            result_branch.set_last_revision(revision_id)
         if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
                 try:
@@ -626,7 +639,12 @@ class LocalGitDir(GitDir):
         if not nascent_ok and ref not in self._git.refs:
             raise brz_errors.NotBranchError(
                 self.root_transport.base, controldir=self)
-        ref_chain, unused_sha = self._git.refs.follow(ref)
+        try:
+            ref_chain, unused_sha = self._git.refs.follow(ref)
+        except KeyError as e:
+            raise brz_errors.NotBranchError(
+                self.root_transport.base, controldir=self,
+                detail='intermediate ref %s missing' % e.args[0])
         if ref_chain[-1] == b'HEAD':
             controldir = self
         else:
@@ -785,6 +803,6 @@ class LocalGitDir(GitDir):
         except brz_errors.NoSuchFile:
             return self
         else:
-            commondir = commondir.rstrip(b'/.git/').decode(osutils._fs_enc)
+            commondir = os.fsdecode(commondir.rstrip(b'/.git/'))
             return ControlDir.open_from_transport(
                 get_transport_from_path(commondir))

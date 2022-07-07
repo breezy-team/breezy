@@ -141,6 +141,8 @@ class InventoryTree(Tree):
     root_inventory = property(_get_root_inventory,
                               doc="Root inventory of this tree")
 
+    supports_file_ids = True
+
     def _unpack_file_id(self, file_id):
         """Find the inventory and inventory file id for a tree file id.
 
@@ -205,6 +207,10 @@ class InventoryTree(Tree):
         """Return the id for path in this tree."""
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
+
+
+    def is_versioned(self, path):
+        return self.path2id(path) is not None
 
     def _path2ie(self, path):
         """Lookup an inventory entry by path.

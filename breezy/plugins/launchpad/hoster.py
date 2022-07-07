@@ -408,7 +408,8 @@ class Launchpad(Hoster):
         else:
             raise AssertionError('not a valid Launchpad URL')
 
-    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+    def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
+        # TODO(jelmer): honor preferred_schemes
         if owner is None:
             owner = self.launchpad.me.name
         (base_vcs, base_user, base_password, base_path,
@@ -490,10 +491,10 @@ class Launchpad(Hoster):
         return iter([])
 
     def _getPerson(self, person):
-        if '@' in name:
-            return self.launchpad.people.getByEmail(email=name)
+        if '@' in person:
+            return self.launchpad.people.getByEmail(email=person)
         else:
-            return self.launchpad.people[name]
+            return self.launchpad.people[person]
 
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.

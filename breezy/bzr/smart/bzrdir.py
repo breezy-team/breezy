@@ -16,8 +16,9 @@
 
 """Server-side bzrdir related request implmentations."""
 
+import fastbencode as bencode
+
 from ... import (
-    bencode,
     branch,
     errors,
     repository,

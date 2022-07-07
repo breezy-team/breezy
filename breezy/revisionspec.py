@@ -22,7 +22,6 @@ import datetime
 
 from breezy import (
     branch as _mod_branch,
-    cache_utf8,
     revision,
     workingtree,
     )
@@ -496,7 +495,7 @@ class RevisionSpec_revid(RevisionIDSpec):
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
         if isinstance(self.spec, str):
-            return cache_utf8.encode(self.spec)
+            return self.spec.encode('utf-8')
         return self.spec
 
 

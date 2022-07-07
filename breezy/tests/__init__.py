@@ -23,6 +23,7 @@
 
 import atexit
 import codecs
+import contextlib
 import copy
 import difflib
 import doctest
@@ -546,10 +547,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def report_tests_starting(self):
         """Display information before the test run begins"""
-        if getattr(sys, 'frozen', None) is None:
-            bzr_path = osutils.realpath(sys.argv[0])
-        else:
-            bzr_path = sys.executable
+        bzr_path = osutils.realpath(sys.argv[0])
         self.stream.write(
             'brz selftest: %s\n' % (bzr_path,))
         self.stream.write(
@@ -1695,6 +1693,12 @@ class TestCase(testtools.TestCase):
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
+    @contextlib.contextmanager
+    def text_log_file(self, **kwargs):
+        stream = TextIOWrapper(self._log_file, encoding='utf-8', **kwargs)
+        yield stream
+        stream.detach()
+
     def _finishLogFile(self):
         """Flush and dereference the in-memory log for this testcase"""
         if trace._trace_file:
@@ -2133,7 +2137,7 @@ class TestCase(testtools.TestCase):
         out, err = self.run_bzr(*args, **kwargs)
         return out, err
 
-    def run_bzr_subprocess(self, *args, **kwargs):
+    def run_brz_subprocess(self, *args, **kwargs):
         """Run brz in a subprocess for testing.
 
         This starts a new Python interpreter and runs brz in there.
@@ -2154,7 +2158,7 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get('env_changes', {})
+        env_changes = kwargs.get('env_changes', None)
         working_dir = kwargs.get('working_dir', None)
         allow_plugins = kwargs.get('allow_plugins', False)
         if len(args) == 1:
@@ -2163,18 +2167,18 @@ class TestCase(testtools.TestCase):
             elif isinstance(args[0], str):
                 args = list(shlex.split(args[0]))
         else:
-            raise ValueError("passing varargs to run_bzr_subprocess")
-        process = self.start_bzr_subprocess(args, env_changes=env_changes,
+            raise ValueError("passing varargs to run_brz_subprocess")
+        process = self.start_brz_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)
         # We distinguish between retcode=None and retcode not passed.
         supplied_retcode = kwargs.get('retcode', 0)
-        return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
+        return self.finish_brz_subprocess(process, retcode=supplied_retcode,
                                           universal_newlines=kwargs.get(
                                               'universal_newlines', False),
                                           process_args=args)
 
-    def start_bzr_subprocess(self, process_args, env_changes=None,
+    def start_brz_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
                              allow_plugins=False, stderr=subprocess.PIPE):
@@ -2212,6 +2216,10 @@ class TestCase(testtools.TestCase):
         # gets set to the computed directory of this parent process.
         if site.USER_BASE is not None:
             env_changes["PYTHONUSERBASE"] = site.USER_BASE
+
+        if 'PYTHONPATH' not in env_changes:
+            env_changes['PYTHONPATH'] = ':'.join(sys.path)
+
         old_env = {}
 
         def cleanup_environment():
@@ -2237,10 +2245,7 @@ class TestCase(testtools.TestCase):
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
             self._add_subprocess_log(trace._get_brz_log_filename())
-            command = [sys.executable]
-            # frozen executables don't need the path to bzr
-            if getattr(sys, "frozen", None) is None:
-                command.append(bzr_path)
+            command = [bzr_path]
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
@@ -2279,7 +2284,7 @@ class TestCase(testtools.TestCase):
             detail_content = content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
                 lambda: [log_file_bytes])
-            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+            self.addDetail("start_brz_subprocess-log-%d" % (count,),
                            detail_content)
 
     def _popen(self, *args, **kwargs):
@@ -2302,11 +2307,11 @@ class TestCase(testtools.TestCase):
             brz_path = sys.argv[0]
         return brz_path
 
-    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
+    def finish_brz_subprocess(self, process, retcode=0, send_signal=None,
                               universal_newlines=False, process_args=None):
         """Finish the execution of process.
 
-        :param process: the Popen object returned from start_bzr_subprocess.
+        :param process: the Popen object returned from start_brz_subprocess.
         :param retcode: The status code that is expected.  Defaults to 0.  If
             None is supplied, the status code is not checked.
         :param send_signal: an optional signal to send to the process.
@@ -3649,9 +3654,6 @@ def reinvoke_for_tests(suite):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
         bzr_path = [bzr_path]
-        if sys.platform == "win32":
-            # if we're on windows, we can't execute the bzr script directly
-            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
@@ -3985,7 +3987,6 @@ def _test_suite_testmod_names():
         'breezy.tests.per_uifactory',
         'breezy.tests.per_workingtree',
         'breezy.tests.test__annotator',
-        'breezy.tests.test__bencode',
         'breezy.tests.test__known_graph',
         'breezy.tests.test__simple_set',
         'breezy.tests.test__static_tuple',
@@ -4131,7 +4132,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_treebuilder',
         'breezy.tests.test_treeshape',
         'breezy.tests.test_tsort',
-        'breezy.tests.test_tuned_gzip',
         'breezy.tests.test_ui',
         'breezy.tests.test_uncommit',
         'breezy.tests.test_upgrade',

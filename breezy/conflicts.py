@@ -30,7 +30,6 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 from . import (
-    cache_utf8,
     errors,
     commands,
     option,

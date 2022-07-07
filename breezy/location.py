@@ -87,7 +87,10 @@ def parse_cvs_location(location):
     scheme = parts[1]
     if scheme == 'extssh':
         scheme = 'ssh'
-    path = parts[3]
+    try:
+        path = parts[3]
+    except IndexError:
+        raise ValueError('no path element in CVS location %s' % location)
     return (scheme, hostname, username, path)
 
 
@@ -97,7 +100,10 @@ def cvs_to_url(location):
     :param location: pserver URL
     :return: A cvs+pserver URL
     """
-    (scheme, host, user, path) = parse_cvs_location(location)
+    try:
+        (scheme, host, user, path) = parse_cvs_location(location)
+    except ValueError as e:
+        raise urlutils.InvalidURL(path=location, extra=str(e))
     return str(urlutils.URL(
         scheme='cvs+' + scheme,
         quoted_user=urlutils.quote(user) if user else None,

@@ -52,7 +52,7 @@ def reset_tree(local_tree, subpath=''):
       subpath: Subpath to operate on
     """
     revert(local_tree, local_tree.branch.basis_tree(),
-           [subpath] if subpath not in ('.', '') else None)
+           [subpath] if subpath else None)
     deletables = list(iter_deletables(
         local_tree, unknown=True, ignored=False, detritus=False))
     delete_items(deletables)
@@ -83,7 +83,7 @@ def delete_items(deletables, dry_run=False):
         # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
-        warnings.warn('unable to remove %s' % path)
+        warning('unable to remove %s' % path)
     for path, subp in deletables:
         if os.path.isdir(path):
             shutil.rmtree(path, onerror=onerror)
@@ -182,7 +182,6 @@ class Workspace(object):
         with self.tree.lock_write():
             specific_files = self._stage()
             basis_tree = self.tree.basis_tree()
-            # TODO(jelmer): After Python 3.3, use 'yield from'
             for change in self.tree.iter_changes(
                     basis_tree, specific_files=specific_files,
                     want_unversioned=False, require_versioned=True):

@@ -151,7 +151,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
                 else:
                     conflicts.append(
                         (tag_name,
-                         self.repository.lookup_foreign_revision_id(peeled),
+                         self.source.branch.repository.lookup_foreign_revision_id(peeled),
                          self.target.branch.repository.lookup_foreign_revision_id(
                              old_refs[ref_name])))
             return ret
@@ -258,7 +258,7 @@ class InterTagsFromGitToNonGit(InterTags):
             return updates, conflicts
 
     def _merge_to(self, to_tags, source_tag_refs, overwrite=False,
-                  selector=None):
+                  selector=None, ignore_master=False):
         unpeeled_map = defaultdict(set)
         conflicts = []
         updates = {}
@@ -456,10 +456,10 @@ class GitBranch(ForeignBranch):
         except ValueError:
             self.name = None
             if self.ref is not None:
-                params = {"ref": urlutils.escape(self.ref)}
+                params = {"ref": urlutils.escape(self.ref, safe='')}
         else:
             if self.name != "":
-                params = {"branch": urlutils.escape(self.name)}
+                params = {"branch": urlutils.escape(self.name, safe='')}
         for k, v in params.items():
             self._user_transport.set_segment_parameter(k, v)
             self._control_transport.set_segment_parameter(k, v)
@@ -497,8 +497,9 @@ class GitBranch(ForeignBranch):
         if getattr(self.repository, '_git', None):
             cs = self.repository._git.get_config_stack()
             try:
-                return cs.get((b"branch", self.name.encode('utf-8')),
-                        b"nick").decode("utf-8")
+                return cs.get(
+                    (b"branch", self.name.encode('utf-8')),
+                    b"nick").decode("utf-8")
             except KeyError:
                 pass
         return self.name or u"HEAD"
@@ -516,6 +517,9 @@ class GitBranch(ForeignBranch):
     def __repr__(self):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
                                  self.name)
+
+    def set_last_revision(self, revid):
+        raise NotImplementedError(self.set_last_revision)
 
     def generate_revision_history(self, revid, last_rev=None,
                                   other_branch=None):
@@ -592,7 +596,7 @@ class GitBranch(ForeignBranch):
         try:
             ref = cs.get((b"branch", remote), b"merge")
         except KeyError:
-            ref = self.ref
+            ref = b'HEAD'
 
         return git_url_to_bzr_url(location.decode('utf-8'), ref=ref)
 
@@ -601,11 +605,6 @@ class GitBranch(ForeignBranch):
         cs = self.repository._git.get_config_stack()
         return self._get_related_merge_branch(cs)
 
-    def _write_git_config(self, cs):
-        f = BytesIO()
-        cs.write_to_file(f)
-        self.repository._git._put_named_file('config', f.getvalue())
-
     def set_parent(self, location):
         cs = self.repository._git.get_config()
         remote = self._get_origin(cs)
@@ -613,14 +612,17 @@ class GitBranch(ForeignBranch):
         target_url, branch, ref = bzr_url_to_git_url(location)
         location = urlutils.relative_url(this_url, target_url)
         cs.set((b"remote", remote), b"url", location)
-        if branch:
-            cs.set((b"branch", remote), b"merge", branch_name_to_ref(branch))
-        elif ref:
-            cs.set((b"branch", remote), b"merge", ref)
-        else:
-            # TODO(jelmer): Maybe unset rather than setting to HEAD?
-            cs.set((b"branch", remote), b"merge", b'HEAD')
-        self._write_git_config(cs)
+        cs.set((b"remote", remote), b'fetch',
+               b'+refs/heads/*:refs/remotes/%s/*' % remote)
+        if self.name:
+            if branch:
+                cs.set((b"branch", self.name.encode()), b"merge", branch_name_to_ref(branch))
+            elif ref:
+                cs.set((b"branch", self.name.encode()), b"merge", ref)
+            else:
+                # TODO(jelmer): Maybe unset rather than setting to HEAD?
+                cs.set((b"branch", self.name.encode()), b"merge", b'HEAD')
+        self.repository._write_git_config(cs)
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
@@ -1450,13 +1452,26 @@ class InterToGitBranch(branch.GenericInterBranch):
             for k, v in self.source.tags.get_tag_dict().items():
                 ret.append((None, v))
         ret.append((None, stop_revision))
-        try:
-            revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
-        except NoPushSupport:
-            raise errors.NoRoundtrippingSupport(self.source, self.target)
-        return _mod_repository.FetchResult(revidmap={
-            old_revid: new_revid
-            for (old_revid, (new_sha, new_revid)) in revidmap.items()})
+        if getattr(self.interrepo, 'fetch_revs', None):
+            try:
+                revidmap = self.interrepo.fetch_revs(ret, lossy=lossy, limit=limit)
+            except NoPushSupport:
+                raise errors.NoRoundtrippingSupport(self.source, self.target)
+            return _mod_repository.FetchResult(revidmap={
+                old_revid: new_revid
+                for (old_revid, (new_sha, new_revid)) in revidmap.items()})
+        else:
+            def determine_wants(refs):
+                wants = []
+                for git_sha, revid in ret:
+                    if git_sha is None:
+                        git_sha, mapping = self.target.lookup_bzr_revision_id(revid)
+                    wants.append(git_sha)
+                return wants
+
+            self.interrepo.fetch_objects(
+                determine_wants, lossy=lossy, limit=limit)
+            return _mod_repository.FetchResult()
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None, run_hooks=True, _stop_revno=None,

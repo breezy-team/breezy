@@ -20,8 +20,9 @@ import re
 import sys
 import zlib
 
+import fastbencode as bencode
+
 from .. import (
-    bencode,
     branch,
     bzr as _mod_bzr,
     config as _mod_config,

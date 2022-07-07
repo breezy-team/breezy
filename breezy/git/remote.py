@@ -201,6 +201,8 @@ def parse_git_error(url, message):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
         return NotBranchError(url, message)
+    if message == 'A repository for this project does not exist yet.':
+        return NotBranchError(url, message)
     if message == 'pre-receive hook declined':
         return PermissionDenied(url, message)
     if re.match('(.+) is not a valid repository name',
@@ -384,7 +386,7 @@ class DefaultProgressReporter(object):
 
     def progress(self, text):
         text = text.rstrip(b"\r\n")
-        text = text.decode('utf-8')
+        text = text.decode('utf-8', 'surrogateescape')
         if text.lower().startswith('error: '):
             trace.show_error('git: %s', text[len(b'error: '):])
         else:
@@ -499,7 +501,7 @@ class RemoteGitDir(GitDir):
             raise AlreadyBranchError(self.user_url)
         ref_chain, unused_sha = self.get_refs_container().follow(
             self._get_selected_ref(name))
-        if ref_chain and ref_chain[0] == b'HEAD':
+        if ref_chain and ref_chain[0] == b'HEAD' and len(ref_chain) > 1:
             refname = ref_chain[1]
         repo = self.open_repository()
         return RemoteGitBranch(self, repo, refname)
@@ -630,8 +632,8 @@ class RemoteGitDir(GitDir):
                 except errors.NoSuchRevision:
                     raise errors.NoRoundtrippingSupport(
                         source, self.open_branch(name=name, nascent_ok=True))
+            old_sha = remote_refs.get(actual_refname)
             if not overwrite:
-                old_sha = remote_refs.get(actual_refname)
                 if remote_divergence(old_sha, new_sha, source_store):
                     raise DivergedBranches(
                         source, self.open_branch(name, nascent_ok=True))
@@ -1009,10 +1011,9 @@ class RemoteGitTagDict(GitTags):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)
-        if result and not isinstance(result, dict):
-            error = result.ref_status.get(ref)
-            if error:
-                raise RemoteGitError(error)
+        error = result.ref_status.get(ref)
+        if error:
+            raise RemoteGitError(error)
 
 
 class RemoteGitBranch(GitBranch):

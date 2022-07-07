@@ -174,7 +174,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo')
-        file_id = tree_a.path2id('foo')
         rev1 = tree_a.commit('rev1')
         bzrdirb = self.make_controldir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
@@ -297,14 +296,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
         rev1 = wt.commit('lala!', allow_pointless=True)
-        root_id = wt.path2id('')
         tree = wt.branch.repository.revision_tree(rev1)
         with tree.lock_read():
             self.assertEqual(rev1, tree.get_file_revision(u''))
-            expected = inventory.InventoryDirectory(root_id, '', None)
-            expected.revision = rev1
-            self.assertEqual([('', 'V', 'directory', expected)],
-                             list(tree.list_files(include_root=True)))
+            [root] = list(tree.list_files(include_root=True))
+            self.assertEqual(('', 'V', 'directory'), root[:3])
         self.assertRaises(ValueError, wt.branch.repository.revision_tree, None)
         tree = wt.branch.repository.revision_tree(_mod_revision.NULL_REVISION)
         with tree.lock_read():
@@ -505,6 +501,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.build_tree_contents([('tree/file1', b'foo'),
                                   ('tree/file2', b'bar')])
         tree.add(['file1', 'file2'])
+        if not tree.supports_file_ids:
+            raise tests.TestNotApplicable('tree does not support file ids')
         file1_id = tree.path2id('file1')
         file2_id = tree.path2id('file2')
         rev1 = tree.commit('rev1')

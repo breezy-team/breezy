@@ -33,15 +33,13 @@ class QuiltPatches(object):
         self.tree = tree
         if patches_dir is None:
             if tree.has_filename('.pc/.quilt_patches'):
-                patches_dir = tree.get_file_text('.pc/.quilt_patches').decode(
-                    osutils._fs_enc).rstrip('\n')
+                patches_dir = os.fsdecode(tree.get_file_text('.pc/.quilt_patches')).rstrip('\n')
             else:
                 patches_dir = wrapper.DEFAULT_PATCHES_DIR
         self.patches_dir = patches_dir
         if series_file is None:
             if tree.has_filename('.pc/.quilt_series'):
-                series_file = tree.get_file_text('.pc/.quilt_series').decode(
-                    osutils._fs_enc).rstrip('\n')
+                series_file = os.fsdecode(tree.get_file_text('.pc/.quilt_series')).rstrip('\n')
             else:
                 series_file = wrapper.DEFAULT_SERIES_FILE
         self.series_file = series_file

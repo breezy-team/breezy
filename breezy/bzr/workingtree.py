@@ -1530,26 +1530,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 continue
 
             fl = []
-            for subf in os.listdir(dirabs.encode(osutils._fs_enc)):
-                try:
-                    subf = subf.decode(osutils._fs_enc)
-                except UnicodeDecodeError:
-                    path_os_enc = path.encode(osutils._fs_enc)
-                    relpath = path_os_enc + b'/' + subf
-                    raise errors.BadFilenameEncoding(relpath,
-                                                     osutils._fs_enc)
+            for subf in os.listdir(os.fsencode(dirabs)):
+                subf = os.fsdecode(subf)
 
                 if self.controldir.is_control_filename(subf):
                     continue
                 if subf not in dir_entry.children:
-                    try:
-                        (subf_norm,
-                         can_access) = osutils.normalized_filename(subf)
-                    except UnicodeDecodeError:
-                        path_os_enc = path.encode(osutils._fs_enc)
-                        relpath = path_os_enc + '/' + subf
-                        raise errors.BadFilenameEncoding(relpath,
-                                                         osutils._fs_enc)
+                    (subf_norm,
+                     can_access) = osutils.normalized_filename(subf)
                     if subf_norm != subf and can_access:
                         if subf_norm not in dir_entry.children:
                             fl.append(subf_norm)
@@ -1932,7 +1920,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # local work is unreferenced and will appear to have been lost.
         #
         with self.lock_tree_write():
-            nb_conflicts = 0
+            nb_conflicts = []
             try:
                 last_rev = self.get_parent_ids()[0]
             except IndexError:
@@ -1953,7 +1941,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                                  show_base=show_base)
                 if nb_conflicts:
                     self.add_parent_tree((old_tip, other_tree))
-                    return nb_conflicts
+                    return len(nb_conflicts)
 
             if last_rev != _mod_revision.ensure_null(revision):
                 # the working tree is up to date with the branch
@@ -1995,7 +1983,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         (old_tip, self.branch.repository.revision_tree(old_tip)))
                 self.set_parent_trees(parent_trees)
                 last_rev = parent_trees[0][0]
-            return nb_conflicts
+            return len(nb_conflicts)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

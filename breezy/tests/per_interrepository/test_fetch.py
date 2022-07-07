@@ -224,6 +224,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         builder.finish_series()
         branch = builder.get_branch()
         revtree = branch.repository.revision_tree(merge)
+        if not revtree.supports_file_ids:
+            raise TestNotApplicable('from format does not support file ids')
         root_id = revtree.path2id('')
         file_id = revtree.path2id('file')
 
@@ -582,7 +584,8 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         to_repo.fetch(from_tree.branch.repository, tree_rev)
         # to_repo should have a file_graph for from_tree.path2id('subtree') and
         # revid tree_rev.
-        file_id = from_tree.path2id('subtree')
-        with to_repo.lock_read():
-            self.assertEqual({(file_id, tree_rev): ()},
-                             to_repo.texts.get_parent_map([(file_id, tree_rev)]))
+        if from_tree.supports_file_ids:
+            file_id = from_tree.path2id('subtree')
+            with to_repo.lock_read():
+                self.assertEqual({(file_id, tree_rev): ()},
+                                 to_repo.texts.get_parent_map([(file_id, tree_rev)]))

@@ -7,7 +7,7 @@ It's meant for people interested in developing Breezy, and some parts will
 also be useful to people developing Breezy plugins.
 
 If you have any questions or something seems to be incorrect, unclear or
-missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
+missing, please talk to us in ``irc://irc.oftc.net/#breezy``, or write to
 the Breezy mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
@@ -51,7 +51,7 @@ Planning and Discussing Changes
 ===============================
 
 There is a very active community around Breezy. Mostly we meet on IRC
-(#bzr on irc.freenode.net) and on the mailing list. To join the Breezy
+(#breezy on irc.oftc.net) and on the mailing list. To join the Breezy
 community, see https://www.breezy-vcs.org/pages/support.html.
 
 If you are planning to make a change, it's a very good idea to mention it

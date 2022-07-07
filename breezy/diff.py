@@ -1046,7 +1046,7 @@ class DiffTree(object):
         for change in sorted(iterator, key=changes_key):
             # The root does not get diffed, and items with no known kind (that
             # is, missing) in both trees are skipped as well.
-            if change.parent_id == (None, None) or change.kind == (None, None):
+            if (not change.path[0] and not change.path[1]) or change.kind == (None, None):
                 continue
             if change.kind[0] == 'symlink' and not self.new_tree.supports_symlinks():
                 warning(
@@ -1060,7 +1060,7 @@ class DiffTree(object):
             new_present = (change.kind[1] is not None and change.versioned[1])
             executable = change.executable
             kind = change.kind
-            renamed = (change.parent_id[0], change.name[0]) != (change.parent_id[1], change.name[1])
+            renamed = change.renamed
 
             properties_changed = []
             properties_changed.extend(

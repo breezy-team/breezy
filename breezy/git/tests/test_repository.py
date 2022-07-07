@@ -184,11 +184,10 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(list(inv.iter_entries()), [])
 
     def test_revision_tree_none(self):
-        # GitRepository.revision_tree(None) returns the null tree.
+        # GitRepository.revision_tree('null':') returns the null tree.
         repo = self.git_repo
         tree = repo.revision_tree(revision.NULL_REVISION)
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
-        self.assertIs(None, tree.path2id(''))
 
     def test_get_parent_map_null(self):
         self.assertEqual({revision.NULL_REVISION: ()},

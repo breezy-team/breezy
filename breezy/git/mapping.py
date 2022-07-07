@@ -21,8 +21,9 @@
 import base64
 import stat
 
+import fastbencode as bencode
+
 from .. import (
-    bencode,
     errors,
     foreign,
     trace,
@@ -128,22 +129,12 @@ def fix_person_identifier(text):
 
 def decode_git_path(path):
     """Take a git path and decode it."""
-    try:
-        return path.decode('utf-8')
-    except UnicodeDecodeError:
-        if PY3:
-            return path.decode('utf-8', 'surrogateescape')
-        raise
+    return path.decode('utf-8', 'surrogateescape')
 
 
 def encode_git_path(path):
     """Take a regular path and encode it for git."""
-    try:
-        return path.encode('utf-8')
-    except UnicodeEncodeError:
-        if PY3:
-            return path.encode('utf-8', 'surrogateescape')
-        raise
+    return path.encode('utf-8', 'surrogateescape')
 
 
 def warn_escaped(commit, num_escaped):
@@ -191,7 +182,7 @@ class BzrGitMapping(foreign.VcsMapping):
         # Git paths are just bytestrings
         # We must just hope they are valid UTF-8..
         if isinstance(path, str):
-            path = path.encode("utf-8")
+            path = encode_git_path(path)
         if path == b"":
             return ROOT_ID
         return FILE_ID_PREFIX + escape_file_id(path)
@@ -411,9 +402,11 @@ class BzrGitMapping(foreign.VcsMapping):
                 rev.properties[u'author'] = commit.author.decode(encoding)
             rev.message, rev.git_metadata = self._decode_commit_message(
                 rev, commit.message, encoding)
+
         if commit.encoding is not None:
             rev.properties[u'git-explicit-encoding'] = commit.encoding.decode(
                 'ascii')
+        if commit.encoding is not None and commit.encoding != b'false':
             decode_using_encoding(rev, commit, commit.encoding.decode('ascii'))
         else:
             for encoding in ('utf-8', 'latin1'):
