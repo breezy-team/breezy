@@ -46,7 +46,6 @@ from breezy.bzr import (
     )
 from breezy.bzr.bundle import serializer
 
-from breezy.recordcounter import RecordCounter
 from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """)
@@ -1937,6 +1936,7 @@ class StreamSource(object):
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
+        from .recordcounter import RecordCounter
         self._record_counter = RecordCounter()
 
     def delta_on_metadata(self):

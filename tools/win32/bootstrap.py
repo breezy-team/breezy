@@ -28,7 +28,7 @@ is_jython = sys.platform.startswith('java')
 
 try:
     import pkg_resources
-except ImportError:
+except ModuleNotFoundError:
     ez = {}
     exec(urllib2.urlopen('http://peak.telecommunity.com/dist/ez_setup.py'
                          ).read(), ez)

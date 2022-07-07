@@ -21,36 +21,34 @@ lazy_import(globals(), """
 import patiencediff
 
 from breezy import (
-    branch as _mod_branch,
-    conflicts as _mod_conflicts,
     debug,
     graph as _mod_graph,
-    merge3,
-    osutils,
-    revision as _mod_revision,
     textfile,
-    trace,
-    tree as _mod_tree,
-    tsort,
     ui,
-    workingtree,
     )
 from breezy.bzr import (
-    conflicts as _mod_bzr_conflicts,
     generate_ids,
-    versionedfile,
     )
 from breezy.i18n import gettext
 """)
-from breezy.bzr.conflicts import Conflict as BzrConflict
 from . import (
     decorators,
     errors,
     hooks,
+    osutils,
     registry,
+    revision as _mod_revision,
     transform,
+    trace,
+    tree as _mod_tree,
     )
 # TODO: Report back as changes are merged in
+
+
+class CantReprocessAndShowBase(errors.BzrError):
+
+    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
+            "the relationship of conflicting lines to the base")
 
 
 def transform_tree(from_tree, to_tree, interesting_files=None):
@@ -425,9 +423,11 @@ class Merger(object):
     def _get_tree(self, treespec, possible_transports=None):
         location, revno = treespec
         if revno is None:
-            tree = workingtree.WorkingTree.open_containing(location)[0]
+            from .workingtree import WorkingTree
+            tree = WorkingTree.open_containing(location)[0]
             return tree.branch, tree
-        branch = _mod_branch.Branch.open_containing(
+        from .branch import Branch
+        branch = Branch.open_containing(
             location, possible_transports)[0]
         if revno == -1:
             revision_id = branch.last_revision()
@@ -1411,14 +1411,20 @@ class Merge3Merger(object):
 
     def text_merge(self, trans_id, paths):
         """Perform a three-way text merge on a file"""
+        from merge3 import Merge3
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
         base_path, other_path, this_path = paths
         base_lines = self.get_lines(self.base_tree, base_path)
         other_lines = self.get_lines(self.other_tree, other_path)
         this_lines = self.get_lines(self.this_tree, this_path)
-        m3 = merge3.Merge3(base_lines, this_lines, other_lines,
-                           is_cherrypick=self.cherrypick)
+        textfile.check_text_lines(base_lines)
+        textfile.check_text_lines(other_lines)
+        textfile.check_text_lines(this_lines)
+        m3 = Merge3(
+            base_lines, this_lines, other_lines,
+            is_cherrypick=self.cherrypick,
+            sequence_matcher=patiencediff.PatienceSequenceMatcher)
         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = b'|' * 7
@@ -1427,12 +1433,15 @@ class Merge3Merger(object):
 
         def iter_merge3(retval):
             retval["text_conflicts"] = False
-            for line in m3.merge_lines(name_a=b"TREE",
+            if base_marker and self.reprocess:
+                raise CantReprocessAndShowBase()
+            lines = list(m3.merge_lines(name_a=b"TREE",
                                        name_b=b"MERGE-SOURCE",
                                        name_base=b"BASE-REVISION",
                                        start_marker=start_marker,
                                        base_marker=base_marker,
-                                       reprocess=self.reprocess):
+                                       reprocess=self.reprocess))
+            for line in lines:
                 if line.startswith(start_marker):
                     retval["text_conflicts"] = True
                     yield line.replace(start_marker, b'<' * 7)
@@ -1561,6 +1570,7 @@ class WeaveMerger(Merge3Merger):
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
+        from .bzr.versionedfile import PlanWeaveMerge
         if self.cherrypick:
             base = self.base_tree
         else:
@@ -1572,8 +1582,8 @@ class WeaveMerger(Merge3Merger):
             name = self.tt.final_name(trans_id) + '.plan'
             contents = (b'%11s|%s' % l for l in plan)
             self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = versionedfile.PlanWeaveMerge(plan, b'<<<<<<< TREE\n',
-                                                 b'>>>>>>> MERGE-SOURCE\n')
+        textmerge = PlanWeaveMerge(
+            plan, b'<<<<<<< TREE\n', b'>>>>>>> MERGE-SOURCE\n')
         lines, conflicts = textmerge.merge_lines(self.reprocess)
         if conflicts:
             base_lines = textmerge.base_from_plan()
@@ -2251,6 +2261,7 @@ class _PlanMerge(_PlanMergeBase):
 
     def _build_weave(self):
         from .bzr import weave
+        from .tsort import merge_sort
         self._weave = weave.Weave(weave_name='in_memory_weave',
                                   allow_reserved=True)
         parent_map = self._find_recursive_lcas()
@@ -2267,8 +2278,7 @@ class _PlanMerge(_PlanMergeBase):
         tip_key = self._key_prefix + (_mod_revision.CURRENT_REVISION,)
         parent_map[tip_key] = (self.a_key, self.b_key)
 
-        for seq_num, key, depth, eom in reversed(tsort.merge_sort(parent_map,
-                                                                  tip_key)):
+        for seq_num, key, depth, eom in reversed(merge_sort(parent_map, tip_key)):
             if key == tip_key:
                 continue
         # for key in tsort.topo_sort(parent_map):

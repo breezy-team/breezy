@@ -159,7 +159,7 @@ class TdbGitShaMapTests(TestCaseInTempDir, TestGitShaMap):
         TestCaseInTempDir.setUp(self)
         try:
             self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
-        except ImportError:
+        except ModuleNotFoundError:
             raise UnavailableFeature("Missing tdb")
         self.map = self.cache.idmap
 

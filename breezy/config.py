@@ -114,6 +114,7 @@ from . import (
     lazy_regex,
     registry,
     )
+from .option import Option as CommandOption
 
 
 CHECK_IF_POSSIBLE = 0
@@ -3874,14 +3875,14 @@ class cmd_config(commands.Command):
         # FIXME: This should be a registry option so that plugins can register
         # their own config files (or not) and will also address
         # http://pad.lv/788991 -- vila 20101115
-        commands.Option('scope', help='Reduce the scope to the specified'
-                        ' configuration file.',
-                        type=str),
-        commands.Option('all',
-                        help='Display all the defined values for the matching options.',
-                        ),
-        commands.Option('remove', help='Remove the option from'
-                        ' the configuration file.'),
+        CommandOption('scope', help='Reduce the scope to the specified'
+                      ' configuration file.',
+                      type=str),
+        CommandOption('all',
+                      help='Display all the defined values for the matching options.',
+                      ),
+        CommandOption('remove', help='Remove the option from'
+                      ' the configuration file.'),
         ]
 
     _see_also = ['configuration']

@@ -174,17 +174,17 @@ def _populate_different_tree(tree, basis, delta):
     """Put all entries into tree, but at a unique location."""
     added_ids = set()
     added_paths = set()
-    tree.add(['unique-dir'], [b'unique-dir-id'], ['directory'])
+    tree.add(['unique-dir'], ['directory'], [b'unique-dir-id'])
     for path, ie in basis.iter_entries_by_dir():
         if ie.file_id in added_ids:
             continue
         # We want a unique path for each of these, we use the file-id
-        tree.add(['unique-dir/' + ie.file_id], [ie.file_id], [ie.kind])
+        tree.add(['unique-dir/' + ie.file_id], [ie.kind], [ie.file_id])
         added_ids.add(ie.file_id)
     for old_path, new_path, file_id, ie in delta:
         if file_id in added_ids:
             continue
-        tree.add(['unique-dir/' + file_id], [file_id], [ie.kind])
+        tree.add(['unique-dir/' + file_id], [ie.kind], [file_id])
 
 
 def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
@@ -1588,7 +1588,7 @@ class TestMutableInventoryFromTree(TestCaseWithTransport):
     def test_some_files(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])
-        wt.add(['a'], [b'thefileid'])
+        wt.add(['a'], ids=[b'thefileid'])
         revid = wt.commit("commit")
         tree = wt.branch.repository.revision_tree(revid)
         inv = mutable_inventory_from_tree(tree)

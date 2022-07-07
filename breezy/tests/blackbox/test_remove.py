@@ -44,7 +44,7 @@ class TestRemove(TestCaseWithTransport):
             self.build_tree(paths)
             for path in paths:
                 file_id = path.replace('/', '_').encode('utf-8') + _id
-                tree.add(path, file_id)
+                tree.add(path, ids=file_id)
         return tree
 
     def assertFilesDeleted(self, files):

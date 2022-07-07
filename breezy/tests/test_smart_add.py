@@ -127,7 +127,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.build_tree(['new/subby/', 'new/subby/a', 'new/subby/b'])
 
         subdir_file_id = self.base_tree.path2id('dir/subdir')
-        new_tree.add(['subby'], [subdir_file_id])
+        new_tree.add(['subby'], ids=[subdir_file_id])
         self.add_helper(self.base_tree, '', new_tree, ['new'])
         # Because 'subby' already points to subdir, we should add
         # 'b' with the same id

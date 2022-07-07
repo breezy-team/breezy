@@ -42,7 +42,7 @@ class TestRenameMap(TestCaseWithTransport):
     def test_add_file_edge_hashes(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/a', b''.join(self.a_lines))])
-        tree.add('a', b'a')
+        tree.add('a', ids=b'a')
         rn = RenameMap(tree)
         rn.add_file_edge_hashes(tree, [b'a'])
         self.assertEqual({b'a'}, rn.edge_hashes[myhash(('a\n', 'b\n'))])
@@ -113,7 +113,7 @@ class TestRenameMap(TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/file'])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.commit('Added file')
         os.rename('tree/file', 'tree/file2')
         RenameMap.guess_renames(tree.basis_tree(), tree)
@@ -124,7 +124,7 @@ class TestRenameMap(TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/dir/', 'tree/dir/file'])
-        tree.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        tree.add(['dir', 'dir/file'], ids=[b'dir-id', b'file-id'])
         tree.commit('Added file')
         os.rename('tree/dir', 'tree/dir2')
         RenameMap.guess_renames(tree.basis_tree(), tree)
@@ -139,7 +139,7 @@ class TestRenameMap(TestCaseWithTransport):
                          'tree/topdir/middledir/',
                          'tree/topdir/middledir/file'])
         tree.add(['topdir', 'topdir/middledir', 'topdir/middledir/file'],
-                 [b'topdir-id', b'middledir-id', b'file-id'])
+                 ids=[b'topdir-id', b'middledir-id', b'file-id'])
         tree.commit('Added files.')
         os.rename('tree/topdir', 'tree/topdir2')
         RenameMap.guess_renames(tree.basis_tree(), tree)
@@ -154,7 +154,7 @@ class TestRenameMap(TestCaseWithTransport):
                                   ('tree/foo/bar', b'bar'),
                                   ('tree/foo/empty', b'')])
         tree.add(['foo', 'foo/bar', 'foo/empty'],
-                 [b'foo-id', b'bar-id', b'empty-id'])
+                 ids=[b'foo-id', b'bar-id', b'empty-id'])
         tree.commit('rev1')
         os.rename('tree/foo', 'tree/baz')
         RenameMap.guess_renames(tree.basis_tree(), tree)
@@ -165,7 +165,7 @@ class TestRenameMap(TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/file'])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.commit('Added file')
         os.rename('tree/file', 'tree/file2')
         RenameMap.guess_renames(tree.basis_tree(), tree, dry_run=True)
@@ -191,7 +191,7 @@ class TestRenameMap(TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/file'])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.commit('Added file')
         os.rename('tree/file', 'tree/file2')
         notes = self.captureNotes(
@@ -208,7 +208,7 @@ class TestRenameMap(TestCaseWithTransport):
         tree.lock_write()
         # self.addCleanup(tree.unlock)
         self.build_tree(['file'])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.commit('Added file')
         os.mkdir('folder')
         os.rename('file', 'folder/file2')

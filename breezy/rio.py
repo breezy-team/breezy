@@ -345,6 +345,8 @@ def read_patch_stanza(line_iter):
 try:
     from ._rio_pyx import (
         _read_stanza_utf8,
+        )
+    from ._rio_rs import (
         _valid_tag,
         )
 except ImportError as e:

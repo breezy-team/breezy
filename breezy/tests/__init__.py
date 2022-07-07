@@ -90,7 +90,7 @@ from breezy.bzr import (
     )
 try:
     import breezy.lsprof
-except ImportError:
+except ModuleNotFoundError:
     # lsprof not available
     pass
 from ..bzr.smart import client, request
@@ -3543,7 +3543,7 @@ def workaround_zealous_crypto_random():
     try:
         from Crypto.Random import atfork
         atfork()
-    except ImportError:
+    except ModuleNotFoundError:
         pass
 
 
@@ -3587,7 +3587,7 @@ def fork_for_tests(suite):
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
-                except ImportError:
+                except ModuleNotFoundError:
                     pass
                 else:
                     coverage.process_startup()
@@ -4067,7 +4067,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_memorybranch',
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
-        'breezy.tests.test_merge3',
         'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
@@ -4162,7 +4161,6 @@ def _test_suite_modules_to_doctest():
         'breezy.decorators',
         'breezy.iterablefile',
         'breezy.lockdir',
-        'breezy.merge3',
         'breezy.option',
         'breezy.pyutils',
         'breezy.symbol_versioning',
@@ -4530,7 +4528,7 @@ try:
                 SubUnitBzrProtocolClientv1(self.stream))
             test.run(result)
             return result
-except ImportError:
+except ModuleNotFoundError:
     pass
 
 
@@ -4550,5 +4548,5 @@ try:
                                        stream=stream)
 
         run = SubunitTestRunner.run
-except ImportError:
+except ModuleNotFoundError:
     pass

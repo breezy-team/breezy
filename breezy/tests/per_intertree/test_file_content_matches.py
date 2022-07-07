@@ -28,8 +28,8 @@ class TestFileContentMatches(TestCaseWithTwoTrees):
             ('1/file', b'apples'),
             ('2/file', b'apples'),
             ])
-        tree1.add('file', b'file-id-1')
-        tree2.add('file', b'file-id-2')
+        tree1.add('file', ids=b'file-id-1')
+        tree2.add('file', ids=b'file-id-2')
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         inter = self.intertree_class(tree1, tree2)
         self.assertTrue(inter.file_content_matches('file', 'file'))
@@ -41,8 +41,8 @@ class TestFileContentMatches(TestCaseWithTwoTrees):
             ('1/file', b'apples'),
             ('2/file', b'oranges'),
             ])
-        tree1.add('file', b'file-id-1')
-        tree2.add('file', b'file-id-2')
+        tree1.add('file', ids=b'file-id-1')
+        tree2.add('file', ids=b'file-id-2')
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         inter = self.intertree_class(tree1, tree2)
         self.assertFalse(inter.file_content_matches(
