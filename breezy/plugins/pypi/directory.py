@@ -24,13 +24,9 @@ from breezy.urlutils import InvalidURL
 
 import json
 
-try:
-    from urllib.request import urlopen
-    from urllib.parse import urlparse
-    from urllib.error import HTTPError
-except ImportError:  # python < 3
-    from urllib import urlopen, HTTPError
-    from urlparse import urlparse
+from urllib.request import urlopen
+from urllib.parse import urlparse
+from urllib.error import HTTPError
 
 
 class PypiProjectWithoutRepositoryURL(InvalidURL):

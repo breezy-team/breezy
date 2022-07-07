@@ -83,8 +83,7 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = branch.create_memorytree()
         tree.lock_write()
-        tree.add(['', 'afile', 'adir'], None,
-                 ['directory', 'file', 'directory'])
+        tree.add(['', 'afile', 'adir'], ['directory', 'file', 'directory'])
         self.assertTrue(tree.is_versioned('afile'))
         self.assertFalse(tree.is_versioned('adir'))
         self.assertFalse(tree.has_filename('afile'))
@@ -112,10 +111,10 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = branch.create_memorytree()
         with tree.lock_write():
-            tree.add([''], None, ['directory'])
+            tree.add([''], ['directory'])
             tree.mkdir('adir')
             tree.put_file_bytes_non_atomic('adir/afile', b'barshoom')
-            tree.add(['adir/afile'], None, ['file'])
+            tree.add(['adir/afile'], ['file'])
             self.assertTrue(tree.is_versioned('adir/afile'))
             self.assertTrue(tree.is_versioned('adir'))
 
@@ -160,7 +159,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('branch')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add(['', 'foo'], [b'root-id', b'foo-id'], ['directory', 'file'])
+        tree.add(['', 'foo'], ['directory', 'file'], ids=[b'root-id', b'foo-id'])
         tree.put_file_bytes_non_atomic('foo', b'content\n')
         tree.commit('one', rev_id=b'rev-one')
         tree.rename_one('foo', 'bar')
@@ -183,7 +182,7 @@ class TestMemoryTree(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         tree.add('')
         tree.mkdir('subdir', b'subdir-id')
-        tree.add('foo', b'foo-id', 'file')
+        tree.add('foo', 'file', b'foo-id')
         tree.put_file_bytes_non_atomic('foo', b'content\n')
         tree.commit('one', rev_id=b'rev-one')
 

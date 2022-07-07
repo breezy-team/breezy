@@ -415,7 +415,7 @@ class TestMerge(tests.TestCaseWithTransport):
     def test_merge_kind_change(self):
         tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', b'content_1')])
-        tree_a.add('file', b'file-id')
+        tree_a.add('file', ids=b'file-id')
         tree_a.commit('added file')
         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
         os.unlink('tree_a/file')

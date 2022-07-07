@@ -53,7 +53,7 @@ from ..tests.test_server import TestServer
 
 try:
     from gi.repository import Gio as gio
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise errors.DependencyNotPresent('gio', e)
 
 

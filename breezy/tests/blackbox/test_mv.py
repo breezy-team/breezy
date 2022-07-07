@@ -197,7 +197,7 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a/', 'a/b'])
         os.symlink('a', 'c')
         os.symlink('.', 'd')
-        tree.add(['a', 'a/b', 'c'], [b'a-id', b'b-id', b'c-id'])
+        tree.add(['a', 'a/b', 'c'], ids=[b'a-id', b'b-id', b'c-id'])
         self.run_bzr('mv c/b b')
         tree = workingtree.WorkingTree.open('.')
         self.assertEqual(b'b-id', tree.path2id('b'))

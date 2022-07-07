@@ -1320,7 +1320,7 @@ class TestSmartTCPServer(tests.TestCase):
         # don't need to try to connect to it. Not being set, though, the server
         # might still close the socket while we try to connect to it. So we
         # still have to catch the exception.
-        if server._stopped.isSet():
+        if server._stopped.is_set():
             return
         try:
             client_sock = self.connect_to_server(server)
@@ -1470,7 +1470,7 @@ class TestSmartTCPServer(tests.TestCase):
         client_sock.close()
         server_side_thread.join()
         server_thread.join()
-        self.assertTrue(server._fully_stopped.isSet())
+        self.assertTrue(server._fully_stopped.is_set())
         log = self.get_log()
         self.assertThat(log, DocTestMatches("""\
     INFO  Requested to stop gracefully

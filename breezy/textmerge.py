@@ -17,11 +17,6 @@
 # Author: Martin Pool <mbp@canonical.com>
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-import patiencediff
-""")
-
 
 class TextMerge(object):
     """Base class for text-mergers
@@ -134,6 +129,7 @@ class Merge2(TextMerge):
         """Return structured merge info.
         See TextMerge docstring.
         """
+        import patiencediff
         sm = patiencediff.PatienceSequenceMatcher(
             None, self.lines_a, self.lines_b)
         pos_a = 0

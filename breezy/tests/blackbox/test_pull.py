@@ -500,11 +500,12 @@ class TestPull(tests.TestCaseWithTransport):
             err,
             ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
 
-        self.assertEqualDiff('<<<<<<< TREE\n'
-                             'fie||||||| BASE-REVISION\n'
-                             'foo=======\n'
-                             'fee>>>>>>> MERGE-SOURCE\n',
-                             open(osutils.pathjoin('b', 'hello')).read())
+        with open(osutils.pathjoin('b', 'hello')) as f:
+            self.assertEqualDiff('<<<<<<< TREE\n'
+                                 'fie||||||| BASE-REVISION\n'
+                                 'foo=======\n'
+                                 'fee>>>>>>> MERGE-SOURCE\n',
+                                 f.read())
 
     def test_pull_warns_about_show_base_when_no_working_tree(self):
         """--show-base is useless if there's no working tree

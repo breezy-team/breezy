@@ -65,13 +65,13 @@ class TestMissing(TestCaseWithTransport):
     def test_iter_log_revisions(self):
         base_tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a'])
-        base_tree.add(['a'], [b'a-id'])
+        base_tree.add(['a'], ids=[b'a-id'])
         base_tree.commit('add a', rev_id=b'b-1')
 
         child_tree = base_tree.controldir.sprout('child').open_workingtree()
 
         self.build_tree(['child/b'])
-        child_tree.add(['b'], [b'b-id'])
+        child_tree.add(['b'], ids=[b'b-id'])
         child_tree.commit('adding b', rev_id=b'c-2')
 
         child_tree.remove(['a'])

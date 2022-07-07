@@ -36,20 +36,11 @@ import breezy
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import shutil
 import stat
 
 from breezy import (
-    conflicts as _mod_conflicts,
-    filters as _mod_filters,
-    merge,
     revision as _mod_revision,
-    transform,
-    transport,
     views,
-    )
-from breezy.bzr import (
-    generate_ids,
     )
 """)
 
@@ -367,8 +358,13 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
             if filters:
-                file_obj, size = _mod_filters.filtered_input_file(
-                    file_obj, filters)
+                from . import filters as _mod_filters
+                orig_file_obj = file_obj
+                try:
+                    file_obj, size = _mod_filters.filtered_input_file(
+                        file_obj, filters)
+                finally:
+                    orig_file_obj.close()
                 stat_value = _mod_filters.FilteredStat(
                     stat_value, st_size=size)
         return (file_obj, stat_value)
@@ -424,10 +420,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
+        from .merge import transform_tree
         with self.lock_read():
             tree.set_root_id(self.path2id(''))
             if revision_id is None:
-                merge.transform_tree(tree, self)
+                transform_tree(tree, self)
             else:
                 # TODO now merge from tree.last_revision to revision (to
                 # preserve user local changes)
@@ -437,7 +434,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                     other_tree = self.branch.repository.revision_tree(
                         revision_id)
 
-                merge.transform_tree(tree, other_tree)
+                transform_tree(tree, other_tree)
                 if revision_id == _mod_revision.NULL_REVISION:
                     new_parents = []
                 else:
@@ -694,18 +691,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         raise NotImplementedError(self.merge_modified)
 
-    def mkdir(self, path, file_id=None):
+    def mkdir(self, path):
         """See MutableTree.mkdir()."""
-        if file_id is None:
-            if self.supports_setting_file_ids():
-                file_id = generate_ids.gen_file_id(os.path.basename(path))
-        else:
-            if not self.supports_setting_file_ids():
-                raise SettingFileIdUnsupported()
         with self.lock_write():
             os.mkdir(self.abspath(path))
-            self.add(path, file_id, 'directory')
-            return file_id
+            self.add([path], ['directory'])
 
     def get_symlink_target(self, path):
         abspath = self.abspath(path)
@@ -795,6 +785,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         :param from_rel: From location (relative to tree root)
         :param to_rel: Target location (relative to tree root)
         """
+        import shutil
         shutil.copyfile(self.abspath(from_rel), self.abspath(to_rel))
         self.add(to_rel)
 
@@ -824,6 +815,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
              show_base=False, tag_selector=None):
+        from .merge import merge_inner
         with self.lock_write(), source.lock_read():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
@@ -840,7 +832,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                         basis_tree = repository.revision_tree(basis_id)
                 with basis_tree.lock_read():
                     new_basis_tree = self.branch.basis_tree()
-                    merge.merge_inner(
+                    merge_inner(
                         self.branch,
                         new_basis_tree,
                         basis_tree,
@@ -1004,6 +996,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from .conflicts import resolve
+        from .transform import revert
         with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.lock_tree_write())
             if old_tree is None:
@@ -1012,8 +1005,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 old_tree = basis_tree
             else:
                 basis_tree = None
-            conflicts = transform.revert(self, old_tree, filenames, backups, pb,
-                                         report_changes)
+            conflicts = revert(self, old_tree, filenames, backups, pb,
+                               report_changes)
             if filenames is None and len(self.get_parent_ids()) > 1:
                 parent_trees = []
                 last_revision = self.last_revision()

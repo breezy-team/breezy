@@ -26,7 +26,7 @@ class TestExtract(TestCaseWithTransport):
     def test_extract(self):
         self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d'])
         wt = self.make_branch_and_tree('a', format='rich-root-pack')
-        wt.add(['b', 'b/c', 'd'], [b'b-id', b'c-id', b'd-id'])
+        wt.add(['b', 'b/c', 'd'], ids=[b'b-id', b'c-id', b'd-id'])
         wt.commit('added files')
         b_wt = wt.extract('b')
         self.assertTrue(b_wt.is_versioned(''))
@@ -43,7 +43,7 @@ class TestExtract(TestCaseWithTransport):
     def extract_in_checkout(self, a_branch):
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
         wt = a_branch.create_checkout('a', lightweight=True)
-        wt.add(['b', 'b/c', 'b/c/d'], [b'b-id', b'c-id', b'd-id'])
+        wt.add(['b', 'b/c', 'b/c/d'], ids=[b'b-id', b'c-id', b'd-id'])
         wt.commit('added files')
         return wt.extract('b')
 
@@ -58,8 +58,7 @@ class TestExtract(TestCaseWithTransport):
         a_branch = self.make_branch('branch', format='rich-root-pack')
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d/', 'a/b/c/d/e'])
         wt = a_branch.create_checkout('a', lightweight=True)
-        wt.add(['b', 'b/c', 'b/c/d', 'b/c/d/e/'], [b'b-id', b'c-id', b'd-id',
-                                                   b'e-id'])
+        wt.add(['b', 'b/c', 'b/c/d', 'b/c/d/e/'], ids=[b'b-id', b'c-id', b'd-id', b'e-id'])
         wt.commit('added files')
         b_wt = wt.extract('b/c/d')
         b_branch = branch.Branch.open('branch/b/c/d')

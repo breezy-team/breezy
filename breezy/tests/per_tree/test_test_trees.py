@@ -319,12 +319,12 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.build_tree(paths[1:])
         if not tree.is_versioned(''):
             # Some trees do not have a root yet.
-            tree.add(paths, file_ids)
+            tree.add(paths, ids=file_ids)
         else:
             # Some trees will already have a root
             if tree.supports_setting_file_ids():
                 tree.set_root_id(file_ids[0])
-                tree.add(paths[1:], file_ids[1:])
+                tree.add(paths[1:], ids=file_ids[1:])
             else:
                 tree.add(paths[1:])
         if tree.branch.repository._format.supports_setting_revision_ids:
@@ -392,7 +392,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
         if wt.supports_setting_file_ids():
             tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
-                      [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
+                      ids=[u'qu\N{Euro Sign}x-id'.encode('utf-8')])
         else:
             tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
         if wt.branch.repository._format.supports_setting_revision_ids:

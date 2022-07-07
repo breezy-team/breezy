@@ -858,7 +858,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         tree.lock_write()
         empty_revid = tree.commit('empty')
         self.build_tree(['tree/a'])
-        tree.add(['a'], [b'a-id'])
+        tree.add(['a'], ids=[b'a-id'])
         with_a_id = tree.commit('with_a')
         self.addCleanup(tree.unlock)
         state.set_parent_trees(
@@ -1052,7 +1052,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.build_tree(['tree/a'])
-        tree.add(['a'], [b'a-id'])
+        tree.add(['a'], ids=[b'a-id'])
         with_a_id = tree.commit('witha')
         self.addCleanup(tree.unlock)
         state.set_parent_trees(
@@ -1232,7 +1232,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         text = b'Hello World\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/a file', text)])
-        tree.add('a file', b'a-file-id')
+        tree.add('a file', ids=b'a-file-id')
         # Note: dirstate does not sha prior to the first commit
         # so commit now in order for the test to work
         tree.commit('first')
@@ -1325,7 +1325,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
     def test_simple_changes(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        tree.add(['file'], [b'file-id'])
+        tree.add(['file'], ids=[b'file-id'])
         self.assertChangedFileIds([tree.path2id(''), b'file-id'], tree)
         tree.commit('one')
         self.assertChangedFileIds([], tree)
@@ -1333,7 +1333,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
     def test_sha1provider_stat_and_sha1_used(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        tree.add(['file'], [b'file-id'])
+        tree.add(['file'], ids=[b'file-id'])
         tree.commit('one')
         tree.lock_write()
         self.addCleanup(tree.unlock)

@@ -17,7 +17,6 @@
 """Remote dirs, repositories and branches."""
 
 import gzip
-from io import BytesIO
 import re
 
 from .. import (
@@ -788,7 +787,6 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         :param url: Request URL.
         :param headers: Optional custom headers to override defaults.
         :param data: Request data.
-        :param allow_compression: Allow GZipped communication.
         :return: Tuple (`response`, `read`), where response is an `urllib3`
             response object with additional `content_type` and
             `redirect_location` properties, and `read` is a consumable read
@@ -797,10 +795,6 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         if is_github_url(url):
             headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
-        if allow_compression:
-            headers["Accept-Encoding"] = "gzip"
-        else:
-            headers["Accept-Encoding"] = "identity"
 
         response = self.transport.request(
             ('GET' if data is None else 'POST'),
@@ -814,15 +808,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             raise GitProtocolError("unexpected http resp %d for %s" %
                                    (response.status, url))
 
-        # TODO: Optimization available by adding `preload_content=False` to the
-        # request and just passing the `read` method on instead of going via
-        # `BytesIO`, if we can guarantee that the entire response is consumed
-        # before issuing the next to still allow for connection reuse from the
-        # pool.
-        if response.getheader("Content-Encoding") == "gzip":
-            read = gzip.GzipFile(fileobj=BytesIO(response.read())).read
-        else:
-            read = response.read
+        read = response.read
 
         class WrapResponse(object):
 

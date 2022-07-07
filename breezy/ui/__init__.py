@@ -43,15 +43,6 @@ breezy.ui.text.TextUIFactory
 
 import warnings
 
-from ..lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
-    config,
-    osutils,
-    progress,
-    )
-""")
-
 
 _valid_boolean_strings = dict(yes=True, no=False,
                               y=True, n=False,
@@ -265,10 +256,11 @@ class UIFactory(object):
         When the bar has been finished with, it should be released by calling
         bar.finished().
         """
+        from ..progress import ProgressTask
         if self._task_stack:
-            t = progress.ProgressTask(self._task_stack[-1], self)
+            t = ProgressTask(self._task_stack[-1], self)
         else:
-            t = progress.ProgressTask(None, self)
+            t = ProgressTask(None, self)
         self._task_stack.append(t)
         return t
 

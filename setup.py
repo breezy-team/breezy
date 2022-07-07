@@ -14,13 +14,13 @@ import glob
 
 try:
     import setuptools
-except ImportError as e:
+except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
 try:
     from setuptools_rust import Binding, RustExtension, Strip
-except ImportError as e:
+except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
     sys.exit(1)
 
@@ -71,6 +71,7 @@ META_INFO = {
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'dulwich>=0.20.23',
+        'urllib3>=1.24.1',
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
@@ -80,7 +81,10 @@ META_INFO = {
         'workspace': ['pyinotify'],
         'doc': ['setuptools', 'sphinx', 'sphinx_epytext'],
         },
-    'rust_extensions': [RustExtension("brz", binding=Binding.Exec, strip=Strip.All)],
+    'rust_extensions': [
+        RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
+        RustExtension("breezy._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+        ],
     'tests_require': [
         'testtools',
         'python-subunit',
@@ -209,7 +213,7 @@ ext_modules = []
 try:
     from Cython.Distutils import build_ext
     from Cython.Compiler.Version import version as cython_version
-except ImportError:
+except ModuleNotFoundError:
     have_cython = False
     # try to build the extension from the prior generated source.
     print("")
@@ -242,12 +246,13 @@ class build_ext_if_possible(build_ext):
         ]
 
     def initialize_options(self):
-        build_ext.initialize_options(self)
+        super(build_ext_if_possible, self).initialize_options()
+        self.ext_map = {}
         self.allow_python_fallback = False
 
     def run(self):
         try:
-            build_ext.run(self)
+            super(build_ext_if_possible, self).run()
         except DistutilsPlatformError:
             e = sys.exc_info()[1]
             if not self.allow_python_fallback:
@@ -261,7 +266,7 @@ class build_ext_if_possible(build_ext):
 
     def build_extension(self, ext):
         try:
-            build_ext.build_extension(self, ext)
+            super(build_ext_if_possible, self).build_extension(ext)
         except CCompilerError:
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extension "%s".\n'
@@ -457,7 +462,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
         base_dirs_to_check.append(pyqt_dir)
     try:
         import PyQt4
-    except ImportError:
+    except ModuleNotFoundError:
         pass
     else:
         pyqt4_base_dir = os.path.dirname(PyQt4.__file__)
@@ -656,7 +661,7 @@ elif 'py2exe' in sys.argv:
             if "svn" in dirs:
                 try:
                     import subvertpy
-                except ImportError:
+                except ModuleNotFoundError:
                     dirs.remove("svn")
         x = []
         for i in files:

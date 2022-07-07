@@ -35,19 +35,11 @@ import time
 import urllib
 import weakref
 
-try:
-    import http.client as http_client
-except ImportError:
-    import httplib as http_client
-try:
-    import urllib.request as urllib_request
-except ImportError:  # python < 3
-    import urllib2 as urllib_request
-try:
-    from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
-except ImportError:
-    from urlparse import urljoin
-    from urllib import splitport, splittype, splithost, urlencode
+import http.client as http_client
+
+import urllib.request as urllib_request
+
+from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -65,7 +57,6 @@ from ... import (
     config,
     debug,
     errors,
-    lazy_import,
     osutils,
     trace,
     transport,
@@ -73,7 +64,7 @@ from ... import (
     urlutils,
 )
 from ...bzr.smart import medium
-from ...trace import mutter
+from ...trace import mutter, mutter_callsite
 from ...transport import (
     ConnectedTransport,
     UnusableRedirect,
@@ -695,18 +686,11 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
         try:
             method = request.get_method()
             url = request.selector
-            if sys.version_info[:2] >= (3, 6):
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers, encode_chunked=False)
-            else:
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers)
+            connection._send_request(method, url,
+                                     # FIXME: implements 100-continue
+                                     # None, # We don't send the body yet
+                                     request.data,
+                                     headers, encode_chunked=False)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
@@ -1406,7 +1390,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         if kerberos is None and not checked_kerberos:
             try:
                 import kerberos
-            except ImportError:
+            except ModuleNotFoundError:
                 kerberos = None
             checked_kerberos = True
         if kerberos is None:
@@ -1911,6 +1895,8 @@ class HttpTransport(ConnectedTransport):
                     return self.data.decode()
 
             def read(self, amt=None):
+                if amt is None and 'evil' in debug.debug_flags:
+                    mutter_callsite(4, "reading full response.")
                 return self._actual.read(amt)
 
             def readlines(self):

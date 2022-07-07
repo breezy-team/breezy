@@ -798,10 +798,7 @@ class InterTree(InterObject):
                      require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
 
-        A tuple is returned:
-        (file_id, (path_in_source, path_in_target),
-         changed_content, versioned, parent, name, kind,
-         executable)
+        A TreeChange object is returned.
 
         Changed_content is True if the file's content has changed.  This
         includes changes to its kind, and to a symlink's target.

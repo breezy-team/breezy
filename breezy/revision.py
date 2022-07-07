@@ -75,6 +75,11 @@ class Revision(object):
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
 
+    def datetime(self):
+        import datetime
+        # TODO: Handle timezone.
+        return datetime.datetime.fromtimestamp(self.timestamp)
+
     def __eq__(self, other):
         if not isinstance(other, Revision):
             return False
