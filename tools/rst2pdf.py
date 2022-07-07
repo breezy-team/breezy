@@ -62,7 +62,7 @@ sys.path.append("/usr/share/rubber")
 try:
     import rubber.cmdline
     import rubber.cmd_pipe
-except ImportError:
+except ModuleNotFoundError:
     print("Cannot find the rubber modules, rubber not installed correctly.")
     sys.exit(1)
 

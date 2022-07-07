@@ -90,7 +90,7 @@ def dir_reader_scenarios():
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
                       _native_to_unicode=_already_unicode)))
-        except ImportError:
+        except ModuleNotFoundError:
             pass
     return scenarios
 

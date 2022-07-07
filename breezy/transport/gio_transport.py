@@ -53,11 +53,11 @@ from ..tests.test_server import TestServer
 
 try:
     import glib
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise errors.DependencyNotPresent('glib', e)
 try:
     import gio
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise errors.DependencyNotPresent('gio', e)
 
 

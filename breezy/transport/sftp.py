@@ -70,7 +70,7 @@ warnings.filterwarnings('ignore',
 
 try:
     import paramiko
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise ParamikoNotPresent(e)
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,

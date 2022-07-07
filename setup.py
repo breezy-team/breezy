@@ -14,13 +14,13 @@ import glob
 
 try:
     import setuptools
-except ImportError as e:
+except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools (%s)\n" % e)
     sys.exit(1)
 
 try:
     from setuptools_rust import Binding, RustExtension, Strip
-except ImportError as e:
+except ModuleNotFoundError as e:
     sys.stderr.write("[ERROR] Please install setuptools_rust (%s)\n" % e)
     sys.exit(1)
 
@@ -71,6 +71,7 @@ META_INFO = {
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'dulwich>=0.20.23',
+        'urllib3>=1.24.1',
         ],
     'extras_require': {
         'cext': ['cython>=0.29'],
@@ -212,7 +213,7 @@ ext_modules = []
 try:
     from Cython.Distutils import build_ext
     from Cython.Compiler.Version import version as cython_version
-except ImportError:
+except ModuleNotFoundError:
     have_cython = False
     # try to build the extension from the prior generated source.
     print("")
@@ -461,7 +462,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
         base_dirs_to_check.append(pyqt_dir)
     try:
         import PyQt4
-    except ImportError:
+    except ModuleNotFoundError:
         pass
     else:
         pyqt4_base_dir = os.path.dirname(PyQt4.__file__)
@@ -660,7 +661,7 @@ elif 'py2exe' in sys.argv:
             if "svn" in dirs:
                 try:
                     import subvertpy
-                except ImportError:
+                except ModuleNotFoundError:
                     dirs.remove("svn")
         x = []
         for i in files:

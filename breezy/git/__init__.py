@@ -61,7 +61,7 @@ if getattr(sys, "frozen", None):
 def import_dulwich():
     try:
         from dulwich import __version__ as dulwich_version
-    except ImportError:
+    except ModuleNotFoundError:
         raise brz_errors.DependencyNotPresent(
             "dulwich",
             "bzr-git: Please install dulwich, https://www.dulwich.io/")
