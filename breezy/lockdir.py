@@ -109,6 +109,7 @@ but helps protect against colliding host names.
 
 import os
 import time
+import yaml
 
 from . import (
     config,
@@ -116,7 +117,6 @@ from . import (
     errors,
     lock,
     osutils,
-    rio,
     ui,
     urlutils,
     )
@@ -713,8 +713,6 @@ class LockHeldInfo(object):
     read back by any process with access to the lockdir.  It can be used, for
     example, to tell the user who holds the lock, or to try to detect whether
     the lock holder is still alive.
-
-    Prior to bzr 2.4 a simple dict was used instead of an object.
     """
 
     def __init__(self, info_dict):
@@ -765,7 +763,7 @@ class LockHeldInfo(object):
         """
         info = dict(
             hostname=get_host_name(),
-            pid=str(os.getpid()),
+            pid=os.getpid(),
             nonce=rand_chars(20).encode('ascii'),
             start_time=str(int(time.time())),
             user=get_username_for_lock_info(),
@@ -775,27 +773,26 @@ class LockHeldInfo(object):
         return cls(info)
 
     def to_bytes(self):
-        s = rio.Stanza(**self.info_dict)
-        return s.to_string()
+        return yaml.dump(self.info_dict).encode('utf-8')
 
     @classmethod
     def from_info_file_bytes(cls, info_file_bytes):
         """Construct from the contents of the held file."""
-        lines = osutils.split_lines(info_file_bytes)
         try:
-            stanza = rio.read_stanza(lines)
-        except ValueError as e:
+            ret = yaml.safe_load(info_file_bytes)
+        except yaml.reader.ReaderError as e:
+            lines = osutils.split_lines(info_file_bytes)
             mutter('Corrupt lock info file: %r', lines)
             raise LockCorrupt("could not parse lock info file: " + str(e),
                               lines)
-        if stanza is None:
+        if ret is None:
             # see bug 185013; we fairly often end up with the info file being
             # empty after an interruption; we could log a message here but
             # there may not be much we can say
             return cls({})
         else:
-            ret = stanza.as_dict()
-            ret['nonce'] = ret['nonce'].encode('ascii')
+            if isinstance(ret['nonce'], str):
+                ret['nonce'] = ret['nonce'].encode('ascii')
             return cls(ret)
 
     def __hash__(self):
@@ -814,7 +811,7 @@ class LockHeldInfo(object):
         """True if this process seems to be the current lock holder."""
         return (
             self.get('hostname') == get_host_name()
-            and self.get('pid') == str(os.getpid())
+            and self.get('pid') == os.getpid()
             and self.get('user') == get_username_for_lock_info())
 
     def is_lock_holder_known_dead(self):
