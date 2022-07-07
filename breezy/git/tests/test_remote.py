@@ -194,7 +194,7 @@ class ParseHangupTests(TestCase):
 
     def test_not_set(self):
         self.assertIsInstance(
-            parse_git_hangup('http://', HangupException()), HangupException)
+            parse_git_hangup('http://', HangupException()), ConnectionReset)
 
     def test_single_line(self):
         self.assertEqual(
