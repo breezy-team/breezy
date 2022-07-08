@@ -89,7 +89,7 @@ class SampleForgeTestCase(tests.TestCaseWithTransport):
         SampleForge._locations = []
 
 
-class TestGetForgeTests(SampleforgeTestCase):
+class TestGetForgeTests(SampleForgeTestCase):
 
     def test_get_forge(self):
         tree = self.make_branch_and_tree('hosted/branch')
