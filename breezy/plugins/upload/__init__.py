@@ -131,8 +131,6 @@ Known Issues
 
 """
 
-from __future__ import absolute_import
-
 # TODO: the chmod bits *can* be supported via the upload protocols
 # (i.e. poorly), but since the web developers use these protocols to upload
 # manually, it is expected that the associated web server is coherent with

@@ -16,8 +16,6 @@
 
 """The python implementation of chunks_to_lines"""
 
-from __future__ import absolute_import
-
 
 def chunks_to_lines(chunks):
     """Re-split chunks into simple lines.

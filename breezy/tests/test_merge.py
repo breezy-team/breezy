@@ -14,11 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import os
 
 from .. import (
     branch as _mod_branch,
-    cleanup,
     conflicts,
     errors,
     memorytree,
@@ -33,11 +33,11 @@ from ..bzr import (
     knit,
     versionedfile,
     )
-from ..conflicts import ConflictList, TextConflict
+from ..conflicts import ConflictList
+from ..bzr.conflicts import TextConflict, MissingParent, UnversionedParent, DeletingParent, ContentsConflict
 from ..errors import UnrelatedBranches, NoCommits
 from ..merge import transform_tree, merge_inner, _PlanMerge
 from ..osutils import basename, pathjoin, file_kind
-from ..sixish import int2byte
 from . import (
     features,
     TestCaseWithMemoryTransport,
@@ -135,7 +135,7 @@ class TestMerge(TestCaseWithTransport):
                                          this_branch=wt.branch,
                                          do_merge=False)
         with merger.make_preview_transform() as tt:
-            self.assertEqual([], tt.find_conflicts())
+            self.assertEqual([], tt.find_raw_conflicts())
             preview = tt.get_preview_tree()
             self.assertEqual(wt.path2id(''), preview.path2id(''))
 
@@ -146,7 +146,7 @@ class TestMerge(TestCaseWithTransport):
         merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
                                          this_branch=wt.branch,
                                          do_merge=False)
-        with transform.TransformPreview(wt) as merger.tt:
+        with wt.preview_transform() as merger.tt:
             merger._compute_transform()
             new_root_id = merger.tt.final_file_id(merger.tt.root)
             self.assertEqual(wt.path2id(''), new_root_id)
@@ -198,7 +198,7 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
-        tree_a.set_conflicts(ConflictList([TextConflict('patha')]))
+        tree_a.set_conflicts([TextConflict('patha')])
         merge_inner(tree_a.branch, tree_a, tree_a, this_tree=tree_a)
         self.assertEqual(1, len(tree_a.conflicts()))
 
@@ -220,14 +220,14 @@ class TestMerge(TestCaseWithTransport):
         tree_z.commit('removed b')
         merge_inner(tree_z.branch, tree_a, base_tree, this_tree=tree_z)
         self.assertEqual([
-            conflicts.MissingParent('Created directory', 'b', b'b-id'),
-            conflicts.UnversionedParent('Versioned directory', 'b', b'b-id')],
+            MissingParent('Created directory', 'b', b'b-id'),
+            UnversionedParent('Versioned directory', 'b', b'b-id')],
             tree_z.conflicts())
         merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree,
                     this_tree=tree_a)
         self.assertEqual([
-            conflicts.DeletingParent('Not deleting', 'b', b'b-id'),
-            conflicts.UnversionedParent('Versioned directory', 'b', b'b-id')],
+            DeletingParent('Not deleting', 'b', b'b-id'),
+            UnversionedParent('Versioned directory', 'b', b'b-id')],
             tree_a.conflicts())
 
     def test_nested_merge(self):
@@ -288,8 +288,7 @@ class TestMerge(TestCaseWithTransport):
         tree_b.commit('content change')
         tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual(tree_b.conflicts(),
-                         [conflicts.ContentsConflict('file',
-                                                     file_id=b'file-id')])
+                         [ContentsConflict('file', file_id=b'file-id')])
 
     def test_merge_type_registry(self):
         merge_type_option = option.Option.OPTIONS['merge-type']
@@ -435,8 +434,8 @@ class TestMerge(TestCaseWithTransport):
                                                      first_rev)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.interesting_files = 'a'
-        conflict_count = merger.do_merge()
-        self.assertEqual(0, conflict_count)
+        conflicts = merger.do_merge()
+        self.assertEqual([], conflicts)
 
         self.assertPathDoesNotExist("a")
         tree.revert()
@@ -516,8 +515,8 @@ class TestMerge(TestCaseWithTransport):
                                                      _mod_revision.NULL_REVISION,
                                                      first_rev)
         merger.merge_type = _mod_merge.Merge3Merger
-        conflict_count = merger.do_merge()
-        self.assertEqual(0, conflict_count)
+        conflicts = merger.do_merge()
+        self.assertEqual([], conflicts)
         self.assertEqual({''}, set(tree.all_versioned_paths()))
         tree.set_parent_ids([])
 
@@ -565,8 +564,8 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.plan_merge_vf.fallback_versionedfiles.append(self.vf)
 
     def add_version(self, key, parents, text):
-        self.vf.add_lines(key, parents, [int2byte(
-            c) + b'\n' for c in bytearray(text)])
+        self.vf.add_lines(
+            key, parents, [bytes([c]) + b'\n' for c in bytearray(text)])
 
     def add_rev(self, prefix, revision_id, parents, text):
         self.add_version((prefix, revision_id), [(prefix, p) for p in parents],
@@ -574,7 +573,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def add_uncommitted_version(self, key, parents, text):
         self.plan_merge_vf.add_lines(key, parents,
-                                     [int2byte(c) + b'\n' for c in bytearray(text)])
+                                     [bytes([c]) + b'\n' for c in bytearray(text)])
 
     def setup_plan_merge(self):
         self.add_rev(b'root', b'A', [], b'abc')
@@ -1433,7 +1432,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_not_in_base(self):
@@ -1479,7 +1479,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
                            ((None, [root_id, root_id]), root_id, root_id),
                            ((None, [u'bar', u'bar']), u'bar', u'bar'),
-                           ((None, [False, False]), False, False)),
+                           ((None, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_not_in_this(self):
@@ -1512,7 +1513,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'a', None),
                            ((root_id, [root_id, root_id]), root_id, None),
                            ((u'a', [u'a', u'a']), u'a', None),
-                           ((False, [False, False]), False, None)),
+                           ((False, [False, False]), False, None),
+                           False),
                           ], entries)
 
     def test_file_not_in_one_lca(self):
@@ -1563,7 +1565,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), None, u'a'),
                            ((root_id, [root_id, root_id]), None, root_id),
                            ((u'a', [u'a', u'a']), None, u'a'),
-                           ((False, [False, False]), None, False)),
+                           ((False, [False, False]), None, False),
+                           False),
                           ], entries)
 
     def test_not_in_other_or_lca(self):
@@ -1629,7 +1632,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'foo', [u'foo', None]), None, u'foo'),
                            ((root_id, [root_id, None]), None, root_id),
                            ((u'foo', [u'foo', None]), None, 'foo'),
-                           ((False, [False, None]), None, False)),
+                           ((False, [False, None]), None, False),
+                           False),
                           ], entries)
 
     def test_only_in_one_lca(self):
@@ -1684,7 +1688,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((None, [None, None]), u'a', None),
                            ((None, [None, None]), root_id, None),
                            ((None, [None, None]), u'a', None),
-                           ((None, [None, None]), False, None)),
+                           ((None, [None, None]), False, None),
+                           False),
                           ], entries)
 
     def test_one_lca_supersedes(self):
@@ -1815,7 +1820,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            [(b'foo-id', False,
                              ((root_id, [root_id, root_id]), root_id, root_id),
                                ((u'foo', [u'bar', u'foo']), u'bar', u'bing'),
-                               ((False, [False, False]), False, False)),
+                               ((False, [False, False]), False, False),
+                             False),
                             ], entries)
 
     def test_both_sides_revert(self):
@@ -1847,7 +1853,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_different_lca_resolve_one_side_updates_content(self):
@@ -1885,7 +1892,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_same_lca_resolution_one_side_updates_content(self):
@@ -1947,7 +1955,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'b', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'b', u'a'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_kind_changed(self):
@@ -1973,7 +1982,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'a', [u'a', u'a']), u'a', u'a'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'a']), u'a', u'a'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_this_changed_kind(self):
@@ -2019,7 +2029,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_file_in_this(self):
@@ -2047,7 +2058,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'b', u'b']), u'b', u'c'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'c'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_file_in_base(self):
@@ -2077,7 +2089,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'c', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'c', [u'b', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_file_in_lca(self):
@@ -2105,7 +2118,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'c', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'c', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_interesting_files(self):
@@ -2130,7 +2144,8 @@ class TestMergerEntriesLCA(TestMergerBase):
                            ((u'b', [u'b', u'b']), u'b', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'b', [u'b', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
 
@@ -2175,7 +2190,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                                [('modify', ('a', b'a\nb\nc\nd\ne\nf\n'))],
                                revision_id=b'D-id')
         wt, conflicts = self.do_merge(builder, b'E-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual([], conflicts)
         # The merge should have simply update the contents of 'a'
         self.assertEqual(b'a\nb\nc\nd\ne\nf\n', wt.get_file_text('a'))
 
@@ -2205,7 +2220,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                                [('rename', ('bar', 'baz'))], revision_id=b'F-id')
         builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
         wt, conflicts = self.do_merge(builder, b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual([], conflicts)
         # The merge should simply recognize that the final rename takes
         # precedence
         self.assertEqual('baz', wt.id2path(b'foo-id'))
@@ -2236,7 +2251,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                                [('unversion', 'bar')], revision_id=b'F-id')
         builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
         wt, conflicts = self.do_merge(builder, b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual([], conflicts)
         self.assertRaises(errors.NoSuchId, wt.id2path, b'foo-id')
 
     def test_executable_changes(self):
@@ -2260,7 +2275,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
-        with wt.get_transform() as tt:
+        with wt.transform() as tt:
             tt.set_executability(True, tt.trans_id_tree_path('foo'))
             tt.apply()
         self.assertTrue(wt.is_executable('foo'))
@@ -2271,11 +2286,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         self.assertFalse(wt.is_executable('foo'))
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertTrue(wt.is_executable('foo'))
 
     def test_create_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A
         #  / \
         # B   C
@@ -2307,7 +2322,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.revert()
         self.assertFalse(wt.is_versioned('foo'))
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual(b'foo-id', wt.path2id('foo'))
         self.assertEqual('bar', wt.get_symlink_target('foo'))
 
@@ -2337,7 +2352,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b'B-id', b'C-id'], [],
                                revision_id=b'D-id')
         wt, conflicts = self.do_merge(builder, b'E-id')
-        self.assertEqual(1, conflicts)
+        self.assertEqual(1, len(conflicts))
         self.assertEqualDiff(b'<<<<<<< TREE\n'
                              b'B content\n'
                              b'=======\n'
@@ -2346,7 +2361,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                              wt.get_file_text('foo'))
 
     def test_modified_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2387,11 +2402,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.merge_from_branch(wt.branch, b'C-id')
         wt.commit('D merges B & C', rev_id=b'D-id')
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_renamed_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B renames foo => barry
@@ -2440,14 +2455,15 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'foo', [u'barry', u'foo']), u'blah', u'barry'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'barry', u'foo']), u'blah', u'barry'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual('blah', wt.id2path(b'foo-id'))
 
     def test_symlink_no_content_change(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Create symlink foo => bar
         #  / \
         # B   C     B relinks foo => baz
@@ -2493,11 +2509,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         self.assertEqual([], list(merge_obj._entries_lca()))
         # Now do a real merge, just to test the rest of the stack
         conflicts = wt.merge_from_branch(wt.branch, to_revision=b'E-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual(0, len(conflicts))
         self.assertEqual('bing', wt.get_symlink_target('foo'))
 
     def test_symlink_this_changed_kind(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         #   A       Nothing
         #  / \
         # B   C     B creates symlink foo => bar
@@ -2545,12 +2561,13 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((None, [u'foo', None]), u'foo', u'foo'),
                            ((None, [root_id, None]), root_id, root_id),
                            ((None, [u'foo', None]), u'foo', u'foo'),
-                           ((None, [False, None]), False, False)),
+                           ((None, [False, None]), False, False),
+                           False),
                           ], entries)
 
     def test_symlink_all_wt(self):
         """Check behavior if all trees are Working Trees."""
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         # The big issue is that entry.symlink_target is None for WorkingTrees.
         # So we need to make sure we handle that case correctly.
         #   A   foo => bar
@@ -2607,7 +2624,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_other_reverted_path_to_base(self):
@@ -2634,7 +2652,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                                [('rename', ('bar', 'foo'))], revision_id=b'F-id')  # Rename back to BASE
         builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
         wt, conflicts = self.do_merge(builder, b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual([], conflicts)
         self.assertEqual('foo', wt.id2path(b'foo-id'))
 
     def test_other_reverted_content_to_base(self):
@@ -2655,7 +2673,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                                revision_id=b'F-id')  # Revert back to BASE
         builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
         wt, conflicts = self.do_merge(builder, b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual([], conflicts)
         # TODO: We need to use the per-file graph to properly select a BASE
         #       before this will work. Or at least use the LCA trees to find
         #       the appropriate content base. (which is B, not A).
@@ -2679,7 +2697,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                                revision_id=b'F-id')  # Override B content
         builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
         wt, conflicts = self.do_merge(builder, b'F-id')
-        self.assertEqual(0, conflicts)
+        self.assertEqual([], conflicts)
         self.assertEqual(b'F content\n', wt.get_file_text('foo'))
 
     def test_all_wt(self):
@@ -2734,12 +2752,14 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'a', [u'a', u'b']), u'c', u'b'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'a', [u'a', u'b']), u'c', u'b'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           (b'foo-id', True,
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'foo', [u'foo', u'foo']), u'foo', u'foo'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_nested_tree_unmodified(self):
@@ -2854,7 +2874,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
     def test_nested_tree_subtree_renamed_and_modified(self):
@@ -2899,7 +2920,8 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
-                           ((False, [False, False]), False, False)),
+                           ((False, [False, False]), False, False),
+                           False),
                           ], entries)
 
 
@@ -3179,7 +3201,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         :param merge_as: the path in a tree to add the new directory as.
         :returns: the conflicts from 'do_merge'.
         """
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             # Open and lock the various tree and branch objects
             wt, subdir_relpath = WorkingTree.open_containing(merge_as)
             stack.enter_context(wt.lock_write())
@@ -3280,7 +3302,7 @@ class TestMergeInto(TestMergeIntoBase):
         dest_wt = self.setup_simple_branch('dest', ['dir/', 'dir/file.txt'])
         self.setup_simple_branch('src', ['README'])
         conflicts = self.do_merge_into('src', 'dest/dir')
-        self.assertEqual(1, conflicts)
+        self.assertEqual(1, len(conflicts))
         dest_wt.lock_read()
         self.addCleanup(dest_wt.unlock)
         # The r1-lib1 revision should be merged into this one
@@ -3308,7 +3330,7 @@ class TestMergeInto(TestMergeIntoBase):
         # This is an edge case that shouldn't happen to users very often.  So
         # we don't care really about the exact presentation of the conflict,
         # just that there is one.
-        self.assertEqual(1, conflicts)
+        self.assertEqual(1, len(conflicts))
 
     def test_only_subdir(self):
         """When the location points to just part of a tree, merge just that

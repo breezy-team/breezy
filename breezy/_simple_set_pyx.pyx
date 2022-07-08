@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+# cython: language_level=3
 
 """Definition of a class that is similar to Set with some small changes."""
-
-from __future__ import absolute_import
 
 from cpython.object cimport (
     hashfunc,

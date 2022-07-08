@@ -28,6 +28,7 @@ from .. import (
     )
 from ..bzr import (
     bzrdir,
+    conflicts as _mod_bzr_conflicts,
     workingtree as bzrworkingtree,
     workingtree_3,
     workingtree_4,
@@ -430,33 +431,33 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('this/hello', b'Hello World')])
         this.commit('Add World')
         this.merge_from_branch(other.branch)
-        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
+        self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self._auto_resolve(this)
-        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
+        self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '<<<<<<<')])
         self._auto_resolve(this)
-        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
+        self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '=======')])
         self._auto_resolve(this)
-        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
+        self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '\n>>>>>>>')])
         remaining, resolved = self._auto_resolve(this)
-        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
+        self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
         self.build_tree_contents([('this/hello', b'hELLO wORLD')])
         remaining, resolved = self._auto_resolve(this)
         self.assertEqual([], this.conflicts())
-        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
+        self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          resolved)
         self.assertPathDoesNotExist('this/hello.BASE')
 
     def test_unsupported_symlink_auto_resolve(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', 'Hello')])
         base.add('hello', b'hello_id')
@@ -487,23 +488,23 @@ class TestAutoResolve(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
         tree.add('hello', b'hello-id')
-        file_conflict = conflicts.TextConflict('hello', b'hello-id')
-        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        file_conflict = _mod_bzr_conflicts.TextConflict('hello', b'hello-id')
+        tree.set_conflicts([file_conflict])
         remaining, resolved = self._auto_resolve(tree)
         self.assertEqual(
             remaining,
-            conflicts.ConflictList([conflicts.TextConflict(u'hello', 'hello-id')]))
+            conflicts.ConflictList([_mod_bzr_conflicts.TextConflict(u'hello', 'hello-id')]))
         self.assertEqual(resolved, [])
 
     def test_auto_resolve_missing(self):
         tree = self.make_branch_and_tree('tree')
-        file_conflict = conflicts.TextConflict('hello', b'hello-id')
-        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        file_conflict = _mod_bzr_conflicts.TextConflict('hello', b'hello-id')
+        tree.set_conflicts([file_conflict])
         remaining, resolved = self._auto_resolve(tree)
         self.assertEqual(remaining, [])
         self.assertEqual(
             resolved,
-            conflicts.ConflictList([conflicts.TextConflict(u'hello', 'hello-id')]))
+            conflicts.ConflictList([_mod_bzr_conflicts.TextConflict(u'hello', 'hello-id')]))
 
 
 class TestStoredUncommitted(TestCaseWithTransport):

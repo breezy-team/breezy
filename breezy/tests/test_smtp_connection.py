@@ -14,10 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-try:
-    from email.message import Message
-except ImportError:  # python < 3
-    from email.Message import Message
+from email.message import Message
 import errno
 import smtplib
 import socket
@@ -31,12 +28,8 @@ from breezy import (
     )
 
 
-def connection_refuser():
-    def connect(server):
-        raise socket.error(errno.ECONNREFUSED, 'Connection Refused')
-    smtp = smtplib.SMTP()
-    smtp.connect = connect
-    return smtp
+def connection_refuser(host):
+    raise socket.error(errno.ECONNREFUSED, 'Connection Refused')
 
 
 class StubSMTPFactory(object):
@@ -48,12 +41,13 @@ class StubSMTPFactory(object):
         self._smtp_features = smtp_features or []
         self._ehlo_called = False
 
-    def __call__(self):
+    def __call__(self, host='localhost'):
+        self._calls.append(('connect', host))
         # The factory pretends to be a connection
         return self
 
     def connect(self, server):
-        self._calls.append(('connect', server))
+        raise NotImplementedError
 
     def helo(self):
         self._calls.append(('helo',))
@@ -221,8 +215,9 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_create_connection_starttls_fails(self):
         # Check that we raise an exception if the server claims to
         # support STARTTLS, but then fails when we try to activate it.
-        factory = StubSMTPFactory(fail_on=['starttls'],
-                                  smtp_features=['starttls'])
+        factory = StubSMTPFactory(
+            fail_on=['starttls'],
+            smtp_features=['starttls'])
         conn = self.get_connection(b'', smtp_factory=factory)
         self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),

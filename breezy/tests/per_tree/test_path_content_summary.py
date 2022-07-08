@@ -21,9 +21,11 @@ import os
 from breezy import (
     osutils,
     tests,
-    transform,
     )
 
+from breezy.transform import (
+    PreviewTree,
+    )
 from breezy.tests import (
     features,
     per_tree,
@@ -54,7 +56,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
             self.fail("invalid size in summary: %r" % (returned_size,))
 
     def test_symlink_content_summary(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('tree')
         os.symlink('target', 'tree/path')
         tree.add(['path'])
@@ -62,7 +64,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual(('symlink', None, None, 'target'), summary)
 
     def test_unicode_symlink_content_summary(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink('target', u'tree/\u03b2-path'.encode(osutils._fs_enc))
@@ -71,7 +73,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual(('symlink', None, None, 'target'), summary)
 
     def test_unicode_symlink_target_summary(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink(u'tree/\u03b2-path'.encode(osutils._fs_enc), 'tree/link')
@@ -88,7 +90,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add(['path'])
-        with tree.get_transform() as tt:
+        with tree.transform() as tt:
             tt.set_executability(True, tt.trans_id_tree_path('path'))
             tt.apply()
         summary = self._convert_tree(tree).path_content_summary('path')
@@ -112,7 +114,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
             self.assertEqual('missing', summary[0])
             self.assertIs(None, summary[2])
             self.assertIs(None, summary[3])
-        elif isinstance(tree, transform._PreviewTree):
+        elif isinstance(tree, PreviewTree):
             self.expectFailure('PreviewTree returns "missing" for unversioned'
                                'files', self.assertEqual, 'file', summary[0])
             self.assertEqual('file', summary[0])

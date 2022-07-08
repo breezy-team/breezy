@@ -14,12 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ...controldir import ControlDir
 from ...commands import Command, Option
 from ... import errors
-from ...sixish import viewvalues
 from ...bzr.vf_search import PendingAncestryResult
 from ...repository import WriteGroup
 from ...revision import NULL_REVISION
@@ -44,7 +41,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
             bd = ControlDir.open(branch_url)
             b = bd.open_branch(ignore_fallbacks=True)
         except (errors.NotBranchError, errors.InvalidURL):
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 "Not a branch or invalid URL: %s" % branch_url)
         b.lock_read()
         try:
@@ -52,7 +49,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
                 errors.UnstackableBranchFormat):
             b.unlock()
-            raise errors.BzrCommandError("Not stacked: %s" % branch_url)
+            raise errors.CommandError("Not stacked: %s" % branch_url)
         raw_r = b.repository.controldir.open_repository()
         if dry_run:
             raw_r.lock_read()
@@ -65,7 +62,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
             revs = raw_r.all_revision_ids()
             rev_parents = raw_r.get_graph().get_parent_map(revs)
             needed = set()
-            map(needed.update, viewvalues(rev_parents))
+            map(needed.update, rev_parents.values())
             needed.discard(NULL_REVISION)
             needed = set((rev,) for rev in needed)
             needed = needed - raw_r.inventories.keys()

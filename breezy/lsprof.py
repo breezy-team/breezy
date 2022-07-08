@@ -3,8 +3,6 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
-from __future__ import absolute_import
-
 import codecs
 try:
     import cPickle as pickle
@@ -13,10 +11,7 @@ except ImportError:
 import operator
 import os
 import sys
-try:
-    import _thread
-except ImportError:
-    import thread as _thread
+import _thread
 import threading
 from _lsprof import Profiler, profiler_entry
 

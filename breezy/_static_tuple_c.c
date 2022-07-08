@@ -97,7 +97,7 @@ StaticTuple_Intern(StaticTuple *self)
     self->flags |= STATIC_TUPLE_INTERNED_FLAG;
     // The two references in the dict do not count, so that the StaticTuple
     // object does not become immortal just because it was interned.
-    Py_REFCNT(self) -= 1;
+    Py_SET_REFCNT(self, Py_REFCNT(self) - 1);
     return self;
 }
 
@@ -116,7 +116,7 @@ StaticTuple_dealloc(StaticTuple *self)
 
     if (_StaticTuple_is_interned(self)) {
         /* revive dead object temporarily for Discard */
-        Py_REFCNT(self) = 2;
+        Py_SET_REFCNT(self, 2);
         if (SimpleSet_Discard(_interned_tuples, (PyObject*)self) != 1)
             Py_FatalError("deletion of interned StaticTuple failed");
         self->flags &= ~STATIC_TUPLE_INTERNED_FLAG;

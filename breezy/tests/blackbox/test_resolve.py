@@ -18,6 +18,7 @@ from breezy import (
     conflicts,
     tests,
     )
+from breezy.bzr import conflicts as _mod_bzr_conflicts
 from breezy.tests import (
     script,
     KnownFailure,
@@ -178,8 +179,8 @@ class TestResolveAuto(tests.TestCaseWithTransport):
                                    b'<<<<<<<\na\n=======\n>>>>>>>\n')])
         tree.add('file', b'file_id')
         self.assertEqual(tree.kind('file'), 'file')
-        file_conflict = conflicts.TextConflict('file', file_id=b'file_id')
-        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        file_conflict = _mod_bzr_conflicts.TextConflict('file', file_id=b'file_id')
+        tree.set_conflicts([file_conflict])
         note = self.run_bzr('resolve', retcode=1, working_dir='tree')[1]
         self.assertContainsRe(note, '0 conflicts auto-resolved.')
         self.assertContainsRe(note,

@@ -15,8 +15,6 @@
 
 """An abstraction of a repository providing just the bits importing needs."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ... import (
@@ -25,7 +23,7 @@ from ... import (
     osutils,
     revision as _mod_revision,
     )
-from ...tree import TreeChange
+from ...bzr.inventorytree import InventoryTreeChange
 from ...bzr import (
     inventory,
     )
@@ -119,7 +117,7 @@ class _TreeShim(object):
                 old_ie = None
                 if ie is None:
                     raise AssertionError('How is both old and new None?')
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         False,
@@ -129,7 +127,7 @@ class _TreeShim(object):
                         (None, None),
                         (None, None),
                         )
-                change = TreeChange(
+                change = InventoryTreeChange(
                     file_id,
                     (old_path, new_path),
                     True,
@@ -141,7 +139,7 @@ class _TreeShim(object):
                     )
             else:
                 if ie is None:
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         True,
@@ -156,7 +154,7 @@ class _TreeShim(object):
                                         ie.text_size != old_ie.text_size)
                     # TODO: ie.kind != old_ie.kind
                     # TODO: symlinks changing targets, content_modified?
-                    change = TreeChange(
+                    change = InventoryTreeChange(
                         file_id,
                         (old_path, new_path),
                         content_modified,
@@ -248,10 +246,11 @@ class RevisionStore(object):
         # We can't use self.repo.get_commit_builder() here because it starts a
         # new write group. We want one write group around a batch of imports
         # where the default batch size is currently 10000. IGC 20090312
-        self._commit_builder = self.repo._commit_builder_class(self.repo,
-                                                               parents, config, timestamp=revision.timestamp,
-                                                               timezone=revision.timezone, committer=revision.committer,
-                                                               revprops=revision.properties, revision_id=revision.revision_id)
+        self._commit_builder = self.repo.get_commit_builder(
+            self.repo,
+            parents, config, timestamp=revision.timestamp,
+            timezone=revision.timezone, committer=revision.committer,
+            revprops=revision.properties, revision_id=revision.revision_id)
 
     def get_parents_and_revision_for_entry(self, ie):
         """Get the parents and revision for an inventory entry.

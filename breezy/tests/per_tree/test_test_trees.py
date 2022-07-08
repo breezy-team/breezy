@@ -17,7 +17,6 @@
 """Tests for the test trees used by the per_tree tests."""
 
 from breezy import errors
-from breezy.sixish import text_type
 from breezy.tests import per_tree
 from breezy.tests import (
     TestNotApplicable,
@@ -165,7 +164,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -323,7 +322,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
             self.assertEqual(expected[0], path)  # Paths should match
-            self.assertIsInstance(path, text_type)
+            self.assertIsInstance(path, str)
             self.assertEqual(expected[1], ie.file_id)
             self.assertIsInstance(ie.file_id, bytes)
             self.assertEqual(expected[2], ie.parent_id)
@@ -393,7 +392,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
             self.assertEqual(epath, path)  # Paths should match
-            self.assertIsInstance(path, text_type)
+            self.assertIsInstance(path, str)
             self.assertIsInstance(ie.file_id, bytes)
             if wt.supports_setting_file_ids():
                 self.assertEqual(efid, ie.file_id)

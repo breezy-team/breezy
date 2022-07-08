@@ -16,17 +16,12 @@
 
 """bisect command implementations."""
 
-from __future__ import absolute_import
-
 import sys
 from .controldir import ControlDir
 from . import revision as _mod_revision
 from .commands import Command
-from .errors import BzrCommandError
+from .errors import CommandError
 from .option import Option
-from .sixish import (
-    text_type,
-    )
 from .trace import note
 
 BISECT_INFO_PATH = "bisect"
@@ -314,13 +309,13 @@ class cmd_bisect(Command):
 
     takes_args = ['subcommand', 'args*']
     takes_options = [Option('output', short_name='o',
-                            help='Write log to this file.', type=text_type),
+                            help='Write log to this file.', type=str),
                      'revision', 'directory']
 
     def _check(self, controldir):
         """Check preconditions for most operations to work."""
         if not controldir.control_transport.has(BISECT_INFO_PATH):
-            raise BzrCommandError("No bisection in progress.")
+            raise CommandError("No bisection in progress.")
 
     def _set_state(self, controldir, revspec, state):
         """Set the state of the given revspec and bisecting.
@@ -350,12 +345,12 @@ class cmd_bisect(Command):
         elif subcommand in ('replay', ) and args_list and len(args_list) == 1:
             log_fn = args_list[0]
         elif subcommand in ('move', ) and not revision:
-            raise BzrCommandError(
+            raise CommandError(
                 "The 'bisect move' command requires a revision.")
         elif subcommand in ('run', ):
             run_script = args_list[0]
         elif args_list or revision:
-            raise BzrCommandError(
+            raise CommandError(
                 "Improper arguments to bisect " + subcommand)
 
         controldir, _ = ControlDir.open_containing(directory)
@@ -378,7 +373,7 @@ class cmd_bisect(Command):
         elif subcommand == "run":
             self.run_bisect(controldir, run_script)
         else:
-            raise BzrCommandError(
+            raise CommandError(
                 "Unknown bisect command: " + subcommand)
 
     def reset(self, controldir):

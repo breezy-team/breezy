@@ -20,8 +20,6 @@ The usual way to use this is via breezy.ui.ui_factory.nested_progress_bar which
 will manage a conceptual stack of nested activities.
 """
 
-from __future__ import absolute_import
-
 import time
 import os
 

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
 import os
 import re
@@ -52,11 +50,6 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from .sixish import (
-    PY3,
-    text_type,
-    )
-
 from hashlib import (
     md5,
     sha1 as sha,
@@ -88,17 +81,6 @@ class UnsupportedTimezoneFormat(errors.BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
-
-
-def get_unicode_argv():
-    if PY3:
-        return sys.argv[1:]
-    try:
-        user_encoding = get_user_encoding()
-        return [a.decode(user_encoding) for a in sys.argv[1:]]
-    except UnicodeDecodeError:
-        raise errors.BzrError(gettext("Parameter {0!r} encoding is unsupported by {1} "
-                                      "application locale.").format(a, user_encoding))
 
 
 def make_readonly(filename):
@@ -325,22 +307,6 @@ def _posix_normpath(path):
     return path
 
 
-def _posix_path_from_environ(key):
-    """Get unicode path from `key` in environment or None if not present
-
-    Note that posix systems use arbitrary byte strings for filesystem objects,
-    so a path that raises BadFilenameEncoding here may still be accessible.
-    """
-    val = os.environ.get(key, None)
-    if PY3 or val is None:
-        return val
-    try:
-        return val.decode(_fs_enc)
-    except UnicodeDecodeError:
-        # GZ 2011-12-12:Ideally want to include `key` in the exception message
-        raise errors.BadFilenameEncoding(val, _fs_enc)
-
-
 def _posix_get_home_dir():
     """Get the home directory of the current user as a unicode path"""
     path = posixpath.expanduser("~")
@@ -354,15 +320,7 @@ def _posix_get_home_dir():
 
 def _posix_getuser_unicode():
     """Get username from environment or password database as unicode"""
-    name = getpass.getuser()
-    if PY3:
-        return name
-    user_encoding = get_user_encoding()
-    try:
-        return name.decode(user_encoding)
-    except UnicodeDecodeError:
-        raise errors.BzrError("Encoding of username %r is unsupported by %s "
-                              "application locale." % (name, user_encoding))
+    return getpass.getuser()
 
 
 def _win32_fixdrive(path):
@@ -377,31 +335,37 @@ def _win32_fixdrive(path):
     drive, path = ntpath.splitdrive(path)
     return drive.upper() + path
 
+def _win32_fix_separators(path):
+    """Return path with directory separators changed to forward slashes"""
+    if isinstance(path, bytes):
+        return path.replace(b'\\', b'/')
+    else:
+        return path.replace('\\', '/')
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.abspath(path)))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.realpath(path)))
 
 
 def _win32_pathjoin(*args):
-    return ntpath.join(*args).replace('\\', '/')
+    return _win32_fix_separators(ntpath.join(*args))
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(ntpath.normpath(path)))
 
 
 def _win32_getcwd():
-    return _win32_fixdrive(_getcwd().replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(_getcwd()))
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
+    return _win32_fixdrive(_win32_fix_separators(tempfile.mkdtemp(*args, **kwargs)))
 
 
 def _win32_rename(old, new):
@@ -447,10 +411,7 @@ def _rename_wrap_exception(rename_func):
     return _rename_wrapper
 
 
-if sys.version_info > (3,):
-    _getcwd = os.getcwd
-else:
-    _getcwd = os.getcwdu
+_getcwd = os.getcwd
 
 
 # Default rename wraps os.rename()
@@ -462,7 +423,6 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
-path_from_environ = _posix_path_from_environ
 _get_home_dir = _posix_get_home_dir
 getuser_unicode = _posix_getuser_unicode
 getcwd = _getcwd
@@ -508,7 +468,7 @@ if sys.platform == 'win32':
         Helps to remove files and dirs marked as read-only.
         """
         exception = excinfo[1]
-        if function in (os.remove, os.rmdir) \
+        if function in (os.unlink, os.remove, os.rmdir) \
                 and isinstance(exception, OSError) \
                 and exception.errno == errno.EACCES:
             make_writable(path)
@@ -520,8 +480,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    get_unicode_argv = getattr(win32utils, 'get_unicode_argv', get_unicode_argv)
-    path_from_environ = win32utils.get_environ_unicode
     _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 
@@ -738,12 +696,8 @@ def file_iterator(input_file, readsize=32768):
 
 # GZ 2017-09-16: Makes sense in general for hexdigest() result to be text, but
 # used as bytes through most interfaces so encode with this wrapper.
-if PY3:
-    def _hexdigest(hashobj):
-        return hashobj.hexdigest().encode()
-else:
-    def _hexdigest(hashobj):
-        return hashobj.hexdigest()
+def _hexdigest(hashobj):
+    return hashobj.hexdigest().encode()
 
 
 def sha_file(f):
@@ -895,7 +849,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     (date_fmt, tt, offset_str) = \
         _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
-    if not isinstance(date_str, text_type):
+    if not isinstance(date_str, str):
         date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
@@ -1012,10 +966,7 @@ def rand_chars(num):
     """
     s = ''
     for raw_byte in rand_bytes(num):
-        if not PY3:
-            s += ALNUM[ord(raw_byte) % 36]
-        else:
-            s += ALNUM[raw_byte % 36]
+        s += ALNUM[raw_byte % 36]
     return s
 
 
@@ -1200,23 +1151,21 @@ def _delete_file_or_dir(path):
         os.unlink(path)
 
 
-def has_symlinks():
-    if getattr(os, 'symlink', None) is not None:
+def supports_hardlinks(path):
+    if getattr(os, 'link', None) is None:
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
         return True
     else:
-        return False
-
-
-def has_hardlinks():
-    if getattr(os, 'link', None) is not None:
+        if fs_type is None:
+            return sys.platform != 'win32'
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support hardlinks
+            return False
         return True
-    else:
-        return False
-
-
-def host_os_dereferences_symlinks():
-    return (has_symlinks()
-            and sys.platform not in ('cygwin', 'win32'))
 
 
 def readlink(abspath):
@@ -1322,22 +1271,21 @@ def _cicp_canonical_relpath(base, path):
 
     abs_base = abspath(base)
     current = abs_base
-    _listdir = os.listdir
 
     # use an explicit iterator so we can easily consume the rest on early exit.
     bit_iter = iter(rel.split('/'))
     for bit in bit_iter:
         lbit = bit.lower()
         try:
-            next_entries = _listdir(current)
+            next_entries = scandir(current)
         except OSError:  # enoent, eperm, etc
             # We can't find this in the filesystem, so just append the
             # remaining bits.
             current = pathjoin(current, bit, *list(bit_iter))
             break
-        for look in next_entries:
-            if lbit == look.lower():
-                current = pathjoin(current, look)
+        for entry in next_entries:
+            if lbit == entry.name.lower():
+                current = entry.path
                 break
         else:
             # got to the end, nothing matched, so we just return the
@@ -1376,7 +1324,7 @@ def decode_filename(filename):
     Otherwise it is decoded from the the filesystem's encoding. If decoding
     fails, a errors.BadFilenameEncoding exception is raised.
     """
-    if isinstance(filename, text_type):
+    if isinstance(filename, str):
         return filename
     try:
         return filename.decode(_fs_enc)
@@ -1391,7 +1339,7 @@ def safe_unicode(unicode_or_utf8_string):
     Otherwise it is decoded from utf-8. If decoding fails, the exception is
     wrapped in a BzrBadParameterNotUnicode exception.
     """
-    if isinstance(unicode_or_utf8_string, text_type):
+    if isinstance(unicode_or_utf8_string, str):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode('utf8')
@@ -1416,38 +1364,6 @@ def safe_utf8(unicode_or_utf8_string):
             raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
         return unicode_or_utf8_string
     return unicode_or_utf8_string.encode('utf-8')
-
-
-def safe_revision_id(unicode_or_utf8_string):
-    """Revision ids should now be utf8, but at one point they were unicode.
-
-    :param unicode_or_utf8_string: A possibly Unicode revision_id. (can also be
-        utf8 or None).
-    :return: None or a utf8 revision id.
-    """
-    if (unicode_or_utf8_string is None
-            or unicode_or_utf8_string.__class__ == bytes):
-        return unicode_or_utf8_string
-    raise TypeError('Unicode revision ids are no longer supported. '
-                    'Revision id generators should be creating utf8 revision '
-                    'ids.')
-
-
-def safe_file_id(unicode_or_utf8_string):
-    """File ids should now be utf8, but at one point they were unicode.
-
-    This is the same as safe_utf8, except it uses the cached encode functions
-    to save a little bit of performance.
-
-    :param unicode_or_utf8_string: A possibly Unicode file_id. (can also be
-        utf8 or None).
-    :return: None or a utf8 file id.
-    """
-    if (unicode_or_utf8_string is None
-            or unicode_or_utf8_string.__class__ == bytes):
-        return unicode_or_utf8_string
-    raise TypeError('Unicode file ids are no longer supported. '
-                    'File id generators should be creating utf8 file ids.')
 
 
 _platform_normalizes_filenames = False
@@ -1681,6 +1597,8 @@ def supports_executable(path):
     except errors.DependencyNotPresent as e:
         trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
+        if fs_type is None:
+            return sys.platform != 'win32'
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support executable bit
             return False
@@ -1691,13 +1609,15 @@ def supports_symlinks(path):
     """Return if the filesystem at path supports the creation of symbolic links.
 
     """
-    if not has_symlinks():
+    if getattr(os, 'symlink', None) is None:
         return False
     try:
         fs_type = get_fs_type(path)
     except errors.DependencyNotPresent as e:
         trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
+        if fs_type is None:
+            return sys.platform != 'win32'
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support symlinks
             return False
@@ -1730,8 +1650,6 @@ def set_or_unset_env(env_variable, value):
         if orig_val is not None:
             del os.environ[env_variable]
     else:
-        if not PY3 and isinstance(value, text_type):
-            value = value.encode(get_user_encoding())
         os.environ[env_variable] = value
     return orig_val
 
@@ -1751,6 +1669,14 @@ def check_legal_path(path):
 
 
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
+
+
+try:
+    scandir = os.scandir
+except AttributeError:  # Python < 3
+    lazy_import(globals(), """\
+from scandir import scandir
+""")
 
 
 def _is_error_enotdir(e):
@@ -1812,10 +1738,7 @@ def walkdirs(top, prefix=""):
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
-    _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
-    _kind_from_mode = file_kind_from_stat_mode
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1827,18 +1750,18 @@ def walkdirs(top, prefix=""):
         top_slash = top + u'/'
 
         dirblock = []
-        append = dirblock.append
         try:
-            names = sorted(map(decode_filename, _listdir(top)))
+            for entry in scandir(top):
+                name = decode_filename(entry.name)
+                statvalue = entry.stat(follow_symlinks=False)
+                kind = file_kind_from_stat_mode(statvalue.st_mode)
+                dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
         except OSError as e:
             if not _is_error_enotdir(e):
                 raise
-        else:
-            for name in names:
-                abspath = top_slash + name
-                statvalue = _lstat(abspath)
-                kind = _kind_from_mode(statvalue.st_mode)
-                append((relprefix + name, name, kind, statvalue, abspath))
+        except UnicodeDecodeError as e:
+            raise errors.BadFilenameEncoding(e.object, _fs_enc)
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1954,9 +1877,6 @@ class UnicodeDirReader(DirReader):
         def _fs_decode(s): return s.decode(_fs_enc)
 
         def _fs_encode(s): return s.encode(_fs_enc)
-        _lstat = os.lstat
-        _listdir = os.listdir
-        _kind_from_mode = file_kind_from_stat_mode
 
         if prefix:
             relprefix = prefix + b'/'
@@ -1966,16 +1886,16 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name_native in _listdir(top.encode('utf-8')):
+        for entry in scandir(safe_utf8(top)):
             try:
-                name = _fs_decode(name_native)
+                name = _fs_decode(entry.name)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    relprefix + name_native, _fs_enc)
-            name_utf8 = _utf8_encode(name)[0]
+                    relprefix + entry.name, _fs_enc)
             abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode)
+            name_utf8 = _utf8_encode(name)[0]
+            statvalue = entry.stat(follow_symlinks=False)
+            kind = file_kind_from_stat_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
         return sorted(dirblock)
 
@@ -2126,9 +2046,7 @@ def get_host_name():
         return win32utils.get_host_name()
     else:
         import socket
-        if PY3:
-            return socket.gethostname()
-        return socket.gethostname().decode(get_user_encoding())
+        return socket.gethostname()
 
 
 # We must not read/write any more than 64k at a time from/to a socket so we
@@ -2446,51 +2364,6 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
 
-
-if sys.platform == 'win32':
-    def open_file(filename, mode='r', bufsize=-1):
-        """This function is used to override the ``open`` builtin.
-
-        But it uses O_NOINHERIT flag so the file handle is not inherited by
-        child processes.  Deleting or renaming a closed file opened with this
-        function is not blocking child processes.
-        """
-        writing = 'w' in mode
-        appending = 'a' in mode
-        updating = '+' in mode
-        binary = 'b' in mode
-
-        flags = O_NOINHERIT
-        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
-        # for flags for each modes.
-        if binary:
-            flags |= O_BINARY
-        else:
-            flags |= O_TEXT
-
-        if writing:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_TRUNC
-        elif appending:
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_WRONLY
-            flags |= os.O_CREAT | os.O_APPEND
-        else:  # reading
-            if updating:
-                flags |= os.O_RDWR
-            else:
-                flags |= os.O_RDONLY
-
-        return os.fdopen(os.open(filename, flags), mode, bufsize)
-else:
-    open_file = open
-
-
 def available_backup_name(base, exists):
     """Find a non-existing backup file name.
 
@@ -2627,19 +2500,6 @@ def ensure_empty_directory_exists(path, exception_class):
             raise exception_class(path)
 
 
-def is_environment_error(evalue):
-    """True if exception instance is due to a process environment issue
-
-    This includes OSError and IOError, but also other errors that come from
-    the operating system or core libraries but are not subclasses of those.
-    """
-    if isinstance(evalue, (EnvironmentError, select.error)):
-        return True
-    if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
-        return True
-    return False
-
-
 def read_mtab(path):
     """Read an fstab-style file and extract mountpoint+filesystem information.
 
@@ -2656,10 +2516,17 @@ def read_mtab(path):
             yield cols[1], cols[2].decode('ascii', 'replace')
 
 
-MTAB_PATH = '/etc/mtab'
-
 class FilesystemFinder(object):
     """Find the filesystem for a particular path."""
+
+    def find(self, path):
+        raise NotImplementedError
+
+
+class MtabFilesystemFinder(FilesystemFinder):
+    """Find the filesystem for a particular path."""
+
+    MTAB_PATH = '/etc/mtab'
 
     def __init__(self, mountpoints):
         def key(x):
@@ -2676,7 +2543,7 @@ class FilesystemFinder(object):
         # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
         # we need to re-read it.
         try:
-            return cls(read_mtab(MTAB_PATH))
+            return cls(read_mtab(cls.MTAB_PATH))
         except EnvironmentError as e:
             trace.mutter('Unable to read mtab: %s', e)
             return cls([])
@@ -2688,10 +2555,27 @@ class FilesystemFinder(object):
         :return: Filesystem name (as text type) or None, if the filesystem is
             unknown.
         """
+        if not isinstance(path, bytes):
+            path = path.encode(_fs_enc)
         for mountpoint, filesystem in self._mountpoints:
             if is_inside(mountpoint, path):
                 return filesystem
         return None
+
+
+class Win32FilesystemFinder(FilesystemFinder):
+
+    def find(self, path):
+        drive = os.path.splitdrive(os.path.abspath(path))[0]
+        if isinstance(drive, bytes):
+            drive = drive.decode(_fs_enc)
+        fs_type = win32utils.get_fs_type(drive + "\\")
+        if fs_type is None:
+            return None
+        return {
+            'FAT32': 'vfat',
+            'NTFS': 'ntfs',
+            }.get(fs_type, fs_type)
 
 
 _FILESYSTEM_FINDER = None
@@ -2705,15 +2589,12 @@ def get_fs_type(path):
     """
     global _FILESYSTEM_FINDER
     if _FILESYSTEM_FINDER is None:
-        _FILESYSTEM_FINDER = FilesystemFinder.from_mtab()
-
-    if not isinstance(path, bytes):
-        path = path.encode(_fs_enc)
+        if sys.platform == 'win32':
+            _FILESYSTEM_FINDER = Win32FilesystemFinder()
+        else:
+            _FILESYSTEM_FINDER = MtabFilesystemFinder.from_mtab()
 
     return _FILESYSTEM_FINDER.find(path)
 
 
-if PY3:
-    perf_counter = time.perf_counter
-else:
-    perf_counter = time.clock
+perf_counter = time.perf_counter

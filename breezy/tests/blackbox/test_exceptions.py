@@ -28,7 +28,6 @@ from breezy import (
     repository,
     tests,
     )
-from breezy.sixish import PY3
 from breezy.bzr.groupcompress_repo import RepositoryFormat2a
 
 
@@ -37,39 +36,19 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
     def test_exception_exitcode(self):
         # we must use a subprocess, because the normal in-memory mechanism
         # allows errors to propagate up through the test suite
-        out, err = self.run_bzr_subprocess(['assert-fail'],
+        out, err = self.run_brz_subprocess(['assert-fail'],
                                            universal_newlines=True,
                                            retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err, br'\nAssertionError: always fails\n')
         self.assertContainsRe(
-            err, br'Bazaar has encountered an internal error')
-
-    def test_undecodable_argv(self):
-        """A user error must be reported if argv is not in the locale encoding
-
-        A subprocess with an environment ascii-only setting is used so the test
-        can run without worrying about the locale the test suite is using.
-        """
-        if os.name != "posix":
-            raise tests.TestNotApplicable("Needs system beholden to C locales")
-        if PY3:
-            raise tests.TestNotApplicable(
-                "Unable to pass argv to subprocess as bytes")
-        out, err = self.run_bzr_subprocess([b"\xa0"],
-                                           env_changes={
-                                               "LANG": "C", "LC_ALL": "C"},
-                                           universal_newlines=True,
-                                           retcode=errors.EXIT_ERROR)
-        self.assertContainsRe(err, br"^brz: ERROR: .*'\\xa0'.* unsupported",
-                              flags=re.MULTILINE)
-        self.assertEqual(out, b"")
+            err, br'Breezy has encountered an internal error')
 
     def test_utf8_default_fs_enc(self):
         """In the C locale brz treats a posix filesystem as UTF-8 encoded"""
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
-        out, err = self.run_bzr_subprocess(["init", "file:%C2%A7"],
+        out, err = self.run_brz_subprocess(["init", "file:%C2%A7"],
                                            env_changes={"LANG": "C", "LC_ALL": "C"})
         self.assertContainsRe(out, b"^Created a standalone tree .*$")
 
@@ -79,10 +58,7 @@ class TestOptParseBugHandling(tests.TestCase):
 
     def test_nonascii_optparse(self):
         """Reasonable error raised when non-ascii in option name on Python 2"""
-        if PY3:
-            error_re = u'no such option: -\xe4'
-        else:
-            error_re = 'Only ASCII permitted in option names'
+        error_re = u'no such option: -\xe4'
         out = self.run_bzr_error([error_re], ['st', u'-\xe4'])
 
 

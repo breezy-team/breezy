@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
@@ -189,7 +187,6 @@ class KnitRepository(MetaDirVersionedFileRepository):
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        revision_id = osutils.safe_revision_id(revision_id)
         with self.lock_read():
             return self.get_revision_reconcile(revision_id)
 

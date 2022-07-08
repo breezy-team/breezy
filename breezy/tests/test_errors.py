@@ -28,10 +28,6 @@ from .. import (
     tests,
     urlutils,
     )
-from ..sixish import (
-    PY3,
-    text_type,
-    )
 
 
 class TestErrors(tests.TestCase):
@@ -49,10 +45,7 @@ class TestErrors(tests.TestCase):
             init = getattr(c, '__init__', None)
             fmt = getattr(c, '_fmt', None)
             if init:
-                if PY3:
-                    args = inspect.getfullargspec(init)[0]
-                else:
-                    args = inspect.getargspec(init)[0]
+                args = inspect.getfullargspec(init)[0]
                 self.assertFalse('message' in args,
                                  ('Argument name "message" not allowed for '
                                   '"errors.%s.__init__"' % c.__name__))
@@ -66,11 +59,6 @@ class TestErrors(tests.TestCase):
             str(error),
             "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
             " filesystem encoding UTF-8$")
-
-    def test_duplicate_file_id(self):
-        error = errors.DuplicateFileId('a_file_id', 'foo')
-        self.assertEqualDiff('File id {a_file_id} already exists in inventory'
-                             ' as foo', str(error))
 
     def test_duplicate_help_prefix(self):
         error = errors.DuplicateHelpPrefix('foo')
@@ -124,13 +112,6 @@ class TestErrors(tests.TestCase):
         error = errors.InvalidRange('path', 12, 'bad range')
         self.assertEqual("Invalid range access in path at 12: bad range",
                          str(error))
-
-    def test_inventory_modified(self):
-        error = errors.InventoryModified("a tree to be repred")
-        self.assertEqualDiff("The current inventory for the tree 'a tree to "
-                             "be repred' has been modified, so a clean inventory cannot be "
-                             "read without data loss.",
-                             str(error))
 
     def test_jail_break(self):
         error = errors.JailBreak("some url")
@@ -197,13 +178,6 @@ class TestErrors(tests.TestCase):
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
                              "request limit. Be sure to finish_writing and finish_reading on "
                              "the currently open request.",
-                             str(error))
-
-    def test_unavailable_representation(self):
-        error = errors.UnavailableRepresentation(
-            ('key',), "mpdiff", "fulltext")
-        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
-                             "('key',) which is encoded as 'fulltext'.",
                              str(error))
 
     def test_unstackable_location(self):
@@ -365,7 +339,7 @@ class TestErrors(tests.TestCase):
         e = errors.DuplicateRecordNameError(b"n\xc3\xa5me")
         self.assertEqual(
             u"Container has multiple records with the same name: n\xe5me",
-            text_type(e))
+            str(e))
 
     def test_check_error(self):
         e = errors.BzrCheckError('example check failure')
@@ -409,7 +383,7 @@ class TestErrors(tests.TestCase):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
         self.assertEqual(
             u'Tip change rejected: Unicode message\N{INTERROBANG}',
-            text_type(err))
+            str(err))
 
     def test_error_from_smart_server(self):
         error_tuple = ('error', 'tuple')
@@ -508,10 +482,7 @@ class TestErrorFormatting(tests.TestCase):
         # Unicode error, because it tries to call str() on the string
         # returned from e.__str__(), and it has non ascii characters
         s = str(e)
-        if PY3:
-            self.assertEqual('Pass through \xb5 and bar', s)
-        else:
-            self.assertEqual('Pass through \xc2\xb5 and bar', s)
+        self.assertEqual('Pass through \xb5 and bar', s)
 
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')
@@ -533,12 +504,6 @@ class TestErrorFormatting(tests.TestCase):
         self.assertContainsRe(
             str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
-
-    def test_transform_rename_failed(self):
-        e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
-        self.assertEqual(
-            u"Failed to rename from to to: readonly file",
-            str(e))
 
 
 class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):

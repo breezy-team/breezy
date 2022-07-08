@@ -17,8 +17,6 @@
 
 """GPG signing and checking logic."""
 
-from __future__ import absolute_import
-
 import os
 
 from breezy.lazy_import import lazy_import
@@ -36,9 +34,6 @@ from breezy.i18n import (
 
 from . import (
     errors,
-    )
-from .sixish import (
-    text_type,
     )
 
 # verification results
@@ -243,7 +238,7 @@ class GPGStrategy(object):
             raise GpgNotInstalled(
                 'Set create_signatures=no to disable creating signatures.')
 
-        if isinstance(content, text_type):
+        if isinstance(content, str):
             raise errors.BzrBadParameterUnicode('content')
 
         plain_text = gpg.Data(content)
@@ -255,6 +250,8 @@ class GPGStrategy(object):
                     MODE_NORMAL: gpg.constants.sig.mode.NORMAL,
                     }[mode])
         except gpg.errors.GPGMEError as error:
+            raise SigningFailed(str(error))
+        except gpg.errors.InvalidSigners as error:
             raise SigningFailed(str(error))
 
         return output

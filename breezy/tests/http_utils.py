@@ -15,17 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import base64
+from io import BytesIO
 import re
-try:
-    from urllib.request import (
-        parse_http_list,
-        parse_keqv_list,
-        )
-except ImportError:  # python < 3
-    from urllib2 import (
-        parse_http_list,
-        parse_keqv_list,
-        )
+from urllib.request import (
+    parse_http_list,
+    parse_keqv_list,
+    )
 
 
 from .. import (
@@ -33,9 +28,6 @@ from .. import (
     osutils,
     tests,
     transport,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from ..bzr.smart import (
     medium,

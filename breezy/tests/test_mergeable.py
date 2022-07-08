@@ -14,10 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
+import socketserver
 
 from ..mergeable import read_mergeable_from_url
 from ..directory_service import directories
@@ -25,8 +22,10 @@ from .. import (
     errors,
     tests,
     )
-from . import (
+from ..bzr.tests import (
     test_read_bundle,
+    )
+from . import (
     test_server,
     )
 

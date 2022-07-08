@@ -27,7 +27,7 @@ from breezy.tests import (
     )
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped
-from breezy.transform import _PreviewTree
+from breezy.transform import PreviewTree
 from breezy.tests import (
     features,
     )
@@ -46,16 +46,15 @@ class TestSymlinkSupportFunction(per_tree.TestCaseWithTree):
 
 class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
 
-    _test_needs_features = [features.SymlinkFeature]
-
     def setUp(self):
         super(TestTreeWithSymlinks, self).setUp()
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
 
     def test_symlink_target(self):
-        if isinstance(self.tree, (MutableTree, _PreviewTree)):
+        if isinstance(self.tree, (MutableTree, PreviewTree)):
             raise TestSkipped(
                 'symlinks not accurately represented in working trees and'
                 ' preview trees')

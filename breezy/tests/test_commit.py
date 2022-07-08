@@ -38,7 +38,7 @@ from ..errors import (
     BzrError,
     LockContention,
     )
-from ..tree import TreeChange
+from ..bzr.inventorytree import InventoryTreeChange
 from . import (
     TestCase,
     TestCaseWithTransport,
@@ -529,11 +529,8 @@ create_signatures=always
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
-        master_branch.lock_write()
-        try:
+        with master_branch.lock_write():
             self.assertRaises(LockContention, wt.commit, 'silly')
-        finally:
-            master_branch.unlock()
 
     def test_commit_bound_merge(self):
         # see bug #43959; commit of a merge in a bound branch fails to push
@@ -680,7 +677,7 @@ create_signatures=always
             basis.unlock()
 
     def test_unsupported_symlink_commit(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello'])
         tree.add('hello')
@@ -709,7 +706,7 @@ create_signatures=always
             b'supported on this filesystem\\.')
 
     def test_commit_kind_changes(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'name')
         tree.add('name', b'a-file-id')
@@ -895,7 +892,7 @@ class FilterExcludedTests(TestCase):
 
     def test_add_file_not_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', (None, 'newpath'),
                 0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
                 ('file', 'file'), (True, True))]
@@ -904,7 +901,7 @@ class FilterExcludedTests(TestCase):
 
     def test_add_file_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', (None, 'newpath'),
                 0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
                 ('file', 'file'), (True, True))]
@@ -912,7 +909,7 @@ class FilterExcludedTests(TestCase):
 
     def test_delete_file_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', ('somepath', None),
                 0, (False, None), ('pid', None), ('newpath', None),
                 ('file', None), (True, None))]
@@ -920,7 +917,7 @@ class FilterExcludedTests(TestCase):
 
     def test_move_from_or_to_excluded(self):
         changes = [
-            TreeChange(
+            InventoryTreeChange(
                 'fid', ('oldpath', 'newpath'),
                 0, (False, False), ('pid', 'pid'), ('oldpath', 'newpath'),
                 ('file', 'file'), (True, True))]

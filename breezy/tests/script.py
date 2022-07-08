@@ -320,19 +320,10 @@ class ScriptRunner(object):
 
     def do_brz(self, test_case, input, args):
         encoding = osutils.get_user_encoding()
-        if sys.version_info[0] == 2:
-            stdout = ui_testing.BytesIOWithEncoding()
-            stderr = ui_testing.BytesIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-
-            # FIXME: don't call into logging here
-            handler = trace.EncodedStreamHandler(
-                stderr, errors="replace")
-        else:
-            stdout = ui_testing.StringIOWithEncoding()
-            stderr = ui_testing.StringIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-            handler = logging.StreamHandler(stderr)
+        stdout = ui_testing.StringIOWithEncoding()
+        stderr = ui_testing.StringIOWithEncoding()
+        stdout.encoding = stderr.encoding = encoding
+        handler = logging.StreamHandler(stderr)
         handler.setLevel(logging.INFO)
 
         logger = logging.getLogger('')

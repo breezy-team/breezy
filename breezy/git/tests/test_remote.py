@@ -16,8 +16,6 @@
 
 """Test the smart client."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import os
@@ -25,10 +23,12 @@ import time
 
 from ...controldir import ControlDir
 from ...errors import (
+    ConnectionReset,
     DivergedBranches,
     NotBranchError,
     NoSuchTag,
     PermissionDenied,
+    TransportError,
     )
 
 from ...tests import (
@@ -36,11 +36,13 @@ from ...tests import (
     TestCaseWithTransport,
     )
 from ...tests.features import ExecutableFeature
+from ...urlutils import join as urljoin
 
 from ..mapping import default_mapping
 from ..remote import (
     split_git_url,
     parse_git_error,
+    parse_git_hangup,
     HeadUpdateFailed,
     RemoteGitError,
     RemoteGitBranchFormat,
@@ -48,6 +50,7 @@ from ..remote import (
     )
 
 from dulwich import porcelain
+from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
 
 
@@ -94,6 +97,11 @@ class ParseGitErrorTests(TestCase):
         e = parse_git_error("url", "foo")
         self.assertIsInstance(e, RemoteGitError)
 
+    def test_connection_closed(self):
+        e = parse_git_error(
+            "url", "The remote server unexpectedly closed the connection.")
+        self.assertIsInstance(e, TransportError)
+
     def test_notbrancherror(self):
         e = parse_git_error("url", "\n Could not find Repository foo/bar")
         self.assertIsInstance(e, NotBranchError)
@@ -135,6 +143,14 @@ class ParseGitErrorTests(TestCase):
         self.assertEqual(e.path, 'porridge/gaduhistory.git')
         self.assertEqual(e.extra, ': denied to jelmer')
 
+    def test_pre_receive_hook_declined(self):
+        e = parse_git_error(
+            "url",
+            'pre-receive hook declined')
+        self.assertIsInstance(e, PermissionDenied)
+        self.assertEqual(e.path, "url")
+        self.assertEqual(e.extra, ': pre-receive hook declined')
+
     def test_invalid_repo_name(self):
         e = parse_git_error(
             "url",
@@ -142,6 +158,86 @@ class ParseGitErrorTests(TestCase):
 Email support@github.com for help
 """)
         self.assertIsInstance(e, NotBranchError)
+
+    def test_invalid_git_error(self):
+        self.assertEqual(
+            PermissionDenied(
+                'url',
+                'GitLab: You are not allowed to push code to protected '
+                'branches on this project.'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'GitLab: You are not allowed to push code to '
+                    'protected branches on this project.')))
+
+    def test_host_key_verification(self):
+        self.assertEqual(
+            TransportError('Host key verification failed'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'Host key verification failed.')))
+
+    def test_connection_reset_by_peer(self):
+        self.assertEqual(
+            ConnectionReset('[Errno 104] Connection reset by peer'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    '[Errno 104] Connection reset by peer')))
+
+
+class ParseHangupTests(TestCase):
+
+    def setUp(self):
+        super(ParseHangupTests, self).setUp()
+        try:
+            HangupException([b'foo'])
+        except TypeError:
+            self.skipTest('dulwich version too old')
+
+    def test_not_set(self):
+        self.assertIsInstance(
+            parse_git_hangup('http://', HangupException()), ConnectionReset)
+
+    def test_single_line(self):
+        self.assertEqual(
+            RemoteGitError('foo bar'),
+            parse_git_hangup('http://', HangupException([b'foo bar'])))
+
+    def test_multi_lines(self):
+        self.assertEqual(
+            RemoteGitError('foo bar\nbla bla'),
+            parse_git_hangup(
+                'http://', HangupException([b'foo bar', b'bla bla'])))
+
+    def test_filter_boring(self):
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                [b'=======', b'foo bar', b'======'])))
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                [b'remote: =======', b'remote: foo bar', b'remote: ======'])))
+
+    def test_permission_denied(self):
+        self.assertEqual(
+            PermissionDenied('http://', 'You are not allowed to push code to this project.'),
+            parse_git_hangup(
+                'http://',
+                HangupException(
+                    [b'=======',
+                     b'You are not allowed to push code to this project.', b'', b'======'])))
+
+    def test_notbrancherror_yet(self):
+        self.assertEqual(
+            NotBranchError('http://', 'A repository for this project does not exist yet.'),
+            parse_git_hangup(
+                'http://',
+                HangupException(
+                    [b'=======',
+                     b'',
+                     b'A repository for this project does not exist yet.', b'', b'======'])))
 
 
 class TestRemoteGitBranchFormat(TestCase):
@@ -219,6 +315,68 @@ class FetchFromRemoteTestBase(object):
             default_mapping.revision_id_foreign_to_bzr(
                 self.remote_real.head()),
             local.open_branch().last_revision())
+
+    def test_sprout_submodule_invalid(self):
+        self.sub_real = GitRepo.init('sub', mkdir=True)
+        self.sub_real.do_commit(
+            message=b'message in sub',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>')
+
+        self.sub_real.clone('remote/nested')
+        self.remote_real.stage('nested')
+        self.permit_url(urljoin(self.remote_url, '../sub'))
+        self.assertIn(b'nested', self.remote_real.open_index())
+        self.remote_real.do_commit(
+            message=b'message',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>')
+
+        remote = ControlDir.open(self.remote_url)
+        self.make_controldir('local', format=self._to_format)
+        local = remote.sprout('local')
+        self.assertEqual(
+            default_mapping.revision_id_foreign_to_bzr(
+                self.remote_real.head()),
+            local.open_branch().last_revision())
+        self.assertRaises(
+            NotBranchError,
+            local.open_workingtree().get_nested_tree, 'nested')
+
+    def test_sprout_submodule_relative(self):
+        self.sub_real = GitRepo.init('sub', mkdir=True)
+        self.sub_real.do_commit(
+            message=b'message in sub',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>')
+
+        with open('remote/.gitmodules', 'w') as f:
+            f.write("""
+[submodule "lala"]
+\tpath = nested
+\turl = ../sub/.git
+""")
+        self.remote_real.stage('.gitmodules')
+        self.sub_real.clone('remote/nested')
+        self.remote_real.stage('nested')
+        self.permit_url(urljoin(self.remote_url, '../sub'))
+        self.assertIn(b'nested', self.remote_real.open_index())
+        self.remote_real.do_commit(
+            message=b'message',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>')
+
+        remote = ControlDir.open(self.remote_url)
+        self.make_controldir('local', format=self._to_format)
+        local = remote.sprout('local')
+        self.assertEqual(
+            default_mapping.revision_id_foreign_to_bzr(
+                self.remote_real.head()),
+            local.open_branch().last_revision())
+        self.assertEqual(
+            default_mapping.revision_id_foreign_to_bzr(
+                self.sub_real.head()),
+            local.open_workingtree().get_nested_tree('nested').last_revision())
 
     def test_sprout_with_tags(self):
         c1 = self.remote_real.do_commit(

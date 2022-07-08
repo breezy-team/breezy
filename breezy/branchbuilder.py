@@ -16,16 +16,11 @@
 
 """Utility for create branches with particular contents."""
 
-from __future__ import absolute_import
-
 from . import (
     controldir,
     commit,
     errors,
     revision,
-    )
-from .sixish import (
-    viewitems,
     )
 
 
@@ -48,11 +43,11 @@ class BranchBuilder(object):
     ...     ('add', ('', b'root-id', 'directory', '')),
     ...     ('add', ('filename', b'f-id', 'file', b'content\n'))],
     ...     revision_id=b'rev-id')
-    'rev-id'
+    b'rev-id'
     >>> builder.build_snapshot([b'rev-id'],
     ...     [('modify', ('filename', b'new-content\n'))],
     ...     revision_id=b'rev2-id')
-    'rev2-id'
+    b'rev2-id'
     >>> builder.finish_series()
     >>> branch = builder.get_branch()
 
@@ -275,7 +270,7 @@ class BranchBuilder(object):
             tree.unversion(pending.to_unversion_paths)
         tree.add(pending.to_add_files, pending.to_add_file_ids,
                  pending.to_add_kinds)
-        for path, content in viewitems(pending.new_contents):
+        for path, content in pending.new_contents.items():
             tree.put_file_bytes_non_atomic(path, content)
 
     def get_branch(self):

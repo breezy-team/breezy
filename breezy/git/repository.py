@@ -17,7 +17,7 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
-from __future__ import absolute_import
+from io import BytesIO
 
 from .. import (
     check,
@@ -34,20 +34,14 @@ from ..decorators import only_raises
 from ..foreign import (
     ForeignRepository,
     )
-from ..sixish import (
-    viewitems,
-    viewvalues,
-    )
 
-from .commit import (
-    GitCommitBuilder,
-    )
 from .filegraph import (
     GitFileLastChangeScanner,
     GitFileParentProvider,
     )
 from .mapping import (
     default_mapping,
+    encode_git_path,
     foreign_vcs_git,
     mapping_registry,
     )
@@ -106,23 +100,16 @@ class GitCheck(check.Check):
             self._report_repo_results(verbose)
 
 
-_optimisers_loaded = False
-
-
-def lazy_load_optimisers():
-    global _optimisers_loaded
-    if _optimisers_loaded:
-        return
-    from . import interrepo
-    for optimiser in [interrepo.InterRemoteGitNonGitRepository,
-                      interrepo.InterLocalGitNonGitRepository,
-                      interrepo.InterLocalGitLocalGitRepository,
-                      interrepo.InterRemoteGitLocalGitRepository,
-                      interrepo.InterToLocalGitRepository,
-                      interrepo.InterToRemoteGitRepository,
-                      ]:
-        repository.InterRepository.register_optimiser(optimiser)
-    _optimisers_loaded = True
+for optimiser in ['InterRemoteGitNonGitRepository',
+                  'InterLocalGitNonGitRepository',
+                  'InterLocalGitLocalGitRepository',
+                  'InterLocalGitRemoteGitRepository',
+                  'InterRemoteGitLocalGitRepository',
+                  'InterToLocalGitRepository',
+                  'InterToRemoteGitRepository',
+                  ]:
+    repository.InterRepository.register_lazy_optimiser(
+        'breezy.git.interrepo', optimiser)
 
 
 class GitRepository(ForeignRepository):
@@ -138,7 +125,6 @@ class GitRepository(ForeignRepository):
         super(GitRepository, self).__init__(GitRepositoryFormat(),
                                             gitdir, control_files=None)
         self.base = gitdir.root_transport.base
-        lazy_load_optimisers()
         self._lock_mode = None
         self._lock_count = 0
 
@@ -201,6 +187,8 @@ class GitRepository(ForeignRepository):
             transaction = self._transaction
             self._transaction = None
             transaction.finish()
+            if hasattr(self, '_git'):
+                self._git.close()
 
     def is_write_locked(self):
         return (self._lock_mode == 'w')
@@ -266,11 +254,19 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
+        from .commit import (
+            GitCommitBuilder,
+            )
         builder = GitCommitBuilder(
             self, parents, config, timestamp, timezone, committer, revprops,
             revision_id, lossy)
         self.start_write_group()
         return builder
+
+    def _write_git_config(self, cs):
+        f = BytesIO()
+        cs.write_to_file(f)
+        self._git._put_named_file('config', f.getvalue())
 
     def get_file_graph(self):
         return _mod_graph.Graph(GitFileParentProvider(
@@ -299,7 +295,7 @@ class LocalGitRepository(GitRepository):
         for (file_id, revision_id, identifier) in desired_files:
             per_revision.setdefault(revision_id, []).append(
                 (file_id, identifier))
-        for revid, files in viewitems(per_revision):
+        for revid, files in per_revision.items():
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
             except errors.NoSuchRevision:
@@ -315,12 +311,10 @@ class LocalGitRepository(GitRepository):
                 except ValueError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 try:
-                    obj = tree_lookup_path(
+                    mode, item_id = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree,
-                        path.encode('utf-8'))
-                    if isinstance(obj, tuple):
-                        (mode, item_id) = obj
-                        obj = self._git.object_store[item_id]
+                        encode_git_path(path))
+                    obj = self._git.object_store[item_id]
                 except KeyError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 else:
@@ -411,7 +405,7 @@ class LocalGitRepository(GitRepository):
                     this_parent_map[revid] = parents
             parent_map.update(this_parent_map)
             pending = set()
-            for values in viewvalues(this_parent_map):
+            for values in this_parent_map.values():
                 pending.update(values)
             pending = pending.difference(parent_map)
         return _mod_graph.KnownGraph(parent_map)
@@ -560,41 +554,6 @@ class LocalGitRepository(GitRepository):
             raise ValueError('invalid revision id %s' % revision_id)
         return GitRevisionTree(self, revision_id)
 
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        """Produce a generator of revision deltas.
-
-        Note that the input is a sequence of REVISIONS, not revision_ids.
-        Trees will be held in memory until the generator exits.
-        Each delta is relative to the revision's lefthand predecessor.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
-
-        trees = dict((t.get_revision_id(), t) for
-                     t in self.revision_trees(required_trees))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-            else:
-                old_tree = trees[revision.parent_ids[0]]
-            new_tree = trees[revision.revision_id]
-            if specific_fileids is not None:
-                specific_files = [new_tree.id2path(
-                    fid) for fid in specific_fileids]
-            else:
-                specific_files = None
-            yield new_tree.changes_from(
-                old_tree, specific_files=specific_files)
-
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
@@ -624,6 +583,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_overriding_transport = False
     supports_custom_revision_properties = False
     records_per_file_revision = False
+    supports_multiple_authors = False
 
     @property
     def _matchingcontroldir(self):

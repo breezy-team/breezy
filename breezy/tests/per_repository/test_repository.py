@@ -16,6 +16,7 @@
 
 """Tests for repository implementations - tests a repository format."""
 
+from io import BytesIO
 import re
 
 from ... import (
@@ -41,11 +42,6 @@ from ...bzr import (
     )
 from ...bzr import (
     knitpack_repo,
-    )
-from ...sixish import (
-    BytesIO,
-    text_type,
-    unichr,
     )
 from .. import (
     per_repository,
@@ -85,6 +81,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_attribute_supports_nesting_repositories(self):
         """Test the format.supports_nesting_repositories."""
         self.assertFormatAttribute('supports_nesting_repositories',
+                                   (True, False))
+
+    def test_attribute_supports_multiple_authors(self):
+        """Test the format.supports_multiple_authors."""
+        self.assertFormatAttribute('supports_multiple_authors',
                                    (True, False))
 
     def test_attribute_supports_unreferenced_revisions(self):
@@ -424,7 +425,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
-        self.assertIsInstance(rev.message, text_type)
+        self.assertIsInstance(rev.message, str)
 
     def test_commit_unicode_message(self):
         # a siple unicode message should be preserved
@@ -432,7 +433,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_commit_unicode_control_characters(self):
         # a unicode message with control characters should roundtrip too.
-        unichars = [unichr(x) for x in range(256)]
+        unichars = [chr(x) for x in range(256)]
         # '\r' is not directly allowed anymore, as it used to be translated
         # into '\n' anyway
         unichars[ord('\r')] = u'\n'
@@ -1000,27 +1001,27 @@ class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
         self.assertEqual(repo.control_url, repo.control_transport.base)
 
 
-class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
+class TestDeltaRevisionFilesFiltered(per_repository.TestCaseWithRepository):
 
     def setUp(self):
-        super(TestDeltaRevisionFiltered, self).setUp()
+        super(TestDeltaRevisionFilesFiltered, self).setUp()
         self.tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
-        self.tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'])
-        self.bar_id = self.tree_a.path2id('bar')
+        self.build_tree(
+            ['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz', 'a/oldname'])
+        self.tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz', 'oldname'])
         self.rev1 = self.tree_a.commit('rev1')
         self.build_tree(['a/bar/b3'])
         self.tree_a.add('bar/b3')
+        self.tree_a.rename_one('oldname', 'newname')
         self.rev2 = self.tree_a.commit('rev2')
         self.repository = self.tree_a.branch.repository
         self.addCleanup(self.repository.lock_read().unlock)
 
     def test_multiple_files(self):
         # Test multiple files
-        delta = list(self.repository.get_deltas_for_revisions(
-            [self.repository.get_revision(self.rev1)], specific_fileids=[
-                self.tree_a.path2id('foo'),
-                self.tree_a.path2id('baz')]))[0]
+        delta = list(self.repository.get_revision_deltas(
+            [self.repository.get_revision(self.rev1)], specific_files=[
+                'foo', 'baz']))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('baz', 'file'),
@@ -1029,9 +1030,9 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_directory(self):
         # Test a directory
-        delta = list(self.repository.get_deltas_for_revisions(
+        delta = list(self.repository.get_revision_deltas(
             [self.repository.get_revision(self.rev1)],
-            specific_fileids=[self.bar_id]))[0]
+            specific_files=['bar']))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('bar', 'directory'),
@@ -1041,17 +1042,33 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_unrelated(self):
         # Try another revision
-        delta = list(self.repository.get_deltas_for_revisions(
+        delta = list(self.repository.get_revision_deltas(
             [self.repository.get_revision(self.rev2)],
-            specific_fileids=[self.tree_a.path2id('foo')]))[0]
+            specific_files=['foo']))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([], delta.added)
 
+    def test_renamed(self):
+        # Try another revision
+        self.assertTrue(
+            self.repository.revision_tree(self.rev2).has_filename('newname'))
+        self.assertTrue(
+            self.repository.revision_tree(self.rev1).has_filename('oldname'))
+        revs = [
+            self.repository.get_revision(self.rev2),
+            self.repository.get_revision(self.rev1)]
+        delta2, delta1 = list(self.repository.get_revision_deltas(
+            revs, specific_files=['newname']))
+        self.assertIsInstance(delta1, _mod_delta.TreeDelta)
+        self.assertEqual([('oldname', 'newname')], [c.path for c in delta2.renamed])
+        self.assertIsInstance(delta2, _mod_delta.TreeDelta)
+        self.assertEqual(['oldname'], [c.path[1] for c in delta1.added])
+
     def test_file_in_directory(self):
         # Test a file in a directory, both of which were added
-        delta = list(self.repository.get_deltas_for_revisions(
+        delta = list(self.repository.get_revision_deltas(
             [self.repository.get_revision(self.rev1)],
-            specific_fileids=[self.tree_a.path2id('bar/b2')]))[0]
+            specific_files=['bar/b2']))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('bar', 'directory'),
@@ -1059,9 +1076,9 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
             ], [(c.path[1], c.kind[1]) for c in delta.added])
 
     def test_file_in_unchanged_directory(self):
-        delta = list(self.repository.get_deltas_for_revisions(
+        delta = list(self.repository.get_revision_deltas(
             [self.repository.get_revision(self.rev2)],
-            specific_fileids=[self.tree_a.path2id('bar/b3')]))[0]
+            specific_files=['bar/b3']))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         if [(c.path[1], c.kind[1]) for c in delta.added] == [
                 ('bar', 'directory'), ('bar/b3', 'file')]:

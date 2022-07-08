@@ -17,8 +17,6 @@
 """A collection of commonly used 'Features' to optionally run tests.
 """
 
-from __future__ import absolute_import
-
 import importlib
 import os
 import subprocess
@@ -61,28 +59,31 @@ class Feature(object):
         return self.__class__.__name__
 
 
-class _SymlinkFeature(Feature):
+class SymlinkFeature(Feature):
+    """Whether symlinks can be created by the current user."""
+
+    def __init__(self, path):
+        super(SymlinkFeature, self).__init__()
+        self.path = path
 
     def _probe(self):
-        return osutils.has_symlinks()
+        return osutils.supports_symlinks(self.path)
 
     def feature_name(self):
         return 'symlinks'
 
 
-SymlinkFeature = _SymlinkFeature()
+class HardlinkFeature(Feature):
 
-
-class _HardlinkFeature(Feature):
+    def __init__(self, path):
+        super(HardlinkFeature, self).__init__()
+        self.path = path
 
     def _probe(self):
-        return osutils.has_hardlinks()
+        return osutils.supports_hardlinks(self.path)
 
     def feature_name(self):
         return 'hardlinks'
-
-
-HardlinkFeature = _HardlinkFeature()
 
 
 class _OsFifoFeature(Feature):
@@ -406,6 +407,8 @@ flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
 lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
 pkg_resources_feature = ModuleAvailableFeature('pkg_resources')
+
+pyinotify = ModuleAvailableFeature('pyinotify')
 
 
 class _BackslashDirSeparatorFeature(Feature):

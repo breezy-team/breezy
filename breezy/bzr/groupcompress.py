@@ -16,8 +16,6 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from __future__ import absolute_import
-
 import time
 import zlib
 
@@ -46,19 +44,15 @@ from .. import (
     )
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
-from ..sixish import (
-    indexbytes,
-    map,
-    range,
-    viewitems,
-    )
 from .versionedfile import (
     _KeyRefs,
     adapter_registry,
     AbsentContentFactory,
     ChunkedContentFactory,
+    ExistingContent,
     FulltextContentFactory,
     VersionedFilesWithFallbacks,
+    UnavailableRepresentation,
     )
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
@@ -80,7 +74,7 @@ def sort_gc_optimal(parent_map):
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for key, value in viewitems(parent_map):
+    for key, value in parent_map.items():
         if isinstance(key, bytes) or len(key) == 1:
             prefix = b''
         else:
@@ -392,7 +386,7 @@ class GroupCompressBlock(object):
                 result.append((b'd', content_len, decomp_len, delta_info))
                 measured_len = 0
                 while delta_pos < content_len:
-                    c = indexbytes(delta_content, delta_pos)
+                    c = delta_content[delta_pos]
                     delta_pos += 1
                     if c & 0x80:  # Copy
                         (offset, length,
@@ -490,8 +484,8 @@ class _LazyGroupCompressFactory(object):
                 return self._chunks
             else:
                 return osutils.chunks_to_lines(self._chunks)
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if self._chunks is None:
@@ -500,8 +494,8 @@ class _LazyGroupCompressFactory(object):
             return iter(self._chunks)
         elif storage_kind == 'lines':
             return iter(osutils.chunks_to_lines(self._chunks))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 
 class _LazyGroupContentManager(object):
@@ -871,7 +865,7 @@ class _CommonGroupCompressor(object):
         """
         if length == 0:  # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
-                raise errors.ExistingContent()
+                raise ExistingContent()
             return _null_sha1, 0, 0, 'fulltext'
         # we assume someone knew what they were doing when they passed it in
         if expected_sha is not None:
@@ -880,7 +874,7 @@ class _CommonGroupCompressor(object):
             sha1 = osutils.sha_strings(chunks)
         if nostore_sha is not None:
             if sha1 == nostore_sha:
-                raise errors.ExistingContent()
+                raise ExistingContent()
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + sha1,)
 
@@ -1632,7 +1626,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
-                              viewitems(locations))
+                              locations.items())
             for key in unadded_keys:
                 parent_map[key] = self._unadded_refs[key]
             parent_map.update(fallback_parent_map)
@@ -1841,7 +1835,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     continue
             try:
                 chunks = record.get_bytes_as('chunked')
-            except errors.UnavailableRepresentation:
+            except UnavailableRepresentation:
                 adapter_key = record.storage_kind, 'chunked'
                 adapter = get_adapter(adapter_key)
                 chunks = adapter.get_bytes(record, 'chunked')
@@ -2090,10 +2084,10 @@ class _GCGraphIndex(object):
         if changed:
             result = []
             if self._parents:
-                for key, (value, node_refs) in viewitems(keys):
+                for key, (value, node_refs) in keys.items():
                     result.append((key, value, node_refs))
             else:
-                for key, (value, node_refs) in viewitems(keys):
+                for key, (value, node_refs) in keys.items():
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies

@@ -32,9 +32,6 @@ from . import (
     features,
     KnownFailure,
     )
-from ..errors import (
-    MalformedTransform,
-    )
 
 
 EMPTY_SHELF = (b"Bazaar pack format 1 (introduced in 0.18)\n"
@@ -254,13 +251,13 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         try:
             creator.transform()
             self.check_shelve_creation(creator, tree)
-        except MalformedTransform:
+        except transform.MalformedTransform:
             raise KnownFailure(
                 'shelving directory with ignored file: see bug #611739')
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -300,7 +297,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def _test_shelve_symlink_target_change(self, link_name,
                                            old_target, new_target,
                                            shelve_change=False):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -503,7 +500,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         parser = pack.ContainerPushParser()
         with open('shelf', 'rb') as shelf_file:
             parser.accept_bytes(shelf_file.read())
-        tt = transform.TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         records = iter(parser.read_pending_records())
         # skip revision-id

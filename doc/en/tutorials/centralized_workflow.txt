@@ -104,7 +104,7 @@ without losing any history. However, this is outside the scope of this
 document. See `Tracking Upstream`_ for some possibilities (section
 "Converting and keeping history").
 
-.. _Tracking Upstream: http://wiki.bazaar.canonical.com/TrackingUpstream
+.. _Tracking Upstream: http://wiki.breezy-vcs.org/TrackingUpstream
 
 ..
    XXX: We really need a different document for discussing conversion of a

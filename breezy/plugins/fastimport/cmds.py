@@ -15,14 +15,9 @@
 
 """Fastimport/fastexport commands."""
 
-from __future__ import absolute_import
-
 from ... import controldir
 from ...commands import Command
 from ...option import Option, RegistryOption
-from ...sixish import (
-    text_type,
-    )
 
 
 from . import (
@@ -41,7 +36,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     :param user_map: if not None, the file containing the user map.
     """
     from fastimport.errors import ParsingError
-    from ...errors import BzrCommandError
+    from ...errors import CommandError
     from fastimport import parser
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
@@ -50,7 +45,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     try:
         return proc.process(p.iter_commands)
     except ParsingError as e:
-        raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
+        raise CommandError("%d: Parse error: %s" % (e.lineno, e))
 
 
 def _get_source_stream(source):
@@ -242,10 +237,10 @@ class cmd_fast_import(Command):
     _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
     takes_args = ['source', 'destination?']
     takes_options = ['verbose',
-                     Option('user-map', type=text_type,
+                     Option('user-map', type=str,
                             help="Path to file containing a map of user-ids.",
                             ),
-                     Option('info', type=text_type,
+                     Option('info', type=str,
                             help="Path to file containing caching hints.",
                             ),
                      Option('trees',
@@ -271,10 +266,10 @@ class cmd_fast_import(Command):
                                                 experimental="Enable experimental features.",
                                                 value_switches=True, enum_switch=False,
                                                 ),
-                     Option('import-marks', type=text_type,
+                     Option('import-marks', type=str,
                             help="Import marks from file."
                             ),
-                     Option('export-marks', type=text_type,
+                     Option('export-marks', type=str,
                             help="Export marks to file."
                             ),
                      RegistryOption('format',
@@ -322,10 +317,10 @@ class cmd_fast_import(Command):
                     user_map=user_map)
 
     def _generate_info(self, source):
-        from ...sixish import StringIO
+        from io import StringIO
         from fastimport import parser
         from fastimport.errors import ParsingError
-        from ...errors import BzrCommandError
+        from ...errors import CommandError
         from fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
@@ -335,7 +330,7 @@ class cmd_fast_import(Command):
             try:
                 return_code = proc.process(p.iter_commands)
             except ParsingError as e:
-                raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
+                raise CommandError("%d: Parse error: %s" % (e.lineno, e))
             lines = output.getvalue().splitlines()
         finally:
             output.close()
@@ -448,20 +443,20 @@ class cmd_fast_export(Command):
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source?', 'destination?']
     takes_options = ['verbose', 'revision',
-                     Option('git-branch', short_name='b', type=text_type,
+                     Option('git-branch', short_name='b', type=str,
                             argname='FILE',
                             help='Name of the git branch to create (default=master).'
                             ),
                      Option('checkpoint', type=int, argname='N',
                             help="Checkpoint every N revisions (default=10000)."
                             ),
-                     Option('marks', type=text_type, argname='FILE',
+                     Option('marks', type=str, argname='FILE',
                             help="Import marks from and export marks to file."
                             ),
-                     Option('import-marks', type=text_type, argname='FILE',
+                     Option('import-marks', type=str, argname='FILE',
                             help="Import marks from file."
                             ),
-                     Option('export-marks', type=text_type, argname='FILE',
+                     Option('export-marks', type=str, argname='FILE',
                             help="Export marks to file."
                             ),
                      Option('plain',

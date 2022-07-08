@@ -16,10 +16,9 @@
 
 """Server-side bzrdir related request implmentations."""
 
-from __future__ import absolute_import
+import fastbencode as bencode
 
 from ... import (
-    bencode,
     branch,
     errors,
     repository,
@@ -35,7 +34,6 @@ from ..bzrdir import (
 from ...controldir import (
     network_format_registry,
     )
-from ...sixish import PY3
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -490,10 +488,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
     def parse_NoneString(self, arg):
         if not arg:
             return None
-        if PY3:
-            return arg.decode('utf-8')
-        else:
-            return arg
+        return arg.decode('utf-8')
 
     def _serialize_NoneTrueFalse(self, arg):
         if arg is False:

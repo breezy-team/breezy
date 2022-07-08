@@ -16,6 +16,7 @@
 
 
 import errno
+from io import BytesIO
 import os
 import subprocess
 import sys
@@ -28,9 +29,6 @@ from .. import (
     transport,
     urlutils,
     )
-from ..sixish import (
-    BytesIO,
-    )
 from ..transport import (
     chroot,
     fakenfs,
@@ -40,6 +38,7 @@ from ..transport import (
     pathfilter,
     readonly,
     )
+from ..transport.http import urllib
 import breezy.transport.trace
 from . import (
     features,
@@ -1064,11 +1063,9 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         self.start_server(ssh_server)
         port = ssh_server.port
 
-        if sys.platform == 'win32':
-            bzr_remote_path = sys.executable + ' ' + self.get_brz_path()
-        else:
-            bzr_remote_path = self.get_brz_path()
+        bzr_remote_path = self.get_brz_path()
         self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
+        self.overrideEnv('PYTHONPATH', ':'.join(sys.path))
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
@@ -1104,6 +1101,6 @@ class TestUnhtml(tests.TestCase):
 
     def test_truncation(self):
         fake_html = "<p>something!\n" * 1000
-        result = http.unhtml_roughly(fake_html)
+        result = urllib.unhtml_roughly(fake_html)
         self.assertEqual(len(result), 1000)
         self.assertStartsWith(result, " something!")

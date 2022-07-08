@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # \subsection{\emph{rio} - simple text metaformat}
 #
 # \emph{r} stands for `restricted', `reproducible', or `rfc822-like'.
@@ -36,9 +34,6 @@ import re
 
 from . import osutils
 from .iterablefile import IterableFile
-from .sixish import (
-    text_type,
-    )
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.
@@ -100,15 +95,6 @@ def read_stanzas(from_file):
         yield s
 
 
-def read_stanzas_unicode(from_file):
-
-    while True:
-        s = read_stanza_unicode(from_file)
-        if s is None:
-            break
-        yield s
-
-
 class Stanza(object):
     """One stanza for rio.
 
@@ -138,8 +124,10 @@ class Stanza(object):
         if not valid_tag(tag):
             raise ValueError("invalid tag %r" % (tag,))
         if isinstance(value, bytes):
-            value = value.decode('ascii')
-        elif isinstance(value, text_type):
+            pass
+        elif isinstance(value, str):
+            pass
+        elif isinstance(value, Stanza):
             pass
         else:
             raise TypeError("invalid type for rio value: %r of type %s"
@@ -189,7 +177,12 @@ class Stanza(object):
         result = []
         for text_tag, text_value in self.items:
             tag = text_tag.encode('ascii')
-            value = text_value.encode('utf-8')
+            if isinstance(text_value, str):
+                value = text_value.encode('utf-8', 'surrogateescape')
+            elif isinstance(text_value, Stanza):
+                value = text_value.to_string()
+            else:
+                value = text_value
             if value == b'':
                 result.append(tag + b': \n')
             elif b'\n' in value:
@@ -205,28 +198,6 @@ class Stanza(object):
     def to_string(self):
         """Return stanza as a single string"""
         return b''.join(self.to_lines())
-
-    def to_unicode(self):
-        """Return stanza as a single Unicode string.
-
-        This is most useful when adding a Stanza to a parent Stanza
-        """
-        if not self.items:
-            return u''
-
-        result = []
-        for tag, value in self.items:
-            if value == u'':
-                result.append(tag + u': \n')
-            elif u'\n' in value:
-                # don't want splitlines behaviour on empty lines
-                val_lines = value.split(u'\n')
-                result.append(tag + u': ' + val_lines[0] + u'\n')
-                for line in val_lines[1:]:
-                    result.append(u'\t' + line + u'\n')
-            else:
-                result.append(tag + u': ' + value + u'\n')
-        return u''.join(result)
 
     def write(self, to_file):
         """Write stanza to a file"""
@@ -280,26 +251,6 @@ def read_stanza(line_iter):
     The raw lines must be in utf-8 encoding.
     """
     return _read_stanza_utf8(line_iter)
-
-
-def read_stanza_unicode(unicode_iter):
-    """Read a Stanza from a list of lines or a file.
-
-    The lines should already be in unicode form. This returns a single
-    stanza that was read. If there is a blank line at the end of the Stanza,
-    it is consumed. It is not an error for there to be no blank line at
-    the end of the iterable. If there is a blank line at the beginning,
-    this is treated as an empty Stanza and None is returned.
-
-    Only the stanza lines and the trailing blank (if any) are consumed
-    from the unicode_iter
-
-    :param unicode_iter: A iterable, yeilding Unicode strings. See read_stanza
-        if you have a utf-8 encoded string.
-    :return: A Stanza object if there are any lines in the file.
-        None otherwise
-    """
-    return _read_stanza_unicode(unicode_iter)
 
 
 def to_patch_lines(stanza, max_width=72):
@@ -394,13 +345,11 @@ def read_patch_stanza(line_iter):
 try:
     from ._rio_pyx import (
         _read_stanza_utf8,
-        _read_stanza_unicode,
         _valid_tag,
         )
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from ._rio_py import (
         _read_stanza_utf8,
-        _read_stanza_unicode,
         _valid_tag,
         )

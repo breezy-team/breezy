@@ -21,7 +21,6 @@ from breezy import (
     gpg,
     tests,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
 
 
 class SignMyCommits(tests.TestCaseWithTransport):
@@ -115,33 +114,3 @@ class SignMyCommits(tests.TestCaseWithTransport):
         self.assertUnsigned(repo, b'C')
         self.assertUnsigned(repo, b'D')
         self.assertUnsigned(repo, b'E')
-
-
-class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
-
-    def monkey_patch_gpg(self):
-        """Monkey patch the gpg signing strategy to be a loopback.
-
-        This also registers the cleanup, so that we will revert to
-        the original gpg strategy when done.
-        """
-        # monkey patch gpg signing mechanism
-        self.overrideAttr(gpg, 'GPGStrategy', gpg.LoopbackGPGStrategy)
-
-    def test_sign_single_commit(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        self.reset_smart_call_log()
-        self.monkey_patch_gpg()
-        out, err = self.run_bzr(['sign-my-commits', self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

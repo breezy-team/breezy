@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import StringIO
+
 from .. import (
     add,
     cache_utf8,
@@ -22,9 +24,6 @@ from .. import (
     )
 from ..bzr import (
     inventory,
-    )
-from ..sixish import (
-    StringIO,
     )
 
 

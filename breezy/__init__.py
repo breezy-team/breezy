@@ -29,8 +29,6 @@ Some particularly interesting things in breezy are:
 We hope you enjoy this library.
 """
 
-from __future__ import absolute_import
-
 import time
 
 # Keep track of when breezy was first imported, so that we can give rough
@@ -43,7 +41,7 @@ import sys
 
 __copyright__ = (
     "Copyright 2005-2012 Canonical Ltd.\n"
-    "Copyright 2017-2019 Breezy developers"
+    "Copyright 2017-2022 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of
@@ -53,7 +51,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 1, 0, 'alpha', 1)
+version_info = (3, 2, 3, 'dev', 0)
 
 
 def _format_version_tuple(version_info):
@@ -68,13 +66,13 @@ def _format_version_tuple(version_info):
     >>> print(_format_version_tuple((1, 0, 0, 'final', 0)))
     1.0.0
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 0)))
-    1.2.0dev
+    1.2.0.dev
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 1)))
-    1.2.0dev1
+    1.2.0.dev1
     >>> print(_format_version_tuple((1, 1, 1, 'candidate', 2)))
-    1.1.1rc2
+    1.1.1.rc2
     >>> print(_format_version_tuple((2, 1, 0, 'beta', 1)))
-    2.1b1
+    2.1.b1
     >>> print(_format_version_tuple((1, 4, 0)))
     1.4.0
     >>> print(_format_version_tuple((1, 4)))
@@ -99,15 +97,15 @@ def _format_version_tuple(version_info):
     elif release_type == 'final':
         sub_string = '.' + str(sub)
     elif release_type == 'dev' and sub == 0:
-        sub_string = 'dev'
+        sub_string = '.dev'
     elif release_type == 'dev':
-        sub_string = 'dev' + str(sub)
+        sub_string = '.dev' + str(sub)
     elif release_type in ('alpha', 'beta'):
         if version_info[2] == 0:
             main_version = '%d.%d' % version_info[:2]
-        sub_string = release_type[0] + str(sub)
+        sub_string = '.' + release_type[0] + str(sub)
     elif release_type == 'candidate':
-        sub_string = 'rc' + str(sub)
+        sub_string = '.rc' + str(sub)
     else:
         return '.'.join(map(str, version_info))
 
@@ -129,26 +127,22 @@ def _patch_filesystem_default_encoding(new_enc):
     The use of intern() may defer breakage is but is not enough, the string
     object should be secure against module reloading and during teardown.
     """
-    is_py3 = sys.version_info > (3,)
     try:
         import ctypes
-        old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
-                                         "Py_FileSystemDefaultEncoding")
-        if is_py3:
-            has_enc = ctypes.c_int.in_dll(ctypes.pythonapi,
+        pythonapi = getattr(ctypes, 'pythonapi', None)
+        if pythonapi is not None:
+            old_ptr = ctypes.c_void_p.in_dll(pythonapi,
+                                             "Py_FileSystemDefaultEncoding")
+            has_enc = ctypes.c_int.in_dll(pythonapi,
                                           "Py_HasFileSystemDefaultEncoding")
             as_utf8 = ctypes.PYFUNCTYPE(
                 ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
-                    ("PyUnicode_AsUTF8", ctypes.pythonapi))
+                    ("PyUnicode_AsUTF8", pythonapi))
     except (ImportError, ValueError):
         return  # No ctypes or not CPython implementation, do nothing
-    if is_py3:
-        new_enc = sys.intern(new_enc)
-        enc_ptr = as_utf8(new_enc)
-        has_enc.value = 1
-    else:
-        new_enc = intern(new_enc)
-        enc_ptr = ctypes.c_char_p(new_enc)
+    new_enc = sys.intern(new_enc)
+    enc_ptr = as_utf8(new_enc)
+    has_enc.value = 1
     old_ptr.value = ctypes.cast(enc_ptr, ctypes.c_void_p).value
     if sys.getfilesystemencoding() != new_enc:
         raise RuntimeError("Failed to change the filesystem default encoding")

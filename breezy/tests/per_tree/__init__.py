@@ -25,6 +25,8 @@ Specific tests for individual variations are in other places such as:
  - tests/test_workingtree.py
 """
 
+import contextlib
+
 from breezy import (
     errors,
     tests,
@@ -39,7 +41,6 @@ from breezy.tests.per_workingtree import (
     make_scenario as wt_make_scenario,
     )
 from breezy.revisiontree import RevisionTree
-from breezy.transform import TransformPreview
 from breezy.tests import (
     features,
     )
@@ -70,7 +71,7 @@ def _dirstate_tree_from_workingtree(testcase, tree):
 
 
 def preview_tree_pre(testcase, tree):
-    tt = TransformPreview(tree)
+    tt = tree.preview_transform()
     testcase.addCleanup(tt.finalize)
     preview_tree = tt.get_preview_tree()
     preview_tree.set_parent_ids(tree.get_parent_ids())
@@ -79,12 +80,14 @@ def preview_tree_pre(testcase, tree):
 
 def preview_tree_post(testcase, tree):
     basis = tree.basis_tree()
-    tt = TransformPreview(basis)
+    tt = basis.preview_transform()
     testcase.addCleanup(tt.finalize)
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
     pp = None
-    transform._prepare_revert_transform(basis, tree, tt, None, False, None,
+    es = contextlib.ExitStack()
+    testcase.addCleanup(es.close)
+    transform._prepare_revert_transform(es, basis, tree, tt, None, False, None,
                                         basis, {})
     preview_tree = tt.get_preview_tree()
     preview_tree.set_parent_ids(tree.get_parent_ids())
@@ -174,7 +177,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         This variation changes the executable flag of b/c to True.
         """
         self._make_abc_tree(tree)
-        tt = tree.get_transform()
+        tt = tree.transform()
         trans_id = tt.trans_id_tree_path('b/c')
         tt.set_executability(True, trans_id)
         tt.apply()
@@ -206,7 +209,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         This variation renames b/c to e, and makes it executable.
         """
         self._make_abc_tree(tree)
-        tt = tree.get_transform()
+        tt = tree.transform()
         trans_id = tt.trans_id_tree_path('b/c')
         parent_trans_id = tt.trans_id_tree_path('')
         tt.adjust_path('e', parent_trans_id, trans_id)
@@ -222,7 +225,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
         tree.add(['d'])
-        tt = tree.get_transform()
+        tt = tree.transform()
         trans_id = tt.trans_id_tree_path('b')
         parent_trans_id = tt.trans_id_tree_path('d')
         tt.adjust_path('e', parent_trans_id, trans_id)
@@ -244,7 +247,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
                             Note: if you wish to automatically set this
                             parameters depending on underlying system,
                             please use value returned
-                            by breezy.osutils.has_symlinks() function.
+                            by breezy.osutils.supports_symlinks() function.
 
         The returned tree has the following inventory:
             ['',
@@ -270,7 +273,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
                  ]
         self.build_tree(paths)
         tree.add(paths)
-        tt = tree.get_transform()
+        tt = tree.transform()
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')
             tt.new_symlink('symlink',
@@ -355,6 +358,7 @@ def load_tests(loader, standard_tests, pattern):
         'revision_tree',
         'symlinks',
         'test_trees',
+        'transform',
         'tree',
         'walkdirs',
         ]

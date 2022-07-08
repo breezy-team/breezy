@@ -16,11 +16,9 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
-from __future__ import absolute_import
-
-from io import BytesIO
 from . import (
     lock,
+    iterablefile,
     revision,
     tree,
     )
@@ -67,11 +65,11 @@ class RevisionTree(tree.Tree):
 
     def get_file_text(self, path):
         for (identifier, content) in self.iter_files_bytes([(path, None)]):
-            ret = b"".join(content)
-        return ret
+            return b"".join(content)
 
     def get_file(self, path):
-        return BytesIO(self.get_file_text(path))
+        for (identifier, content) in self.iter_files_bytes([(path, None)]):
+            return iterablefile.IterableFile(content)
 
     def is_locked(self):
         return self._repository.is_locked()

@@ -16,11 +16,7 @@
 
 """Classes to provide name-to-object registry-like support."""
 
-from __future__ import absolute_import
-
 from .pyutils import get_named_object
-
-from .sixish import viewitems
 
 
 class _ObjectGetter(object):
@@ -110,11 +106,11 @@ class Registry(object):
 
     def aliases(self):
         """Return a set of the format names which are aliases."""
-        return dict(viewitems(self._aliases))
+        return dict(self._aliases.items())
 
     def alias_map(self):
         ret = {}
-        for alias, target in viewitems(self._aliases):
+        for alias, target in self._aliases.items():
             ret.setdefault(target, []).append(alias)
         return ret
 

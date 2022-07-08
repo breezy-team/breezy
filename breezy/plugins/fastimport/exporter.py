@@ -41,16 +41,11 @@
 
 """Core engine for the fast-export command."""
 
-from __future__ import absolute_import
-
 # TODO: if a new_git_branch below gets merged repeatedly, the tip of the branch
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-try:
-    from email.utils import parseaddr
-except ImportError:  # python < 3
-    from email.Utils import parseaddr
+from email.utils import parseaddr
 import sys
 import time
 import re
@@ -65,11 +60,6 @@ from ... import (
     osutils,
     progress,
     trace,
-    )
-from ...sixish import (
-    int2byte,
-    PY3,
-    viewitems,
     )
 
 from . import (
@@ -140,13 +130,14 @@ def sanitize_ref_name_for_git(refname):
     :param refname: refname to rewrite
     :return: new refname
     """
+    import struct
     new_refname = re.sub(
         # '/.' in refname or startswith '.'
         br"/\.|^\."
         # '..' in refname
         br"|\.\."
         # ord(c) < 040
-        br"|[" + b"".join([int2byte(x) for x in range(0o40)]) + br"]"
+        br"|[" + b"".join([bytes([x]) for x in range(0o40)]) + br"]"
         # c in '\177 ~^:?*['
         br"|[\177 ~^:?*[]"
         # last char in "/."
@@ -319,10 +310,7 @@ class BzrFastExporter(object):
                   time_required)
 
     def print_cmd(self, cmd):
-        if PY3:
-            self.outf.write(b"%s\n" % cmd)
-        else:
-            self.outf.write(b"%r\n" % cmd)
+        self.outf.write(b"%s\n" % cmd)
 
     def _save_marks(self):
         if self.export_marks_file:
@@ -353,7 +341,7 @@ class BzrFastExporter(object):
     def emit_baseline(self, revobj, ref):
         # Emit a full source tree of the first commit's parent
         mark = 1
-        self.revid_to_mark[revobj.revision_id] = mark
+        self.revid_to_mark[revobj.revision_id] = b"%d" % mark
         tree_old = self.branch.repository.revision_tree(
             breezy.revision.NULL_REVISION)
         [tree_new] = list(self._get_revision_trees([revobj.revision_id]))
@@ -362,12 +350,12 @@ class BzrFastExporter(object):
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
     def preprocess_commit(self, revid, revobj, ref):
-        if revid in self.revid_to_mark or revid in self.excluded_revisions:
-            return
+        if self.revid_to_mark.get(revid) or revid in self.excluded_revisions:
+            return []
         if revobj is None:
             # This is a ghost revision. Mark it as not found and next!
-            self.revid_to_mark[revid] = -1
-            return
+            self.revid_to_mark[revid] = None
+            return []
         # Get the primary parent
         # TODO: Consider the excluded revisions when deciding the parents.
         # Currently, a commit with parents that are excluded ought to be
@@ -379,9 +367,8 @@ class BzrFastExporter(object):
             parent = revobj.parent_ids[0]
 
         # Print the commit
-        mark = len(self.revid_to_mark) + 1
-        self.revid_to_mark[revobj.revision_id] = mark
-
+        self.revid_to_mark[revobj.revision_id] = b"%d" % (
+            len(self.revid_to_mark) + 1)
         return [parent, revobj.revision_id]
 
     def emit_commit(self, revobj, ref, tree_old, tree_new):
@@ -449,7 +436,7 @@ class BzrFastExporter(object):
                 continue
             try:
                 parent_mark = self.revid_to_mark[p]
-                non_ghost_parents.append(b":%d" % parent_mark)
+                non_ghost_parents.append(b":%s" % parent_mark)
             except KeyError:
                 # ghost - ignore
                 continue
@@ -517,7 +504,7 @@ class BzrFastExporter(object):
         # Map kind changes to a delete followed by an add
         for change in changes.kind_changed:
             path = self._adjust_path_for_renames(
-                path, renamed, tree_new.get_revision_id())
+                change.path[0], renamed, tree_new.get_revision_id())
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
@@ -651,7 +638,7 @@ class BzrFastExporter(object):
         return path
 
     def emit_tags(self):
-        for tag, revid in viewitems(self.branch.tags.get_tag_dict()):
+        for tag, revid in self.branch.tags.get_tag_dict().items():
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:
@@ -669,4 +656,4 @@ class BzrFastExporter(object):
                         self.warning('not creating tag %r as its name would not be '
                                      'valid in git.', git_ref)
                         continue
-                self.print_cmd(commands.ResetCommand(git_ref, b":%d" % mark))
+                self.print_cmd(commands.ResetCommand(git_ref, b":%s" % mark))

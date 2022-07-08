@@ -12,6 +12,9 @@ Usage:
     ostools.py copytree FILES... DIR
                     copy files to specified directory keeping relative paths
 
+    ostools.py copydir SOURCE TARGET
+                    recursively copy SOURCE directory tree to TARGET directory
+
     ostools.py remove [FILES...] [DIRS...]
                     remove files or directories (recursive)
 """
@@ -86,6 +89,20 @@ def main(argv=None):
                 return retcode
             shutil.copy(src, dest)
             print("Copied:", src, "=>", dest)
+
+        return 0
+
+    if cmd == 'copydir':
+        if len(argv) != 2:
+            print("Usage:  ostools.py copydir SOURCE TARGET")
+            return 1
+
+        def _copy(src, dest, follow_symlinks=True):
+            shutil.copy(src, dest, follow_symlinks=follow_symlinks)
+            print("Copied:", src, "=>", dest)
+        shutil.copytree(
+            argv[0], argv[1],
+            copy_function=_copy, dirs_exist_ok=True)
 
         return 0
 

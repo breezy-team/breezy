@@ -63,11 +63,11 @@ class cmd_gitlab_login(Command):
             try:
                 name = urlutils.parse_url(url)[3].split('.')[-2]
             except (ValueError, IndexError):
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     'please specify a site name with --name')
         if private_token is None:
             note("Please visit %s to obtain a private token.",
-                 urlutils.join(url, "profile/personal_access_tokens"))
+                 urlutils.join(url, "-/profile/personal_access_tokens"))
             private_token = ui.ui_factory.get_password(u'Private token')
         if not no_check:
             from breezy.transport import get_transport

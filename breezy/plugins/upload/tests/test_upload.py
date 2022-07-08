@@ -176,13 +176,13 @@ class UploadUtilsMixin(object):
         self.tree.commit('change %s from file to dir' % path)
 
     def add_symlink(self, path, target, base=branch_dir):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink(target, osutils.pathjoin(base, path))
         self.tree.add(path)
         self.tree.commit('add symlink %s -> %s' % (path, target))
 
     def modify_symlink(self, path, target, base=branch_dir):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         full_path = osutils.pathjoin(base, path)
         os.unlink(full_path)
         os.symlink(target, full_path)
@@ -606,7 +606,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
 
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           self.do_incremental_upload, revision=[rev1, rev2])
 
     def test_create_remote_dir_twice(self):

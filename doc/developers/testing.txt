@@ -710,15 +710,16 @@ New features for use with ``_test_needs_features`` or ``requireFeature``
 are defined by subclassing ``breezy.tests.Feature`` and overriding the
 ``_probe`` and ``feature_name`` methods.  For example::
 
-    class _SymlinkFeature(Feature):
+    class SymlinkFeature(Feature):
+
+        def __init__(self, path):
+            self.path = path
 
         def _probe(self):
-            return osutils.has_symlinks()
+            return osutils.supports_symlinks(self.path)
 
         def feature_name(self):
             return 'symlinks'
-
-    SymlinkFeature = _SymlinkFeature()
 
 A helper for handling running tests based on whether a python
 module is available. This can handle 3rd-party dependencies (is

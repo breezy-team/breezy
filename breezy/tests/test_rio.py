@@ -328,6 +328,21 @@ s: both\\\"
         s = Stanza()
         self.assertRaises(TypeError, s.add, 10, {})
 
+    def test_rio_surrogateescape(self):
+        raw_bytes = b'\xcb'
+        self.assertRaises(UnicodeDecodeError, raw_bytes.decode, 'utf-8')
+        try:
+            uni_data = raw_bytes.decode('utf-8', 'surrogateescape')
+        except LookupError:
+            self.skipTest('surrogateescape is not available on Python < 3')
+        s = Stanza(foo=uni_data)
+        self.assertEqual(s.get('foo'), uni_data)
+        raw_lines = s.to_lines()
+        self.assertEqual(raw_lines,
+                         [b'foo: ' + uni_data.encode('utf-8', 'surrogateescape') + b'\n'])
+        new_s = read_stanza(raw_lines)
+        self.assertEqual(new_s.get('foo'), uni_data)
+
     def test_rio_unicode(self):
         uni_data = u'\N{KATAKANA LETTER O}'
         s = Stanza(foo=uni_data)
@@ -337,28 +352,6 @@ s: both\\\"
                          [b'foo: ' + uni_data.encode('utf-8') + b'\n'])
         new_s = read_stanza(raw_lines)
         self.assertEqual(new_s.get('foo'), uni_data)
-
-    def test_rio_to_unicode(self):
-        uni_data = u'\N{KATAKANA LETTER O}'
-        s = Stanza(foo=uni_data)
-        unicode_str = s.to_unicode()
-        self.assertEqual(u'foo: %s\n' % (uni_data,), unicode_str)
-        new_s = rio.read_stanza_unicode(unicode_str.splitlines(True))
-        self.assertEqual(uni_data, new_s.get('foo'))
-
-    def test_nested_rio_unicode(self):
-        uni_data = u'\N{KATAKANA LETTER O}'
-        s = Stanza(foo=uni_data)
-        parent_stanza = Stanza(child=s.to_unicode())
-        raw_lines = parent_stanza.to_lines()
-        self.assertEqual([b'child: foo: ' + uni_data.encode('utf-8') + b'\n',
-                          b'\t\n',
-                          ], raw_lines)
-        new_parent = read_stanza(raw_lines)
-        child_text = new_parent.get('child')
-        self.assertEqual(u'foo: %s\n' % uni_data, child_text)
-        new_child = rio.read_stanza_unicode(child_text.splitlines(True))
-        self.assertEqual(uni_data, new_child.get('foo'))
 
     def mail_munge(self, lines, dos_nl=True):
         new_lines = []

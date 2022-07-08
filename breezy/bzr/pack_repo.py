@@ -14,17 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import re
 import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
 import time
 
 from breezy import (
-    cleanup,
     config,
     debug,
     graph,
@@ -60,10 +58,6 @@ from ..bzr.repository import (
     MetaDirRepository,
     RepositoryFormatMetaDir,
     )
-from ..sixish import (
-    reraise,
-    viewitems,
-    )
 from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -85,10 +79,11 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
+                 revision_id=None, lossy=False, owns_transaction=True):
         VersionedFileCommitBuilder.__init__(self, repository, parents, config,
                                             timestamp=timestamp, timezone=timezone, committer=committer,
-                                            revprops=revprops, revision_id=revision_id, lossy=lossy)
+                                            revprops=revprops, revision_id=revision_id, lossy=lossy,
+                                            owns_transaction=owns_transaction)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
@@ -1337,7 +1332,7 @@ class RepositoryPackCollection(object):
 
         # do a two-way diff against our original content
         current_nodes = set()
-        for name, sizes in viewitems(self._names):
+        for name, sizes in self._names.items():
             current_nodes.add(
                 (name, b' '.join(b'%d' % size for size in sizes)))
 
@@ -1550,7 +1545,7 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 stack.callback(setattr, self, '_new_pack', None)
                 # If we aborted while in the middle of finishing the write
                 # group, _remove_pack_indices could fail because the indexes are
@@ -1560,7 +1555,7 @@ class RepositoryPackCollection(object):
                                ignore_missing=True)
                 self._new_pack.abort()
         for resumed_pack in self._resumed_packs:
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 # See comment in previous finally block.
                 stack.callback(self._remove_pack_indices, resumed_pack,
                                ignore_missing=True)
@@ -2099,4 +2094,4 @@ class _DirectPackAccess(object):
                 is_error = True
         if is_error:
             # GZ 2017-03-27: No real reason this needs the original traceback.
-            reraise(*retry_exc.exc_info)
+            raise retry_exc.exc_info[1]

@@ -28,7 +28,7 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 class DirBlock:
     """Object representation of the tuples returned by dirstate."""
 
-    def __init__(self, tree, file_path, file_name=None, id=None,
+    def __init__(self, tree, file_path, file_name=None,
                  inventory_kind=None, stat=None, disk_kind='unknown'):
         self.file_path = file_path
         self.abspath = tree.abspath(file_path)
@@ -38,17 +38,16 @@ class DirBlock:
             if len(file_name) == 0:
                 file_name = os.path.split(file_path)[-2]
         self.file_name = file_name
-        self.id = id
         self.inventory_kind = inventory_kind
         self.stat = stat
         self.disk_kind = disk_kind
 
     def as_tuple(self):
         return (self.relpath, self.file_name, self.disk_kind,
-                self.stat, self.id, self.inventory_kind)
+                self.stat, self.inventory_kind)
 
     def as_dir_tuple(self):
-        return (self.relpath, self.id)
+        return self.relpath
 
     def __str__(self):
         return """
@@ -56,11 +55,10 @@ file_path      = %r
 abspath        = %r
 relpath        = %r
 file_name      = %r
-id             = %r
 inventory_kind = %r
 stat           = %r
 disk_kind      = %r""" % (self.file_path, self.abspath, self.relpath,
-                          self.file_name, self.id, self.inventory_kind, self.stat,
+                          self.file_name, self.inventory_kind, self.stat,
                           self.disk_kind)
 
 
@@ -97,9 +95,6 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
         if file_status != self.unknown:
             tree.add(paths)
-            for dirblock in dirblocks:
-                if file_status != self.unknown:
-                    dirblock.id = tree.path2id(dirblock.relpath)
 
         if file_status == self.missing:
             # now make the files be missing
@@ -108,7 +103,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
             tree.controldir.root_transport.delete_tree(dirblocks[3].relpath)
 
         expected_dirblocks = [
-            (('', tree.path2id('')),
+            ('',
              [dirblocks[1].as_tuple()] +
              ([dirblocks[3].as_tuple()]
                  if (tree.has_versioned_directories() or file_status == self.unknown) else []) +
@@ -120,22 +115,18 @@ class TestWalkdirs(TestCaseWithWorkingTree):
             ]
         if (tree.has_versioned_directories() or
                 file_status != self.missing):
-            expected_dirblocks.append(
-                (dirblocks[3].as_dir_tuple(),
-                 []
-                 ))
+            expected_dirblocks.append((dirblocks[3].as_dir_tuple(), []))
         if prefix:
             expected_dirblocks = [e for e in expected_dirblocks
-                                  if len(e) > 0 and len(e[0]) > 0 and e[0][0] == prefix]
+                                  if len(e) > 0 and len(e[0]) > 0 and e[0] == prefix]
         return tree, expected_dirblocks
 
     def _test_walkdir(self, file_status, prefix=""):
         result = []
         tree, expected_dirblocks = self.get_tree(file_status, prefix)
-        tree.lock_read()
-        for dirinfo, dirblock in tree.walkdirs(prefix):
-            result.append((dirinfo, list(dirblock)))
-        tree.unlock()
+        with tree.lock_read():
+            for dirpath, dirblock in tree.walkdirs(prefix):
+                result.append((dirpath, list(dirblock)))
 
         # check each return value for debugging ease.
         for pos, item in enumerate(expected_dirblocks):
@@ -171,12 +162,12 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
     def test_walkdirs_type_changes(self):
         """Walkdir shows the actual kinds on disk and the recorded kinds."""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         paths = ['file1', 'file2', 'dir1/', 'dir2/']
         self.build_tree(paths)
         tree.add(paths)
-        tt = tree.get_transform()
+        tt = tree.transform()
         root_transaction_id = tt.trans_id_tree_path('')
         tt.new_symlink('link1',
                        root_transaction_id, 'link-target', b'link1')
@@ -200,40 +191,25 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         link1_stat = os.lstat('link1')
         link2_stat = os.lstat('link2')
         expected_dirblocks = [
-            (('', tree.path2id('')),
-             [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'),
+            ('',
+             [('dir1', 'dir1', 'file', dir1_stat,
                'directory' if tree.has_versioned_directories() else None),
-              ('dir2', 'dir2', 'symlink', dir2_stat, tree.path2id('dir2'),
+              ('dir2', 'dir2', 'symlink', dir2_stat,
                'directory' if tree.has_versioned_directories() else None),
               ('file1', 'file1', 'directory', file1_stat,
-               tree.path2id('file1'), 'file'),
-              ('file2', 'file2', 'symlink', file2_stat,
-               tree.path2id('file2'), 'file'),
-              ('link1', 'link1', 'file', link1_stat,
-               tree.path2id('link1'), 'symlink'),
-              ('link2', 'link2', 'directory', link2_stat,
-               tree.path2id('link2'), 'symlink'),
+               'file'),
+              ('file2', 'file2', 'symlink', file2_stat, 'file'),
+              ('link1', 'link1', 'file', link1_stat, 'symlink'),
+              ('link2', 'link2', 'directory', link2_stat, 'symlink'),
               ]
              )]
         if tree.has_versioned_directories():
             expected_dirblocks.extend([
-                (('dir1', tree.path2id('dir1')),
-                 [
-                    ]
-                 ),
-                (('dir2', tree.path2id('dir2')),
-                    [
-                    ]
-                 )])
+                ('dir1', []),
+                ('dir2', [])])
         expected_dirblocks.extend([
-            (('file1', None),
-             [
-                ]
-             ),
-            (('link2', None),
-             [
-                ]
-             ),
+            ('file1', []),
+            ('link2', []),
             ])
         with tree.lock_read():
             result = list(tree.walkdirs())
@@ -257,33 +233,21 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         file1_stat = os.lstat('file1')
         if tree.has_versioned_directories():
             expected_dirblocks = [
-                (('', tree.path2id('')),
-                 [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), 'directory'),
-                  ('file1', 'file1', 'directory', file1_stat,
-                   tree.path2id('file1'), 'file'),
-                  ]
-                 ),
-                (('dir1', tree.path2id('dir1')),
-                 [
-                    ]
-                 ),
-                (('file1', None),
-                 [
-                    ]
-                 ),
+                ('',
+                 [('dir1', 'dir1', 'file', dir1_stat, 'directory'),
+                  ('file1', 'file1', 'directory', file1_stat, 'file'),
+                  ]),
+                ('dir1', []),
+                ('file1', []),
                 ]
         else:
             expected_dirblocks = [
-                (('', tree.path2id('')),
-                 [('dir1', 'dir1', 'file', dir1_stat, tree.path2id('dir1'), None),
-                  ('file1', 'file1', 'directory', file1_stat,
-                   tree.path2id('file1'), 'file'),
+                ('',
+                 [('dir1', 'dir1', 'file', dir1_stat, None),
+                  ('file1', 'file1', 'directory', file1_stat, 'file'),
                   ]
                  ),
-                (('file1', None),
-                 [
-                    ]
-                 ),
+                ('file1', []),
                 ]
         with tree.lock_read():
             result = list(tree.walkdirs())

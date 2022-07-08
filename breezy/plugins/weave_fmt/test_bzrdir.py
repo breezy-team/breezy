@@ -19,8 +19,6 @@
 For interface contract tests, see tests/per_bzr_dir.
 """
 
-from __future__ import absolute_import
-
 import os
 import sys
 
@@ -39,7 +37,7 @@ from ...bzr import (
 from ...osutils import (
     getcwd,
     )
-from ...tests import test_bundle
+from ...bzr.tests import test_bundle
 from ...tests.test_sftp_transport import TestCaseWithSFTPServer
 from ...tests import (
     TestCaseWithTransport,

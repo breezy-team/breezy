@@ -14,12 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+import contextlib
 
-from . import cleanup
 from .branch import Branch
 from .trace import note
-from .errors import NoSuchRevision, BzrCommandError
+from .errors import NoSuchRevision, CommandError
 
 
 class GhostFetcher(object):
@@ -30,8 +29,8 @@ class GhostFetcher(object):
         if other is None:
             other = this_branch.get_parent()
             if other is None:
-                raise BzrCommandError('No branch specified and no location'
-                                      ' saved.')
+                raise CommandError('No branch specified and no location'
+                                   ' saved.')
             else:
                 note("Using saved location %s.", other)
         other_branch = Branch.open_containing(other)[0]
@@ -43,7 +42,7 @@ class GhostFetcher(object):
 
     def run(self):
         lock_other = self.this_branch.base != self.other_branch.base
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.this_branch.lock_write())
             if lock_other:
                 exit_stack.enter_context(self.other_branch.lock_read())

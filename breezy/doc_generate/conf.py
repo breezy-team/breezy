@@ -6,8 +6,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-from __future__ import absolute_import
-
 # FIXME: better move the content of doc/en/conf.py here and cleanup the result
 # -- vila 20100428
 

@@ -16,6 +16,10 @@
 
 """Tests for version_info"""
 
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 
 from .. import (
@@ -23,12 +27,8 @@ from .. import (
     tests,
     version_info_formats,
     )
-from ..sixish import (
-    BytesIO,
-    StringIO,
-    )
 from . import TestCaseWithTransport
-from ..rio import read_stanzas, read_stanzas_unicode
+from ..rio import read_stanzas
 
 from ..version_info_formats.format_custom import (
     CustomVersionInfoBuilder,
@@ -82,66 +82,66 @@ class TestVersionInfoRio(VersionInfoTestCase):
     def test_rio_null(self):
         wt = self.make_branch_and_tree('branch')
 
-        sio = StringIO()
+        bio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
-        builder.generate(sio)
-        val = sio.getvalue()
-        self.assertContainsRe(val, 'build-date:')
-        self.assertContainsRe(val, 'revno: 0')
+        builder.generate(bio)
+        val = bio.getvalue()
+        self.assertContainsRe(val, b'build-date:')
+        self.assertContainsRe(val, b'revno: 0')
 
     def test_rio_dotted_revno(self):
         wt = self.create_tree_with_dotted_revno()
 
-        sio = StringIO()
+        bio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
-        builder.generate(sio)
-        val = sio.getvalue()
-        self.assertContainsRe(val, 'revno: 1.1.1')
+        builder.generate(bio)
+        val = bio.getvalue()
+        self.assertContainsRe(val, b'revno: 1.1.1')
 
     def regen_text(self, wt, **kwargs):
-        sio = StringIO()
+        bio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
-        builder.generate(sio)
-        val = sio.getvalue()
+        builder.generate(bio)
+        val = bio.getvalue()
         return val
 
     def test_simple(self):
         wt = self.create_branch()
 
         val = self.regen_text(wt)
-        self.assertContainsRe(val, 'build-date:')
-        self.assertContainsRe(val, 'date:')
-        self.assertContainsRe(val, 'revno: 3')
-        self.assertContainsRe(val, 'revision-id: r3')
+        self.assertContainsRe(val, b'build-date:')
+        self.assertContainsRe(val, b'date:')
+        self.assertContainsRe(val, b'revno: 3')
+        self.assertContainsRe(val, b'revision-id: r3')
 
     def test_clean(self):
         wt = self.create_branch()
         val = self.regen_text(wt, check_for_clean=True)
-        self.assertContainsRe(val, 'clean: True')
+        self.assertContainsRe(val, b'clean: True')
 
     def test_no_clean(self):
         wt = self.create_branch()
         self.build_tree(['branch/c'])
         val = self.regen_text(wt, check_for_clean=True)
-        self.assertContainsRe(val, 'clean: False')
+        self.assertContainsRe(val, b'clean: False')
 
     def test_history(self):
         wt = self.create_branch()
 
         val = self.regen_text(wt, include_revision_history=True)
-        self.assertContainsRe(val, 'id: r1')
-        self.assertContainsRe(val, 'message: a')
-        self.assertContainsRe(val, 'id: r2')
-        self.assertContainsRe(val, 'message: b')
-        self.assertContainsRe(val, 'id: r3')
-        self.assertContainsRe(val, 'message: \xe5')
+        self.assertContainsRe(val, b'id: r1')
+        self.assertContainsRe(val, b'message: a')
+        self.assertContainsRe(val, b'id: r2')
+        self.assertContainsRe(val, b'message: b')
+        self.assertContainsRe(val, b'id: r3')
+        self.assertContainsRe(val, b'message: \xc3\xa52')
 
     def regen(self, wt, **kwargs):
-        sio = StringIO()
+        bio = BytesIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
-        builder.generate(sio)
-        sio.seek(0)
-        stanzas = list(read_stanzas_unicode(sio))
+        builder.generate(bio)
+        bio.seek(0)
+        stanzas = list(read_stanzas(bio))
         self.assertEqual(1, len(stanzas))
         return stanzas[0]
 

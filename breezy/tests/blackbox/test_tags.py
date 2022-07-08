@@ -22,7 +22,6 @@ from breezy import (
     lockable_files,
     lockdir,
     tag,
-    transform,
     )
 from breezy.bzr import (
     branch as bzrbranch,
@@ -31,12 +30,10 @@ from breezy.bzr import (
 from breezy.branch import (
     Branch,
     )
-from breezy.sixish import PY3
 from breezy.tests import (
     script,
     TestCaseWithTransport,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
 from breezy.workingtree import WorkingTree
 
 
@@ -149,9 +146,9 @@ class TestTagging(TestCaseWithTransport):
     def make_fork(self, branch):
         fork = branch.create_clone_on_transport(self.get_transport('fork'))
         self.addCleanup(fork.lock_write().unlock)
-        with transform.TransformPreview(fork.basis_tree()) as tt:
+        with fork.basis_tree().preview_transform() as tt:
             tt.commit(fork, message='Commit in fork.', revision_id=b'fork-0')
-        with transform.TransformPreview(fork.basis_tree()) as tt:
+        with fork.basis_tree().preview_transform() as tt:
             tt.commit(fork, message='Commit in fork.', revision_id=b'fork-1')
         return fork
 
@@ -392,20 +389,12 @@ class TestTagging(TestCaseWithTransport):
         b2.tags.set_tag(tagname, b'revid2')
         # push should give a warning about the tags
         out, err = self.run_bzr('push -d one two', encoding='utf-8')
-        if PY3:
-            self.assertContainsRe(out, 'Conflicting tags:\n.*' + tagname)
-        else:
-            self.assertContainsRe(
-                out, 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        self.assertContainsRe(out, 'Conflicting tags:\n.*' + tagname)
         # pull should give a warning about the tags
         out, err = self.run_bzr('pull -d one two', encoding='utf-8',
                                 retcode=1)
-        if PY3:
-            self.assertContainsRe(out,
-                                  'Conflicting tags:\n.*' + tagname)
-        else:
-            self.assertContainsRe(out,
-                                  'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        self.assertContainsRe(out,
+                              'Conflicting tags:\n.*' + tagname)
         # merge should give a warning about the tags -- not implemented yet
         ## out, err = self.run_bzr('merge -d one two', encoding='utf-8')
         # self.assertContainsRe(out,
@@ -451,43 +440,3 @@ class TestTagging(TestCaseWithTransport):
             err,
             'brz: ERROR: Tags not supported by BzrBranch5\\(.*\\/tree\\/\\); '
             'you may be able to use \'brz upgrade file:\\/\\/.*\\/tree\\/\'.')
-
-
-class TestSmartServerCat(TestCaseWithTransport):
-
-    def test_set_tag(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(
-            ['tag', "-d", self.get_url('branch'), "tagname"])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(9, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-
-    def test_show_tags(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        t.branch.tags.set_tag("sometag", b"rev1")
-        t.branch.tags.set_tag("sometag", b"rev2")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['tags', "-d", self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(6, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -16,16 +16,11 @@
 
 """A collection of function for handling URL operations."""
 
-from __future__ import absolute_import
-
 import os
 import re
 import sys
 
-try:
-    import urlparse
-except ImportError:
-    from urllib import parse as urlparse
+from urllib import parse as urlparse
 
 from . import (
     errors,
@@ -37,12 +32,6 @@ lazy_import(globals(), """
 from posixpath import split as _posix_split
 """)
 
-from .sixish import (
-    int2byte,
-    PY3,
-    text_type,
-    unichr,
-    )
 
 
 class InvalidURL(errors.PathError):
@@ -99,74 +88,14 @@ def dirname(url, exclude_trailing_slash=True):
     return split(url, exclude_trailing_slash=exclude_trailing_slash)[0]
 
 
-if PY3:
-    quote_from_bytes = urlparse.quote_from_bytes
-    quote = urlparse.quote
-    unquote_to_bytes = urlparse.unquote_to_bytes
-else:
-    # Private copies of quote and unquote, copied from Python's urllib module
-    # because urllib unconditionally imports socket, which imports ssl.
-
-    always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                   'abcdefghijklmnopqrstuvwxyz'
-                   '0123456789' '_.-')
-    _safe_map = {}
-    for i, c in zip(range(256), ''.join(map(chr, range(256)))):
-        _safe_map[c] = c if (
-            i < 128 and c in always_safe) else '%{0:02X}'.format(i)
-    _safe_quoters = {}
-
-    def quote_from_bytes(s, safe='/'):
-        """quote('abc def') -> 'abc%20def'
-
-        Each part of a URL, e.g. the path info, the query, etc., has a
-        different set of reserved characters that must be quoted.
-
-        RFC 2396 Uniform Resource Identifiers (URI): Generic Syntax lists
-        the following reserved characters.
-
-        reserved    = ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" |
-                      "$" | ","
-
-        Each of these characters is reserved in some component of a URL,
-        but not necessarily in all of them.
-
-        By default, the quote function is intended for quoting the path
-        section of a URL.  Thus, it will not encode '/'.  This character
-        is reserved, but in typical usage the quote function is being
-        called on a path where the existing slash characters are used as
-        reserved characters.
-        """
-        # fastpath
-        if not s:
-            if s is None:
-                raise TypeError('None object cannot be quoted')
-            return s
-        cachekey = (safe, always_safe)
-        try:
-            (quoter, safe) = _safe_quoters[cachekey]
-        except KeyError:
-            safe_map = _safe_map.copy()
-            safe_map.update([(c, c) for c in safe])
-            quoter = safe_map.__getitem__
-            safe = always_safe + safe
-            _safe_quoters[cachekey] = (quoter, safe)
-        if not s.rstrip(safe):
-            return s
-        return ''.join(map(quoter, s))
-
-    quote = quote_from_bytes
-    unquote_to_bytes = urlparse.unquote
-
-
+quote_from_bytes = urlparse.quote_from_bytes
+quote = urlparse.quote
+unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
 def escape(relpath, safe='/~'):
     """Escape relpath to be a valid url."""
-    if not isinstance(relpath, str) and sys.version_info[0] == 2:
-        # GZ 2019-06-16: Should use _fs_enc instead here really?
-        relpath = relpath.encode('utf-8')
     return quote(relpath, safe=safe)
 
 
@@ -411,7 +340,7 @@ def normalize_url(url):
         return local_path_to_url(url)
     prefix = url[:path_start]
     path = url[path_start:]
-    if not isinstance(url, text_type):
+    if not isinstance(url, str):
         for c in url:
             if c not in _url_safe_characters:
                 raise InvalidURL(url, 'URLs can only contain specific'
@@ -691,28 +620,13 @@ def unescape(url):
     #       try to encode the UNICODE => ASCII, and then decode
     #       it into utf-8.
 
-    if PY3:
-        if isinstance(url, text_type):
-            try:
-                url.encode("ascii")
-            except UnicodeError as e:
-                raise InvalidURL(
-                    url, 'URL was not a plain ASCII url: %s' % (e,))
-        return urlparse.unquote(url)
-    else:
-        if isinstance(url, text_type):
-            try:
-                url = url.encode("ascii")
-            except UnicodeError as e:
-                raise InvalidURL(
-                    url, 'URL was not a plain ASCII url: %s' % (e,))
-        unquoted = unquote(url)
+    if isinstance(url, str):
         try:
-            unicode_path = unquoted.decode('utf-8')
+            url.encode("ascii")
         except UnicodeError as e:
             raise InvalidURL(
-                url, 'Unable to encode the URL as utf-8: %s' % (e,))
-        return unicode_path
+                url, 'URL was not a plain ASCII url: %s' % (e,))
+    return urlparse.unquote(url)
 
 
 # These are characters that if escaped, should stay that way
@@ -720,8 +634,8 @@ _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
 _no_decode_hex = (['%02x' % o for o in _no_decode_ords]
                   + ['%02X' % o for o in _no_decode_ords])
-_hex_display_map = dict(([('%02x' % o, int2byte(o)) for o in range(256)]
-                         + [('%02X' % o, int2byte(o)) for o in range(256)]))
+_hex_display_map = dict(([('%02x' % o, bytes([o])) for o in range(256)]
+                         + [('%02X' % o, bytes([o])) for o in range(256)]))
 # These entries get mapped to themselves
 _hex_display_map.update((hex, b'%' + hex.encode('ascii'))
                         for hex in _no_decode_hex)
@@ -765,11 +679,10 @@ def _unescape_segment_for_display(segment, encoding):
             escaped_chunks[j] = _hex_display_map[item[:2]]
         except KeyError:
             # Put back the percent symbol
-            escaped_chunks[j] = b'%' + \
-                (item[:2].encode('utf-8') if PY3 else item[:2])
+            escaped_chunks[j] = b'%' + (item[:2].encode('utf-8'))
         except UnicodeDecodeError:
-            escaped_chunks[j] = unichr(int(item[:2], 16)).encode('utf-8')
-        escaped_chunks[j] += (item[2:].encode('utf-8') if PY3 else item[2:])
+            escaped_chunks[j] = chr(int(item[:2], 16)).encode('utf-8')
+        escaped_chunks[j] += (item[2:].encode('utf-8'))
     unescaped = b''.join(escaped_chunks)
     try:
         decoded = unescaped.decode('utf-8')
@@ -933,7 +846,7 @@ class URL(object):
         # unicode.
         if isinstance(url, str):
             pass
-        elif isinstance(url, text_type):
+        elif isinstance(url, str):
             try:
                 url = url.encode()
             except UnicodeEncodeError:
@@ -1004,7 +917,7 @@ class URL(object):
         # unicode.
         if isinstance(relpath, str):
             pass
-        elif isinstance(relpath, text_type):
+        elif isinstance(relpath, str):
             try:
                 relpath = relpath.encode()
             except UnicodeEncodeError:
@@ -1042,8 +955,6 @@ class URL(object):
         """
         if offset is not None:
             relative = unescape(offset)
-            if sys.version_info[0] == 2:
-                relative = relative.encode('utf-8')
             path = self._combine_paths(self.path, relative)
             path = quote(path, safe="/~")
         else:

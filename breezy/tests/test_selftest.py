@@ -19,7 +19,7 @@
 import gc
 import doctest
 from functools import reduce
-from io import BytesIO, TextIOWrapper
+from io import BytesIO, StringIO, TextIOWrapper
 import os
 import signal
 import sys
@@ -66,11 +66,6 @@ from ..bzr import (
     )
 from ..git import (
     workingtree as git_workingtree,
-    )
-from ..sixish import (
-    PY3,
-    StringIO,
-    text_type,
     )
 from ..symbol_versioning import (
     deprecated_function,
@@ -546,7 +541,7 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
     def test_assertEqualStat_equal(self):
-        from .test_dirstate import _FakeStat
+        from ..bzr.tests.test_dirstate import _FakeStat
         self.build_tree(["foo"])
         real = os.lstat("foo")
         fake = _FakeStat(real.st_size, real.st_mtime, real.st_ctime,
@@ -692,7 +687,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 
     def test_get_readonly_url_http(self):
         from .http_server import HttpServer
-        from ..transport.http import HttpTransport
+        from ..transport.http.urllib import HttpTransport
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
@@ -809,8 +804,8 @@ class TestTestResult(tests.TestCase):
 
         This is used to exercise the test framework.
         """
-        self.time(text_type, b'hello', errors='replace')
-        self.time(text_type, b'world', errors='replace')
+        self.time(str, b'hello', errors='replace')
+        self.time(str, b'world', errors='replace')
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
@@ -840,16 +835,10 @@ class TestTestResult(tests.TestCase):
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
         output = result_stream.getvalue()
-        if PY3:
-            self.assertContainsRe(output,
-                                  r"LSProf output for <class 'str'>\(\(b'hello',\), {'errors': 'replace'}\)")
-            self.assertContainsRe(output,
-                                  r"LSProf output for <class 'str'>\(\(b'world',\), {'errors': 'replace'}\)")
-        else:
-            self.assertContainsRe(output,
-                                  r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
-            self.assertContainsRe(output,
-                                  r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
+        self.assertContainsRe(output,
+                              r"LSProf output for <class 'str'>\(\(b'hello',\), {'errors': 'replace'}\)")
+        self.assertContainsRe(output,
+                              r"LSProf output for <class 'str'>\(\(b'world',\), {'errors': 'replace'}\)")
         self.assertContainsRe(output,
                               r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
         self.assertContainsRe(output,
@@ -1305,11 +1294,8 @@ class TestRunner(tests.TestCase):
             def test_log_unicode(self):
                 self.log(u"\u2606")
                 self.fail("Now print that log!")
-        if PY3:
-            bio = BytesIO()
-            out = TextIOWrapper(bio, 'ascii', 'backslashreplace')
-        else:
-            bio = out = StringIO()
+        bio = BytesIO()
+        out = TextIOWrapper(bio, 'ascii', 'backslashreplace')
         self.overrideAttr(osutils, "get_terminal_encoding",
                           lambda trace=False: "ascii")
         self.run_test_runner(
@@ -1982,7 +1968,7 @@ class TestExtraAssertions(tests.TestCase):
 
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
-        self.assertIsInstance(u'', (str, text_type))
+        self.assertIsInstance(u'', str)
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertIn(
             str(e),
@@ -1994,16 +1980,10 @@ class TestExtraAssertions(tests.TestCase):
         e = self.assertRaises(AssertionError,
                               self.assertIsInstance, None, int,
                               "it's just not")
-        if PY3:
-            self.assertEqual(
-                str(e),
-                "None is an instance of <class 'NoneType'> rather "
-                "than <class 'int'>: it's just not")
-        else:
-            self.assertEqual(
-                str(e),
-                "None is an instance of <type 'NoneType'> "
-                "rather than <type 'int'>: it's just not")
+        self.assertEqual(
+            str(e),
+            "None is an instance of <class 'NoneType'> rather "
+            "than <class 'int'>: it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -2129,11 +2109,8 @@ class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
-        if PY3:
-            bio = BytesIO()
-            output = TextIOWrapper(bio, 'utf-8')
-        else:
-            bio = output = StringIO()
+        bio = BytesIO()
+        output = TextIOWrapper(bio, 'utf-8')
         old_transport = breezy.tests.default_transport
         old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tests.TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -2142,9 +2119,8 @@ class SelfTestHelper(object):
         finally:
             breezy.tests.default_transport = old_transport
             tests.TestCaseWithMemoryTransport.TEST_ROOT = old_root
-        if PY3:
-            output.flush()
-            output.detach()
+        output.flush()
+        output.detach()
         bio.seek(0)
         return bio
 
@@ -2529,7 +2505,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
 
 
 class StubProcess(object):
-    """A stub process for testing run_bzr_subprocess."""
+    """A stub process for testing run_brz_subprocess."""
 
     def __init__(self, out="", err="", retcode=0):
         self.out = out
@@ -2547,11 +2523,11 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
         super(TestWithFakedStartBzrSubprocess, self).setUp()
         self.subprocess_calls = []
 
-    def start_bzr_subprocess(self, process_args, env_changes=None,
+    def start_brz_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
                              allow_plugins=False):
-        """capture what run_bzr_subprocess tries to do."""
+        """capture what run_brz_subprocess tries to do."""
         self.subprocess_calls.append(
             {'process_args': process_args,
              'env_changes': env_changes,
@@ -2563,15 +2539,15 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
 class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
     def assertRunBzrSubprocess(self, expected_args, process, *args, **kwargs):
-        """Run run_bzr_subprocess with args and kwargs using a stubbed process.
+        """Run run_brz_subprocess with args and kwargs using a stubbed process.
 
-        Inside TestRunBzrSubprocessCommands we use a stub start_bzr_subprocess
+        Inside TestRunBzrSubprocessCommands we use a stub start_brz_subprocess
         that will return static results. This assertion method populates those
-        results and also checks the arguments run_bzr_subprocess generates.
+        results and also checks the arguments run_brz_subprocess generates.
         """
         self.next_subprocess = process
         try:
-            result = self.run_bzr_subprocess(*args, **kwargs)
+            result = self.run_brz_subprocess(*args, **kwargs)
         except BaseException:
             self.next_subprocess = None
             for key, expected in expected_args.items():
@@ -2583,7 +2559,7 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
                 self.assertEqual(expected, self.subprocess_calls[-1][key])
             return result
 
-    def test_run_bzr_subprocess(self):
+    def test_run_brz_subprocess(self):
         """The run_bzr_helper_external command behaves nicely."""
         self.assertRunBzrSubprocess({'process_args': ['--version']},
                                     StubProcess(), '--version')
@@ -2622,7 +2598,7 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
         self.assertRunBzrSubprocess({'working_dir': 'dir'}, StubProcess(), '',
                                     working_dir='dir')
 
-    def test_run_bzr_subprocess_no_plugins(self):
+    def test_run_brz_subprocess_no_plugins(self):
         self.assertRunBzrSubprocess({'allow_plugins': False},
                                     StubProcess(), '')
 
@@ -2633,27 +2609,27 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
 class TestFinishBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
-    def test_finish_bzr_subprocess_with_error(self):
-        """finish_bzr_subprocess allows specification of the desired exit code.
+    def test_finish_brz_subprocess_with_error(self):
+        """finish_brz_subprocess allows specification of the desired exit code.
         """
         process = StubProcess(err="unknown command", retcode=3)
-        result = self.finish_bzr_subprocess(process, retcode=3)
+        result = self.finish_brz_subprocess(process, retcode=3)
         self.assertEqual('', result[0])
         self.assertContainsRe(result[1], 'unknown command')
 
-    def test_finish_bzr_subprocess_ignoring_retcode(self):
-        """finish_bzr_subprocess allows the exit code to be ignored."""
+    def test_finish_brz_subprocess_ignoring_retcode(self):
+        """finish_brz_subprocess allows the exit code to be ignored."""
         process = StubProcess(err="unknown command", retcode=3)
-        result = self.finish_bzr_subprocess(process, retcode=None)
+        result = self.finish_brz_subprocess(process, retcode=None)
         self.assertEqual('', result[0])
         self.assertContainsRe(result[1], 'unknown command')
 
     def test_finish_subprocess_with_unexpected_retcode(self):
-        """finish_bzr_subprocess raises self.failureException if the retcode is
+        """finish_brz_subprocess raises self.failureException if the retcode is
         not the expected one.
         """
         process = StubProcess(err="unknown command", retcode=3)
-        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
+        self.assertRaises(self.failureException, self.finish_brz_subprocess,
                           process)
 
 
@@ -2662,7 +2638,7 @@ class _DontSpawnProcess(Exception):
 
 
 class TestStartBzrSubProcess(tests.TestCase):
-    """Stub test start_bzr_subprocess."""
+    """Stub test start_brz_subprocess."""
 
     def _subprocess_log_cleanup(self):
         """Inhibits the base version as we don't produce a log file."""
@@ -2680,15 +2656,15 @@ class TestStartBzrSubProcess(tests.TestCase):
     def check_popen_state(self):
         """Replace to make assertions when popen is called."""
 
-    def test_run_bzr_subprocess_no_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
+    def test_run_brz_subprocess_no_plugins(self):
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [])
         command = self._popen_args[0]
         self.assertEqual(sys.executable, command[0])
         self.assertEqual(self.get_brz_path(), command[1])
         self.assertEqual(['--no-plugins'], command[2:])
 
     def test_allow_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
@@ -2700,20 +2676,20 @@ class TestStartBzrSubProcess(tests.TestCase):
         def check_environment():
             self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
         self.check_popen_state = check_environment
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'EXISTANT_ENV_VAR': 'set variable'})
         # not set in theparent
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
-    def test_run_bzr_subprocess_env_del(self):
-        """run_bzr_subprocess can remove environment variables too."""
+    def test_run_brz_subprocess_env_del(self):
+        """run_brz_subprocess can remove environment variables too."""
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
 
         def check_environment():
             self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
         self.check_popen_state = check_environment
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'EXISTANT_ENV_VAR': None})
         # Still set in parent
         self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
@@ -2725,7 +2701,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         def check_environment():
             self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
         self.check_popen_state = check_environment
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'NON_EXISTANT_ENV_VAR': None})
 
     def test_working_dir(self):
@@ -2739,7 +2715,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         def getcwd():
             return 'current'
         self.overrideAttr(osutils, 'getcwd', getcwd)
-        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+        self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           working_dir='foo')
         self.assertEqual(['foo', 'current'], chdirs)
 
@@ -2753,14 +2729,14 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
     """Tests that really need to do things with an external bzr."""
 
     def test_start_and_stop_bzr_subprocess_send_signal(self):
-        """finish_bzr_subprocess raises self.failureException if the retcode is
+        """finish_brz_subprocess raises self.failureException if the retcode is
         not the expected one.
         """
         self.disable_missing_extensions_warning()
-        process = self.start_bzr_subprocess(['wait-until-signalled'],
+        process = self.start_brz_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
         self.assertEqual(b'running\n', process.stdout.readline())
-        result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
+        result = self.finish_brz_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
         self.assertEqual(b'', result[0])
         self.assertEqual(b'brz: interrupted\n', result[1])
@@ -3155,17 +3131,8 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        if __doc__ is not None and not PY3:
-            expected_test_list.extend([
-                # modules_to_doctest
-                'breezy.timestamp.format_highres_date',
-                ])
         suite = tests.test_suite()
-        if PY3:
-            self.assertEqual({"testmod_names"}, set(calls))
-        else:
-            self.assertEqual({"testmod_names", "modules_to_doctest"},
-                             set(calls))
+        self.assertEqual({"testmod_names", "modules_to_doctest"}, set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
@@ -3294,7 +3261,7 @@ class TestTestPrefixRegistry(tests.TestCase):
 
     def test_resolve_unknown_alias(self):
         tpr = self._get_registry()
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           tpr.resolve_alias, 'I am not a prefix')
 
     def test_predefined_prefixes(self):
@@ -3497,11 +3464,8 @@ class _Selftest(object):
         """To be overridden by subclasses that run tests out of process"""
 
     def _run_selftest(self, **kwargs):
-        if PY3:
-            bio = BytesIO()
-            sio = TextIOWrapper(bio, 'utf-8')
-        else:
-            sio = bio = StringIO()
+        bio = BytesIO()
+        sio = TextIOWrapper(bio, 'utf-8')
         self._inject_stream_into_subunit(bio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
         sio.flush()

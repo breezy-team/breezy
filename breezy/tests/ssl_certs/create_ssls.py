@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 # Copyright (C) 2007, 2008, 2009, 2017 Canonical Ltd
 #
@@ -84,7 +84,7 @@ def _openssl(args, input=None):
     """
     cmd = ['openssl'] + args
     proc = Popen(cmd, stdin=PIPE)
-    (stdout, stderr) = proc.communicate(input)
+    (stdout, stderr) = proc.communicate(input.encode('utf-8'))
     if proc.returncode:
         # Basic error handling, all commands should succeed
         raise CalledProcessError(proc.returncode, cmd)
@@ -132,8 +132,8 @@ def build_ca_certificate():
     cert_path = ssl_certs.build_path('ca.crt')
     rm_f(cert_path)
     _openssl(['req', '-passin', 'stdin', '-new', '-x509',
-              # Will need to be generated again in 10 years -- vila 20071122
-              '-days', '3650',
+              # Will need to be generated again in 1000 years -- 20210106
+              '-days', '365242',
               '-key', key_path, '-out', cert_path],
              input='%(ca_pass)s\n'
              '%(ca_country_code)s\n'
@@ -196,8 +196,8 @@ def sign_server_certificate():
     server_ext_conf = ssl_certs.build_path('server.extensions.cnf')
     rm_f(server_cert_path)
     _openssl(['x509', '-req', '-passin', 'stdin',
-              # Will need to be generated again in 10 years -- vila 20071122
-              '-days', '3650',
+              # Will need to be generated again in 1000 years -- 20210106
+              '-days', '365242',
               '-in', server_csr_path,
               '-CA', ca_cert_path, '-CAkey', ca_key_path,
               '-set_serial', '01',

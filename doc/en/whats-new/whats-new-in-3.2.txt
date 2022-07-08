@@ -1,0 +1,20 @@
+*************************
+What's New in Breezy 3.2?
+*************************
+
+The ``brz lp-propose`` command has been removed in favour of the ``brz propose`` command,
+which also supports Launchpad.
+
+Further information
+*******************
+
+For more detailed information on the changes made, see the the
+:doc:`../release-notes/index` for:
+
+* the interim brz `milestones <https://launchpad.net/bzr/3.2>`_
+* the plugins you use.
+
+For a summary of changes made in earlier releases, see:
+
+* :doc:`whats-new-in-3.0`
+* :doc:`whats-new-in-3.1`

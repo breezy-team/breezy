@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import sys
 
 from . import (
@@ -139,13 +137,13 @@ def show_tree_status(wt,
             try:
                 old = revision[0].as_tree(wt.branch)
             except errors.NoSuchRevision as e:
-                raise errors.BzrCommandError(str(e))
+                raise errors.CommandError(str(e))
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     new = revision[1].as_tree(wt.branch)
                     new_is_working_tree = False
                 except errors.NoSuchRevision as e:
-                    raise errors.BzrCommandError(str(e))
+                    raise errors.CommandError(str(e))
             else:
                 new = wt
         with old.lock_read(), new.lock_read():
@@ -368,7 +366,7 @@ class StatusHooks(_mod_hooks.Hooks):
         _mod_hooks.Hooks.__init__(self, "breezy.status", "hooks")
         self.add_hook(
             'post_status',
-            "Called with argument StatusHookParams after Bazaar has "
+            "Called with argument StatusHookParams after Breezy has "
             "displayed the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
@@ -377,7 +375,7 @@ class StatusHooks(_mod_hooks.Hooks):
             (2, 3))
         self.add_hook(
             'pre_status',
-            "Called with argument StatusHookParams before Bazaar "
+            "Called with argument StatusHookParams before Breezy "
             "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "

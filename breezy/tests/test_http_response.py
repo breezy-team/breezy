@@ -37,27 +37,19 @@ Some properties are common to all kinds:
   InvalidHttpResponse.
 """
 
-try:
-    import http.client as http_client
-except ImportError:  # python < 3 without future
-    import httplib as http_client
+from io import BytesIO
 
-try:
-    parse_headers = http_client.parse_headers
-except AttributeError:  # python 2
-    parse_headers = http_client.HTTPMessage
+import http.client as http_client
+
+parse_headers = http_client.parse_headers
 
 from .. import (
     errors,
     tests,
     )
-from ..sixish import (
-    BytesIO,
-    PY3,
-    )
 from ..transport.http import (
     response,
-    HTTPConnection,
+    urllib,
     )
 from .file_utils import (
     FakeReadFile,
@@ -74,10 +66,10 @@ class ReadSocket(object):
         return self.readfile
 
 
-class FakeHTTPConnection(HTTPConnection):
+class FakeHTTPConnection(urllib.HTTPConnection):
 
     def __init__(self, sock):
-        HTTPConnection.__init__(self, 'localhost')
+        urllib.HTTPConnection.__init__(self, 'localhost')
         # Set the socket to bypass the connection
         self.sock = sock
 
@@ -95,6 +87,10 @@ class TestResponseFileIter(tests.TestCase):
     def test_iter_many(self):
         f = response.ResponseFile('many', BytesIO(b'0\n1\nboo!\n'))
         self.assertEqual([b'0\n', b'1\n', b'boo!\n'], list(f))
+
+    def test_readlines(self):
+        f = response.ResponseFile('many', BytesIO(b'0\n1\nboo!\n'))
+        self.assertEqual([b'0\n', b'1\n', b'boo!\n'], f.readlines())
 
 
 class TestHTTPConnection(tests.TestCase):
@@ -726,10 +722,7 @@ class TestHandleResponse(tests.TestCase):
         # Get rid of the status line
         status_and_headers.readline()
         msg = parse_headers(status_and_headers)
-        if PY3:
-            return msg.get
-        else:
-            return msg.getheader
+        return msg.get
 
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""
