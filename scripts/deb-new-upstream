@@ -124,6 +124,7 @@ from breezy.plugins.debian.upstream.branch import (
 from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
 from debmutate.reformatting import GeneratedFile
 from debmutate.versions import (
+    add_dfsg_suffix,
     matches_release,
     new_upstream_package_version,
     initial_debian_revision,
@@ -430,7 +431,7 @@ def detect_include_upstream_history(
 
 
 class BranchOpenError(Exception):
-    """Generic handler for branch open failures."""
+    """Generic exception for branch open failures."""
 
 
 def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
@@ -681,6 +682,13 @@ def find_new_upstream(  # noqa: C901
         files_excluded = get_files_excluded(tree, subpath, top_level)
     except NoSuchFile:
         files_excluded = None
+    else:
+        new_upstream_version = Version(add_dfsg_suffix(
+            str(new_upstream_version),
+            old_upstream_version))
+        logging.info(
+            "Adding DFSG suffix since upstream files are excluded: %s",
+            new_upstream_version)
 
     return (
         primary_upstream_source,
