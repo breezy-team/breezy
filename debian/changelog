@@ -1,8 +1,8 @@
-breezy-debian (2.8.69) UNRELEASED; urgency=medium
+breezy-debian (2.8.69) unstable; urgency=medium
 
   * When necessary, adds dfsg suffix.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Jul 2022 19:01:53 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 08 Jul 2022 19:01:59 +0100
 
 breezy-debian (2.8.68) unstable; urgency=medium
 
