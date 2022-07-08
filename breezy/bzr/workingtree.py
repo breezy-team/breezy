@@ -1803,7 +1803,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 normalize = None
             for path in paths:
                 if normalize is None or self.is_versioned(path):
-                    yield path
+                    yield path.strip('/')
                 else:
                     yield get_canonical_path(self, path, normalize)
 

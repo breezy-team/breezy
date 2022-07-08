@@ -1447,22 +1447,7 @@ class InventoryTreeTransform(DiskTreeTransform):
 
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
-        # don't follow final symlinks
-        abs = self._tree.abspath(path)
-        if abs in self._relpaths:
-            return self._relpaths[abs]
-        dirname, basename = os.path.split(abs)
-        if dirname not in self._realpaths:
-            self._realpaths[dirname] = os.path.realpath(dirname)
-        dirname = self._realpaths[dirname]
-        abs = osutils.pathjoin(dirname, basename)
-        if dirname in self._relpaths:
-            relpath = osutils.pathjoin(self._relpaths[dirname], basename)
-            relpath = relpath.rstrip('/\\')
-        else:
-            relpath = self._tree.relpath(abs)
-        self._relpaths[abs] = relpath
-        return relpath
+        return self._tree.get_canonical_path(path)
 
     def tree_kind(self, trans_id):
         """Determine the file kind in the working tree.
