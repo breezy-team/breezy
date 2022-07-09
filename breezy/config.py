@@ -87,22 +87,17 @@ from typing import Tuple, Iterable
 import breezy
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import base64
 import errno
 import fnmatch
 import re
-import stat
 
 from breezy import (
     cmdline,
     controldir,
     debug,
-    directory_service,
     lock,
     lockdir,
-    mergetools,
     osutils,
-    trace,
     transport,
     ui,
     urlutils,
@@ -117,6 +112,7 @@ from . import (
     hooks,
     lazy_regex,
     registry,
+    trace,
     )
 from .option import Option as CommandOption
 
@@ -602,13 +598,14 @@ class Config(object):
         return tools
 
     def find_merge_tool(self, name):
+        from .mergetools import known_merge_tools
         # We fake a defaults mechanism here by checking if the given name can
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
         command_line = (self.get_user_option('bzr.mergetool.%s' % name,
                                              expand=False) or
-                        mergetools.known_merge_tools.get(name, None))
+                        known_merge_tools.get(name, None))
         return command_line
 
 
@@ -1512,6 +1509,7 @@ class AuthenticationConfig(object):
 
     def _check_permissions(self):
         """Check permission of auth file are user read/write able only."""
+        import stat
         try:
             st = os.stat(self._filename)
         except OSError as e:
@@ -1902,6 +1900,7 @@ class Base64CredentialStore(CredentialStore):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
         #                should probably propogate as something more useful.
+        import base64
         return base64.standard_b64decode(credentials['password'])
 
 
@@ -3915,9 +3914,10 @@ class cmd_config(commands.Command):
     @commands.display_command
     def run(self, name=None, all=False, directory=None, scope=None,
             remove=False):
+        from .directory_service import directories
         if directory is None:
             directory = '.'
-        directory = directory_service.directories.dereference(directory)
+        directory = directories.dereference(directory)
         directory = urlutils.normalize_url(directory)
         if remove and all:
             raise errors.BzrError(
