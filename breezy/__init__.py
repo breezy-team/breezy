@@ -21,10 +21,10 @@ https://www.breezy-vcs.org/developers/.
 
 Some particularly interesting things in breezy are:
 
- * breezy.initialize -- setup the library for use
- * breezy.plugin.load_plugins -- load all installed plugins
- * breezy.branch.Branch.open -- open a branch
- * breezy.workingtree.WorkingTree.open -- open a working tree
+* breezy.initialize -- setup the library for use
+* breezy.plugin.load_plugins -- load all installed plugins
+* breezy.branch.Branch.open -- open a branch
+* breezy.workingtree.WorkingTree.open -- open a working tree
 
 We hope you enjoy this library.
 """

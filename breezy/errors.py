@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Exceptions for bzr, and reporting of them.
 """
 
@@ -41,13 +43,15 @@ class BzrError(Exception):
     """
     Base class for errors raised by breezy.
 
-    :cvar internal_error: if True this was probably caused by a brz bug and
-        should be displayed with a traceback; if False (or absent) this was
-        probably a user or environment error and they don't need the gory
-        details.  (That can be overridden by -Derror on the command line.)
+    Attributes:
+      internal_error: if True this was probably caused by a brz bug and
+                      should be displayed with a traceback; if False (or
+                      absent) this was probably a user or environment error
+                      and they don't need the gory details.  (That can be
+                      overridden by -Derror on the command line.)
 
-    :cvar _fmt: Format string to display the error; this is expanded
-        by the instance's dict.
+      _fmt: Format string to display the error; this is expanded
+            by the instance's dict.
     """
 
     internal_error = False
@@ -67,9 +71,10 @@ class BzrError(Exception):
         that subclasses override the __init__ method to require specific
         parameters.
 
-        :param msg: If given, this is the literal complete text for the error,
-           not subject to expansion. 'msg' is used instead of 'message' because
-           python evolved and, in 2.6, forbids the use of 'message'.
+        Args:
+          msg: If given, this is the literal complete text for the error, not
+               subject to expansion. 'msg' is used instead of 'message' because
+               python evolved and, in 2.6, forbids the use of 'message'.
         """
         Exception.__init__(self)
         if msg is not None:
@@ -2025,11 +2030,11 @@ class UnknownErrorFromSmartServer(BzrError):
     This is distinct from ErrorFromSmartServer so that it is possible to
     distinguish between the following two cases:
 
-    - ErrorFromSmartServer was uncaught.  This is logic error in the client
-      and so should provoke a traceback to the user.
-    - ErrorFromSmartServer was caught but its error_tuple could not be
-      translated.  This is probably because the server sent us garbage, and
-      should not provoke a traceback.
+     - ErrorFromSmartServer was uncaught.  This is logic error in the client
+       and so should provoke a traceback to the user.
+     - ErrorFromSmartServer was caught but its error_tuple could not be
+       translated.  This is probably because the server sent us garbage, and
+       should not provoke a traceback.
     """
 
     _fmt = "Server sent an unexpected error: %(error_tuple)r"

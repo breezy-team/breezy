@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """View management.
 
 Views are contained within a working tree and normally constructed
@@ -109,7 +111,7 @@ class PathBasedViews(_Views):
     def get_view_info(self):
         """Get the current view and dictionary of views.
 
-        :return: current, views where
+        Returns: current, views where
           current = the name of the current view or None if no view is enabled
           views = a map from view name to list of files/directories
         """
@@ -119,9 +121,10 @@ class PathBasedViews(_Views):
     def set_view_info(self, current, views):
         """Set the current view and dictionary of views.
 
-        :param current: the name of the current view or None if no view is
-          enabled
-        :param views: a map from view name to list of files/directories
+        Args:
+          current: the name of the current view or None if no view is
+              enabled
+          views: a map from view name to list of files/directories
         """
         if current is not None and current not in views:
             raise NoSuchView(current)
@@ -133,8 +136,11 @@ class PathBasedViews(_Views):
     def lookup_view(self, view_name=None):
         """Return the contents of a view.
 
-        :param view_Name: name of the view or None to lookup the current view
-        :return: the list of files/directories in the requested view
+        Args:
+          view_Name: name of the view or None to lookup the current view
+
+        Returns:
+          the list of files/directories in the requested view
         """
         self._load_view_info()
         try:
@@ -150,9 +156,10 @@ class PathBasedViews(_Views):
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
 
-        :param view_name: the name of the view
-        :param view_files: the list of files/directories in the view
-        :param make_current: make this view the current one or not
+        Args:
+          view_name: the name of the view
+          view_files: the list of files/directories in the view
+          make_current: make this view the current one or not
         """
         with self.tree.lock_write():
             self._load_view_info()
@@ -282,8 +289,9 @@ class DisabledViews(_Views):
 def view_display_str(view_files, encoding=None):
     """Get the display string for a list of view files.
 
-    :param view_files: the list of file names
-    :param encoding: the encoding to display the files in
+    Args:
+      view_files: the list of file names
+      encoding: the encoding to display the files in
     """
     if encoding is None:
         return ", ".join(view_files)

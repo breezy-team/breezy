@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Abstraction for interacting with the user.
 
 Applications can choose different types of UI, and they deal with displaying
@@ -23,17 +25,21 @@ Several levels are supported, and you can also register new factories such as
 for a GUI.
 
 breezy.ui.UIFactory
+
     Semi-abstract base class
 
 breezy.ui.SilentUIFactory
+
     Produces no output and cannot take any input; useful for programs using
     breezy in batch mode or for programs such as loggerhead.
 
 breezy.ui.CannedInputUIFactory
+
     For use in testing; the input values to be returned are provided
     at construction.
 
 breezy.ui.text.TextUIFactory
+
     Standard text command-line interface, with stdin, stdout, stderr.
     May make more or less advanced use of them, eg in drawing progress bars,
     depending on the detected capabilities of the terminal.
@@ -60,14 +66,16 @@ def bool_from_string(s, accepted_values=None):
     'off'. Alternative values can be provided with the 'accepted_values'
     parameter.
 
-    :param s: A string that should be interpreted as a boolean. It should be of
-        type string or unicode.
+    Args:
+      s: A string that should be interpreted as a boolean. It should be of
+         type string or unicode.
 
-    :param accepted_values: An optional dict with accepted strings as keys and
-        True/False as values. The strings will be tested against a lowered
-        version of 's'.
+      accepted_values: An optional dict with accepted strings as keys and
+         True/False as values. The strings will be tested against a lowered
+         version of 's'.
 
-    :return: True or False for accepted strings, None otherwise.
+    Returns:
+      True or False for accepted strings, None otherwise.
     """
     if accepted_values is None:
         accepted_values = _valid_boolean_strings
@@ -86,11 +94,12 @@ class ConfirmationUserInterfacePolicy(object):
     def __init__(self, wrapped_ui, default_answer, specific_answers):
         """Generate a proxy UI that does no confirmations.
 
-        :param wrapped_ui: Underlying UIFactory.
-        :param default_answer: Bool for whether requests for
+        Args:
+          wrapped_ui: Underlying UIFactory.
+          default_answer: Bool for whether requests for
             confirmation from the user should be noninteractively accepted or
             denied.
-        :param specific_answers: Map from confirmation_id to bool answer.
+          specific_answers: Map from confirmation_id to bool answer.
         """
         self.wrapped_ui = wrapped_ui
         self.default_answer = default_answer
@@ -125,8 +134,9 @@ class UIFactory(object):
     UI Factories are also context managers, for some syntactic sugar some users
     need.
 
-    :ivar suppressed_warnings: Identifiers for user warnings that should
-        no be emitted.
+    Attributes:
+      suppressed_warnings: Identifiers for user warnings that should
+                           no be emitted.
     """
 
     _user_warning_templates = dict(
@@ -199,22 +209,24 @@ class UIFactory(object):
         always be confirmed or always denied, and for UIs to specialize the
         display of particular confirmations.
 
-        :param prompt: Suggested text to display to the user.
-        :param prompt_kwargs: A dictionary of arguments that can be
-            string-interpolated into the prompt.
-        :param confirmation_id: Unique string identifier for the confirmation.
+        Args:
+          prompt: Suggested text to display to the user.
+          prompt_kwargs: A dictionary of arguments that can be
+              string-interpolated into the prompt.
+          confirmation_id: Unique string identifier for the confirmation.
         """
         return self.get_boolean(prompt % prompt_kwargs)
 
     def get_password(self, prompt=u'', **kwargs):
         """Prompt the user for a password.
 
-        :param prompt: The prompt to present the user (must be unicode)
-        :param kwargs: Arguments which will be expanded into the prompt.
+        Args:
+          prompt: The prompt to present the user (must be unicode)
+          kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
 
-        :return: The password string, return None if the user canceled the
+        Returns: The password string, return None if the user canceled the
                  request. Note that we do not touch the encoding, users may
                  have whatever they see fit and the password should be
                  transported as is.
@@ -235,12 +247,13 @@ class UIFactory(object):
 
         The caller may flush but should not close the returned stream.
 
-        :param encoding: Unicode encoding for output; if not specified
+        Args:
+          encoding: Unicode encoding for output; if not specified
             uses the configured 'output_encoding' if any; otherwise the
             terminal encoding.
             (See get_terminal_encoding.)
 
-        :param encoding_type: How to handle encoding errors:
+          encoding_type: How to handle encoding errors:
             replace/strict/escape/exact.  Default is replace.
         """
         out_stream = self._make_output_stream_explicit(encoding, encoding_type)
@@ -315,29 +328,34 @@ class UIFactory(object):
     def choose(self, msg, choices, default=None):
         """Prompt the user for a list of alternatives.
 
-        :param msg: message to be shown as part of the prompt.
+        Args:
+          msg: message to be shown as part of the prompt.
 
-        :param choices: list of choices, with the individual choices separated
+          choices: list of choices, with the individual choices separated
             by '\n', e.g.: choose("Save changes?", "&Yes\n&No\n&Cancel"). The
             letter after the '&' is the shortcut key for that choice. Thus you
             can type 'c' to select "Cancel".  Shorcuts are case insensitive.
             The shortcut does not need to be the first letter. If a shorcut key
             is not provided, the first letter for the choice will be used.
 
-        :param default: default choice (index), returned for example when enter
+          default: default choice (index), returned for example when enter
             is pressed for the console version.
 
-        :return: the index fo the user choice (so '0', '1' or '2' for
-            respectively yes/no/cancel in the previous example).
+        Returns:
+          the index fo the user choice (so '0', '1' or '2' for respectively
+          yes/no/cancel in the previous example).
         """
         raise NotImplementedError(self.choose)
 
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user.
 
-        :param prompt: a message to prompt the user with. Should be a single
+        Args:
+          prompt: a message to prompt the user with. Should be a single
             line without terminating \\n.
-        :return: True or False for y/yes or n/no.
+
+        Returns:
+          True or False for y/yes or n/no.
         """
         choice = self.choose(prompt + '?', '&yes\n&no', default=None)
         return 0 == choice
@@ -345,10 +363,12 @@ class UIFactory(object):
     def get_integer(self, prompt):
         """Get an integer from the user.
 
-        :param prompt: a message to prompt the user with. Could be a multi-line
+        Args:
+          prompt: a message to prompt the user with. Could be a multi-line
             prompt but without a terminating \\n.
 
-        :return: A signed integer.
+        Returns:
+          A signed integer.
         """
         raise NotImplementedError(self.get_integer)
 
@@ -363,8 +383,9 @@ class UIFactory(object):
     def recommend_upgrade(self, current_format_name, basedir):
         """Recommend the user upgrade a control directory.
 
-        :param current_format_name: Description of the current format
-        :param basedir: Location of the control dir
+        Args:
+          current_format_name: Description of the current format
+          basedir: Location of the control dir
         """
         self.show_user_warning('recommend_upgrade',
                                current_format_name=current_format_name, basedir=basedir)
@@ -383,9 +404,12 @@ class UIFactory(object):
         Implementations are allowed to do nothing, but it is useful if they can
         write a line to the log file.
 
-        :param display: If False, only log to disk, if True also try to display
+        Args:
+          display: If False, only log to disk, if True also try to display
             a message to the user.
-        :return: None
+
+        Returns:
+          None
         """
         # Default implementation just does nothing
         pass
@@ -402,9 +426,10 @@ class UIFactory(object):
         nothing.  format_user_warning maps it to a string, though other
         presentations can be used for particular UIs.
 
-        :param warning_id: An identifier like 'cross_format_fetch' used to
+        Args:
+          warning_id: An identifier like 'cross_format_fetch' used to
             check if the message is suppressed and to look up the string.
-        :param message_args: Arguments to be interpolated into the message.
+          message_args: Arguments to be interpolated into the message.
         """
         pass
 
