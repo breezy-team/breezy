@@ -1196,7 +1196,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         with self.lock_read():
             for path in paths:
-                yield path
+                yield path.strip('/')
 
     def get_canonical_path(self, path):
         """Returns the first item in the tree that matches a path.

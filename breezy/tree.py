@@ -943,6 +943,8 @@ def get_canonical_path(tree, path, normalize):
     cur_path = ''
     bit_iter = iter(path.split("/"))
     for elt in bit_iter:
+        if not elt:
+            continue
         lelt = normalize(elt)
         new_path = None
         try:

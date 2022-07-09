@@ -216,9 +216,12 @@ class FileContentFactory(ContentFactory):
         self.storage_kind = 'file'
         self.sha1 = sha1
         self.size = size
+        self._needs_reset = False
 
     def get_bytes_as(self, storage_kind):
-        self.file.seek(0)
+        if self._needs_reset:
+            self.file.seek(0)
+        self._needs_reset = True
         if storage_kind == 'fulltext':
             return self.file.read()
         elif storage_kind == 'chunked':
@@ -229,7 +232,9 @@ class FileContentFactory(ContentFactory):
                                         self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
-        self.file.seek(0)
+        if self._needs_reset:
+            self.file.seek(0)
+        self._needs_reset = True
         if storage_kind == 'chunked':
             return osutils.file_iterator(self.file)
         elif storage_kind == 'lines':
