@@ -27,7 +27,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies (apt)
         run: |
-          sudo apt install quilt
+          sudo apt install quilt cargo rustc
         if: "matrix.os == 'ubuntu-latest'"
       - name: Install dependencies
         run: |
