@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import time
@@ -61,8 +63,9 @@ class CannotSetRevisionId(errors.BzrError):
 class FetchResult(object):
     """Result of a fetch operation.
 
-    :ivar revidmap: For lossy fetches, map from source revid to target revid.
-    :ivar total_fetched: Number of revisions fetched
+    Attributes:
+      revidmap: For lossy fetches, map from source revid to target revid.
+      total_fetched: Number of revisions fetched
     """
 
     def __init__(self, total_fetched=None, revidmap=None):
@@ -88,14 +91,15 @@ class CommitBuilder(object):
                  revision_id=None, lossy=False):
         """Initiate a CommitBuilder.
 
-        :param repository: Repository to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        :param lossy: Whether to discard data that can not be natively
+        Args:
+          repository: Repository to commit to.
+          parents: Revision ids of the parents of the new revision.
+          timestamp: Optional timestamp recorded for commit.
+          timezone: Optional timezone for timestamp.
+          committer: Optional committer to set for commit.
+          revprops: Optional dictionary of revision properties.
+          revision_id: Optional revision id.
+          lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
         self._config_stack = config_stack
@@ -134,7 +138,7 @@ class CommitBuilder(object):
         This includes merge-only changes. It is the core for the --unchanged
         detection in commit.
 
-        :return: True if any changes have occured.
+        Returns: True if any changes have occured.
         """
         raise NotImplementedError(self.any_changes)
 
@@ -158,7 +162,7 @@ class CommitBuilder(object):
     def commit(self, message):
         """Make the actual commit.
 
-        :return: The revision id of the recorded revision.
+        Returns: The revision id of the recorded revision.
         """
         raise NotImplementedError(self.commit)
 
@@ -181,7 +185,7 @@ class CommitBuilder(object):
     def finish_inventory(self):
         """Tell the builder that the inventory is finished.
 
-        :return: The inventory id in the repository, which can be used with
+        Returns: The inventory id in the repository, which can be used with
             repository.get_inventory.
         """
         raise NotImplementedError(self.finish_inventory)
@@ -193,7 +197,8 @@ class CommitBuilder(object):
         they should override this function and raise CannotSetRevisionId
         if _new_revision_id is not None.
 
-        :raises: CannotSetRevisionId
+        Raises:
+          CannotSetRevisionId
         """
         if not self.repository._format.supports_setting_revision_ids:
             if revision_id is not None:
@@ -209,15 +214,16 @@ class CommitBuilder(object):
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):
         """Record a new tree via iter_changes.
 
-        :param tree: The tree to obtain text contents from for changed objects.
-        :param basis_revision_id: The revision id of the tree the iter_changes
+        Args:
+          tree: The tree to obtain text contents from for changed objects.
+          basis_revision_id: The revision id of the tree the iter_changes
             has been generated against. Currently assumed to be the same
             as self.parents[0] - if it is not, errors may occur.
-        :param iter_changes: An iter_changes iterator with the changes to apply
+          iter_changes: An iter_changes iterator with the changes to apply
             to basis_revision_id. The iterator must not include any items with
             a current kind of None - missing items must be either filtered out
             or errored-on beefore record_iter_changes sees the item.
-        :return: A generator of (relpath, fs_hash) tuples for use with
+        Returns: A generator of (relpath, fs_hash) tuples for use with
             tree._observed_sha1.
         """
         raise NotImplementedError(self.record_iter_changes)
@@ -226,9 +232,10 @@ class CommitBuilder(object):
 class RepositoryWriteLockResult(LogicalLockResult):
     """The result of write locking a repository.
 
-    :ivar repository_token: The token obtained from the underlying lock, or
+    Attributes:
+      repository_token: The token obtained from the underlying lock, or
         None.
-    :ivar unlock: A callable which will unlock the lock.
+      unlock: A callable which will unlock the lock.
     """
 
     def __init__(self, unlock, repository_token):
@@ -284,11 +291,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
 
-        :param suppress_errors: if true, abort_write_group will catch and log
+        Args:
+          suppress_errors: if true, abort_write_group will catch and log
             unexpected errors that happen during the abort, rather than
             allowing them to propagate.  Defaults to False.
-
-        :seealso: start_write_group.
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
@@ -327,7 +333,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def add_fallback_repository(self, repository):
         """Add a repository to use for looking up data not held locally.
 
-        :param repository: A repository.
+        Args:
+          repository: A repository.
         """
         raise NotImplementedError(self.add_fallback_repository)
 
@@ -336,7 +343,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         Raise an error if not.
 
-        :param repository: A repository to fallback to.
+        Args:
+          repository: A repository to fallback to.
         """
         return InterRepository._assert_same_model(self, repository)
 
@@ -376,9 +384,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def __init__(self, _format, controldir, control_files):
         """instantiate a Repository.
 
-        :param _format: The format of the repository on disk.
-        :param controldir: The ControlDir of the repository.
-        :param control_files: Control files to use for locking, etc.
+        Args:
+          _format: The format of the repository on disk.
+          controldir: The ControlDir of the repository.
+          control_files: Control files to use for locking, etc.
         """
         # In the future we will have a single api for all stores for
         # getting file texts, inventories and revisions, then
@@ -460,15 +469,20 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
 
-        :param token: if this is already locked, then lock_write will fail
+        Args:
+          token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
-        :returns: a token if this instance supports tokens, otherwise None.
-        :raises TokenLockingNotSupported: when a token is given but this
+        Returns:
+          a token if this instance supports tokens, otherwise None.
+
+        Raises:
+          TokenLockingNotSupported: when a token is given but this
             instance doesn't support using token locks.
-        :raises MismatchedToken: if the specified token doesn't match the token
+          MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
-        :seealso: start_write_group.
-        :return: A RepositoryWriteLockResult.
+
+        Returns:
+          A RepositoryWriteLockResult.
         """
         locked = self.is_locked()
         token = self.control_files.lock_write(token=token)
@@ -484,7 +498,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def lock_read(self):
         """Lock the repository for read operations.
 
-        :return: An object with an unlock method which will release the lock
+        Returns: An object with an unlock method which will release the lock
             obtained.
         """
         locked = self.is_locked()
@@ -519,11 +533,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def gather_stats(self, revid=None, committers=None):
         """Gather statistics from a revision id.
 
-        :param revid: The revision id to gather statistics from, if None, then
+        Args:
+          revid: The revision id to gather statistics from, if None, then
             no revision specific statistics are gathered.
-        :param committers: Optional parameter controlling whether to grab
+          committers: Optional parameter controlling whether to grab
             a count of committers from the revision specific statistics.
-        :return: A dictionary of statistics. Currently this contains:
+        Returns: A dictionary of statistics. Currently this contains:
             committers: The number of committers if requested.
             firstrev: A tuple with timestamp, timezone for the penultimate left
                 most ancestor of revid, if revid is not the NULL_REVISION.
@@ -565,7 +580,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         This will include branches inside other branches.
 
-        :param using: If True, list only branches using this repository.
+        Args:
+          using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
             for branch in self.controldir.list_branches():
@@ -637,7 +653,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         :seealso: start_write_group.
 
-        :return: it may return an opaque hint that can be passed to 'pack'.
+        Returns: it may return an opaque hint that can be passed to 'pack'.
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
@@ -660,9 +676,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def suspend_write_group(self):
         """Suspend a write group.
 
-        :raise UnsuspendableWriteGroup: If the write group can not be
+        Raises:
+          UnsuspendableWriteGroup: If the write group can not be
             suspended.
-        :return: List of tokens
+
+        Returns:
+          List of tokens
         """
         raise errors.UnsuspendableWriteGroup(self)
 
@@ -700,13 +719,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         either finish the current write group before using fetch, or use
         fetch before starting the write group.
 
-        :param find_ghosts: Find and copy revisions in the source that are
+        Args:
+          find_ghosts: Find and copy revisions in the source that are
             ghosts in the target (and not reachable directly by walking out to
             the first-present revision in target from revision_id).
-        :param revision_id: If specified, all the content needed for this
+          revision_id: If specified, all the content needed for this
             revision ID will be copied to the target.  Fetch will determine for
             itself which content needs to be copied.
-        :return: A FetchResult object
+        Returns: A FetchResult object
         """
         if self.is_in_write_group():
             raise errors.InternalBzrError(
@@ -731,15 +751,16 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
-        :param branch: Branch to commit to.
-        :param parents: Revision ids of the parents of the new revision.
-        :param config_stack: Configuration stack to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        :param lossy: Whether to discard data that can not be natively
+        Args:
+          branch: Branch to commit to.
+          parents: Revision ids of the parents of the new revision.
+          config_stack: Configuration stack to use.
+          timestamp: Optional timestamp recorded for commit.
+          timezone: Optional timezone for timestamp.
+          committer: Optional committer to set for commit.
+          revprops: Optional dictionary of revision properties.
+          revision_id: Optional revision id.
+          lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
         raise NotImplementedError(self.get_commit_builder)
@@ -764,7 +785,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         Currently no check is made that the format of this repository and
         the bzrdir format are compatible. FIXME RBC 20060201.
 
-        :return: The newly created destination repository.
+        Returns: The newly created destination repository.
         """
         with self.lock_read():
             # TODO: deprecate after 0.16; cloning this with all its settings is
@@ -787,7 +808,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         One can only insert data into a repository inside a write group.
 
-        :return: None.
+        Returns: None.
         """
         if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
@@ -837,8 +858,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def has_revisions(self, revision_ids):
         """Probe to find out the presence of multiple revisions.
 
-        :param revision_ids: An iterable of revision_ids.
-        :return: A set of the revision_ids that were present.
+        Args:
+          revision_ids: An iterable of revision_ids.
+        Returns: A set of the revision_ids that were present.
         """
         raise NotImplementedError(self.has_revisions)
 
@@ -873,11 +895,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def iter_revisions(self, revision_ids):
         """Iterate over revision objects.
 
-        :param revision_ids: An iterable of revisions to examine. None may be
+        Args:
+          revision_ids: An iterable of revisions to examine. None may be
             passed to request all revisions known to the repository. Note that
             not all repositories can find unreferenced revisions; for those
             repositories only referenced ones will be returned.
-        :return: An iterator of (revid, revision) tuples. Absent revisions (
+        Returns: An iterator of (revid, revision) tuples. Absent revisions (
             those asked for but not available) are returned as (revid, None).
             N.B.: Revisions are not necessarily yielded in order.
         """
@@ -902,7 +925,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         specific_files should exist in the first revision.
 
-        :param specific_files: if not None, the result is filtered
+        Args:
+          specific_files: if not None, the result is filtered
           so that only those files, their parents and their
           children are included.
         """
@@ -937,8 +961,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def add_signature_text(self, revision_id, signature):
         """Store a signature text for a revision.
 
-        :param revision_id: Revision id of the revision
-        :param signature: Signature text.
+        Args:
+          revision_id: Revision id of the revision
+          signature: Signature text.
         """
         raise NotImplementedError(self.add_signature_text)
 
@@ -953,7 +978,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         uniquely identify the file version in the caller's context.  (Examples:
         an index number or a TreeTransform trans_id.)
 
-        :param desired_files: a list of (file_id, revision_id, identifier)
+        Args:
+          desired_files: a list of (file_id, revision_id, identifier)
             triples
         """
         raise NotImplementedError(self.iter_files_bytes)
@@ -962,7 +988,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return the revision id of a revno, given a later (revno, revid)
         pair in the same history.
 
-        :return: if found (True, revid).  If the available history ran out
+        Returns: if found (True, revid).  If the available history ran out
             before reaching the revno, then this returns
             (False, (closest_revno, closest_revid)).
         """
@@ -1023,7 +1049,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def revision_trees(self, revision_ids):
         """Return Trees for revisions in this repository.
 
-        :param revision_ids: a sequence of revision-ids;
+        Args:
+          revision_ids: a sequence of revision-ids;
           a revision-id may not be None or b'null:'
         """
         raise NotImplementedError(self.revision_trees)
@@ -1038,14 +1065,15 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         self.write_lock as this is a long running call it's reasonable to
         implicitly lock for the user.
 
-        :param hint: If not supplied, the whole repository is packed.
+        Args:
+          hint: If not supplied, the whole repository is packed.
             If supplied, the repository may use the hint parameter as a
             hint for the parts of the repository to pack. A hint can be
             obtained from the result of commit_write_group(). Out of
             date hints are simply ignored, because concurrent operations
             can obsolete them rapidly.
 
-        :param clean_obsolete_packs: Clean obsolete packs immediately after
+          clean_obsolete_packs: Clean obsolete packs immediately after
             the pack operation.
         """
 
@@ -1114,7 +1142,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         This only applies to branches that use this repository.
 
         The default is 'True'.
-        :param new_value: True to restore the default, False to disable making
+
+        Args:
+          new_value: True to restore the default, False to disable making
                           working trees.
         """
         raise NotImplementedError(self.set_make_working_trees)
@@ -1129,19 +1159,23 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
 
-        :param revision_id: the revision to verify
-        :gpg_strategy: the GPGStrategy object to used
+        Args:
+          revision_id: the revision to verify
+          gpg_strategy: the GPGStrategy object to used
 
-        :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
+        Returns: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
         raise NotImplementedError(self.verify_revision_signature)
 
     def verify_revision_signatures(self, revision_ids, gpg_strategy):
         """Verify revision signatures for a number of revisions.
 
-        :param revision_id: the revision to verify
-        :gpg_strategy: the GPGStrategy object to used
-        :return: Iterator over tuples with revision id, result and keys
+        Args:
+          revision_id: the revision to verify
+          gpg_strategy: the GPGStrategy object to used
+
+        Returns:
+          Iterator over tuples with revision id, result and keys
         """
         with self.lock_read():
             for revid in revision_ids:
@@ -1161,12 +1195,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         Different repository implementations should override _check().
 
-        :param revision_ids: A non-empty list of revision_ids whose ancestry
+        Args:
+          revision_ids: A non-empty list of revision_ids whose ancestry
              will be checked.  Typically the last revision_id of a branch.
-        :param callback_refs: A dict of check-refs to resolve and callback
+          callback_refs: A dict of check-refs to resolve and callback
             the check/_check method on the items listed as wanting the ref.
             see breezy.check.
-        :param check_repo: If False do not check the repository contents, just
+          check_repo: If False do not check the repository contents, just
             calculate the data callback_refs requires and call them back.
         """
         return self._check(revision_ids=revision_ids, callback_refs=callback_refs,
@@ -1349,9 +1384,12 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     def initialize(self, controldir, shared=False):
         """Initialize a repository of this format in controldir.
 
-        :param controldir: The controldir to put the new repository in it.
-        :param shared: The repository should be initialized as a sharable one.
-        :returns: The new repository object.
+        Args:
+          controldir: The controldir to put the new repository in it.
+          shared: The repository should be initialized as a sharable one.
+
+        Returns:
+          The new repository object.
 
         This may raise UninitializableFormat if shared repository are not
         compatible the controldir.
@@ -1522,7 +1560,8 @@ class InterRepository(InterObject):
         This is a destructive operation! Do not use it on existing
         repositories.
 
-        :param revision_id: Only copy the content needed to construct
+        Args:
+          revision_id: Only copy the content needed to construct
                             revision_id and its parents.
         """
         with self.lock_write():
@@ -1538,9 +1577,10 @@ class InterRepository(InterObject):
 
         The content is copied from self.source to self.target.
 
-        :param revision_id: if None all content is copied, if NULL_REVISION no
+        Args:
+          revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :return: FetchResult
+        Returns: FetchResult
         """
         raise NotImplementedError(self.fetch)
 
@@ -1549,18 +1589,19 @@ class InterRepository(InterObject):
             limit=None):
         """Return the revision ids that source has that target does not.
 
-        :param revision_ids: return revision ids included by these
+        Args:
+          revision_ids: return revision ids included by these
             revision_ids.  NoSuchRevision will be raised if any of these
             revisions are not present.
-        :param if_present_ids: like revision_ids, but will not cause
+          if_present_ids: like revision_ids, but will not cause
             NoSuchRevision if any of these are absent, instead they will simply
             not be in the result.  This is useful for e.g. finding revisions
             to fetch for tags, which may reference absent revisions.
-        :param find_ghosts: If True find missing revisions in deep history
+          find_ghosts: If True find missing revisions in deep history
             rather than just finding the surface difference.
-        :param limit: Maximum number of revisions to return, topologically
+          limit: Maximum number of revisions to return, topologically
             ordered
-        :return: A breezy.graph.SearchResult.
+        Returns: A breezy.graph.SearchResult.
         """
         raise NotImplementedError(self.search_missing_revision_ids)
 
@@ -1598,15 +1639,17 @@ class CopyConverter(object):
     def __init__(self, target_format):
         """Create a CopyConverter.
 
-        :param target_format: The format the resulting repository should be.
+        Args:
+          target_format: The format the resulting repository should be.
         """
         self.target_format = target_format
 
     def convert(self, repo, pb):
         """Perform the conversion of to_convert, giving feedback via pb.
 
-        :param to_convert: The disk object to convert.
-        :param pb: a progress bar to use for progress information.
+        Args:
+          to_convert: The disk object to convert.
+          pb: a progress bar to use for progress information.
         """
         with ui.ui_factory.nested_progress_bar() as pb:
             self.count = 0
@@ -1654,9 +1697,10 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     encountered.  Otherwise, stop when the beginning of history is
     reached.
 
-    :param stop_index: The index which should be present.  When it is
+    Args:
+      stop_index: The index which should be present.  When it is
         present, history extension will stop.
-    :param stop_revision: The revision id which should be present.  When
+      stop_revision: The revision id which should be present.  When
         it is encountered, history extension will stop.
     """
     start_revision = partial_history_cache[-1]

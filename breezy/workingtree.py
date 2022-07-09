@@ -41,13 +41,13 @@ lazy_import(globals(), """
 import stat
 
 from breezy import (
-    revision as _mod_revision,
     views,
     )
 """)
 
 from . import (
     errors,
+    revision as _mod_revision,
     )
 from .controldir import (
     ControlComponent,

@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Working tree content filtering support.
 
 A filter consists of a read converter, write converter pair.
@@ -55,8 +57,9 @@ class ContentFilter(object):
     def __init__(self, reader, writer):
         """Create a filter that converts content while reading and writing.
 
-        :param reader: function for converting convenience to canonical content
-        :param writer: function for converting canonical to convenience content
+        Args:
+          reader: function for converting convenience to canonical content
+          writer: function for converting canonical to convenience content
         """
         self.reader = reader
         self.writer = writer
@@ -71,9 +74,10 @@ class ContentFilterContext(object):
     def __init__(self, relpath=None, tree=None):
         """Create a context.
 
-        :param relpath: the relative path or None if this context doesn't
+        Args:
+          relpath: the relative path or None if this context doesn't
            support that information.
-        :param tree: the Tree providing this file or None if this context
+          tree: the Tree providing this file or None if this context
            doesn't support that information.
         """
         self._relpath = relpath
@@ -113,9 +117,11 @@ class ContentFilterContext(object):
 def filtered_input_file(f, filters):
     """Get an input file that converts external to internal content.
 
-    :param f: the original input file
-    :param filters: the stack of filters to apply
-    :return: a file-like object, size
+    Args:
+      f: the original input file
+      filters: the stack of filters to apply
+
+    Returns: a file-like object, size
     """
     chunks = [f.read()]
     for filter in filters:
@@ -128,11 +134,13 @@ def filtered_input_file(f, filters):
 def filtered_output_bytes(chunks, filters, context=None):
     """Convert byte chunks from internal to external format.
 
-    :param chunks: an iterator containing the original content
-    :param filters: the stack of filters to apply
-    :param context: a ContentFilterContext object passed to
+    Args:
+      chunks: an iterator containing the original content
+      filters: the stack of filters to apply
+      context: a ContentFilterContext object passed to
         each filter
-    :return: an iterator containing the content to output
+
+    Returns: an iterator containing the content to output
     """
     if filters:
         for filter in reversed(filters):
@@ -144,8 +152,9 @@ def filtered_output_bytes(chunks, filters, context=None):
 def internal_size_sha_file_byname(name, filters):
     """Get size and sha of internal content given external content.
 
-    :param name: path to file
-    :param filters: the stack of filters to apply
+    Args:
+      name: path to file
+      filters: the stack of filters to apply
     """
     with open(name, 'rb', 65000) as f:
         if filters:
@@ -181,10 +190,11 @@ def _get_registered_names():
 def _get_filter_stack_for(preferences):
     """Get the filter stack given a sequence of preferences.
 
-    :param preferences: a sequence of (name,value) tuples where
-      name is the preference name and
-      value is the key into the filter stack map registered
-      for that preference.
+    Args:
+      preferences: a sequence of (name,value) tuples where
+          name is the preference name and
+          value is the key into the filter stack map registered
+          for that preference.
     """
     if preferences is None:
         return []
@@ -216,8 +226,11 @@ def _reset_registry(value=None):
       # run tests
       _reset_registry(old)
 
-    :param value: the value to set the registry to or None for an empty one.
-    :return: the existing value before it reset.
+    Args:
+      value: the value to set the registry to or None for an empty one.
+
+    Returns:
+      the existing value before it reset.
     """
     global filter_stacks_registry
     original = filter_stacks_registry

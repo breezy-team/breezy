@@ -22,18 +22,13 @@ import zlib
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    annotate,
-    config,
     debug,
     osutils,
     static_tuple,
-    trace,
     tsort,
     )
 from breezy.bzr import (
     knit,
-    pack,
-    pack_repo,
     )
 
 from breezy.i18n import gettext
@@ -41,6 +36,7 @@ from breezy.i18n import gettext
 
 from .. import (
     errors,
+    trace,
     )
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
@@ -1094,6 +1090,8 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
     :param delta: Delta compress contents.
     :param keylength: How long should keys be.
     """
+    from .pack import ContainerWriter
+    from .pack_repo import _DirectPackAccess
     def factory(transport):
         parents = graph
         ref_length = 0
@@ -1102,12 +1100,12 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
         graph_index = BTreeBuilder(reference_lists=ref_length,
                                    key_elements=keylength)
         stream = transport.open_write_stream('newpack')
-        writer = pack.ContainerWriter(stream.write)
+        writer = ContainerWriter(stream.write)
         writer.begin()
         index = _GCGraphIndex(graph_index, lambda: True, parents=parents,
                               add_callback=graph_index.add_nodes,
                               inconsistency_fatal=inconsistency_fatal)
-        access = pack_repo._DirectPackAccess({})
+        access = _DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
@@ -1368,11 +1366,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
-        ann = annotate.Annotator(self)
+        ann = self.get_annotator()
         return ann.annotate_flat(key)
 
     def get_annotator(self):
-        return annotate.Annotator(self)
+        from ..annotate import Annotator
+        return Annotator(self)
 
     def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
@@ -1700,11 +1699,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             pass
 
     def _get_compressor_settings(self):
+        from ..config import GlobalConfig
         if self._max_bytes_to_index is None:
             # TODO: VersionedFiles don't know about their containing
             #       repository, so they don't have much of an idea about their
             #       location. So for now, this is only a global option.
-            c = config.GlobalConfig()
+            c = GlobalConfig()
             val = c.get_user_option('bzr.groupcompress.max_bytes_to_index')
             if val is not None:
                 try:
