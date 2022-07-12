@@ -21,7 +21,7 @@ import re
 import shutil
 import tempfile
 
-from ...propose import (
+from ...forge import (
     Forge,
     LabelsUnsupported,
     MergeProposal,

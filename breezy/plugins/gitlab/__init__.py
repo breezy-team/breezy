@@ -24,7 +24,7 @@ from ...commands import plugin_cmds
 plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
 
 
-from ...propose import forges
+from ...forge import forges
 forges.register_lazy("gitlab", __name__ + '.forge', "GitLab")
 
 

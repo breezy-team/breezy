@@ -36,7 +36,7 @@ from ...option import (
     )
 from ...trace import note, warning
 from ... import (
-    propose as _mod_propose,
+    forge as _mod_forge,
     )
 
 
@@ -89,7 +89,7 @@ class cmd_publish_derived(Command):
         _check_already_merged(local_branch, submit_branch)
         if name is None:
             name = branch_name(local_branch)
-        forge = _mod_propose.get_forge(submit_branch)
+        forge = _mod_forge.get_forge(submit_branch)
         remote_branch, public_url = forge.publish_derived(
             local_branch, submit_branch, name=name, project=project,
             owner=owner, allow_lossy=not no_allow_lossy,
@@ -143,7 +143,7 @@ class cmd_propose_merge(Command):
         RegistryOption(
             'forge',
             help='Use the forge.',
-            lazy_registry=('breezy.propose', 'forges')),
+            lazy_registry=('breezy.forge', 'forges')),
         ListOption('reviewers', short_name='R', type=str,
                    help='Requested reviewers.'),
         Option('name', help='Name of the new remote branch.', type=str),
@@ -184,7 +184,7 @@ class cmd_propose_merge(Command):
         if not allow_empty:
             _check_already_merged(branch, target)
         if forge is None:
-            forge = _mod_propose.get_forge(target)
+            forge = _mod_forge.get_forge(target)
         else:
             forge = forge.probe(target)
         if name is None:
@@ -213,7 +213,7 @@ class cmd_propose_merge(Command):
                 prerequisite_branch=prerequisite_branch, labels=labels,
                 commit_message=commit_message,
                 work_in_progress=wip, allow_collaboration=allow_collaboration)
-        except _mod_propose.MergeProposalExists as e:
+        except _mod_forge.MergeProposalExists as e:
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:
             note(gettext('Merge proposal created: %s') % proposal.url)
@@ -243,7 +243,7 @@ class cmd_find_merge_proposal(Command):
                 gettext("No target location specified or remembered"))
         else:
             target = _mod_branch.Branch.open(submit_branch)
-        forge = _mod_propose.get_forge(branch)
+        forge = _mod_forge.get_forge(branch)
         for mp in forge.iter_proposals(branch, target):
             self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
 
@@ -271,12 +271,12 @@ class cmd_my_merge_proposals(Command):
         RegistryOption(
             'forge',
             help='Use the forge.',
-            lazy_registry=('breezy.propose', 'forges')),
+            lazy_registry=('breezy.forge', 'forges')),
         ]
 
     def run(self, status='open', verbose=False, forge=None, base_url=None):
 
-        for instance in _mod_propose.iter_forge_instances(forge=forge):
+        for instance in _mod_forge.iter_forge_instances(forge=forge):
             if base_url is not None and instance.base_url != base_url:
                 continue
             try:
@@ -299,7 +299,7 @@ class cmd_my_merge_proposals(Command):
                                 ['\t%s\n' % l
                                  for l in description.splitlines()])
                         self.outf.write('\n')
-            except _mod_propose.ForgeLoginRequired as e:
+            except _mod_forge.ForgeLoginRequired as e:
                 warning('Skipping %s, login required.', instance)
 
 
@@ -311,7 +311,7 @@ class cmd_land_merge_proposal(Command):
         Option('message', help='Commit message to use.', type=str)]
 
     def run(self, url, message=None):
-        proposal = _mod_propose.get_proposal_by_url(url)
+        proposal = _mod_forge.get_proposal_by_url(url)
         proposal.merge(commit_message=message)
 
 
@@ -321,7 +321,7 @@ class cmd_forges(Command):
     hidden = True
 
     def run(self):
-        for instance in _mod_propose.iter_forge_instances():
+        for instance in _mod_forge.iter_forge_instances():
             current_user = instance.get_current_user()
             if current_user is not None:
                 current_user_url = instance.get_user_url(current_user)
