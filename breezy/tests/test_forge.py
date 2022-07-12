@@ -16,7 +16,7 @@
 
 import os
 
-from ..propose import (
+from ..forge import (
     determine_title,
     get_proposal_by_url,
     get_forge,
@@ -25,7 +25,7 @@ from ..propose import (
     UnsupportedForge,
     )
 from .. import (
-    propose as _mod_propose,
+    forge as _mod_forge,
     registry,
     urlutils,
     )
@@ -75,17 +75,17 @@ class SampleForgeTestCase(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(SampleForgeTestCase, self).setUp()
-        self._old_forges = _mod_propose.forges
-        _mod_propose.forges = registry.Registry()
+        self._old_forges = _mod_forge.forges
+        _mod_forge.forges = registry.Registry()
         self.forge = SampleForge()
         os.mkdir('hosted')
         SampleForge._add_location(
             urlutils.local_path_to_url(os.path.join(self.test_dir, 'hosted')))
-        _mod_propose.forges.register('sample', self.forge)
+        _mod_forge.forges.register('sample', self.forge)
 
     def tearDown(self):
         super(SampleForgeTestCase, self).tearDown()
-        _mod_propose.forges = self._old_forges
+        _mod_forge.forges = self._old_forges
         SampleForge._locations = []
 
 
