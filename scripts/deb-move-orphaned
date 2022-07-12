@@ -26,7 +26,6 @@ import breezy.git  # noqa: F401
 
 from breezy import osutils
 from breezy.branch import Branch
-from breezy.propose import UnsupportedHoster, get_hoster, HosterLoginRequired
 from breezy.workingtree import WorkingTree
 
 from debmutate.changelog import ChangelogEditor
@@ -43,7 +42,8 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
     from breezy import urlutils
     from breezy.branch import Branch
     from breezy.errors import PermissionDenied, AlreadyControlDirError
-    from breezy.plugins.gitlab.hoster import GitLab
+    from breezy.plugins.gitlab.forge import GitLab
+    from breezy.forge import UnsupportedForge, get_forge, ForgeLoginRequired
 
     from silver_platter import pick_additional_colocated_branches
     from silver_platter.proposal import push_changes
@@ -54,17 +54,17 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
 
     try:
         salsa = GitLab.probe_from_url("https://salsa.debian.org/")
-    except HosterLoginRequired:
+    except ForgeLoginRequired:
         logging.warning("No login for salsa known, not pushing branch.")
         return
 
     try:
-        orig_hoster = get_hoster(orig_branch)
-    except UnsupportedHoster:
+        orig_forge = get_forge(orig_branch)
+    except UnsupportedForge:
         logging.debug("Original branch %r not hosted on salsa.")
         from_project = None
     else:
-        if orig_hoster == salsa:
+        if orig_forge == salsa:
             from_project = urlutils.URL.from_string(orig_branch.controldir.user_url).path
         else:
             from_project = None
@@ -90,7 +90,7 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
     return push_changes(
         local_tree.branch,
         target_branch,
-        hoster=salsa,
+        forge=salsa,
         additional_colocated_branches=additional_colocated_branches,
         dry_run=dry_run,
     )
