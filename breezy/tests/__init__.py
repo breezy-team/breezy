@@ -4095,8 +4095,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_revision',
         'breezy.tests.test_revisionspec',
         'breezy.tests.test_revisiontree',
-        'breezy.tests.test_rio',
-        'breezy.tests.test__rio',
         'breezy.tests.test_rules',
         'breezy.tests.test_url_policy_open',
         'breezy.tests.test_sampler',

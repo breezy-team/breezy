@@ -26,7 +26,6 @@ lazy_import(globals(), """
 from breezy import (
     cache_utf8,
     errors,
-    rio,
     transform,
     osutils,
     )
@@ -35,6 +34,9 @@ from breezy import (
 from ..conflicts import (
     Conflict as BaseConflict,
     ConflictList as BaseConflictList,
+    )
+from . import (
+    rio,
     )
 
 
