@@ -19,10 +19,10 @@ import os
 from ..propose import (
     determine_title,
     get_proposal_by_url,
-    get_hoster,
-    Hoster,
+    get_forge,
+    Forge,
     MergeProposal,
-    UnsupportedHoster,
+    UnsupportedForge,
     )
 from .. import (
     propose as _mod_propose,
@@ -39,7 +39,7 @@ class SampleMergeProposal(MergeProposal):
     """Sample merge proposal."""
 
 
-class SampleHoster(Hoster):
+class SampleForge(Forge):
 
     _locations = []
 
@@ -52,7 +52,7 @@ class SampleHoster(Hoster):
         for b in cls._locations:
             if url.startswith(b):
                 return cls()
-        raise UnsupportedHoster(url)
+        raise UnsupportedForge(url)
 
     def hosts(self, branch):
         for b in self._locations:
@@ -68,42 +68,42 @@ class SampleHoster(Hoster):
         for b in self._locations:
             if url.startswith(b):
                 return MergeProposal()
-        raise UnsupportedHoster(url)
+        raise UnsupportedForge(url)
 
 
-class SampleHosterTestCase(tests.TestCaseWithTransport):
+class SampleForgeTestCase(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(SampleHosterTestCase, self).setUp()
-        self._old_hosters = _mod_propose.hosters
-        _mod_propose.hosters = registry.Registry()
-        self.hoster = SampleHoster()
+        super(SampleForgeTestCase, self).setUp()
+        self._old_forges = _mod_propose.forges
+        _mod_propose.forges = registry.Registry()
+        self.forge = SampleForge()
         os.mkdir('hosted')
-        SampleHoster._add_location(
+        SampleForge._add_location(
             urlutils.local_path_to_url(os.path.join(self.test_dir, 'hosted')))
-        _mod_propose.hosters.register('sample', self.hoster)
+        _mod_propose.forges.register('sample', self.forge)
 
     def tearDown(self):
-        super(SampleHosterTestCase, self).tearDown()
-        _mod_propose.hosters = self._old_hosters
-        SampleHoster._locations = []
+        super(SampleForgeTestCase, self).tearDown()
+        _mod_propose.forges = self._old_forges
+        SampleForge._locations = []
 
 
-class TestGetHosterTests(SampleHosterTestCase):
+class TestGetForgeTests(SampleForgeTestCase):
 
-    def test_get_hoster(self):
+    def test_get_forge(self):
         tree = self.make_branch_and_tree('hosted/branch')
-        self.assertIs(self.hoster, get_hoster(tree.branch, [self.hoster]))
-        self.assertIsInstance(get_hoster(tree.branch), SampleHoster)
+        self.assertIs(self.forge, get_forge(tree.branch, [self.forge]))
+        self.assertIsInstance(get_forge(tree.branch), SampleForge)
 
         tree = self.make_branch_and_tree('blah')
-        self.assertRaises(UnsupportedHoster, get_hoster, tree.branch)
+        self.assertRaises(UnsupportedForge, get_forge, tree.branch)
 
 
-class TestGetProposal(SampleHosterTestCase):
+class TestGetProposal(SampleForgeTestCase):
 
     def test_get_proposal_by_url(self):
-        self.assertRaises(UnsupportedHoster, get_proposal_by_url, 'blah')
+        self.assertRaises(UnsupportedForge, get_proposal_by_url, 'blah')
 
         url = urlutils.local_path_to_url(os.path.join(self.test_dir, 'hosted', 'proposal'))
         self.assertIsInstance(get_proposal_by_url(url), MergeProposal)

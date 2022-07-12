@@ -21,15 +21,15 @@ import os
 
 from ...propose import (
     determine_title,
-    Hoster,
-    HosterLoginRequired,
+    Forge,
+    ForgeLoginRequired,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
     ReopenFailed,
-    UnsupportedHoster,
+    UnsupportedForge,
     )
 
 from ... import (
@@ -91,7 +91,7 @@ class NotGitHubUrl(errors.BzrError):
         self.url = url
 
 
-class GitHubLoginRequired(HosterLoginRequired):
+class GitHubLoginRequired(ForgeLoginRequired):
 
     _fmt = "Action requires GitHub login."
 
@@ -259,7 +259,7 @@ def strip_optional(url):
     return url.split('{')[0]
 
 
-class GitHub(Hoster):
+class GitHub(Forge):
 
     name = 'github'
 
@@ -534,7 +534,7 @@ class GitHub(Hoster):
         try:
             parse_github_url(url)
         except NotGitHubUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         transport = get_transport(
             API_GITHUB_URL, possible_transports=possible_transports)
         return cls(transport)
@@ -565,7 +565,7 @@ class GitHub(Hoster):
             yield GitHubMergeProposal(self, json.loads(response.text))
 
     def get_proposal_by_url(self, url):
-        raise UnsupportedHoster(url)
+        raise UnsupportedForge(url)
 
     def iter_my_forks(self, owner=None):
         if owner:

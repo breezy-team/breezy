@@ -124,5 +124,5 @@ topic_registry.register('launchpad',
                         'Using Bazaar with Launchpad.net')
 
 
-from ...propose import hosters
-hosters.register_lazy("launchpad", __name__ + '.hoster', "Launchpad")
+from ...propose import forges
+forges.register_lazy("launchpad", __name__ + '.forge', "Launchpad")
