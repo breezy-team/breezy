@@ -143,7 +143,7 @@ class cmd_propose_merge(Command):
         RegistryOption(
             'forge',
             help='Use the forge.',
-            lazy_registry=('breezy.propose', 'forges')),
+            lazy_registry=('breezy.forge', 'forges')),
         ListOption('reviewers', short_name='R', type=str,
                    help='Requested reviewers.'),
         Option('name', help='Name of the new remote branch.', type=str),

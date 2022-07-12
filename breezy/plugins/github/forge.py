@@ -19,7 +19,7 @@
 import json
 import os
 
-from ...propose import (
+from ...forge import (
     determine_title,
     Forge,
     ForgeLoginRequired,

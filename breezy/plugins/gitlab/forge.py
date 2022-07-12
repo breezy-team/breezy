@@ -32,7 +32,7 @@ from ...git.urls import git_url_to_bzr_url
 from ...trace import mutter
 from ...transport import get_transport
 
-from ...propose import (
+from ...forge import (
     determine_title,
     Forge,
     MergeProposal,
