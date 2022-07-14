@@ -1440,8 +1440,8 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         branch = self.make_branch('.', format='knit')
         repository = branch.repository
         response = request.execute(b'')
-        branch_nonce = branch.control_files._lock.peek().get('nonce')
-        repository_nonce = repository.control_files._lock.peek().get('nonce')
+        branch_nonce = branch.control_files._lock.peek().nonce
+        repository_nonce = repository.control_files._lock.peek().nonce
         self.assertEqual(smart_req.SmartServerResponse(
             (b'ok', branch_nonce, repository_nonce)),
             response)
@@ -2177,7 +2177,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         request = smart_repo.SmartServerRepositoryLockWrite(backing)
         repository = self.make_repository('.', format='knit')
         response = request.execute(b'')
-        nonce = repository.control_files._lock.peek().get('nonce')
+        nonce = repository.control_files._lock.peek().nonce
         self.assertEqual(smart_req.SmartServerResponse(
             (b'ok', nonce)), response)
         # The repository is now locked.  Verify that with a new repository

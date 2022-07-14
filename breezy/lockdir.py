@@ -268,7 +268,7 @@ class LockDir(lock.Lock):
         if info is None:
             raise LockFailed(self, "lock was renamed into place, but "
                              "now is missing!")
-        if info.get('nonce') != self.nonce:
+        if info.nonce != self.nonce:
             self._trace("rename succeeded, "
                         "but lock is still held by someone else")
             raise LockContention(self)
@@ -328,7 +328,7 @@ class LockDir(lock.Lock):
             # After creating the lock directory, try again
             self.transport.mkdir(tmpname)
         info = LockHeldInfo.for_this_process(self.extra_holder_info)
-        self.nonce = info.get('nonce')
+        self.nonce = info.nonce
         # We use put_file_non_atomic because we just created a new unique
         # directory so we don't have to worry about files existing there.
         # We'll rename the whole directory into place to get atomic
@@ -445,7 +445,7 @@ class LockDir(lock.Lock):
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
         result = lock.LockResult(self.transport.abspath(self.path),
-                                 current_info.get('nonce'))
+                                 current_info.nonce)
         for hook in self.hooks['lock_broken']:
             hook(result)
         return result
@@ -500,7 +500,7 @@ class LockDir(lock.Lock):
         if info is None:
             # no lock there anymore!
             raise LockBroken(self)
-        if info.get('nonce') != self.nonce:
+        if info.nonce != self.nonce:
             # there is a lock, but not ours
             raise LockBroken(self)
 
@@ -687,7 +687,7 @@ class LockDir(lock.Lock):
                 # Lock isn't held
                 lock_token = None
             else:
-                lock_token = info.get('nonce')
+                lock_token = info.nonce
             if token != lock_token:
                 raise errors.TokenMismatch(token, lock_token)
             else:
@@ -743,7 +743,7 @@ class LockHeldInfo(object):
             time_ago = '(unknown)'
         else:
             time_ago = format_delta(
-                time.time() - int(self.info_dict['start_time']))
+                time.time() - self.info_dict['start_time'])
         user = self.info_dict.get('user', '<unknown>')
         hostname = self.info_dict.get('hostname', '<unknown>')
         pid = self.info_dict.get('pid', '<unknown>')
@@ -752,6 +752,11 @@ class LockHeldInfo(object):
             hostname=hostname,
             pid=pid,
             time_ago=time_ago)
+
+    @property
+    def nonce(self):
+        nonce = self.get('nonce')
+        return nonce.encode('ascii') if nonce else None
 
     def get(self, field_name):
         """Return the contents of a field from the lock info, or None."""
@@ -764,8 +769,8 @@ class LockHeldInfo(object):
         info = dict(
             hostname=get_host_name(),
             pid=os.getpid(),
-            nonce=rand_chars(20).encode('ascii'),
-            start_time=str(int(time.time())),
+            nonce=rand_chars(20),
+            start_time=int(time.time()),
             user=get_username_for_lock_info(),
             )
         if extra_holder_info is not None:
@@ -791,8 +796,6 @@ class LockHeldInfo(object):
             # there may not be much we can say
             return cls({})
         else:
-            if isinstance(ret['nonce'], str):
-                ret['nonce'] = ret['nonce'].encode('ascii')
             return cls(ret)
 
     def __hash__(self):
