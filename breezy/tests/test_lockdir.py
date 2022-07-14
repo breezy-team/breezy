@@ -167,7 +167,7 @@ class TestLockDir(TestCaseWithTransport):
         self.addCleanup(lf1.unlock)
         info2 = lf2.peek()
         self.assertTrue(info2)
-        self.assertEqual(info2.get('nonce'), lf1.nonce)
+        self.assertEqual(info2.nonce, lf1.nonce)
 
     def test_30_lock_wait_fail(self):
         """Wait on a lock, then fail
