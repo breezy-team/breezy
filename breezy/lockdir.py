@@ -743,7 +743,7 @@ class LockHeldInfo(object):
             time_ago = '(unknown)'
         else:
             time_ago = format_delta(
-                time.time() - int(self.info_dict['start_time']))
+                time.time() - self.info_dict['start_time'])
         user = self.info_dict.get('user', '<unknown>')
         hostname = self.info_dict.get('hostname', '<unknown>')
         pid = self.info_dict.get('pid', '<unknown>')
@@ -770,7 +770,7 @@ class LockHeldInfo(object):
             hostname=get_host_name(),
             pid=os.getpid(),
             nonce=rand_chars(20),
-            start_time=str(int(time.time())),
+            start_time=int(time.time()),
             user=get_username_for_lock_info(),
             )
         if extra_holder_info is not None:
