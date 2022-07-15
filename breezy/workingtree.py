@@ -75,6 +75,11 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
+class PointlessMerge(errors.BzrError):
+
+    _fmt = "Nothing to merge."
+
+
 class WorkingTree(mutabletree.MutableTree, ControlComponent):
     """Working copy tree.
 
@@ -683,7 +688,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             else:
                 merger.set_base_revision(from_revision, branch)
             if merger.base_rev_id == merger.other_rev_id:
-                raise errors.PointlessMerge
+                raise PointlessMerge()
             merger.backup_files = False
             if merge_type is None:
                 merger.merge_type = Merge3Merger

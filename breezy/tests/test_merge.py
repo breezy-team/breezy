@@ -44,7 +44,7 @@ from . import (
     TestCaseWithTransport,
     test_merge_core,
     )
-from ..workingtree import WorkingTree
+from ..workingtree import WorkingTree, PointlessMerge
 
 
 class TestMerge(TestCaseWithTransport):
@@ -54,7 +54,7 @@ class TestMerge(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         rev_a = wt.commit("lala!")
         self.assertEqual([rev_a], wt.get_parent_ids())
-        self.assertRaises(errors.PointlessMerge, wt.merge_from_branch,
+        self.assertRaises(PointlessMerge, wt.merge_from_branch,
                           wt.branch)
         self.assertEqual([rev_a], wt.get_parent_ids())
         return wt

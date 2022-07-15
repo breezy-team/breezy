@@ -1559,11 +1559,6 @@ class ParamikoNotPresent(DependencyNotPresent):
         DependencyNotPresent.__init__(self, 'paramiko', error)
 
 
-class PointlessMerge(BzrError):
-
-    _fmt = "Nothing to merge."
-
-
 class UninitializableFormat(BzrError):
 
     _fmt = "Format %(format)s cannot be initialised by this version of brz."

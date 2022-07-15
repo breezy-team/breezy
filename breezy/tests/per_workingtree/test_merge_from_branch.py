@@ -24,6 +24,7 @@ from breezy import (
     errors,
     merge,
     )
+from breezy.workingtree import PointlessMerge
 from breezy.tests import per_workingtree
 
 
@@ -95,7 +96,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         tree_a.commit('deleted file')
         self.build_tree_contents([('tree_b/file', b'text-b')])
         tree_b.commit('changed file')
-        self.assertRaises(errors.PointlessMerge, tree_a.merge_from_branch,
+        self.assertRaises(PointlessMerge, tree_a.merge_from_branch,
                           tree_b.branch, from_revision=tree_b.branch.last_revision())
         tree_a.merge_from_branch(tree_b.branch, from_revision=rev1)
         tree_a.lock_read()
