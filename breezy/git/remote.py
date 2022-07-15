@@ -171,6 +171,11 @@ class RemoteGitError(BzrError):
     _fmt = "Remote server error: %(msg)s"
 
 
+class ProtectedBranchHookDeclined(BzrError):
+
+    _fmt = "Protected branch hook declined"
+
+
 class HeadUpdateFailed(BzrError):
 
     _fmt = ("Unable to update remote HEAD branch. To update the master "
@@ -223,6 +228,8 @@ def parse_git_error(url, message):
         return ConnectionReset(message)
     if message == 'The remote server unexpectedly closed the connection.':
         return TransportError(message)
+    if message == 'protected branch hook declined':
+        return ProtectedBranchHookDeclined(msg=message)
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 

@@ -44,6 +44,7 @@ from ..remote import (
     parse_git_error,
     parse_git_hangup,
     HeadUpdateFailed,
+    ProtectedBranchHookDeclined,
     RemoteGitError,
     RemoteGitBranchFormat,
     _git_url_and_path_from_transport,
@@ -170,6 +171,15 @@ Email support@github.com for help
                 RemoteGitError(
                     'GitLab: You are not allowed to push code to '
                     'protected branches on this project.')))
+
+    def test_protected_branch(self):
+        self.assertEqual(
+            ProtectedBranchHookDeclined(
+                msg='protected branch hook declined'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'protected branch hook declined')))
 
     def test_host_key_verification(self):
         self.assertEqual(
