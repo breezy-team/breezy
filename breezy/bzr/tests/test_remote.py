@@ -4544,3 +4544,13 @@ class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
         result = branch._get_all_reference_info()
         self.assertFinished(client)
         self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)
+
+
+class TestErrors(TestCase):
+
+    def test_untranslateable_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        err = UnknownErrorFromSmartServer(orig_err)
+        self.assertEqual(
+            "Server sent an unexpected error: ('error', 'tuple')", str(err))

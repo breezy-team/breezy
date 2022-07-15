@@ -336,13 +336,6 @@ class TestErrors(tests.TestCase):
         self.assertEqual(
             "Error received from smart server: ('error', 'tuple')", str(err))
 
-    def test_untranslateable_error_from_smart_server(self):
-        error_tuple = ('error', 'tuple')
-        orig_err = errors.ErrorFromSmartServer(error_tuple)
-        err = errors.UnknownErrorFromSmartServer(orig_err)
-        self.assertEqual(
-            "Server sent an unexpected error: ('error', 'tuple')", str(err))
-
     def test_unresumable_write_group(self):
         repo = "dummy repo"
         wg_tokens = ['token']

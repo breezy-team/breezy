@@ -42,6 +42,7 @@ from ... import (
 from .. import (
     bzrdir,
     )
+from ..remote import UnknownErrorFromSmartServer
 from ..smart import (
     client,
     medium,
@@ -1363,7 +1364,7 @@ class TestSmartTCPServer(tests.TestCase):
         self.addCleanup(smart_server.stop_server)
         t = remote.RemoteTCPTransport(smart_server.get_url())
         self.addCleanup(t.disconnect)
-        err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+        err = self.assertRaises(UnknownErrorFromSmartServer,
                                 t.get, 'something')
         self.assertContainsRe(str(err), 'some random exception')
 
@@ -4343,7 +4344,7 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         self.assertNotEqual(type(r), type(t))
 
 
-class TestErrors(TestCase):
+class TestErrors(tests.TestCase):
     def test_too_many_concurrent_requests(self):
         error = medium.TooManyConcurrentRequests("a medium")
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "

@@ -94,7 +94,7 @@ class RetryWithNewPacks(errors.BzrError):
         :param exc_info: The original exception traceback, so if there is a
             problem we can raise the original error (value from sys.exc_info())
         """
-        BzrError.__init__(self)
+        errors.BzrError.__init__(self)
         self.context = context
         self.reload_occurred = reload_occurred
         self.exc_info = exc_info
