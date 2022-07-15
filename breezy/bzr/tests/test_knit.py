@@ -492,7 +492,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         try:
             raise _TestException('foobar')
         except _TestException as e:
-            retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
+            retry_exc = pack_repo.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
         # GZ 2010-08-10: Cycle with exc_info affects 3 tests
         return retry_exc
@@ -546,7 +546,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # Note that the index key has changed from 'foo' to 'bar'
         access = pack_repo._DirectPackAccess({'bar': (transport, 'packname')},
                                              reload_func=reload_func)
-        e = self.assertListRaises(errors.RetryWithNewPacks,
+        e = self.assertListRaises(pack_repo.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # Because a key was passed in which does not match our index list, we
         # assume that the listing was already reloaded
@@ -570,7 +570,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access = pack_repo._DirectPackAccess(
             {'foo': (transport, 'different-packname')},
             reload_func=reload_func)
-        e = self.assertListRaises(errors.RetryWithNewPacks,
+        e = self.assertListRaises(pack_repo.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
         self.assertFalse(e.reload_occurred)
@@ -603,7 +603,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([b'12345'],
                          list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
-        e = self.assertListRaises(errors.RetryWithNewPacks,
+        e = self.assertListRaises(pack_repo.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
         self.assertFalse(e.reload_occurred)

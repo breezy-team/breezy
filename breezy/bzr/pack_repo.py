@@ -983,7 +983,7 @@ class RepositoryPackCollection(object):
                                   reload_func=reload_func)
             try:
                 result = packer.pack()
-            except errors.RetryWithNewPacks:
+            except RetryWithNewPacks:
                 # An exception is propagating out of this context, make sure
                 # this packer has cleaned up. Packer() doesn't set its new_pack
                 # state into the RepositoryPackCollection object, so we only
@@ -1975,7 +1975,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                      _serializer=self._serializer)
 
 
-class RetryPackOperations(errors.RetryWithNewPacks):
+class RetryPackOperations(RetryWithNewPacks):
     """Raised when we are packing and we find a missing file.
 
     Meant as a signaling exception, to tell the RepositoryPackCollection.pack
