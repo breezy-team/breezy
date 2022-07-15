@@ -67,6 +67,14 @@ class BranchReferenceLoop(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch)
 
 
+class NoColocatedBranchSupport(errors.BzrError):
+
+    _fmt = ("%(controldir)r does not support co-located branches.")
+
+    def __init__(self, controldir):
+        self.controldir = controldir
+
+
 class ControlComponent(object):
     """Abstract base class for control directory components.
 
@@ -275,7 +283,7 @@ class ControlDir(ControlComponent):
           reference branch, or None for regular branches.
         """
         if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+            raise NoColocatedBranchSupport(self)
         return None
 
     def set_branch_reference(self, target_branch, name=None):

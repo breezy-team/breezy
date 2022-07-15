@@ -27,6 +27,7 @@ from ...controldir import (
     ControlDir,
     Converter,
     MustHaveWorkingTree,
+    NoColocatedBranchSupport,
     format_registry,
     )
 from ... import (
@@ -841,7 +842,7 @@ class BzrDirPreSplitOut(BzrDir):
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
         if name:
-            raise errors.NoColocatedBranchSupport(self)
+            raise NoColocatedBranchSupport(self)
         if branch_format is None:
             return self.transport
         try:
@@ -923,7 +924,7 @@ class BzrDirPreSplitOut(BzrDir):
     def set_branch_reference(self, target_branch, name=None):
         from ...bzr.branch import BranchReferenceFormat
         if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+            raise NoColocatedBranchSupport(self)
         raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)
 
 

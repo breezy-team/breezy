@@ -641,7 +641,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
@@ -669,7 +669,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         path = self._path_for_remote_call(self._client)
         try:
             if name != "":
@@ -741,7 +741,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         self._ensure_real()
         return self._real_bzrdir.set_branch_reference(target_branch, name=name)
 
@@ -750,7 +750,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':
             return response[1].decode('utf-8')
@@ -820,7 +820,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         if unsupported:
             raise NotImplementedError(
                 'unsupported flag support not implemented yet.')
@@ -3313,7 +3313,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         path = a_controldir._path_for_remote_call(a_controldir._client)
         if name != "":
             # XXX JRV20100304: Support creating colocated branches
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         verb = b'BzrDir.create_branch'
         try:
             response = a_controldir._call(verb, path, network_name)

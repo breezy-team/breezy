@@ -2199,14 +2199,6 @@ class NoRoundtrippingSupport(BzrError):
         self.target_branch = target_branch
 
 
-class NoColocatedBranchSupport(BzrError):
-
-    _fmt = ("%(controldir)r does not support co-located branches.")
-
-    def __init__(self, controldir):
-        self.controldir = controldir
-
-
 class RecursiveBind(BzrError):
 
     _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '

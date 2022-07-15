@@ -162,7 +162,7 @@ def open_sibling_branch(control_dir, location, possible_transports=None):
         # Perhaps it's a colocated branch?
         return control_dir.open_branch(
             location, possible_transports=possible_transports)
-    except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+    except (errors.NotBranchError, controldir.NoColocatedBranchSupport):
         this_url = _get_branch_location(control_dir)
         return Branch.open(
             urlutils.join(
