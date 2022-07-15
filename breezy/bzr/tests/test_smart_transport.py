@@ -695,7 +695,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         client_medium = medium.SmartSimplePipesClientMedium(
             None, output, 'base')
         client_medium._current_request = "a"
-        self.assertRaises(errors.TooManyConcurrentRequests,
+        self.assertRaises(medium.TooManyConcurrentRequests,
                           medium.SmartClientStreamMediumRequest, client_medium)
 
     def test_finished_read_clears_current_request(self):
@@ -764,7 +764,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         client_medium._socket = client_sock
         client_medium._connected = True
         req = client_medium.get_request()
-        self.assertRaises(errors.TooManyConcurrentRequests,
+        self.assertRaises(medium.TooManyConcurrentRequests,
                           client_medium.get_request)
         client_medium.reset()
         # The stream should be reset, marked as disconnected, though ready for
@@ -4341,3 +4341,14 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'bzr://www.example.com/foo')
         self.assertNotEqual(type(r), type(t))
+
+
+class TestErrors(TestCase):
+    def test_too_many_concurrent_requests(self):
+        error = medium.TooManyConcurrentRequests("a medium")
+        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
+                             "request limit. Be sure to finish_writing and finish_reading on "
+                             "the currently open request.",
+                             str(error))
+
+

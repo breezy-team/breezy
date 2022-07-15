@@ -166,13 +166,6 @@ class TestErrors(tests.TestCase):
                              str(error))
         self.assertFalse(error.internal_error)
 
-    def test_too_many_concurrent_requests(self):
-        error = errors.TooManyConcurrentRequests("a medium")
-        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
-                             "request limit. Be sure to finish_writing and finish_reading on "
-                             "the currently open request.",
-                             str(error))
-
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
         self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",

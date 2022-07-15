@@ -1158,16 +1158,6 @@ class TransportError(BzrError):
         BzrError.__init__(self)
 
 
-class TooManyConcurrentRequests(InternalBzrError):
-
-    _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
-            " Be sure to finish_writing and finish_reading on the"
-            " currently open request.")
-
-    def __init__(self, medium):
-        self.medium = medium
-
-
 class SmartProtocolError(TransportError):
 
     _fmt = "Generic bzr smart protocol error: %(details)s"

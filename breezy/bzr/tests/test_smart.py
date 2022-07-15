@@ -2848,3 +2848,4 @@ class TestSmartServerBranchRequestGetAllReferenceInfo(TestLockedBranch):
         self.assertEqual(
             [[b'some/path', b'http://www.example.com/', b'']],
             bencode.bdecode(response.body))
+
