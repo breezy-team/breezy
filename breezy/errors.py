@@ -2023,33 +2023,6 @@ class ErrorFromSmartServer(BzrError):
         self.error_args = error_tuple[1:]
 
 
-class UnknownErrorFromSmartServer(BzrError):
-    """An ErrorFromSmartServer could not be translated into a typical breezy
-    error.
-
-    This is distinct from ErrorFromSmartServer so that it is possible to
-    distinguish between the following two cases:
-
-     - ErrorFromSmartServer was uncaught.  This is logic error in the client
-       and so should provoke a traceback to the user.
-     - ErrorFromSmartServer was caught but its error_tuple could not be
-       translated.  This is probably because the server sent us garbage, and
-       should not provoke a traceback.
-    """
-
-    _fmt = "Server sent an unexpected error: %(error_tuple)r"
-
-    internal_error = False
-
-    def __init__(self, error_from_smart_server):
-        """Constructor.
-
-        :param error_from_smart_server: An ErrorFromSmartServer instance.
-        """
-        self.error_from_smart_server = error_from_smart_server
-        self.error_tuple = error_from_smart_server.error_tuple
-
-
 class RepositoryDataStreamError(BzrError):
 
     _fmt = "Corrupt or incompatible data stream: %(reason)s"
