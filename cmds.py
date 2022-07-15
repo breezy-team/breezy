@@ -30,14 +30,20 @@ from ... import (
     urlutils,
     )
 from ...branch import Branch
-from ...controldir import ControlDir
+try:
+    from ...controldir import (
+        ControlDir,
+        NoColocatedBranchSupport,
+        )
+except ImportError:  # brz < 3.3
+    from ...controldir import ControlDir
+    from ...errors import NoColocatedBranchSupport
 from ...commands import Command
 from ...errors import (
     BzrError,
     BzrCommandError,
     FileExists,
     NotBranchError,
-    NoColocatedBranchSupport,
     NotLocalUrl,
     NoSuchFile,
     NoWorkingTree,
