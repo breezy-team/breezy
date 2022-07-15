@@ -18,7 +18,7 @@
 
 from io import BytesIO
 
-from ... import errors, tests
+from ... import tests
 from .. import (
     pack,
     )
@@ -63,7 +63,7 @@ class TestContainerSerialiser(tests.TestCase):
     def test_bytes_record_whitespace_in_name_part(self):
         serialiser = pack.ContainerSerialiser()
         self.assertRaises(
-            errors.InvalidRecordError,
+            pack.InvalidRecordError,
             serialiser.bytes_record, b'bytes', [(b'bad name',)])
 
     def test_bytes_record_header(self):
@@ -214,7 +214,7 @@ class TestContainerWriter(tests.TestCase):
         """
         self.writer.begin()
         self.assertRaises(
-            errors.InvalidRecordError,
+            pack.InvalidRecordError,
             self.writer.add_bytes_record, [b'abc'], len(b'abc'), names=[(b'bad name', )])
 
     def test_add_bytes_records_add_to_records_written(self):
@@ -257,7 +257,7 @@ class TestContainerReader(tests.TestCase):
         """Unrecognised container formats raise UnknownContainerFormatError."""
         reader = self.get_reader_for(b"unknown format\n")
         self.assertRaises(
-            errors.UnknownContainerFormatError, reader.iter_records)
+            pack.UnknownContainerFormatError, reader.iter_records)
 
     def test_unexpected_end_of_container(self):
         """Containers that don't end with an End Marker record should cause
@@ -267,7 +267,7 @@ class TestContainerReader(tests.TestCase):
             b"Bazaar pack format 1 (introduced in 0.18)\n")
         iterator = reader.iter_records()
         self.assertRaises(
-            errors.UnexpectedEndOfContainerError, next, iterator)
+            pack.UnexpectedEndOfContainerError, next, iterator)
 
     def test_unknown_record_type(self):
         """Unknown record types cause UnknownRecordTypeError to be raised."""
@@ -275,7 +275,7 @@ class TestContainerReader(tests.TestCase):
             b"Bazaar pack format 1 (introduced in 0.18)\nX")
         iterator = reader.iter_records()
         self.assertRaises(
-            errors.UnknownRecordTypeError, next, iterator)
+            pack.UnknownRecordTypeError, next, iterator)
 
     def test_container_with_one_unnamed_record(self):
         """Read a container with one Bytes record.
@@ -318,8 +318,8 @@ class TestContainerReader(tests.TestCase):
         for input in inputs:
             reader = self.get_reader_for(input)
             self.assertRaises(
-                (errors.UnexpectedEndOfContainerError,
-                 errors.UnknownContainerFormatError),
+                (pack.UnexpectedEndOfContainerError,
+                 pack.UnknownContainerFormatError),
                 reader.validate)
 
     def test_validate_bad_record_marker(self):
@@ -328,7 +328,7 @@ class TestContainerReader(tests.TestCase):
         """
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\nX")
-        self.assertRaises(errors.UnknownRecordTypeError, reader.validate)
+        self.assertRaises(pack.UnknownRecordTypeError, reader.validate)
 
     def test_validate_data_after_end_marker(self):
         """validate raises ContainerHasExcessDataError if there are any bytes
@@ -337,7 +337,7 @@ class TestContainerReader(tests.TestCase):
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\nEcrud")
         self.assertRaises(
-            errors.ContainerHasExcessDataError, reader.validate)
+            pack.ContainerHasExcessDataError, reader.validate)
 
     def test_validate_no_end_marker(self):
         """validate raises UnexpectedEndOfContainerError if there's no end of
@@ -347,7 +347,7 @@ class TestContainerReader(tests.TestCase):
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\n")
         self.assertRaises(
-            errors.UnexpectedEndOfContainerError, reader.validate)
+            pack.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_duplicate_name(self):
         """validate raises DuplicateRecordNameError if the same name occurs
@@ -358,13 +358,13 @@ class TestContainerReader(tests.TestCase):
             b"B0\nname\n\n"
             b"B0\nname\n\n"
             b"E")
-        self.assertRaises(errors.DuplicateRecordNameError, reader.validate)
+        self.assertRaises(pack.DuplicateRecordNameError, reader.validate)
 
     def test_validate_undecodeable_name(self):
         """Names that aren't valid UTF-8 cause validate to fail."""
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\nB0\n\xcc\n\nE")
-        self.assertRaises(errors.InvalidRecordError, reader.validate)
+        self.assertRaises(pack.InvalidRecordError, reader.validate)
 
 
 class TestBytesRecordReader(tests.TestCase):
@@ -419,7 +419,7 @@ class TestBytesRecordReader(tests.TestCase):
         InvalidRecordError.
         """
         reader = self.get_reader_for(b"not a number\n")
-        self.assertRaises(errors.InvalidRecordError, reader.read)
+        self.assertRaises(pack.InvalidRecordError, reader.read)
 
     def test_early_eof(self):
         """Tests for premature EOF occuring during parsing Bytes records with
@@ -440,7 +440,7 @@ class TestBytesRecordReader(tests.TestCase):
             try:
                 names, read_bytes = reader.read()
                 read_bytes(None)
-            except errors.UnexpectedEndOfContainerError:
+            except pack.UnexpectedEndOfContainerError:
                 pass
             else:
                 self.fail(
@@ -450,59 +450,59 @@ class TestBytesRecordReader(tests.TestCase):
     def test_initial_eof(self):
         """EOF before any bytes read at all."""
         reader = self.get_reader_for(b"")
-        self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
+        self.assertRaises(pack.UnexpectedEndOfContainerError, reader.read)
 
     def test_eof_after_length(self):
         """EOF after reading the length and before reading name(s)."""
         reader = self.get_reader_for(b"123\n")
-        self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
+        self.assertRaises(pack.UnexpectedEndOfContainerError, reader.read)
 
     def test_eof_during_name(self):
         """EOF during reading a name."""
         reader = self.get_reader_for(b"123\nname")
-        self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
+        self.assertRaises(pack.UnexpectedEndOfContainerError, reader.read)
 
     def test_read_invalid_name_whitespace(self):
         """Names must have no whitespace."""
         # A name with a space.
         reader = self.get_reader_for(b"0\nbad name\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.read)
+        self.assertRaises(pack.InvalidRecordError, reader.read)
 
         # A name with a tab.
         reader = self.get_reader_for(b"0\nbad\tname\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.read)
+        self.assertRaises(pack.InvalidRecordError, reader.read)
 
         # A name with a vertical tab.
         reader = self.get_reader_for(b"0\nbad\vname\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.read)
+        self.assertRaises(pack.InvalidRecordError, reader.read)
 
     def test_validate_whitespace_in_name(self):
         """Names must have no whitespace."""
         reader = self.get_reader_for(b"0\nbad name\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.validate)
+        self.assertRaises(pack.InvalidRecordError, reader.validate)
 
     def test_validate_interrupted_prelude(self):
         """EOF during reading a record's prelude causes validate to fail."""
         reader = self.get_reader_for(b"")
         self.assertRaises(
-            errors.UnexpectedEndOfContainerError, reader.validate)
+            pack.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_interrupted_body(self):
         """EOF during reading a record's body causes validate to fail."""
         reader = self.get_reader_for(b"1\n\n")
         self.assertRaises(
-            errors.UnexpectedEndOfContainerError, reader.validate)
+            pack.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_unparseable_length(self):
         """An unparseable record length causes validate to fail."""
         reader = self.get_reader_for(b"\n\n")
         self.assertRaises(
-            errors.InvalidRecordError, reader.validate)
+            pack.InvalidRecordError, reader.validate)
 
     def test_validate_undecodeable_name(self):
         """Names that aren't valid UTF-8 cause validate to fail."""
         reader = self.get_reader_for(b"0\n\xcc\n\n")
-        self.assertRaises(errors.InvalidRecordError, reader.validate)
+        self.assertRaises(pack.InvalidRecordError, reader.validate)
 
     def test_read_max_length(self):
         """If the max_length passed to the callable returned by read is not
@@ -704,7 +704,7 @@ class TestContainerPushParserBytesParsing(PushParserTestCase):
         """
         parser = self.make_parser_expecting_bytes_record()
         self.assertRaises(
-            errors.InvalidRecordError, parser.accept_bytes, b"not a number\n")
+            pack.InvalidRecordError, parser.accept_bytes, b"not a number\n")
 
     def test_incomplete_record(self):
         """If the bytes seen so far don't form a complete record, then there
@@ -723,7 +723,7 @@ class TestContainerPushParserBytesParsing(PushParserTestCase):
         """Assert that parsing the given bytes raises InvalidRecordError."""
         parser = self.make_parser_expecting_bytes_record()
         self.assertRaises(
-            errors.InvalidRecordError, parser.accept_bytes, data)
+            pack.InvalidRecordError, parser.accept_bytes, data)
 
     def test_read_invalid_name_whitespace(self):
         """Names must have no whitespace."""
@@ -742,3 +742,49 @@ class TestContainerPushParserBytesParsing(PushParserTestCase):
         parser.accept_bytes(b"6\n\nabcdef")
         self.assertEqual([([], b'abcdef')], parser.read_pending_records())
         self.assertEqual([], parser.read_pending_records())
+
+
+class TestErrors(tests.TestCase):
+
+    def test_unknown_container_format(self):
+        """Test the formatting of UnknownContainerFormatError."""
+        e = pack.UnknownContainerFormatError('bad format string')
+        self.assertEqual(
+            "Unrecognised container format: 'bad format string'",
+            str(e))
+
+    def test_unexpected_end_of_container(self):
+        """Test the formatting of UnexpectedEndOfContainerError."""
+        e = pack.UnexpectedEndOfContainerError()
+        self.assertEqual(
+            "Unexpected end of container stream", str(e))
+
+    def test_unknown_record_type(self):
+        """Test the formatting of UnknownRecordTypeError."""
+        e = pack.UnknownRecordTypeError("X")
+        self.assertEqual(
+            "Unknown record type: 'X'",
+            str(e))
+
+    def test_invalid_record(self):
+        """Test the formatting of InvalidRecordError."""
+        e = pack.InvalidRecordError("xxx")
+        self.assertEqual(
+            "Invalid record: xxx",
+            str(e))
+
+    def test_container_has_excess_data(self):
+        """Test the formatting of ContainerHasExcessDataError."""
+        e = pack.ContainerHasExcessDataError("excess bytes")
+        self.assertEqual(
+            "Container has data after end marker: 'excess bytes'",
+            str(e))
+
+    def test_duplicate_record_name_error(self):
+        """Test the formatting of DuplicateRecordNameError."""
+        e = pack.DuplicateRecordNameError(b"n\xc3\xa5me")
+        self.assertEqual(
+            u"Container has multiple records with the same name: n\xe5me",
+            str(e))
+
+

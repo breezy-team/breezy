@@ -2050,55 +2050,6 @@ class UnknownErrorFromSmartServer(BzrError):
         self.error_tuple = error_from_smart_server.error_tuple
 
 
-class ContainerError(BzrError):
-    """Base class of container errors."""
-
-
-class UnknownContainerFormatError(ContainerError):
-
-    _fmt = "Unrecognised container format: %(container_format)r"
-
-    def __init__(self, container_format):
-        self.container_format = container_format
-
-
-class UnexpectedEndOfContainerError(ContainerError):
-
-    _fmt = "Unexpected end of container stream"
-
-
-class UnknownRecordTypeError(ContainerError):
-
-    _fmt = "Unknown record type: %(record_type)r"
-
-    def __init__(self, record_type):
-        self.record_type = record_type
-
-
-class InvalidRecordError(ContainerError):
-
-    _fmt = "Invalid record: %(reason)s"
-
-    def __init__(self, reason):
-        self.reason = reason
-
-
-class ContainerHasExcessDataError(ContainerError):
-
-    _fmt = "Container has data after end marker: %(excess)r"
-
-    def __init__(self, excess):
-        self.excess = excess
-
-
-class DuplicateRecordNameError(ContainerError):
-
-    _fmt = "Container has multiple records with the same name: %(name)s"
-
-    def __init__(self, name):
-        self.name = name.decode("utf-8")
-
-
 class RepositoryDataStreamError(BzrError):
 
     _fmt = "Corrupt or incompatible data stream: %(reason)s"
