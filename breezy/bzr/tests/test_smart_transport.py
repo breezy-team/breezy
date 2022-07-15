@@ -4351,4 +4351,18 @@ class TestErrors(TestCase):
                              "the currently open request.",
                              str(error))
 
+    def test_smart_message_handler_error(self):
+        # Make an exc_info tuple.
+        try:
+            raise Exception("example error")
+        except Exception:
+            err = protocol.SmartMessageHandlerError(sys.exc_info())
+        # GZ 2010-11-08: Should not store exc_info in exception instances.
+        try:
+            self.assertStartsWith(
+                str(err), "The message handler raised an exception:\n")
+            self.assertEndsWith(str(err), "Exception: example error\n")
+        finally:
+            del err
+
 

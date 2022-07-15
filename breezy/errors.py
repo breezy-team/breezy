@@ -1135,21 +1135,6 @@ class UnknownSmartMethod(InternalBzrError):
         self.verb = verb
 
 
-class SmartMessageHandlerError(InternalBzrError):
-
-    _fmt = ("The message handler raised an exception:\n"
-            "%(traceback_text)s")
-
-    def __init__(self, exc_info):
-        import traceback
-        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
-        self.exc_type, self.exc_value, self.exc_tb = exc_info
-        self.exc_info = exc_info
-        traceback_strings = traceback.format_exception(
-            self.exc_type, self.exc_value, self.exc_tb)
-        self.traceback_text = ''.join(traceback_strings)
-
-
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
 
@@ -2019,14 +2004,6 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = get_user_encoding()
-
-
-class NoSuchAlias(BzrError):
-
-    _fmt = ('The alias "%(alias_name)s" does not exist.')
-
-    def __init__(self, alias_name):
-        BzrError.__init__(self, alias_name=alias_name)
 
 
 class CannotBindAddress(BzrError):
