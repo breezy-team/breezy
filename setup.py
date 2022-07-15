@@ -255,31 +255,30 @@ if 'bdist_egg' not in sys.argv:
     DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
 
 DATA_FILES = DATA_FILES + I18N_FILES
-# std setup
-ARGS = {'scripts': [# TODO(jelmer): Only install the git scripts if
-                    # Dulwich was found.
-                    'breezy/git/git-remote-bzr',
-                    'breezy/git/bzr-receive-pack',
-                    'breezy/git/bzr-upload-pack'],
-        'data_files': DATA_FILES,
-        'cmdclass': command_classes,
-        'ext_modules': ext_modules,
-        'rust_extensions': [
-            RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
-            RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
-            ],
-        # install files from selftest suite
-        'package_data': {'breezy': ['doc/api/*.txt',
-                                    'tests/test_patches_data/*',
-                                    'help_topics/en/*.txt',
-                                    'tests/ssl_certs/ca.crt',
-                                    'tests/ssl_certs/server_without_pass.key',
-                                    'tests/ssl_certs/server_with_pass.key',
-                                    'tests/ssl_certs/server.crt',
-                                    ]},
-}
 
-if __name__ == '__main__':
-    import site
-    site.ENABLE_USER_SITE = "--user" in sys.argv
-    setup(**ARGS)
+import site
+site.ENABLE_USER_SITE = "--user" in sys.argv
+
+# std setup
+setup(
+    scripts=[# TODO(jelmer): Only install the git scripts if
+             # Dulwich was found.
+             'breezy/git/git-remote-bzr',
+             'breezy/git/bzr-receive-pack',
+             'breezy/git/bzr-upload-pack'],
+    data_files=DATA_FILES,
+    cmdclass=command_classes,
+    ext_modules=ext_modules,
+    rust_extensions=[
+        RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
+        RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+    ],
+    # install files from selftest suite
+    package_data={'breezy': ['doc/api/*.txt',
+                             'tests/test_patches_data/*',
+                             'help_topics/en/*.txt',
+                             'tests/ssl_certs/ca.crt',
+                             'tests/ssl_certs/server_without_pass.key',
+                             'tests/ssl_certs/server_with_pass.key',
+                             'tests/ssl_certs/server.crt',
+]})
