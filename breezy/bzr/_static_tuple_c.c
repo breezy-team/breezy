@@ -1011,7 +1011,7 @@ PYMOD_INIT_FUNC(_static_tuple_c)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    if (import_breezy___simple_set_pyx() == -1) {
+    if (import_breezy__bzr___simple_set_pyx() == -1) {
         return PYMOD_ERROR;
     }
     setup_interned_tuples(m);
