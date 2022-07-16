@@ -691,7 +691,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                                      # None, # We don't send the body yet
                                      request.data,
                                      headers,
-                                     encode_chunked=(headers.get('Transfer-encoding') == 'chunked'))
+                                     encode_chunked=(headers.get('Transfer-Encoding') == 'chunked'))
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
