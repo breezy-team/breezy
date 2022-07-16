@@ -20,7 +20,7 @@ import time
 
 from .. import osutils
 from ..errors import BzrError
-from ..hashcache import HashCache
+from .hashcache import HashCache
 from . import (
     TestCaseInTempDir,
     )

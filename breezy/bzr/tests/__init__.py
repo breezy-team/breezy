@@ -66,6 +66,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_conflicts',
         'test_generate_ids',
         'test_groupcompress',
+        'test_hashcache',
         'test_index',
         'test_inv',
         'test_inventory_delta',
