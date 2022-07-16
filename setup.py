@@ -219,9 +219,9 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
             libraries=libraries, include_dirs=include_dirs))
 
 
-add_cython_extension('breezy._simple_set_pyx')
-ext_modules.append(Extension('breezy._static_tuple_c',
-                             ['breezy/_static_tuple_c.c']))
+add_cython_extension('breezy.bzr._simple_set_pyx')
+ext_modules.append(Extension('breezy.bzr._static_tuple_c',
+                             ['breezy/bzr/_static_tuple_c.c']))
 add_cython_extension('breezy._annotator_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
 add_cython_extension('breezy.bzr._groupcompress_pyx',

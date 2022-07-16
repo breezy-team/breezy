@@ -31,7 +31,6 @@ from breezy import (
     lru_cache,
     osutils,
     revision as _mod_revision,
-    static_tuple,
     tsort,
     ui,
     )
@@ -41,6 +40,7 @@ from breezy.bzr import (
     generate_ids,
     inventory_delta,
     inventorytree,
+    static_tuple,
     versionedfile,
     vf_search,
     )

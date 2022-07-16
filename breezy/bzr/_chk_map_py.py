@@ -19,7 +19,7 @@
 import zlib
 import struct
 
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 _LeafNode = None
 _InternalNode = None

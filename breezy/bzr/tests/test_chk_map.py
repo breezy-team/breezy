@@ -31,7 +31,7 @@ from ..chk_map import (
     LeafNode,
     Node,
     )
-from ...static_tuple import StaticTuple
+from ..static_tuple import StaticTuple
 
 
 class TestNode(tests.TestCase):

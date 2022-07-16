@@ -63,7 +63,6 @@ import gzip
 from breezy import (
     debug,
     diff,
-    static_tuple,
     trace,
     tsort,
     ui,
@@ -71,6 +70,7 @@ from breezy import (
 from breezy.bzr import (
     index as _mod_index,
     pack,
+    static_tuple,
     tuned_gzip,
     )
 

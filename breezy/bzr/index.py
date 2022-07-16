@@ -40,7 +40,7 @@ from .. import (
     debug,
     errors,
     )
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = b"key_elements="

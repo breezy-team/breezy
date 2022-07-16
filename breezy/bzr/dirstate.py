@@ -232,6 +232,7 @@ import zlib
 
 from . import (
     inventory,
+    static_tuple,
     )
 from .. import (
     cache_utf8,
@@ -240,7 +241,6 @@ from .. import (
     errors,
     lock,
     osutils,
-    static_tuple,
     trace,
     urlutils,
     )
