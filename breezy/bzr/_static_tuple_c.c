@@ -888,7 +888,7 @@ static PyMappingMethods StaticTuple_as_mapping = {
 
 PyTypeObject StaticTuple_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "breezy._static_tuple_c.StaticTuple",        /* tp_name */
+    "breezy.bzr._static_tuple_c.StaticTuple",        /* tp_name */
     sizeof(StaticTuple),                         /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
     (destructor)StaticTuple_dealloc,             /* tp_dealloc */
