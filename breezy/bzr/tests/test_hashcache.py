@@ -18,13 +18,13 @@ import os
 import stat
 import time
 
-from .. import osutils
-from ..errors import BzrError
-from .hashcache import HashCache
-from . import (
+from ... import osutils
+from ...errors import BzrError
+from ..hashcache import HashCache
+from ...tests import (
     TestCaseInTempDir,
     )
-from .features import (
+from ...tests.features import (
     OsFifoFeature,
     )
 
