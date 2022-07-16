@@ -1398,7 +1398,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     (record_details, index_memo, next) = position_map[key]
                     raw_record_map[key] = data, record_details, next
                 return raw_record_map
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     @classmethod
@@ -1507,7 +1507,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _get_remaining_record_stream(self, keys, ordering,
@@ -1891,7 +1891,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     for line in line_iterator:
                         yield line, key
                 done = True
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
         # If there are still keys we've not yet found, we look in the fallback
         # vfs, and hope to find them there.  Note that if the keys are found
@@ -3464,7 +3464,7 @@ class _KnitAnnotator(annotate.Annotator):
                     num_lines = len(text)  # bad assumption
                     yield sub_key, text, num_lines
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._vf._access.reload_or_raise(e)
                 # The cached build_details are no longer valid
                 self._all_build_details.clear()

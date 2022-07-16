@@ -65,6 +65,7 @@ from ..remote import (
     RemoteBzrDirFormat,
     RemoteRepository,
     RemoteRepositoryFormat,
+    UnknownErrorFromSmartServer,
     )
 from .. import groupcompress_repo, knitpack_repo
 from ...revision import (
@@ -1918,7 +1919,7 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         client._calls = []
 
         err = self.assertRaises(
-            errors.UnknownErrorFromSmartServer,
+            UnknownErrorFromSmartServer,
             branch.set_last_revision_info, 123, b'revid')
         self.assertEqual((b'UnexpectedError',), err.error_tuple)
         branch.unlock()
@@ -2940,7 +2941,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response(b'AnUnexpectedError')
-        e = self.assertRaises(errors.UnknownErrorFromSmartServer,
+        e = self.assertRaises(UnknownErrorFromSmartServer,
                               repo._get_revision_graph, revid)
         self.assertEqual((b'AnUnexpectedError',), e.error_tuple)
 
@@ -3950,7 +3951,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         err = errors.ErrorFromSmartServer(
             (b'error', b"list index out of range"))
         translated_error = self.translateErrorFromSmartServer(err)
-        expected_error = errors.UnknownErrorFromSmartServer(err)
+        expected_error = UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
 
     # GZ 2011-03-02: TODO test generic non-ascii error string
@@ -3958,7 +3959,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
     def test_generic_KeyError(self):
         err = errors.ErrorFromSmartServer((b'error', b'KeyError', b"1"))
         translated_error = self.translateErrorFromSmartServer(err)
-        expected_error = errors.UnknownErrorFromSmartServer(err)
+        expected_error = UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
 
     def test_RevnoOutOfBounds(self):
@@ -3983,7 +3984,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         error_tuple = (b'An unknown error tuple',)
         server_error = errors.ErrorFromSmartServer(error_tuple)
         translated_error = self.translateErrorFromSmartServer(server_error)
-        expected_error = errors.UnknownErrorFromSmartServer(server_error)
+        expected_error = UnknownErrorFromSmartServer(server_error)
         self.assertEqual(expected_error, translated_error)
 
     def test_context_missing_a_key(self):
@@ -4543,3 +4544,13 @@ class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
         result = branch._get_all_reference_info()
         self.assertFinished(client)
         self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)
+
+
+class TestErrors(tests.TestCase):
+
+    def test_untranslateable_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        err = UnknownErrorFromSmartServer(orig_err)
+        self.assertEqual(
+            "Server sent an unexpected error: ('error', 'tuple')", str(err))

@@ -227,6 +227,14 @@ class NoSuchConfigOption(errors.BzrError):
         errors.BzrError.__init__(self, option_name=option_name)
 
 
+class NoSuchAlias(errors.BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        errors.BzrError.__init__(self, alias_name=alias_name)
+
+
 def signature_policy_from_unicode(signature_string):
     """Convert a string to a signing policy."""
     if signature_string.lower() == 'check-available':
@@ -1048,7 +1056,7 @@ class GlobalConfig(LockableConfig):
             self.reload()
             aliases = self._get_parser().get('ALIASES')
             if not aliases or alias_name not in aliases:
-                raise errors.NoSuchAlias(alias_name)
+                raise NoSuchAlias(alias_name)
             del aliases[alias_name]
             self._write_config_file()
 

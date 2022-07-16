@@ -21,6 +21,7 @@ and attributes colocated branch support added should fail in known ways.
 """
 
 from breezy import (
+    controldir,
     errors,
     tests,
     )
@@ -53,28 +54,28 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
         # Colocated branches should not be supported *or*
         # destroy_branch should not be supported at all
         self.assertRaises(
-            (errors.NoColocatedBranchSupport, errors.UnsupportedOperation),
+            (controldir.NoColocatedBranchSupport, errors.UnsupportedOperation),
             branch.controldir.destroy_branch, 'colo')
 
     def test_create_colo_branch(self):
         made_control = self.make_controldir_with_repo()
-        self.assertRaises(errors.NoColocatedBranchSupport,
+        self.assertRaises(controldir.NoColocatedBranchSupport,
                           made_control.create_branch, "colo")
 
     def test_open_branch(self):
         made_control = self.make_controldir_with_repo()
-        self.assertRaises(errors.NoColocatedBranchSupport,
+        self.assertRaises(controldir.NoColocatedBranchSupport,
                           made_control.open_branch, name="colo")
 
     def test_get_branch_reference(self):
         made_control = self.make_controldir_with_repo()
-        self.assertRaises(errors.NoColocatedBranchSupport,
+        self.assertRaises(controldir.NoColocatedBranchSupport,
                           made_control.get_branch_reference, "colo")
 
     def test_set_branch_reference(self):
         referenced = self.make_branch('referenced')
         made_control = self.make_controldir_with_repo()
-        self.assertRaises(errors.NoColocatedBranchSupport,
+        self.assertRaises(controldir.NoColocatedBranchSupport,
                           made_control.set_branch_reference, referenced, name="colo")
 
     def test_get_branches(self):

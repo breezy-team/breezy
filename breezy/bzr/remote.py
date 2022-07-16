@@ -70,6 +70,33 @@ from .versionedfile import FulltextContentFactory
 _DEFAULT_SEARCH_DEPTH = 100
 
 
+class UnknownErrorFromSmartServer(errors.BzrError):
+    """An ErrorFromSmartServer could not be translated into a typical breezy
+    error.
+
+    This is distinct from ErrorFromSmartServer so that it is possible to
+    distinguish between the following two cases:
+
+     - ErrorFromSmartServer was uncaught.  This is logic error in the client
+       and so should provoke a traceback to the user.
+     - ErrorFromSmartServer was caught but its error_tuple could not be
+       translated.  This is probably because the server sent us garbage, and
+       should not provoke a traceback.
+    """
+
+    _fmt = "Server sent an unexpected error: %(error_tuple)r"
+
+    internal_error = False
+
+    def __init__(self, error_from_smart_server):
+        """Constructor.
+
+        :param error_from_smart_server: An ErrorFromSmartServer instance.
+        """
+        self.error_from_smart_server = error_from_smart_server
+        self.error_tuple = error_from_smart_server.error_tuple
+
+
 class _RpcHelper(object):
     """Mixin class that helps with issuing RPCs."""
 
@@ -567,7 +594,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 13))
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
-        except errors.UnknownErrorFromSmartServer as err:
+        except UnknownErrorFromSmartServer as err:
             if err.error_tuple != (b'BranchReference',):
                 raise
             # We need to resolve the branch reference to determine the
@@ -641,7 +668,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
@@ -669,7 +696,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         path = self._path_for_remote_call(self._client)
         try:
             if name != "":
@@ -741,7 +768,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         self._ensure_real()
         return self._real_bzrdir.set_branch_reference(target_branch, name=name)
 
@@ -750,7 +777,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':
             return response[1].decode('utf-8')
@@ -820,7 +847,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         if unsupported:
             raise NotImplementedError(
                 'unsupported flag support not implemented yet.')
@@ -1395,7 +1422,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         except errors.UnknownSmartMethod:
             self._client._medium._remember_remote_is_before((1, 17))
             return self._get_rev_id_for_revno_vfs(revno, known_pair)
-        except errors.UnknownErrorFromSmartServer as e:
+        except UnknownErrorFromSmartServer as e:
             # Older versions of Bazaar/Breezy (<< 3.0.0) would raise a
             # ValueError instead of returning revno-outofbounds
             if len(e.error_tuple) < 3:
@@ -3145,7 +3172,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
                     verb, args, search_bytes)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before(version)
-            except errors.UnknownErrorFromSmartServer as e:
+            except UnknownErrorFromSmartServer as e:
                 if isinstance(search, vf_search.EverythingResult):
                     error_verb = e.error_from_smart_server.error_verb
                     if error_verb == b'BadSearch':
@@ -3313,7 +3340,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         path = a_controldir._path_for_remote_call(a_controldir._client)
         if name != "":
             # XXX JRV20100304: Support creating colocated branches
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         verb = b'BzrDir.create_branch'
         try:
             response = a_controldir._call(verb, path, network_name)
@@ -4033,7 +4060,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             except errors.UnknownSmartMethod:
                 self._ensure_real()
                 return self._real_branch.revision_id_to_dotted_revno(revision_id)
-            except errors.UnknownErrorFromSmartServer as e:
+            except UnknownErrorFromSmartServer as e:
                 # Deal with older versions of bzr/brz that didn't explicitly
                 # wrap GhostRevisionsHaveNoRevno.
                 if e.error_tuple[1] == b'GhostRevisionsHaveNoRevno':
@@ -4426,7 +4453,7 @@ def _translate_error(err, **context):
     try:
         translator = no_context_error_translators.get(err.error_verb)
     except KeyError:
-        raise errors.UnknownErrorFromSmartServer(err)
+        raise UnknownErrorFromSmartServer(err)
     else:
         raise translator(err)
 

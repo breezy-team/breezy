@@ -26,6 +26,7 @@ from dulwich.repo import (
     )
 
 from .. import (
+    controldir,
     errors,
     osutils,
     revision as _mod_revision,
@@ -132,7 +133,7 @@ class BazaarRefsContainer(RefsContainer):
     def _get_revid_by_branch_name(self, branch_name):
         try:
             branch = self.dir.open_branch(branch_name)
-        except errors.NoColocatedBranchSupport:
+        except controldir.NoColocatedBranchSupport:
             if branch_name in ("HEAD", "master"):
                 branch = self.dir.open_branch()
             else:
