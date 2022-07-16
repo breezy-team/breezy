@@ -22,13 +22,13 @@ import errno
 
 from . import (
     bzrdir,
+    hashcache,
     inventory,
     transform as bzr_transform,
     )
 
 from .. import (
     errors,
-    hashcache,
     osutils,
     revision as _mod_revision,
     trace,
