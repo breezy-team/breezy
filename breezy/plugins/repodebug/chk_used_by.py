@@ -17,7 +17,7 @@
 from ... import (
     controldir,
     )
-from .. import (
+from ...bzr import (
     static_tuple,
     )
 from ...commands import (
