@@ -26,7 +26,7 @@ from breezy.tests import (
     )
 
 try:
-    from breezy import _simple_set_pyx
+    from . import _simple_set_pyx
 except ImportError:
     _simple_set_pyx = None
 
@@ -83,7 +83,7 @@ class _NoImplementCompare(_Hashable):
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 compiled_simpleset_feature = features.ModuleAvailableFeature(
-    'breezy._simple_set_pyx')
+    'breezy.bzr._simple_set_pyx')
 
 
 class TestSimpleSet(tests.TestCase):

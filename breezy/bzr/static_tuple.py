@@ -16,12 +16,12 @@
 
 """Interface thunk for a StaticTuple implementation."""
 
-from . import debug
+from .. import debug
 
 try:
     from ._static_tuple_c import StaticTuple
 except ImportError as e:
-    from . import osutils
+    from .. import osutils
     osutils.failed_to_load_extension(e)
     from ._static_tuple_py import StaticTuple
 

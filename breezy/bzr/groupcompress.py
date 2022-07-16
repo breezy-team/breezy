@@ -26,7 +26,6 @@ from breezy import (
     config,
     debug,
     osutils,
-    static_tuple,
     trace,
     tsort,
     )
@@ -34,6 +33,7 @@ from breezy.bzr import (
     knit,
     pack,
     pack_repo,
+    static_tuple,
     )
 
 from breezy.i18n import gettext

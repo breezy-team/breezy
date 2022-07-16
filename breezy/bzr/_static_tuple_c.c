@@ -21,7 +21,7 @@
 #define STATIC_TUPLE_MODULE
 
 #include <Python.h>
-#include "python-compat.h"
+#include "../python-compat.h"
 
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
