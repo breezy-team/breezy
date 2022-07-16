@@ -2671,3 +2671,14 @@ class TestContentMapGenerator(KnitTests):
                  }
         for record in generator.get_record_stream():
             self.assertEqual(kinds[record.key], record.storage_kind)
+
+
+class TestErrors(TestCase):
+
+    def test_retry_with_new_packs(self):
+        fake_exc_info = ('{exc type}', '{exc value}', '{exc traceback}')
+        error = pack_repo.RetryWithNewPacks(
+            '{context}', reload_occurred=False, exc_info=fake_exc_info)
+        self.assertEqual(
+            'Pack files have changed, reload and retry. context: '
+            '{context} {exc value}', str(error))

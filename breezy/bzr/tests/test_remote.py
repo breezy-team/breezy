@@ -4546,7 +4546,7 @@ class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
         self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)
 
 
-class TestErrors(TestCase):
+class TestErrors(tests.TestCase):
 
     def test_untranslateable_error_from_smart_server(self):
         error_tuple = ('error', 'tuple')

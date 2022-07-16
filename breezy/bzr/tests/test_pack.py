@@ -786,5 +786,3 @@ class TestErrors(tests.TestCase):
         self.assertEqual(
             u"Container has multiple records with the same name: n\xe5me",
             str(e))
-
-
