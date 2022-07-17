@@ -149,6 +149,10 @@ class MergeProposal(object):
         """Return the target branch."""
         raise NotImplementedError(self.get_target_branch_url)
 
+    def set_target_branch_name(self):
+        """Set the target branch name."""
+        raise NotImplementedError(self.set_target_branch_name)
+
     def get_source_project(self):
         raise NotImplementedError(self.get_source_project)
 
