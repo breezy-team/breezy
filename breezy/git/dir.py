@@ -20,6 +20,11 @@
 import contextlib
 import os
 
+try:
+    from dulwich.refs import SymrefLoop
+except ImportError:
+    SymrefLoop = KeyError
+
 from .. import (
     branch as _mod_branch,
     errors as brz_errors,
@@ -585,7 +590,10 @@ class LocalGitDir(GitDir):
 
     def get_branch_reference(self, name=None):
         ref = self._get_selected_ref(name)
-        target_ref = self._get_symref(ref)
+        try:
+            target_ref = self._get_symref(ref)
+        except SymrefLoop:
+            raise BranchReferenceLoop(self)
         if target_ref is not None:
             from .refs import ref_to_branch_name
             try:
@@ -646,10 +654,8 @@ class LocalGitDir(GitDir):
                 self.root_transport.base, controldir=self)
         try:
             ref_chain, unused_sha = self._git.refs.follow(ref)
-        except KeyError as e:
-            raise brz_errors.NotBranchError(
-                self.root_transport.base, controldir=self,
-                detail='intermediate ref %s missing' % e.args[0])
+        except SymrefLoop as e:
+            raise BranchReferenceLoop(self)
         if ref_chain[-1] == b'HEAD':
             controldir = self
         else:
