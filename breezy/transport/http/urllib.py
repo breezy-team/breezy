@@ -167,7 +167,7 @@ class Response(http_client.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301, 302, 303, 307, 308, 403, 404, 501]
+    _body_ignored_responses = [301, 302, 303, 307, 308, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks

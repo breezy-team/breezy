@@ -142,6 +142,10 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_repository.git_identity,
                 ref=self._mp.target_git_path.encode('utf-8'))
 
+    def set_target_branch_name(self, name):
+        # The launchpad API doesn't support changing branch names today.
+        raise NotImplementedError(self.set_target_branch_name)
+
     @property
     def url(self):
         return lp_api.canonical_url(self._mp)
