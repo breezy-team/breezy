@@ -46,6 +46,15 @@ class TestGitDir(tests.TestCaseInTempDir):
             urlutils.local_path_to_url(os.path.abspath(".")),
             gd.get_branch_reference())
 
+    def test_get_reference_loop(self):
+        r = GitRepo.init(".")
+        r.refs.set_symbolic_ref(b'refs/heads/loop', b'refs/heads/loop')
+
+        gd = controldir.ControlDir.open('.')
+        self.assertRaises(
+            controldir.BranchReferenceLoop,
+            gd.get_branch_reference, name='loop')
+
     def test_open_existing(self):
         GitRepo.init(".")
 
