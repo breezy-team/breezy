@@ -48,11 +48,14 @@ from breezy.errors import (
     NoSuchFile,
     NotBranchError,
     NoCommits,
-    PointlessMerge,
     InvalidHttpResponse,
     NoRoundtrippingSupport,
     UncommittedChanges,
 )
+try:
+    from breezy.workingtree import PointlessMerge
+except ImportError:
+    from breezy.errors import PointlessMerge
 from breezy.transport import (
     Transport,
     UnusableRedirect,
