@@ -93,6 +93,14 @@ class UnusableRedirect(errors.BzrError):
             source=source, target=target, reason=reason)
 
 
+class UnsupportedProtocol(errors.PathError):
+
+    _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
+
+    def __init__(self, url, extra=""):
+        PathError.__init__(self, url, extra=extra)
+
+
 class TransportListRegistry(registry.Registry):
     """A registry which simplifies tracking available Transports.
 
@@ -1550,7 +1558,7 @@ def get_transport_from_url(url, possible_transports=None):
                 return transport
     if not urlutils.is_url(url):
         raise urlutils.InvalidURL(path=url)
-    raise errors.UnsupportedProtocol(url, last_err)
+    raise UnsupportedProtocol(url, last_err)
 
 
 def get_transport(base, possible_transports=None, purpose=None):

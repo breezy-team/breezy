@@ -37,6 +37,7 @@ from ..transport import (
     memory,
     pathfilter,
     readonly,
+    UnsupportedProtocol,
     )
 from ..transport.http import urllib
 import breezy.transport.trace
@@ -92,7 +93,7 @@ class TestTransport(tests.TestCase):
             'foo', 'breezy.tests.test_transport', 'BadTransportHandler')
         try:
             transport.get_transport_from_url('foo://fooserver/foo')
-        except errors.UnsupportedProtocol as e:
+        except UnsupportedProtocol as e:
             self.assertEqual('Unsupported protocol'
                              ' for url "foo://fooserver/foo":'
                              ' Unable to import library "some_lib":'
@@ -117,7 +118,7 @@ class TestTransport(tests.TestCase):
         """Transport ssh:// should raise an error pointing out bzr+ssh://"""
         try:
             transport.get_transport_from_url('ssh://fooserver/foo')
-        except errors.UnsupportedProtocol as e:
+        except UnsupportedProtocol as e:
             self.assertEqual(
                 'Unsupported protocol'
                 ' for url "ssh://fooserver/foo":'
@@ -242,7 +243,7 @@ class TestMemoryServer(tests.TestCase):
         del t
         server.stop_server()
         self.assertFalse(url in transport.transport_list_registry)
-        self.assertRaises(errors.UnsupportedProtocol,
+        self.assertRaises(UnsupportedProtocol,
                           transport.get_transport, url)
 
 

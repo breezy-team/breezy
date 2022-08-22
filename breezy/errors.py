@@ -382,14 +382,6 @@ class PermissionDenied(PathError):
     _fmt = 'Permission denied: "%(path)s"%(extra)s'
 
 
-class UnsupportedProtocol(PathError):
-
-    _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
-
-    def __init__(self, url, extra=""):
-        PathError.__init__(self, url, extra=extra)
-
-
 class UnstackableLocationError(BzrError):
 
     _fmt = "The branch '%(branch_url)s' cannot be stacked on '%(target_url)s'."
