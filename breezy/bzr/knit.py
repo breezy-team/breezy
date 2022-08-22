@@ -81,11 +81,11 @@ from .. import (
     annotate,
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from ..errors import (
     InternalBzrError,
     InvalidRevisionId,
-    NoSuchFile,
     RevisionNotPresent,
     )
 from ..osutils import (
@@ -93,6 +93,9 @@ from ..osutils import (
     sha_string,
     sha_strings,
     split_lines,
+    )
+from ..transport import (
+    NoSuchFile,
     )
 from ..bzr.versionedfile import (
     _KeyRefs,
@@ -2611,7 +2614,7 @@ class _KndxIndex(object):
         if line == b'':
             # An empty file can actually be treated as though the file doesn't
             # exist yet.
-            raise errors.NoSuchFile(self)
+            raise _mod_transport.NoSuchFile(self)
         if line != self.HEADER:
             raise KnitHeaderError(badline=line, filename=self)
 
@@ -3273,7 +3276,7 @@ class _KnitKeyAccess(object):
         path = self._mapper.map(key)
         try:
             base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self._transport.mkdir(osutils.dirname(path))
             base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
         # if base == 0:

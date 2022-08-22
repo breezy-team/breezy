@@ -20,6 +20,7 @@ from breezy import (
     osutils,
     revisiontree,
     tests,
+    transport as _mod_transport,
     )
 from breezy.tree import MissingNestedTree
 from breezy.bzr import (
@@ -245,7 +246,7 @@ class TestExtractFilesBytes(TestCaseWithTree):
         self.assertEqual(b'foo', extracted['id1'])
         self.assertEqual(b'bar', extracted['id2'])
         self.assertEqual(b'baz', extracted['id3'])
-        self.assertRaises(errors.NoSuchFile, lambda: list(
+        self.assertRaises(_mod_transport.NoSuchFile, lambda: list(
                           tree.iter_files_bytes(
                               [('qux', 'file1-notpresent')])))
 
@@ -288,7 +289,7 @@ class TestIterChildEntries(TestCaseWithTree):
         self.build_tree(['a/'])
         work_tree.add(['a'])
         tree = self._convert_tree(work_tree)
-        self.assertRaises(errors.NoSuchFile, lambda:
+        self.assertRaises(_mod_transport.NoSuchFile, lambda:
                           list(tree.iter_child_entries('unknown')))
 
 

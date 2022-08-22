@@ -39,7 +39,6 @@ from ..errors import (
     InProcessTransport,
     InvalidRevisionId,
     LockContention,
-    NoSuchFile,
     NoSuchRevision,
     NoSuchTag,
     NotBranchError,
@@ -51,6 +50,7 @@ from ..errors import (
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
 from ..transport import (
+    NoSuchFile,
     Transport,
     register_urlparse_netloc_protocol,
     )

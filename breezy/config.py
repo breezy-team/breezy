@@ -98,7 +98,6 @@ from breezy import (
     lock,
     lockdir,
     osutils,
-    transport,
     ui,
     urlutils,
     win32utils,
@@ -113,6 +112,7 @@ from . import (
     lazy_regex,
     registry,
     trace,
+    transport,
     )
 from .option import Option as CommandOption
 
@@ -2021,7 +2021,7 @@ class TransportConfig(object):
             for hook in OldConfigHooks['load']:
                 hook(self)
             return f
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             return BytesIO()
         except errors.PermissionDenied:
             trace.warning(
@@ -3040,7 +3040,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except (errors.NoSuchFile, errors.PermissionDenied):
+        except (transport.NoSuchFile, errors.PermissionDenied):
             # If the file can't be read, there is no sections
             return
         cobj = self._config_obj
@@ -3055,7 +3055,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string(b'')
         if section_id in self.dirty_sections:

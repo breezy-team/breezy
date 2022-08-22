@@ -1056,7 +1056,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     self.target.set_reference_info(
                         tree.path2id(decode_git_path(path)), url.decode('utf-8'),
                         decode_git_path(path))
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             pass
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,

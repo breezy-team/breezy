@@ -33,6 +33,11 @@ from ...controldir import (
 from ... import (
     errors,
     )
+from ...transport import (
+    get_transport,
+    local,
+    NoSuchFile,
+    )
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import os
@@ -57,10 +62,6 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
-from breezy.transport import (
-    get_transport,
-    local,
-    )
 from breezy.plugins.weave_fmt import xml4
 """)
 
@@ -259,7 +260,7 @@ class ConvertBzrDir4To5(Converter):
             if not S_ISDIR(stat.st_mode):
                 self.controldir.transport.delete('weaves')
                 self.controldir.transport.mkdir('weaves')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             self.controldir.transport.mkdir('weaves')
         # deliberately not a WeaveFile as we want to build it up slowly.
         self.inv_weave = weave.Weave('inventory')
@@ -304,7 +305,7 @@ class ConvertBzrDir4To5(Converter):
             try:
                 ## assert os.path.getsize(p) == 0
                 self.controldir.transport.delete(n)
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 pass
         self.controldir.transport.delete_tree('inventory-store')
         self.controldir.transport.delete_tree('text-store')
@@ -527,7 +528,7 @@ class ConvertBzrDir5To6(Converter):
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, new_name)
-                except errors.NoSuchFile:  # catches missing dirs strangely enough
+                except NoSuchFile:  # catches missing dirs strangely enough
                     store_transport.mkdir(osutils.dirname(new_name))
                     store_transport.move(filename, new_name)
         self.controldir.transport.put_bytes(
@@ -562,7 +563,7 @@ class ConvertBzrDir6ToMeta(Converter):
         try:
             self.step(gettext('Removing ancestry.weave'))
             self.controldir.transport.delete('ancestry.weave')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             pass
         # find out whats there
         self.step(gettext('Finding branch files'))
@@ -649,7 +650,7 @@ class ConvertBzrDir6ToMeta(Converter):
         self.step(gettext('Moving %s') % name)
         try:
             self.controldir.transport.move(name, '%s/%s' % (new_dir, name))
-        except errors.NoSuchFile:
+        except NoSuchFile:
             if mandatory:
                 raise
 
@@ -811,7 +812,7 @@ class BzrDirPreSplitOut(BzrDir):
                     % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
-        except errors.NoSuchFile:
+        except NoSuchFile:
             result = self._init_workingtree()
         if revision_id is not None:
             if revision_id == _mod_revision.NULL_REVISION:

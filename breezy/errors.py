@@ -315,16 +315,6 @@ class PathError(BzrError):
             self.extra = ''
 
 
-class NoSuchFile(PathError):
-
-    _fmt = "No such file: %(path)r%(extra)s"
-
-
-class FileExists(PathError):
-
-    _fmt = "File exists: %(path)r%(extra)s"
-
-
 class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 

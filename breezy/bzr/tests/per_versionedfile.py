@@ -832,7 +832,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
                          get_scope=self.get_transaction)
 
     def test_no_implicit_create(self):
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(transport.NoSuchFile,
                           WeaveFile,
                           'foo',
                           self.get_transport(),

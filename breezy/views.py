@@ -29,6 +29,7 @@ import re
 from . import (
     errors,
     osutils,
+    transport,
     )
 
 
@@ -203,7 +204,7 @@ class PathBasedViews(_Views):
             with self.tree.lock_read():
                 try:
                     view_content = self.tree._transport.get_bytes('views')
-                except errors.NoSuchFile:
+                except transport.NoSuchFile:
                     self._current, self._views = None, {}
                 else:
                     keywords, self._views = \

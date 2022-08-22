@@ -162,7 +162,7 @@ class SvnRepositoryProber(controldir.Prober):
             priv_transport = getattr(transport, "_decorated", transport)
             try:
                 headers = priv_transport._options('.')
-            except (errors.InProcessTransport, errors.NoSuchFile,
+            except (errors.InProcessTransport, _mod_transport.NoSuchFile,
                     errors.InvalidHttpResponse):
                 raise errors.NotBranchError(path=transport.base)
             else:

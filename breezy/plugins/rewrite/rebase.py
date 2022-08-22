@@ -24,7 +24,6 @@ from ... import (
     )
 from ...errors import (
     BzrError,
-    NoSuchFile,
     UnknownFormatError,
     NoCommonAncestor,
     UnrelatedBranches,
@@ -35,6 +34,7 @@ from ...graph import FrozenHeadsCache
 from ...merge import Merger
 from ...revision import NULL_REVISION
 from ...trace import mutter
+from ...transport import NoSuchFile
 from ...tsort import topo_sort
 from ... import ui
 

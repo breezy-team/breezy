@@ -26,6 +26,7 @@ so these tests are testing that when there is a cache, it performs correctly.
 from breezy import (
     errors,
     tests,
+    transport as _mod_transport,
     )
 from breezy.tests import per_workingtree
 
@@ -125,7 +126,7 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         basis = tree.revision_tree(parents[0])
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertRaises(errors.NoSuchFile, basis.kind, 'a')
+        self.assertRaises(_mod_transport.NoSuchFile, basis.kind, 'a')
         self.assertEqual(['directory', 'file'],
                          [basis.kind('b'), basis.kind('b/c')])
         try:
@@ -136,6 +137,6 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
                 % type(tree))
         other.lock_read()
         self.addCleanup(other.unlock)
-        self.assertRaises(errors.NoSuchFile, other.kind, 'b')
-        self.assertRaises(errors.NoSuchFile, other.kind, 'c')
+        self.assertRaises(_mod_transport.NoSuchFile, other.kind, 'b')
+        self.assertRaises(_mod_transport.NoSuchFile, other.kind, 'c')
         self.assertEqual('file', other.kind('a'))

@@ -37,6 +37,7 @@ from .. import (
     registry,
     repository as _mod_repository,
     revision as _mod_revision,
+    transport as _mod_transport,
     urlutils,
     )
 from . import (
@@ -4509,7 +4510,7 @@ error_translators.register(b'PermissionDenied', _translate_PermissionDenied)
 error_translators.register(b'ReadError',
                            lambda err, find, get_path: errors.ReadError(get_path()))
 error_translators.register(b'NoSuchFile',
-                           lambda err, find, get_path: errors.NoSuchFile(get_path()))
+                           lambda err, find, get_path: _mod_transport.NoSuchFile(get_path()))
 error_translators.register(b'TokenLockingNotSupported',
                            lambda err, find, get_path: errors.TokenLockingNotSupported(
                                find('repository')))
@@ -4539,7 +4540,7 @@ no_context_error_translators.register(b'UnstackableBranchFormat',
 no_context_error_translators.register(b'UnstackableRepositoryFormat',
                                       lambda err: errors.UnstackableRepositoryFormat(*err.error_args))
 no_context_error_translators.register(b'FileExists',
-                                      lambda err: errors.FileExists(err.error_args[0].decode('utf-8')))
+                                      lambda err: _mod_transport.FileExists(err.error_args[0].decode('utf-8')))
 no_context_error_translators.register(b'DirectoryNotEmpty',
                                       lambda err: errors.DirectoryNotEmpty(err.error_args[0].decode('utf-8')))
 no_context_error_translators.register(b'UnknownFormat',

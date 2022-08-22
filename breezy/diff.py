@@ -42,6 +42,7 @@ from breezy.i18n import gettext
 from . import (
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from .registry import (
     Registry,
@@ -752,7 +753,7 @@ class DiffText(DiffPath):
                 return []
             try:
                 return tree.get_file_lines(path)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return []
         try:
             from_text = _get_text(self.old_tree, from_path)

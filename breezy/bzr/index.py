@@ -39,6 +39,7 @@ from breezy import (
 from .. import (
     debug,
     errors,
+    transport as _mod_transport,
     )
 from .static_tuple import StaticTuple
 
@@ -1373,7 +1374,7 @@ class CombinedGraphIndex(object):
                             yield node
                             seen_keys.add(node[1])
                 return
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 
@@ -1403,7 +1404,7 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
         self._move_to_front(hit_indices)
@@ -1446,7 +1447,7 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
         self._move_to_front(hit_indices)
@@ -1593,7 +1594,7 @@ class CombinedGraphIndex(object):
         while True:
             try:
                 return sum((index.key_count() for index in self._indices), 0)
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 
@@ -1628,7 +1629,7 @@ class CombinedGraphIndex(object):
                 for index in self._indices:
                     index.validate()
                 return
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 

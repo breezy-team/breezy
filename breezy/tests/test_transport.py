@@ -37,6 +37,8 @@ from ..transport import (
     memory,
     pathfilter,
     readonly,
+    FileExists,
+    NoSuchFile,
     UnsupportedProtocol,
     )
 from ..transport.http import urllib
@@ -287,17 +289,17 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_append_without_dir_fails(self):
         t = memory.MemoryTransport()
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(NoSuchFile,
                           t.append_bytes, 'dir/path', b'content')
 
     def test_put_without_dir_fails(self):
         t = memory.MemoryTransport()
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(NoSuchFile,
                           t.put_file, 'dir/path', BytesIO(b'content'))
 
     def test_get_missing(self):
         transport = memory.MemoryTransport()
-        self.assertRaises(errors.NoSuchFile, transport.get, 'foo')
+        self.assertRaises(NoSuchFile, transport.get, 'foo')
 
     def test_has_missing(self):
         t = memory.MemoryTransport()
@@ -327,12 +329,12 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_mkdir_missing_parent(self):
         t = memory.MemoryTransport()
-        self.assertRaises(errors.NoSuchFile, t.mkdir, 'dir/dir')
+        self.assertRaises(NoSuchFile, t.mkdir, 'dir/dir')
 
     def test_mkdir_twice(self):
         t = memory.MemoryTransport()
         t.mkdir('dir')
-        self.assertRaises(errors.FileExists, t.mkdir, 'dir')
+        self.assertRaises(FileExists, t.mkdir, 'dir')
 
     def test_parameters(self):
         t = memory.MemoryTransport()
@@ -816,7 +818,7 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
 
     def test_missing_directory(self):
         t = self.get_transport('.')
-        self.assertRaises(errors.NoSuchFile, t.open_write_stream, 'dir/foo')
+        self.assertRaises(NoSuchFile, t.open_write_stream, 'dir/foo')
 
 
 class TestWin32LocalTransport(tests.TestCase):

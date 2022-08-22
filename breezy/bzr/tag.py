@@ -24,6 +24,7 @@ from ..tag import Tags
 from .. import (
     errors,
     trace,
+    transport as _mod_transport,
     )
 
 
@@ -57,7 +58,7 @@ class BasicTags(Tags):
         with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
                               'This branch was probably created by bzr 0.15pre.  '

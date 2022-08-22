@@ -60,6 +60,7 @@ from ... import (
     osutils,
     progress,
     trace,
+    transport as _mod_transport,
     )
 
 from . import (
@@ -322,7 +323,7 @@ class BzrFastExporter(object):
         try:
             if tree.kind(path) != 'directory':
                 return False
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
                          (path,))
             return False

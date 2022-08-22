@@ -98,7 +98,17 @@ class UnsupportedProtocol(errors.PathError):
     _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
 
     def __init__(self, url, extra=""):
-        PathError.__init__(self, url, extra=extra)
+        errors.PathError.__init__(self, url, extra=extra)
+
+
+class NoSuchFile(errors.PathError):
+
+    _fmt = "No such file: %(path)r%(extra)s"
+
+
+class FileExists(errors.PathError):
+
+    _fmt = "File exists: %(path)r%(extra)s"
 
 
 class TransportListRegistry(registry.Registry):
@@ -358,18 +368,18 @@ class Transport(object):
         """
         if getattr(e, 'errno', None) is not None:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
                 mutter("EINVAL returned on path %s: %r" % (path, e))
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
             # This is the error when doing a listdir on a file:
             # WindowsError: [Errno 267] The directory name is invalid
             if sys.platform == 'win32' and e.errno in (errno.ESRCH, 267):
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             if e.errno == errno.EEXIST:
-                raise errors.FileExists(path, extra=e)
+                raise FileExists(path, extra=e)
             if e.errno == errno.EACCES:
                 raise errors.PermissionDenied(path, extra=e)
             if e.errno == errno.ENOTEMPTY:
@@ -399,10 +409,10 @@ class Transport(object):
                     % cur_transport.base)
             try:
                 new_transport.mkdir('.', mode=mode)
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 needed.append(new_transport)
                 cur_transport = new_transport
-            except errors.FileExists:
+            except FileExists:
                 break
             else:
                 break
@@ -422,7 +432,7 @@ class Transport(object):
         # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
             self.mkdir('.', mode=mode)
-        except (errors.FileExists, errors.PermissionDenied):
+        except (FileExists, errors.PermissionDenied):
             return False
         else:
             return True
@@ -940,7 +950,7 @@ class Transport(object):
         # Default implementation just does an atomic put.
         try:
             return self.put_file(relpath, f, mode=mode)
-        except errors.NoSuchFile:
+        except NoSuchFile:
             if not create_parent_dir:
                 raise
             parent_dir = osutils.dirname(relpath)
