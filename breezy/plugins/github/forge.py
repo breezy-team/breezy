@@ -428,6 +428,8 @@ class GitHub(Forge):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
