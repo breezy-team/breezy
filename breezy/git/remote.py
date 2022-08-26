@@ -1037,9 +1037,9 @@ class RemoteGitTagDict(GitTags):
 
 class RemoteGitBranch(GitBranch):
 
-    def __init__(self, controldir, repository, name):
+    def __init__(self, controldir, repository, ref):
         self._sha = None
-        super(RemoteGitBranch, self).__init__(controldir, repository, name,
+        super(RemoteGitBranch, self).__init__(controldir, repository, ref,
                                               RemoteGitBranchFormat())
 
     def last_revision_info(self):
@@ -1064,11 +1064,10 @@ class RemoteGitBranch(GitBranch):
         if self._sha is not None:
             return self._sha
         refs = self.controldir.get_refs_container()
-        name = branch_name_to_ref(self.name)
         try:
-            self._sha = refs[name]
+            self._sha = refs[self.ref]
         except KeyError:
-            raise NoSuchRef(name, self.repository.user_url, refs)
+            raise NoSuchRef(self.ref, self.repository.user_url, refs)
         return self._sha
 
     def _synchronize_history(self, destination, revision_id):
