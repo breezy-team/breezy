@@ -451,13 +451,15 @@ class GitBranch(ForeignBranch):
     def user_transport(self):
         return self._user_transport
 
-    def __init__(self, controldir, repository, ref, format):
+    def __init__(self, controldir, repository, ref: bytes, format):
         self.repository = repository
         self._format = format
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
+        if not isinstance(ref, bytes):
+            raise TypeError("ref is invalid: %r" % ref)
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone('.')
