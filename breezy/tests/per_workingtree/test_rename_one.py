@@ -22,6 +22,7 @@ from breezy import (
     errors,
     osutils,
     tests,
+    transport as _mod_transport,
     )
 from breezy.tests import (
     features,
@@ -406,5 +407,5 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.add(["a"])
         e = self.assertRaises(errors.BzrMoveFailedError,
                               tree.rename_one, "a", u"\xA7", after=True)
-        self.assertIsInstance(e.extra, errors.NoSuchFile)
+        self.assertIsInstance(e.extra, _mod_transport.NoSuchFile)
         self.assertEqual(e.extra.path, u"\xA7")

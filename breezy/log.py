@@ -75,6 +75,7 @@ from . import (
     registry,
     revisionspec,
     trace,
+    transport as _mod_transport,
     )
 from .osutils import (
     format_date,
@@ -2186,7 +2187,7 @@ def _get_kind_for_file(tree, path):
     with tree.lock_read():
         try:
             return tree.stored_kind(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
 
 

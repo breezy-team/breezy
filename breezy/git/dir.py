@@ -35,6 +35,8 @@ from .. import (
 from ..transport import (
     do_catching_redirections,
     get_transport_from_path,
+    FileExists,
+    NoSuchFile,
     )
 
 from ..controldir import (
@@ -468,10 +470,10 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         try:
             transport = do_catching_redirections(
                 make_directory, transport, redirected)
-        except brz_errors.FileExists:
+        except FileExists:
             if not use_existing_dir:
                 raise
-        except brz_errors.NoSuchFile:
+        except NoSuchFile:
             if not create_prefix:
                 raise
             transport.create_prefix()
@@ -608,7 +610,7 @@ class LocalGitDir(GitDir):
                     params = {}
             try:
                 commondir = self.control_transport.get_bytes('commondir')
-            except brz_errors.NoSuchFile:
+            except NoSuchFile:
                 base_url = self.user_url.rstrip('/')
             else:
                 base_url = urlutils.local_path_to_url(
@@ -811,7 +813,7 @@ class LocalGitDir(GitDir):
     def _find_commondir(self):
         try:
             commondir = self.control_transport.get_bytes('commondir')
-        except brz_errors.NoSuchFile:
+        except NoSuchFile:
             return self
         else:
             commondir = os.fsdecode(commondir.rstrip(b'/.git/'))

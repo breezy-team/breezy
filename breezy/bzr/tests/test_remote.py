@@ -38,7 +38,7 @@ from ... import (
     errors,
     repository,
     tests,
-    transport,
+    transport as _mod_transport,
     treebuilder,
     )
 from ...branch import Branch
@@ -368,7 +368,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given client_base and transport_base.
         """
         client_medium = medium.SmartClientMedium(client_base)
-        t = transport.get_transport(transport_base)
+        t = _mod_transport.get_transport(transport_base)
         result = client_medium.remote_path_from_transport(t)
         self.assertEqual(expected, result)
 
@@ -386,7 +386,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given transport_base and relpath of that transport.  (Note that
         HttpTransportBase is a subclass of SmartClientMedium)
         """
-        base_transport = transport.get_transport(transport_base)
+        base_transport = _mod_transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)
@@ -1092,7 +1092,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = transport.clone('no-such-path')
         fmt = RemoteBzrDirFormat()
         self.assertRaises(
-            errors.NoSuchFile, fmt.initialize_on_transport_ex, transport,
+            _mod_transport.NoSuchFile, fmt.initialize_on_transport_ex, transport,
             create_prefix=False)
 
 

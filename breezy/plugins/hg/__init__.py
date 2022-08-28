@@ -22,6 +22,7 @@ Currently only tells the user that Mercurial is not supported.
 from ... import (
     controldir,
     errors,
+    transport as _mod_transport,
     )
 
 from ... import version_info  # noqa: F401
@@ -71,7 +72,7 @@ class LocalHgProber(controldir.Prober):
     def _has_hg_dumb_repository(transport):
         try:
             return transport.has_any([".hg/requires", ".hg/00changelog.i"])
-        except (errors.NoSuchFile, errors.PermissionDenied,
+        except (_mod_transport.NoSuchFile, errors.PermissionDenied,
                 errors.InvalidHttpResponse):
             return False
 

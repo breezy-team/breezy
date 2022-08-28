@@ -29,6 +29,7 @@ from .. import (
     revision,
     tests,
     trace,
+    transport as _mod_transport,
     )
 from ..bzr import (
     branch as bzrbranch,
@@ -258,7 +259,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
                                          a_controldir=a_controldir,
                                          _repository=found_repository,
                                          name=name)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
 

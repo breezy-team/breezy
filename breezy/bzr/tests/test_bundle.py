@@ -27,6 +27,7 @@ from ... import (
     revision as _mod_revision,
     tests,
     treebuilder,
+    transport as _mod_transport,
     )
 from .. import (
     bzrdir,
@@ -159,7 +160,7 @@ class MockTree(InventoryTree):
         try:
             result.write(self.contents[path])
         except KeyError:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         result.seek(0, 0)
         return result
 
@@ -503,7 +504,7 @@ class BundleTester(object):
                 for path in old.all_versioned_paths():
                     try:
                         old_file = old.get_file(path)
-                    except errors.NoSuchFile:
+                    except _mod_transport.NoSuchFile:
                         continue
                     self.assertEqual(
                         old_file.read(), new.get_file(path).read())

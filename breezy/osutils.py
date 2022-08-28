@@ -215,6 +215,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param unlink_func: A way to delete the target file if the full rename
         succeeds
     """
+    from .transport import NoSuchFile
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
@@ -233,7 +234,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (errors.NoSuchFile,):
+    except NoSuchFile:
         pass
     except IOError as e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
@@ -2206,11 +2207,11 @@ file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
 
 def file_stat(f, _lstat=os.lstat):
     try:
-        # XXX cache?
         return _lstat(f)
     except OSError as e:
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
-            raise errors.NoSuchFile(f)
+            from .transport import NoSuchFile
+            raise NoSuchFile(f)
         raise
 
 

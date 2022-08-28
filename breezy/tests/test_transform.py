@@ -24,7 +24,6 @@ import time
 import fastbencode as bencode
 
 from .. import (
-    errors,
     filters,
     osutils,
     revision as _mod_revision,
@@ -54,6 +53,7 @@ from ..errors import (
     ExistingPendingDeletion,
     ImmortalPendingDeletion,
     LockError,
+    StrictCommitFailed,
 )
 from ..osutils import (
     file_kind,
@@ -70,6 +70,7 @@ from .features import (
     HardlinkFeature,
     SymlinkFeature,
     )
+from ..transport import FileExists
 from ..transform import (
     create_from_tree,
     _FileMover,
@@ -373,7 +374,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
     def test_add_unversioned(self):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, [b'contents'])
-        self.assertRaises(errors.StrictCommitFailed, tt.commit, branch,
+        self.assertRaises(StrictCommitFailed, tt.commit, branch,
                           'message', strict=True)
 
     def test_modify_strict(self):
@@ -475,7 +476,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except errors.FileExists:
+        except FileExists:
             mover.rollback()
         self.assertPathExists('a')
         self.assertPathExists('c/d')

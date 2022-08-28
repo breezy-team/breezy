@@ -123,14 +123,12 @@ from . import (
 from .decorators import only_raises
 from .errors import (
     DirectoryNotEmpty,
-    FileExists,
     LockBreakMismatch,
     LockBroken,
     LockContention,
     LockCorrupt,
     LockFailed,
     LockNotHeld,
-    NoSuchFile,
     PathError,
     ResourceBusy,
     TransportError,
@@ -138,6 +136,10 @@ from .errors import (
 from .i18n import gettext
 from .osutils import format_delta, rand_chars, get_host_name
 from .trace import mutter, note
+from .transport import (
+    FileExists,
+    NoSuchFile,
+    )
 
 
 # XXX: At the moment there is no consideration of thread safety on LockDir

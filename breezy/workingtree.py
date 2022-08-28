@@ -63,6 +63,7 @@ from .i18n import gettext
 from . import mutabletree
 from .symbol_versioning import deprecated_method, deprecated_in
 from .trace import mutter, note
+from .transport import NoSuchFile
 
 
 class SettingFileIdUnsupported(errors.BzrError):
@@ -369,7 +370,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             file_obj = open(abspath, 'rb')
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise NoSuchFile(path)
             raise
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
@@ -408,7 +409,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             parents = [last_rev]
         try:
             merges_bytes = self._transport.get_bytes('pending-merges')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
@@ -480,7 +481,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                         kinds[pos] = osutils.file_kind(fullpath)
                     except OSError as e:
                         if e.errno == errno.ENOENT:
-                            raise errors.NoSuchFile(fullpath)
+                            raise NoSuchFile(fullpath)
 
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
@@ -725,7 +726,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             return osutils.readlink(abspath)
         except OSError as e:
             if getattr(e, 'errno', None) == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise NoSuchFile(path)
             raise
 
     def subsume(self, other_tree):

@@ -68,6 +68,7 @@ from ...trace import mutter, mutter_callsite
 from ...transport import (
     ConnectedTransport,
     UnusableRedirect,
+    NoSuchFile,
     )
 
 from . import default_user_agent, ssl
@@ -1955,7 +1956,7 @@ class HttpTransport(ConnectedTransport):
         response = self.request('GET', abspath, headers=headers)
 
         if response.status == 404:  # not found
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         elif response.status == 416:
             # We don't know which, but one of the ranges we specified was
             # wrong.
@@ -2441,7 +2442,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         resp = self.request('OPTIONS', abspath)
         if resp.status == 404:
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if resp.status in (403, 405):
             raise errors.InvalidHttpResponse(
                 abspath,

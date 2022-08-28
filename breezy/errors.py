@@ -315,16 +315,6 @@ class PathError(BzrError):
             self.extra = ''
 
 
-class NoSuchFile(PathError):
-
-    _fmt = "No such file: %(path)r%(extra)s"
-
-
-class FileExists(PathError):
-
-    _fmt = "File exists: %(path)r%(extra)s"
-
-
 class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 
@@ -380,14 +370,6 @@ class ResourceBusy(PathError):
 class PermissionDenied(PathError):
 
     _fmt = 'Permission denied: "%(path)s"%(extra)s'
-
-
-class UnsupportedProtocol(PathError):
-
-    _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
-
-    def __init__(self, url, extra=""):
-        PathError.__init__(self, url, extra=extra)
 
 
 class UnstackableLocationError(BzrError):

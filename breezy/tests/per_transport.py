@@ -34,8 +34,6 @@ from .. import (
     urlutils,
     )
 from ..errors import (ConnectionError,
-                      FileExists,
-                      NoSuchFile,
                       PathError,
                       TransportNotPossible,
                       )
@@ -49,6 +47,8 @@ from . import test_server
 from .test_transport import TestTransportImplementation
 from ..transport import (
     ConnectedTransport,
+    NoSuchFile,
+    FileExists,
     Transport,
     _get_transport_modules,
     )

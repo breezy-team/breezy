@@ -17,11 +17,11 @@
 """Tests for breezy.branch.InterBranch.copy_content_into."""
 
 from breezy import branch
-from breezy.errors import NoSuchFile
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_intertree import (
     TestCaseWithTwoTrees,
     )
+from breezy.transport import NoSuchFile
 
 
 class TestFindPaths(TestCaseWithTwoTrees):

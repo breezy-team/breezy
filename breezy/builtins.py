@@ -25,6 +25,7 @@ import breezy.git
 
 from . import (
     errors,
+    transport,
     )
 
 from . import lazy_import
@@ -53,7 +54,6 @@ from breezy import (
     revision as _mod_revision,
     symbol_versioning,
     timestamp,
-    transport,
     tree as _mod_tree,
     ui,
     urlutils,
@@ -958,7 +958,7 @@ class cmd_cp(Command):
         for src, dst in pairs:
             try:
                 src_kind = tree.stored_kind(src)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 raise errors.CommandError(
                     gettext('Could not copy %s => %s: %s is not versioned.')
                     % (src, dst, src))
@@ -974,7 +974,7 @@ class cmd_cp(Command):
             if dst_parent != '':
                 try:
                     dst_parent_kind = tree.stored_kind(dst_parent)
-                except errors.NoSuchFile:
+                except transport.NoSuchFile:
                     raise errors.CommandError(
                         gettext('Could not copy %s => %s: %s is not versioned.')
                         % (src, dst, dst_parent))
@@ -1496,7 +1496,7 @@ class cmd_branch(Command):
         to_transport = transport.get_transport(to_location, purpose='write')
         try:
             to_transport.mkdir('.')
-        except errors.FileExists:
+        except transport.FileExists:
             try:
                 to_dir = controldir.ControlDir.open_from_transport(
                     to_transport)
@@ -1513,7 +1513,7 @@ class cmd_branch(Command):
                     pass
                 else:
                     raise errors.AlreadyBranchError(to_location)
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             raise errors.CommandError(gettext('Parent of "%s" does not exist.')
                                       % to_location)
         else:
@@ -2112,7 +2112,7 @@ class cmd_init(Command):
         # locations if the user supplies an extended path
         try:
             to_transport.ensure_base()
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             if not create_prefix:
                 raise errors.CommandError(gettext("Parent directory of %s"
                                                   " does not exist."
@@ -3471,7 +3471,7 @@ class cmd_cat(Command):
             try:
                 rev_tree_path = _mod_tree.find_previous_path(
                     tree, rev_tree, relpath)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 rev_tree_path = None
 
             if rev_tree_path is None:
