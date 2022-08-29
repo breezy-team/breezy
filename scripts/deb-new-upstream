@@ -136,6 +136,7 @@ from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
 from debmutate.reformatting import GeneratedFile
 from debmutate.versions import (
     add_dfsg_suffix,
+    strip_dfsg_suffix,
     matches_release,
     new_upstream_package_version,
     initial_debian_revision,
@@ -632,7 +633,7 @@ def find_new_upstream(  # noqa: C901
         )
 
     if old_upstream_version:
-        if old_upstream_version == new_upstream_version:
+        if strip_dfsg_suffix(str(old_upstream_version)) == strip_dfsg_suffix(str(new_upstream_version)):
             raise UpstreamAlreadyImported(new_upstream_version)
         if old_upstream_version > new_upstream_version:
             if version_kind == "release" and matches_release(

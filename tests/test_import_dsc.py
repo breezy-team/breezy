@@ -168,6 +168,18 @@ class DistributionBranchTests(BuilddebTestCase):
         version = Version(version_no)
         self.assertEqual(db.tag_name(version, None), version_no)
 
+    def test_tag_name_vendor(self):
+        db = self.db1
+        version_no = "0.1-1"
+        version = Version(version_no)
+        self.assertEqual(db.tag_name(version, 'debian'), 'debian/%s' % version_no)
+
+    def test_tag_name_native(self):
+        db = self.db1
+        version_no = "0.1"
+        version = Version(version_no)
+        self.assertEqual(db.tag_name(version, 'debian'), version_no)
+
     def test_tag_version(self):
         db = self.db1
         tree = self.tree1

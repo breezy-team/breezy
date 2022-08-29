@@ -302,7 +302,7 @@ class DistributionBranch(object):
         :param version: the Version object that the tag should refer to.
         :return: a String with the name of the tag.
         """
-        if vendor is not None:
+        if vendor is not None and version.debian_revision:
             return mangle_version(self.branch, '%s/%s' % (vendor, version))
         else:
             return mangle_version(self.branch, str(version))

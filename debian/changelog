@@ -1,3 +1,9 @@
+breezy-debian (2.8.70) UNRELEASED; urgency=medium
+
+  * Fix tag name determination for native releases.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 29 Aug 2022 21:21:42 +0100
+
 breezy-debian (2.8.69) unstable; urgency=medium
 
   * When necessary, adds dfsg suffix.
