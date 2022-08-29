@@ -80,7 +80,6 @@ from .dir import (
     )
 from .errors import (
     GitSmartRemoteNotSupported,
-    NoSuchRef,
     )
 from .mapping import (
     encode_git_path,
@@ -538,12 +537,12 @@ class RemoteGitDir(GitDir):
         refname = self._get_selected_ref(name, ref)
         if refname != b'HEAD' and refname in self.get_refs_container():
             raise AlreadyBranchError(self.user_url)
-        ref_chain, unused_sha = self.get_refs_container().follow(
+        ref_chain, sha = self.get_refs_container().follow(
             self._get_selected_ref(name))
         if ref_chain and ref_chain[0] == b'HEAD' and len(ref_chain) > 1:
             refname = ref_chain[1]
         repo = self.open_repository()
-        return RemoteGitBranch(self, repo, refname)
+        return RemoteGitBranch(self, repo, refname, sha)
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
@@ -601,10 +600,10 @@ class RemoteGitDir(GitDir):
             raise NotBranchError(self.root_transport.base,
                                  controldir=self)
         try:
-            ref_chain, unused_sha = self.get_refs_container().follow(ref)
+            ref_chain, sha = self.get_refs_container().follow(ref)
         except SymrefLoop:
             raise BranchReferenceLoop(self)
-        return RemoteGitBranch(self, repo, ref_chain[-1])
+        return RemoteGitBranch(self, repo, ref_chain[-1], sha)
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
@@ -1045,8 +1044,8 @@ class RemoteGitTagDict(GitTags):
 
 class RemoteGitBranch(GitBranch):
 
-    def __init__(self, controldir, repository, ref):
-        self._sha = None
+    def __init__(self, controldir, repository, ref, sha):
+        self._sha = sha
         super(RemoteGitBranch, self).__init__(controldir, repository, ref,
                                               RemoteGitBranchFormat())
 
@@ -1069,13 +1068,6 @@ class RemoteGitBranch(GitBranch):
 
     @property
     def head(self):
-        if self._sha is not None:
-            return self._sha
-        refs = self.controldir.get_refs_container()
-        try:
-            self._sha = refs[self.ref]
-        except KeyError:
-            raise NoSuchRef(self.ref, self.repository.user_url, refs)
         return self._sha
 
     def _synchronize_history(self, destination, revision_id):

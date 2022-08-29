@@ -26,25 +26,6 @@ class BzrGitError(brz_errors.BzrError):
     """The base-level exception for bzr-git errors."""
 
 
-class NoSuchRef(BzrGitError):
-    """Raised when a ref can not be found."""
-
-    _fmt = "The ref %(ref)s was not found in the repository at %(location)s."
-
-    def __init__(self, ref, location, present_refs=None):
-        self.ref = ref
-        self.location = location
-        self.present_refs = present_refs
-
-
-def convert_dulwich_error(error):
-    """Convert a Dulwich error to a Bazaar error."""
-
-    if isinstance(error, git_errors.HangupException):
-        raise brz_errors.ConnectionReset(error.msg, "")
-    raise error
-
-
 class NoPushSupport(brz_errors.BzrError):
     _fmt = ("Push is not yet supported from %(source)r to %(target)r "
             "using %(mapping)r for %(revision_id)r. Try dpush instead.")
