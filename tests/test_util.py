@@ -43,6 +43,7 @@ from ..util import (
     AddChangelogError,
     InconsistentSourceFormatError,
     NoPreviousUpload,
+    NoSuchFile,
     changelog_find_previous_upload,
     component_from_orig_tarball,
     dget,
@@ -421,7 +422,7 @@ class DgetTests(TestCaseWithTransport):
         # No builder.build()
         self.build_tree(["target/"])
         self.assertRaises(
-            bzr_errors.NoSuchFile, dget,
+            NoSuchFile, dget,
             self.get_url(builder.dsc_name()), 'target')
 
     def test_dget_missing_file(self):
@@ -432,7 +433,7 @@ class DgetTests(TestCaseWithTransport):
         os.unlink(builder.tar_name())
         self.build_tree(["target/"])
         self.assertRaises(
-            bzr_errors.NoSuchFile, dget,
+            NoSuchFile, dget,
             self.get_url(builder.dsc_name()), 'target')
 
     def test_dget_missing_target(self):
@@ -988,7 +989,7 @@ class FilesExcludedTests(TestCaseWithTransport):
 
     def test_file_missing(self):
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(bzr_errors.NoSuchFile, get_files_excluded, tree)
+        self.assertRaises(NoSuchFile, get_files_excluded, tree)
 
     def test_not_set(self):
         tree = self.make_branch_and_tree('.')

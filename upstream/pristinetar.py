@@ -56,7 +56,6 @@ from ....errors import (
     DivergedBranches,
     NoSuchRevision,
     NoSuchTag,
-    NoSuchFile,
     NotBranchError,
     )
 from ....revision import NULL_REVISION
@@ -65,6 +64,10 @@ from ....trace import (
     note,
     warning,
     )
+try:
+    from ....transport import NoSuchFile
+except ImportError:
+    from ....errors import NoSuchFile
 
 from .branch import (
     git_snapshot_data_from_version,

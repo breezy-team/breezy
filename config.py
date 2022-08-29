@@ -25,8 +25,17 @@ from ...config import (
   ConfigObj,
   TreeConfig,
   )
-from ...errors import BzrError, NoSuchFile
+from ...errors import BzrError
 from ...trace import mutter, warning
+
+try:
+    from breezy.transport import (
+        NoSuchFile,
+    )
+except ImportError:
+    from breezy.errors import (
+        NoSuchFile,
+    )
 
 
 BUILD_TYPE_NORMAL = "normal"

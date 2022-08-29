@@ -40,7 +40,10 @@ from ....revision import (
 from ....tests import (
     TestCase,
     )
-from ....errors import NoSuchFile
+try:
+    from ....transport import NoSuchFile
+except ImportError:
+    from ....errors import NoSuchFile
 from ....tests.features import (
     ModuleAvailableFeature,
     PluginLoadedFeature,

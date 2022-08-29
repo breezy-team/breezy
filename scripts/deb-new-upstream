@@ -43,15 +43,23 @@ from breezy.commit import (
 )
 from breezy.controldir import ControlDir
 from breezy.errors import (
-    FileExists,
     InvalidNormalization,
-    NoSuchFile,
     NotBranchError,
     NoCommits,
     InvalidHttpResponse,
     NoRoundtrippingSupport,
     UncommittedChanges,
 )
+try:
+    from breezy.transport import (
+        FileExists,
+        NoSuchFile,
+    )
+except ImportError:
+    from breezy.errors import (
+        FileExists,
+        NoSuchFile,
+    )
 try:
     from breezy.workingtree import PointlessMerge
 except ImportError:
@@ -1689,4 +1697,6 @@ if __name__ == "__main__":
     import asyncio
     import sys
 
-    sys.exit(asyncio.run(main()))
+    from breezy.commands import exception_to_return_code
+
+    sys.exit(exception_to_return_code(asyncio.run, main()))

@@ -46,6 +46,10 @@ from ... import (
     osutils,
     urlutils,
     )
+try:
+    from ...transport import NoSuchFile
+except ImportError:
+    from ...errors import NoSuchFile
 from ...export import export
 from ...trace import (
     mutter,
@@ -640,7 +644,7 @@ def tree_get_source_format(tree, subpath=''):
         if e.errno == errno.ENOENT:
             return FORMAT_1_0
         raise
-    except errors.NoSuchFile:
+    except NoSuchFile:
         return FORMAT_1_0
     return text.strip().decode('ascii')
 

@@ -27,7 +27,11 @@ import tempfile
 
 from debmutate.watch import parse_watch_file
 
-from ....errors import BzrError, NoSuchFile
+from ....errors import BzrError
+try:
+    from ....transport import NoSuchFile
+except ImportError:
+    from ....errors import NoSuchFile
 from .... import osutils
 from ....trace import note, warning
 from . import UpstreamSource, PackageVersionNotPresent

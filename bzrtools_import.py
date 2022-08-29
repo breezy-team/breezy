@@ -18,7 +18,7 @@ from contextlib import ExitStack
 
 from ... import urlutils
 from ...controldir import ControlDir
-from ...errors import NoSuchFile, BzrCommandError, NotBranchError, BzrError
+from ...errors import BzrCommandError, NotBranchError, BzrError
 from ...osutils import (
     file_iterator,
     basename,
@@ -30,6 +30,10 @@ from ...osutils import (
 from ...trace import warning
 from ...tree import Tree
 from ...transform import resolve_conflicts
+try:
+    from ...transport import NoSuchFile
+except ImportError:
+    from ...errors import NoSuchFile
 
 
 class UnknownType(BzrError):

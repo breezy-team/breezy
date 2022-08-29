@@ -27,7 +27,10 @@ from ..repack_tarball import (
     UnsupportedRepackFormat,
     )
 
-from ....errors import FileExists
+try:
+    from ....transport import FileExists
+except ImportError:
+    from ....errors import FileExists
 from ....tests import TestCaseInTempDir
 
 

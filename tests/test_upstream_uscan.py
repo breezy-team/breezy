@@ -21,9 +21,10 @@
 
 import tempfile
 
-from ....errors import (
-    NoSuchFile,
-    )
+try:
+    from ....transport import NoSuchFile
+except ImportError:
+    from ....errors import NoSuchFile
 from ....tests import (
     TestCase,
     TestCaseWithTransport,

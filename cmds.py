@@ -42,11 +42,19 @@ from ...commands import Command
 from ...errors import (
     BzrError,
     BzrCommandError,
-    FileExists,
     NotBranchError,
     NotLocalUrl,
-    NoSuchFile,
     NoWorkingTree,
+    )
+try:
+    from ...transport import (
+        FileExists,
+        NoSuchFile,
+    )
+except ImportError:
+    from ...errors import (
+        FileExists,
+        NoSuchFile,
     )
 from ...option import Option
 from ...trace import mutter, note, warning

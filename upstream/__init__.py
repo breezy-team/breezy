@@ -30,12 +30,16 @@ from debian.changelog import Version
 
 from debmutate.versions import debianize_upstream_version
 
-from ....errors import BzrError, DependencyNotPresent, NoSuchFile
+from ....errors import BzrError, DependencyNotPresent
 from .... import osutils
 from ....trace import (
     note,
     warning,
     )
+try:
+    from ....transport import NoSuchFile
+except ImportError:
+    from ....errors import NoSuchFile
 
 from ..repack_tarball import (
     get_filetype,
