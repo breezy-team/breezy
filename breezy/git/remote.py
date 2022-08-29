@@ -582,10 +582,24 @@ class RemoteGitDir(GitDir):
 
     def get_branch_reference(self, name=None):
         ref = self._get_selected_ref(name)
-        val = self.get_refs_container().read_ref(ref)
-        if val.startswith(SYMREF):
-            return val[len(SYMREF):]
-        return None
+        try:
+            ref_chain, unused_sha = self.get_refs_container().follow(ref)
+        except SymrefLoop:
+            raise BranchReferenceLoop(self)
+        if len(ref_chain) == 1:
+            return None
+        target_ref = ref_chain[1]
+        from .refs import ref_to_branch_name
+        try:
+            branch_name = ref_to_branch_name(target_ref)
+        except ValueError:
+            params = {'ref': urlutils.quote(target_ref.decode('utf-8'), '')}
+        else:
+            if branch_name != '':
+                params = {'branch': urlutils.quote(branch_name, '')}
+            else:
+                params = {}
+        return urlutils.join_segment_parameters(self.user_url.rstrip('/'), params)
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, ref=None, possible_transports=None,
@@ -593,16 +607,15 @@ class RemoteGitDir(GitDir):
         repo = self.open_repository()
         ref = self._get_selected_ref(name, ref)
         try:
-            if not nascent_ok and ref not in self.get_refs_container():
-                raise NotBranchError(
-                    self.root_transport.base, controldir=self)
-        except NotGitRepository:
-            raise NotBranchError(self.root_transport.base,
-                                 controldir=self)
-        try:
             ref_chain, sha = self.get_refs_container().follow(ref)
         except SymrefLoop:
             raise BranchReferenceLoop(self)
+        except NotGitRepository:
+            raise NotBranchError(self.root_transport.base,
+                                 controldir=self)
+        if not nascent_ok and sha is None:
+            raise NotBranchError(
+                self.root_transport.base, controldir=self)
         return RemoteGitBranch(self, repo, ref_chain[-1], sha)
 
     def open_workingtree(self, recommend_upgrade=False):

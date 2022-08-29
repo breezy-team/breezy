@@ -21,7 +21,7 @@ from io import BytesIO
 import os
 import time
 
-from ...controldir import ControlDir
+from ...controldir import ControlDir, BranchReferenceLoop
 from ...errors import (
     ConnectionReset,
     DivergedBranches,
@@ -816,7 +816,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
             author=b'author <author@example.com>')
 
         remote = ControlDir.open(self.remote_url)
-        self.assertEqual(b'refs/heads/master', remote.get_branch_reference(''))
+        self.assertEqual(
+            remote.user_url.rstrip('/') + ',branch=master', remote.get_branch_reference(''))
         self.assertEqual(None, remote.get_branch_reference('master'))
 
     def test_get_branch_nick(self):
