@@ -23,7 +23,6 @@ from ...commands import (
 from ...errors import (
     CommandError,
     ConflictsInTree,
-    NoSuchFile,
     NoWorkingTree,
     UncommittedChanges,
     )
@@ -32,6 +31,9 @@ from ...option import (
     )
 from ...trace import (
     note,
+    )
+from ...transport import (
+    NoSuchFile,
     )
 
 from ...i18n import gettext

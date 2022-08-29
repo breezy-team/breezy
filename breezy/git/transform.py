@@ -35,6 +35,7 @@ from .. import (
     osutils,
     revision as _mod_revision,
     trace,
+    transport as _mod_transport,
     ui,
     urlutils,
     )
@@ -247,7 +248,7 @@ class TreeTransformBase(TreeTransform):
                 try:
                     if self._tree.stored_kind(path) == 'directory':
                         parents.append(trans_id)
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     pass
             elif self.tree_kind(trans_id) == 'directory':
                 parents.append(trans_id)
@@ -675,7 +676,7 @@ class TreeTransformBase(TreeTransform):
         try:
             if path is None or self._tree.kind(path) != 'file':
                 return None
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
         return path
 
@@ -1229,7 +1230,7 @@ class GitTreeTransform(DiskTreeTransform):
             return None
         try:
             return osutils.file_kind(self._tree.abspath(path))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
@@ -1561,7 +1562,7 @@ class GitTransformPreview(GitTreeTransform):
             for child in self._tree.iter_child_entries(path):
                 childpath = joinpath(path, child.name)
                 yield self.trans_id_tree_path(childpath)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return
 
     def new_orphan(self, trans_id, parent_id):
@@ -1636,12 +1637,12 @@ class GitPreviewTree(PreviewTree, GitTree):
         """See Tree.get_file"""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         if trans_id in self._transform._new_contents:
             name = self._transform._limbo_name(trans_id)
             return open(name, 'rb')
         if trans_id in self._transform._removed_contents:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         orig_path = self._transform.tree_path(trans_id)
         return self._transform._tree.get_file(orig_path)
 
@@ -1649,7 +1650,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         """See Tree.get_symlink_target"""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         if trans_id not in self._transform._new_contents:
             orig_path = self._transform.tree_path(trans_id)
             return self._transform._tree.get_symlink_target(orig_path)
@@ -1668,7 +1669,7 @@ class GitPreviewTree(PreviewTree, GitTree):
             old_annotation = []
         try:
             lines = self.get_file_lines(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
         return annotate.reannotate([old_annotation], lines, default_revision)
 
@@ -1743,7 +1744,7 @@ class GitPreviewTree(PreviewTree, GitTree):
         """See Tree.get_file_mtime"""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         if trans_id not in self._transform._new_contents:
             return self._transform._tree.get_file_mtime(
                 self._transform.tree_path(trans_id))
@@ -1821,7 +1822,7 @@ class GitPreviewTree(PreviewTree, GitTree):
     def iter_child_entries(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         for child_trans_id in self._all_children(trans_id):
             entry, is_versioned = self._transform.final_entry(trans_id)
             if not is_versioned:

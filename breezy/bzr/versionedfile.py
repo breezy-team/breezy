@@ -45,6 +45,7 @@ from breezy.bzr import (
 """)
 from .. import (
     errors,
+    transport as _mod_transport,
     )
 from ..registry import Registry
 from ..textmerge import TextMerge
@@ -1358,7 +1359,7 @@ class ThunkedVersionedFiles(VersionedFiles):
                                     left_matching_blocks=left_matching_blocks,
                                     nostore_sha=nostore_sha, random_id=random_id,
                                     check_content=check_content)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # parent directory may be missing, try again.
             self._transport.mkdir(osutils.dirname(path))
             try:

@@ -29,10 +29,11 @@ import shutil
 from typing import Optional, List
 
 from .clean_tree import iter_deletables
-from .errors import BzrError, DependencyNotPresent, NoSuchFile
+from .errors import BzrError, DependencyNotPresent
 from .osutils import is_inside
 from .trace import warning
 from .transform import revert
+from .transport import NoSuchFile
 from .tree import Tree
 from .workingtree import WorkingTree
 

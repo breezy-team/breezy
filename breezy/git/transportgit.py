@@ -74,17 +74,19 @@ from .. import (
     )
 from ..errors import (
     AlreadyControlDirError,
-    FileExists,
     LockBroken,
     LockContention,
     NotLocalUrl,
-    NoSuchFile,
     ReadError,
     TransportNotPossible,
     )
 
 from ..lock import LogicalLockResult
 from ..trace import warning
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    )
 
 
 class TransportRefsContainer(RefsContainer):

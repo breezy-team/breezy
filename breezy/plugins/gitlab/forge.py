@@ -291,6 +291,9 @@ class GitLabMergeProposal(MergeProposal):
         return self._branch_url_from_project(
             self._mr['target_project_id'], self._mr['target_branch'])
 
+    def set_target_branch_name(self, name):
+        self._update(branch=name)
+
     def _get_project_name(self, project_id):
         source_project = self.gl._get_project(project_id)
         return source_project['path_with_namespace']
@@ -609,6 +612,8 @@ class GitLab(Forge):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = base_branch.get_config_stack().get('fork-namespace')
@@ -727,6 +732,9 @@ class GitLab(Forge):
             resp = transport.request(
                 'GET', 'https://%s/api/v4/projects/%s' % (host, urlutils.quote(str(project), '')))
         except errors.UnexpectedHttpStatus as e:
+            raise UnsupportedForge(url)
+        except errors.RedirectRequested:
+            # GitLab doesn't send redirects for these URLs
             raise UnsupportedForge(url)
         else:
             if not resp.getheader('X-Gitlab-Feature-Category'):

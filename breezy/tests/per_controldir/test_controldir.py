@@ -1111,7 +1111,7 @@ class TestControlDir(TestCaseWithControlDir):
         t = self.get_transport('dir')
         t.ensure_base()
         self.assertRaises(
-            errors.FileExists,
+            transport.FileExists,
             self.bzrdir_format.initialize_on_transport_ex, t,
             use_existing_dir=False)
 
@@ -1124,7 +1124,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestNotApplicable("format is not initializable")
         t = self.get_transport('missing/dir')
         self.assertRaises(
-            errors.NoSuchFile, self.assertInitializeEx, t,
+            transport.NoSuchFile, self.assertInitializeEx, t,
             create_prefix=False)
 
     def test_format_initialize_on_transport_ex_force_new_repo_True(self):

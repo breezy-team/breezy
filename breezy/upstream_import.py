@@ -29,12 +29,12 @@ import zipfile
 from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
-from .errors import (BzrError, NoSuchFile, CommandError, NotBranchError)
+from .errors import (BzrError, CommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
 from .trace import warning
 from .transform import resolve_conflicts
-from .transport import get_transport
+from .transport import get_transport, NoSuchFile
 from .workingtree import WorkingTree
 
 

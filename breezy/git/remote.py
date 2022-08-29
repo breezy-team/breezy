@@ -19,6 +19,11 @@
 import gzip
 import re
 
+try:
+    from dulwich.refs import SymrefLoop
+except ImportError:
+    SymrefLoop = KeyError
+
 from .. import (
     config,
     debug,
@@ -39,7 +44,6 @@ from ..errors import (
     InProcessTransport,
     InvalidRevisionId,
     LockContention,
-    NoSuchFile,
     NoSuchRevision,
     NoSuchTag,
     NotBranchError,
@@ -51,6 +55,7 @@ from ..errors import (
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
 from ..transport import (
+    NoSuchFile,
     Transport,
     register_urlparse_netloc_protocol,
     )
@@ -576,7 +581,7 @@ class RemoteGitDir(GitDir):
         return RemoteGitRepository(self)
 
     def get_branch_reference(self, name=None):
-        ref = branch_name_to_ref(name)
+        ref = self._get_selected_ref(name)
         val = self.get_refs_container().read_ref(ref)
         if val.startswith(SYMREF):
             return val[len(SYMREF):]
@@ -594,7 +599,10 @@ class RemoteGitDir(GitDir):
         except NotGitRepository:
             raise NotBranchError(self.root_transport.base,
                                  controldir=self)
-        ref_chain, sha = self.get_refs_container().follow(ref)
+        try:
+            ref_chain, sha = self.get_refs_container().follow(ref)
+        except SymrefLoop:
+            raise BranchReferenceLoop(self)
         return RemoteGitBranch(self, repo, ref_chain[-1], sha)
 
     def open_workingtree(self, recommend_upgrade=False):

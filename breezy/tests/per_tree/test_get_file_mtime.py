@@ -18,7 +18,7 @@
 
 import time
 
-from breezy import errors
+from breezy import transport
 
 from breezy.tests.per_tree import TestCaseWithTree
 
@@ -49,4 +49,4 @@ class TestGetFileMTime(TestCaseWithTree):
         tree = self.get_basic_tree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertRaises(errors.NoSuchFile, tree.get_file_mtime, 'unexistant')
+        self.assertRaises(transport.NoSuchFile, tree.get_file_mtime, 'unexistant')

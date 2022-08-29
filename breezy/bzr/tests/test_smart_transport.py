@@ -1596,7 +1596,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # for users.
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
         err = self.assertRaises(
-            errors.NoSuchFile, self.transport.get, 'not%20a%20file')
+            _mod_transport.NoSuchFile, self.transport.get, 'not%20a%20file')
         self.assertSubset([err.path], ['not%20a%20file', './not%20a%20file'])
 
     def test_simple_clone_conn(self):

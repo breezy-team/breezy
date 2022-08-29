@@ -39,6 +39,7 @@ from . import (
     registry,
     revision as _mod_revision,
     transform,
+    transport as _mod_transport,
     trace,
     tree as _mod_tree,
     )
@@ -995,7 +996,7 @@ class Merge3Merger(object):
                             return None
                         try:
                             return tree.get_file_sha1(path)
-                        except errors.NoSuchFile:
+                        except _mod_transport.NoSuchFile:
                             return None
                     base_sha1 = get_sha1(self.base_tree, base_path)
                     lca_sha1s = [get_sha1(tree, lca_path)
@@ -1097,7 +1098,7 @@ class Merge3Merger(object):
         """Determine the sha1 of the file contents (used as a key method)."""
         try:
             return tree.get_file_sha1(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
 
     @staticmethod
@@ -1106,7 +1107,7 @@ class Merge3Merger(object):
         try:
             if tree.kind(path) != "file":
                 return False
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
         return tree.is_executable(path)
 
@@ -1115,7 +1116,7 @@ class Merge3Merger(object):
         """Determine the kind of a file-id (used as a key method)."""
         try:
             return tree.kind(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
 
     @staticmethod
@@ -1235,7 +1236,7 @@ class Merge3Merger(object):
                 return (None, None)
             try:
                 kind = tree.kind(path)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return (None, None)
             if kind == "file":
                 contents = tree.get_file_sha1(path)
@@ -1402,7 +1403,7 @@ class Merge3Merger(object):
             return []
         try:
             kind = tree.kind(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return []
         else:
             if kind != 'file':

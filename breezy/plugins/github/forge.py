@@ -147,6 +147,9 @@ class GitHubMergeProposal(MergeProposal):
     def get_target_branch_url(self):
         return self._branch_from_part(self._pr['base'])
 
+    def set_target_branch_name(self, name):
+        self._patch(base=name)
+
     def get_source_project(self):
         return self._pr['head']['repo']['full_name']
 
@@ -162,7 +165,7 @@ class GitHubMergeProposal(MergeProposal):
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
 
-    def _patch(self, data):
+    def _patch(self, **data):
         response = self._gh._api_request(
             'PATCH', self._pr['url'], body=json.dumps(data).encode('utf-8'))
         if response.status == 422:
@@ -173,10 +176,9 @@ class GitHubMergeProposal(MergeProposal):
         self._pr = json.loads(response.text)
 
     def set_description(self, description):
-        self._patch({
-            'body': description,
-            'title': determine_title(description),
-            })
+        self._patch(
+            body=description,
+            title=determine_title(description))
 
     def is_merged(self):
         return bool(self._pr.get('merged_at'))
@@ -186,12 +188,12 @@ class GitHubMergeProposal(MergeProposal):
 
     def reopen(self):
         try:
-            self._patch({'state': 'open'})
+            self._patch(state='open')
         except ValidationFailed as e:
             raise ReopenFailed(e.error['errors'][0]['message'])
 
     def close(self):
-        self._patch({'state': 'closed'})
+        self._patch(state='closed')
 
     def can_be_merged(self):
         return self._pr['mergeable']
@@ -426,6 +428,8 @@ class GitHub(Forge):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:

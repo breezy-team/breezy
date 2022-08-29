@@ -41,6 +41,7 @@ from .. import (
     errors,
     lockable_files,
     lockdir,
+    transport as _mod_transport,
     )
 from ..bzr import (
     btree_index,
@@ -1184,7 +1185,7 @@ class RepositoryPackCollection(object):
                                                txt_index, sig_index, self._upload_transport,
                                                self._pack_transport, self._index_transport, self,
                                                chk_index=chk_index)
-        except errors.NoSuchFile as e:
+        except _mod_transport.NoSuchFile as e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
@@ -1264,12 +1265,12 @@ class RepositoryPackCollection(object):
                 try:
                     pack.pack_transport.move(pack.file_name(),
                                              '../obsolete_packs/' + pack.file_name())
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     # perhaps obsolete_packs was removed? Let's create it and
                     # try again
                     try:
                         pack.pack_transport.mkdir('../obsolete_packs/')
-                    except errors.FileExists:
+                    except _mod_transport.FileExists:
                         pass
                     pack.pack_transport.move(pack.file_name(),
                                              '../obsolete_packs/' + pack.file_name())
@@ -1545,7 +1546,7 @@ class RepositoryPackCollection(object):
             preserve = set()
         try:
             obsolete_pack_files = obsolete_pack_transport.list_dir('.')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return found
         for filename in obsolete_pack_files:
             name, ext = osutils.splitext(filename)
@@ -2098,7 +2099,7 @@ class _DirectPackAccess(object):
                 reader = pack.make_readv_reader(transport, path, offsets)
                 for names, read_func in reader.iter_records():
                     yield read_func(None)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 # A NoSuchFile error indicates that a pack file has gone
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:

@@ -68,6 +68,7 @@ from ...trace import mutter, mutter_callsite
 from ...transport import (
     ConnectedTransport,
     UnusableRedirect,
+    NoSuchFile,
     )
 
 from . import default_user_agent, ssl
@@ -167,7 +168,7 @@ class Response(http_client.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301, 302, 303, 307, 308, 403, 404, 501]
+    _body_ignored_responses = [301, 302, 303, 307, 308, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -1955,7 +1956,7 @@ class HttpTransport(ConnectedTransport):
         response = self.request('GET', abspath, headers=headers)
 
         if response.status == 404:  # not found
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         elif response.status == 416:
             # We don't know which, but one of the ranges we specified was
             # wrong.
@@ -2441,7 +2442,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         resp = self.request('OPTIONS', abspath)
         if resp.status == 404:
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if resp.status in (403, 405):
             raise errors.InvalidHttpResponse(
                 abspath,

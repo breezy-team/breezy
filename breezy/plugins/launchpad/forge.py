@@ -142,6 +142,10 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_repository.git_identity,
                 ref=self._mp.target_git_path.encode('utf-8'))
 
+    def set_target_branch_name(self, name):
+        # The launchpad API doesn't support changing branch names today.
+        raise NotImplementedError(self.set_target_branch_name)
+
     @property
     def url(self):
         return lp_api.canonical_url(self._mp)
@@ -295,6 +299,8 @@ class Launchpad(Forge):
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
                      revision_id=None, overwrite=False, allow_lossy=True,
                      tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
         try:

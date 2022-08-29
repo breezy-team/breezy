@@ -605,7 +605,7 @@ class HintingSSHTransport(transport.Transport):
     # other end is a git or bzr repository.
 
     def __init__(self, url):
-        raise errors.UnsupportedProtocol(
+        raise transport.UnsupportedProtocol(
             url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
             'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
 

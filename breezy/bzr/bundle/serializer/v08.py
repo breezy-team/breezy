@@ -19,6 +19,7 @@
 
 from .... import (
     errors,
+    transport as _mod_transport,
     ui,
     )
 from . import (
@@ -268,7 +269,7 @@ class BundleSerializerV08(BundleSerializer):
             def tree_lines(tree, path, require_text=False):
                 try:
                     tree_file = tree.get_file(path)
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     return []
                 else:
                     if require_text is True:

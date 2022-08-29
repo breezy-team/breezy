@@ -18,6 +18,7 @@
 
 from .. import (
     errors,
+    transport as _mod_transport,
     )
 
 from ..lazy_import import lazy_import
@@ -662,7 +663,7 @@ class KnitPacker(Packer):
             try:
                 reader = pack.make_readv_reader(transport, path,
                                                 [offset[0:2] for offset in pack_readv_requests])
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 if self._reload_func is not None:
                     self._reload_func()
                 raise
@@ -707,7 +708,7 @@ class KnitPacker(Packer):
             transport, path = pack_obj.access_tuple()
             try:
                 reader = pack.make_readv_reader(transport, path, readv_vector)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 if self._reload_func is not None:
                     self._reload_func()
                 raise
