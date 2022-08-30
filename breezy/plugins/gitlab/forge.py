@@ -154,21 +154,12 @@ class ProjectCreationTimeout(errors.BzrError):
         self.timeout = timeout
 
 
-def default_config_path():
-    return os.path.join(bedding.config_dir(), 'gitlab.conf')
-
-
 def store_gitlab_token(name, url, private_token):
     """Store a GitLab token in a configuration file."""
-    import configparser
-    config = configparser.ConfigParser()
-    path = default_config_path()
-    config.read([path])
-    config.add_section(name)
-    config[name]['url'] = url
-    config[name]['private_token'] = private_token
-    with open(path, 'w') as f:
-        config.write(f)
+    from breezy.config import AuthenticationConfig
+    auth_config = AuthenticationConfig()
+    auth_config._set_option(name, 'url', url)
+    auth_config._set_option(name, 'private_token', private_token)
 
 
 def iter_tokens():
@@ -176,8 +167,14 @@ def iter_tokens():
     config = configparser.ConfigParser()
     config.read(
         [os.path.expanduser(p) for p in _DEFAULT_FILES] +
-        [default_config_path()])
+        # backwards compatibility
+        [os.path.join(bedding.config_dir(), 'gitlab.conf')])
     for name, section in config.items():
+        yield name, section
+
+    from breezy.config import AuthenticationConfig
+    auth_config = AuthenticationConfig()
+    for name, section in auth_config._get_config().iteritems():
         yield name, section
 
 
