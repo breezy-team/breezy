@@ -71,6 +71,8 @@ def export(tree, dest, format=None, root=None, subdir=None,
                     tree.get_revision_id()).timestamp
             except errors.NoSuchRevision:
                 pass
+            except errors.UnsupportedOperation:
+                pass
     else:
         force_mtime = None
 
