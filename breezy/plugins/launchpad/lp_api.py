@@ -103,8 +103,26 @@ def get_auth_engine(base_url):
     return Launchpad.authorization_engine_factory(base_url, 'breezy')
 
 
-def get_credential_store():
-    return Launchpad.credential_store_factory(None)
+
+class BreezyCredentialStore(object):
+    """Implementation of the launchpadlib CredentialStore API for Breezy.
+    """
+
+    def __init__(self, credential_save_failed=None):
+        super(BreezyCredentialStore, self).__init__(credential_save_failed)
+        from breezy.config import AuthenticationConfig
+        self.auth_config = AuthenticationConfig()
+
+    def do_save(self, credentials, unique_key):
+        """Store newly-authorized credentials in the keyring."""
+        self._set_option(unique_key, credentials.serialize().decode("utf-8"))
+
+    def do_load(self, unique_key):
+        """Retrieve credentials from the keyring."""
+        auth_def = self._get_config().get(unique_key)
+        if auth_def:
+            return auth_def.get('token')
+        return None
 
 
 def connect_launchpad(base_url, timeout=None, proxy_info=None,
@@ -120,7 +138,7 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
         cache_directory = get_cache_directory()
     except EnvironmentError:
         cache_directory = None
-    credential_store = get_credential_store()
+    credential_store = BreezyCredentialStore()
     authorization_engine = get_auth_engine(base_url)
     return Launchpad.login_with(
         'breezy', base_url, cache_directory, timeout=timeout,
