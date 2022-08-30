@@ -476,7 +476,7 @@ class Launchpad(Forge):
 
     @classmethod
     def iter_instances(cls):
-        credential_store = lp_api.get_credential_store()
+        credential_store = lp_api.BreezyCredentialStore()
         for service_root in set(uris.service_roots.values()):
             auth_engine = lp_api.get_auth_engine(service_root)
             creds = credential_store.load(auth_engine.unique_consumer_id)
