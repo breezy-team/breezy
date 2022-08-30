@@ -28,6 +28,11 @@ import tempfile
 from ... import errors as bzr_errors
 from ...trace import note
 
+try:
+    from ...transport import NoSuchFile, FileExists
+except ImportError:
+    from ...errors import NoSuchFile, FileExists
+
 from .util import (
     export_with_nested,
     extract_orig_tarballs,
@@ -87,7 +92,7 @@ class NativeSourceDistiller(SourceDistiller):
         """
         if not self.use_existing:
             if os.path.exists(target):
-                raise bzr_errors.FileExists(target)
+                raise FileExists(target)
         export_with_nested(self.tree, target, subdir=self.subpath)
 
 
@@ -117,7 +122,7 @@ class FullSourceDistiller(SourceDistiller):
         """
         if not self.use_existing:
             if os.path.exists(target):
-                raise bzr_errors.FileExists(target)
+                raise FileExists(target)
         parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
         export_with_nested(self.tree, target, subdir=self.subpath)
@@ -155,7 +160,7 @@ class MergeModeDistiller(SourceDistiller):
         """
         if not self.use_existing:
             if os.path.exists(target):
-                raise bzr_errors.FileExists(target)
+                raise FileExists(target)
         elif self.use_existing:
             if not os.path.exists(target):
                 raise bzr_errors.NotADirectory(target)
@@ -231,7 +236,7 @@ class DebcargoDistiller(SourceDistiller):
         """
         from debmutate.debcargo import parse_debcargo_source_name
         if os.path.exists(target):
-            raise bzr_errors.FileExists(target)
+            raise FileExists(target)
         with self.tree.get_file(os.path.join(
                 self.subpath,
                 'debian/changelog' if not self.top_level else
@@ -250,7 +255,7 @@ class DebcargoDistiller(SourceDistiller):
         try:
             debcargo_text = self.tree.get_file_text(
                 os.path.join(*debcargo_path))
-        except bzr_errors.NoSuchFile:
+        except NoSuchFile:
             semver_suffix = False
         else:
             from toml.decoder import loads as loads_toml
