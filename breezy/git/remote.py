@@ -809,6 +809,19 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url = urlutils.strip_segment_parameters(str(url))
         super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
 
+    def archive(
+        self,
+        path,
+        committish,
+        write_data,
+        progress=None,
+        write_error=None,
+        format=None,
+        subdirs=None,
+        prefix=None,
+    ):
+        raise GitSmartRemoteNotSupported(self.archive, self)
+
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):
         """Perform HTTP request.
@@ -929,6 +942,7 @@ class GitRemoteRevisionTree(RevisionTree):
         :return: Iterator over archive chunks
         """
         if recurse_nested:
+            # TODO(jelmer): Parse .gitmodules from archive afterwards?
             raise NotImplementedError('recurse_nested is not yet supported')
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
