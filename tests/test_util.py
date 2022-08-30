@@ -837,7 +837,8 @@ class GuessBuildTypeTests(TestCaseWithTransport):
             Version("1.0"), contains_upstream_source=True)
         self.assertEquals(
             "Inconsistency between source format and version: "
-            "version is native, format is not native.", str(e))
+            "version 1.0 is native, format '3.0 (quilt)' is not native.",
+            str(e))
 
 
 class TestExtractOrigTarballs(TestCaseInTempDir):

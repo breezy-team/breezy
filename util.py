@@ -659,10 +659,11 @@ NORMAL_SOURCE_FORMATS = [FORMAT_3_0_QUILT]
 
 class InconsistentSourceFormatError(BzrError):
 
-    _fmt = ("Inconsistency between source format and version: version is "
-            "%(version_bool)snative, format is %(format_bool)snative.")
+    _fmt = ("Inconsistency between source format and version: "
+            "version %(version)s is %(version_bool)snative, "
+            "format '%(format)s' is %(format_bool)snative.")
 
-    def __init__(self, version_native, format_native):
+    def __init__(self, version_native, format_native, version_str, format_str):
         if version_native:
             version_bool = ""
         else:
@@ -672,7 +673,8 @@ class InconsistentSourceFormatError(BzrError):
         else:
             format_bool = "not "
         BzrError.__init__(
-            self, version_bool=version_bool, format_bool=format_bool)
+            self, version_bool=version_bool, format_bool=format_bool,
+            version=version_str, format=format_str)
 
 
 def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
@@ -701,7 +703,8 @@ def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
     # native, but it *could* be native.
     if type(version_native) is bool and type(format_native) is bool:
         if version_native is True and format_native is False:
-            raise InconsistentSourceFormatError(version_native, format_native)
+            raise InconsistentSourceFormatError(
+                version_native, format_native, version, source_format)
         if version_native is False and format_native is True:
             warning(
                 'Version suggests non-native package, '
