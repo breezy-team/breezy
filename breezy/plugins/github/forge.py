@@ -60,12 +60,20 @@ API_GITHUB_URL = 'https://api.github.com'
 DEFAULT_PER_PAGE = 50
 
 
-def store_github_token(scheme, host, token):
-    with open(os.path.join(bedding.config_dir(), 'github.conf'), 'w') as f:
-        f.write(token)
+def store_github_token(token):
+    auth_config = AuthenticationConfig()
+    auth_config._set_option('Github', 'scheme', 'https')
+    auth_config._set_option('Github', 'url', API_GITHUB_URL)
+    auth_config._set_option('Github', 'private_token', token)
 
 
-def retrieve_github_token(scheme, host):
+def retrieve_github_token():
+    auth_config = AuthenticationConfig()
+    section = auth_config._get_config().get('Github')
+    if section:
+        return section.get('private_token')
+
+    # Backwards compatibility
     path = os.path.join(bedding.config_dir(), 'github.conf')
     if not os.path.exists(path):
         return None
@@ -415,7 +423,7 @@ class GitHub(Forge):
         return WEB_GITHUB_URL
 
     def __init__(self, transport):
-        self._token = retrieve_github_token('https', GITHUB_HOST)
+        self._token = retrieve_github_token()
         self.transport = transport
         self._current_user = None
 

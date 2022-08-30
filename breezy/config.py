@@ -1552,8 +1552,8 @@ class AuthenticationConfig(object):
         conf = self._get_config()
         section = conf.get(section_name)
         if section is None:
-            conf[section] = {}
-            section = conf[section]
+            conf[section_name] = {}
+            section = conf[section_name]
         section[option_name] = value
         self._save()
 

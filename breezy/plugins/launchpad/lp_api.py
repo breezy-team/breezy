@@ -21,6 +21,7 @@
 # needed by a command that uses it.
 
 
+import base64
 import re
 from urllib.parse import (
     urlparse,
@@ -52,7 +53,7 @@ try:
 except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import RequestTokenAuthorizationEngine
+from launchpadlib.credentials import RequestTokenAuthorizationEngine, CredentialStore
 from launchpadlib.launchpad import (
     Launchpad,
     )
@@ -104,7 +105,7 @@ def get_auth_engine(base_url):
 
 
 
-class BreezyCredentialStore(object):
+class BreezyCredentialStore(CredentialStore):
     """Implementation of the launchpadlib CredentialStore API for Breezy.
     """
 
@@ -115,13 +116,18 @@ class BreezyCredentialStore(object):
 
     def do_save(self, credentials, unique_key):
         """Store newly-authorized credentials in the keyring."""
-        self._set_option(unique_key, credentials.serialize().decode("utf-8"))
+        import pdb; pdb.set_trace()
+        self.auth_config._set_option(
+            unique_key, 'token',
+            base64.b64encode(credentials.serialize()).decode("utf-8"))
 
     def do_load(self, unique_key):
         """Retrieve credentials from the keyring."""
-        auth_def = self._get_config().get(unique_key)
+        auth_def = self.auth_config._get_config().get(unique_key)
         if auth_def:
-            return auth_def.get('token')
+            token = auth_def.get('token')
+            if token:
+                return base64.b64decode(token.encode('utf-8'))
         return None
 
 
