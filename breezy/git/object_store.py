@@ -500,6 +500,8 @@ class BazaarObjectStore(BaseObjectStore):
         :param tree: Bazaar revision tree
         :param lossy: Whether to not roundtrip all Bazaar revision data
         """
+        if not tree.supports_file_ids:
+            raise TypeError('expected tree that supports file ids, not %r' % tree)
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
         parent_trees = self.tree_cache.revision_trees(

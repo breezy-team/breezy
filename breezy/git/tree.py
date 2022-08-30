@@ -318,6 +318,8 @@ class GitTree(_mod_tree.Tree):
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     """Revision tree implementation based on Git objects."""
 
+    supports_file_ids = False
+
     def __init__(self, repository, revision_id):
         self._revision_id = revision_id
         self._repository = repository
@@ -393,7 +395,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     def is_versioned(self, path):
         return self.has_filename(path)
 
-    def path2id(self, path):
+    def _path2id(self, path):
         if self.mapping.is_special_file(path):
             return None
         if not self.is_versioned(path):
@@ -541,7 +543,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             return
 
         encoded_path = encode_git_path(path)
-        file_id = self.path2id(path)
+        file_id = self._path2id(path)
         tree = store[tree_sha]
         for name, mode, hexsha in tree.iteritems():
             if self.mapping.is_special_file(name):
@@ -563,7 +565,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             else:
                 specific_files = set([encode_git_path(p)
                                       for p in specific_files])
-        todo = deque([(self.store, b"", self.tree, self.path2id(''))])
+        todo = deque([(self.store, b"", self.tree, self._path2id(''))])
         if specific_files is None or u"" in specific_files:
             yield u"", self._get_dir_ie(b"", None)
         while todo:
@@ -587,7 +589,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                                 child_path)])):
                         extradirs.append(
                             (substore, child_path, hexsha,
-                             self.path2id(child_path_decoded)))
+                             self._path2id(child_path_decoded)))
                 if specific_files is None or child_path in specific_files:
                     if stat.S_ISDIR(mode):
                         yield (child_path_decoded,
@@ -1154,7 +1156,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             self._ensure_versioned_dir(posixpath.dirname(dirname))
         self._versioned_dirs.add(dirname)
 
-    def path2id(self, path):
+    def _path2id(self, path):
         with self.lock_read():
             path = path.rstrip('/')
             if self.is_versioned(path.rstrip('/')):
@@ -1385,14 +1387,14 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(
                             parent, dir_ids):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
-                file_ie.parent_id = self.path2id(parent)
+                file_ie.parent_id = self._path2id(parent)
                 ret[(posixpath.dirname(path), path)] = file_ie
             # Special casing for directories
             if specific_files:
                 for path in specific_files:
                     key = (posixpath.dirname(path), path)
                     if key not in ret and self.is_versioned(path):
-                        ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
+                        ret[key] = self._get_dir_ie(path, self._path2id(key[0]))
             return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
     def iter_references(self):
@@ -1403,7 +1405,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     yield path
 
     def _get_dir_ie(self, path, parent_id):
-        file_id = self.path2id(path)
+        file_id = self._path2id(path)
         return GitTreeDirectory(file_id,
                                 posixpath.basename(path).strip("/"), parent_id)
 
@@ -1414,7 +1416,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             raise TypeError(path)
         if not isinstance(value, tuple) and not isinstance(value, IndexEntry):
             raise TypeError(value)
-        file_id = self.path2id(path)
+        file_id = self._path2id(path)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         kind = mode_kind(value.mode)
