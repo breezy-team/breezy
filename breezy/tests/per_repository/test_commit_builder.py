@@ -26,6 +26,7 @@ from breezy import (
     revision as _mod_revision,
     tests,
     )
+from breezy.tree import TreeChange
 from breezy.bzr import (
     inventorytree,
     )
