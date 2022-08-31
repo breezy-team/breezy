@@ -39,7 +39,7 @@ import http.client as http_client
 
 import urllib.request as urllib_request
 
-from urllib.parse import urljoin, splitport, urlencode
+from urllib.parse import urljoin, urlencode
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -76,6 +76,14 @@ from . import default_user_agent, ssl
 
 checked_kerberos = False
 kerberos = None
+
+
+def splitport(host):
+    m = re.fullmatch('(.*):([0-9]*)', host, re.DOTALL)
+    if m:
+        host, port = m.groups()
+        return host, port or None
+    return host, None
 
 
 class addinfourl(urllib_request.addinfourl):
