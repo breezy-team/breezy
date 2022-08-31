@@ -30,8 +30,7 @@ from ... import (
 class FossilUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Fossil branches are not yet supported. '
-            'To convert Fossil branches to Bazaar branches or vice versa, '
-            'use fastimport.')
+            'To interoperate with Fossil branches, use fastimport.')
 
 
 class FossilDirFormat(controldir.ControlDirFormat):
@@ -70,7 +69,7 @@ class RemoteFossilProber(controldir.Prober):
 
     @classmethod
     def probe_transport(klass, transport):
-        from breezy.transport.http import HttpTransport
+        from breezy.transport.http.urllib import HttpTransport
         if not isinstance(transport, HttpTransport):
             raise errors.NotBranchError(path=transport.base)
         response = transport.request(

@@ -42,6 +42,7 @@ from ... import (
     registry,
     revision,
     trace,
+    transport as _mod_transport,
     urlutils,
     )
 from ...lazy_import import lazy_import
@@ -413,9 +414,9 @@ class SmartServerRequestHandler(object):
 
 
 def _translate_error(err):
-    if isinstance(err, errors.NoSuchFile):
+    if isinstance(err, _mod_transport.NoSuchFile):
         return (b'NoSuchFile', err.path.encode('utf-8'))
-    elif isinstance(err, errors.FileExists):
+    elif isinstance(err, _mod_transport.FileExists):
         return (b'FileExists', err.path.encode('utf-8'))
     elif isinstance(err, errors.DirectoryNotEmpty):
         return (b'DirectoryNotEmpty', err.path.encode('utf-8'))
@@ -472,6 +473,8 @@ def _translate_error(err):
     elif isinstance(err, MemoryError):
         # GZ 2011-02-24: Copy breezy.trace -Dmem_dump functionality here?
         return (b'MemoryError',)
+    elif isinstance(err, errors.AlreadyControlDirError):
+        return (b'AlreadyControlDir', err.path)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
     return (b'error',

@@ -31,7 +31,6 @@ from breezy import (
     lru_cache,
     osutils,
     revision as _mod_revision,
-    static_tuple,
     tsort,
     ui,
     )
@@ -41,12 +40,12 @@ from breezy.bzr import (
     generate_ids,
     inventory_delta,
     inventorytree,
+    static_tuple,
     versionedfile,
     vf_search,
     )
 from breezy.bzr.bundle import serializer
 
-from breezy.recordcounter import RecordCounter
 from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """)
@@ -80,7 +79,7 @@ from .repository import (
 from ..trace import (
     mutter
     )
-from ..tree import TreeChange
+from .inventorytree import InventoryTreeChange
 
 
 class VersionedFileRepositoryFormat(RepositoryFormat):
@@ -109,7 +108,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
 
     def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
+                 revision_id=None, lossy=False, owns_transaction=True):
         super(VersionedFileCommitBuilder, self).__init__(repository,
                                                          parents, config_stack, timestamp, timezone, committer, revprops,
                                                          revision_id, lossy)
@@ -123,6 +122,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
         # memo'd check for no-op commits.
         self._any_changes = False
+        self._owns_transaction = owns_transaction
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -191,13 +191,15 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 self._new_revision_id)
         self.repository._add_revision(rev)
         self._ensure_fallback_inventories()
-        self.repository.commit_write_group()
+        if self._owns_transaction:
+            self.repository.commit_write_group()
         return self._new_revision_id
 
     def abort(self):
         """Abort the commit that is being built.
         """
-        self.repository.abort_write_group()
+        if self._owns_transaction:
+            self.repository.abort_write_group()
 
     def revision_tree(self):
         """Return the tree that was just committed.
@@ -399,7 +401,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 # by the user. So we discard this change.
                 pass
             else:
-                change = TreeChange(
+                change = InventoryTreeChange(
                     file_id,
                     (basis_inv.id2path(file_id), tree.id2path(file_id)),
                     False, (True, True),
@@ -492,7 +494,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             file_id, file_obj, heads, nostore_sha,
                             size=(stat_value.st_size if stat_value else None))
                         yield change.path[1], (entry.text_sha1, stat_value)
-                    except errors.ExistingContent:
+                    except versionedfile.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
                         carried_over = True
@@ -1002,10 +1004,13 @@ class VersionedFileRepository(Repository):
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                                   " in pre-2a formats. See "
                                   "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-        result = self._commit_builder_class(self, parents, config_stack,
-                                            timestamp, timezone, committer, revprops, revision_id,
-                                            lossy)
-        self.start_write_group()
+        in_transaction = self.is_in_write_group()
+        result = self._commit_builder_class(
+            self, parents, config_stack,
+            timestamp, timezone, committer, revprops, revision_id,
+            lossy, owns_transaction=not in_transaction)
+        if not in_transaction:
+            self.start_write_group()
         return result
 
     def get_missing_parent_inventories(self, check_for_missing_texts=True):
@@ -1556,61 +1561,6 @@ class VersionedFileRepository(Repository):
         for inv in inventories:
             yield inventorytree.InventoryRevisionTree(self, inv, inv.revision_id)
 
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        """Produce a generator of revision deltas.
-
-        Note that the input is a sequence of REVISIONS, not revision_ids.
-        Trees will be held in memory until the generator exits.
-        Each delta is relative to the revision's lefthand predecessor.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
-
-        # Get the matching filtered trees. Note that it's more
-        # efficient to pass filtered trees to changes_from() rather
-        # than doing the filtering afterwards. changes_from() could
-        # arguably do the filtering itself but it's path-based, not
-        # file-id based, so filtering before or afterwards is
-        # currently easier.
-        if specific_fileids is None:
-            trees = dict((t.get_revision_id(), t) for
-                         t in self.revision_trees(required_trees))
-        else:
-            trees = dict((t.get_revision_id(), t) for
-                         t in self._filtered_revision_trees(required_trees,
-                                                            specific_fileids))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-            else:
-                old_tree = trees[revision.parent_ids[0]]
-            yield trees[revision.revision_id].changes_from(old_tree)
-
-    def _filtered_revision_trees(self, revision_ids, file_ids):
-        """Return Tree for a revision on this branch with only some files.
-
-        :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or b'null:'
-        :param file_ids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        inventories = self.iter_inventories(revision_ids)
-        for inv in inventories:
-            # Should we introduce a FilteredRevisionTree class rather
-            # than pre-filter the inventory here?
-            filtered_inv = inv.filter(file_ids)
-            yield inventorytree.InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
-
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map"""
         # revisions index works in keys; this just works in revisions
@@ -1986,6 +1936,7 @@ class StreamSource(object):
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
+        from .recordcounter import RecordCounter
         self._record_counter = RecordCounter()
 
     def delta_on_metadata(self):

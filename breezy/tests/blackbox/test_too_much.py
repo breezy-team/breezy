@@ -42,7 +42,7 @@ from breezy import (
     osutils,
     )
 from breezy.branch import Branch
-from breezy.errors import BzrCommandError
+from breezy.errors import CommandError
 from breezy.tests.http_utils import TestCaseWithWebserver
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
 from breezy.tests import TestCaseWithTransport
@@ -85,7 +85,7 @@ class TestCommands(TestCaseWithTransport):
         os.rmdir('revertdir')
         self.run_bzr('revert')
 
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('/unlikely/to/exist', 'symlink')
             self.run_bzr('add symlink')
             self.run_bzr('commit -m f')
@@ -460,7 +460,7 @@ class OldTests(TestCaseWithTransport):
 
         self.run_bzr('info')
 
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             progress("symlinks")
             mkdir('symlinks')
             chdir('symlinks')

@@ -93,25 +93,25 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                                                       create_prefix=create_prefix, use_existing_dir=use_existing_dir,
                                                       no_tree=no_tree)
         except errors.AlreadyControlDirError:
-            raise errors.BzrCommandError(gettext(
+            raise errors.CommandError(gettext(
                 "Target directory %s already contains a .bzr directory, "
                 "but it is not valid.") % (location,))
-        except errors.FileExists:
+        except transport.FileExists:
             if not use_existing_dir:
-                raise errors.BzrCommandError(gettext("Target directory %s"
-                                                     " already exists, but does not have a .bzr"
-                                                     " directory. Supply --use-existing-dir to push"
-                                                     " there anyway.") % location)
+                raise errors.CommandError(gettext("Target directory %s"
+                                                  " already exists, but does not have a .bzr"
+                                                  " directory. Supply --use-existing-dir to push"
+                                                  " there anyway.") % location)
             # This shouldn't occur, but if it does the FileExists error will be
             # more informative than an UnboundLocalError for br_to.
             raise
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             if not create_prefix:
-                raise errors.BzrCommandError(gettext("Parent directory of %s"
-                                                     " does not exist."
-                                                     "\nYou may supply --create-prefix to create all"
-                                                     " leading parent directories.")
-                                             % location)
+                raise errors.CommandError(gettext("Parent directory of %s"
+                                                  " does not exist."
+                                                  "\nYou may supply --create-prefix to create all"
+                                                  " leading parent directories.")
+                                          % location)
             # This shouldn't occur (because create_prefix is true, so
             # create_clone_on_transport should be catching NoSuchFile and
             # creating the missing directories) but if it does the original
@@ -119,8 +119,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             # UnboundLocalError for br_to.
             raise
         except errors.TooManyRedirections:
-            raise errors.BzrCommandError(gettext("Too many redirections trying "
-                                                 "to make %s.") % location)
+            raise errors.CommandError(gettext("Too many redirections trying "
+                                              "to make %s.") % location)
         push_result = PushResult()
         # TODO: Some more useful message about what was copied
         try:
@@ -145,21 +145,21 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             push_result = dir_to.push_branch(br_from, revision_id, overwrite,
                                              remember, create_prefix, lossy=lossy)
         except errors.DivergedBranches:
-            raise errors.BzrCommandError(gettext('These branches have diverged.'
-                                                 '  See "brz help diverged-branches"'
-                                                 ' for more information.'))
+            raise errors.CommandError(gettext('These branches have diverged.'
+                                              '  See "brz help diverged-branches"'
+                                              ' for more information.'))
         except errors.NoRoundtrippingSupport as e:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext("It is not possible to losslessly "
                         "push to %s. You may want to use --lossy.") %
                 e.target_branch.mapping.vcs.abbreviation)
         except errors.NoRepositoryPresent:
             # we have a controldir but no branch or repository
             # XXX: Figure out what to do other than complain.
-            raise errors.BzrCommandError(gettext("At %s you have a valid .bzr"
-                                                 " control directory, but not a branch or repository. This"
-                                                 " is an unsupported configuration. Please move the target"
-                                                 " directory out of the way and try again.") % location)
+            raise errors.CommandError(gettext("At %s you have a valid .bzr"
+                                              " control directory, but not a branch or repository. This"
+                                              " is an unsupported configuration. Please move the target"
+                                              " directory out of the way and try again.") % location)
         if push_result.workingtree_updated is False:
             warning("This transport does not update the working "
                     "tree of: %s. See 'brz help working-trees' for "

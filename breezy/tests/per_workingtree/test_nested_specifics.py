@@ -37,7 +37,7 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         if not isinstance(tree, inventorytree.InventoryTree):
             raise TestNotApplicable('not an inventory tree')
-        transform = tree.get_transform()
+        transform = tree.transform()
         trans_id = transform.new_directory('reference', transform.root,
                                            b'subtree-id')
         transform.set_tree_reference(b'subtree-revision', trans_id)
@@ -67,8 +67,7 @@ class TestNestedSupport(TestCaseWithWorkingTree):
 
     def test_comparison_data_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        ie = inventory.InventoryDirectory(b'subtree-id', 'subtree',
-                                          tree.path2id(''))
+        (path, versioned, kind, ie) = list(tree.list_files('subtree'))[0]
         self.assertEqual('directory',
                          tree._comparison_data(ie, 'subtree')[0])
 

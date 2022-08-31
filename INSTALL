@@ -4,13 +4,17 @@ Breezy install instructions
 Dependencies
 ------------
 
-Breezy requires Python 2.7 or newer, or Python 3.4 or newer.
+Breezy requires Python 3.6 or newer as well as the rust compiler.
 
-It also requires the `configobj` Python module to be installed. It can be
-installed either from your operating system's package manager, using pip
-or by downloading it from:
+It also requires the `setuptools`, `setuptools_rust`, `configobj`,
+`fastbencode` and `patiencediff` Python modules to be installed.
 
-  https://github.com/DiffSK/configobj
+These can be installed either from your operating system's package
+manager, using pip or by downloading them from:
+
+  configobj: https://github.com/DiffSK/configobj
+  patiencediff: https://github.com/breezy-team/patiencediff
+  fastbencode: https://github.com/breezy-team/fastbencode
 
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
@@ -21,7 +25,15 @@ pycrypto:
   http://www.lag.net/paramiko/
 
 To PGP sign commits and verify PGP signatures on commits, install
-python-gpg.
+python-gpgme.
+
+For Git support, install Dulwich:
+
+  https://www.dulwich.io/
+
+For fastimport support, install python-fastimport:
+
+  https://github.com/jelmer/python-fastimport
 
 brz can optionally use compiled versions of some parts of the code
 for increased speed. When installing brz you need the ability to
@@ -46,14 +58,14 @@ bzrlib directory from the install target.
 
 To install brz as a user, run
 
-  python setup.py install --home ~ 
+  python setup.py install --home ~
 
 To install system-wide, run (as root)
 
   python setup.py install
 
 For more information on installation, see
-<http://wiki.bazaar.canonical.com/InstallationFaq> for the Bazaar installation FAQ
+<http://wiki.breezy-vcs.org/InstallationFaq> for the Bazaar installation FAQ
 (that also applies to Breezy)
 or write to bazaar@lists.canonical.com mentioning you use Breezy, or ask a
 question at <https://answers.launchpad.net/brz/>.

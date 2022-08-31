@@ -22,7 +22,6 @@ from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.controldir import ControlDir
 import breezy.errors as errors
 from breezy.tests import TestCaseInTempDir
-from breezy.tests.matchers import ContainsNoVfsCalls
 
 
 class TestSharedRepo(TestCaseInTempDir):
@@ -112,20 +111,6 @@ Location:
         self.run_bzr("init-shared-repo --no-trees notrees")
         repo = ControlDir.open("notrees").open_repository()
         self.assertEqual(False, repo.make_working_trees())
-
-    def test_init_repo_smart_acceptance(self):
-        # The amount of hpss calls made on init-shared-repo to a smart server
-        # should be fixed.
-        self.setup_smart_server_with_call_log()
-        self.run_bzr(['init-shared-repo', self.get_url('repo')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(11, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
     def test_notification_on_branch_from_repository(self):
         out, err = self.run_bzr("init-shared-repository -q a")

@@ -24,10 +24,12 @@ from ... import (
     lock,
     osutils,
     revision as _mod_revision,
-    transform,
+    transport as _mod_transport,
     )
 from ...bzr import (
+    conflicts as _mod_bzr_conflicts,
     inventory,
+    transform as bzr_transform,
     xml5,
     )
 from ...mutabletree import MutableTree
@@ -41,7 +43,7 @@ from ...bzr.workingtree_3 import (
 
 
 def get_conflicted_stem(path):
-    for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
+    for suffix in _mod_bzr_conflicts.CONFLICT_SUFFIXES:
         if path.endswith(suffix):
             return path[:-len(suffix)]
 
@@ -112,7 +114,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         else:
             parent_trees = [(revision_id, basis_tree)]
         wt.set_parent_trees(parent_trees)
-        transform.build_tree(basis_tree, wt)
+        bzr_transform.build_tree(basis_tree, wt)
         for hook in MutableTree.hooks['post_build_tree']:
             hook(wt)
         return wt
@@ -215,7 +217,7 @@ class WorkingTree2(PreDirStateWorkingTree):
                 try:
                     if osutils.file_kind(self.abspath(conflicted)) != "file":
                         text = False
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     text = False
                 if text is True:
                     for suffix in ('.THIS', '.OTHER'):
@@ -224,15 +226,14 @@ class WorkingTree2(PreDirStateWorkingTree):
                                 self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False
-                        except errors.NoSuchFile:
+                        except _mod_transport.NoSuchFile:
                             text = False
                         if text is False:
                             break
                 ctype = {True: 'text conflict',
                          False: 'contents conflict'}[text]
-                conflicts.append(_mod_conflicts.Conflict.factory(ctype,
-                                                                 path=conflicted,
-                                                                 file_id=self.path2id(conflicted)))
+                conflicts.append(_mod_bzr_conflicts.Conflict.factory(
+                    ctype, path=conflicted, file_id=self.path2id(conflicted)))
             return conflicts
 
     def set_conflicts(self, arg):

@@ -76,9 +76,11 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
         self.log("using %r", paths)
         return paths
 
-    def load_with_paths(self, paths):
+    def load_with_paths(self, paths, warn_load_problems=True):
         self.log("loading plugins!")
-        plugin.load_plugins(self.update_module_paths(paths), state=self)
+        plugin.load_plugins(
+            self.update_module_paths(paths), state=self,
+            warn_load_problems=warn_load_problems)
 
     def create_plugin(self, name, source=None, dir='.', file_name=None):
         if source is None:
@@ -143,7 +145,9 @@ dir_source = '%s'
         self.assertFalse(self.module_prefix + name in sys.modules)
 
     def assertPluginKnown(self, name):
-        self.assertTrue(getattr(self.module, name, None) is not None)
+        self.assertTrue(
+            getattr(self.module, name, None) is not None,
+            'plugins known: %r' % dir(self.module))
         self.assertTrue(self.module_prefix + name in sys.modules)
 
 
@@ -260,7 +264,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         finally:
             del self.activeattributes[tempattribute]
 
-    def load_and_capture(self, name):
+    def load_and_capture(self, name, warn_load_problems=True):
         """Load plugins from '.' capturing the output.
 
         :param name: The name of the plugin.
@@ -273,7 +277,8 @@ class TestLoadingPlugins(BaseTestPlugins):
             log = logging.getLogger('brz')
             log.addHandler(handler)
             try:
-                self.load_with_paths(['.'])
+                self.load_with_paths(
+                    ['.'], warn_load_problems=warn_load_problems)
             finally:
                 # Stop capturing output
                 handler.flush()
@@ -286,18 +291,16 @@ class TestLoadingPlugins(BaseTestPlugins):
     def test_plugin_with_bad_api_version_reports(self):
         """Try loading a plugin that requests an unsupported api.
 
-        Observe that it records the problem but doesn't complain on stderr.
-
-        See https://bugs.launchpad.net/bzr/+bug/704195
+        Observe that it records the problem but doesn't complain on stderr
+        when warn_load_problems=False
         """
         name = 'wants100.py'
         with open(name, 'w') as f:
             f.write("import breezy\n"
                     "from breezy.errors import IncompatibleVersion\n"
                     "raise IncompatibleVersion(breezy, [(1, 0, 0)], (0, 0, 5))\n")
-        log = self.load_and_capture(name)
-        self.assertNotContainsRe(log,
-                                 r"It supports breezy version")
+        log = self.load_and_capture(name, warn_load_problems=False)
+        self.assertNotContainsRe(log, r"It supports breezy version")
         self.assertEqual({'wants100'}, self.plugin_warnings.keys())
         self.assertContainsRe(
             self.plugin_warnings['wants100'][0],
@@ -308,10 +311,29 @@ class TestLoadingPlugins(BaseTestPlugins):
         name = 'brz-bad plugin-name..py'
         open(name, 'w').close()
         log = self.load_and_capture(name)
-        self.assertContainsRe(log,
-                              r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
-                              "because the file path isn't a valid module name; try renaming "
-                              "it to 'bad_plugin_name_'\\.")
+        self.assertContainsRe(
+            log,
+            r"Unable to load 'brz-bad plugin-name\.' in '.*' as a plugin "
+            "because the file path isn't a valid module name; try renaming "
+            "it to 'bad_plugin_name_'\\.")
+
+    def test_plugin_with_error_suppress(self):
+        # The file name here invalid for a python module.
+        name = 'some_error.py'
+        with open(name, 'w') as f:
+            f.write('raise Exception("bad")\n')
+        log = self.load_and_capture(name, warn_load_problems=False)
+        self.assertEqual('', log)
+
+    def test_plugin_with_error(self):
+        # The file name here invalid for a python module.
+        name = 'some_error.py'
+        with open(name, 'w') as f:
+            f.write('raise Exception("bad")\n')
+        log = self.load_and_capture(name, warn_load_problems=True)
+        self.assertContainsRe(
+            log,
+            'Unable to load plugin \'some_error\' from \'.*\': bad\n')
 
 
 class TestPlugins(BaseTestPlugins):
@@ -453,17 +475,17 @@ def load_tests(loader, standard_tests, pattern):
     def test_candidate__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'candidate', 1)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3rc1", plugin.__version__)
+        self.assertEqual("1.2.3.rc1", plugin.__version__)
 
     def test_dev__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 0)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev", plugin.__version__)
+        self.assertEqual("1.2.3.dev", plugin.__version__)
 
     def test_dev_fallback__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev4", plugin.__version__)
+        self.assertEqual("1.2.3.dev4", plugin.__version__)
 
     def test_final__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'final', 0)")
@@ -746,20 +768,23 @@ class TestEnvPluginsAt(tests.TestCase):
         self.assertEqual([], self._get_paths(''))
 
     def test_one_path(self):
-        self.assertEqual([('b', 'man')], self._get_paths('b@man'))
+        self.assertEqual([('b', os.path.abspath('man'))], self._get_paths('b@man'))
 
     def test_multiple(self):
         self.assertEqual(
-            [('tools', 'bzr-tools'), ('p', 'play.py')],
+            [('tools', os.path.abspath('bzr-tools')),
+             ('p', os.path.abspath('play.py'))],
             self._get_paths(os.pathsep.join(('tools@bzr-tools', 'p@play.py'))))
 
     def test_many_at(self):
         self.assertEqual(
-            [('church', 'StMichael@Plea@Norwich')],
+            [('church', os.path.abspath('StMichael@Plea@Norwich'))],
             self._get_paths('church@StMichael@Plea@Norwich'))
 
     def test_only_py(self):
-        self.assertEqual([('test', './test.py')], self._get_paths('./test.py'))
+        self.assertEqual(
+            [('test', os.path.abspath('test.py'))],
+            self._get_paths('./test.py'))
 
     def test_only_package(self):
         self.assertEqual([('py', '/opt/b/py')], self._get_paths('/opt/b/py'))

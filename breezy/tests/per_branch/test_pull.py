@@ -20,7 +20,6 @@ from breezy import (
     branch,
     controldir,
     errors,
-    memorytree,
     revision,
     )
 from breezy.tests import (
@@ -294,14 +293,18 @@ class TestPullHook(per_branch.TestCaseWithBranch):
         local = self.make_branch('local')
         try:
             local.bind(target)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # We can't bind this format to itself- typically it is the local
             # branch that doesn't support binding.  As of May 2007
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
             local = controldir.ControlDir.create_branch_convenience('local2')
-            local.bind(target)
+            try:
+                local.bind(target)
+            except branch.BindingUnsupported:
+                raise TestNotApplicable(
+                    'default format does not support binding')
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(
             'post_pull', self.capture_post_pull_hook, None)
@@ -322,8 +325,7 @@ class TestPullHook(per_branch.TestCaseWithBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.controldir.clone(self.get_url('source'))
-        source = memorytree.MemoryTree.create_on_branch(
-            sourcedir.open_branch())
+        source = sourcedir.open_branch().create_memorytree()
         rev2 = source.commit('rev 2')
         branch.Branch.hooks.install_named_hook(
             'post_pull', self.capture_post_pull_hook, None)

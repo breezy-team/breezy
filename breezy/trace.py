@@ -61,14 +61,9 @@ import os
 import sys
 import time
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-import tempfile
-import traceback
-""")
-
 import breezy
 
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     bedding,
@@ -172,6 +167,7 @@ def mutter_callsite(stacklevel, fmt, *args):
     :param fmt: The format string to pass to mutter.
     :param args: A list of substitution variables.
     """
+    import traceback
     outf = StringIO()
     if stacklevel is None:
         limit = None
@@ -362,6 +358,7 @@ def log_exception_quietly():
     interesting to developers but not to users.  For example,
     errors loading plugins.
     """
+    import traceback
     mutter(traceback.format_exc())
 
 
@@ -443,6 +440,7 @@ def _debug_memory_proc(message='', short=True):
 
 
 def _dump_memory_usage(err_file):
+    import tempfile
     try:
         try:
             fd, name = tempfile.mkstemp(prefix="brz_memdump", suffix=".json")
@@ -523,6 +521,7 @@ def report_exception(exc_info, err_file):
 
 
 def print_exception(exc_info, err_file):
+    import traceback
     exc_type, exc_object, exc_tb = exc_info
     err_file.write("brz: ERROR: %s: %s\n" % (
         _qualified_exception_name(exc_type), exc_object))

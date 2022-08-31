@@ -41,12 +41,12 @@ from breezy import (
     revision as _mod_revision,
     revisiontree,
     trace,
-    transform,
     views,
     )
 from breezy.bzr import (
     dirstate,
     generate_ids,
+    transform as bzr_transform,
     )
 """)
 
@@ -59,6 +59,7 @@ from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from .inventorytree import (
     InventoryTree,
+    InterInventoryTree,
     InventoryRevisionTree,
     )
 from ..mutabletree import (
@@ -72,7 +73,7 @@ from ..osutils import (
     realpath,
     safe_unicode,
     )
-from ..transport import get_transport_from_path
+from ..transport import get_transport_from_path, NoSuchFile
 from ..transport.local import LocalTransport
 from ..tree import (
     FileTimestampUnavailable,
@@ -129,7 +130,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             self._branch.repository._format, "supports_tree_reference",
             False)
 
-    def _add(self, files, ids, kinds):
+    def _add(self, files, kinds, ids):
         """See MutableTree._add."""
         with self.lock_tree_write():
             state = self.current_dirstate()
@@ -184,7 +185,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             else:
                 raise BadReferenceTarget(
                     self, sub_tree, 'Root id already present in tree')
-            self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
+            self._add([sub_tree_path], ['tree-reference'], [sub_tree_id])
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -411,7 +412,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # check file id is valid unconditionally.
         entry = self._get_entry(path=path)
         if entry[0] is None:
-            raise errors.NoSuchFile(self, path)
+            raise NoSuchFile(self, path)
         if path is None:
             path = pathjoin(entry[0][0], entry[0][1]).decode('utf8')
 
@@ -464,7 +465,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def get_reference_revision(self, path):
         # referenced tree's revision is whatever's currently there
-        return self.get_nested_tree(path).last_revision()
+        try:
+            return self.get_nested_tree(path).last_revision()
+        except errors.NotBranchError:
+            entry = self._get_entry(path=path)
+            if entry == (None, None):
+                return False
+            return entry[1][0][1]
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
@@ -561,7 +568,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 try:
                     if self.kind(relpath) == 'tree-reference':
                         yield relpath
-                except errors.NoSuchFile:
+                except NoSuchFile:
                     # path is missing on disk.
                     continue
 
@@ -756,7 +763,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     if not move_file:
                         raise errors.BzrMoveFailedError(
                             from_rel, to_rel,
-                            errors.NoSuchFile(
+                            NoSuchFile(
                                 path=to_rel,
                                 extra="New file has not been created yet"))
                     elif from_missing:
@@ -1238,7 +1245,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             for path in paths:
                 file_id = self.path2id(path)
                 if file_id is None:
-                    raise errors.NoSuchFile(self, path)
+                    raise NoSuchFile(self, path)
                 file_ids.add(file_id)
             ids_to_unversion = set(file_ids)
             paths_to_unversion = set()
@@ -1565,9 +1572,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 # delta_from_tree is safe even for DirStateRevisionTrees,
                 # because wt4.apply_inventory_delta does not mutate the input
                 # inventory entries.
-                transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink,
-                                     delta_from_tree=delta_from_tree)
+                bzr_transform.build_tree(
+                    basis, wt, accelerator_tree,
+                    hardlink=hardlink,
+                    delta_from_tree=delta_from_tree)
                 for hook in MutableTree.hooks['post_build_tree']:
                     hook(wt)
         finally:
@@ -1920,7 +1928,10 @@ class DirStateRevisionTree(InventoryTree):
         # Make sure the file exists
         entry = self._get_entry(path=path)
         if entry == (None, None): # do we raise?
-            raise errors.NoSuchFile(path)
+            nested_tree, subpath = self.get_containing_nested_tree(path)
+            if nested_tree is not None:
+                return nested_tree.get_file_mtime(subpath)
+            raise NoSuchFile(path)
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]
         try:
@@ -1977,7 +1988,7 @@ class DirStateRevisionTree(InventoryTree):
         for path, identifier in desired_files:
             entry = self._get_entry(path=path)
             if entry == (None, None):
-                raise errors.NoSuchFile(path)
+                raise NoSuchFile(path)
             repo_desired_files.append((entry[0][2], entry[1][parent_index][4],
                                        identifier))
         return self._repository.iter_files_bytes(repo_desired_files)
@@ -1985,7 +1996,7 @@ class DirStateRevisionTree(InventoryTree):
     def get_symlink_target(self, path):
         entry = self._get_entry(path=path)
         if entry is None:
-            raise errors.NoSuchFile(tree=self, path=path)
+            raise NoSuchFile(tree=self, path=path)
         parent_index = self._get_parent_index()
         if entry[1][parent_index][0] != b'l':
             return None
@@ -2018,7 +2029,7 @@ class DirStateRevisionTree(InventoryTree):
     def kind(self, path):
         entry = self._get_entry(path=path)[1]
         if entry is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         parent_index = self._get_parent_index()
         return dirstate.DirState._minikind_to_kind[entry[parent_index][0]]
 
@@ -2043,7 +2054,7 @@ class DirStateRevisionTree(InventoryTree):
     def is_executable(self, path):
         inv, inv_file_id = self._path2inv_file_id(path)
         if inv_file_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         ie = inv.get_entry(inv_file_id)
         if ie.kind != "file":
             return False
@@ -2156,19 +2167,18 @@ class DirStateRevisionTree(InventoryTree):
                 relroot = ""
             # FIXME: stash the node in pending
             entry = inv.get_entry(file_id)
+            subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.file_id, child.kind
-                                 ))
-            yield (relpath, entry.file_id), dirblock
+                dirblock.append((toppath, name, child.kind, None, child.kind))
+                if child.kind == _directory:
+                    subdirs.append((toppath, child.file_id))
+            yield relpath, dirblock
             # push the user specified dirs from dirblock
-            for dir in reversed(dirblock):
-                if dir[2] == _directory:
-                    pending.append((dir[0], dir[4]))
+            pending.extend(reversed(subdirs))
 
 
-class InterDirStateTree(InterTree):
+class InterDirStateTree(InterInventoryTree):
     """Fast path optimiser for changes_from with dirstate trees.
 
     This is used only when both trees are in the dirstate working file, and
@@ -2201,7 +2211,7 @@ class InterDirStateTree(InterTree):
     @classmethod
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
                                                   target):
-        from ..tests.test__dirstate_helpers import \
+        from .tests.test__dirstate_helpers import \
             compiled_dirstate_helpers_feature
         test_case.requireFeature(compiled_dirstate_helpers_feature)
         from ._dirstate_helpers_pyx import ProcessEntryC
@@ -2365,7 +2375,7 @@ class Converter3to4(object):
                      'pending-merges', 'stat-cache']:
             try:
                 transport.delete(path)
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 # some files are optional - just deal.
                 pass
 

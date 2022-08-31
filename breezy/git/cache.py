@@ -41,6 +41,8 @@ from ..bzr import (
     )
 from ..transport import (
     get_transport_from_path,
+    FileExists,
+    NoSuchFile,
     )
 
 
@@ -199,7 +201,7 @@ class BzrGitCacheFormat(object):
         try:
             format_name = transport.get_bytes('format')
             format = formats.get(format_name)
-        except bzr_errors.NoSuchFile:
+        except NoSuchFile:
             format = formats.get('default')
             format.initialize(transport)
         return format.open(transport)
@@ -229,7 +231,7 @@ class BzrGitCacheFormat(object):
             else:
                 try:
                     repo_transport.mkdir('git')
-                except bzr_errors.FileExists:
+                except FileExists:
                     pass
                 transport = repo_transport.clone('git')
         else:
@@ -830,7 +832,7 @@ class IndexGitShaMap(GitShaMap):
         if transport is not None:
             try:
                 transport.mkdir('git')
-            except bzr_errors.FileExists:
+            except FileExists:
                 pass
             return cls(transport.clone('git'))
         return cls(get_transport_from_path(get_cache_dir()))
@@ -988,7 +990,7 @@ def migrate_ancient_formats(repo_transport):
         return
     try:
         repo_transport.mkdir("git")
-    except bzr_errors.FileExists:
+    except FileExists:
         return
     # Prefer migrating git.db over git.tdb, since the latter may not
     # be openable on some platforms.

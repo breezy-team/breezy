@@ -40,6 +40,7 @@ from .. import (
     registry as _mod_registry,
     tests,
     trace,
+    transport as _mod_transport,
     )
 from ..bzr import (
     remote,
@@ -369,14 +370,14 @@ class FakeControlFilesAndTransport(object):
         try:
             return BytesIO(self.files[filename])
         except KeyError:
-            raise errors.NoSuchFile(filename)
+            raise _mod_transport.NoSuchFile(filename)
 
     def get_bytes(self, filename):
         # from Transport
         try:
             return self.files[filename]
         except KeyError:
-            raise errors.NoSuchFile(filename)
+            raise _mod_transport.NoSuchFile(filename)
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
@@ -2348,7 +2349,7 @@ class TestCommandLineStore(tests.TestCase):
         self.assertEqual('y', section.get('x'))
 
     def test_wrong_syntax(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           self.store._from_cmdline, ['a=b', 'c'])
 
 
@@ -2866,7 +2867,7 @@ class TestTransportIniFileStore(TestStore):
     def test_loading_unknown_file_fails(self):
         store = config.TransportIniFileStore(self.get_transport(),
                                              'I-do-not-exist')
-        self.assertRaises(errors.NoSuchFile, store.load)
+        self.assertRaises(_mod_transport.NoSuchFile, store.load)
 
     def test_invalid_content(self):
         store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')

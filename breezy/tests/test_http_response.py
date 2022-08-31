@@ -49,7 +49,7 @@ from .. import (
     )
 from ..transport.http import (
     response,
-    HTTPConnection,
+    urllib,
     )
 from .file_utils import (
     FakeReadFile,
@@ -66,10 +66,10 @@ class ReadSocket(object):
         return self.readfile
 
 
-class FakeHTTPConnection(HTTPConnection):
+class FakeHTTPConnection(urllib.HTTPConnection):
 
     def __init__(self, sock):
-        HTTPConnection.__init__(self, 'localhost')
+        urllib.HTTPConnection.__init__(self, 'localhost')
         # Set the socket to bypass the connection
         self.sock = sock
 
@@ -87,6 +87,10 @@ class TestResponseFileIter(tests.TestCase):
     def test_iter_many(self):
         f = response.ResponseFile('many', BytesIO(b'0\n1\nboo!\n'))
         self.assertEqual([b'0\n', b'1\n', b'boo!\n'], list(f))
+
+    def test_readlines(self):
+        f = response.ResponseFile('many', BytesIO(b'0\n1\nboo!\n'))
+        self.assertEqual([b'0\n', b'1\n', b'boo!\n'], f.readlines())
 
 
 class TestHTTPConnection(tests.TestCase):

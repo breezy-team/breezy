@@ -111,7 +111,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         brz_log = 'my.brz.log'
         self.overrideEnv('BRZ_LOG', brz_log)
         self.assertPathDoesNotExist([self.default_log(), brz_log])
-        out = self.run_bzr_subprocess('version')[0]
+        out = self.run_brz_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(
             out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
@@ -127,7 +127,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
             brz_log = '/dev/null'
         self.overrideEnv('BRZ_LOG', brz_log)
         self.assertPathDoesNotExist(self.default_log())
-        out = self.run_bzr_subprocess('version')[0]
+        out = self.run_brz_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(
             out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
@@ -144,6 +144,6 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
                     uni_val, enc))
         brz_log = os.path.join(self.test_base_dir, uni_val)
         self.overrideEnv("BRZ_LOG", brz_log)
-        out, err = self.run_bzr_subprocess("version")
+        out, err = self.run_brz_subprocess("version")
         uni_out = out.decode(enc)
         self.assertContainsRe(uni_out, u"(?m)^  Breezy log file: .*/\xa7$")

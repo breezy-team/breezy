@@ -20,8 +20,9 @@ from io import (
     )
 import re
 
+import fastbencode as bencode
+
 from .... import (
-    bencode,
     errors,
     iterablefile,
     lru_cache,
@@ -687,7 +688,7 @@ class RevisionInstaller(object):
                         delta = target_inv._make_delta(parent_inv)
                         self._repository.add_inventory_by_delta(parent_ids[0],
                                                                 delta, revision_id, parent_ids)
-                except errors.UnsupportedInventoryKind:
+                except serializer.UnsupportedInventoryKind:
                     raise errors.IncompatibleRevision(repr(self._repository))
                 inventory_cache[revision_id] = target_inv
 

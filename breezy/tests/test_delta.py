@@ -22,7 +22,7 @@ from .. import (
     revision as _mod_revision,
     tests,
     )
-from ..tree import TreeChange
+from ..bzr.inventorytree import InventoryTreeChange
 
 
 class InstrumentedReporter(object):
@@ -161,7 +161,7 @@ class TestReportChanges(tests.TestCase):
                            exe_change=False):
         reporter = InstrumentedReporter()
         _mod_delta.report_changes([
-            TreeChange(
+            InventoryTreeChange(
                 file_id, paths, content_change, versioned, parent_id,
                 name, kind, executable, copied)], reporter)
         output = reporter.calls[0]
@@ -240,7 +240,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         """Doing a status when a file has changed kind should work"""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['filename'])
-        tree.add('filename', b'file-id')
+        tree.add('filename', ids=b'file-id')
         tree.commit('added filename')
         os.unlink('filename')
         self.build_tree(['filename/'])
@@ -258,7 +258,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         other_delta = _mod_delta.TreeDelta()
         self.assertNotEqual(other_delta, delta)
         other_delta.kind_changed = [
-            TreeChange(
+            InventoryTreeChange(
                 b'file-id',
                 ('filename', 'filename'), True, (True, True),
                 (tree.path2id(''), tree.path2id('')),
@@ -266,7 +266,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
                 ('file', 'symlink'), (False, False))]
         self.assertNotEqual(other_delta, delta)
         other_delta.kind_changed = [
-            TreeChange(
+            InventoryTreeChange(
                 b'file-id',
                 ('filename', 'filename'), True, (True, True),
                 (tree.path2id(''), tree.path2id('')), ('filename', 'filename'),
@@ -281,7 +281,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         self.assertEqual([], delta.kind_changed)
         # This loses the fact that kind changed, remembering it as a
         # modification
-        self.assertEqual([TreeChange(
+        self.assertEqual([InventoryTreeChange(
             b'file-id', ('filename', 'dirname'), True,
             (True, True), (tree.path2id(''), tree.path2id('')),
             ('filename', 'dirname'), ('file', 'directory'), (False, False))],
@@ -303,7 +303,7 @@ class TestDeltaShow(tests.TestCaseWithTransport):
                                   ('branch/dir/',),
                                   ])
         wt.add(['f1', 'f2', 'f3', 'f4', 'dir'],
-               [b'f1-id', b'f2-id', b'f3-id', b'f4-id', b'dir-id'])
+               ids=[b'f1-id', b'f2-id', b'f3-id', b'f4-id', b'dir-id'])
         wt.commit('commit one', rev_id=b'1')
 
         # TODO add rename,removed,etc. here?

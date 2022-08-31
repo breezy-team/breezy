@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
+# cython: language_level=3
 
 """Pyrex extensions to btree node parsing."""
 
@@ -68,7 +69,7 @@ from ._str_helpers cimport (
     safe_string_from_size,
     )
 
-from .._static_tuple_c cimport (
+from ._static_tuple_c cimport (
     import_static_tuple_c,
     StaticTuple,
     StaticTuple_New,

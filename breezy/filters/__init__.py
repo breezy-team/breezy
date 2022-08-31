@@ -43,17 +43,10 @@ from io import (
     BytesIO,
     )
 
-from ..lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
-    config,
-    osutils,
-    registry,
-    )
-""")
-
 from .. import (
     errors,
+    osutils,
+    registry,
     )
 
 

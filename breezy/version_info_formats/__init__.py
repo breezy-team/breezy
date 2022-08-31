@@ -194,7 +194,11 @@ format_registry.register_lazy(
     'breezy.version_info_formats.format_rio',
     'RioVersionInfoBuilder',
     'Version info in RIO (simple text) format (default).')
-format_registry.default_key = 'rio'
+format_registry.register_lazy(
+    'yaml',
+    'breezy.version_info_formats.format_yaml',
+    'YamlVersionInfoBuilder',
+    'Version info in YAML format.')
 format_registry.register_lazy(
     'python',
     'breezy.version_info_formats.format_python',
@@ -205,3 +209,4 @@ format_registry.register_lazy(
     'breezy.version_info_formats.format_custom',
     'CustomVersionInfoBuilder',
     'Version info in Custom template-based format.')
+format_registry.default_key = 'rio'

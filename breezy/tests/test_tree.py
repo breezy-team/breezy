@@ -91,6 +91,10 @@ class RecordingOptimiser(InterTree):
              include_root, want_unversioned)
             )
 
+    def find_source_path(self, target_path, recurse='none'):
+        self.calls.append(
+            ('find_source_path', self.source, self.target, target_path, recurse))
+
     @classmethod
     def is_compatible(klass, source, target):
         return True
@@ -106,6 +110,7 @@ class TestTree(TestCaseWithTransport):
             RecordingOptimiser.calls = []
             InterTree.register_optimiser(RecordingOptimiser)
             tree = self.make_branch_and_tree('1')
+            null_tree = tree.basis_tree()
             tree2 = self.make_branch_and_tree('2')
             # do a series of calls:
             # trivial usage
@@ -126,6 +131,8 @@ class TestTree(TestCaseWithTransport):
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
+                ('find_source_path', null_tree, tree, '', 'none'),
+                ('find_source_path', null_tree, tree2, '', 'none'),
                 ('compare', tree2, tree, False, None, None, False, False,
                     False),
                 ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
@@ -232,3 +239,14 @@ class GetCanonicalPath(TestCaseWithTransport):
         self.assertEqual(
             'a/C',
             get_canonical_path(tree, 'A/C', lambda x: x.lower()))
+
+    def test_trailing_slash(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a/', 'tree/a/b'])
+        tree.add(['a', 'a/b'])
+        self.assertEqual(
+            'a',
+            get_canonical_path(tree, 'a', lambda x: x))
+        self.assertEqual(
+            'a',
+            get_canonical_path(tree, 'a/', lambda x: x))

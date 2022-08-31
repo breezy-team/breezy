@@ -26,7 +26,6 @@ from breezy import (
     config,
     debug,
     osutils,
-    static_tuple,
     trace,
     tsort,
     )
@@ -34,6 +33,7 @@ from breezy.bzr import (
     knit,
     pack,
     pack_repo,
+    static_tuple,
     )
 
 from breezy.i18n import gettext
@@ -49,8 +49,10 @@ from .versionedfile import (
     adapter_registry,
     AbsentContentFactory,
     ChunkedContentFactory,
+    ExistingContent,
     FulltextContentFactory,
     VersionedFilesWithFallbacks,
+    UnavailableRepresentation,
     )
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
@@ -482,8 +484,8 @@ class _LazyGroupCompressFactory(object):
                 return self._chunks
             else:
                 return osutils.chunks_to_lines(self._chunks)
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if self._chunks is None:
@@ -492,8 +494,8 @@ class _LazyGroupCompressFactory(object):
             return iter(self._chunks)
         elif storage_kind == 'lines':
             return iter(osutils.chunks_to_lines(self._chunks))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 
 class _LazyGroupContentManager(object):
@@ -863,7 +865,7 @@ class _CommonGroupCompressor(object):
         """
         if length == 0:  # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
-                raise errors.ExistingContent()
+                raise ExistingContent()
             return _null_sha1, 0, 0, 'fulltext'
         # we assume someone knew what they were doing when they passed it in
         if expected_sha is not None:
@@ -872,7 +874,7 @@ class _CommonGroupCompressor(object):
             sha1 = osutils.sha_strings(chunks)
         if nostore_sha is not None:
             if sha1 == nostore_sha:
-                raise errors.ExistingContent()
+                raise ExistingContent()
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + sha1,)
 
@@ -1511,7 +1513,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _find_from_fallback(self, missing):
@@ -1833,7 +1835,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     continue
             try:
                 chunks = record.get_bytes_as('chunked')
-            except errors.UnavailableRepresentation:
+            except UnavailableRepresentation:
                 adapter_key = record.storage_kind, 'chunked'
                 adapter = get_adapter(adapter_key)
                 chunks = adapter.get_bytes(record, 'chunked')

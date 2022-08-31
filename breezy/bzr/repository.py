@@ -24,6 +24,7 @@ from .. import (
     lockdir,
     lockable_files,
     revision as _mod_revision,
+    transport as _mod_transport,
     )
 from ..repository import (
     format_registry,
@@ -61,7 +62,7 @@ class MetaDirRepository(Repository):
             if new_value:
                 try:
                     self._transport.delete('no-working-trees')
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     pass
             else:
                 self._transport.put_bytes(
@@ -155,7 +156,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         return klass._find_format(format_registry, 'repository', format_string)
 

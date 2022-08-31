@@ -18,7 +18,7 @@ import contextlib
 
 from .branch import Branch
 from .trace import note
-from .errors import NoSuchRevision, BzrCommandError
+from .errors import NoSuchRevision, CommandError
 
 
 class GhostFetcher(object):
@@ -29,8 +29,8 @@ class GhostFetcher(object):
         if other is None:
             other = this_branch.get_parent()
             if other is None:
-                raise BzrCommandError('No branch specified and no location'
-                                      ' saved.')
+                raise CommandError('No branch specified and no location'
+                                   ' saved.')
             else:
                 note("Using saved location %s.", other)
         other_branch = Branch.open_containing(other)[0]

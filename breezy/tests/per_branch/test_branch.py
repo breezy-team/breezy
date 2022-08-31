@@ -28,7 +28,6 @@ from breezy import (
     merge,
     osutils,
     urlutils,
-    transform,
     transport,
     repository,
     revision,
@@ -37,7 +36,6 @@ from breezy import (
     tree as _mod_tree,
     )
 from breezy.bzr import (
-    branch as _mod_bzrbranch,
     remote,
     )
 from breezy.tests import (
@@ -257,7 +255,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
-        if not isinstance(branch, _mod_bzrbranch.BzrBranch):
+        if not branch.repository._format.supports_storing_branch_nick:
             raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
@@ -719,7 +717,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch2 = self.make_branch('2')
         try:
             branch.bind(branch2)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.assertTrue(branch.unbind())
         self.assertFalse(branch.unbind())
@@ -747,7 +745,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         tree_b.commit('rev2b')
         try:
             tree_b.branch.bind(tree_a.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
 
     def test_unbind_clears_cached_master_branch(self):
@@ -756,7 +754,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -770,7 +768,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -786,7 +784,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -861,7 +859,7 @@ class FakeShelfCreator(object):
 
     def write_shelf(self, shelf_file, message=None):
         tree = self.branch.repository.revision_tree(revision.NULL_REVISION)
-        with transform.TransformPreview(tree) as tt:
+        with tree.preview_transform() as tt:
             shelf.ShelfCreator._write_shelf(
                 shelf_file, tt, revision.NULL_REVISION)
 
@@ -885,7 +883,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def bind(self, branch, master):
         try:
             branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Branch cannot be bound.')
 
     def test_store_uncommitted(self):

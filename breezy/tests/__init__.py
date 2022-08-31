@@ -23,6 +23,7 @@
 
 import atexit
 import codecs
+import contextlib
 import copy
 import difflib
 import doctest
@@ -89,7 +90,7 @@ from breezy.bzr import (
     )
 try:
     import breezy.lsprof
-except ImportError:
+except ModuleNotFoundError:
     # lsprof not available
     pass
 from ..bzr.smart import client, request
@@ -546,10 +547,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def report_tests_starting(self):
         """Display information before the test run begins"""
-        if getattr(sys, 'frozen', None) is None:
-            bzr_path = osutils.realpath(sys.argv[0])
-        else:
-            bzr_path = sys.executable
+        bzr_path = osutils.realpath(sys.argv[0])
         self.stream.write(
             'brz selftest: %s\n' % (bzr_path,))
         self.stream.write(
@@ -1695,6 +1693,12 @@ class TestCase(testtools.TestCase):
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
+    @contextlib.contextmanager
+    def text_log_file(self, **kwargs):
+        stream = TextIOWrapper(self._log_file, encoding='utf-8', **kwargs)
+        yield stream
+        stream.detach()
+
     def _finishLogFile(self):
         """Flush and dereference the in-memory log for this testcase"""
         if trace._trace_file:
@@ -2133,7 +2137,7 @@ class TestCase(testtools.TestCase):
         out, err = self.run_bzr(*args, **kwargs)
         return out, err
 
-    def run_bzr_subprocess(self, *args, **kwargs):
+    def run_brz_subprocess(self, *args, **kwargs):
         """Run brz in a subprocess for testing.
 
         This starts a new Python interpreter and runs brz in there.
@@ -2154,7 +2158,7 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get('env_changes', {})
+        env_changes = kwargs.get('env_changes', None)
         working_dir = kwargs.get('working_dir', None)
         allow_plugins = kwargs.get('allow_plugins', False)
         if len(args) == 1:
@@ -2163,18 +2167,18 @@ class TestCase(testtools.TestCase):
             elif isinstance(args[0], str):
                 args = list(shlex.split(args[0]))
         else:
-            raise ValueError("passing varargs to run_bzr_subprocess")
-        process = self.start_bzr_subprocess(args, env_changes=env_changes,
+            raise ValueError("passing varargs to run_brz_subprocess")
+        process = self.start_brz_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)
         # We distinguish between retcode=None and retcode not passed.
         supplied_retcode = kwargs.get('retcode', 0)
-        return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
+        return self.finish_brz_subprocess(process, retcode=supplied_retcode,
                                           universal_newlines=kwargs.get(
                                               'universal_newlines', False),
                                           process_args=args)
 
-    def start_bzr_subprocess(self, process_args, env_changes=None,
+    def start_brz_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
                              allow_plugins=False, stderr=subprocess.PIPE):
@@ -2212,6 +2216,10 @@ class TestCase(testtools.TestCase):
         # gets set to the computed directory of this parent process.
         if site.USER_BASE is not None:
             env_changes["PYTHONUSERBASE"] = site.USER_BASE
+
+        if 'PYTHONPATH' not in env_changes:
+            env_changes['PYTHONPATH'] = ':'.join(sys.path)
+
         old_env = {}
 
         def cleanup_environment():
@@ -2237,10 +2245,7 @@ class TestCase(testtools.TestCase):
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
             self._add_subprocess_log(trace._get_brz_log_filename())
-            command = [sys.executable]
-            # frozen executables don't need the path to bzr
-            if getattr(sys, "frozen", None) is None:
-                command.append(bzr_path)
+            command = [bzr_path]
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
@@ -2279,7 +2284,7 @@ class TestCase(testtools.TestCase):
             detail_content = content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
                 lambda: [log_file_bytes])
-            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+            self.addDetail("start_brz_subprocess-log-%d" % (count,),
                            detail_content)
 
     def _popen(self, *args, **kwargs):
@@ -2302,11 +2307,11 @@ class TestCase(testtools.TestCase):
             brz_path = sys.argv[0]
         return brz_path
 
-    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
+    def finish_brz_subprocess(self, process, retcode=0, send_signal=None,
                               universal_newlines=False, process_args=None):
         """Finish the execution of process.
 
-        :param process: the Popen object returned from start_bzr_subprocess.
+        :param process: the Popen object returned from start_brz_subprocess.
         :param retcode: The status code that is expected.  Defaults to 0.  If
             None is supplied, the status code is not checked.
         :param send_signal: an optional signal to send to the process.
@@ -2430,10 +2435,10 @@ class CapturedCall(object):
         self.stack = ''.join(traceback.format_list(stack))
 
     def __str__(self):
-        return self.call.method
+        return self.call.method.decode('utf-8')
 
     def __repr__(self):
-        return self.call.method
+        return self.call.method.decode('utf-8')
 
     def stack(self):
         return self.stack
@@ -2655,7 +2660,9 @@ class TestCaseWithMemoryTransport(TestCase):
             # http://pad.lv/825027).
             self.assertIs(None, os.environ.get('BRZ_HOME', None))
             os.environ['BRZ_HOME'] = root
-            wt = controldir.ControlDir.create_standalone_workingtree(root)
+            from breezy.bzr.bzrdir import BzrDirMetaFormat1
+            wt = controldir.ControlDir.create_standalone_workingtree(
+                root, format=BzrDirMetaFormat1())
             del os.environ['BRZ_HOME']
         except Exception as e:
             self.fail("Fail to initialize the safety net: %r\n" % (e,))
@@ -3051,7 +3058,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         try:
             mode = transport.stat(relpath).st_mode
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.fail("path %s is not a directory; no such file"
                       % (relpath))
         if not stat.S_ISDIR(mode):
@@ -3368,8 +3375,8 @@ parallel_registry = registry.Registry()
 
 def fork_decorator(suite):
     if getattr(os, "fork", None) is None:
-        raise errors.BzrCommandError("platform does not support fork,"
-                                     " try --parallel=subprocess instead.")
+        raise errors.CommandError("platform does not support fork,"
+                                  " try --parallel=subprocess instead.")
     concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
@@ -3536,7 +3543,7 @@ def workaround_zealous_crypto_random():
     try:
         from Crypto.Random import atfork
         atfork()
-    except ImportError:
+    except ModuleNotFoundError:
         pass
 
 
@@ -3580,7 +3587,7 @@ def fork_for_tests(suite):
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
-                except ImportError:
+                except ModuleNotFoundError:
                     pass
                 else:
                     coverage.process_startup()
@@ -3647,9 +3654,6 @@ def reinvoke_for_tests(suite):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
         bzr_path = [bzr_path]
-        if sys.platform == "win32":
-            # if we're on windows, we can't execute the bzr script directly
-            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
@@ -3817,7 +3821,7 @@ def load_test_id_list(file_name):
         if e.errno != errno.ENOENT:
             raise
         else:
-            raise errors.NoSuchFile(file_name)
+            raise _mod_transport.NoSuchFile(file_name)
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -3937,7 +3941,7 @@ class TestPrefixAliasRegistry(registry.Registry):
         try:
             parts[0] = self.get(parts[0])
         except KeyError:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 '%s is not a known test prefix alias' % parts[0])
         return '.'.join(parts)
 
@@ -3955,6 +3959,7 @@ test_prefix_alias_registry.register('bd', 'breezy.doc')
 test_prefix_alias_registry.register('bu', 'breezy.utils')
 test_prefix_alias_registry.register('bt', 'breezy.tests')
 test_prefix_alias_registry.register('bgt', 'breezy.git.tests')
+test_prefix_alias_registry.register('bbt', 'breezy.bzr.tests')
 test_prefix_alias_registry.register('bb', 'breezy.tests.blackbox')
 test_prefix_alias_registry.register('bp', 'breezy.plugins')
 
@@ -3962,61 +3967,27 @@ test_prefix_alias_registry.register('bp', 'breezy.plugins')
 def _test_suite_testmod_names():
     """Return the standard list of test module names to test."""
     return [
-        'breezy.git.tests.test_blackbox',
-        'breezy.git.tests.test_builder',
-        'breezy.git.tests.test_branch',
-        'breezy.git.tests.test_cache',
-        'breezy.git.tests.test_dir',
-        'breezy.git.tests.test_fetch',
-        'breezy.git.tests.test_git_remote_helper',
-        'breezy.git.tests.test_mapping',
-        'breezy.git.tests.test_memorytree',
-        'breezy.git.tests.test_object_store',
-        'breezy.git.tests.test_pristine_tar',
-        'breezy.git.tests.test_push',
-        'breezy.git.tests.test_remote',
-        'breezy.git.tests.test_repository',
-        'breezy.git.tests.test_refs',
-        'breezy.git.tests.test_revspec',
-        'breezy.git.tests.test_roundtrip',
-        'breezy.git.tests.test_server',
-        'breezy.git.tests.test_transportgit',
-        'breezy.git.tests.test_unpeel_map',
-        'breezy.git.tests.test_urls',
-        'breezy.git.tests.test_workingtree',
+        'breezy.bzr.tests',
+        'breezy.git.tests',
         'breezy.tests.blackbox',
         'breezy.tests.commands',
         'breezy.tests.per_branch',
-        'breezy.tests.per_bzrdir',
         'breezy.tests.per_controldir',
         'breezy.tests.per_controldir_colo',
         'breezy.tests.per_foreign_vcs',
         'breezy.tests.per_interrepository',
         'breezy.tests.per_intertree',
-        'breezy.tests.per_inventory',
         'breezy.tests.per_interbranch',
         'breezy.tests.per_lock',
         'breezy.tests.per_merger',
         'breezy.tests.per_transport',
         'breezy.tests.per_tree',
-        'breezy.tests.per_pack_repository',
         'breezy.tests.per_repository',
-        'breezy.tests.per_repository_chk',
         'breezy.tests.per_repository_reference',
-        'breezy.tests.per_repository_vf',
         'breezy.tests.per_uifactory',
-        'breezy.tests.per_versionedfile',
         'breezy.tests.per_workingtree',
         'breezy.tests.test__annotator',
-        'breezy.tests.test__bencode',
-        'breezy.tests.test__btree_serializer',
-        'breezy.tests.test__chk_map',
-        'breezy.tests.test__dirstate_helpers',
-        'breezy.tests.test__groupcompress',
         'breezy.tests.test__known_graph',
-        'breezy.tests.test__rio',
-        'breezy.tests.test__simple_set',
-        'breezy.tests.test__static_tuple',
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
@@ -4026,14 +3997,9 @@ def _test_suite_testmod_names():
         'breezy.tests.test_bisect_multi',
         'breezy.tests.test_branch',
         'breezy.tests.test_branchbuilder',
-        'breezy.tests.test_btree_index',
         'breezy.tests.test_bugtracker',
-        'breezy.tests.test_bundle',
-        'breezy.tests.test_bzrdir',
         'breezy.tests.test__chunks_to_lines',
         'breezy.tests.test_cache_utf8',
-        'breezy.tests.test_chk_map',
-        'breezy.tests.test_chk_serializer',
         'breezy.tests.test_chunk_writer',
         'breezy.tests.test_clean_tree',
         'breezy.tests.test_cmdline',
@@ -4051,7 +4017,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_debug',
         'breezy.tests.test_diff',
         'breezy.tests.test_directory_service',
-        'breezy.tests.test_dirstate',
+        'breezy.tests.test_dirty_tracker',
         'breezy.tests.test_email_message',
         'breezy.tests.test_eol_filters',
         'breezy.tests.test_errors',
@@ -4067,14 +4033,12 @@ def _test_suite_testmod_names():
         'breezy.tests.test_filters',
         'breezy.tests.test_filter_tree',
         'breezy.tests.test_foreign',
+        'breezy.tests.test_forge',
         'breezy.tests.test_generate_docs',
-        'breezy.tests.test_generate_ids',
         'breezy.tests.test_globbing',
         'breezy.tests.test_gpg',
         'breezy.tests.test_graph',
         'breezy.tests.test_grep',
-        'breezy.tests.test_groupcompress',
-        'breezy.tests.test_hashcache',
         'breezy.tests.test_help',
         'breezy.tests.test_hooks',
         'breezy.tests.test_http',
@@ -4084,12 +4048,8 @@ def _test_suite_testmod_names():
         'breezy.tests.test_i18n',
         'breezy.tests.test_identitymap',
         'breezy.tests.test_ignores',
-        'breezy.tests.test_index',
         'breezy.tests.test_import_tariff',
         'breezy.tests.test_info',
-        'breezy.tests.test_inv',
-        'breezy.tests.test_inventory_delta',
-        'breezy.tests.test_knit',
         'breezy.tests.test_lazy_import',
         'breezy.tests.test_lazy_regex',
         'breezy.tests.test_library_state',
@@ -4102,9 +4062,9 @@ def _test_suite_testmod_names():
         'breezy.tests.test_lsprof',
         'breezy.tests.test_mail_client',
         'breezy.tests.test_matchers',
+        'breezy.tests.test_memorybranch',
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
-        'breezy.tests.test_merge3',
         'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
@@ -4118,42 +4078,31 @@ def _test_suite_testmod_names():
         'breezy.tests.test_options',
         'breezy.tests.test_osutils',
         'breezy.tests.test_osutils_encodings',
-        'breezy.tests.test_pack',
         'breezy.tests.test_patch',
         'breezy.tests.test_patches',
         'breezy.tests.test_permissions',
         'breezy.tests.test_plugins',
         'breezy.tests.test_progress',
-        'breezy.tests.test_propose',
         'breezy.tests.test_pyutils',
-        'breezy.tests.test_read_bundle',
         'breezy.tests.test_reconcile',
         'breezy.tests.test_reconfigure',
         'breezy.tests.test_registry',
-        'breezy.tests.test_remote',
         'breezy.tests.test_rename_map',
-        'breezy.tests.test_repository',
         'breezy.tests.test_revert',
         'breezy.tests.test_revision',
         'breezy.tests.test_revisionspec',
         'breezy.tests.test_revisiontree',
-        'breezy.tests.test_rio',
         'breezy.tests.test_rules',
         'breezy.tests.test_url_policy_open',
         'breezy.tests.test_sampler',
         'breezy.tests.test_scenarios',
         'breezy.tests.test_script',
         'breezy.tests.test_selftest',
-        'breezy.tests.test_serializer',
         'breezy.tests.test_setup',
         'breezy.tests.test_sftp_transport',
         'breezy.tests.test_shelf',
         'breezy.tests.test_shelf_ui',
-        'breezy.tests.test_smart',
         'breezy.tests.test_smart_add',
-        'breezy.tests.test_smart_request',
-        'breezy.tests.test_smart_signals',
-        'breezy.tests.test_smart_transport',
         'breezy.tests.test_smtp_connection',
         'breezy.tests.test_source',
         'breezy.tests.test_ssh_transport',
@@ -4164,7 +4113,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_symbol_versioning',
         'breezy.tests.test_tag',
         'breezy.tests.test_test_server',
-        'breezy.tests.test_testament',
         'breezy.tests.test_textfile',
         'breezy.tests.test_textmerge',
         'breezy.tests.test_cethread',
@@ -4178,7 +4126,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_treebuilder',
         'breezy.tests.test_treeshape',
         'breezy.tests.test_tsort',
-        'breezy.tests.test_tuned_gzip',
         'breezy.tests.test_ui',
         'breezy.tests.test_uncommit',
         'breezy.tests.test_upgrade',
@@ -4188,16 +4135,12 @@ def _test_suite_testmod_names():
         'breezy.tests.test_utextwrap',
         'breezy.tests.test_version',
         'breezy.tests.test_version_info',
-        'breezy.tests.test_versionedfile',
-        'breezy.tests.test_vf_search',
         'breezy.tests.test_views',
-        'breezy.tests.test_weave',
         'breezy.tests.test_whitebox',
         'breezy.tests.test_win32utils',
+        'breezy.tests.test_workspace',
         'breezy.tests.test_workingtree',
-        'breezy.tests.test_workingtree_4',
         'breezy.tests.test_wsgi',
-        'breezy.tests.test_xml',
         ]
 
 
@@ -4213,14 +4156,13 @@ def _test_suite_modules_to_doctest():
         'breezy.decorators',
         'breezy.iterablefile',
         'breezy.lockdir',
-        'breezy.merge3',
         'breezy.option',
         'breezy.pyutils',
         'breezy.symbol_versioning',
         'breezy.tests',
         'breezy.tests.fixtures',
         'breezy.timestamp',
-        'breezy.transport.http',
+        'breezy.transport.http.urllib',
         'breezy.version_info_formats.format_custom',
         ]
 
@@ -4581,7 +4523,7 @@ try:
                 SubUnitBzrProtocolClientv1(self.stream))
             test.run(result)
             return result
-except ImportError:
+except ModuleNotFoundError:
     pass
 
 
@@ -4601,5 +4543,5 @@ try:
                                        stream=stream)
 
         run = SubunitTestRunner.run
-except ImportError:
+except ModuleNotFoundError:
     pass

@@ -61,7 +61,7 @@ if getattr(sys, "frozen", None):
 def import_dulwich():
     try:
         from dulwich import __version__ as dulwich_version
-    except ImportError:
+    except ModuleNotFoundError:
         raise brz_errors.DependencyNotPresent(
             "dulwich",
             "bzr-git: Please install dulwich, https://www.dulwich.io/")
@@ -178,15 +178,15 @@ class RemoteGitProber(Prober):
             # GitHub requires we lie.
             # https://github.com/dulwich/dulwich/issues/562
             headers["User-Agent"] = user_agent_for_github()
-        elif host == "bazaar.launchpad.net":
-            # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
-            raise brz_errors.NotBranchError(transport.base)
         resp = transport.request('GET', url, headers=headers)
         if resp.status in (404, 405):
             raise brz_errors.NotBranchError(transport.base)
+        elif resp.status == 400 and resp.reason == 'no such method: info':
+            # hgweb :(
+            raise brz_errors.NotBranchError(transport.base)
         elif resp.status != 200:
-            raise brz_errors.InvalidHttpResponse(
-                url, 'Unable to handle http code %d' % resp.status)
+            raise brz_errors.UnexpectedHttpStatus(
+                url, resp.status, headers=resp.getheaders())
 
         ct = resp.getheader("Content-Type")
         if ct and ct.startswith("application/x-git"):
@@ -285,6 +285,24 @@ install_lazy_named_hook(
     "breezy.version_info_formats.format_rio",
     "RioVersionInfoBuilder.hooks", "revision", update_stanza,
     "git commits")
+
+
+def rewrite_instead_of(location, purpose):
+    try:
+        from dulwich.config import apply_instead_of, StackedConfig
+    except ImportError:
+        # Version of dulwich too old (<< 0.20.44)
+        return location
+
+    config = StackedConfig.default()
+
+    return apply_instead_of(config, location, push=(purpose == "push"))
+
+
+from ..location import hooks as location_hooks
+location_hooks.install_named_hook(
+    "rewrite_location", rewrite_instead_of,
+    "apply Git insteadOf / pushInsteadOf")
 
 transport_server_registry.register_lazy(
     'git', __name__ + '.server', 'serve_git',
@@ -421,7 +439,7 @@ def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,
 def loggerhead_git_hook(branch_app, environ):
     branch = branch_app.branch
     config_stack = branch.get_config_stack()
-    if config_stack.get('http_git'):
+    if not config_stack.get('git.http'):
         return None
     from .server import git_http_hook
     return git_http_hook(branch, environ['REQUEST_METHOD'],

@@ -16,7 +16,28 @@
 
 """Inventory/revision serialization."""
 
-from .. import registry
+from .. import errors, registry
+
+
+class BadInventoryFormat(errors.BzrError):
+
+    _fmt = "Root class for inventory serialization errors"
+
+
+class UnexpectedInventoryFormat(BadInventoryFormat):
+
+    _fmt = "The inventory was not in the expected format:\n %(msg)s"
+
+    def __init__(self, msg):
+        BadInventoryFormat.__init__(self, msg=msg)
+
+
+class UnsupportedInventoryKind(errors.BzrError):
+
+    _fmt = """Unsupported entry kind %(kind)s"""
+
+    def __init__(self, kind):
+        self.kind = kind
 
 
 class Serializer(object):

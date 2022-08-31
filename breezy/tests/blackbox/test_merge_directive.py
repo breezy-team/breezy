@@ -119,6 +119,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
         def connect(self, host='localhost', port=0):
             connect_calls.append((self, host, port))
+            return (220, 'Ok')
 
         def has_extn(self, extension):
             return False

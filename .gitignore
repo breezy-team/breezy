@@ -10,3 +10,6 @@ build/
 *_c.so
 *_pyx.cpython-*.c
 *~
+/target
+/brz
+/Cargo.lock

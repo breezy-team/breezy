@@ -70,7 +70,7 @@ class TestCanonicalPaths(TestCaseWithWorkingTree):
     def test_canonical_path_root(self):
         work_tree = self._make_canonical_test_tree()
         self.assertEqual('', work_tree.get_canonical_path(''))
-        self.assertEqual('/', work_tree.get_canonical_path('/'))
+        self.assertEqual('', work_tree.get_canonical_path('/'))
 
     def test_canonical_path_invalid_all(self):
         work_tree = self._make_canonical_test_tree()

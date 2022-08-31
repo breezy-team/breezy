@@ -21,6 +21,9 @@ import os
 
 from ... import (
     conflicts,
+    )
+from ...bzr.conflicts import TextConflict, ContentsConflict
+from ... import (
     errors,
     )
 
@@ -45,23 +48,23 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
                           None)
         with open('lala.BASE', 'wb') as f:
             f.write(b'labase')
-        expected = conflicts.ContentsConflict('lala')
+        expected = ContentsConflict('lala')
         self.assertEqual(list(tree.conflicts()), [expected])
         with open('lala', 'wb') as f:
             f.write(b'la')
-        tree.add('lala', b'lala-id')
-        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
+        tree.add('lala', ids=b'lala-id')
+        expected = ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         with open('lala.THIS', 'wb') as f:
             f.write(b'lathis')
         with open('lala.OTHER', 'wb') as f:
             f.write(b'laother')
         # When "text conflict"s happen, stem, THIS and OTHER are text
-        expected = conflicts.TextConflict('lala', file_id='lala-id')
+        expected = TextConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         os.unlink('lala.OTHER')
         os.mkdir('lala.OTHER')
-        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
+        expected = ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
 
     def test_detect_conflicts(self):

@@ -31,7 +31,6 @@ from breezy import (
     transport,
     )
 from breezy.errors import (
-    FileExists,
     UninitializableFormat,
     )
 
@@ -45,6 +44,7 @@ from breezy.tests import (
     multiply_tests,
     )
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
+from breezy.transport import FileExists
 from breezy.bzr.vf_repository import (
     InterDifferingSerializer,
     )
@@ -92,7 +92,7 @@ def default_test_list():
     # result.append((InterRepository,
     #               RepositoryFormat6(),
     #               RepositoryFormatKnit1()))
-    for optimiser_class in InterRepository._optimisers:
+    for optimiser_class in InterRepository.iter_optimisers():
         format_to_test = optimiser_class._get_repo_format_to_test()
         if format_to_test is not None:
             add_combo(optimiser_class, format_to_test, format_to_test)

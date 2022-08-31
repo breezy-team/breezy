@@ -29,8 +29,7 @@ from breezy import (
 class DarcsUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Darcs branches are not yet supported. '
-            'To convert darcs branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+            'To interoperate with darcs branches, use fastimport.')
 
 
 class DarcsDirFormat(controldir.ControlDirFormat):
@@ -79,7 +78,7 @@ class DarcsProber(controldir.Prober):
 
     @classmethod
     def probe_transport(klass, transport):
-        if transport.has('_darcs/format'):
+        if transport.has_any(['_darcs/format', '_darcs/inventory']):
             return DarcsDirFormat()
         raise errors.NotBranchError(path=transport.base)
 

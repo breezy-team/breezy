@@ -30,15 +30,14 @@ from ..features import (
 
 class TestLinkTreeCommand(tests.TestCaseWithTransport):
 
-    _test_needs_features = [HardlinkFeature]
-
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         self.parent_tree = self.make_branch_and_tree('parent')
         self.parent_tree.lock_write()
         self.addCleanup(self.parent_tree.unlock)
         self.build_tree_contents([('parent/foo', b'bar')])
-        self.parent_tree.add('foo', b'foo-id')
+        self.parent_tree.add('foo', ids=b'foo-id')
         self.parent_tree.commit('added foo')
         child_controldir = self.parent_tree.controldir.sprout('child')
         self.child_tree = child_controldir.open_workingtree()

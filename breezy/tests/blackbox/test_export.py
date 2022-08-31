@@ -35,7 +35,6 @@ from .. import (
     features,
     TestCaseWithTransport,
     )
-from ..matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
@@ -94,11 +93,11 @@ class TestExport(TestCaseWithTransport):
         self.assertTrue(tree.has_filename('.bzr-adir'))
         self.assertTrue(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.tar.gz -d tree')
-        ball = tarfile.open('test.tar.gz')
-        # Make sure the tarball contains 'a', but does not contain
-        # '.bzrignore'.
-        self.assertEqual(['test/a'],
-                         sorted(ball.getnames()))
+        with tarfile.open('test.tar.gz') as ball:
+            # Make sure the tarball contains 'a', but does not contain
+            # '.bzrignore'.
+            self.assertEqual(['test/a'],
+                             sorted(ball.getnames()))
 
     def test_tar_export_unicode_filename(self):
         self.requireFeature(features.UnicodeFilenameFeature)
@@ -112,10 +111,10 @@ class TestExport(TestCaseWithTransport):
         tree.commit('first')
 
         self.run_bzr('export test.tar -d tar')
-        ball = tarfile.open('test.tar')
-        # all paths are prefixed with the base name of the tarball
-        self.assertEqual([u'test/' + fname],
-                         [osutils.safe_unicode(n) for n in ball.getnames()])
+        with tarfile.open('test.tar') as ball:
+            # all paths are prefixed with the base name of the tarball
+            self.assertEqual([u'test/' + fname],
+                             [osutils.safe_unicode(n) for n in ball.getnames()])
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
@@ -180,12 +179,12 @@ class TestExport(TestCaseWithTransport):
         fname = 'test.%s' % (extension,)
         self.run_bzr('export -d tree %s' % (fname,))
         mode = 'r|%s' % (tarfile_flags,)
-        ball = tarfile.open(fname, mode=mode)
-        self.assertTarANameAndContent(ball, root='test/')
+        with tarfile.open(fname, mode=mode) as ball:
+            self.assertTarANameAndContent(ball, root='test/')
         content = self.run_bzr_raw(
             'export -d tree --format=%s -' % (extension,))[0]
-        ball = tarfile.open(mode=mode, fileobj=BytesIO(content))
-        self.assertTarANameAndContent(ball, root='')
+        with tarfile.open(mode=mode, fileobj=BytesIO(content)) as ball:
+            self.assertTarANameAndContent(ball, root='')
 
     def test_tar_export(self):
         self.run_tar_export_disk_and_stdout('tar', '')
@@ -241,6 +240,23 @@ class TestExport(TestCaseWithTransport):
 
         d_info = zfile.getinfo(names[3])
         self.assertEqual(dir_attr, d_info.external_attr)
+
+    def test_dir_export_nested(self):
+        tree = self.make_branch_and_tree('dir')
+        self.build_tree(['dir/a'])
+        tree.add('a')
+
+        subtree = self.make_branch_and_tree('dir/subdir')
+        tree.add_reference(subtree)
+
+        self.build_tree(['dir/subdir/b'])
+        subtree.add('b')
+
+        self.run_bzr('export --uncommitted direxport1 dir')
+        self.assertFalse(os.path.exists('direxport1/subdir/b'))
+
+        self.run_bzr('export --recurse-nested --uncommitted direxport2 dir')
+        self.assertTrue(os.path.exists('direxport2/subdir/b'))
 
     def test_dir_export(self):
         tree = self.make_branch_and_tree('dir')
@@ -417,24 +433,3 @@ class TestExport(TestCaseWithTransport):
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
         self.assertEqual(time.localtime(timestamp)[:6], info.date_time)
-
-
-class TestSmartServerExport(TestCaseWithTransport):
-
-    def test_simple_export(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(
-            ['export', "foo.tar.gz", self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(8, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

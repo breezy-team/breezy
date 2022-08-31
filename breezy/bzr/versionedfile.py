@@ -23,11 +23,13 @@ import os
 import struct
 from zlib import adler32
 
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import fastbencode as bencode
+
 from breezy import (
     annotate,
-    bencode,
     graph as _mod_graph,
     osutils,
     multiparent,
@@ -43,6 +45,7 @@ from breezy.bzr import (
 """)
 from .. import (
     errors,
+    transport as _mod_transport,
     )
 from ..registry import Registry
 from ..textmerge import TextMerge
@@ -62,6 +65,23 @@ for target_storage_kind in ('fulltext', 'chunked', 'lines'):
                                    'breezy.bzr.knit', 'FTAnnotatedToFullText')
     adapter_registry.register_lazy(('knit-annotated-delta-gz', target_storage_kind),
                                    'breezy.bzr.knit', 'DeltaAnnotatedToFullText')
+
+
+class UnavailableRepresentation(errors.InternalBzrError):
+
+    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
+            "is encoded as '%(native)s'.")
+
+    def __init__(self, key, wanted, native):
+        errors.InternalBzrError.__init__(self)
+        self.wanted = wanted
+        self.native = native
+        self.key = key
+
+
+class ExistingContent(errors.BzrError):
+
+    _fmt = "The content being inserted is already present."
 
 
 class ContentFactory(object):
@@ -127,8 +147,8 @@ class ChunkedContentFactory(ContentFactory):
             if self._chunks_are_lines:
                 return self._chunks
             return list(osutils.chunks_to_lines(self._chunks))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind == 'chunked':
@@ -137,8 +157,8 @@ class ChunkedContentFactory(ContentFactory):
             if self._chunks_are_lines:
                 return iter(self._chunks)
             return iter(osutils.chunks_to_lines(self._chunks))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 class FulltextContentFactory(ContentFactory):
     """Static data content factory.
@@ -174,16 +194,16 @@ class FulltextContentFactory(ContentFactory):
             return [self._text]
         elif storage_kind == 'lines':
             return osutils.split_lines(self._text)
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind == 'chunked':
             return iter([self._text])
         elif storage_kind == 'lines':
             return iter(osutils.split_lines(self._text))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 
 class FileContentFactory(ContentFactory):
@@ -197,26 +217,31 @@ class FileContentFactory(ContentFactory):
         self.storage_kind = 'file'
         self.sha1 = sha1
         self.size = size
+        self._needs_reset = False
 
     def get_bytes_as(self, storage_kind):
-        self.file.seek(0)
+        if self._needs_reset:
+            self.file.seek(0)
+        self._needs_reset = True
         if storage_kind == 'fulltext':
             return self.file.read()
         elif storage_kind == 'chunked':
             return list(osutils.file_iterator(self.file))
         elif storage_kind == 'lines':
             return list(self.file.readlines())
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
-        self.file.seek(0)
+        if self._needs_reset:
+            self.file.seek(0)
+        self._needs_reset = True
         if storage_kind == 'chunked':
             return osutils.file_iterator(self.file)
         elif storage_kind == 'lines':
             return self.file
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 
 class AbsentContentFactory(ContentFactory):
@@ -660,12 +685,9 @@ class VersionedFile(object):
     def _get_lf_split_line_list(self, version_ids):
         return [BytesIO(t).readlines() for t in self.get_texts(version_ids)]
 
-    def get_ancestry(self, version_ids, topo_sorted=True):
+    def get_ancestry(self, version_ids):
         """Return a list of all ancestors of given version(s). This
         will not include the null revision.
-
-        This list will not be topologically sorted if topo_sorted=False is
-        passed.
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history."""
@@ -1337,7 +1359,7 @@ class ThunkedVersionedFiles(VersionedFiles):
                                     left_matching_blocks=left_matching_blocks,
                                     nostore_sha=nostore_sha, random_id=random_id,
                                     check_content=check_content)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # parent directory may be missing, try again.
             self._transport.mkdir(osutils.dirname(path))
             try:
@@ -1970,7 +1992,7 @@ def record_to_fulltext_bytes(record):
     if record.parents is None:
         parents = b'nil'
     else:
-        parents = record.parents
+        parents = tuple([tuple(p) for p in record.parents])
     record_meta = bencode.bencode((record.key, parents))
     record_content = record.get_bytes_as('fulltext')
     return b"fulltext\n%s%s%s" % (

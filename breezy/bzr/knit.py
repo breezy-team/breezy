@@ -63,15 +63,15 @@ import gzip
 from breezy import (
     debug,
     diff,
-    static_tuple,
     trace,
     tsort,
-    tuned_gzip,
     ui,
     )
 from breezy.bzr import (
     index as _mod_index,
     pack,
+    static_tuple,
+    tuned_gzip,
     )
 
 from breezy.bzr import pack_repo
@@ -81,11 +81,11 @@ from .. import (
     annotate,
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from ..errors import (
     InternalBzrError,
     InvalidRevisionId,
-    NoSuchFile,
     RevisionNotPresent,
     )
 from ..osutils import (
@@ -94,13 +94,18 @@ from ..osutils import (
     sha_strings,
     split_lines,
     )
+from ..transport import (
+    NoSuchFile,
+    )
 from ..bzr.versionedfile import (
     _KeyRefs,
     AbsentContentFactory,
     adapter_registry,
     ConstantMapper,
     ContentFactory,
+    ExistingContent,
     sort_groupcompress,
+    UnavailableRepresentation,
     VersionedFilesWithFallbacks,
     )
 
@@ -218,7 +223,7 @@ class FTAnnotatedToUnannotated(KnitAdapter):
 
     def get_bytes(self, factory, target_storage_kind):
         if target_storage_kind != 'knit-ft-gz':
-            raise errors.UnavailableRepresentation(
+            raise UnavailableRepresentation(
                 factory.key, target_storage_kind, factory.storage_kind)
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
@@ -234,7 +239,7 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
 
     def get_bytes(self, factory, target_storage_kind):
         if target_storage_kind != 'knit-delta-gz':
-            raise errors.UnavailableRepresentation(
+            raise UnavailableRepresentation(
                 factory.key, target_storage_kind, factory.storage_kind)
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
@@ -259,7 +264,7 @@ class FTAnnotatedToFullText(KnitAdapter):
             return b''.join(content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -288,7 +293,7 @@ class DeltaAnnotatedToFullText(KnitAdapter):
             return b''.join(basis_content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return basis_content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -305,7 +310,7 @@ class FTPlainToFullText(KnitAdapter):
             return b''.join(content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -333,7 +338,7 @@ class DeltaPlainToFullText(KnitAdapter):
             return b''.join(content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -411,8 +416,8 @@ class KnitContentFactory(ContentFactory):
                 return self._knit.get_lines(self.key[0])
             elif storage_kind == 'fulltext':
                 return self._knit.get_text(self.key[0])
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         return iter(self.get_bytes_as(storage_kind))
@@ -459,8 +464,8 @@ class LazyKnitContentFactory(ContentFactory):
                 return chunks
             else:
                 return b''.join(chunks)
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind in ('chunked', 'lines'):
@@ -1061,7 +1066,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # that out.
         digest = sha_string(line_bytes)
         if nostore_sha == digest:
-            raise errors.ExistingContent
+            raise ExistingContent
 
         present_parents = []
         if parent_texts is None:
@@ -1396,7 +1401,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     (record_details, index_memo, next) = position_map[key]
                     raw_record_map[key] = data, record_details, next
                 return raw_record_map
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     @classmethod
@@ -1505,7 +1510,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _get_remaining_record_stream(self, keys, ordering,
@@ -1786,7 +1791,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 try:
                     # Try getting a fulltext directly from the record.
                     lines = record.get_bytes_as('lines')
-                except errors.UnavailableRepresentation:
+                except UnavailableRepresentation:
                     adapter_key = record.storage_kind, 'lines'
                     adapter = get_adapter(adapter_key)
                     lines = adapter.get_bytes(record, 'lines')
@@ -1889,7 +1894,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     for line in line_iterator:
                         yield line, key
                 done = True
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
         # If there are still keys we've not yet found, we look in the fallback
         # vfs, and hope to find them there.  Note that if the keys are found
@@ -2609,7 +2614,7 @@ class _KndxIndex(object):
         if line == b'':
             # An empty file can actually be treated as though the file doesn't
             # exist yet.
-            raise errors.NoSuchFile(self)
+            raise _mod_transport.NoSuchFile(self)
         if line != self.HEADER:
             raise KnitHeaderError(badline=line, filename=self)
 
@@ -3271,7 +3276,7 @@ class _KnitKeyAccess(object):
         path = self._mapper.map(key)
         try:
             base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self._transport.mkdir(osutils.dirname(path))
             base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
         # if base == 0:
@@ -3462,7 +3467,7 @@ class _KnitAnnotator(annotate.Annotator):
                     num_lines = len(text)  # bad assumption
                     yield sub_key, text, num_lines
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._vf._access.reload_or_raise(e)
                 # The cached build_details are no longer valid
                 self._all_build_details.clear()

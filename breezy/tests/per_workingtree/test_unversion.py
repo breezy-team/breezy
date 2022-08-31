@@ -18,6 +18,7 @@
 
 from breezy import (
     errors,
+    transport,
     )
 from breezy.tests.matchers import HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
@@ -35,7 +36,7 @@ class TestUnversion(TestCaseWithWorkingTree):
     def test_unversion_missing_file(self):
         """WT.unversion(['missing']) raises NoSuchId."""
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(errors.NoSuchFile, tree.unversion, ['missing'])
+        self.assertRaises(transport.NoSuchFile, tree.unversion, ['missing'])
 
     def test_unversion_parent_and_child_renamed_bug_187207(self):
         # When unversioning dirstate trees show a bug in dealing with
@@ -175,8 +176,11 @@ class TestUnversion(TestCaseWithWorkingTree):
         # Merging from A should introduce conflicts because 'n' was modified
         # and removed, so 'a' needs to be restored. We also have a conflict
         # because 'a' is still an existing directory
-        num_conflicts = tree_b.merge_from_branch(tree_a.branch)
-        self.assertEqual(4, num_conflicts)
+        conflicts = tree_b.merge_from_branch(tree_a.branch)
+        if tree_b.has_versioned_directories():
+            self.assertEqual(4, len(conflicts))
+        else:
+            self.assertEqual(1, len(conflicts))
 
         self.assertThat(
             tree_b,

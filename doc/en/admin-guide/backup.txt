@@ -44,7 +44,7 @@ Bazaar as its own backup
 The features that make Bazaar a good distributed version control system also
 make it a good choice for backing itself up.  In particular, complete and
 consistent copies of any branch can easily be obtained with the ``branch`` and
-``pull`` commands.  As a result, a backup process can simply run ``bzr pull``
+``pull`` commands.  As a result, a backup process can simply run ``brz pull``
 on a copy of the main branch to fully update that copy.  If this backup
 process runs periodically, then the backups will be as current as the last
 time that ``pull`` was run.  (This is in addition to the fact
@@ -76,7 +76,7 @@ common enough that there is a plugin to do it.
 Bound Branch Backups
 ~~~~~~~~~~~~~~~~~~~~
 
-When ``bzr pull`` is run regularly to keep a backup copy up to date, then it
+When ``brz pull`` is run regularly to keep a backup copy up to date, then it
 is possible that there are new revisions in the original branch that have not
 yet been pulled into the backup branch.  To alleviate this problem, we can set
 the branches up so that new revisions are *pushed* to the backup rather than
@@ -86,8 +86,8 @@ succeeds in the branch to which it is `bound`.  As a push-type technology, it
 is set up on the server itself rather than on the backup machine.  For each
 branch that should be backed up, you just need to use the ``bind`` command to
 set the URL for the backup branch.  In our example, we first need to create
-the branches on the backup server (we'll use ``bzr push``, but we could as
-easily have used ``bzr branch`` from the backup server)
+the branches on the backup server (we'll use ``brz push``, but we could as
+easily have used ``brz branch`` from the backup server)
 
 ::
 
@@ -143,13 +143,13 @@ Many a system administrator has been bitten by having a backup process,
 but when it came time to restore from backups, finding out that the backups
 themselves were flawed.  As such, it is important to check the quality of the
 backups periodically.  In Bazaar, there are two ways to do this: using the
-``bzr check`` command and by simply making a new branch from the backup.  The
-``bzr check`` command goes through all of the revisions in a branch and checks
+``brz check`` command and by simply making a new branch from the backup.  The
+``brz check`` command goes through all of the revisions in a branch and checks
 them for validity according to Bazaar's internal invariants.  Since it goes
 through every revision, it can be quite slow for large branches.  The other
 way to ensure that the backups can be restored from is to perform a test
 restoration.  This means performing the restoration process in a temporary
-directory.  After the restoration process, ``bzr check`` may again be relevant
+directory.  After the restoration process, ``brz check`` may again be relevant
 for testing the validity of the restored branches.  The following two sections
 present two restoration recipes.
 

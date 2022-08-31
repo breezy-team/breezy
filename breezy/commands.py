@@ -46,13 +46,11 @@ from breezy import (
 
 from .hooks import Hooks
 from .i18n import gettext
-# Compatibility - Option used to be in commands.
-from .option import Option
 from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
 
 
-class BzrOptionError(errors.BzrCommandError):
+class BzrOptionError(errors.CommandError):
 
     _fmt = "Error in command line options"
 
@@ -298,11 +296,11 @@ def get_cmd_object(cmd_name, plugins_override=True):
         # No command found, see if this was a typo
         candidate = guess_command(cmd_name)
         if candidate is not None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext('unknown command "%s". Perhaps you meant "%s"')
                 % (cmd_name, candidate))
-        raise errors.BzrCommandError(gettext('unknown command "%s"')
-                                     % cmd_name)
+        raise errors.CommandError(gettext('unknown command "%s"')
+                                  % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
@@ -708,7 +706,7 @@ class Command(object):
         """Return dict of valid options for this command.
 
         Maps from long option name to option object."""
-        r = Option.STD_OPTIONS.copy()
+        r = option.Option.STD_OPTIONS.copy()
         std_names = set(r)
         for o in self.takes_options:
             if isinstance(o, str):
@@ -910,7 +908,7 @@ def parse_args(command, argv, alias_argv=None):
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             gettext('Only ASCII permitted in option names'))
 
     opts = dict((k, v) for k, v in options.__dict__.items() if
@@ -935,7 +933,7 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise errors.BzrCommandError(gettext(
+                raise errors.CommandError(gettext(
                     "command {0!r} needs one or more {1}").format(
                     cmd, argname.upper()))
             else:
@@ -943,7 +941,7 @@ def _match_argform(cmd, takes_args, args):
                 args = []
         elif ap[-1] == '$':  # all but one
             if len(args) < 2:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("command {0!r} needs one or more {1}").format(
                         cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
@@ -952,14 +950,14 @@ def _match_argform(cmd, takes_args, args):
             # just a plain arg
             argname = ap
             if not args:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("command {0!r} requires argument {1}").format(
                         cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.BzrCommandError(gettext(
+        raise errors.CommandError(gettext(
             "extra argument to command {0}: {1}").format(
             cmd, args[0]))
 
@@ -1054,7 +1052,7 @@ def get_alias(cmd, config=None):
         import breezy.config
         config = breezy.config.GlobalConfig()
     alias = config.get_alias(cmd)
-    if (alias):
+    if alias:
         return cmdline.split(alias)
     return None
 
@@ -1155,7 +1153,10 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     debug.set_debug_flags_from_config()
 
     if not opt_no_plugins:
-        load_plugins()
+        from breezy import config
+        c = config.GlobalConfig()
+        warn_load_problems = not c.suppress_warning('plugin_load_failure')
+        load_plugins(warn_load_problems=warn_load_problems)
     else:
         disable_plugins()
 

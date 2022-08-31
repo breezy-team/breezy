@@ -3,7 +3,7 @@ Migration
 
 Migrating between version control systems can be a complicated process, and
 Bazaar has extensive documentation on the process at 
-http://doc.bazaar.canonical.com/migration/en and we won't attempt to repeat that
+https://www.breezy-vcs.org/doc/migration/en and we won't attempt to repeat that
 here.  We will try to give a few motivating examples for conversion from
 Mercurial and Subversion.
 
@@ -13,14 +13,10 @@ Fast Import
 In many projects wishing to use Bazaar, there is pre-existing history for the
 codebase that should be taken into consideration.  Bazaar leverages an
 interchange format originally developed for Git called `fast-import` to
-provide migration strategies for many other version control systems.  To
-work with fast-import files, Bazaar needs the `fastimport`_ plugin.  This can
-be installed as with any Bazaar plugin.
-
-.. _fastimport: http://launchpad.net/bzr-fastimport
+provide migration strategies for many other version control systems.
 
 The way that fast-import can be used for migration is to export the existing
-history into a fast-import file, then use the ``bzr fast-import`` command.
+history into a fast-import file, then use the ``brz fast-import`` command.
 The `fastimport` plugin includes exporters for Subversion, CVS, Git, Mercurial
 and darcs, accessible as the ``fast-export-from-XXX`` commands.  Note that
 ``fast-import`` should not be used in a branch with existing history.
@@ -47,7 +43,7 @@ Subversion is particularly important for any *new* version control system.
 Bazaar's `svn`_ plugin provides tools for interaction with Subversion
 projects.  In fact, Bazaar can be used transparently with projects stored in
 Subversion, but that is beyond the scope of this document.  (See
-http://doc.bazaar.canonical.com/migration/en/foreign/bzr-on-svn-projects.html for
+https://www.breezy-vcs.org/doc/migration/en/foreign/bzr-on-svn-projects.html for
 more on that subject.)  What is relevant here is the ``svn-import`` command
 provided by that plugin.  This can import an entire subversion repository
 including tags and branches, particularly if they are stored in Subversion's
@@ -66,8 +62,8 @@ plugin) could be specified in ``~/.config/breezy/subversion.conf`` as
 
 This allows substantially complicated Subversion repositories to be converted
 into a set of separate Bazaar branches.  After installing the svn plugin, see
-``bzr help svn-import`` and ``bzr help svn-layout``.
+``brz help svn-import`` and ``brz help svn-layout``.
 
-.. _svn: http://launchpad.net/bzr-svn
+.. _svn: http://launchpad.net/brz-svn
 
-.. TODO: Legacy VCS to bzr sync.  Tailor?  Incremental conversions?
+.. TODO: Legacy VCS to brz sync.  Tailor?  Incremental conversions?

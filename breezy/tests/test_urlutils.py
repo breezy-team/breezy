@@ -715,8 +715,6 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%', urlutils.unescape('%25'))
         self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))
 
-        self.assertRaises((TypeError, urlutils.InvalidURL),
-                          urlutils.unescape, b'\xe5')
         self.assertEqual('\xe5', urlutils.unescape('%C3%A5'))
 
     def test_escape_unescape(self):

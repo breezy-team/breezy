@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
 import sys
 
 import breezy
@@ -38,11 +39,14 @@ class BashCompletionMixin(object):
         """
         if self.script is None:
             self.script = self.get_script()
+        env = dict(os.environ)
+        env['PYTHONPATH'] = ':'.join(sys.path)
         proc = subprocess.Popen([features.bash_feature.path,
                                  '--noprofile'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                stderr=subprocess.PIPE,
+                                env=env)
         if cword < 0:
             cword = len(words) + cword
         encoding = osutils.get_user_encoding()
@@ -164,7 +168,9 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def get_script(self):
         s = super(TestBashCompletionInvoking, self).get_script()
-        return s.replace("$(brz ", "$('%s' " % self.get_brz_path())
+        s = s.replace("$(brz ", "$('%s' " % self.get_brz_path())
+        s = s.replace("2>/dev/null", "")
+        return s
 
     def test_revspec_tag_all(self):
         self.requireFeature(features.sed_feature)

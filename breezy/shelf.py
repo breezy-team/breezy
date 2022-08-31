@@ -17,13 +17,13 @@
 import errno
 import re
 
+import fastbencode as bencode
+
 from . import errors
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    bencode,
     merge,
-    merge3,
     transform,
 )
 from breezy.bzr import (
@@ -66,10 +66,10 @@ class ShelfCreator(object):
         :param file_list: The files to make more similar to the target.
         """
         self.work_tree = work_tree
-        self.work_transform = work_tree.get_transform()
+        self.work_transform = work_tree.transform()
         try:
             self.target_tree = target_tree
-            self.shelf_transform = transform.TransformPreview(self.target_tree)
+            self.shelf_transform = self.target_tree.preview_transform()
             try:
                 self.renames = {}
                 self.creation = {}
@@ -266,7 +266,7 @@ class ShelfCreator(object):
                         to_transform, s_trans_id, tree,
                         tree.id2path(file_id))
         if version:
-            to_transform.version_file(file_id, s_trans_id)
+            to_transform.version_file(s_trans_id, file_id=file_id)
 
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
@@ -274,7 +274,12 @@ class ShelfCreator(object):
         target_lines = self.target_tree.get_file_lines(target_path)
         work_path = self.work_tree.id2path(file_id)
         work_lines = self.work_tree.get_file_lines(work_path)
-        return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
+        from merge3 import Merge3
+        import patiencediff
+        return Merge3(
+            new_lines, target_lines, work_lines,
+            sequence_matcher=patiencediff.PatienceSequenceMatcher,
+            ).merge_lines()
 
     def finalize(self):
         """Release all resources used by this ShelfCreator."""
@@ -363,7 +368,7 @@ class Unshelver(object):
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
-        tt = transform.TransformPreview(base_tree)
+        tt = base_tree.preview_transform()
         tt.deserialize(records)
         return klass(tree, base_tree, tt, metadata.get(b'message'))
 

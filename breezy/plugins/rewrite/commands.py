@@ -21,9 +21,8 @@ from ...commands import (
     display_command,
     )
 from ...errors import (
-    BzrCommandError,
+    CommandError,
     ConflictsInTree,
-    NoSuchFile,
     NoWorkingTree,
     UncommittedChanges,
     )
@@ -32,6 +31,9 @@ from ...option import (
     )
 from ...trace import (
     note,
+    )
+from ...transport import (
+    NoSuchFile,
     )
 
 from ...i18n import gettext
@@ -45,7 +47,7 @@ def finish_rebase(state, wt, replace_map, replayer):
         # Start executing plan from current Branch.last_revision()
         rebase(wt.branch.repository, replace_map, replayer)
     except ConflictsInTree:
-        raise BzrCommandError(gettext(
+        raise CommandError(gettext(
             "A conflict occurred replaying a commit."
             " Resolve the conflict and run 'brz rebase-continue' or "
             "run 'brz rebase-abort'."))
@@ -126,7 +128,7 @@ class cmd_rebase(Command):
             rebase_todo,
             )
         if revision is not None and pending_merges:
-            raise BzrCommandError(gettext(
+            raise CommandError(gettext(
                 "--revision and --pending-merges are mutually exclusive"))
 
         wt = WorkingTree.open_containing(directory)[0]
@@ -139,14 +141,14 @@ class cmd_rebase(Command):
                 else:
                     upstream_location = wt.branch.get_parent()
                     if upstream_location is None:
-                        raise BzrCommandError(gettext("No upstream branch specified."))
+                        raise CommandError(gettext("No upstream branch specified."))
                     note(gettext("Rebasing on %s"), upstream_location)
             upstream = Branch.open_containing(upstream_location)[0]
             upstream_repository = upstream.repository
             upstream_revision = upstream.last_revision()
             # Abort if there already is a plan file
             if state.has_plan():
-                raise BzrCommandError(gettext(
+                raise CommandError(gettext(
                     "A rebase operation was interrupted. "
                     "Continue using 'brz rebase-continue' or abort using 'brz "
                     "rebase-abort'"))
@@ -163,15 +165,15 @@ class cmd_rebase(Command):
                     if revision[1] is not None:
                         stop_revid = revision[1].as_revision_id(wt.branch)
                 else:
-                    raise BzrCommandError(gettext(
+                    raise CommandError(gettext(
                         "--revision takes only one or two arguments"))
 
             if pending_merges:
                 wt_parents = wt.get_parent_ids()
                 if len(wt_parents) in (0, 1):
-                    raise BzrCommandError(gettext("No pending merges present."))
+                    raise CommandError(gettext("No pending merges present."))
                 elif len(wt_parents) > 2:
-                    raise BzrCommandError(gettext(
+                    raise CommandError(gettext(
                         "Rebasing more than one pending merge not supported"))
                 stop_revid = wt_parents[1]
                 assert stop_revid is not None, "stop revid invalid"
@@ -259,7 +261,7 @@ class cmd_rebase_abort(Command):
             try:
                 last_rev_info = state.read_plan()[0]
             except NoSuchFile:
-                raise BzrCommandError("No rebase to abort")
+                raise CommandError("No rebase to abort")
             complete_revert(wt, [last_rev_info[1]])
             state.remove_plan()
         finally:
@@ -289,7 +291,7 @@ class cmd_rebase_continue(Command):
             replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
-                raise BzrCommandError(gettext(
+                raise CommandError(gettext(
                     "There are still conflicts present. "
                     "Resolve the conflicts and then run "
                     "'brz resolve' and try again."))
@@ -297,7 +299,7 @@ class cmd_rebase_continue(Command):
             try:
                 replace_map = state.read_plan()[1]
             except NoSuchFile:
-                raise BzrCommandError(gettext("No rebase to continue"))
+                raise CommandError(gettext("No rebase to continue"))
             oldrevid = state.read_active_revid()
             if oldrevid is not None:
                 oldrev = wt.branch.repository.get_revision(oldrevid)
@@ -332,7 +334,7 @@ class cmd_rebase_todo(Command):
             try:
                 replace_map = state.read_plan()[1]
             except NoSuchFile:
-                raise BzrCommandError(gettext("No rebase in progress"))
+                raise CommandError(gettext("No rebase in progress"))
             currentrevid = state.read_active_revid()
             if currentrevid is not None:
                 note(gettext("Currently replaying: %s") % currentrevid)
@@ -380,10 +382,10 @@ class cmd_replay(Command):
                 for revno in range(from_revno, to_revno + 1):
                     todo.append(from_branch.get_rev_id(revno))
             else:
-                raise BzrCommandError(gettext(
+                raise CommandError(gettext(
                     "--revision takes only one or two arguments"))
         else:
-            raise BzrCommandError(gettext("--revision is mandatory"))
+            raise CommandError(gettext("--revision is mandatory"))
 
         wt = WorkingTree.open(directory)
         wt.lock_write()
@@ -473,7 +475,7 @@ class cmd_rebase_foreign(Command):
         stored_loc = branch_to.get_parent()
         if new_base is None:
             if stored_loc is None:
-                raise BzrCommandError(gettext(
+                raise CommandError(gettext(
                     "No pull location known or specified."))
             else:
                 display_url = urlutils.unescape_for_display(

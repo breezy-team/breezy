@@ -26,13 +26,15 @@ from ... import (
     errors,
     transport as _mod_transport,
     )
+from ...revisionspec import (
+    revspec_registry,
+    )
 
 
 class SubversionUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Subversion branches are not yet supported. '
-            'To convert Subversion branches to Bazaar branches or vice versa, '
-            'use the fastimport format.')
+            'To interoperate with Subversion branches, use fastimport.')
 
 
 class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
@@ -160,7 +162,7 @@ class SvnRepositoryProber(controldir.Prober):
             priv_transport = getattr(transport, "_decorated", transport)
             try:
                 headers = priv_transport._options('.')
-            except (errors.InProcessTransport, errors.NoSuchFile,
+            except (errors.InProcessTransport, _mod_transport.NoSuchFile,
                     errors.InvalidHttpResponse):
                 raise errors.NotBranchError(path=transport.base)
             else:
@@ -181,6 +183,9 @@ class SvnRepositoryProber(controldir.Prober):
 
 controldir.ControlDirFormat.register_prober(SvnWorkingTreeProber)
 controldir.ControlDirFormat.register_prober(SvnRepositoryProber)
+
+
+revspec_registry.register_lazy("svn:", __name__ + ".revspec", "RevisionSpec_svn")
 
 
 _mod_transport.register_transport_proto(

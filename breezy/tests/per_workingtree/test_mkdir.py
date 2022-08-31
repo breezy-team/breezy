@@ -37,7 +37,7 @@ class TestMkdir(TestCaseWithWorkingTree):
         self.addCleanup(t.unlock)
         if not t.supports_setting_file_ids():
             self.assertRaises(
-                SettingFileIdUnsupported,
+                (SettingFileIdUnsupported, TypeError),
                 t.mkdir, 'path', b'my-id')
         else:
             file_id = t.mkdir('path', b'my-id')

@@ -14,7 +14,7 @@ Most hooks are run on the client, but a few are run on the server.  (Also
 see the `push-and-update plugin`_ that handles one special case of
 server-side operations.)
 
-.. _push-and-update plugin: http://doc.bazaar.canonical.com/plugins/en/push-and-update-plugin.html
+.. _push-and-update plugin: https://www.breezy-vcs.org/doc/plugins/en/push-and-update-plugin.html
 
 Using hooks
 -----------
@@ -27,7 +27,7 @@ an example::
 
 
     def post_push_hook(push_result):
-        print "The new revno is %d" % push_result.new_revno
+        print("The new revno is %d" % push_result.new_revno)
 
 
     branch.Branch.hooks.install_named_hook('post_push', post_push_hook,
@@ -62,7 +62,7 @@ version of the example above::
     from breezy import hooks
 
     def post_push_hook(push_result):
-        print "The new revno is %d" % push_result.new_revno
+        print("The new revno is %d" % push_result.new_revno)
 
 
     hooks.install_lazy_named_hook('breezy.branch', 'Branch.hooks',

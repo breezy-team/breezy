@@ -138,7 +138,7 @@ class BzrUploader(object):
                 ).get('upload_revid_location')
             try:
                 self._uploaded_revid = self._up_get_bytes(revid_path)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 # We have not uploaded to here.
                 self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
@@ -148,7 +148,7 @@ class BzrUploader(object):
             try:
                 ignore_file_path = '.bzrignore-upload'
                 ignore_file = self.tree.get_file(ignore_file_path)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 ignored_patterns = []
             else:
                 ignored_patterns = ignores.parse_ignore_file(ignore_file)
@@ -446,12 +446,12 @@ class BzrUploader(object):
             self.set_uploaded_revid(self.rev_id)
 
 
-class CannotUploadToWorkingTree(errors.BzrCommandError):
+class CannotUploadToWorkingTree(errors.CommandError):
 
     _fmt = 'Cannot upload to a bzr managed working tree: %(url)s".'
 
 
-class DivergedUploadedTree(errors.BzrCommandError):
+class DivergedUploadedTree(errors.CommandError):
 
     _fmt = ("Your branch (%(revid)s)"
             " and the uploaded tree (%(uploaded_revid)s) have diverged: ")
@@ -510,7 +510,7 @@ class cmd_upload(commands.Command):
             if location is None:
                 stored_loc = conf.get('upload_location')
                 if stored_loc is None:
-                    raise errors.BzrCommandError(
+                    raise errors.CommandError(
                         'No upload location known or specified.')
                 else:
                     # FIXME: Not currently tested
@@ -538,7 +538,7 @@ class cmd_upload(commands.Command):
                 rev_id = branch.last_revision()
             else:
                 if len(revision) != 1:
-                    raise errors.BzrCommandError(
+                    raise errors.CommandError(
                         'bzr upload --revision takes exactly 1 argument')
                 rev_id = revision[0].in_history(branch).rev_id
 

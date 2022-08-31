@@ -136,9 +136,9 @@ Future ideas and open issues
 See also
 ********
 
-* http://wiki.bazaar.canonical.com/LineEndings
+* http://wiki.breezy-vcs.org/LineEndings
 
-* http://wiki.bazaar.canonical.com/LineEndings/Roadmap
+* http://wiki.breezy-vcs.org/LineEndings/Roadmap
 
 * `Developer Documentation <index.html>`_
 

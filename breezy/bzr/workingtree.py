@@ -56,11 +56,15 @@ from breezy import (
     conflicts as _mod_conflicts,
     globbing,
     ignores,
+    merge,
     revision as _mod_revision,
-    rio as _mod_rio,
     )
 from breezy.bzr import (
+    conflicts as _mod_bzr_conflicts,
+    generate_ids,
     inventory,
+    rio as _mod_rio,
+    serializer,
     xml5,
     xml7,
     )
@@ -69,7 +73,9 @@ from breezy.bzr import (
 from .. import (
     errors,
     osutils,
+    transport as _mod_transport,
     )
+from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..trace import mutter, note
@@ -94,6 +100,15 @@ MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
 # and the conflict list file format.
 CONFLICT_HEADER_1 = b"BZR conflict list format 1"
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
+
+
+class InventoryModified(errors.InternalBzrError):
+
+    _fmt = ("The current inventory for the tree %(tree)r has been modified,"
+            " so a clean inventory cannot be read without data loss.")
+
+    def __init__(self, tree):
+        self.tree = tree
 
 
 class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
@@ -154,14 +169,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         wt_trans = self.controldir.get_workingtree_transport(None)
         try:
             wt_trans.stat(self._format.case_sensitive_filename)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.case_sensitive = True
         else:
             self.case_sensitive = False
 
-    def get_transform(self, pb=None):
-        from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb)
+    def transform(self, pb=None):
+        from .transform import InventoryTreeTransform
+        return InventoryTreeTransform(self, pb=pb)
 
     def _setup_directory_is_tree_reference(self):
         if self._branch.repository._format.supports_tree_reference:
@@ -393,8 +408,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in self.walkdirs(directory):
-                for relpath, basename, kind, lstat, fileid, kind in file_infos:
+            for parent_path, file_infos in self.walkdirs(directory):
+                for relpath, basename, kind, lstat, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.is_versioned(relpath):
                         # Add nested content for deletion.
@@ -497,6 +512,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
 
+    def _get_nested_tree(self, path, file_id, reference_revision):
+        return self.get_nested_tree(path)
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
         parent_ids = [rev for (rev, tree) in parents_list]
@@ -563,23 +581,24 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return xml7.serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
+        conflict_list = _mod_bzr_conflicts.ConflictList(conflicts)
         with self.lock_tree_write():
-            self._put_rio('conflicts', conflicts.to_stanzas(),
+            self._put_rio('conflicts', conflict_list.to_stanzas(),
                           CONFLICT_HEADER_1)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             conflict_set = set(self.conflicts())
             conflict_set.update(set(list(new_conflicts)))
-            self.set_conflicts(_mod_conflicts.ConflictList(
-                sorted(conflict_set, key=_mod_conflicts.Conflict.sort_key)))
+            self.set_conflicts(
+                sorted(conflict_set, key=_mod_bzr_conflicts.Conflict.sort_key))
 
     def conflicts(self):
         with self.lock_read():
             try:
                 confile = self._transport.get('conflicts')
-            except errors.NoSuchFile:
-                return _mod_conflicts.ConflictList()
+            except _mod_transport.NoSuchFile:
+                return _mod_bzr_conflicts.ConflictList()
             try:
                 try:
                     if next(confile) != CONFLICT_HEADER_1 + b'\n':
@@ -587,7 +606,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 except StopIteration:
                     raise errors.ConflictFormatError()
                 reader = _mod_rio.RioReader(confile)
-                return _mod_conflicts.ConflictList.from_stanzas(reader)
+                return _mod_bzr_conflicts.ConflictList.from_stanzas(reader)
             finally:
                 confile.close()
 
@@ -650,7 +669,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # binary.
         with self.lock_read():
             if self._inventory_is_modified:
-                raise errors.InventoryModified(self)
+                raise InventoryModified(self)
             with self._transport.get('inventory') as f:
                 result = self._deserialize(f)
             self._set_inventory(result, dirty=False)
@@ -745,13 +764,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return os.lstat(self.abspath(path)).st_mtime
         except OSError as e:
             if e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         try:
             return self._path2ie(path).executable
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # For unversioned files on win32, we just assume they are not
             # executable
             return False
@@ -776,7 +795,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return self._is_executable_from_path_and_stat_from_stat(
                 path, stat_result)
 
-    def _add(self, files, ids, kinds):
+    def _add(self, files, kinds, ids):
         """See MutableTree._add."""
         with self.lock_tree_write():
             # TODO: Re-adding a file that is removed in the working copy
@@ -792,12 +811,25 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     inv.add_path(f, kind=kind, file_id=file_id)
                 self._inventory_is_modified = True
 
+    def mkdir(self, path, file_id=None):
+        """See MutableTree.mkdir()."""
+        if file_id is None:
+            if self.supports_setting_file_ids():
+                file_id = generate_ids.gen_file_id(os.path.basename(path))
+        else:
+            if not self.supports_setting_file_ids():
+                raise SettingFileIdUnsupported()
+        with self.lock_write():
+            os.mkdir(self.abspath(path))
+            self.add([path], ['directory'], ids=[file_id])
+            return file_id
+
     def revision_tree(self, revision_id):
         """See WorkingTree.revision_id."""
         if revision_id == self.last_revision():
             try:
                 xml_lines = self.read_basis_inventory()
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
             else:
                 try:
@@ -807,7 +839,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     if inv.revision_id == revision_id:
                         return InventoryRevisionTree(
                             self.branch.repository, inv, revision_id)
-                except errors.BadInventoryFormat:
+                except serializer.BadInventoryFormat:
                     pass
         # raise if there was no inventory, or if we read the wrong inventory.
         raise errors.NoSuchRevisionInTree(self, revision_id)
@@ -826,7 +858,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         with self.lock_read():
             file_id = self.path2id(path)
             if file_id is None:
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():
                 try:
@@ -838,7 +870,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     try:
                         kind = parent_tree.kind(path)
-                    except errors.NoSuchFile:
+                    except _mod_transport.NoSuchFile:
                         continue
                     if kind != 'file':
                         # Note: this is slightly unnecessary, because symlinks
@@ -899,7 +931,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         with self.lock_read():
             try:
                 hashfile = self._transport.get('merge-hashes')
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return {}
             try:
                 merge_hashes = {}
@@ -1387,7 +1419,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if not self.has_filename(to_rel):
                     raise errors.BzrMoveFailedError(
                         from_rel, to_rel,
-                        errors.NoSuchFile(
+                        _mod_transport.NoSuchFile(
                             path=to_rel,
                             extra="New file has not been created yet"))
                 only_change_inv = True
@@ -1476,7 +1508,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             for path in paths:
                 file_id = self._inventory.path2id(path)
                 if file_id is None:
-                    raise errors.NoSuchFile(path, self)
+                    raise _mod_transport.NoSuchFile(path, self)
                 file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
@@ -1517,26 +1549,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 continue
 
             fl = []
-            for subf in os.listdir(dirabs.encode(osutils._fs_enc)):
-                try:
-                    subf = subf.decode(osutils._fs_enc)
-                except UnicodeDecodeError:
-                    path_os_enc = path.encode(osutils._fs_enc)
-                    relpath = path_os_enc + b'/' + subf
-                    raise errors.BadFilenameEncoding(relpath,
-                                                     osutils._fs_enc)
+            for subf in os.listdir(os.fsencode(dirabs)):
+                subf = os.fsdecode(subf)
 
                 if self.controldir.is_control_filename(subf):
                     continue
                 if subf not in dir_entry.children:
-                    try:
-                        (subf_norm,
-                         can_access) = osutils.normalized_filename(subf)
-                    except UnicodeDecodeError:
-                        path_os_enc = path.encode(osutils._fs_enc)
-                        relpath = path_os_enc + '/' + subf
-                        raise errors.BadFilenameEncoding(relpath,
-                                                         osutils._fs_enc)
+                    (subf_norm,
+                     can_access) = osutils.normalized_filename(subf)
                     if subf_norm != subf and can_access:
                         if subf_norm not in dir_entry.children:
                             fl.append(subf_norm)
@@ -1552,8 +1572,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """Walk the directories of this tree.
 
         returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, (lstat), file1_id,
+                (current_directory_path,
+                 [(file1_path, file1_name, file1_kind, (lstat),
                    file1_kind), ... ])
 
         This API returns a generator, which is only valid during the current
@@ -1616,20 +1636,20 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
             if direction > 0:
                 # disk is before inventory - unknown
-                dirblock = [(relpath, basename, kind, stat, None, None) for
+                dirblock = [(relpath, basename, kind, stat, None) for
                             relpath, basename, kind, stat, top_path in
                             cur_disk_dir_content]
-                yield (cur_disk_dir_relpath, None), dirblock
+                yield cur_disk_dir_relpath, dirblock
                 try:
                     current_disk = next(disk_iterator)
                 except StopIteration:
                     disk_finished = True
             elif direction < 0:
                 # inventory is before disk - missing.
-                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                dirblock = [(relpath, basename, 'unknown', None, kind)
                             for relpath, basename, dkind, stat, fileid, kind in
                             current_inv[1]]
-                yield (current_inv[0][0], current_inv[0][1]), dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1647,23 +1667,20 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         # versioned, present file
                         dirblock.append((inv_row[0],
                                          inv_row[1], disk_row[2],
-                                         disk_row[3], inv_row[4],
-                                         inv_row[5]))
+                                         disk_row[3], inv_row[5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
-                             path_elements[0][2], path_elements[0][3], None,
-                             None))
+                             path_elements[0][2], path_elements[0][3], None))
                     elif len(path_elements[0]) == 6:
                         # versioned, absent file.
                         dirblock.append(
                             (path_elements[0][0], path_elements[0][1],
-                             'unknown', None, path_elements[0][4],
-                             path_elements[0][5]))
+                             'unknown', None, path_elements[0][5]))
                     else:
                         raise NotImplementedError('unreachable code')
-                yield current_inv[0], dirblock
+                yield current_inv[0][0], dirblock
                 try:
                     current_inv = next(inventory_iterator)
                 except StopIteration:
@@ -1758,7 +1775,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-            specific_files=specific_files)
+            specific_files=specific_files, recurse_nested=recurse_nested)
         if not self.supports_tree_reference():
             return iterator
         else:
@@ -1787,7 +1804,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 normalize = None
             for path in paths:
                 if normalize is None or self.is_versioned(path):
-                    yield path
+                    yield path.strip('/')
                 else:
                     yield get_canonical_path(self, path, normalize)
 
@@ -1800,13 +1817,192 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def set_reference_info(self, tree_path, branch_location):
         file_id = self.path2id(tree_path)
         if file_id is None:
-            raise errors.NoSuchFile(tree_path)
+            raise _mod_transport.NoSuchFile(tree_path)
         self.branch.set_reference_info(file_id, branch_location, tree_path)
 
     def reference_parent(self, path, branch=None, possible_transports=None):
         return self.branch.reference_parent(
             self.path2id(path),
             path, possible_transports=possible_transports)
+
+    def has_changes(self, _from_tree=None):
+        """Quickly check that the tree contains at least one commitable change.
+
+        :param _from_tree: tree to compare against to find changes (default to
+            the basis tree and is intended to be used by tests).
+
+        :return: True if a change is found. False otherwise
+        """
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            if self.supports_symlinks():
+                # Fast path for has_changes.
+                try:
+                    change = next(changes)
+                    # Exclude root (talk about black magic... --vila 20090629)
+                    if change.parent_id == (None, None):
+                        change = next(changes)
+                    return True
+                except StopIteration:
+                    # No changes
+                    return False
+            else:
+                # Slow path for has_changes.
+                # Handle platforms that do not support symlinks in the
+                # conditional below. This is slower than the try/except
+                # approach below that but we don't have a choice as we
+                # need to be sure that all symlinks are removed from the
+                # entire changeset. This is because in platforms that
+                # do not support symlinks, they show up as None in the
+                # working copy as compared to the repository.
+                # Also, exclude root as mention in the above fast path.
+                changes = filter(
+                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
+                    changes)
+                try:
+                    next(iter(changes))
+                except StopIteration:
+                    return False
+                return True
+
+    _marker = object()
+
+    def update(self, change_reporter=None, possible_transports=None,
+               revision=None, old_tip=_marker, show_base=False):
+        """Update a working tree along its branch.
+
+        This will update the branch if its bound too, which means we have
+        multiple trees involved:
+
+        - The new basis tree of the master.
+        - The old basis tree of the branch.
+        - The old basis tree of the working tree.
+        - The current working tree state.
+
+        Pathologically, all three may be different, and non-ancestors of each
+        other.  Conceptually we want to:
+
+        - Preserve the wt.basis->wt.state changes
+        - Transform the wt.basis to the new master basis.
+        - Apply a merge of the old branch basis to get any 'local' changes from
+          it into the tree.
+        - Restore the wt.basis->wt.state changes.
+
+        There isn't a single operation at the moment to do that, so we:
+
+        - Merge current state -> basis tree of the master w.r.t. the old tree
+          basis.
+        - Do a 'normal' merge of the old branch basis if it is relevant.
+
+        :param revision: The target revision to update to. Must be in the
+            revision history.
+        :param old_tip: If branch.update() has already been run, the value it
+            returned (old tip of the branch or None). _marker is used
+            otherwise.
+        """
+        if self.branch.get_bound_location() is not None:
+            self.lock_write()
+            update_branch = (old_tip is self._marker)
+        else:
+            self.lock_tree_write()
+            update_branch = False
+        try:
+            if update_branch:
+                old_tip = self.branch.update(possible_transports)
+            else:
+                if old_tip is self._marker:
+                    old_tip = None
+            return self._update_tree(old_tip, change_reporter, revision, show_base)
+        finally:
+            self.unlock()
+
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
+                     show_base=False):
+        """Update a tree to the master branch.
+
+        :param old_tip: if supplied, the previous tip revision the branch,
+            before it was changed to the master branch's tip.
+        """
+        # here if old_tip is not None, it is the old tip of the branch before
+        # it was updated from the master branch. This should become a pending
+        # merge in the working tree to preserve the user existing work.  we
+        # cant set that until we update the working trees last revision to be
+        # one from the new branch, because it will just get absorbed by the
+        # parent de-duplication logic.
+        #
+        # We MUST save it even if an error occurs, because otherwise the users
+        # local work is unreferenced and will appear to have been lost.
+        #
+        with self.lock_tree_write():
+            nb_conflicts = []
+            try:
+                last_rev = self.get_parent_ids()[0]
+            except IndexError:
+                last_rev = _mod_revision.NULL_REVISION
+            if revision is None:
+                revision = self.branch.last_revision()
+
+            old_tip = old_tip or _mod_revision.NULL_REVISION
+
+            if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
+                # the branch we are bound to was updated
+                # merge those changes in first
+                base_tree = self.basis_tree()
+                other_tree = self.branch.repository.revision_tree(old_tip)
+                nb_conflicts = merge.merge_inner(self.branch, other_tree,
+                                                 base_tree, this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                if nb_conflicts:
+                    self.add_parent_tree((old_tip, other_tree))
+                    return len(nb_conflicts)
+
+            if last_rev != _mod_revision.ensure_null(revision):
+                # the working tree is up to date with the branch
+                # we can merge the specified revision from master
+                to_tree = self.branch.repository.revision_tree(revision)
+                to_root_id = to_tree.path2id('')
+
+                basis = self.basis_tree()
+                with basis.lock_read():
+                    if (basis.path2id('') is None or basis.path2id('') != to_root_id):
+                        self.set_root_id(to_root_id)
+                        self.flush()
+
+                # determine the branch point
+                graph = self.branch.repository.get_graph()
+                base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                    last_rev)
+                base_tree = self.branch.repository.revision_tree(base_rev_id)
+
+                nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
+                                                 this_tree=self,
+                                                 change_reporter=change_reporter,
+                                                 show_base=show_base)
+                self.set_last_revision(revision)
+                # TODO - dedup parents list with things merged by pull ?
+                # reuse the tree we've updated to to set the basis:
+                parent_trees = [(revision, to_tree)]
+                merges = self.get_parent_ids()[1:]
+                # Ideally we ask the tree for the trees here, that way the working
+                # tree can decide whether to give us the entire tree or give us a
+                # lazy initialised tree. dirstate for instance will have the trees
+                # in ram already, whereas a last-revision + basis-inventory tree
+                # will not, but also does not need them when setting parents.
+                for parent in merges:
+                    parent_trees.append(
+                        (parent, self.branch.repository.revision_tree(parent)))
+                if not _mod_revision.is_null(old_tip):
+                    parent_trees.append(
+                        (old_tip, self.branch.repository.revision_tree(old_tip)))
+                self.set_parent_trees(parent_trees)
+                last_rev = parent_trees[0][0]
+            return len(nb_conflicts)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
@@ -1824,7 +2020,7 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         try:
             transport = controldir.get_workingtree_transport(None)
             return transport.get_bytes("format")
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
 
     @classmethod

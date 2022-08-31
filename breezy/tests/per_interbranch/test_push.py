@@ -35,9 +35,8 @@ from ...bzr import (
     branch as bzrbranch,
     vf_repository,
     )
-from ...branch import Branch
+from ...branch import Branch, BindingUnsupported
 from ...controldir import ControlDir
-from ...memorytree import MemoryTree
 from ...revision import NULL_REVISION
 from ...bzr.smart.repository import SmartServerRepositoryGetParentMap
 from . import (
@@ -111,7 +110,7 @@ class TestPush(TestCaseWithInterBranch):
         checkout = self.make_to_branch_and_tree('checkout')
         try:
             checkout.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         rev1 = checkout.commit('master')
@@ -135,7 +134,7 @@ class TestPush(TestCaseWithInterBranch):
         checkout = self.make_to_branch_and_tree('checkout')
         try:
             checkout.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
@@ -443,7 +442,7 @@ class TestPushHook(TestCaseWithInterBranch):
         local = self.make_from_branch('local')
         try:
             local.bind(target)
-        except errors.UpgradeRequired:
+        except BindingUnsupported:
             # We can't bind this format to itself- typically it is the local
             # branch that doesn't support binding.  As of May 2007
             # remotebranches can't be bound.  Let's instead make a new local
@@ -470,7 +469,7 @@ class TestPushHook(TestCaseWithInterBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.branch.controldir.clone(self.get_url('source'))
-        source = MemoryTree.create_on_branch(sourcedir.open_branch())
+        source = sourcedir.open_branch().create_memorytree()
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_push',
                                         self.capture_post_push_hook, None)

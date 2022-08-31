@@ -27,7 +27,7 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
     def test_check_file_graph_across_external_boundary_ok(self):
         tree = self.make_branch_and_tree('base')
         self.build_tree(['base/file'])
-        tree.add(['file'], [b'file-id'])
+        tree.add(['file'], ids=[b'file-id'])
         rev1_id = tree.commit('one')
         referring = self.make_branch_and_tree('referring')
         readonly_base = self.readonly_repository(tree.branch.repository)

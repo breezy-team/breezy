@@ -23,23 +23,21 @@ from ... import (
     config,
     errors,
     lazy_import,
+    transport as _mod_transport,
     )
-
-lazy_import.lazy_import(globals(), """
-import errno
-import netrc
-""")
 
 
 class NetrcCredentialStore(config.CredentialStore):
 
     def __init__(self):
         super(NetrcCredentialStore, self).__init__()
+        import netrc
+        import errno
         try:
             self._netrc = netrc.netrc()
         except IOError as e:
             if e.args[0] == errno.ENOENT:
-                raise errors.NoSuchFile(e.filename)
+                raise _mod_transport.NoSuchFile(e.filename)
             else:
                 raise
 

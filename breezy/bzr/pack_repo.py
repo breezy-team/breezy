@@ -41,6 +41,7 @@ from .. import (
     errors,
     lockable_files,
     lockdir,
+    transport as _mod_transport,
     )
 from ..bzr import (
     btree_index,
@@ -70,6 +71,53 @@ from ..trace import (
     )
 
 
+class RetryWithNewPacks(errors.BzrError):
+    """Raised when we realize that the packs on disk have changed.
+
+    This is meant as more of a signaling exception, to trap between where a
+    local error occurred and the code that can actually handle the error and
+    code that can retry appropriately.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and retry. context: %(context)s"
+            " %(orig_error)s")
+
+    def __init__(self, context, reload_occurred, exc_info):
+        """create a new RetryWithNewPacks error.
+
+        :param reload_occurred: Set to True if we know that the packs have
+            already been reloaded, and we are failing because of an in-memory
+            cache miss. If set to True then we will ignore if a reload says
+            nothing has changed, because we assume it has already reloaded. If
+            False, then a reload with nothing changed will force an error.
+        :param exc_info: The original exception traceback, so if there is a
+            problem we can raise the original error (value from sys.exc_info())
+        """
+        errors.BzrError.__init__(self)
+        self.context = context
+        self.reload_occurred = reload_occurred
+        self.exc_info = exc_info
+        self.orig_error = exc_info[1]
+        # TODO: The global error handler should probably treat this by
+        #       raising/printing the original exception with a bit about
+        #       RetryWithNewPacks also not being caught
+
+
+class RetryAutopack(RetryWithNewPacks):
+    """Raised when we are autopacking and we find a missing file.
+
+    Meant as a signaling exception, to tell the autopack code it should try
+    again.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and try autopack again."
+            " context: %(context)s %(orig_error)s")
+
+
 class PackCommitBuilder(VersionedFileCommitBuilder):
     """Subclass of VersionedFileCommitBuilder to add texts with pack semantics.
 
@@ -79,10 +127,11 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
+                 revision_id=None, lossy=False, owns_transaction=True):
         VersionedFileCommitBuilder.__init__(self, repository, parents, config,
                                             timestamp=timestamp, timezone=timezone, committer=committer,
-                                            revprops=revprops, revision_id=revision_id, lossy=lossy)
+                                            revprops=revprops, revision_id=revision_id, lossy=lossy,
+                                            owns_transaction=owns_transaction)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
@@ -875,7 +924,7 @@ class RepositoryPackCollection(object):
         while True:
             try:
                 return self._do_autopack()
-            except errors.RetryAutopack:
+            except RetryAutopack:
                 # If we get a RetryAutopack exception, we should abort the
                 # current action, and retry.
                 pass
@@ -935,7 +984,7 @@ class RepositoryPackCollection(object):
                                   reload_func=reload_func)
             try:
                 result = packer.pack()
-            except errors.RetryWithNewPacks:
+            except RetryWithNewPacks:
                 # An exception is propagating out of this context, make sure
                 # this packer has cleaned up. Packer() doesn't set its new_pack
                 # state into the RepositoryPackCollection object, so we only
@@ -1136,7 +1185,7 @@ class RepositoryPackCollection(object):
                                                txt_index, sig_index, self._upload_transport,
                                                self._pack_transport, self._index_transport, self,
                                                chk_index=chk_index)
-        except errors.NoSuchFile as e:
+        except _mod_transport.NoSuchFile as e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
@@ -1216,12 +1265,12 @@ class RepositoryPackCollection(object):
                 try:
                     pack.pack_transport.move(pack.file_name(),
                                              '../obsolete_packs/' + pack.file_name())
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     # perhaps obsolete_packs was removed? Let's create it and
                     # try again
                     try:
                         pack.pack_transport.mkdir('../obsolete_packs/')
-                    except errors.FileExists:
+                    except _mod_transport.FileExists:
                         pass
                     pack.pack_transport.move(pack.file_name(),
                                              '../obsolete_packs/' + pack.file_name())
@@ -1475,7 +1524,7 @@ class RepositoryPackCollection(object):
             # Re-raise the original exception, because something went missing
             # and a restart didn't find it
             raise
-        raise errors.RetryAutopack(self.repo, False, sys.exc_info())
+        raise RetryAutopack(self.repo, False, sys.exc_info())
 
     def _restart_pack_operations(self):
         """Reload the pack names list, and restart the autopack code."""
@@ -1497,7 +1546,7 @@ class RepositoryPackCollection(object):
             preserve = set()
         try:
             obsolete_pack_files = obsolete_pack_transport.list_dir('.')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return found
         for filename in obsolete_pack_files:
             name, ext = osutils.splitext(filename)
@@ -1927,7 +1976,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
                                      _serializer=self._serializer)
 
 
-class RetryPackOperations(errors.RetryWithNewPacks):
+class RetryPackOperations(RetryWithNewPacks):
     """Raised when we are packing and we find a missing file.
 
     Meant as a signaling exception, to tell the RepositoryPackCollection.pack
@@ -2043,21 +2092,21 @@ class _DirectPackAccess(object):
                     # If we don't have a _reload_func there is nothing that can
                     # be done
                     raise
-                raise errors.RetryWithNewPacks(index,
-                                               reload_occurred=True,
-                                               exc_info=sys.exc_info())
+                raise RetryWithNewPacks(index,
+                                        reload_occurred=True,
+                                        exc_info=sys.exc_info())
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
                 for names, read_func in reader.iter_records():
                     yield read_func(None)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 # A NoSuchFile error indicates that a pack file has gone
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:
                     raise
-                raise errors.RetryWithNewPacks(transport.abspath(path),
-                                               reload_occurred=False,
-                                               exc_info=sys.exc_info())
+                raise RetryWithNewPacks(transport.abspath(path),
+                                        reload_occurred=False,
+                                        exc_info=sys.exc_info())
 
     def set_writer(self, writer, index, transport_packname):
         """Set a writer to use for adding data."""

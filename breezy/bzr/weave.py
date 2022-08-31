@@ -76,11 +76,11 @@ from breezy import tsort
 from .. import (
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from ..errors import (
     RevisionAlreadyPresent,
     RevisionNotPresent,
-    UnavailableRepresentation,
     )
 from ..osutils import dirname, sha, sha_strings, split_lines
 from ..revision import NULL_REVISION
@@ -89,7 +89,9 @@ from .versionedfile import (
     AbsentContentFactory,
     adapter_registry,
     ContentFactory,
+    ExistingContent,
     sort_groupcompress,
+    UnavailableRepresentation,
     VersionedFile,
     )
 from .weavefile import _read_weave_v5, write_weave_v5
@@ -484,7 +486,7 @@ class Weave(VersionedFile):
         if not sha1:
             sha1 = sha_strings(lines)
         if sha1 == nostore_sha:
-            raise errors.ExistingContent
+            raise ExistingContent
         if version_id is None:
             version_id = b"sha1:" + sha1
         if version_id in self._name_map:
@@ -581,7 +583,7 @@ class Weave(VersionedFile):
     def _inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
         if not len(versions):
-            return []
+            return set()
         i = set(versions)
         for v in range(max(versions), 0, -1):
             if v in i:
@@ -594,7 +596,7 @@ class Weave(VersionedFile):
         if isinstance(version_ids, bytes):
             version_ids = [version_ids]
         i = self._inclusions([self._lookup(v) for v in version_ids])
-        return [self._idx_to_name(v) for v in i]
+        return set(self._idx_to_name(v) for v in i)
 
     def _check_versions(self, indexes):
         """Check everything in the sequence of indexes is valid"""
@@ -675,8 +677,8 @@ class Weave(VersionedFile):
 
         Weave lines present in none of them are skipped entirely.
         """
-        inc_a = set(self.get_ancestry([ver_a]))
-        inc_b = set(self.get_ancestry([ver_b]))
+        inc_a = self.get_ancestry([ver_a])
+        inc_b = self.get_ancestry([ver_b])
         inc_c = inc_a & inc_b
 
         for lineno, insert, deleteset, line in self._walk_internal(
@@ -860,10 +862,10 @@ class Weave(VersionedFile):
             for p in self._parents[i]:
                 new_inc.update(inclusions[self._idx_to_name(p)])
 
-            if set(new_inc) != set(self.get_ancestry(name)):
+            if new_inc != self.get_ancestry(name):
                 raise AssertionError(
                     'failed %s != %s'
-                    % (set(new_inc), set(self.get_ancestry(name))))
+                    % (new_inc, self.get_ancestry(name)))
             inclusions[name] = new_inc
 
         nlines = len(self._weave)
@@ -974,9 +976,9 @@ class WeaveFile(Weave):
         self._transport = transport
         self._filemode = filemode
         try:
-            f = self._transport.get(name + WeaveFile.WEAVE_SUFFIX)
-            _read_weave_v5(BytesIO(f.read()), self)
-        except errors.NoSuchFile:
+            with self._transport.get(name + WeaveFile.WEAVE_SUFFIX) as f:
+                _read_weave_v5(BytesIO(f.read()), self)
+        except _mod_transport.NoSuchFile:
             if not create:
                 raise
             # new file, save it
@@ -1011,7 +1013,7 @@ class WeaveFile(Weave):
         path = self._weave_name + WeaveFile.WEAVE_SUFFIX
         try:
             self._transport.put_bytes(path, bytes, self._filemode)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self._transport.mkdir(dirname(path))
             self._transport.put_bytes(path, bytes, self._filemode)
 

@@ -90,7 +90,7 @@ def dir_reader_scenarios():
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
                       _native_to_unicode=_already_unicode)))
-        except ImportError:
+        except ModuleNotFoundError:
             pass
     return scenarios
 
@@ -294,7 +294,7 @@ class TestKind(tests.TestCaseInTempDir):
         self.build_tree(['file', 'dir/'])
         self.assertEqual('file', osutils.file_kind('file'))
         self.assertEqual('directory', osutils.file_kind('dir/'))
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('symlink', 'symlink')
             self.assertEqual('symlink', osutils.file_kind('symlink'))
 
@@ -479,7 +479,7 @@ class TestFdatasync(tests.TestCaseInTempDir):
 class TestLinks(tests.TestCaseInTempDir):
 
     def test_dereference_path(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
@@ -519,14 +519,11 @@ class TestLinks(tests.TestCaseInTempDir):
         mode = os.lstat('file').st_mode
         self.assertEqual(mode, mode | 0o200)
 
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             # should not error when handed a symlink
             os.symlink('nonexistent', 'dangling')
             osutils.make_readonly('dangling')
             osutils.make_writable('dangling')
-
-    def test_host_os_dereferences_symlinks(self):
-        osutils.host_os_dereferences_symlinks()
 
 
 class TestCanonicalRelPath(tests.TestCaseInTempDir):
@@ -816,50 +813,6 @@ class TestSafeUtf8(tests.TestCase):
     def test_bad_utf8_string(self):
         self.assertRaises(errors.BzrBadParameterNotUnicode,
                           osutils.safe_utf8, b'\xbb\xbb')
-
-
-class TestSafeRevisionId(tests.TestCase):
-
-    def test_from_ascii_string(self):
-        # this shouldn't give a warning because it's getting an ascii string
-        self.assertEqual(b'foobar', osutils.safe_revision_id(b'foobar'))
-
-    def test_from_unicode_string_ascii_contents(self):
-        self.assertRaises(TypeError,
-                          osutils.safe_revision_id, u'bargam')
-
-    def test_from_unicode_string_unicode_contents(self):
-        self.assertRaises(TypeError,
-                          osutils.safe_revision_id, u'bargam\xae')
-
-    def test_from_utf8_string(self):
-        self.assertEqual(b'foo\xc2\xae',
-                         osutils.safe_revision_id(b'foo\xc2\xae'))
-
-    def test_none(self):
-        """Currently, None is a valid revision_id"""
-        self.assertEqual(None, osutils.safe_revision_id(None))
-
-
-class TestSafeFileId(tests.TestCase):
-
-    def test_from_ascii_string(self):
-        self.assertEqual(b'foobar', osutils.safe_file_id(b'foobar'))
-
-    def test_from_unicode_string_ascii_contents(self):
-        self.assertRaises(TypeError, osutils.safe_file_id, u'bargam')
-
-    def test_from_unicode_string_unicode_contents(self):
-        self.assertRaises(TypeError,
-                          osutils.safe_file_id, u'bargam\xae')
-
-    def test_from_utf8_string(self):
-        self.assertEqual(b'foo\xc2\xae',
-                         osutils.safe_file_id(b'foo\xc2\xae'))
-
-    def test_none(self):
-        """Currently, None is a valid revision_id"""
-        self.assertEqual(None, osutils.safe_file_id(None))
 
 
 class TestSendAll(tests.TestCase):
@@ -1210,14 +1163,13 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
-        osutils._fs_enc = 'UTF-8'
 
         # this should raise on error
         def attempt():
-            for dirdetail, dirblock in osutils.walkdirs(b'.'):
+            for dirdetail, dirblock in osutils.walkdirs(b'.', codecs.utf_8_decode):
                 pass
 
-        self.assertRaises(errors.BadFilenameEncoding, attempt)
+        self.assertRaises(UnicodeDecodeError, attempt)
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1279,34 +1231,30 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        self.overrideAttr(osutils, '_fs_enc')
         self.overrideAttr(osutils, '_selected_dir_reader')
 
-    def assertDirReaderIs(self, expected, top):
+    def assertDirReaderIs(self, expected, top, fs_enc=None):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
         # Force it to redetect
         osutils._selected_dir_reader = None
         # Nothing to list, but should still trigger the selection logic
-        self.assertEqual([((b'', top), [])], list(osutils._walkdirs_utf8('.')))
+        self.assertEqual([((b'', top), [])], list(osutils._walkdirs_utf8('.', fs_enc=fs_enc)))
         self.assertIsInstance(osutils._selected_dir_reader, expected)
 
     def test_force_walkdirs_utf8_fs_utf8(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
-        osutils._fs_enc = 'utf-8'
-        self.assertDirReaderIs(UTF8DirReaderFeature.module.UTF8DirReader, b".")
+        self.assertDirReaderIs(UTF8DirReaderFeature.module.UTF8DirReader, b".", fs_enc='utf-8')
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
-        osutils._fs_enc = 'ascii'
         self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader, b".")
+            UTF8DirReaderFeature.module.UTF8DirReader, b".", fs_enc='ascii')
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
-        osutils._fs_enc = 'iso-8859-1'
-        self.assertDirReaderIs(osutils.UnicodeDirReader, ".")
+        self.assertDirReaderIs(osutils.UnicodeDirReader, ".", fs_enc='iso-8859-1')
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
@@ -1652,7 +1600,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.build_tree(['source/'])
         os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target')
@@ -1677,7 +1625,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                     }
 
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('a/generic/path', 'source/lnk')
         osutils.copy_tree('source', 'target', handlers=handlers)
 
@@ -1687,7 +1635,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                           ('f', 'source/b/c', 'target/b/c'),
                           ], processed_files)
         self.assertPathDoesNotExist('target')
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
@@ -1909,7 +1857,7 @@ class TestDirReader(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, self._filter_out(result))
 
     def test_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
@@ -1933,11 +1881,11 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-    _test_needs_features = [features.SymlinkFeature,
-                            features.UnicodeFilenameFeature]
+    _test_needs_features = [features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
+        self._test_needs_features.append(features.SymlinkFeature(self.test_dir))
         self.link = u'l\N{Euro Sign}ink'
         self.target = u'targe\N{Euro Sign}t'
         os.symlink(self.target, self.link)
@@ -1946,8 +1894,8 @@ class TestReadLink(tests.TestCaseInTempDir):
         self.assertEqual(self.target, os.readlink(self.link))
 
     def test_os_readlink_link_decoding(self):
-        self.assertEqual(self.target.encode(osutils._fs_enc),
-                         os.readlink(self.link.encode(osutils._fs_enc)))
+        self.assertEqual(os.fsencode(self.target),
+                         os.readlink(os.fsencode(self.link)))
 
 
 class TestConcurrency(tests.TestCase):
@@ -2157,11 +2105,8 @@ class TestGetHomeDir(tests.TestCase):
     def test_posix_home_unicode(self):
         self.requireFeature(features.ByteStringNamedFilesystem)
         self.overrideEnv('HOME', '/home/\xa7test')
-        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
-        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
-        osutils._fs_enc = "iso8859-5"
-        # In python 3, os.environ returns unicode
-        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        fsdecode = lambda x: x.decode('iso8859-1', 'surrogateescape')
+        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir(fsdecode))
 
 
 class TestGetuserUnicode(tests.TestCase):
@@ -2173,7 +2118,7 @@ class TestGetuserUnicode(tests.TestCase):
     def envvar_to_override(self):
         if sys.platform == "win32":
             # Disable use of platform calls on windows so envvar is used
-            self.overrideAttr(win32utils, 'has_ctypes', False)
+            self.overrideAttr(win32utils.ctypes, 'windll', None)
             return 'USERNAME'  # only variable used on windows
         return 'LOGNAME'  # first variable checked by getpass.getuser()
 
@@ -2264,8 +2209,36 @@ class SupportsExecutableTests(tests.TestCaseInTempDir):
 
 class SupportsSymlinksTests(tests.TestCaseInTempDir):
 
+    def setUp(self):
+        super(SupportsSymlinksTests, self).setUp()
+        self.overrideAttr(
+            osutils, '_FILESYSTEM_FINDER',
+            osutils.MtabFilesystemFinder([
+                (b'/usr', 'ext4'),
+                (b'/home', 'vfat'),
+                (b'/home/jelmer/smb', 'ntfs'),
+                (b'/home/jelmer', 'ext2'),
+            ]))
+
     def test_returns_bool(self):
         self.assertIsInstance(osutils.supports_symlinks(self.test_dir), bool)
+
+    def test_known(self):
+        self.assertTrue(osutils.supports_symlinks("/usr"))
+        self.assertFalse(osutils.supports_symlinks("/home/bogus"))
+        self.assertTrue(osutils.supports_symlinks("/home/jelmer/osx"))
+        self.assertFalse(osutils.supports_symlinks("/home/jelmer/smb"))
+
+    def test_unknown(self):
+        have_symlinks = sys.platform != "win32"
+        self.assertIs(osutils.supports_symlinks("/var"), have_symlinks)
+
+    def test_error(self):
+        have_symlinks = sys.platform != "win32"
+        def raise_error(path):
+            raise errors.DependencyNotPresent('FS', 'TEST')
+        self.overrideAttr(osutils, 'get_fs_type', raise_error)
+        self.assertIs(osutils.supports_symlinks("/var"), have_symlinks)
 
 
 class MtabReader(tests.TestCaseInTempDir):
@@ -2293,7 +2266,7 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
     def test_returns_most_specific(self):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
-            osutils.FilesystemFinder(
+            osutils.MtabFilesystemFinder(
                 [(b'/', 'ext4'), (b'/home', 'vfat'),
                  (b'/home/jelmer', 'ext2')]))
         self.assertEqual(osutils.get_fs_type(b'/home/jelmer/blah'), 'ext2')
@@ -2306,7 +2279,7 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
     def test_returns_none(self):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
-            osutils.FilesystemFinder([]))
+            osutils.MtabFilesystemFinder([]))
         self.assertIs(osutils.get_fs_type('/home/jelmer/blah'), None)
         self.assertIs(osutils.get_fs_type(b'/home/jelmer/blah'), None)
         self.assertIs(osutils.get_fs_type('/home/jelmer'), None)

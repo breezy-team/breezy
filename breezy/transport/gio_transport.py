@@ -46,6 +46,8 @@ from ..trace import mutter
 from . import (
     FileStream,
     ConnectedTransport,
+    NoSuchFile,
+    FileExists,
     _file_streams,
     )
 
@@ -53,11 +55,11 @@ from ..tests.test_server import TestServer
 
 try:
     import glib
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise errors.DependencyNotPresent('glib', e)
 try:
     import gio
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise errors.DependencyNotPresent('gio', e)
 
 
@@ -561,9 +563,9 @@ class GioTransport(ConnectedTransport):
         if extra is None:
             extra = str(err)
         if err.code == gio.ERROR_NOT_FOUND:
-            raise errors.NoSuchFile(path, extra=extra)
+            raise NoSuchFile(path, extra=extra)
         elif err.code == gio.ERROR_EXISTS:
-            raise errors.FileExists(path, extra=extra)
+            raise FileExists(path, extra=extra)
         elif err.code == gio.ERROR_NOT_DIRECTORY:
             raise errors.NotADirectory(path, extra=extra)
         elif err.code == gio.ERROR_NOT_EMPTY:

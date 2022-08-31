@@ -15,7 +15,8 @@ def _add_log_tail(report):
     if 'BrzLogTail' in report:
         return
 
-    brz_log_lines = open(brz_log).readlines()
+    with open(brz_log) as f:
+        brz_log_lines = f.readlines()
     brz_log_lines.reverse()
 
     brz_log_tail = []

@@ -109,7 +109,7 @@ def check_lp_login(username, _transport=None):
 
     try:
         data = _transport.get_bytes('~%s/+sshkeys' % username)
-    except errors.NoSuchFile:
+    except transport.NoSuchFile:
         raise UnknownLaunchpadUsername(user=username)
 
     if not data:

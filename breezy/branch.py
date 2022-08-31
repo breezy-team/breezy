@@ -14,20 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import Optional, Tuple
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import contextlib
-import itertools
 from breezy import (
-    config as _mod_config,
     debug,
-    memorytree,
     repository,
-    revision as _mod_revision,
-    tag as _mod_tag,
     transport,
     ui,
-    urlutils,
     )
 from breezy.bzr import (
     fetch,
@@ -37,14 +32,21 @@ from breezy.bzr import (
 from breezy.i18n import gettext, ngettext
 """)
 
+import contextlib
+import itertools
+
 from . import (
+    config as _mod_config,
     controldir,
     errors,
+    revision as _mod_revision,
     registry,
+    urlutils,
     )
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
+from .revision import RevisionID
 from .trace import mutter, mutter_callsite, note, is_quiet, warning
 
 
@@ -59,19 +61,27 @@ class UnstackableBranchFormat(errors.BzrError):
         self.url = url
 
 
+class BindingUnsupported(errors.UnsupportedOperation):
+
+    _fmt = "Branch at %(url)s does not support binding."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self)
+        self.branch = branch
+        self.url = branch.user_url
+
+
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
-    :ivar base:
-        Base directory/url of the branch; using control_url and
-        control_transport is more standardized.
     :ivar hooks: An instance of BranchHooks.
     :ivar _master_branch_cache: cached result of get_master_branch, see
         _clear_cached_state.
     """
-    # this is really an instance variable - FIXME move it there
-    # - RBC 20060112
-    base = None
+
+    controldir: controldir.ControlDir
+
+    name: Optional[str]
 
     @property
     def control_transport(self):
@@ -656,7 +666,7 @@ class Branch(controldir.ControlComponent):
         :param other: The branch to bind to
         :type other: Branch
         """
-        raise errors.UpgradeRequired(self.user_url)
+        raise BindingUnsupported(self)
 
     def get_append_revisions_only(self):
         """Whether it is only possible to append revisions to the history.
@@ -665,7 +675,7 @@ class Branch(controldir.ControlComponent):
             return False
         return self.get_config_stack().get('append_revisions_only')
 
-    def set_append_revisions_only(self, enabled):
+    def set_append_revisions_only(self, enabled: bool) -> None:
         if not self._format.supports_set_append_revisions_only():
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
@@ -726,11 +736,12 @@ class Branch(controldir.ControlComponent):
         """
         return None
 
-    def get_stacked_on_url(self):
+    def get_stacked_on_url(self) -> str:
         """Get the URL this branch is stacked against.
 
-        :raises NotStacked: If the branch is not stacked.
-        :raises UnstackableBranchFormat: If the branch does not support
+        Raises:
+          NotStacked: If the branch is not stacked.
+          UnstackableBranchFormat: If the branch does not support
             stacking.
         """
         raise NotImplementedError(self.get_stacked_on_url)
@@ -766,7 +777,10 @@ class Branch(controldir.ControlComponent):
                 revision_id, known_revision_ids)
             self.set_last_revision_info(revno, revision_id)
 
-    def set_parent(self, url):
+    def _set_parent_location(self, url: Optional[str]) -> None:
+        raise NotImplementedError(self._set_parent_location)
+
+    def set_parent(self, url: Optional[str]) -> None:
         """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
         # URLs should never be unicode, even on the local fs,
@@ -968,11 +982,11 @@ class Branch(controldir.ControlComponent):
         """Older format branches cannot bind or unbind."""
         raise errors.UpgradeRequired(self.user_url)
 
-    def last_revision(self):
+    def last_revision(self) -> RevisionID:
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
-    def last_revision_info(self):
+    def last_revision_info(self) -> Tuple[int, RevisionID]:
         """Return information about the last revision.
 
         :return: A tuple (revno, revision_id).
@@ -1486,6 +1500,7 @@ class Branch(controldir.ControlComponent):
 
         :return: An in-memory MutableTree instance
         """
+        from . import memorytree
         return memorytree.MemoryTree.create_on_branch(self)
 
 
@@ -1581,7 +1596,8 @@ class BranchFormat(controldir.ControlComponentFormat):
         Note that it is normal for branch to be a RemoteBranch when using tags
         on a RemoteBranch.
         """
-        return _mod_tag.DisabledTags(branch)
+        from .tag import DisabledTags
+        return DisabledTags(branch)
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.

@@ -31,7 +31,6 @@ from breezy.tests import (
     test_log,
     features,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
 
 
 class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
@@ -300,13 +299,13 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         return builder
 
     def test_not_an_ancestor(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           log._generate_all_revisions,
                           self.branch, '1.1.1', '2.1.3', 'reverse',
                           delayed_graph_generation=True)
 
     def test_wrong_order(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           log._generate_all_revisions,
                           self.branch, '5', '2.1.3', 'reverse',
                           delayed_graph_generation=True)
@@ -903,7 +902,7 @@ class TestLogFile(TestLogWithLogCatcher):
         # Check logging a deleted file is ok if the file existed
         # at the start of the revision range
         self.prepare_tree(complex=True)
-        self.assertLogRevnos(['file1'], ['1'])
+        self.assertLogRevnos(['file1'], [])
 
     def test_log_file_renamed(self):
         """File matched against revision range, not current tree."""
@@ -1065,57 +1064,3 @@ class TestLogMatch(TestLogWithLogCatcher):
         self.assertLogRevnos(["--match-author", "author"], ["2", "1"])
         self.assertLogRevnos(["--match-author", "author1",
                               "--match-author", "author2"], ["2", "1"])
-
-
-class TestSmartServerLog(tests.TestCaseWithTransport):
-
-    def test_standard_log(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['log', self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertLength(9, self.hpss_calls)
-
-    def test_verbose_log(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['log', '-v', self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(10, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-
-    def test_per_file(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', b'thecontents')])
-        t.add("foo")
-        t.commit("message")
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['log', '-v', self.get_url('branch') + "/foo"])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(14, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

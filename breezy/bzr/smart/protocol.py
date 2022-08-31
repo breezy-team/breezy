@@ -18,6 +18,7 @@
 client and server.
 """
 
+
 try:
     from collections.abc import deque
 except ImportError:  # python < 3.7
@@ -29,6 +30,8 @@ import sys
 import _thread
 import time
 
+from fastbencode import bdecode_as_tuple, bencode
+
 import breezy
 from ... import (
     debug,
@@ -37,7 +40,6 @@ from ... import (
     )
 from . import message, request
 from ...trace import log_exception_quietly, mutter
-from ...bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -48,6 +50,21 @@ RESPONSE_VERSION_TWO = b'bzr response 2\n'
 
 MESSAGE_VERSION_THREE = b'bzr message 3 (bzr 1.6)\n'
 RESPONSE_VERSION_THREE = REQUEST_VERSION_THREE = MESSAGE_VERSION_THREE
+
+
+class SmartMessageHandlerError(errors.InternalBzrError):
+
+    _fmt = ("The message handler raised an exception:\n"
+            "%(traceback_text)s")
+
+    def __init__(self, exc_info):
+        import traceback
+        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
+        self.exc_type, self.exc_value, self.exc_tb = exc_info
+        self.exc_info = exc_info
+        traceback_strings = traceback.format_exception(
+            self.exc_type, self.exc_value, self.exc_tb)
+        self.traceback_text = ''.join(traceback_strings)
 
 
 def _recv_tuple(from_file):
@@ -914,7 +931,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             _StatefulDecoder.accept_bytes(self, bytes)
         except KeyboardInterrupt:
             raise
-        except errors.SmartMessageHandlerError as exception:
+        except SmartMessageHandlerError as exception:
             # We do *not* set self.decoding_failed here.  The message handler
             # has raised an error, but the decoder is still able to parse bytes
             # and determine when this message ends.
@@ -1006,7 +1023,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.headers_received(decoded)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_message_part(self):
         message_part_kind = self._extract_single_byte()
@@ -1028,7 +1045,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.byte_part_received(byte)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_bytes(self):
         # XXX: this should not buffer whole message part, but instead deliver
@@ -1038,7 +1055,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.bytes_part_received(prefixed_bytes)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_structure(self):
         structure = self._extract_prefixed_bencoded_data()
@@ -1046,7 +1063,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.structure_part_received(structure)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def done(self):
         self.unused_data = self._get_in_buffer()
@@ -1055,7 +1072,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.end_received()
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_reading_unused(self):
         self.unused_data += self._get_in_buffer()

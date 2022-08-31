@@ -34,13 +34,10 @@ from .. import (
     urlutils,
     )
 from ..errors import (ConnectionError,
-                      FileExists,
-                      NoSuchFile,
                       PathError,
                       TransportNotPossible,
                       )
 from ..osutils import getcwd
-from ..bzr.smart import medium
 from . import (
     TestSkipped,
     TestNotApplicable,
@@ -50,6 +47,8 @@ from . import test_server
 from .test_transport import TestTransportImplementation
 from ..transport import (
     ConnectedTransport,
+    NoSuchFile,
+    FileExists,
     Transport,
     _get_transport_modules,
     )
@@ -1654,10 +1653,12 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         try:
             client_medium = transport.get_smart_medium()
-            self.assertIsInstance(client_medium, medium.SmartClientMedium)
         except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass
+        else:
+            from ..bzr.smart import medium
+            self.assertIsInstance(client_medium, medium.SmartClientMedium)
 
     def test_readv_short_read(self):
         transport = self.get_transport()

@@ -22,16 +22,17 @@ import errno
 
 from . import (
     bzrdir,
+    hashcache,
     inventory,
+    transform as bzr_transform,
     )
 
 from .. import (
     errors,
-    hashcache,
     osutils,
     revision as _mod_revision,
     trace,
-    transform,
+    transport as _mod_transport,
     )
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
@@ -86,7 +87,7 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         with self.lock_read():
             # To make sure NoSuchFile gets raised..
             if not self.is_versioned(path):
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
             return self._hashcache.get_sha1(path, stat_value)
 
 
@@ -105,7 +106,7 @@ class WorkingTree3(PreDirStateWorkingTree):
         with self.lock_read():
             try:
                 return self._transport.get_bytes('last-revision')
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
@@ -113,7 +114,7 @@ class WorkingTree3(PreDirStateWorkingTree):
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
             try:
                 self._transport.delete('last-revision')
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
             return False
         else:
@@ -228,7 +229,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
-            transform.build_tree(basis_tree, wt)
+            bzr_transform.build_tree(basis_tree, wt)
             for hook in MutableTree.hooks['post_build_tree']:
                 hook(wt)
         finally:

@@ -29,7 +29,7 @@ class TestRevert(tests.TestCaseWithTransport):
         target_tree = source_tree.controldir.sprout(
             'target').open_workingtree()
         self.build_tree(['source/dir/', 'source/dir/contents'])
-        source_tree.add(['dir', 'dir/contents'], [b'dir-id', b'contents-id'])
+        source_tree.add(['dir', 'dir/contents'], ids=[b'dir-id', b'contents-id'])
         source_tree.commit('added dir')
         target_tree.lock_write()
         self.addCleanup(target_tree.unlock)
@@ -85,7 +85,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def tree_with_executable(self):
         tree = self.make_branch_and_tree('tree')
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.new_file('newfile', tt.root, [b'helooo!'], b'newfile-id', True)
         tt.apply()
         with tree.lock_write():
@@ -95,7 +95,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_preserve_execute(self):
         tree = self.tree_with_executable()
-        tt = tree.get_transform()
+        tt = tree.transform()
         newfile = tt.trans_id_tree_path('newfile')
         tt.delete_contents(newfile)
         tt.create_file([b'Woooorld!'], newfile)
@@ -111,7 +111,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_revert_executable(self):
         tree = self.tree_with_executable()
-        tt = tree.get_transform()
+        tt = tree.transform()
         newfile = tt.trans_id_tree_path('newfile')
         tt.set_executability(False, newfile)
         tt.apply()
@@ -141,7 +141,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
         tree.add(['dir', 'dir/file1', 'dir/file2'],
-                 [b'dir-id', b'file1-id', b'file2-id'])
+                 ids=[b'dir-id', b'file1-id', b'file2-id'])
         tree.commit("Added files")
         os.unlink('dir/file1')
         os.unlink('dir/file2')

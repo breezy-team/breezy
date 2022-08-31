@@ -25,7 +25,10 @@ from .refs import (
 from dulwich.client import parse_rsync_url
 
 
-KNOWN_GIT_SCHEMES = ['git+ssh', 'git', 'http', 'https', 'ftp']
+KNOWN_GIT_SCHEMES = ['git+ssh', 'git', 'http', 'https', 'ftp', 'ssh']
+SCHEME_REPLACEMENT = {
+    'ssh': 'git+ssh',
+    }
 
 
 def git_url_to_bzr_url(location, branch=None, ref=None):
@@ -46,6 +49,9 @@ def git_url_to_bzr_url(location, branch=None, ref=None):
                 quoted_host=urlutils.quote(host),
                 port=None,
                 quoted_path=urlutils.quote(path, safe="/~"))
+        location = str(url)
+    elif url.scheme in SCHEME_REPLACEMENT:
+        url.scheme = SCHEME_REPLACEMENT[url.scheme]
         location = str(url)
     if ref == b'HEAD':
         ref = branch = None

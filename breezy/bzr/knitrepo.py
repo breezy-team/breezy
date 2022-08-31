@@ -37,6 +37,7 @@ from breezy.bzr import (
 """)
 from .. import (
     errors,
+    transport as _mod_transport,
     )
 from ..repository import (
     InterRepository,
@@ -140,14 +141,14 @@ class KnitRepository(MetaDirVersionedFileRepository):
         t.copy('inventory.new.kndx', 'inventory.kndx')
         try:
             t.copy('inventory.new.knit', 'inventory.knit')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # empty inventories knit
             t.delete('inventory.knit')
         # delete the temp inventory
         t.delete('inventory.new.kndx')
         try:
             t.delete('inventory.new.knit')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # empty inventories knit
             pass
         # Force index reload (sanity check)
@@ -173,7 +174,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
         for suffix in ('.kndx', '.knit'):
             try:
                 t.delete(rel_url + suffix)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
 
     def _temp_inventories(self):
@@ -187,7 +188,6 @@ class KnitRepository(MetaDirVersionedFileRepository):
 
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
-        revision_id = osutils.safe_revision_id(revision_id)
         with self.lock_read():
             return self.get_revision_reconcile(revision_id)
 

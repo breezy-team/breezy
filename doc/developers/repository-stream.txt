@@ -166,9 +166,9 @@ In pseudocode::
   for record in stream.iter_contents():
       for factory in record.entries:
           compression = factory.storage_kind
-          print "Object %s, compression type %s, %d bytes long." % (
+          print("Object %s, compression type %s, %d bytes long." % (
               record.key_prefix + factory.key,
-              compression, len(factory.get_bytes_as(compression)))
+              compression, len(factory.get_bytes_as(compression))))
 
 This structure should allow stream adapters to be written which can coerce
 all records to the type of compression that a particular client needs. For

@@ -63,7 +63,7 @@ class TestTrace(TestCase):
         self.assertContainsRe(err,
                               '^brz: ERROR: NotImplementedError: time travel')
         self.assertContainsRe(err,
-                              'Bazaar has encountered an internal error.')
+                              'Breezy has encountered an internal error.')
 
     def test_format_interrupt_exception(self):
         try:
@@ -140,8 +140,8 @@ class TestTrace(TestCase):
 
     def test_format_unicode_error(self):
         try:
-            raise errors.BzrCommandError(u'argument foo\xb5 does not exist')
-        except errors.BzrCommandError:
+            raise errors.CommandError(u'argument foo\xb5 does not exist')
+        except errors.CommandError:
             msg = _format_exception()
         expected = 'brz: ERROR: argument foo\xb5 does not exist\n'
         self.assertEqual(msg, expected)
@@ -172,8 +172,7 @@ class TestTrace(TestCase):
             raise ImportError("syntax error")
         except ImportError:
             msg = _format_exception()
-        self.assertContainsRe(msg,
-                              'Bazaar has encountered an internal error')
+        self.assertContainsRe(msg, 'Breezy has encountered an internal error')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""

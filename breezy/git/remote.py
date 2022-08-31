@@ -17,8 +17,12 @@
 """Remote dirs, repositories and branches."""
 
 import gzip
-from io import BytesIO
 import re
+
+try:
+    from dulwich.refs import SymrefLoop
+except ImportError:
+    SymrefLoop = KeyError
 
 from .. import (
     config,
@@ -35,20 +39,23 @@ from ..push import (
 from ..errors import (
     AlreadyBranchError,
     BzrError,
+    ConnectionReset,
     DivergedBranches,
     InProcessTransport,
     InvalidRevisionId,
-    NoSuchFile,
+    LockContention,
     NoSuchRevision,
     NoSuchTag,
     NotBranchError,
     NotLocalUrl,
     PermissionDenied,
+    TransportError,
     UninitializableFormat,
     )
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
 from ..transport import (
+    NoSuchFile,
     Transport,
     register_urlparse_netloc_protocol,
     )
@@ -73,9 +80,9 @@ from .dir import (
     )
 from .errors import (
     GitSmartRemoteNotSupported,
-    NoSuchRef,
     )
 from .mapping import (
+    encode_git_path,
     mapping_registry,
     )
 from .object_store import (
@@ -115,7 +122,6 @@ from dulwich.repo import (
     )
 import os
 import select
-import tempfile
 
 import urllib.parse as urlparse
 from urllib.parse import splituser
@@ -169,6 +175,11 @@ class RemoteGitError(BzrError):
     _fmt = "Remote server error: %(msg)s"
 
 
+class ProtectedBranchHookDeclined(BzrError):
+
+    _fmt = "Protected branch hook declined"
+
+
 class HeadUpdateFailed(BzrError):
 
     _fmt = ("Unable to update remote HEAD branch. To update the master "
@@ -201,14 +212,53 @@ def parse_git_error(url, message):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
         return NotBranchError(url, message)
+    if message == 'A repository for this project does not exist yet.':
+        return NotBranchError(url, message)
+    if message == 'pre-receive hook declined':
+        return PermissionDenied(url, message)
     if re.match('(.+) is not a valid repository name',
                 message.splitlines()[0]):
         return NotBranchError(url, message)
+    if message == (
+            'GitLab: You are not allowed to push code to protected branches '
+            'on this project.'):
+        return PermissionDenied(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
         return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
+    if message == 'Host key verification failed.':
+        return TransportError('Host key verification failed')
+    if message == '[Errno 104] Connection reset by peer':
+        return ConnectionReset(message)
+    if message == 'The remote server unexpectedly closed the connection.':
+        return TransportError(message)
+    if message == 'protected branch hook declined':
+        return ProtectedBranchHookDeclined(msg=message)
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
+
+
+def parse_git_hangup(url, e):
+    """Parse the error lines from a git servers stderr on hangup.
+
+    :param url: URL of the remote repository
+    :param e: A HangupException
+    """
+    stderr_lines = getattr(e, 'stderr_lines', None)
+    if not stderr_lines:
+        return ConnectionReset('Connection closed early', e)
+    if all(line.startswith(b'remote: ') for line in stderr_lines):
+        stderr_lines = [
+            line[len(b'remote: '):] for line in stderr_lines]
+    interesting_lines = [
+        line for line in stderr_lines
+        if line and line.replace(b'=', b'')]
+    if len(interesting_lines) == 1:
+        interesting_line = interesting_lines[0]
+        return parse_git_error(
+            url, interesting_line.decode('utf-8', 'surrogateescape'))
+    return RemoteGitError(
+        b'\n'.join(stderr_lines).decode('utf-8', 'surrogateescape'))
 
 
 class GitSmartTransport(Transport):
@@ -352,12 +402,15 @@ class DefaultProgressReporter(object):
 
     def __init__(self, pb):
         self.pb = pb
+        self.errors = []
 
     def progress(self, text):
         text = text.rstrip(b"\r\n")
-        text = text.decode('utf-8')
+        text = text.decode('utf-8', 'surrogateescape')
         if text.lower().startswith('error: '):
-            trace.show_error('git: %s', text[len(b'error: '):])
+            error = text[len('error: '):]
+            self.errors.append(error)
+            trace.show_error('git: %s', error)
         else:
             trace.mutter("git: %s", text)
             g = self._GIT_PROGRESS_PARTIAL_RE.match(text)
@@ -371,6 +424,9 @@ class DefaultProgressReporter(object):
                     self.pb.update(text, None, int(total))
                 else:
                     trace.note("%s", text)
+
+
+_LOCK_REF_ERROR_MATCHER = re.compile('cannot lock ref \'(.*)\': (.*)')
 
 
 class RemoteGitDir(GitDir):
@@ -390,7 +446,9 @@ class RemoteGitDir(GitDir):
         return RemoteGitRepository
 
     def archive(self, format, committish, write_data, progress=None,
-                write_error=None, subdirs=None, prefix=None):
+                write_error=None, subdirs=None, prefix=None, recurse_nested=False):
+        if recurse_nested:
+            raise NotImplementedError('recurse_nested is not yet supported')
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress = DefaultProgressReporter(pb).progress
@@ -407,7 +465,9 @@ class RemoteGitDir(GitDir):
                 write_error,
                 format=(format.encode('ascii') if format else None),
                 subdirs=subdirs,
-                prefix=(prefix.encode('utf-8') if prefix else None))
+                prefix=(encode_git_path(prefix) if prefix else None))
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -430,6 +490,8 @@ class RemoteGitDir(GitDir):
             self._refs = remote_refs_dict_to_container(
                 result.refs, result.symrefs)
             return result
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -439,8 +501,10 @@ class RemoteGitDir(GitDir):
     def send_pack(self, get_changed_refs, generate_pack_data, progress=None):
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
-            progress = DefaultProgressReporter(pb).progress
+            progress_reporter = DefaultProgressReporter(pb)
+            progress = progress_reporter.progress
         else:
+            progress_reporter = None
             pb = None
 
         def get_changed_refs_wrapper(remote_refs):
@@ -448,9 +512,20 @@ class RemoteGitDir(GitDir):
                 update_refs_container(self._refs, remote_refs)
             return get_changed_refs(remote_refs)
         try:
-            return self._client.send_pack(
+            result = self._client.send_pack(
                 self._client_path, get_changed_refs_wrapper,
                 generate_pack_data, progress)
+            for ref, msg in list(result.ref_status.items()):
+                if msg:
+                    result.ref_status[ref] = RemoteGitError(msg=msg)
+            if progress_reporter:
+                for error in progress_reporter.errors:
+                    m = _LOCK_REF_ERROR_MATCHER.match(error)
+                    if m:
+                        result.ref_status[m.group(1)] = LockContention(m.group(1), m.group(2))
+            return result
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -462,12 +537,12 @@ class RemoteGitDir(GitDir):
         refname = self._get_selected_ref(name, ref)
         if refname != b'HEAD' and refname in self.get_refs_container():
             raise AlreadyBranchError(self.user_url)
-        ref_chain, unused_sha = self.get_refs_container().follow(
+        ref_chain, sha = self.get_refs_container().follow(
             self._get_selected_ref(name))
-        if ref_chain and ref_chain[0] == b'HEAD':
+        if ref_chain and ref_chain[0] == b'HEAD' and len(ref_chain) > 1:
             refname = ref_chain[1]
         repo = self.open_repository()
-        return RemoteGitBranch(self, repo, refname)
+        return RemoteGitBranch(self, repo, refname, sha)
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
@@ -481,7 +556,10 @@ class RemoteGitDir(GitDir):
 
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.send_pack(get_changed_refs, generate_pack_data)
+        result = self.send_pack(get_changed_refs, generate_pack_data)
+        error = result.ref_status.get(refname)
+        if error:
+            raise error
 
     @property
     def user_url(self):
@@ -503,11 +581,25 @@ class RemoteGitDir(GitDir):
         return RemoteGitRepository(self)
 
     def get_branch_reference(self, name=None):
-        ref = branch_name_to_ref(name)
-        val = self.get_refs_container().read_ref(ref)
-        if val.startswith(SYMREF):
-            return val[len(SYMREF):]
-        return None
+        ref = self._get_selected_ref(name)
+        try:
+            ref_chain, unused_sha = self.get_refs_container().follow(ref)
+        except SymrefLoop:
+            raise BranchReferenceLoop(self)
+        if len(ref_chain) == 1:
+            return None
+        target_ref = ref_chain[1]
+        from .refs import ref_to_branch_name
+        try:
+            branch_name = ref_to_branch_name(target_ref)
+        except ValueError:
+            params = {'ref': urlutils.quote(target_ref.decode('utf-8'), '')}
+        else:
+            if branch_name != '':
+                params = {'branch': urlutils.quote(branch_name, '')}
+            else:
+                params = {}
+        return urlutils.join_segment_parameters(self.user_url.rstrip('/'), params)
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, ref=None, possible_transports=None,
@@ -515,14 +607,16 @@ class RemoteGitDir(GitDir):
         repo = self.open_repository()
         ref = self._get_selected_ref(name, ref)
         try:
-            if not nascent_ok and ref not in self.get_refs_container():
-                raise NotBranchError(
-                    self.root_transport.base, controldir=self)
+            ref_chain, sha = self.get_refs_container().follow(ref)
+        except SymrefLoop:
+            raise BranchReferenceLoop(self)
         except NotGitRepository:
             raise NotBranchError(self.root_transport.base,
                                  controldir=self)
-        ref_chain, unused_sha = self.get_refs_container().follow(ref)
-        return RemoteGitBranch(self, repo, ref_chain[-1])
+        if not nascent_ok and sha is None:
+            raise NotBranchError(
+                self.root_transport.base, controldir=self)
+        return RemoteGitBranch(self, repo, ref_chain[-1], sha)
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
@@ -551,6 +645,9 @@ class RemoteGitDir(GitDir):
             # No revision supplied by the user, default to the branch
             # revision
             revision_id = source.last_revision()
+        else:
+            if not source.repository.has_revision(revision_id):
+                raise NoSuchRevision(source, revision_id)
 
         push_result = GitPushResult()
         push_result.workingtree_updated = None
@@ -560,11 +657,16 @@ class RemoteGitDir(GitDir):
         push_result.branch_push_result = None
         repo = self.find_repository()
         refname = self._get_selected_ref(name)
-        ref_chain, old_sha = self.get_refs_container().follow(refname)
-        if ref_chain:
-            actual_refname = ref_chain[-1]
-        else:
+        try:
+            ref_chain, old_sha = self.get_refs_container().follow(refname)
+        except NotBranchError:
             actual_refname = refname
+            old_sha = None
+        else:
+            if ref_chain:
+                actual_refname = ref_chain[-1]
+            else:
+                actual_refname = refname
         if isinstance(source, GitBranch) and lossy:
             raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
@@ -583,6 +685,7 @@ class RemoteGitDir(GitDir):
                 except errors.NoSuchRevision:
                     raise errors.NoRoundtrippingSupport(
                         source, self.open_branch(name=name, nascent_ok=True))
+            old_sha = remote_refs.get(actual_refname)
             if not overwrite:
                 if remote_divergence(old_sha, new_sha, source_store):
                     raise DivergedBranches(
@@ -603,6 +706,9 @@ class RemoteGitDir(GitDir):
                             new_sha = repo.lookup_bzr_revision_id(revid)[0]
                         except errors.NoSuchRevision:
                             continue
+                        else:
+                            if not source.repository.has_revision(revid):
+                                continue
                     ret[tag_name_to_ref(tagname)] = new_sha
             return ret
         with source_store.lock_read():
@@ -624,7 +730,15 @@ class RemoteGitDir(GitDir):
                 else:
                     return source_store.generate_pack_data(
                         have, want, progress=progress, ofs_delta=ofs_delta)
-            new_refs = self.send_pack(get_changed_refs, generate_pack_data)
+            dw_result = self.send_pack(get_changed_refs, generate_pack_data)
+            new_refs = dw_result.refs
+            error = dw_result.ref_status.get(actual_refname)
+            if error:
+                raise error
+            for ref, error in dw_result.ref_status.items():
+                if error:
+                    trace.warning('unable to open ref %s: %s',
+                                  ref, error)
         push_result.new_revid = repo.lookup_foreign_revision_id(
             new_refs[actual_refname])
         if old_sha is not None:
@@ -695,6 +809,19 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url = urlutils.strip_segment_parameters(str(url))
         super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
 
+    def archive(
+        self,
+        path,
+        committish,
+        write_data,
+        progress=None,
+        write_error=None,
+        format=None,
+        subdirs=None,
+        prefix=None,
+    ):
+        raise GitSmartRemoteNotSupported(self.archive, self)
+
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):
         """Perform HTTP request.
@@ -702,7 +829,6 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         :param url: Request URL.
         :param headers: Optional custom headers to override defaults.
         :param data: Request data.
-        :param allow_compression: Allow GZipped communication.
         :return: Tuple (`response`, `read`), where response is an `urllib3`
             response object with additional `content_type` and
             `redirect_location` properties, and `read` is a consumable read
@@ -711,10 +837,6 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         if is_github_url(url):
             headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
-        if allow_compression:
-            headers["Accept-Encoding"] = "gzip"
-        else:
-            headers["Accept-Encoding"] = "identity"
 
         response = self.transport.request(
             ('GET' if data is None else 'POST'),
@@ -728,15 +850,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             raise GitProtocolError("unexpected http resp %d for %s" %
                                    (response.status, url))
 
-        # TODO: Optimization available by adding `preload_content=False` to the
-        # request and just passing the `read` method on instead of going via
-        # `BytesIO`, if we can guarantee that the entire response is consumed
-        # before issuing the next to still allow for connection reuse from the
-        # pool.
-        if response.getheader("Content-Encoding") == "gzip":
-            read = gzip.GzipFile(fileobj=BytesIO(response.read())).read
-        else:
-            read = response.read
+        read = response.read
 
         class WrapResponse(object):
 
@@ -818,7 +932,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
 class GitRemoteRevisionTree(RevisionTree):
 
-    def archive(self, format, name, root=None, subdir=None, force_mtime=None):
+    def archive(self, format, name, root=None, subdir=None, force_mtime=None, recurse_nested=False):
         """Create an archive of this tree.
 
         :param format: Format name (e.g. 'tar')
@@ -827,8 +941,12 @@ class GitRemoteRevisionTree(RevisionTree):
         :param subdir: Subdirectory to export (or None)
         :return: Iterator over archive chunks
         """
+        if recurse_nested:
+            # TODO(jelmer): Parse .gitmodules from archive afterwards?
+            raise NotImplementedError('recurse_nested is not yet supported')
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
+        import tempfile
         f = tempfile.SpooledTemporaryFile()
         # git-upload-archive(1) generaly only supports refs. So let's see if we
         # can find one.
@@ -885,6 +1003,7 @@ class RemoteGitRepository(GitRepository):
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
                       progress=None):
+        import tempfile
         fd, path = tempfile.mkstemp(suffix=".pack")
         try:
             self.fetch_pack(determine_wants, graph_walker,
@@ -943,14 +1062,18 @@ class RemoteGitTagDict(GitTags):
 
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        result = self.repository.send_pack(
+            get_changed_refs, generate_pack_data)
+        error = result.ref_status.get(ref)
+        if error:
+            raise error
 
 
 class RemoteGitBranch(GitBranch):
 
-    def __init__(self, controldir, repository, name):
-        self._sha = None
-        super(RemoteGitBranch, self).__init__(controldir, repository, name,
+    def __init__(self, controldir, repository, ref, sha):
+        self._sha = sha
+        super(RemoteGitBranch, self).__init__(controldir, repository, ref,
                                               RemoteGitBranchFormat())
 
     def last_revision_info(self):
@@ -972,14 +1095,6 @@ class RemoteGitBranch(GitBranch):
 
     @property
     def head(self):
-        if self._sha is not None:
-            return self._sha
-        refs = self.controldir.get_refs_container()
-        name = branch_name_to_ref(self.name)
-        try:
-            self._sha = refs[name]
-        except KeyError:
-            raise NoSuchRef(name, self.repository.user_url, refs)
         return self._sha
 
     def _synchronize_history(self, destination, revision_id):
@@ -1027,7 +1142,11 @@ class RemoteGitBranch(GitBranch):
             return {self.ref: sha}
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        result = self.repository.send_pack(
+            get_changed_refs, generate_pack_data)
+        error = result.ref_status.get(self.ref)
+        if error:
+            raise error
         self._sha = sha
 
 

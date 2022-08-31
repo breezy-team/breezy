@@ -93,6 +93,24 @@ class UnusableRedirect(errors.BzrError):
             source=source, target=target, reason=reason)
 
 
+class UnsupportedProtocol(errors.PathError):
+
+    _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
+
+    def __init__(self, url, extra=""):
+        errors.PathError.__init__(self, url, extra=extra)
+
+
+class NoSuchFile(errors.PathError):
+
+    _fmt = "No such file: %(path)r%(extra)s"
+
+
+class FileExists(errors.PathError):
+
+    _fmt = "File exists: %(path)r%(extra)s"
+
+
 class TransportListRegistry(registry.Registry):
     """A registry which simplifies tracking available Transports.
 
@@ -350,18 +368,18 @@ class Transport(object):
         """
         if getattr(e, 'errno', None) is not None:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
                 mutter("EINVAL returned on path %s: %r" % (path, e))
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
             # This is the error when doing a listdir on a file:
             # WindowsError: [Errno 267] The directory name is invalid
             if sys.platform == 'win32' and e.errno in (errno.ESRCH, 267):
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             if e.errno == errno.EEXIST:
-                raise errors.FileExists(path, extra=e)
+                raise FileExists(path, extra=e)
             if e.errno == errno.EACCES:
                 raise errors.PermissionDenied(path, extra=e)
             if e.errno == errno.ENOTEMPTY:
@@ -386,15 +404,15 @@ class Transport(object):
         while True:
             new_transport = cur_transport.clone('..')
             if new_transport.base == cur_transport.base:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     "Failed to create path prefix for %s."
                     % cur_transport.base)
             try:
                 new_transport.mkdir('.', mode=mode)
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 needed.append(new_transport)
                 cur_transport = new_transport
-            except errors.FileExists:
+            except FileExists:
                 break
             else:
                 break
@@ -414,7 +432,7 @@ class Transport(object):
         # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
             self.mkdir('.', mode=mode)
-        except (errors.FileExists, errors.PermissionDenied):
+        except (FileExists, errors.PermissionDenied):
             return False
         else:
             return True
@@ -860,7 +878,7 @@ class Transport(object):
             coalesced_offsets.append(cur)
         return coalesced_offsets
 
-    def put_bytes(self, relpath, raw_bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
         :param relpath: The location to put the contents, relative to the
@@ -874,7 +892,7 @@ class Transport(object):
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
         return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, raw_bytes: bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         """Copy the string into the target location.
@@ -932,7 +950,7 @@ class Transport(object):
         # Default implementation just does an atomic put.
         try:
             return self.put_file(relpath, f, mode=mode)
-        except errors.NoSuchFile:
+        except NoSuchFile:
             if not create_parent_dir:
                 raise
             parent_dir = osutils.dirname(relpath)
@@ -998,7 +1016,8 @@ class Transport(object):
         Override this for efficiency if a specific transport can do it
         faster than this default implementation.
         """
-        self.put_file(rel_to, self.get(rel_from))
+        with self.get(rel_from) as f:
+            self.put_file(rel_to, f)
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -1549,7 +1568,7 @@ def get_transport_from_url(url, possible_transports=None):
                 return transport
     if not urlutils.is_url(url):
         raise urlutils.InvalidURL(path=url)
-    raise errors.UnsupportedProtocol(url, last_err)
+    raise UnsupportedProtocol(url, last_err)
 
 
 def get_transport(base, possible_transports=None, purpose=None):
@@ -1655,12 +1674,12 @@ register_lazy_transport('sftp://', 'breezy.transport.sftp', 'SFTPTransport')
 register_transport_proto('http+urllib://',
                          #                help="Read-only access of branches exported on the web."
                          register_netloc=True)
-register_lazy_transport('http+urllib://', 'breezy.transport.http',
+register_lazy_transport('http+urllib://', 'breezy.transport.http.urllib',
                         'HttpTransport')
 register_transport_proto('https+urllib://',
                          #                help="Read-only access of branches exported on the web using SSL."
                          register_netloc=True)
-register_lazy_transport('https+urllib://', 'breezy.transport.http',
+register_lazy_transport('https+urllib://', 'breezy.transport.http.urllib',
                         'HttpTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
@@ -1668,9 +1687,9 @@ register_transport_proto('http://',
 register_transport_proto('https://',
                          help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
-register_lazy_transport('http://', 'breezy.transport.http',
+register_lazy_transport('http://', 'breezy.transport.http.urllib',
                         'HttpTransport')
-register_lazy_transport('https://', 'breezy.transport.http',
+register_lazy_transport('https://', 'breezy.transport.http.urllib',
                         'HttpTransport')
 
 register_transport_proto(

@@ -94,13 +94,13 @@ def open_destination_directory(location, format=None, verbose=True):
     if os.path.exists(location):
         contents = os.listdir(location)
         if contents:
-            errors.BzrCommandError("Destination must have a .bzr directory, "
-                                   " not yet exist or be empty - files found in %s" % (location,))
+            errors.CommandError("Destination must have a .bzr directory, "
+                                " not yet exist or be empty - files found in %s" % (location,))
     else:
         try:
             os.mkdir(location)
         except IOError as ex:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 "Unable to create %s: %s" % (location, ex))
 
     # Create a repository for the nominated format.

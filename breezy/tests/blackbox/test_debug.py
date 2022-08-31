@@ -49,10 +49,10 @@ class TestDebugBytes(tests.TestCaseWithTransport):
         tree.add('one')
         rev_id = tree.commit('first')
         remote_trans = self.make_smart_server('.')
-        # I would like to avoid run_bzr_subprocess here, but we need it to be
+        # I would like to avoid run_brz_subprocess here, but we need it to be
         # connected to a real TextUIFactory. The NullProgressView always
         # ignores transport activity.
-        out, err = self.run_bzr_subprocess(
+        out, err = self.run_brz_subprocess(
             'branch -Dbytes -Oprogress_bar=text %s/tree target'
             % (remote_trans.base,))
         self.assertContainsRe(err, b'Branched 1 revision')

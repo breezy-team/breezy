@@ -437,12 +437,12 @@ class TestExternalDiff(DiffBase):
     def test_external_diff(self):
         """Test that we can spawn an external diff process"""
         self.disable_missing_extensions_warning()
-        # We have to use run_bzr_subprocess, because we need to
+        # We have to use run_brz_subprocess, because we need to
         # test writing directly to stdout, (there was a bug in
         # subprocess.py that we had to workaround).
         # However, if 'diff' may not be available
         self.make_example_branch()
-        out, err = self.run_bzr_subprocess(
+        out, err = self.run_brz_subprocess(
             'diff -Oprogress_bar=none -r 1 --diff-options -ub',
             universal_newlines=True,
             retcode=None)
@@ -464,9 +464,9 @@ class TestExternalDiff(DiffBase):
         self.requireFeature(features.diff_feature)
         self.make_example_branch()
         self.build_tree_contents([('hello', b'Foo\n')])
-        out, err = self.run_bzr('diff --diff-options -i --using diff',
+        out, err = self.run_bzr('diff --diff-options -i --diff-options -a --using diff',
                                 retcode=1)
-        self.assertEqual("=== modified file 'hello'\n", out)
+        self.assertEqual("=== modified file 'hello'\n1c1\n< foo\n---\n> Foo\n", out)
         self.assertEqual('', err)
 
 
@@ -476,5 +476,5 @@ class TestDiffOutput(DiffBase):
         # check that output doesn't mangle line-endings
         self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
-        output = self.run_bzr_subprocess('diff', retcode=1)[0]
+        output = self.run_brz_subprocess('diff', retcode=1)[0]
         self.assertTrue(b'\n+hello world!\n' in output)

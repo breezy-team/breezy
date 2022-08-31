@@ -26,6 +26,8 @@ from .. import (
     tests,
     )
 
+if sys.platform == "win32":
+    from .. import win32utils
 
 def override_whoami(test):
     test.overrideEnv('EMAIL', None)
@@ -96,6 +98,62 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
                          self.bzr_home + '/authentication.conf')
 
 
+class TestConfigPathFallbackWindows(tests.TestCaseInTempDir):
+
+    def mock_special_folder_path(self, csidl):
+        if csidl == win32utils.CSIDL_APPDATA:
+            return self.appdata
+        elif csidl == win32utils.CSIDL_PERSONAL:
+            return self.test_dir
+        return None
+
+    def setUp(self):
+        if sys.platform != 'win32':
+            raise tests.TestNotApplicable(
+                'This test is specific to Windows platform')
+        super(TestConfigPathFallbackWindows, self).setUp()
+        # Note: No HOME fallback on Windows.  The configs MUST be in AppData,
+        # and we only fall back from breezy to bazaar configuration files.
+        self.appdata = os.path.join(self.test_dir, 'appdata')
+        self.appdata_bzr = os.path.join(self.appdata, 'bazaar', '2.0')
+        os.makedirs(self.appdata_bzr)
+        self.overrideAttr(
+            win32utils, "_get_sh_special_folder_path",
+            self.mock_special_folder_path)
+        # The safety net made by super() has set BZR_HOME and BRZ_HOME
+        # to the temporary directory.  As they take precedence, we need
+        # to erase the variables in order to check Windows special folders.
+        self.overrideEnv('BRZ_HOME', None)
+        self.overrideEnv('BZR_HOME', None)
+
+    def test_config_dir(self):
+        self.assertIsSameRealPath(bedding.config_dir(), self.appdata_bzr)
+
+    def test_config_dir_is_unicode(self):
+        self.assertIsInstance(bedding.config_dir(), str)
+
+    def test_config_path(self):
+        self.assertIsSameRealPath(
+            bedding.config_path(),
+            self.appdata_bzr + '/bazaar.conf')
+        self.overrideAttr(win32utils, "get_appdata_location", lambda: None)
+        self.assertRaises(RuntimeError, bedding.config_path)
+
+    def test_locations_config_path(self):
+        self.assertIsSameRealPath(
+            bedding.locations_config_path(),
+            self.appdata_bzr + '/locations.conf')
+        self.overrideAttr(win32utils, "get_appdata_location", lambda: None)
+        self.assertRaises(RuntimeError, bedding.locations_config_path)
+
+    def test_authentication_config_path(self):
+        self.assertIsSameRealPath(
+            bedding.authentication_config_path(),
+            self.appdata_bzr + '/authentication.conf')
+        self.overrideAttr(win32utils, "get_appdata_location", lambda: None)
+        self.assertRaises(RuntimeError, bedding.authentication_config_path)
+
+
 class TestXDGConfigDir(tests.TestCaseInTempDir):
     # must be in temp dir because config tests for the existence of the bazaar
     # subdirectory of $XDG_CONFIG_HOME
@@ -122,6 +180,13 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
         newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
         os.makedirs(newdir)
         self.assertEqual(bedding.config_dir(), newdir)
+
+    def test_ensure_config_dir_exists(self):
+        xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
+        self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
+        bedding.ensure_config_dir_exists()
+        newdir = osutils.pathjoin(xdgconfigdir, 'breezy')
+        self.assertTrue(os.path.isdir(newdir))
 
 
 class TestDefaultMailDomain(tests.TestCaseInTempDir):
