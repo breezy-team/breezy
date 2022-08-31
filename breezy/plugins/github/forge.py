@@ -70,7 +70,7 @@ def store_github_token(token):
 def retrieve_github_token():
     auth_config = AuthenticationConfig()
     section = auth_config._get_config().get('Github')
-    if section:
+    if section and section.get('private_token'):
         return section.get('private_token')
 
     # Backwards compatibility

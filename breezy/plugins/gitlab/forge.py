@@ -513,7 +513,7 @@ class GitLab(Forge):
             parameters['page'] = page
             response = self._api_request(
                 'GET', path + '?' +
-                ';'.join(['%s=%s' % item for item in parameters.items()]))
+                '&'.join(['%s=%s' % item for item in parameters.items()]))
             if response.status == 403:
                 raise errors.PermissionDenied(response.text)
             if response.status != 200:
