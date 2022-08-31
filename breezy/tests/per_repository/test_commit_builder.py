@@ -194,7 +194,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                if tree.supports_file_ids():
+                if tree.supports_file_ids:
                     foo_id = tree.path2id('foo')
                     delete_change = InventoryTreeChange(
                         foo_id, ('foo', None), True, (True, False),
