@@ -39,7 +39,7 @@ import http.client as http_client
 
 import urllib.request as urllib_request
 
-from urllib.parse import urljoin, urlencode
+from urllib.parse import urljoin, urlencode, urlparse
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
