@@ -317,10 +317,12 @@ class MatchesTreeChanges(Matcher):
     def match(self, actual):
         from ..bzr.inventorytree import InventoryTreeChange
         actual = list(actual)
-        if self.use_inventory_tree_changes or (actual and isinstance(actual[0], InventoryTreeChange)):
+        if self.use_inventory_tree_changes:
             expected = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, self.expected)
         else:
             expected = self.expected
         if self.use_inventory_tree_changes:
             actual = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, actual)
+        elif actual and isinstance(actual[0], InventoryTreeChange):
+            actual = [TreeChange(**{f: getattr(x, f) for f in TreeChange.__slots__}) for x in actual]
         return Equals(expected).match(actual)
