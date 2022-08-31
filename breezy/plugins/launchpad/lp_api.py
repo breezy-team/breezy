@@ -53,7 +53,7 @@ try:
 except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import RequestTokenAuthorizationEngine, CredentialStore
+from launchpadlib.credentials import RequestTokenAuthorizationEngine, CredentialStore, Credentials
 from launchpadlib.launchpad import (
     Launchpad,
     )
@@ -116,7 +116,6 @@ class BreezyCredentialStore(CredentialStore):
 
     def do_save(self, credentials, unique_key):
         """Store newly-authorized credentials in the keyring."""
-        import pdb; pdb.set_trace()
         self.auth_config._set_option(
             unique_key, 'token',
             base64.b64encode(credentials.serialize()).decode("utf-8"))
@@ -127,7 +126,8 @@ class BreezyCredentialStore(CredentialStore):
         if auth_def:
             token = auth_def.get('token')
             if token:
-                return base64.b64decode(token.encode('utf-8'))
+                return Credentials.from_string(
+                    base64.b64decode(token.encode('utf-8')))
         return None
 
 
