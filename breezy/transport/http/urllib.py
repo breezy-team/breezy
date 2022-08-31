@@ -39,7 +39,7 @@ import http.client as http_client
 
 import urllib.request as urllib_request
 
-from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
+from urllib.parse import urljoin, urlencode, urlparse
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -76,6 +76,14 @@ from . import default_user_agent, ssl
 
 checked_kerberos = False
 kerberos = None
+
+
+def splitport(host):
+    m = re.fullmatch('(.*):([0-9]*)', host, re.DOTALL)
+    if m:
+        host, port = m.groups()
+        return host, port or None
+    return host, None
 
 
 class addinfourl(urllib_request.addinfourl):
@@ -1539,9 +1547,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
-        selector = request.selector
-        url_scheme, url_selector = splittype(selector)
-        sel_host, uri = splithost(url_selector)
+        uri = urlparse(request.selector).path
 
         A1 = ('%s:%s:%s' %
               (auth['user'], auth['realm'], auth['password'])).encode('utf-8')
