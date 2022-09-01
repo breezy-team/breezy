@@ -77,7 +77,8 @@ from .repository import (
 
 
 from ..trace import (
-    mutter
+    mutter,
+    note
     )
 from .inventorytree import InventoryTreeChange
 
@@ -183,12 +184,25 @@ class VersionedFileCommitBuilder(CommitBuilder):
             revision_id=self._new_revision_id,
             properties=self._revprops)
         rev.parent_ids = self.parents
-        if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
+        create_signatures = self._config_stack.get('create_signatures')
+        if create_signatures in (
+                _mod_config.SIGN_ALWAYS, _mod_config.SIGN_WHEN_POSSIBLE):
             testament = Testament(rev, self.revision_tree())
             plaintext = testament.as_short_text()
-            self.repository.store_revision_signature(
-                gpg.GPGStrategy(self._config_stack), plaintext,
-                self._new_revision_id)
+            try:
+                self.repository.store_revision_signature(
+                    gpg.GPGStrategy(self._config_stack), plaintext,
+                    self._new_revision_id)
+            except gpg.GpgNotInstalled as e:
+                if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
+                    note('skipping commit signature: %s', e)
+                else:
+                    raise
+            except gpg.SigningFailed as e:
+                if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
+                    note('commit signature failed: %s', e)
+                else:
+                    raise
         self.repository._add_revision(rev)
         self._ensure_fallback_inventories()
         if self._owns_transaction:
