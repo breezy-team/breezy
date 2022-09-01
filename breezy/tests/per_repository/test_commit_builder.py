@@ -202,15 +202,22 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                         (tree.path2id(''), None),
                         ('foo', None), ('file', None),
                         (False, None))
+                    list(builder.record_iter_changes(tree, rev_id,
+                                                     [delete_change]))
+                    self.assertEqual(("foo", None, foo_id, None),
+                                     builder.get_basis_delta()[0])
+
                 else:
                     delete_change = TreeChange(
                         ('foo', None), True, (True, False),
                         ('foo', None), ('file', None), (False, None))
                     foo_id = None
-                list(builder.record_iter_changes(tree, rev_id,
-                                                 [delete_change]))
-                self.assertEqual(("foo", None, foo_id, None),
-                                 builder.get_basis_delta()[0])
+                    list(builder.record_iter_changes(tree, rev_id,
+                                                     [delete_change]))
+                    (oldpath, newpath, file_id, entry) = builder.get_basis_delta()[0]
+                    self.assertEqual("foo", oldpath)
+                    self.assertIs(None, newpath)
+                    self.assertIs(None, entry)
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
                 rev_id2 = builder.commit('delete foo')
