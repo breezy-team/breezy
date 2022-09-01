@@ -493,6 +493,29 @@ create_signatures=always
         finally:
             breezy.gpg.GPGStrategy = oldstrategy
 
+    def test_commit_failed_signature_optional(self):
+        import breezy.gpg
+        import breezy.commit as commit
+        oldstrategy = breezy.gpg.GPGStrategy
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        base_revid = wt.commit("base", allow_pointless=True)
+        self.assertFalse(branch.repository.has_signature_for_revision_id(base_revid))
+        try:
+            # monkey patch gpg signing mechanism
+            breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
+            conf = config.MemoryStack(b'''
+create_signatures=when-possible
+''')
+            revid = commit.Commit(config_stack=conf).commit(
+                  message="base",
+                  allow_pointless=True,
+                  working_tree=wt)
+            branch = Branch.open(self.get_url('.'))
+            self.assertEqual(branch.last_revision(), revid)
+        finally:
+            breezy.gpg.GPGStrategy = oldstrategy
+
     def test_commit_invokes_hooks(self):
         import breezy.commit as commit
         wt = self.make_branch_and_tree('.')
