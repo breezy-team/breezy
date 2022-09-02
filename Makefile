@@ -24,3 +24,13 @@ po/breezy-debian.pot: $(PYFILES) $(DOCFILES)
 
 check:
 	BRZ_PLUGINS_AT=debian@$(shell pwd) $(BRZ) $(BRZ_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
+
+docker:
+	buildah build -t ghcr.io/breezy-team/deb-new-upstream:latest -f Dockerfile.deb-new-upstream .
+	buildah push ghcr.io/breezy-team/deb-new-upstream:latest
+	buildah build -t ghcr.io/breezy-team/deb-auto-backport:latest -f Dockerfile.deb-auto-backport .
+	buildah push ghcr.io/breezy-team/deb-auto-backport:latest
+	buildah build -t ghcr.io/breezy-team/deb-move-orphaned:latest -f Dockerfile.deb-move-orphaned .
+	buildah push ghcr.io/breezy-team/deb-move-orphaned:latest
+	buildah build -t ghcr.io/breezy-team/deb-import-uncommitted:latest -f Dockerfile.deb-import-uncommitted .
+	buildah push ghcr.io/breezy-team/deb-import-uncommitted:latest
