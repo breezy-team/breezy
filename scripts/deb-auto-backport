@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import tempfile
+from typing import Optional
 
 from breezy.plugins.debian.cmds import _build_helper
 from breezy.plugins.debian.changelog import (
