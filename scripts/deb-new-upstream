@@ -54,11 +54,13 @@ try:
     from breezy.transport import (
         FileExists,
         NoSuchFile,
+        UnsupportedProtocol,
     )
 except ImportError:
     from breezy.errors import (
         FileExists,
         NoSuchFile,
+        UnsupportedProtocol,
     )
 try:
     from breezy.workingtree import PointlessMerge
@@ -451,7 +453,7 @@ def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
         return BranchOpenError(url, "Socket error: %s" % e)
     if isinstance(e, errors.NotBranchError):
         return BranchOpenError(url, "Branch does not exist: %s" % e)
-    if isinstance(e, errors.UnsupportedProtocol):
+    if isinstance(e, UnsupportedProtocol):
         return BranchOpenError(url, str(e))
     if isinstance(e, errors.ConnectionError):
         return BranchOpenError(url, str(e))
