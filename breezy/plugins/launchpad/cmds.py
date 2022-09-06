@@ -106,9 +106,12 @@ class cmd_launchpad_login(Command):
         'verbose',
         Option('no-check',
                "Don't check that the user name is valid."),
+        Option('service-root', type=str,
+               help="Launchpad service root to connect to"),
         ]
 
-    def run(self, name=None, no_check=False, verbose=False):
+    def run(self, name=None, no_check=False, verbose=False,
+            service_root='production'):
         # This is totally separate from any launchpadlib login system.
         from . import account
         check_account = not no_check
@@ -136,6 +139,8 @@ class cmd_launchpad_login(Command):
             if verbose:
                 self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
                                 (name,))
+        from .lp_api import connect_launchpad, lookup_service_root
+        connect_launchpad(lookup_service_root(service_root))
 
 
 class cmd_launchpad_logout(Command):
