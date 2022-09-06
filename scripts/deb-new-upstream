@@ -697,12 +697,13 @@ def find_new_upstream(  # noqa: C901
     except NoSuchFile:
         files_excluded = None
     else:
-        new_upstream_version = Version(add_dfsg_suffix(
-            str(new_upstream_version),
-            old_upstream_version))
-        logging.info(
-            "Adding DFSG suffix since upstream files are excluded: %s",
-            new_upstream_version)
+        if files_excluded:
+            new_upstream_version = Version(add_dfsg_suffix(
+                str(new_upstream_version),
+                old_upstream_version))
+            logging.info(
+                "Adding DFSG suffix since upstream files are excluded: %s",
+                new_upstream_version)
 
     return (
         primary_upstream_source,
