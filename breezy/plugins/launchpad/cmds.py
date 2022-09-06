@@ -139,8 +139,9 @@ class cmd_launchpad_login(Command):
             if verbose:
                 self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
                                 (name,))
-        from .lp_api import connect_launchpad, lookup_service_root
-        connect_launchpad(lookup_service_root(service_root))
+        if check_account:
+            from .lp_api import connect_launchpad, lookup_service_root
+            connect_launchpad(lookup_service_root(service_root))
 
 
 class cmd_launchpad_logout(Command):
