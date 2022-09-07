@@ -53,10 +53,15 @@ try:
 except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import RequestTokenAuthorizationEngine, CredentialStore, Credentials
+from launchpadlib.credentials import (
+    RequestTokenAuthorizationEngine,
+    CredentialStore,
+    Credentials,
+    AccessToken,
+)
 from launchpadlib.launchpad import (
     Launchpad,
-    )
+)
 from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -134,11 +139,13 @@ class BreezyCredentialStore(CredentialStore):
         """Retrieve credentials from the keyring."""
         auth_def = self.auth_config._get_config().get(unique_key)
         if auth_def and auth_def.get('access_secret'):
+            access_token = AccessToken(
+                auth_def.get('access_token'),
+                auth_def.get('access_secret'))
             return Credentials(
                 consumer_name=auth_def.get('consumer_key'),
                 consumer_secret=auth_def.get('consumer_secret'),
-                access_token=auth_def.get('access_token'),
-                access_secret=auth_def.get('access_secret'),
+                access_token=access_token,
                 application_name='Breezy')
         return None
 
