@@ -38,7 +38,6 @@ from breezy import (
     osutils,
     repository,
     revision as _mod_revision,
-    transport as _mod_transport,
     ui,
     urlutils,
     win32utils,
@@ -53,10 +52,6 @@ from breezy.bzr import (
     )
 from breezy.bzr import fullhistory as fullhistorybranch
 from breezy.bzr import knitpack_repo
-from breezy.transport import (
-    do_catching_redirections,
-    local,
-    )
 from breezy.i18n import gettext
 """)
 
@@ -70,6 +65,11 @@ from .. import (
     config,
     controldir,
     errors,
+    transport as _mod_transport,
+    )
+from ..transport import (
+    do_catching_redirections,
+    local,
     )
 
 
@@ -832,7 +832,7 @@ class BzrDirMeta1(BzrDir):
         """
         try:
             f = self.control_transport.get('branch-list')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return []
 
         ret = []
@@ -889,7 +889,7 @@ class BzrDirMeta1(BzrDir):
                 self.control_files.unlock()
         try:
             self.transport.delete_tree(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(
                 path=urlutils.join(self.transport.base, path), controldir=self)
 
@@ -901,7 +901,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         try:
             self.transport.delete_tree('repository')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NoRepositoryPresent(self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
@@ -987,7 +987,7 @@ class BzrDirMeta1(BzrDir):
         branch_transport.create_prefix(mode=mode)
         try:
             self.transport.mkdir(path, mode=mode)
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             pass
         return self.transport.clone(path)
 
@@ -1001,7 +1001,7 @@ class BzrDirMeta1(BzrDir):
             raise errors.IncompatibleFormat(repository_format, self._format)
         try:
             self.transport.mkdir('repository', mode=self._get_mkdir_mode())
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             pass
         return self.transport.clone('repository')
 
@@ -1015,7 +1015,7 @@ class BzrDirMeta1(BzrDir):
             raise errors.IncompatibleFormat(workingtree_format, self._format)
         try:
             self.transport.mkdir('checkout', mode=self._get_mkdir_mode())
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             pass
         return self.transport.clone('checkout')
 
@@ -1350,10 +1350,10 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         try:
             transport = do_catching_redirections(make_directory, transport,
                                                  redirected)
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             if not use_existing_dir:
                 raise
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             if not create_prefix:
                 raise
             transport.create_prefix()
@@ -1402,7 +1402,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                                           # FIXME: RBC 20060121 don't peek under
                                           # the covers
                                           mode=temp_control._dir_mode)
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             raise errors.AlreadyControlDirError(transport.base)
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))

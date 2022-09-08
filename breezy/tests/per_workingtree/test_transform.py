@@ -21,13 +21,13 @@ import sys
 import time
 
 from ... import (
-    errors,
     osutils,
     tests,
     trace,
     transform,
     urlutils,
     )
+from ...transport import FileExists
 from ...tree import TreeChange
 from ...bzr.conflicts import (
     DeletingParent,
@@ -1639,7 +1639,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                 raise
         # The rename will fail because the target directory is not empty (but
         # raises FileExists anyway).
-        err = self.assertRaises(errors.FileExists, tt_helper)
+        err = self.assertRaises(FileExists, tt_helper)
         self.assertEndsWith(err.path, "/baz")
 
     def test_two_directories_clash(self):
@@ -1657,7 +1657,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             except BaseException:
                 wt.unlock()
                 raise
-        err = self.assertRaises(errors.FileExists, tt_helper)
+        err = self.assertRaises(FileExists, tt_helper)
         self.assertEndsWith(err.path, "/foo")
 
     def test_two_directories_clash_finalize(self):
@@ -1675,7 +1675,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
             except BaseException:
                 tt.finalize()
                 raise
-        err = self.assertRaises(errors.FileExists, tt_helper)
+        err = self.assertRaises(FileExists, tt_helper)
         self.assertEndsWith(err.path, "/foo")
 
     def test_file_to_directory(self):

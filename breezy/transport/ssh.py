@@ -37,7 +37,7 @@ from .. import (
 
 try:
     import paramiko
-except ImportError as e:
+except ModuleNotFoundError as e:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
     paramiko = None

@@ -24,6 +24,7 @@ from .. import (
     controldir,
     errors,
     trace,
+    transport as _mod_transport,
     )
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
@@ -162,7 +163,7 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
-        wt.add(['hello'], [b'hello-id'])
+        wt.add(['hello'], ids=[b'hello-id'])
         wt.commit(message='add hello')
 
         os.remove('hello')
@@ -231,7 +232,7 @@ class TestCommit(TestCaseWithTransport):
         with open('buongia', 'w') as f:
             f.write('buongia')
         wt.add(['hello', 'buongia'],
-               [b'hello-id', b'buongia-id'])
+               ids=[b'hello-id', b'buongia-id'])
         wt.commit(message='add files',
                   rev_id=b'test@rev-1')
 
@@ -269,7 +270,7 @@ class TestCommit(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         b = tree.branch
         self.build_tree(['hello'], line_endings='binary')
-        tree.add(['hello'], [b'hello-id'])
+        tree.add(['hello'], ids=[b'hello-id'])
         tree.commit(message='one', rev_id=b'test@rev-1', allow_pointless=False)
 
         tree.rename_one('hello', 'fruity')
@@ -312,7 +313,7 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         r1 = b'test@rev-1'
         self.build_tree(['hello', 'a/', 'b/'])
-        wt.add(['hello', 'a', 'b'], [b'hello-id', b'a-id', b'b-id'])
+        wt.add(['hello', 'a', 'b'], ids=[b'hello-id', b'a-id', b'b-id'])
         wt.commit('initial', rev_id=r1, allow_pointless=False)
         wt.move(['hello'], 'a')
         r2 = b'test@rev-2'
@@ -355,7 +356,7 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         with open('hello', 'w') as f:
             f.write('hello world')
-        wt.add(['hello'], [b'hello-id'])
+        wt.add(['hello'], ids=[b'hello-id'])
         wt.commit(message='add hello')
         wt.remove('hello')
         wt.commit('removed hello', rev_id=b'rev2')
@@ -372,7 +373,7 @@ class TestCommit(TestCaseWithTransport):
             with open('hello', 'w') as f:
                 f.write((str(i) * 4) + '\n')
             if i == 0:
-                wt.add(['hello'], [b'hello-id'])
+                wt.add(['hello'], ids=[b'hello-id'])
             rev_id = b'test@rev-%d' % (i + 1)
             rev_ids.append(rev_id)
             wt.commit(message='rev %d' % (i + 1),
@@ -386,7 +387,7 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
         wt.add(['dir', 'dir/file1', 'dir/file2'],
-               [b'dirid', b'file1id', b'file2id'])
+               ids=[b'dirid', b'file1id', b'file2id'])
         wt.commit('dir/file1', specific_files=['dir/file1'], rev_id=b'1')
         inv = b.repository.get_inventory(b'1')
         self.assertEqual(b'1', inv.get_entry(b'dirid').revision)
@@ -489,6 +490,29 @@ create_signatures=always
             branch = Branch.open(self.get_url('.'))
             self.assertEqual(branch.last_revision(), b'A')
             self.assertFalse(branch.repository.has_revision(b'B'))
+        finally:
+            breezy.gpg.GPGStrategy = oldstrategy
+
+    def test_commit_failed_signature_optional(self):
+        import breezy.gpg
+        import breezy.commit as commit
+        oldstrategy = breezy.gpg.GPGStrategy
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        base_revid = wt.commit("base", allow_pointless=True)
+        self.assertFalse(branch.repository.has_signature_for_revision_id(base_revid))
+        try:
+            # monkey patch gpg signing mechanism
+            breezy.gpg.GPGStrategy = breezy.gpg.DisabledGPGStrategy
+            conf = config.MemoryStack(b'''
+create_signatures=when-possible
+''')
+            revid = commit.Commit(config_stack=conf).commit(
+                  message="base",
+                  allow_pointless=True,
+                  working_tree=wt)
+            branch = Branch.open(self.get_url('.'))
+            self.assertEqual(branch.last_revision(), revid)
         finally:
             breezy.gpg.GPGStrategy = oldstrategy
 
@@ -709,7 +733,7 @@ create_signatures=always
         self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'name')
-        tree.add('name', b'a-file-id')
+        tree.add('name', ids=b'a-file-id')
         tree.commit('Added a symlink')
         self.assertBasisTreeKind('symlink', tree, 'name')
 
@@ -802,10 +826,10 @@ create_signatures=always
         # simulate network failure
 
         def raise_(self, arg, arg2, arg3=None, arg4=None):
-            raise errors.NoSuchFile('foo')
+            raise _mod_transport.NoSuchFile('foo')
         repository.add_inventory = raise_
         repository.add_inventory_by_delta = raise_
-        self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertRaises(_mod_transport.NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
 
     def test_selected_file_merge_commit(self):

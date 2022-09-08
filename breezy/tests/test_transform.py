@@ -24,7 +24,6 @@ import time
 import fastbencode as bencode
 
 from .. import (
-    errors,
     filters,
     osutils,
     revision as _mod_revision,
@@ -54,6 +53,7 @@ from ..errors import (
     ExistingPendingDeletion,
     ImmortalPendingDeletion,
     LockError,
+    StrictCommitFailed,
 )
 from ..osutils import (
     file_kind,
@@ -70,6 +70,7 @@ from .features import (
     HardlinkFeature,
     SymlinkFeature,
     )
+from ..transport import FileExists
 from ..transform import (
     create_from_tree,
     _FileMover,
@@ -373,7 +374,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
     def test_add_unversioned(self):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, [b'contents'])
-        self.assertRaises(errors.StrictCommitFailed, tt.commit, branch,
+        self.assertRaises(StrictCommitFailed, tt.commit, branch,
                           'message', strict=True)
 
     def test_modify_strict(self):
@@ -475,7 +476,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except errors.FileExists:
+        except FileExists:
             mover.rollback()
         self.assertPathExists('a')
         self.assertPathExists('c/d')
@@ -683,7 +684,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
     def make_tt_with_versioned_dir(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['dir/', ])
-        wt.add(['dir'], [b'dir-id'])
+        wt.add(['dir'], ids=[b'dir-id'])
         wt.commit('Create dir')
         tt = wt.transform()
         self.addCleanup(tt.finalize)
@@ -819,7 +820,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def make_destruction_preview(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree([u'foo\u1234', 'bar'])
-        tree.add([u'foo\u1234', 'bar'], [b'foo-id', b'bar-id'])
+        tree.add([u'foo\u1234', 'bar'], ids=[b'foo-id', b'bar-id'])
         return self.get_preview(tree)
 
     def destruction_records(self):
@@ -876,7 +877,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_TWO = b'z\nbb\nx\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         return self.get_preview(tree), [LINES_TWO]
 
     def modification_records(self):
@@ -906,7 +907,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES = b'a\nb\nc\nd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo/'])
-        tree.add('foo', b'foo-id')
+        tree.add('foo', ids=b'foo-id')
         return self.get_preview(tree), [LINES]
 
     def kind_change_records(self):
@@ -965,7 +966,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_ONE = b'aa\nbb\ncc\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual(([b'aa\n', b'bb\n', b'cc\n', b'dd\n'],),
@@ -975,7 +976,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_ONE = b'aa\nbb\ncc\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual((LINES_ONE,),
@@ -996,7 +997,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 
     def _prepare_orphan(self, wt):
         self.build_tree(['dir/', 'dir/file', 'dir/foo'])
-        wt.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        wt.add(['dir', 'dir/file'], ids=[b'dir-id', b'file-id'])
         wt.commit('add dir and file ignoring foo')
         tt = wt.transform()
         self.addCleanup(tt.finalize)

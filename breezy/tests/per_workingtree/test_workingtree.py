@@ -30,6 +30,7 @@ from ... import (
     revision as _mod_revision,
     tests,
     trace,
+    transport as _mod_transport,
     urlutils,
     )
 from...bzr import (
@@ -352,7 +353,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_add_missing(self):
         # adding a msising file -> NoSuchFile
         wt = self.make_branch_and_tree('.')
-        self.assertRaises(errors.NoSuchFile, wt.add, 'fpp')
+        self.assertRaises(_mod_transport.NoSuchFile, wt.add, 'fpp')
 
     def test_remove_verbose(self):
         # FIXME the remove api should not print or otherwise depend on the
@@ -941,7 +942,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         if tree.supports_setting_file_ids():
-            tree.add(['foo'], [b'foo-id'])
+            tree.add(['foo'], ids=[b'foo-id'])
             self.assertEqual(b'foo-id', tree.path2id('foo'))
             # the next assertion is for backwards compatibility with
             # WorkingTree3, though its probably a bad idea, it makes things
@@ -1012,10 +1013,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_stored_kind_nonexistent(self):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
-        self.assertRaises(errors.NoSuchFile, tree.stored_kind, 'a')
+        self.assertRaises(_mod_transport.NoSuchFile, tree.stored_kind, 'a')
         self.addCleanup(tree.unlock)
         self.build_tree(['tree/a'])
-        self.assertRaises(errors.NoSuchFile, tree.stored_kind, 'a')
+        self.assertRaises(_mod_transport.NoSuchFile, tree.stored_kind, 'a')
         tree.add(['a'])
         self.assertIs('file', tree.stored_kind('a'))
 
@@ -1035,13 +1036,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.assertRaises(errors.NoSuchFile, tree.get_file_sha1,
+        self.assertRaises(_mod_transport.NoSuchFile, tree.get_file_sha1,
                           'nonexistant')
         self.build_tree(['file'])
         tree.add('file')
         tree.commit('foo')
         tree.remove('file')
-        self.assertRaises(errors.NoSuchFile, tree.get_file_sha1,
+        self.assertRaises(_mod_transport.NoSuchFile, tree.get_file_sha1,
                           'file')
 
     def test_case_sensitive(self):

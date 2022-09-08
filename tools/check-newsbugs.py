@@ -6,12 +6,12 @@ import getopt, re, sys
 try:
     from launchpadlib.launchpad import Launchpad
     from lazr.restfulclient import errors
-except ImportError:
+except ModuleNotFoundError:
     print("Please install launchpadlib from lp:launchpadlib")
     sys.exit(1)
 try:
     import hydrazine
-except ImportError:
+except ModuleNotFoundError:
     print("Please install hydrazine from lp:hydrazine")
     sys.exit(1)
 

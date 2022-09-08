@@ -29,6 +29,7 @@ from .. import (
     gpg,
     osutils,
     revision as _mod_revision,
+    trace,
     )
 from ..errors import (
     BzrError,
@@ -218,10 +219,22 @@ class GitCommitBuilder(CommitBuilder):
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.message = message.encode(encoding)
-        if (self._config_stack.get('create_signatures') ==
-                _mod_config.SIGN_ALWAYS):
+        create_signatures = self._config_stack.get('create_signatures')
+        if (create_signatures in (
+                _mod_config.SIGN_ALWAYS, _mod_config.SIGN_WHEN_POSSIBLE)):
             strategy = gpg.GPGStrategy(self._config_stack)
-            c.gpgsig = strategy.sign(c.as_raw_string(), gpg.MODE_DETACH)
+            try:
+                c.gpgsig = strategy.sign(c.as_raw_string(), gpg.MODE_DETACH)
+            except gpg.GpgNotInstalled as e:
+                if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
+                    trace.note('skipping commit signature: %s', e)
+                else:
+                    raise
+            except gpg.SigningFailed as e:
+                if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
+                    trace.note('commit signature failed: %s', e)
+                else:
+                    raise
         self.store.add_object(c)
         self.repository.commit_write_group()
         self._new_revision_id = self._mapping.revision_id_foreign_to_bzr(c.id)

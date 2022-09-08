@@ -21,10 +21,10 @@ https://www.breezy-vcs.org/developers/.
 
 Some particularly interesting things in breezy are:
 
- * breezy.initialize -- setup the library for use
- * breezy.plugin.load_plugins -- load all installed plugins
- * breezy.branch.Branch.open -- open a branch
- * breezy.workingtree.WorkingTree.open -- open a working tree
+* breezy.initialize -- setup the library for use
+* breezy.plugin.load_plugins -- load all installed plugins
+* breezy.branch.Branch.open -- open a branch
+* breezy.workingtree.WorkingTree.open -- open a working tree
 
 We hope you enjoy this library.
 """
@@ -41,7 +41,7 @@ import sys
 
 __copyright__ = (
     "Copyright 2005-2012 Canonical Ltd.\n"
-    "Copyright 2017-2020 Breezy developers"
+    "Copyright 2017-2022 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of

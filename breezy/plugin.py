@@ -38,7 +38,6 @@ import os
 import re
 import sys
 
-import imp
 from importlib import util as importlib_util
 
 import breezy
@@ -102,7 +101,7 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
 def _load_plugins_from_entrypoints(state):
     try:
         import pkg_resources
-    except ImportError:
+    except ModuleNotFoundError:
         # No pkg_resources, no entrypoints.
         pass
     else:

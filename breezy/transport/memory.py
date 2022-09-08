@@ -34,14 +34,14 @@ from .. import (
     urlutils,
     )
 from ..errors import (
-    FileExists,
     LockError,
     InProcessTransport,
-    NoSuchFile,
     TransportNotPossible,
     )
 from ..transport import (
     AppendBasedFileStream,
+    FileExists,
+    NoSuchFile,
     _file_streams,
     LateReadError,
     )

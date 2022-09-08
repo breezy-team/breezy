@@ -52,7 +52,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         self.assertEqual(list(tree.conflicts()), [expected])
         with open('lala', 'wb') as f:
             f.write(b'la')
-        tree.add('lala', b'lala-id')
+        tree.add('lala', ids=b'lala-id')
         expected = ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         with open('lala.THIS', 'wb') as f:

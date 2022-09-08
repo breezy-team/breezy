@@ -26,7 +26,6 @@ from breezy import (
     config,
     debug,
     osutils,
-    static_tuple,
     trace,
     tsort,
     )
@@ -34,6 +33,7 @@ from breezy.bzr import (
     knit,
     pack,
     pack_repo,
+    static_tuple,
     )
 
 from breezy.i18n import gettext
@@ -1513,7 +1513,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _find_from_fallback(self, missing):

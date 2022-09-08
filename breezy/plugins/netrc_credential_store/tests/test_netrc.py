@@ -20,6 +20,7 @@ from .... import (
     errors,
     osutils,
     tests,
+    transport as _mod_transport,
     )
 
 from ... import netrc_credential_store
@@ -28,7 +29,7 @@ from ... import netrc_credential_store
 class TestNetrcCSNoNetrc(tests.TestCaseInTempDir):
 
     def test_home_netrc_does_not_exist(self):
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(_mod_transport.NoSuchFile,
                           config.credential_store_registry.get_credential_store,
                           'netrc')
 

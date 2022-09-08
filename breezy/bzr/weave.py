@@ -76,6 +76,7 @@ from breezy import tsort
 from .. import (
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from ..errors import (
     RevisionAlreadyPresent,
@@ -975,9 +976,9 @@ class WeaveFile(Weave):
         self._transport = transport
         self._filemode = filemode
         try:
-            f = self._transport.get(name + WeaveFile.WEAVE_SUFFIX)
-            _read_weave_v5(BytesIO(f.read()), self)
-        except errors.NoSuchFile:
+            with self._transport.get(name + WeaveFile.WEAVE_SUFFIX) as f:
+                _read_weave_v5(BytesIO(f.read()), self)
+        except _mod_transport.NoSuchFile:
             if not create:
                 raise
             # new file, save it
@@ -1012,7 +1013,7 @@ class WeaveFile(Weave):
         path = self._weave_name + WeaveFile.WEAVE_SUFFIX
         try:
             self._transport.put_bytes(path, bytes, self._filemode)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self._transport.mkdir(dirname(path))
             self._transport.put_bytes(path, bytes, self._filemode)
 

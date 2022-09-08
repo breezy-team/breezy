@@ -19,6 +19,7 @@ import difflib
 import os
 import re
 import sys
+from typing import Optional, List, Union
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -29,7 +30,6 @@ import tempfile
 
 from breezy import (
     controldir,
-    osutils,
     textfile,
     timestamp,
     views,
@@ -41,12 +41,14 @@ from breezy.i18n import gettext
 
 from . import (
     errors,
+    osutils,
+    transport as _mod_transport,
     )
 from .registry import (
     Registry,
     )
 from .trace import mutter, note, warning
-from .tree import FileTimestampUnavailable
+from .tree import Tree, FileTimestampUnavailable
 
 
 DEFAULT_CONTEXT_AMOUNT = 3
@@ -494,10 +496,10 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
-                    old_label='a/', new_label='b/',
+                    old_label: str = 'a/', new_label: str = 'b/',
                     extra_trees=None,
-                    path_encoding='utf8',
-                    using=None,
+                    path_encoding: str = 'utf8',
+                    using: Optional[str] = None,
                     format_cls=None,
                     context=DEFAULT_CONTEXT_AMOUNT):
     """Show in text form the changes from one tree to another.
@@ -751,7 +753,7 @@ class DiffText(DiffPath):
                 return []
             try:
                 return tree.get_file_lines(path)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return []
         try:
             from_text = _get_text(self.old_tree, from_path)
@@ -770,15 +772,18 @@ class DiffText(DiffPath):
 
 class DiffFromTool(DiffPath):
 
-    def __init__(self, command_template, old_tree, new_tree, to_file,
+    def __init__(self, command_template: Union[str, List[str]],
+            old_tree: Tree, new_tree: Tree, to_file,
                  path_encoding='utf-8'):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
         self._root = osutils.mkdtemp(prefix='brz-diff-')
 
     @classmethod
-    def from_string(klass, command_template, old_tree, new_tree, to_file,
-                    path_encoding='utf-8'):
+    def from_string(klass,
+                    command_template: Union[str, List[str]],
+                    old_tree: Tree, new_tree: Tree, to_file,
+                    path_encoding: str = 'utf-8'):
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 
@@ -787,7 +792,7 @@ class DiffFromTool(DiffPath):
         def from_diff_tree(diff_tree):
             full_command_string = [command_string]
             if external_diff_options is not None:
-                full_command_string += ' ' + external_diff_options
+                full_command_string.extend(external_diff_options.split())
             return klass.from_string(full_command_string, diff_tree.old_tree,
                                      diff_tree.new_tree, diff_tree.to_file)
         return from_diff_tree

@@ -2278,7 +2278,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
     def test_load_unknown(self):
         # Provide a list with one test - this test.
         # And generate a list of the tests in  the suite.
-        self.assertRaises(errors.NoSuchFile, self.run_selftest,
+        self.assertRaises(transport.NoSuchFile, self.run_selftest,
                           load_list='missing file name', list_only=True)
 
 
@@ -3155,7 +3155,7 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
         fl.close()
 
     def test_load_unknown(self):
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(transport.NoSuchFile,
                           tests.load_test_id_list, 'i_do_not_exist')
 
     def test_load_test_list(self):

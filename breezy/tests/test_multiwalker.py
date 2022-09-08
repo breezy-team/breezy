@@ -50,7 +50,7 @@ class TestMultiWalker(TestCaseWithTransport):
     def test__step_one(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b/', 'tree/b/c'])
-        tree.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
+        tree.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
 
         iterator = tree.iter_entries_by_dir()
         tree.lock_read()
@@ -114,7 +114,7 @@ class TestMultiWalker(TestCaseWithTransport):
     def test_simple_stepping(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b/', 'tree/b/c'])
-        tree.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
+        tree.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
 
         tree.commit('first', rev_id=b'first-rev-id')
 
@@ -131,11 +131,11 @@ class TestMultiWalker(TestCaseWithTransport):
     def test_master_has_extra(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b/', 'tree/c', 'tree/d'])
-        tree.add(['a', 'b', 'd'], [b'a-id', b'b-id', b'd-id'])
+        tree.add(['a', 'b', 'd'], ids=[b'a-id', b'b-id', b'd-id'])
 
         tree.commit('first', rev_id=b'first-rev-id')
 
-        tree.add(['c'], [b'c-id'])
+        tree.add(['c'], ids=[b'c-id'])
         basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
 
         walker = multiwalker.MultiWalker(tree, [basis_tree])
@@ -151,7 +151,7 @@ class TestMultiWalker(TestCaseWithTransport):
         """The record is still present, it just shows up early."""
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/c', 'tree/d'])
-        tree.add(['a', 'c', 'd'], [b'a-id', b'c-id', b'd-id'])
+        tree.add(['a', 'c', 'd'], ids=[b'a-id', b'c-id', b'd-id'])
         tree.commit('first', rev_id=b'first-rev-id')
         tree.rename_one('d', 'b')
 
@@ -168,7 +168,7 @@ class TestMultiWalker(TestCaseWithTransport):
     def test_master_renamed_to_later(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/d'])
-        tree.add(['a', 'b', 'd'], [b'a-id', b'b-id', b'd-id'])
+        tree.add(['a', 'b', 'd'], ids=[b'a-id', b'b-id', b'd-id'])
         tree.commit('first', rev_id=b'first-rev-id')
         tree.rename_one('b', 'e')
 
@@ -185,7 +185,7 @@ class TestMultiWalker(TestCaseWithTransport):
     def test_other_extra_in_middle(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/d'])
-        tree.add(['a', 'b', 'd'], [b'a-id', b'b-id', b'd-id'])
+        tree.add(['a', 'b', 'd'], ids=[b'a-id', b'b-id', b'd-id'])
         tree.commit('first', rev_id=b'first-rev-id')
         tree.remove(['b'])
 
@@ -201,7 +201,7 @@ class TestMultiWalker(TestCaseWithTransport):
     def test_other_extra_at_end(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/d'])
-        tree.add(['a', 'b', 'd'], [b'a-id', b'b-id', b'd-id'])
+        tree.add(['a', 'b', 'd'], ids=[b'a-id', b'b-id', b'd-id'])
         tree.commit('first', rev_id=b'first-rev-id')
         tree.remove(['d'])
 
@@ -218,7 +218,7 @@ class TestMultiWalker(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c', 'tree/d', 'tree/e'])
         tree.add(['a', 'b', 'c', 'd', 'e'],
-                 [b'a-id', b'b-id', b'c-id', b'd-id', b'e-id'])
+                 ids=[b'a-id', b'b-id', b'c-id', b'd-id', b'e-id'])
         tree.commit('first', rev_id=b'first-rev-id')
         tree.remove(['e'])
         tree.commit('second', rev_id=b'second-rev-id')
@@ -248,17 +248,17 @@ class TestMultiWalker(TestCaseWithTransport):
     def test_different_file_id_in_others(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c/'])
-        tree.add(['a', 'b', 'c'], [b'a-id', b'b-id', b'c-id'])
+        tree.add(['a', 'b', 'c'], ids=[b'a-id', b'b-id', b'c-id'])
         tree.commit('first', rev_id=b'first-rev-id')
 
         tree.rename_one('b', 'c/d')
         self.build_tree(['tree/b'])
-        tree.add(['b'], [b'b2-id'])
+        tree.add(['b'], ids=[b'b2-id'])
         tree.commit('second', rev_id=b'second-rev-id')
 
         tree.rename_one('a', 'c/e')
         self.build_tree(['tree/a'])
-        tree.add(['a'], [b'a2-id'])
+        tree.add(['a'], ids=[b'a2-id'])
 
         basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
         first_tree = tree.branch.repository.revision_tree(b'first-rev-id')

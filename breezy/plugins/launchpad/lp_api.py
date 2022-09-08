@@ -21,6 +21,7 @@
 # needed by a command that uses it.
 
 
+import base64
 import re
 from urllib.parse import (
     urlparse,
@@ -49,10 +50,10 @@ class LaunchpadlibMissing(errors.DependencyNotPresent):
 
 try:
     import launchpadlib
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import RequestTokenAuthorizationEngine
+from launchpadlib.credentials import RequestTokenAuthorizationEngine, CredentialStore, Credentials
 from launchpadlib.launchpad import (
     Launchpad,
     )
@@ -103,8 +104,31 @@ def get_auth_engine(base_url):
     return Launchpad.authorization_engine_factory(base_url, 'breezy')
 
 
-def get_credential_store():
-    return Launchpad.credential_store_factory(None)
+
+class BreezyCredentialStore(CredentialStore):
+    """Implementation of the launchpadlib CredentialStore API for Breezy.
+    """
+
+    def __init__(self, credential_save_failed=None):
+        super(BreezyCredentialStore, self).__init__(credential_save_failed)
+        from breezy.config import AuthenticationConfig
+        self.auth_config = AuthenticationConfig()
+
+    def do_save(self, credentials, unique_key):
+        """Store newly-authorized credentials in the keyring."""
+        self.auth_config._set_option(
+            unique_key, 'token',
+            base64.b64encode(credentials.serialize()).decode("utf-8"))
+
+    def do_load(self, unique_key):
+        """Retrieve credentials from the keyring."""
+        auth_def = self.auth_config._get_config().get(unique_key)
+        if auth_def:
+            token = auth_def.get('token')
+            if token:
+                return Credentials.from_string(
+                    base64.b64decode(token.encode('utf-8')))
+        return None
 
 
 def connect_launchpad(base_url, timeout=None, proxy_info=None,
@@ -120,7 +144,7 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
         cache_directory = get_cache_directory()
     except EnvironmentError:
         cache_directory = None
-    credential_store = get_credential_store()
+    credential_store = BreezyCredentialStore()
     authorization_engine = get_auth_engine(base_url)
     return Launchpad.login_with(
         'breezy', base_url, cache_directory, timeout=timeout,

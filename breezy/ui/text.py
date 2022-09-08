@@ -24,7 +24,6 @@ import warnings
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
 import time
 
 from breezy import (
@@ -239,6 +238,7 @@ class TextUIFactory(UIFactory):
     def get_non_echoed_password(self):
         isatty = getattr(self.stdin, 'isatty', None)
         if isatty is not None and isatty():
+            import getpass
             # getpass() ensure the password is not echoed and other
             # cross-platform niceties
             password = getpass.getpass('')

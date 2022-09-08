@@ -171,9 +171,11 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         main_branch = main_wt.branch
         self.build_tree(["main/a", "main/b", "main/c"])
 
-        main_wt.add(['a', 'b', 'c'], [b'a-file-id-2006-01-01-abcd',
-                                      b'b-file-id-2006-01-01-defg',
-                                      b'c-funky<file-id>quiji%bo'])
+        main_wt.add(
+            ['a', 'b', 'c'],
+            ids=[b'a-file-id-2006-01-01-abcd',
+                 b'b-file-id-2006-01-01-defg',
+                 b'c-funky<file-id>quiji%bo'])
         try:
             main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:
@@ -192,7 +194,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         bt1.pull(main_branch)
         b1 = bt1.branch
         self.build_tree(["branch1/d"])
-        bt1.add(['d'], [b'file-d'])
+        bt1.add(['d'], ids=[b'file-d'])
         bt1.commit("branch1, Commit one", rev_id=b"rev-E")
 
         # -------- end E -----------
@@ -339,7 +341,7 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         self.build_tree(["main/a"])
 
         file_id = u'a-f\xedle-id'.encode('utf8')
-        main_wt.add(['a'], [file_id])
+        main_wt.add(['a'], ids=[file_id])
         revision_id = u'r\xe9v-a'.encode('utf8')
         try:
             main_wt.commit('a', rev_id=revision_id)
@@ -372,9 +374,11 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         main_branch = main_wt.branch
         self.build_tree(["main/a", "main/b", "main/c"])
 
-        main_wt.add(['a', 'b', 'c'], [b'a-file-id-2006-01-01-abcd',
-                                      b'b-file-id-2006-01-01-defg',
-                                      b'c-funky<file-id>quiji\'"%bo'])
+        main_wt.add(
+            ['a', 'b', 'c'],
+            ids=[b'a-file-id-2006-01-01-abcd',
+                 b'b-file-id-2006-01-01-defg',
+                 b'c-funky<file-id>quiji\'"%bo'])
         try:
             main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:

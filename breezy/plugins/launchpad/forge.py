@@ -21,13 +21,13 @@ import re
 import shutil
 import tempfile
 
-from ...propose import (
-    Hoster,
+from ...forge import (
+    Forge,
     LabelsUnsupported,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
-    UnsupportedHoster,
+    UnsupportedForge,
     )
 
 from ... import (
@@ -142,6 +142,10 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_repository.git_identity,
                 ref=self._mp.target_git_path.encode('utf-8'))
 
+    def set_target_branch_name(self, name):
+        # The launchpad API doesn't support changing branch names today.
+        raise NotImplementedError(self.set_target_branch_name)
+
     @property
     def url(self):
         return lp_api.canonical_url(self._mp)
@@ -208,7 +212,7 @@ class LaunchpadMergeProposal(MergeProposal):
         self._mp.createComment(content=body)
 
 
-class Launchpad(Hoster):
+class Launchpad(Forge):
     """The Launchpad hosting service."""
 
     name = 'launchpad'
@@ -259,7 +263,7 @@ class Launchpad(Hoster):
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
             return Launchpad(uris.LPNET_SERVICE_ROOT)
-        raise UnsupportedHoster(url)
+        raise UnsupportedForge(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
         url, params = urlutils.split_segment_parameters(branch.user_url)
@@ -295,6 +299,8 @@ class Launchpad(Hoster):
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
                      revision_id=None, overwrite=False, allow_lossy=True,
                      tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
         try:
@@ -470,7 +476,7 @@ class Launchpad(Hoster):
 
     @classmethod
     def iter_instances(cls):
-        credential_store = lp_api.get_credential_store()
+        credential_store = lp_api.BreezyCredentialStore()
         for service_root in set(uris.service_roots.values()):
             auth_engine = lp_api.get_auth_engine(service_root)
             creds = credential_store.load(auth_engine.unique_consumer_id)
@@ -503,9 +509,9 @@ class Launchpad(Hoster):
         LAUNCHPAD_CODE_DOMAINS = [
             ('code.%s' % domain) for domain in lp_uris.LAUNCHPAD_DOMAINS.values()]
         if host not in LAUNCHPAD_CODE_DOMAINS:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
-        # UnsupportedHoster
+        # UnsupportedForge
         # See https://api.launchpad.net/devel/#branch_merge_proposal
         # the syntax is:
         # https://api.launchpad.net/devel/~<author.name>/<project.name>/<branch.name>/+merge/<id>

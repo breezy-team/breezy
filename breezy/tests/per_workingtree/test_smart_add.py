@@ -27,6 +27,7 @@ from ... import (
     osutils,
     tests,
     trace,
+    transport,
     workingtree,
     )
 from .. import (
@@ -65,7 +66,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             self.build_tree(['tree/' + filename])
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             if sys.platform == 'win32':
                 raise tests.TestNotApplicable('Cannot create files named %r on'
                                               ' win32' % (filename,))
@@ -194,7 +195,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
         wt = self.make_branch_and_tree('.')
-        self.assertRaises(errors.NoSuchFile, wt.smart_add,
+        self.assertRaises(transport.NoSuchFile, wt.smart_add,
                           ['non-existant-file'])
 
     def test_returns_and_ignores(self):
@@ -358,7 +359,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         if (self.workingtree_format.requires_normalized_unicode_filenames
                 and sys.platform != 'darwin'):
             self.assertRaises(
-                errors.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
+                transport.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
         else:
             self.wt.smart_add([u'a\u030a'])
 

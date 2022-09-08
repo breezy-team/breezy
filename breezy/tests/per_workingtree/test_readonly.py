@@ -21,11 +21,11 @@ import sys
 import time
 
 from breezy import (
-    hashcache,
     tests,
     )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
+from breezy.bzr import hashcache
 from breezy.bzr.workingtree import InventoryWorkingTree
 
 

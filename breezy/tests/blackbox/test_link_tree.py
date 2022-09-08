@@ -37,7 +37,7 @@ class TestLinkTreeCommand(tests.TestCaseWithTransport):
         self.parent_tree.lock_write()
         self.addCleanup(self.parent_tree.unlock)
         self.build_tree_contents([('parent/foo', b'bar')])
-        self.parent_tree.add('foo', b'foo-id')
+        self.parent_tree.add('foo', ids=b'foo-id')
         self.parent_tree.commit('added foo')
         child_controldir = self.parent_tree.controldir.sprout('child')
         self.child_tree = child_controldir.open_workingtree()

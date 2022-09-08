@@ -33,12 +33,12 @@ from .. import (
     fifo_cache,
     lru_cache,
     osutils,
-    static_tuple,
     trace,
     transport,
     )
 from . import (
     index,
+    static_tuple,
     )
 from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
 

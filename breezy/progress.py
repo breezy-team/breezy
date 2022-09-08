@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Progress indicators.
 
 The usual way to use this is via breezy.ui.ui_factory.nested_progress_bar which
@@ -59,11 +61,12 @@ class ProgressTask(object):
 
     The message given when updating a task must be unicode, not bytes.
 
-    :ivar update_latency: The interval (in seconds) at which the PB should be
+    Attributes:
+      update_latency: The interval (in seconds) at which the PB should be
         updated.  Setting this to zero suggests every update should be shown
         synchronously.
 
-    :ivar show_transport_activity: If true (default), transport activity
+      show_transport_activity: If true (default), transport activity
         will be shown when this task is drawn.  Disable it if you're sure
         that only irrelevant or uninteresting transport activity can occur
         during this task.
@@ -72,11 +75,10 @@ class ProgressTask(object):
     def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
         """Construct a new progress task.
 
-        :param parent_task: Enclosing ProgressTask or None.
-
-        :param progress_view: ProgressView to display this ProgressTask.
-
-        :param ui_factory: The UI factory that will display updates;
+        Args:
+          parent_task: Enclosing ProgressTask or None.
+          progress_view: ProgressView to display this ProgressTask.
+          ui_factory: The UI factory that will display updates;
             deprecated in favor of passing progress_view directly.
 
         Normally you should not call this directly but rather through

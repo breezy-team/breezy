@@ -16,15 +16,13 @@
 
 """Tests for _rio_*."""
 
-from .. import (
-    rio,
-    tests,
-    )
+from ... import tests
+from .. import rio
 
 
 def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-                                                 'breezy._rio_py', 'breezy._rio_pyx')
+                                                 'breezy.bzr._rio_py', 'breezy.bzr._rio_pyx')
     return suite
 
 

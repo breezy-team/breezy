@@ -26,6 +26,7 @@ from . import (
     errors,
     lock,
     revision as _mod_revision,
+    transport as _mod_transport,
     )
 from .bzr.inventory import Inventory
 from .bzr.inventorytree import MutableInventoryTree
@@ -62,7 +63,7 @@ class MemoryTree(MutableInventoryTree):
         # Memory tree doesn't have any control filenames
         return False
 
-    def _add(self, files, ids, kinds):
+    def _add(self, files, kinds, ids):
         """See MutableTree._add."""
         with self.lock_tree_write():
             for f, file_id, kind in zip(files, ids, kinds):
@@ -162,7 +163,7 @@ class MemoryTree(MutableInventoryTree):
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
-        self.add(path, file_id, 'directory')
+        self.add(path, 'directory', file_id)
         if file_id is None:
             file_id = self.path2id(path)
         self._file_transport.mkdir(path)
@@ -283,7 +284,7 @@ class MemoryTree(MutableInventoryTree):
             for path in paths:
                 file_id = self.path2id(path)
                 if file_id is None:
-                    raise errors.NoSuchFile(path)
+                    raise _mod_transport.NoSuchFile(path)
                 file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):

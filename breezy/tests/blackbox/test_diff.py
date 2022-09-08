@@ -464,9 +464,9 @@ class TestExternalDiff(DiffBase):
         self.requireFeature(features.diff_feature)
         self.make_example_branch()
         self.build_tree_contents([('hello', b'Foo\n')])
-        out, err = self.run_bzr('diff --diff-options -i --using diff',
+        out, err = self.run_bzr('diff --diff-options -i --diff-options -a --using diff',
                                 retcode=1)
-        self.assertEqual("=== modified file 'hello'\n", out)
+        self.assertEqual("=== modified file 'hello'\n1c1\n< foo\n---\n> Foo\n", out)
         self.assertEqual('', err)
 
 

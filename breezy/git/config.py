@@ -47,7 +47,9 @@ class GitBranchConfig(config.BranchConfig):
 class GitConfigSectionDefault(config.Section):
     """The "default" config section in git config file"""
 
-    def __init__(self, config):
+    id = None
+
+    def __init__(self, id, config):
         self._config = config
 
     def get(self, name, default=None, expand=True):
@@ -69,16 +71,31 @@ class GitConfigSectionDefault(config.Section):
             return key.decode()
         return None
 
+    def iter_option_names(self):
+        try:
+            self._config.get((b'user', ), b'email')
+        except KeyError:
+            pass
+        else:
+            yield 'email'
+        try:
+            self._config.get((b'user', ), b'signingkey')
+        except KeyError:
+            pass
+        else:
+            yield 'gpg_signing_key'
+
 
 class GitConfigStore(config.Store):
     """Store that uses gitconfig."""
 
-    def __init__(self, config):
+    def __init__(self, id, config):
+        self.id = id
         self._config = config
 
     def get_sections(self):
         return [
-            (self, GitConfigSectionDefault(self._config)),
+            (self, GitConfigSectionDefault('default', self._config)),
             ]
 
 
@@ -94,7 +111,7 @@ class GitBranchStack(config._CompatibleStack):
         # local git branches.
         git = getattr(branch.repository, '_git', None)
         if git:
-            cstore = GitConfigStore(git.get_config())
+            cstore = GitConfigStore('branch', git.get_config())
             section_getters.append(cstore.get_sections)
         gstore = config.GlobalStore()
         section_getters.append(gstore.get_sections)

@@ -63,6 +63,7 @@ def simple_parse(content):
 
 if __name__ == '__main__':
     import sys
-    content = open(sys.argv[1], 'rb').read()
+    with open(sys.argv[1], 'rb') as f:
+        content = f.read()
     for result in simple_parse(content):
         print(result)
