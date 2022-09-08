@@ -1702,11 +1702,11 @@ class PlanWeaveMerge(TextMerge):
                 return
             elif ch_a and not ch_b:
                 # one-sided change:
-                yield(lines_a,)
+                yield (lines_a,)
             elif ch_b and not ch_a:
                 yield (lines_b,)
             elif lines_a == lines_b:
-                yield(lines_a,)
+                yield (lines_a,)
             else:
                 yield (lines_a, lines_b)
 

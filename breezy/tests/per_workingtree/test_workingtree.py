@@ -33,7 +33,7 @@ from ... import (
     transport as _mod_transport,
     urlutils,
     )
-from...bzr import (
+from ...bzr import (
     bzrdir,
     )
 from ...errors import (
