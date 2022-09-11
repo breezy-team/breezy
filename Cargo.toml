@@ -15,4 +15,4 @@ path = "breezy/main.rs"
 
 [dependencies]
 pkg-version = "1.0.0"
-pyo3 = "0.15.0"
+pyo3 = ">=0.14,<0.16"

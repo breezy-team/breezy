@@ -9,7 +9,8 @@ name = "rio"
 path = "pyrio.rs"
 
 [dependencies.pyo3]
-version = "0.14.2"
+# Use pyo3 < 0.16, as that drop support for Python 3.6.
+version = ">=0.14,<0.16"
 
 [dependencies.lazy_static]
 version = "1.4.0"
