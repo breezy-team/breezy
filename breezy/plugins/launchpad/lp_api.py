@@ -53,10 +53,15 @@ try:
 except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import RequestTokenAuthorizationEngine, CredentialStore, Credentials
+from launchpadlib.credentials import (
+    RequestTokenAuthorizationEngine,
+    CredentialStore,
+    Credentials,
+    AccessToken,
+)
 from launchpadlib.launchpad import (
     Launchpad,
-    )
+)
 from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -104,6 +109,11 @@ def get_auth_engine(base_url):
     return Launchpad.authorization_engine_factory(base_url, 'breezy')
 
 
+def get_credential_store():
+    return BreezyCredentialStore()
+    # return Launchpad.credential_store_factory()
+
+
 
 class BreezyCredentialStore(CredentialStore):
     """Implementation of the launchpadlib CredentialStore API for Breezy.
@@ -117,17 +127,26 @@ class BreezyCredentialStore(CredentialStore):
     def do_save(self, credentials, unique_key):
         """Store newly-authorized credentials in the keyring."""
         self.auth_config._set_option(
-            unique_key, 'token',
-            base64.b64encode(credentials.serialize()).decode("utf-8"))
+            unique_key, 'consumer_key', credentials.consumer.key)
+        self.auth_config._set_option(
+            unique_key, 'consumer_secret', credentials.consumer.secret)
+        self.auth_config._set_option(
+            unique_key, 'access_token', credentials.access_token.key)
+        self.auth_config._set_option(
+            unique_key, 'access_secret', credentials.access_token.secret)
 
     def do_load(self, unique_key):
         """Retrieve credentials from the keyring."""
         auth_def = self.auth_config._get_config().get(unique_key)
-        if auth_def:
-            token = auth_def.get('token')
-            if token:
-                return Credentials.from_string(
-                    base64.b64decode(token.encode('utf-8')))
+        if auth_def and auth_def.get('access_secret'):
+            access_token = AccessToken(
+                auth_def.get('access_token'),
+                auth_def.get('access_secret'))
+            return Credentials(
+                consumer_name=auth_def.get('consumer_key'),
+                consumer_secret=auth_def.get('consumer_secret'),
+                access_token=access_token,
+                application_name='Breezy')
         return None
 
 
@@ -144,7 +163,7 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
         cache_directory = get_cache_directory()
     except EnvironmentError:
         cache_directory = None
-    credential_store = BreezyCredentialStore()
+    credential_store = get_credential_store()
     authorization_engine = get_auth_engine(base_url)
     return Launchpad.login_with(
         'breezy', base_url, cache_directory, timeout=timeout,
