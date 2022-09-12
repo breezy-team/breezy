@@ -32,15 +32,10 @@ from breezy import (
     branch as _mod_branch,
     hooks,
     revision as _mod_revision,
-    transport as _mod_transport,
-    trace,
     ui,
     urlutils,
     )
 from breezy.transport import local
-from breezy.push import (
-    PushResult,
-    )
 
 from breezy.i18n import gettext
 """)
@@ -48,6 +43,8 @@ from breezy.i18n import gettext
 from . import (
     errors,
     registry,
+    trace,
+    transport as _mod_transport,
     )
 
 
@@ -448,7 +445,7 @@ class ControlDir(ControlComponent):
                     remember=False, create_prefix=False, lossy=False,
                     tag_selector=None, name=None):
         """Push the source branch into this ControlDir."""
-        br_to = None
+        from .push import PushResult
         # If we can open a branch, use its direct repository, otherwise see
         # if there is a repository without a branch.
         try:
@@ -456,6 +453,7 @@ class ControlDir(ControlComponent):
         except errors.NotBranchError:
             # Didn't find a branch, can we find a repository?
             repository_to = self.find_repository()
+            br_to = None
         else:
             # Found a branch, so we must have found a repository
             repository_to = br_to.repository
@@ -501,12 +499,18 @@ class ControlDir(ControlComponent):
                     tag_selector=tag_selector)
                 push_result.workingtree_updated = None  # Not applicable
             else:
-                with tree_to.lock_write():
+                if br_to.name == tree_to.branch.name:
+                    with tree_to.lock_write():
+                        push_result.branch_push_result = source.push(
+                            tree_to.branch, overwrite, stop_revision=revision_id,
+                            lossy=lossy, tag_selector=tag_selector)
+                        tree_to.update()
+                    push_result.workingtree_updated = True
+                else:
                     push_result.branch_push_result = source.push(
-                        tree_to.branch, overwrite, stop_revision=revision_id,
+                        br_to, overwrite, stop_revision=revision_id,
                         lossy=lossy, tag_selector=tag_selector)
-                    tree_to.update()
-                push_result.workingtree_updated = True
+                    push_result.workingtree_updated = None  # Not applicable
             push_result.old_revno = push_result.branch_push_result.old_revno
             push_result.old_revid = push_result.branch_push_result.old_revid
             push_result.target_branch = \
