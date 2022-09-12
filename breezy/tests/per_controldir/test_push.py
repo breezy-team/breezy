@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for bzrdir implementations - push."""
+"""Tests for controldir implementations - push."""
 
+from ...controldir import NoColocatedBranchSupport
 from ...errors import (
     LossyPushToSameVCS,
     TagsNotSupported,
@@ -45,6 +46,18 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(tree.branch, result.source_branch)
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
         self.assertEqual(dir.open_branch().base,
+                         tree.branch.get_push_location())
+
+    def test_push_to_colocated(self):
+        tree, rev_1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
+        try:
+            result = dir.push_branch(tree.branch, name='colo')
+        except NoColocatedBranchSupport:
+            raise TestNotApplicable('no colocated branch support')
+        self.assertEqual(tree.branch, result.source_branch)
+        self.assertEqual(dir.open_branch(name='colo').base, result.target_branch.base)
+        self.assertEqual(dir.open_branch(name='colo').base,
                          tree.branch.get_push_location())
 
     def test_push_no_such_revision(self):

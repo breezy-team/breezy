@@ -446,13 +446,13 @@ class ControlDir(ControlComponent):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    tag_selector=None):
+                    tag_selector=None, name=None):
         """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
         # if there is a repository without a branch.
         try:
-            br_to = self.open_branch()
+            br_to = self.open_branch(name=name)
         except errors.NotBranchError:
             # Didn't find a branch, can we find a repository?
             repository_to = self.find_repository()
@@ -472,7 +472,7 @@ class ControlDir(ControlComponent):
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.sprout(
                 self, revision_id=revision_id, lossy=lossy,
-                tag_selector=tag_selector)
+                tag_selector=tag_selector, name=name)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
