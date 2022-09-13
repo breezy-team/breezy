@@ -1701,6 +1701,8 @@ if __name__ == "__main__":
     import asyncio
     import sys
 
+    from breezy.plugin import load_plugins
+    load_plugins()
     from breezy.commands import exception_to_return_code
 
     sys.exit(exception_to_return_code(asyncio.run, main()))
