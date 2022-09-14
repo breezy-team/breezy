@@ -491,7 +491,7 @@ class GitLab(Forge):
             mr = self._get_merge_request(target_project, merge_id)
             raise MergeProposalExists(
                 source_url, GitLabMergeProposal(self, mr))
-        raise MergeRequestConflict(reason)
+        raise MergeRequestConflict(message)
 
     def get_current_user(self):
         if not self._current_user:
