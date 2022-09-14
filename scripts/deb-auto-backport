@@ -39,6 +39,7 @@ from breezy.workingtree import WorkingTree
 
 from debian.changelog import format_date, get_maintainer
 from debmutate.changelog import ChangelogEditor, changeblock_add_line
+from debmutate.reformatting import GeneratedFile
 
 
 DEFAULT_BUILDER = "sbuild --no-clean-source"
@@ -46,6 +47,15 @@ DEFAULT_BUILDER = "sbuild --no-clean-source"
 
 class MissingChangelogFile(Exception):
     """The debian/changelog file is missing"""
+
+
+class ChangelogGeneratedFile(Exception):
+    """The changelog file is generated."""
+
+    def __init__(self, path, template_path, template_type):
+        self.path = path
+        self.template_path = template_path
+        self.template_type = template_type
 
 
 def debsign(path, keyid=None):
@@ -132,6 +142,8 @@ def backport_package(local_tree, subpath, target_release, author=None):
             )
     except FileNotFoundError:
         raise MissingChangelogFile()
+    except GeneratedFile as e:
+        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type)
 
     debcommit(local_tree, subpath=subpath)
 
@@ -201,6 +213,13 @@ async def main():
         )
     except MissingChangelogFile:
         report_fatal("missing-changelog", "Missing changelog file")
+        return 1
+    except ChangelogGeneratedFile as e:
+        report_fatal(
+            "changelog-generated-file",
+            "changelog file can't be updated because it is generated. "
+            "(template type: %s, path: %s)" % (
+                e.template_type, e.template_path))
         return 1
 
     if args.build:
