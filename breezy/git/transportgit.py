@@ -768,8 +768,14 @@ class TransportObjectStore(PackBasedObjectStore):
         f.seek(0)
         p = Pack('', resolve_ext_ref=self.get_raw)
         p._data = PackData.from_file(f, len(f.getvalue()))
+        if hasattr(p, 'sorted_entries'):
+            sorted_entries = p.sorted_entries()
+        else:  # dulwich < 0.20.47
+            p._data.pack = p
+            sorted_entries = p.data.sorted_entries
+
         p._idx_load = lambda: MemoryPackIndex(
-            p.sorted_entries(),
+            sorted_entries,
             p.data.get_stored_checksum())
 
         pack_sha = p.index.objects_sha1()
