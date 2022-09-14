@@ -33,6 +33,8 @@ from debmutate.control import ControlEditor
 from debmutate.deb822 import ChangeConflict
 from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
 
+from breezy.plugins.debian.info import versions_dict
+
 
 BRANCH_NAME = "orphan"
 QA_MAINTAINER = "Debian QA Group <packages@qa.debian.org>"
@@ -265,6 +267,7 @@ def report_fatal(code, description):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
+                'versions': versions_dict(),
                 'result_code': code,
                 'description': description}, f)
     logging.info('%s', description)
@@ -365,6 +368,7 @@ def main():
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'description': "Move package to QA team.",
+                'versions': versions_dict(),
                 'target-branch-url': result.new_vcs_url,
                 'context': result.json()}, f)
 

@@ -26,3 +26,16 @@ brz_commands = [
     "import_dsc",
     "bd_do",
     ]
+
+
+def versions_dict():
+    import breezy
+    import debian
+    import debmutate
+    return {
+        'python-debian': debian.__version__,
+        'debmutate': debmutate.version_string,
+        'breezy': breezy.version_string,
+        'breezy-debian': ".".join(
+            [str(v) for v in brz_plugin_version[:3]]),
+    }

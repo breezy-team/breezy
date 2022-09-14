@@ -33,6 +33,7 @@ from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
 
+from breezy.plugins.debian.info import versions_dict
 from breezy.plugins.debian.upstream import PackageVersionNotPresent
 from breezy.plugins.debian.import_dsc import (
     DistributionBranch,
@@ -192,6 +193,7 @@ def report_fatal(code, description):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
+                'versions': versions_dict(),
                 'result_code': code,
                 'description': description}, f)
     logging.fatal('%s', description)
@@ -236,6 +238,7 @@ async def main():
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'description': 'Import archive changes missing from the VCS.',
+                'versions': versions_dict(),
                 'commit-message': "Import missing uploads: %s." % (
                     ", ".join([str(v) for t, v, rs in ret])),
                 'context': {

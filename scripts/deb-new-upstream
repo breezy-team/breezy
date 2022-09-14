@@ -72,6 +72,7 @@ from breezy.transport import (
     get_transport,
     )
 from breezy.plugins.debian.config import UpstreamMetadataSyntaxError
+from breezy.plugins.debian.info import versions_dict
 from breezy.plugins.debian.util import (
     InconsistentSourceFormatError,
 )
@@ -1229,6 +1230,7 @@ def report_fatal(
                 'result_code': code,
                 'hint': hint,
                 'description': description,
+                'versions': versions_dict(),
                 'context': context}, f)
     logging.fatal('%s', description)
     if hint:
@@ -1635,6 +1637,7 @@ async def main():
                         'description': "Imported new upstream version %s" % (
                             result.new_upstream_version),
                         'context': svp_context,
+                        'versions': versions_dict(),
                         }, f)
             return 0
         else:
@@ -1694,6 +1697,7 @@ async def main():
                             result.new_upstream_version),
                         'commit-message': proposed_commit_message,
                         'context': svp_context,
+                        'versions': versions_dict(),
                         }, f)
 
 
