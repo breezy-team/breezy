@@ -14,7 +14,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""CVS working tree support for bzr.
+"""CVS working tree support.
 
 Currently limited to referencing tools for migration.
 """
@@ -55,7 +55,7 @@ class CVSDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise CVSUnsupportedError(self)
+        raise CVSUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there
