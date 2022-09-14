@@ -770,23 +770,31 @@ class TransportObjectStore(PackBasedObjectStore):
         :param path: Path to the pack file.
         """
         f.seek(0)
-        p = Pack('', resolve_ext_ref=self.get_raw)
-        p._data = PackData.from_file(f, len(f.getvalue()))
-        if hasattr(p, 'sorted_entries'):
-            sorted_entries = p.sorted_entries()
+        data = PackData.from_file(f, len(f.getvalue()))
+        if hasattr(Pack, 'sorted_entries'):
+            from dulwich.pack import _PackTupleIterable, PackInflater
+            sorted_entries = list(
+                data.sorted_entries(resolve_ext_ref=self.get_raw))
+            pack_sha = iter_sha1(entry[0] for entry in sorted_entries)
+            inflater = PackInflater.for_pack_data(
+                data, resolve_ext_ref=self.get_raw)
+            pack_tuples = _PackTupleIterable(lambda: iter(inflater), len(data))
         else:  # dulwich < 0.20.47
+            p = Pack('', resolve_ext_ref=self.get_raw)
+            p._data = data
             p._data.pack = p
-            sorted_entries = p.data.sorted_entries
+            sorted_entries = p.data.sorted_entries()
 
-        p._idx_load = lambda: MemoryPackIndex(
-            sorted_entries,
-            p.data.get_stored_checksum())
+            p._idx_load = lambda: MemoryPackIndex(
+                sorted_entries,
+                p.data.get_stored_checksum())
 
-        pack_sha = p.index.objects_sha1()
+            pack_sha = p.index.objects_sha1()
+            pack_tuples = p.pack_tuples()
 
         with self.pack_transport.open_write_stream(
                 "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
-            entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
+            entries, data_sum = write_pack_objects(datafile, pack_tuples)
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         with self.pack_transport.open_write_stream(
                 "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
