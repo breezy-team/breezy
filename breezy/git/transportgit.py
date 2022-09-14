@@ -635,8 +635,8 @@ class TransportObjectStore(PackBasedObjectStore):
                         warning('Unable to read pack file %s',
                                 self.pack_transport.abspath(pack_name))
                         continue
-                    # TODO(jelmer): Don't read entire file into memory?
-                    f = BytesIO(f.read())
+                    from tempfile import SpooledTemporaryFile
+                    f = SpooledTemporaryFile(f.read())
                     pd = PackData(pack_name, f)
                 else:
                     pd = PackData(
@@ -768,9 +768,9 @@ class TransportObjectStore(PackBasedObjectStore):
         f.seek(0)
         p = Pack('', resolve_ext_ref=self.get_raw)
         p._data = PackData.from_file(f, len(f.getvalue()))
-        p._data.pack = p
         p._idx_load = lambda: MemoryPackIndex(
-            p.data.sorted_entries(), p.data.get_stored_checksum())
+            p.sorted_entries(),
+            p.data.get_stored_checksum())
 
         pack_sha = p.index.objects_sha1()
 
