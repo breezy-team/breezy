@@ -105,9 +105,9 @@ class InterToGitRepository(InterRepository):
     def _get_repo_format_to_test():
         return None
 
-    def copy_content(self, revision_id=None, pb=None):
+    def copy_content(self, revision_id=None):
         """See InterRepository.copy_content."""
-        self.fetch(revision_id, pb, find_ghosts=False)
+        self.fetch(revision_id=revision_id, find_ghosts=False)
 
     def fetch_refs(self, update_refs, lossy, overwrite=False):
         """Fetch possibly roundtripped revisions into the target repository
@@ -314,7 +314,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 self.target_store.add_objects(object_generator)
                 return revidmap
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, revision_id=None, find_ghosts=False,
               fetch_spec=None, mapped_refs=None, lossy=False):
         if mapped_refs is not None:
             stop_revisions = mapped_refs
