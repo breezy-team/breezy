@@ -33,9 +33,8 @@ from ...tree import (
     TreeChange,
     )
 
-from breezy.bzr.inventorytree import InventoryTreeChange
-
 from breezy.tests.per_tree import TestCaseWithTree
+from breezy.tests.matchers import MatchesTreeChanges
 
 
 from ..features import (
@@ -143,68 +142,48 @@ class TestTransformPreview(TestCaseWithTree):
 
     def test_iter_changes(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        root = revision_tree.path2id('')
-        self.assertEqual([(revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-                           (root, root), ('a', 'a'), ('file', 'file'),
-                           (False, False), False)],
-                         list(preview_tree.iter_changes(revision_tree)))
-
-    def assertTreeChanges(self, expected, actual, tree):
-        # TODO(jelmer): Turn this into a matcher?
-        actual = list(actual)
-        if tree.supports_setting_file_ids():
-            self.assertEqual(expected, actual)
-        else:
-            expected = [
-                TreeChange(path=c.path, changed_content=c.changed_content,
-                           versioned=c.versioned, name=c.name,
-                           kind=c.kind, executable=c.executable,
-                           copied=c.copied) for c in expected]
-            actual = [
-                TreeChange(path=c.path, changed_content=c.changed_content,
-                           versioned=c.versioned, name=c.name,
-                           kind=c.kind, executable=c.executable,
-                           copied=c.copied) for c in actual]
-            self.assertEqual(expected, actual)
+        self.assertThat(
+            preview_tree.iter_changes(revision_tree),
+            MatchesTreeChanges(
+                revision_tree, preview_tree,
+                [(('a', 'a'), True, (True, True), ('a', 'a'), ('file', 'file'),
+                  (False, False), False)]))
 
     def test_include_unchanged_succeeds(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             include_unchanged=True)
 
-        root_id = revision_tree.path2id('')
-        root_entry = InventoryTreeChange(
-            root_id, ('', ''), False, (True, True), (None, None),
+        root_entry = TreeChange(
+            ('', ''), False, (True, True),
             ('', ''), ('directory', 'directory'), (False, False), False)
-        a_entry = InventoryTreeChange(
-            revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-            (root_id, root_id), ('a', 'a'), ('file', 'file'),
+        a_entry = TreeChange(
+            ('a', 'a'), True, (True, True),
+            ('a', 'a'), ('file', 'file'),
             (False, False), False)
 
-        self.assertTreeChanges([root_entry, a_entry], changes, preview_tree)
+        self.assertThat(changes, MatchesTreeChanges(revision_tree, preview_tree, [root_entry, a_entry]))
 
     def test_specific_files(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             specific_files=[''])
-        root_id = revision_tree.path2id('')
-        a_entry = (revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-                   (root_id, root_id), ('a', 'a'), ('file', 'file'),
+        a_entry = (('a', 'a'), True, (True, True),
+                   ('a', 'a'), ('file', 'file'),
                    (False, False), False)
 
-        self.assertEqual([a_entry], list(changes))
+        self.assertThat(changes, MatchesTreeChanges(revision_tree, preview_tree, [a_entry]))
 
     def test_want_unversioned(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             want_unversioned=True)
-        root_id = revision_tree.path2id('')
-        a_entry = InventoryTreeChange(
-            revision_tree.path2id('a'), ('a', 'a'), True, (True, True),
-            (root_id, root_id), ('a', 'a'), ('file', 'file'),
+        a_entry = TreeChange(
+            ('a', 'a'), True, (True, True),
+            ('a', 'a'), ('file', 'file'),
             (False, False), False)
 
-        self.assertEqual([a_entry], list(changes))
+        self.assertThat(changes, MatchesTreeChanges(revision_tree, preview_tree, [a_entry]))
 
     def test_ignore_extra_trees_no_specific_files(self):
         # extra_trees is harmless without specific_files, so we'll silently
@@ -286,7 +265,7 @@ class TestTransformPreview(TestCaseWithTree):
                 'format does not support setting file ids')
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c'])
-        tree.add(['a', 'b', 'c'], [b'a-id', b'b-id', b'c-id'])
+        tree.add(['a', 'b', 'c'], ids=[b'a-id', b'b-id', b'c-id'])
         preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.unversion_file(preview.trans_id_file_id(b'b-id'))

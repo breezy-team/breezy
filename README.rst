@@ -54,9 +54,8 @@ like to offer suggestions or feedback, please get in touch with us:
 
   Please mention that you are using Breezy rather than Bazaar.
 
-* Talk to us in irc://irc.freenode.net/bzr
-
-  Please mention that you are using Breezy rather than Bazaar.
+* Talk to us in irc://irc.oftc.net/breezy or
+  `#breezy:matrix.org <https://matrix.to/#/#breezy:matrix.org>`_.
 
 Our mission is to make a version control tool that developers LOVE to use
 and that casual contributors feel confident with. Please let us know how

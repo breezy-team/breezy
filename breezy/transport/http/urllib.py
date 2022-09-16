@@ -35,19 +35,11 @@ import time
 import urllib
 import weakref
 
-try:
-    import http.client as http_client
-except ImportError:
-    import httplib as http_client
-try:
-    import urllib.request as urllib_request
-except ImportError:  # python < 3
-    import urllib2 as urllib_request
-try:
-    from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
-except ImportError:
-    from urlparse import urljoin
-    from urllib import splitport, splittype, splithost, urlencode
+import http.client as http_client
+
+import urllib.request as urllib_request
+
+from urllib.parse import urljoin, urlencode, urlparse
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -65,7 +57,6 @@ from ... import (
     config,
     debug,
     errors,
-    lazy_import,
     osutils,
     trace,
     transport,
@@ -73,10 +64,11 @@ from ... import (
     urlutils,
 )
 from ...bzr.smart import medium
-from ...trace import mutter
+from ...trace import mutter, mutter_callsite
 from ...transport import (
     ConnectedTransport,
     UnusableRedirect,
+    NoSuchFile,
     )
 
 from . import default_user_agent, ssl
@@ -84,6 +76,14 @@ from . import default_user_agent, ssl
 
 checked_kerberos = False
 kerberos = None
+
+
+def splitport(host):
+    m = re.fullmatch('(.*):([0-9]*)', host, re.DOTALL)
+    if m:
+        host, port = m.groups()
+        return host, port or None
+    return host, None
 
 
 class addinfourl(urllib_request.addinfourl):
@@ -176,7 +176,7 @@ class Response(http_client.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301, 302, 303, 307, 308, 403, 404, 501]
+    _body_ignored_responses = [301, 302, 303, 307, 308, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -695,18 +695,12 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
         try:
             method = request.get_method()
             url = request.selector
-            if sys.version_info[:2] >= (3, 6):
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers, encode_chunked=False)
-            else:
-                connection._send_request(method, url,
-                                         # FIXME: implements 100-continue
-                                         # None, # We don't send the body yet
-                                         request.data,
-                                         headers)
+            connection._send_request(method, url,
+                                     # FIXME: implements 100-continue
+                                     # None, # We don't send the body yet
+                                     request.data,
+                                     headers,
+                                     encode_chunked=(headers.get('Transfer-Encoding') == 'chunked'))
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
@@ -1406,7 +1400,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         if kerberos is None and not checked_kerberos:
             try:
                 import kerberos
-            except ImportError:
+            except ModuleNotFoundError:
                 kerberos = None
             checked_kerberos = True
         if kerberos is None:
@@ -1553,9 +1547,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
-        selector = request.selector
-        url_scheme, url_selector = splittype(selector)
-        sel_host, uri = splithost(url_selector)
+        uri = urlparse(request.selector).path
 
         A1 = ('%s:%s:%s' %
               (auth['user'], auth['realm'], auth['password'])).encode('utf-8')
@@ -1911,6 +1903,8 @@ class HttpTransport(ConnectedTransport):
                     return self.data.decode()
 
             def read(self, amt=None):
+                if amt is None and 'evil' in debug.debug_flags:
+                    mutter_callsite(4, "reading full response.")
                 return self._actual.read(amt)
 
             def readlines(self):
@@ -1968,7 +1962,7 @@ class HttpTransport(ConnectedTransport):
         response = self.request('GET', abspath, headers=headers)
 
         if response.status == 404:  # not found
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         elif response.status == 416:
             # We don't know which, but one of the ranges we specified was
             # wrong.
@@ -2454,7 +2448,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         resp = self.request('OPTIONS', abspath)
         if resp.status == 404:
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if resp.status in (403, 405):
             raise errors.InvalidHttpResponse(
                 abspath,

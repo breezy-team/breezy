@@ -23,6 +23,7 @@ from io import BytesIO
 from .. import (
     errors,
     trace,
+    transport as _mod_transport,
     )
 
 
@@ -88,6 +89,6 @@ class UnpeelMap(object):
         m = UnpeelMap()
         try:
             m.load(repository.control_transport.get("git-unpeel-map"))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             pass
         return m

@@ -46,8 +46,6 @@ from breezy import (
 
 from .hooks import Hooks
 from .i18n import gettext
-# Compatibility - Option used to be in commands.
-from .option import Option
 from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
 
@@ -708,7 +706,7 @@ class Command(object):
         """Return dict of valid options for this command.
 
         Maps from long option name to option object."""
-        r = Option.STD_OPTIONS.copy()
+        r = option.Option.STD_OPTIONS.copy()
         std_names = set(r)
         for o in self.takes_options:
             if isinstance(o, str):
@@ -1054,7 +1052,7 @@ def get_alias(cmd, config=None):
         import breezy.config
         config = breezy.config.GlobalConfig()
     alias = config.get_alias(cmd)
-    if (alias):
+    if alias:
         return cmdline.split(alias)
     return None
 

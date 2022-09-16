@@ -54,7 +54,7 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise MonotoneUnsupportedError(self)
+        raise MonotoneUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there

@@ -32,7 +32,7 @@ import os
 import stat
 import time
 
-from . import (
+from .. import (
     atomicfile,
     errors,
     filters as _mod_filters,

@@ -35,6 +35,10 @@ class LocationHooks(Hooks):
             'rewrite_url',
             "Possibly rewrite a URL. Called with a URL to rewrite and the "
             "purpose of the URL.", (3, 0))
+        self.add_hook(
+            'rewrite_location',
+            "Possibly rewrite a location. Called with a location string to "
+            "rewrite and the purpose of the URL.", (3, 2))
 
 
 hooks = LocationHooks()
@@ -128,6 +132,9 @@ def location_to_url(location, purpose=None):
     """
     if not isinstance(location, str):
         raise AssertionError("location not a byte or unicode string")
+
+    for hook in hooks['rewrite_location']:
+        location = hook(location, purpose=purpose)
 
     if location.startswith(':pserver:') or location.startswith(':extssh:'):
         return cvs_to_url(location)

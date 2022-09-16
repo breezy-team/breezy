@@ -21,10 +21,10 @@ https://www.breezy-vcs.org/developers/.
 
 Some particularly interesting things in breezy are:
 
- * breezy.initialize -- setup the library for use
- * breezy.plugin.load_plugins -- load all installed plugins
- * breezy.branch.Branch.open -- open a branch
- * breezy.workingtree.WorkingTree.open -- open a working tree
+* breezy.initialize -- setup the library for use
+* breezy.plugin.load_plugins -- load all installed plugins
+* breezy.branch.Branch.open -- open a branch
+* breezy.workingtree.WorkingTree.open -- open a working tree
 
 We hope you enjoy this library.
 """
@@ -51,7 +51,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 2, 3, 'dev', 0)
+version_info = (3, 3, 0, 'dev', 0)
 
 
 def _format_version_tuple(version_info):
@@ -114,6 +114,7 @@ def _format_version_tuple(version_info):
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
+_core_version_string = '.'.join(map(str, version_info[:3]))
 
 
 def _patch_filesystem_default_encoding(new_enc):

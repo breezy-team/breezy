@@ -138,7 +138,7 @@ class BzrUploader(object):
                 ).get('upload_revid_location')
             try:
                 self._uploaded_revid = self._up_get_bytes(revid_path)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 # We have not uploaded to here.
                 self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
@@ -148,7 +148,7 @@ class BzrUploader(object):
             try:
                 ignore_file_path = '.bzrignore-upload'
                 ignore_file = self.tree.get_file(ignore_file_path)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 ignored_patterns = []
             else:
                 ignored_patterns = ignores.parse_ignore_file(ignore_file)

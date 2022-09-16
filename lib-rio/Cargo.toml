@@ -1,0 +1,19 @@
+[package]
+name = "rio-py"
+version = "3.2.0"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+name = "rio"
+path = "pyrio.rs"
+
+[dependencies.pyo3]
+# Use pyo3 < 0.16, as that drop support for Python 3.6.
+version = ">=0.14,<0.16"
+
+[dependencies.lazy_static]
+version = "1.4.0"
+
+[dependencies.regex]
+version = "1.5.4"

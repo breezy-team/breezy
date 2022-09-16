@@ -29,7 +29,6 @@ from ...bzr.bzrdir import (
     )
 from ...errors import (
     IllegalPath,
-    NoSuchFile,
     )
 from ...repository import (
     InterRepository,
@@ -41,6 +40,9 @@ from ...bzr.serializer import (
 from ...tests import (
     TestCase,
     TestCaseWithTransport,
+    )
+from ...transport import (
+    NoSuchFile,
     )
 
 from . import xml4
@@ -138,7 +140,7 @@ class TestFormat7(TestCaseWithTransport):
         # disk.
         control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], [b'Foo:Bar'], ['file'])
+        tree.add(['foo'], ['file'], ids=[b'Foo:Bar'])
         tree.put_file_bytes_non_atomic('foo', b'content\n')
         try:
             tree.commit('first post', rev_id=b'first')

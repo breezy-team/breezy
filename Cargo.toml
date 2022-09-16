@@ -1,0 +1,18 @@
+[package]
+name = "breezy"
+version = "3.3.0"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+publish = false
+edition = "2018"
+default-run = "brz"
+
+[workspace]
+members = ["lib-rio"]
+
+[[bin]]
+name = "brz"
+path = "breezy/main.rs"
+
+[dependencies]
+pkg-version = "1.0.0"
+pyo3 = ">=0.14,<0.16"

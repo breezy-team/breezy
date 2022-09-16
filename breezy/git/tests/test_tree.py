@@ -34,6 +34,9 @@ from breezy.git.tree import (
 from breezy.git.mapping import default_mapping
 
 
+REG_MODE = stat.S_IFREG | 0o644
+
+
 class ChangesFromGitChangesTests(TestCase):
 
     def setUp(self):

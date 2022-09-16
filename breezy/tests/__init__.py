@@ -23,6 +23,7 @@
 
 import atexit
 import codecs
+import contextlib
 import copy
 import difflib
 import doctest
@@ -89,7 +90,7 @@ from breezy.bzr import (
     )
 try:
     import breezy.lsprof
-except ImportError:
+except ModuleNotFoundError:
     # lsprof not available
     pass
 from ..bzr.smart import client, request
@@ -1692,6 +1693,12 @@ class TestCase(testtools.TestCase):
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
+    @contextlib.contextmanager
+    def text_log_file(self, **kwargs):
+        stream = TextIOWrapper(self._log_file, encoding='utf-8', **kwargs)
+        yield stream
+        stream.detach()
+
     def _finishLogFile(self):
         """Flush and dereference the in-memory log for this testcase"""
         if trace._trace_file:
@@ -2238,7 +2245,7 @@ class TestCase(testtools.TestCase):
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
             self._add_subprocess_log(trace._get_brz_log_filename())
-            command = [sys.executable, bzr_path]
+            command = [bzr_path]
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
@@ -3051,7 +3058,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         try:
             mode = transport.stat(relpath).st_mode
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.fail("path %s is not a directory; no such file"
                       % (relpath))
         if not stat.S_ISDIR(mode):
@@ -3536,7 +3543,7 @@ def workaround_zealous_crypto_random():
     try:
         from Crypto.Random import atfork
         atfork()
-    except ImportError:
+    except ModuleNotFoundError:
         pass
 
 
@@ -3580,7 +3587,7 @@ def fork_for_tests(suite):
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
-                except ImportError:
+                except ModuleNotFoundError:
                     pass
                 else:
                     coverage.process_startup()
@@ -3814,7 +3821,7 @@ def load_test_id_list(file_name):
         if e.errno != errno.ENOENT:
             raise
         else:
-            raise errors.NoSuchFile(file_name)
+            raise _mod_transport.NoSuchFile(file_name)
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -3981,8 +3988,6 @@ def _test_suite_testmod_names():
         'breezy.tests.per_workingtree',
         'breezy.tests.test__annotator',
         'breezy.tests.test__known_graph',
-        'breezy.tests.test__simple_set',
-        'breezy.tests.test__static_tuple',
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
@@ -4028,12 +4033,12 @@ def _test_suite_testmod_names():
         'breezy.tests.test_filters',
         'breezy.tests.test_filter_tree',
         'breezy.tests.test_foreign',
+        'breezy.tests.test_forge',
         'breezy.tests.test_generate_docs',
         'breezy.tests.test_globbing',
         'breezy.tests.test_gpg',
         'breezy.tests.test_graph',
         'breezy.tests.test_grep',
-        'breezy.tests.test_hashcache',
         'breezy.tests.test_help',
         'breezy.tests.test_hooks',
         'breezy.tests.test_http',
@@ -4060,7 +4065,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_memorybranch',
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
-        'breezy.tests.test_merge3',
         'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
@@ -4079,7 +4083,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_permissions',
         'breezy.tests.test_plugins',
         'breezy.tests.test_progress',
-        'breezy.tests.test_propose',
         'breezy.tests.test_pyutils',
         'breezy.tests.test_reconcile',
         'breezy.tests.test_reconfigure',
@@ -4089,8 +4092,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_revision',
         'breezy.tests.test_revisionspec',
         'breezy.tests.test_revisiontree',
-        'breezy.tests.test_rio',
-        'breezy.tests.test__rio',
         'breezy.tests.test_rules',
         'breezy.tests.test_url_policy_open',
         'breezy.tests.test_sampler',
@@ -4125,7 +4126,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_treebuilder',
         'breezy.tests.test_treeshape',
         'breezy.tests.test_tsort',
-        'breezy.tests.test_tuned_gzip',
         'breezy.tests.test_ui',
         'breezy.tests.test_uncommit',
         'breezy.tests.test_upgrade',
@@ -4156,7 +4156,6 @@ def _test_suite_modules_to_doctest():
         'breezy.decorators',
         'breezy.iterablefile',
         'breezy.lockdir',
-        'breezy.merge3',
         'breezy.option',
         'breezy.pyutils',
         'breezy.symbol_versioning',
@@ -4524,7 +4523,7 @@ try:
                 SubUnitBzrProtocolClientv1(self.stream))
             test.run(result)
             return result
-except ImportError:
+except ModuleNotFoundError:
     pass
 
 
@@ -4544,5 +4543,5 @@ try:
                                        stream=stream)
 
         run = SubunitTestRunner.run
-except ImportError:
+except ModuleNotFoundError:
     pass

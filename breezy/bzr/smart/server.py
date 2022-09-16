@@ -305,7 +305,7 @@ class SmartTCPServer(object):
         except self._socket_error:
             # ignore errors on close
             pass
-        if not self._stopped.isSet():
+        if not self._stopped.is_set():
             # server has not stopped (though it may be stopping)
             # its likely in accept(), so give it a connection
             temp_socket = socket.socket()

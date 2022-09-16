@@ -21,6 +21,7 @@ from breezy import (
     errors,
     tests,
     )
+from breezy.transport import FileExists, NoSuchFile
 from breezy.bzr import (
     remote,
     )
@@ -34,7 +35,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         tree.commit('a commit')
         source = tree.branch
         target_transport = self.get_transport('subdir').clone('target')
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(NoSuchFile,
                           tree.branch.create_clone_on_transport, target_transport)
         self.assertFalse(self.get_transport('.').has('subdir'))
 
@@ -55,7 +56,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         source = tree.branch
         target_transport = self.get_transport('target')
         target_transport.create_prefix()
-        self.assertRaises(errors.FileExists,
+        self.assertRaises(FileExists,
                           tree.branch.create_clone_on_transport, target_transport)
         self.assertFalse(target_transport.has(".bzr"))
 

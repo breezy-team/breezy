@@ -21,7 +21,6 @@ from io import BytesIO
 from .. import (
     errors,
     osutils,
-    static_tuple,
     transport,
     )
 from ..workingtree import WorkingTree
@@ -32,6 +31,7 @@ from ..commands import (
 from ..option import Option
 from . import (
     btree_index,
+    static_tuple,
     )
 
 

@@ -99,7 +99,7 @@ def hook(config, tree_delta, future_tree):
     """
     try:
         from flake8.main import application
-    except ImportError as e:
+    except ModuleNotFoundError as e:
         raise DependencyNotPresent('flake8', e)
     import tempfile
 

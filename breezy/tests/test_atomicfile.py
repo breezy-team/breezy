@@ -72,7 +72,8 @@ class TestAtomicFile(TestCaseInTempDir):
         f.write(b'foo\n')
         f.commit()
 
-        contents = open('test', 'rb').read()
+        with open('test', 'rb') as f:
+            contents = f.read()
         if sys.platform == 'win32':
             self.assertEqual(b'foo\r\n', contents)
         else:

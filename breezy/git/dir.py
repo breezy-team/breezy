@@ -18,6 +18,12 @@
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
 import contextlib
+import os
+
+try:
+    from dulwich.refs import SymrefLoop
+except ImportError:
+    SymrefLoop = KeyError
 
 from .. import (
     branch as _mod_branch,
@@ -29,6 +35,8 @@ from .. import (
 from ..transport import (
     do_catching_redirections,
     get_transport_from_path,
+    FileExists,
+    NoSuchFile,
     )
 
 from ..controldir import (
@@ -463,10 +471,10 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         try:
             transport = do_catching_redirections(
                 make_directory, transport, redirected)
-        except brz_errors.FileExists:
+        except FileExists:
             if not use_existing_dir:
                 raise
-        except brz_errors.NoSuchFile:
+        except NoSuchFile:
             if not create_prefix:
                 raise
             transport.create_prefix()
@@ -585,7 +593,10 @@ class LocalGitDir(GitDir):
 
     def get_branch_reference(self, name=None):
         ref = self._get_selected_ref(name)
-        target_ref = self._get_symref(ref)
+        try:
+            target_ref = self._get_symref(ref)
+        except SymrefLoop:
+            raise BranchReferenceLoop(self)
         if target_ref is not None:
             from .refs import ref_to_branch_name
             try:
@@ -600,7 +611,7 @@ class LocalGitDir(GitDir):
                     params = {}
             try:
                 commondir = self.control_transport.get_bytes('commondir')
-            except brz_errors.NoSuchFile:
+            except NoSuchFile:
                 base_url = self.user_url.rstrip('/')
             else:
                 base_url = urlutils.local_path_to_url(
@@ -646,10 +657,8 @@ class LocalGitDir(GitDir):
                 self.root_transport.base, controldir=self)
         try:
             ref_chain, unused_sha = self._git.refs.follow(ref)
-        except KeyError as e:
-            raise brz_errors.NotBranchError(
-                self.root_transport.base, controldir=self,
-                detail='intermediate ref %s missing' % e.args[0])
+        except SymrefLoop as e:
+            raise BranchReferenceLoop(self)
         if ref_chain[-1] == b'HEAD':
             controldir = self
         else:
@@ -805,9 +814,9 @@ class LocalGitDir(GitDir):
     def _find_commondir(self):
         try:
             commondir = self.control_transport.get_bytes('commondir')
-        except brz_errors.NoSuchFile:
+        except NoSuchFile:
             return self
         else:
-            commondir = commondir.rstrip(b'/.git/').decode(osutils._fs_enc)
+            commondir = os.fsdecode(commondir.rstrip(b'/.git/'))
             return ControlDir.open_from_transport(
                 get_transport_from_path(commondir))

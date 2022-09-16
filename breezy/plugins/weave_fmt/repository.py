@@ -43,10 +43,11 @@ from ... import (
     lockdir,
     osutils,
     trace,
-    tuned_gzip,
+    transport as _mod_transport,
     urlutils,
     )
 from ...bzr import (
+    tuned_gzip,
     versionedfile,
     weave,
     weavefile,
@@ -648,14 +649,14 @@ class TextVersionedFiles(VersionedFiles):
         try:
             text = self._transport.get_bytes(path)
             compressed = self._compressed
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             if self._compressed:
                 # try without the .gz
                 path = path[:-3]
                 try:
                     text = self._transport.get_bytes(path)
                     compressed = False
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     return None
             else:
                 return None

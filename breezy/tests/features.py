@@ -241,7 +241,7 @@ class _HTTPSServerFeature(Feature):
         try:
             import ssl  # noqa: F401
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
     def feature_name(self):
@@ -267,7 +267,7 @@ class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 
     def _probe(self):
-        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
+        if sys.getfilesystemencoding().upper() in ('UTF-8', 'UTF8'):
             return True
         return False
 

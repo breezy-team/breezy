@@ -32,14 +32,14 @@ class TestInventoryAltered(TestCaseWithTransport):
     def test_inventory_altered_unchanged(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
-        tree.add('foo', b'foo-id')
+        tree.add('foo', ids=b'foo-id')
         with tree.preview_transform() as tt:
             self.assertEqual([], tt._inventory_altered())
 
     def test_inventory_altered_changed_parent_id(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
-        tree.add('foo', b'foo-id')
+        tree.add('foo', ids=b'foo-id')
         with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
             tt.version_file(tt.root, file_id=b'new-id')
@@ -51,7 +51,7 @@ class TestInventoryAltered(TestCaseWithTransport):
     def test_inventory_altered_noop_changed_parent_id(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
-        tree.add('foo', b'foo-id')
+        tree.add('foo', ids=b'foo-id')
         with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
             tt.version_file(tt.root, file_id=tree.path2id(''))
@@ -97,7 +97,7 @@ class TestBuildTree(TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/file', 'target/file'])
-        source.add('file', b'new-file')
+        source.add('file', ids=b'new-file')
         source.commit('added file')
         build_tree(source.basis_tree(), target)
         self.assertEqual(
@@ -116,7 +116,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         source = self.make_branch_and_tree('source')
         os.symlink('foo', 'source/symlink')
-        source.add('symlink', b'new-symlink')
+        source.add('symlink', ids=b'new-symlink')
         source.commit('added file')
         target = self.make_branch_and_tree('target')
         os.symlink('bar', 'target/symlink')
@@ -135,7 +135,7 @@ class TestBuildTree(TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/dir1/', 'source/dir1/file', 'target/dir1/'])
-        source.add(['dir1', 'dir1/file'], [b'new-dir1', b'new-file'])
+        source.add(['dir1', 'dir1/file'], ids=[b'new-dir1', b'new-file'])
         source.commit('added file')
         build_tree(source.basis_tree(), target)
         self.assertEqual([], target.conflicts())
@@ -179,7 +179,7 @@ class TestBuildTree(TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/name', 'target/name/'])
-        source.add('name', b'new-name')
+        source.add('name', ids=b'new-name')
         source.commit('added file')
         build_tree(source.basis_tree(), target)
         self.assertEqual(
@@ -220,7 +220,7 @@ class TestBuildTree(TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', b'A')])
         self.build_tree_contents([('source/file2', b'B')])
-        source.add(['file1', 'file2'], [b'file1-id', b'file2-id'])
+        source.add(['file1', 'file2'], ids=[b'file1-id', b'file2-id'])
         source.commit('commit files')
         source.lock_write()
         self.addCleanup(source.unlock)
@@ -276,7 +276,7 @@ class TestBuildTree(TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', b'')])
         self.build_tree_contents([('source/file2', b'')])
-        source.add(['file1', 'file2'], [b'file1-id', b'file2-id'])
+        source.add(['file1', 'file2'], ids=[b'file1-id', b'file2-id'])
         source.commit('commit files')
         os.unlink('source/file2')
         self.build_tree_contents([('source/file2/', b'C')])
@@ -327,7 +327,7 @@ class TestBuildTree(TestCaseWithTransport):
     def test_build_tree_accelerator_tree_moved(self):
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', b'A')])
-        source.add(['file1'], [b'file1-id'])
+        source.add(['file1'], ids=[b'file1-id'])
         source.commit('commit files')
         source.rename_one('file1', 'file2')
         source.lock_read()
@@ -417,7 +417,7 @@ class TestBuildTree(TestCaseWithTransport):
             raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
-        source.add(['file', 'FILE'], [b'lower-id', b'upper-id'])
+        source.add(['file', 'FILE'], ids=[b'lower-id', b'upper-id'])
         source.commit('added files')
         # Don't try this at home, kids!
         # Force the tree to report that it is case insensitive
@@ -431,7 +431,7 @@ class TestBuildTree(TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file1', 'source/dir/', 'source/dir/file2'])
         source.add(['file1', 'dir', 'dir/file2'],
-                   [b'file1-id', b'dir-id', b'file2-id'])
+                   ids=[b'file1-id', b'dir-id', b'file2-id'])
         source.commit('new files')
         target = self.make_branch_and_tree('target')
         target.lock_write()

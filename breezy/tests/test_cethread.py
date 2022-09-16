@@ -83,7 +83,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         self.assertIs(in_thread, tt.sync_event)
         control.set()
         self.assertRaises(MyException, tt.join)
-        self.assertEqual(True, tt.sync_event.isSet())
+        self.assertEqual(True, tt.sync_event.is_set())
 
     def test_switch_and_set(self):
         """Caller can precisely control a thread."""
@@ -160,4 +160,4 @@ class TestCatchingExceptionThread(tests.TestCase):
         tt.step1.wait()
         self.assertRaises(MyException, tt.pending_exception)
         self.assertIs(tt.step1, tt.sync_event)
-        self.assertTrue(tt.step1.isSet())
+        self.assertTrue(tt.step1.is_set())

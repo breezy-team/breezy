@@ -40,11 +40,11 @@ class ReSign(tests.TestCaseInTempDir):
 
     def setup_tree(self):
         wt = ControlDir.create_standalone_workingtree('.')
-        wt.commit("base A", allow_pointless=True, rev_id=b'A')
-        wt.commit("base B", allow_pointless=True, rev_id=b'B')
-        wt.commit("base C", allow_pointless=True, rev_id=b'C')
+        a = wt.commit("base A", allow_pointless=True)
+        b = wt.commit("base B", allow_pointless=True)
+        c = wt.commit("base C", allow_pointless=True)
 
-        return wt
+        return wt, [a, b, c]
 
     def assertEqualSignature(self, repo, revision_id):
         """Assert a signature is stored correctly in repository."""
@@ -56,46 +56,46 @@ class ReSign(tests.TestCaseInTempDir):
 
     def test_resign(self):
         # Test re signing of data.
-        wt = self.setup_tree()
+        wt, [a, b, c] = self.setup_tree()
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign -r revid:A')
+        self.run_bzr('re-sign -r revid:%s' % a.decode('utf-8'))
 
-        self.assertEqualSignature(repo, b'A')
+        self.assertEqualSignature(repo, a)
 
-        self.run_bzr('re-sign B')
-        self.assertEqualSignature(repo, b'B')
+        self.run_bzr('re-sign %s' % b.decode('utf-8'))
+        self.assertEqualSignature(repo, b)
 
     def test_resign_range(self):
-        wt = self.setup_tree()
+        wt, [a, b, c] = self.setup_tree()
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
         self.run_bzr('re-sign -r 1..')
-        self.assertEqualSignature(repo, b'A')
-        self.assertEqualSignature(repo, b'B')
-        self.assertEqualSignature(repo, b'C')
+        self.assertEqualSignature(repo, a)
+        self.assertEqualSignature(repo, b)
+        self.assertEqualSignature(repo, c)
 
     def test_resign_multiple(self):
-        wt = self.setup_tree()
+        wt, rs = self.setup_tree()
         repo = wt.branch.repository
 
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign A B C')
-        self.assertEqualSignature(repo, b'A')
-        self.assertEqualSignature(repo, b'B')
-        self.assertEqualSignature(repo, b'C')
+        self.run_bzr('re-sign ' + ' '.join(
+            r.decode('utf-8') for r in rs))
+        for r in rs:
+            self.assertEqualSignature(repo, r)
 
     def test_resign_directory(self):
         """Test --directory option"""
         wt = ControlDir.create_standalone_workingtree('a')
-        wt.commit("base A", allow_pointless=True, rev_id=b'A')
-        wt.commit("base B", allow_pointless=True, rev_id=b'B')
-        wt.commit("base C", allow_pointless=True, rev_id=b'C')
+        a = wt.commit("base A", allow_pointless=True)
+        b = wt.commit("base B", allow_pointless=True)
+        c = wt.commit("base C", allow_pointless=True)
         repo = wt.branch.repository
         self.monkey_patch_gpg()
-        self.run_bzr('re-sign --directory=a -r revid:A')
-        self.assertEqualSignature(repo, b'A')
-        self.run_bzr('re-sign -d a B')
-        self.assertEqualSignature(repo, b'B')
+        self.run_bzr('re-sign --directory=a -r revid:' + a.decode('utf-8'))
+        self.assertEqualSignature(repo, a)
+        self.run_bzr('re-sign -d a %s' % b.decode('utf-8'))
+        self.assertEqualSignature(repo, b)

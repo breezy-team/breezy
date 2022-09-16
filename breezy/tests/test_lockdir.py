@@ -167,7 +167,7 @@ class TestLockDir(TestCaseWithTransport):
         self.addCleanup(lf1.unlock)
         info2 = lf2.peek()
         self.assertTrue(info2)
-        self.assertEqual(info2.get('nonce'), lf1.nonce)
+        self.assertEqual(info2.nonce, lf1.nonce)
 
     def test_30_lock_wait_fail(self):
         """Wait on a lock, then fail
@@ -429,7 +429,7 @@ class TestLockDir(TestCaseWithTransport):
         finally:
             ld1.unlock()
         self.assertEqual(info_list['user'], u'jrandom@example.com')
-        self.assertContainsRe(info_list['pid'], '^\\d+$')
+        self.assertIsInstance(info_list['pid'], int)
         self.assertContainsRe(info_list['time_ago'], '^\\d+ seconds? ago$')
 
     def test_lock_without_email(self):

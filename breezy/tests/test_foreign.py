@@ -29,6 +29,7 @@ from .. import (
     revision,
     tests,
     trace,
+    transport as _mod_transport,
     )
 from ..bzr import (
     branch as bzrbranch,
@@ -258,7 +259,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
                                          a_controldir=a_controldir,
                                          _repository=found_repository,
                                          name=name)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
 
@@ -326,7 +327,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):

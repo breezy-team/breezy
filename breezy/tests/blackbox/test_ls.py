@@ -94,7 +94,7 @@ class TestLS(tests.TestCaseWithTransport):
 
     def test_show_ids(self):
         self.build_tree(['subdir/'])
-        self.wt.add(['a', 'subdir'], [b'a-id', b'subdir-id'])
+        self.wt.add(['a', 'subdir'], ids=[b'a-id', b'subdir-id'])
         self.ls_equals(
             '.bzrignore                                         \n'
             'a                                                  a-id\n'

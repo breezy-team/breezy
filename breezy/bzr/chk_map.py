@@ -45,10 +45,9 @@ from .. import (
     lru_cache,
     osutils,
     registry,
-    static_tuple,
     trace,
     )
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple, expect_static_tuple
 
 # approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
@@ -741,7 +740,7 @@ class LeafNode(Node):
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.
         """
-        key = static_tuple.expect_static_tuple(key)
+        key = expect_static_tuple(key)
         return _deserialise_leaf_node(bytes, key,
                                       search_key_func=search_key_func)
 
@@ -1040,7 +1039,7 @@ class InternalNode(Node):
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
-        key = static_tuple.expect_static_tuple(key)
+        key = expect_static_tuple(key)
         return _deserialise_internal_node(bytes, key,
                                           search_key_func=search_key_func)
 

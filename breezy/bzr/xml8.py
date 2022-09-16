@@ -17,7 +17,6 @@
 from io import BytesIO
 
 from .. import (
-    cache_utf8,
     lazy_regex,
     revision as _mod_revision,
     trace,
@@ -182,7 +181,7 @@ class Serializer_v8(XMLSerializer):
                   encode_and_escape(rev.committer),
                   self.revision_format_num or self.format_num,
                   rev.inventory_sha1,
-                  encode_and_escape(cache_utf8.decode(rev.revision_id)),
+                  encode_and_escape(rev.revision_id.decode('utf-8')),
                   rev.timestamp))
         if rev.timezone is not None:
             el += b' timezone="%s"' % str(rev.timezone).encode('ascii')
@@ -195,7 +194,7 @@ class Serializer_v8(XMLSerializer):
                 _mod_revision.check_not_reserved_id(parent_id)
                 lines.append(
                     b'<revision_ref revision_id="%s" />\n'
-                    % encode_and_escape(cache_utf8.decode(parent_id)))
+                    % encode_and_escape(parent_id.decode('utf-8')))
             lines.append(b'</parents>\n')
         if rev.properties:
             preamble = b'<properties>'

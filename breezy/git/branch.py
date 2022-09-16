@@ -451,13 +451,15 @@ class GitBranch(ForeignBranch):
     def user_transport(self):
         return self._user_transport
 
-    def __init__(self, controldir, repository, ref, format):
+    def __init__(self, controldir, repository, ref: bytes, format):
         self.repository = repository
         self._format = format
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
+        if not isinstance(ref, bytes):
+            raise TypeError("ref is invalid: %r" % ref)
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone('.')
@@ -1059,7 +1061,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     self.target.set_reference_info(
                         tree.path2id(decode_git_path(path)), url.decode('utf-8'),
                         decode_git_path(path))
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             pass
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,

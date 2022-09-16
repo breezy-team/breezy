@@ -104,7 +104,7 @@ class TestWalkdirs(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        if tree.path2id('file') is None:
+        if not tree.supports_file_ids or tree.path2id('file') is None:
             raise tests.TestNotApplicable(
                 'Tree type cannot represent dangling ids.')
         expected = [('', ([

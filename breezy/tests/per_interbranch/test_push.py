@@ -35,7 +35,7 @@ from ...bzr import (
     branch as bzrbranch,
     vf_repository,
     )
-from ...branch import Branch
+from ...branch import Branch, BindingUnsupported
 from ...controldir import ControlDir
 from ...revision import NULL_REVISION
 from ...bzr.smart.repository import SmartServerRepositoryGetParentMap
@@ -110,7 +110,7 @@ class TestPush(TestCaseWithInterBranch):
         checkout = self.make_to_branch_and_tree('checkout')
         try:
             checkout.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         rev1 = checkout.commit('master')
@@ -134,7 +134,7 @@ class TestPush(TestCaseWithInterBranch):
         checkout = self.make_to_branch_and_tree('checkout')
         try:
             checkout.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
@@ -442,7 +442,7 @@ class TestPushHook(TestCaseWithInterBranch):
         local = self.make_from_branch('local')
         try:
             local.bind(target)
-        except errors.UpgradeRequired:
+        except BindingUnsupported:
             # We can't bind this format to itself- typically it is the local
             # branch that doesn't support binding.  As of May 2007
             # remotebranches can't be bound.  Let's instead make a new local

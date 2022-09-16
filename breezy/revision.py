@@ -17,6 +17,8 @@
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
+__docformat__ = "google"
+
 from typing import List, Optional, Dict
 
 from . import (
@@ -38,12 +40,10 @@ class Revision(object):
     written out.  This is not stored because you cannot write the hash
     into the file it describes.
 
-    After bzr 0.0.5 revisions are allowed to have multiple parents.
+    Attributes:
+      parent_ids: List of parent revision_ids
 
-    parent_ids
-        List of parent revision_ids
-
-    properties
+      properties:
         Dictionary of revision properties.  These are attached to the
         revision as extra metadata.  The name must be a single
         word; the value can be an arbitrary string.
@@ -74,6 +74,11 @@ class Revision(object):
 
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
+
+    def datetime(self):
+        import datetime
+        # TODO: Handle timezone.
+        return datetime.datetime.fromtimestamp(self.timestamp)
 
     def __eq__(self, other):
         if not isinstance(other, Revision):
@@ -206,7 +211,8 @@ def __get_closest(intersection):
 def is_reserved_id(revision_id: RevisionID) -> bool:
     """Determine whether a revision id is reserved
 
-    Returns: True if the revision is reserved, False otherwise
+    Returns:
+      True if the revision is reserved, False otherwise
     """
     return isinstance(revision_id, bytes) and revision_id.endswith(b':')
 

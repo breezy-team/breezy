@@ -27,6 +27,7 @@ from .. import (
     msgeditor,
     osutils,
     trace,
+    transport as _mod_transport,
     )
 from ..msgeditor import (
     make_commit_message_template_encoded,
@@ -251,7 +252,7 @@ if len(sys.argv) == 2:
             editor = 'rm'
         self.overrideEnv('BRZ_EDITOR', editor)
 
-        self.assertRaises((EnvironmentError, errors.NoSuchFile),
+        self.assertRaises((EnvironmentError, _mod_transport.NoSuchFile),
                           msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
