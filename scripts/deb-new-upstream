@@ -326,8 +326,6 @@ def is_big_version_jump(old_upstream_version, new_upstream_version):
 
 def refresh_quilt_patches(
     local_tree: Tree,
-    old_version: Version,
-    new_version: Version,
     committer: Optional[str] = None,
     subpath: str = "",
 ) -> None:
@@ -1173,7 +1171,8 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
 
 def update_packaging(
         tree: Tree, old_tree: Tree, subpath: str = "",
-        committer: Optional[str] = None) -> List[str]:
+        committer: Optional[str] = None,
+        refresh_patches: bool = True) -> List[str]:
     """Update packaging to take in changes between upstream trees.
 
     Args:
@@ -1197,7 +1196,8 @@ def update_packaging(
         if path == "autogen.sh":
             if override_dh_autoreconf_add_arguments(tree.basedir, [b"./autogen.sh"]):
                 logging.info(
-                    "Modifying debian/rules: " "Invoke autogen.sh from dh_autoreconf."
+                    "Modifying debian/rules: "
+                    "Invoke autogen.sh from dh_autoreconf."
                 )
                 with ChangelogEditor(
                         tree.abspath(os.path.join(subpath, 'debian/changelog'))) as cl:
@@ -1213,6 +1213,31 @@ def update_packaging(
         elif path.startswith("LICENSE") or path.startswith("COPYING"):
             notes.append(
                 "License file %s has changed." % os.path.join(subpath, path))
+
+    patch_series_path = os.path.join(subpath, "debian/patches/series")
+    if refresh_patches and tree.has_filename(patch_series_path):
+        logging.info("Refresh quilt patches.")
+        try:
+            refresh_quilt_patches(
+                tree,
+                committer=committer,
+                subpath=subpath,
+            )
+        except QuiltError as e:
+            error_description = (
+                "An error (%d) occurred refreshing quilt patches: "
+                "%s%s" % (e.retcode, e.stderr, e.extra)
+            )
+            error_code = "quilt-refresh-error"
+            report_fatal(error_code, error_description)
+        except QuiltPatchPushFailure as e:
+            error_description = (
+                "An error occurred refreshing quilt patch %s: %s"
+                % (e.patch_name, e.actual_error.extra)
+            )
+            error_code = "quilt-refresh-error"
+            report_fatal(error_code, error_description)
+
     return notes
 
 
@@ -1651,38 +1676,12 @@ async def main():
                 old_tree = local_tree.branch.repository.revision_tree(
                     result.old_revision
                 )
-                notes = update_packaging(local_tree, old_tree, committer=committer)
+                notes = update_packaging(
+                    local_tree, old_tree, committer=committer,
+                    refresh_patches=args.refresh_patches)
                 svp_context["notes"] = notes
                 for n in notes:
                     logging.info("%s", n)
-
-            patch_series_path = os.path.join(subpath, "debian/patches/series")
-            if args.refresh_patches and local_tree.has_filename(patch_series_path):
-                logging.info("Refresh quilt patches.")
-                try:
-                    refresh_quilt_patches(
-                        local_tree,
-                        old_version=result.old_upstream_version,
-                        new_version=result.new_upstream_version,
-                        committer=committer,
-                        subpath=subpath,
-                    )
-                except QuiltError as e:
-                    error_description = (
-                        "An error (%d) occurred refreshing quilt patches: "
-                        "%s%s" % (e.retcode, e.stderr, e.extra)
-                    )
-                    error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description)
-                    return 1
-                except QuiltPatchPushFailure as e:
-                    error_description = (
-                        "An error occurred refreshing quilt patch %s: %s"
-                        % (e.patch_name, e.actual_error.extra)
-                    )
-                    error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description)
-                    return 1
 
             logging.info(
                 'Merge new upstream version %s', result.new_upstream_version)
