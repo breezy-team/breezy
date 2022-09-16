@@ -315,10 +315,8 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return revidmap
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              fetch_spec=None, mapped_refs=None, lossy=False):
-        if mapped_refs is not None:
-            stop_revisions = mapped_refs
-        elif revision_id is not None:
+              fetch_spec=None, lossy=False):
+        if revision_id is not None:
             stop_revisions = [(None, revision_id)]
         elif fetch_spec is not None:
             recipe = fetch_spec.get_recipe()
@@ -650,14 +648,13 @@ class InterGitGitRepository(InterFromGitRepository):
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
             return [sha1 for (sha1, bzr_revid) in new_refs.values()]
-        self.fetch_objects(determine_wants, lossy=lossy)
+        self.fetch_objects(determine_wants)
         for k, (git_sha, bzr_revid) in ref_changes.items():
             self.target._git.refs[k] = git_sha
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None,
-                      lossy=False):
+    def fetch_objects(self, determine_wants, limit=None, mapping=None):
         raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
@@ -665,10 +662,10 @@ class InterGitGitRepository(InterFromGitRepository):
             [sha for sha in shas if sha in self.target._git.object_store])
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, branches=None, limit=None,
+              fetch_spec=None, branches=None, limit=None,
               include_tags=False, lossy=False):
-        if mapping is None:
-            mapping = self.source.get_mapping()
+        if lossy:
+            raise LossyPushToSameVCS(self.source, self.target)
         if revision_id is not None:
             args = [revision_id]
         elif fetch_spec is not None:
@@ -688,7 +685,7 @@ class InterGitGitRepository(InterFromGitRepository):
             determine_wants = self.get_determine_wants_revids(
                 args, include_tags=include_tags)
         wants_recorder = DetermineWantsRecorder(determine_wants)
-        self.fetch_objects(wants_recorder, mapping, limit=limit, lossy=lossy)
+        self.fetch_objects(wants_recorder, limit=limit)
         result = FetchResult()
         result.refs = wants_recorder.remote_refs
         return result
@@ -726,10 +723,7 @@ class InterGitGitRepository(InterFromGitRepository):
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None,
-                      lossy=False):
-        if lossy:
-            raise LossyPushToSameVCS(self.source, self.target)
+    def fetch_objects(self, determine_wants, limit=None, mapping=None):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         from .remote import DefaultProgressReporter
@@ -749,10 +743,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
 class InterRemoteGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None,
-                      lossy=False):
-        if lossy:
-            raise LossyPushToSameVCS(self.source, self.target)
+    def fetch_objects(self, determine_wants, limit=None, mapping=None):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         graphwalker = self.target._git.get_graph_walker()

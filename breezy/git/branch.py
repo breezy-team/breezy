@@ -1249,6 +1249,9 @@ class InterGitLocalGitBranch(InterGitBranch):
                 isinstance(target, LocalGitBranch))
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        if lossy:
+            raise errors.LossyPushToSameVCS(
+                source_branch=self.source, target_branch=self.target)
         interrepo = _mod_repository.InterRepository.get(
             self.source.repository, self.target.repository)
         if stop_revision is None:
@@ -1258,7 +1261,7 @@ class InterGitLocalGitBranch(InterGitBranch):
             fetch_tags = c.get('branch.fetch_tags')
         determine_wants = interrepo.get_determine_wants_revids(
             [stop_revision], include_tags=fetch_tags)
-        interrepo.fetch_objects(determine_wants, limit=limit, lossy=lossy)
+        interrepo.fetch_objects(determine_wants, limit=limit)
         return _mod_repository.FetchResult()
 
     def _basic_push(self, overwrite=False, stop_revision=None, tag_selector=None):
