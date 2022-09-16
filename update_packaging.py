@@ -55,8 +55,7 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
 
 def update_packaging(
         tree: Tree, old_tree: Tree, subpath: str = "",
-        committer: Optional[str] = None,
-        refresh_patches: bool = True) -> List[str]:
+        committer: Optional[str] = None) -> List[str]:
     """Update packaging to take in changes between upstream trees.
 
     Args:
@@ -101,3 +100,32 @@ def update_packaging(
                 "License file %s has changed." % os.path.join(subpath, path))
 
     return notes
+
+
+def main():
+    import argparse
+    from breezy.workingtree import WorkingTree
+    from breezy.revisionspec import RevisionSpec
+
+    parser = argparse.ArgumentParser('deb-update-packaging')
+    parser.add_argument(
+        '--since', type=str, help='Revision since when to update')
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+    wt, subpath = WorkingTree.open_containing('.')
+    if args.since:
+        old_tree = RevisionSpec.from_string(args.since).as_tree(args.since)
+    else:
+        old_tree = wt.basis_tree()
+
+    notes = update_packaging(wt, old_tree, subpath)
+    for note in notes:
+        logging.info('%s', note)
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())
