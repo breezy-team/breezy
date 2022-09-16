@@ -17,12 +17,10 @@
 
 """Support for merging new upstream versions."""
 
-from email.utils import parseaddr
 import errno
 import json
 import logging
 import os
-import re
 import socket
 import ssl
 import tempfile
@@ -33,14 +31,11 @@ from breezy.bzr import LineEndingError
 from breezy.git.remote import RemoteGitError
 from breezy.workingtree import WorkingTree
 
-from debian.changelog import Version, ChangelogParseError, get_maintainer
+from debian.changelog import Version, ChangelogParseError
 
 from breezy import errors, urlutils
 
 from breezy.branch import Branch
-from breezy.commit import (
-    PointlessCommit,
-)
 from breezy.controldir import ControlDir
 from breezy.errors import (
     InvalidNormalization,
@@ -154,34 +149,6 @@ from breezy.tree import Tree
 from breezy.plugins.debian.merge_upstream import get_upstream_branch_location
 
 
-__all__ = [
-    "PreviousVersionTagMissing",
-    "merge_upstream",
-    "InvalidFormatUpstreamVersion",
-    "DistCommandFailed",
-    "MissingChangelogError",
-    "MissingUpstreamTarball",
-    "NewUpstreamMissing",
-    "UpstreamBranchUnavailable",
-    "UnsupportedRepackFormat",
-    "UpstreamAlreadyMerged",
-    "UpstreamAlreadyImported",
-    "UpstreamMergeConflicted",
-    "NewUpstreamTarballMissing",
-    "QuiltError",
-    "NoUpstreamLocationsKnown",
-    "UpstreamVersionMissingInUpstreamBranch",
-    "UpstreamBranchUnknown",
-    "PackageIsNative",
-    "ChangelogParseError",
-    "UScanError",
-    "UpstreamMetadataSyntaxError",
-    "QuiltPatchPushFailure",
-    "WatchLineWithoutMatches",
-    "BigVersionJump",
-]
-
-
 class BigVersionJump(Exception):
     """There was a big version jump."""
 
@@ -203,12 +170,6 @@ class UpstreamAlreadyMerged(Exception):
 
     def __init__(self, upstream_version):
         self.version = upstream_version
-
-
-class QuiltPatchPushFailure(Exception):
-    def __init__(self, patch_name, actual_error):
-        self.patch_name = patch_name
-        self.actual_error = actual_error
 
 
 class UpstreamBranchLocationInvalid(Exception):
@@ -322,56 +283,6 @@ def is_big_version_jump(old_upstream_version, new_upstream_version):
     if old_major_version > 0 and new_major_version > 5*old_major_version:
         return True
     return False
-
-
-def refresh_quilt_patches(
-    local_tree: Tree,
-    committer: Optional[str] = None,
-    subpath: str = "",
-) -> None:
-    # TODO(jelmer):
-    # Find patch base branch.
-    #   If it exists, rebase it onto the new upstream.
-    #   And then run 'gbp pqm export' or similar
-    # If not:
-    #   Refresh patches against the new upstream revision
-    patches = QuiltPatches(local_tree, os.path.join(subpath, "debian/patches"))
-    patches.upgrade()
-    for name in patches.unapplied():
-        try:
-            patches.push(name, refresh=True)
-        except QuiltError as e:
-            lines = e.stdout.splitlines()
-            m = re.match(
-                "Patch debian/patches/(.*) can be reverse-applied",
-                lines[-1])
-            if m and getattr(patches, "delete", None):
-                assert m.group(1) == name
-                patches.delete(name, remove=True)
-                with ChangelogEditor(
-                        local_tree.abspath(
-                            os.path.join(subpath, 'debian/changelog'))
-                        ) as cl:
-                    cl.add_entry(["Drop patch %s, present upstream." % name])
-                debcommit(
-                    local_tree,
-                    committer=committer,
-                    subpath=subpath,
-                    paths=[
-                        "debian/patches/series",
-                        "debian/patches/" + name,
-                        "debian/changelog",
-                    ],
-                )
-            else:
-                raise QuiltPatchPushFailure(name, e)
-    patches.pop_all()
-    try:
-        local_tree.commit(
-            "Refresh patches.", committer=committer, allow_pointless=False
-        )
-    except PointlessCommit:
-        pass
 
 
 class ImportUpstreamResult(object):
@@ -1144,103 +1055,6 @@ def merge_upstream(  # noqa: C901
     )
 
 
-def override_dh_autoreconf_add_arguments(basedir: str, args):
-    from debmutate._rules import update_rules
-
-    # TODO(jelmer): Make sure dh-autoreconf is installed,
-    # or debhelper version is >= 10
-
-    def update_makefile(mf):
-        for rule in mf.iter_rules(b"override_dh_autoreconf"):
-            command = rule.commands()[0].split(b" ")
-            if command[0] != b"dh_autoreconf":
-                return
-            rule.lines = [rule.lines[0]]
-            command += args
-            break
-        else:
-            rule = mf.add_rule(b"override_dh_autoreconf")
-            command = [b"dh_autoreconf"] + args
-        rule.append_command(b" ".join(command))
-
-    return update_rules(
-        makefile_cb=update_makefile,
-        path=os.path.join(basedir, "debian", "rules")
-    )
-
-
-def update_packaging(
-        tree: Tree, old_tree: Tree, subpath: str = "",
-        committer: Optional[str] = None,
-        refresh_patches: bool = True) -> List[str]:
-    """Update packaging to take in changes between upstream trees.
-
-    Args:
-      tree: Current tree
-      old_tree: Old tree
-      committer: Optional committer to use for changes
-    """
-    if committer is None:
-        maintainer = get_maintainer()
-    else:
-        maintainer = parseaddr(committer)
-    notes = []
-    tree_delta = tree.changes_from(old_tree, specific_files=[subpath])
-    for delta in tree_delta.added:
-        path = delta.path[1]
-        if path is None:
-            continue
-        if not path.startswith(subpath):
-            continue
-        path = path[len(subpath):]
-        if path == "autogen.sh":
-            if override_dh_autoreconf_add_arguments(tree.basedir, [b"./autogen.sh"]):
-                logging.info(
-                    "Modifying debian/rules: "
-                    "Invoke autogen.sh from dh_autoreconf."
-                )
-                with ChangelogEditor(
-                        tree.abspath(os.path.join(subpath, 'debian/changelog'))) as cl:
-                    cl.add_entry(
-                        ["Invoke autogen.sh from dh_autoreconf."],
-                        maintainer=maintainer)
-                debcommit(
-                    tree,
-                    committer=committer,
-                    subpath=subpath,
-                    paths=["debian/changelog", "debian/rules"],
-                )
-        elif path.startswith("LICENSE") or path.startswith("COPYING"):
-            notes.append(
-                "License file %s has changed." % os.path.join(subpath, path))
-
-    patch_series_path = os.path.join(subpath, "debian/patches/series")
-    if refresh_patches and tree.has_filename(patch_series_path):
-        logging.info("Refresh quilt patches.")
-        try:
-            refresh_quilt_patches(
-                tree,
-                committer=committer,
-                subpath=subpath,
-            )
-        except QuiltError as e:
-            error_description = (
-                "An error (%d) occurred refreshing quilt patches: "
-                "%s%s" % (e.retcode, e.stderr, e.extra)
-            )
-            error_code = "quilt-refresh-error"
-            report_fatal(error_code, error_description)
-        except QuiltPatchPushFailure as e:
-            error_description = (
-                "An error occurred refreshing quilt patch %s: %s"
-                % (e.patch_name, e.actual_error.extra)
-            )
-            error_code = "quilt-refresh-error"
-            report_fatal(error_code, error_description)
-
-    return notes
-
-
 def report_fatal(
         code: str, description: str, upstream_version: Optional[str] = None,
         conflicts=None, hint: Optional[str] = None):
@@ -1673,15 +1487,48 @@ async def main():
             )
 
             if args.update_packaging:
+                from breezy.plugins.debian.update_packaging import (
+                    update_packaging,
+                )
                 old_tree = local_tree.branch.repository.revision_tree(
                     result.old_revision
                 )
                 notes = update_packaging(
-                    local_tree, old_tree, committer=committer,
-                    refresh_patches=args.refresh_patches)
+                    local_tree, old_tree, committer=committer)
                 svp_context["notes"] = notes
                 for n in notes:
                     logging.info("%s", n)
+
+            patch_series_path = os.path.join(subpath, "debian/patches/series")
+            if args.refresh_patches and local_tree.has_filename(patch_series_path):
+                from breezy.plugins.debian.quilt_refresh import (
+                    QuiltError,
+                    QuiltPatchPushFailure,
+                    refresh_quilt_patches,
+                )
+                logging.info("Refresh quilt patches.")
+                try:
+                    refresh_quilt_patches(
+                        local_tree,
+                        committer=committer,
+                        subpath=subpath,
+                    )
+                except QuiltError as e:
+                    error_description = (
+                        "An error (%d) occurred refreshing quilt patches: "
+                        "%s%s" % (e.retcode, e.stderr, e.extra)
+                    )
+                    error_code = "quilt-refresh-error"
+                    report_fatal(error_code, error_description)
+                    return 1
+                except QuiltPatchPushFailure as e:
+                    error_description = (
+                        "An error occurred refreshing quilt patch %s: %s"
+                        % (e.patch_name, e.actual_error.extra)
+                    )
+                    error_code = "quilt-refresh-error"
+                    report_fatal(error_code, error_description)
+                    return 1
 
             logging.info(
                 'Merge new upstream version %s', result.new_upstream_version)
