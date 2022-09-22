@@ -255,7 +255,7 @@ class cmd_zsh_completion(commands.Command):
     the completion key (usually tab).
 
     Commonly used like this:
-        eval "`brz zsh -completion`"
+        eval "`brz zsh-completion`"
     """
 
     takes_options = [
