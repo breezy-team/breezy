@@ -200,9 +200,9 @@ class _CoalescedOffset(object):
         self.length = length
         self.ranges = ranges
 
-    def __cmp__(self, other):
-        return cmp((self.start, self.length, self.ranges),
-                   (other.start, other.length, other.ranges))
+    def __lt__(self, other):
+        return ((self.start, self.length, self.ranges) <
+                (other.start, other.length, other.ranges))
 
     def __eq__(self, other):
         return ((self.start, self.length, self.ranges) ==
