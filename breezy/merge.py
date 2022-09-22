@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import contextlib
+import tempfile
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1644,7 +1645,7 @@ class Diff3Merger(Merge3Merger):
         """
         import breezy.patch
         base_path, other_path, this_path = paths
-        with osutils.TemporaryDirectory(prefix="bzr-") as temp_dir:
+        with tempfile.TemporaryDirectory(prefix="bzr-") as temp_dir:
             new_file = osutils.pathjoin(temp_dir, "new")
             this = self.dump_file(
                 temp_dir, "this", self.this_tree, this_path)
