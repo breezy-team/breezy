@@ -777,7 +777,7 @@ class DiffFromTool(DiffPath):
                  path_encoding='utf-8'):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        self._root = osutils.mkdtemp(prefix='brz-diff-')
+        self._root = tempfile.mkdtemp(prefix='brz-diff-')
 
     @classmethod
     def from_string(klass,
