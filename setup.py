@@ -37,7 +37,10 @@ for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
 
 
 from setuptools import setup
-from distutils.version import LooseVersion
+try:
+    from packaging.version import Version
+except ImportError:
+    from distutils.version import LooseVersion as Version
 from distutils.command.install import install
 from distutils.command.install_data import install_data
 from distutils.command.install_scripts import install_scripts
@@ -122,8 +125,8 @@ except ModuleNotFoundError:
     from distutils.command.build_ext import build_ext
 else:
     minimum_cython_version = '0.29'
-    cython_version_info = LooseVersion(cython_version)
-    if cython_version_info < LooseVersion(minimum_cython_version):
+    cython_version_info = Version(cython_version)
+    if cython_version_info < Version(minimum_cython_version):
         print("Version of Cython is too old. "
               "Current is %s, need at least %s."
               % (cython_version, minimum_cython_version))
