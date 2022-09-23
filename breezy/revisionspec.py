@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import List, Tuple, Type
 
 from breezy import (
     revision,
@@ -28,20 +29,6 @@ from . import (
     revision as _mod_revision,
     trace,
     )
-
-
-class InvalidRevisionSpec(errors.BzrError):
-
-    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch_url)s%(extra)s")
-
-    def __init__(self, spec, branch, extra=None):
-        errors.BzrError.__init__(self, branch=branch, spec=spec)
-        self.branch_url = getattr(branch, 'user_url', str(branch))
-        if extra:
-            self.extra = '\n' + str(extra)
-        else:
-            self.extra = ''
 
 
 class InvalidRevisionSpec(errors.BzrError):
@@ -156,7 +143,7 @@ class RevisionSpec(object):
     (Equivalent to the old Branch method get_revision_info())
     """
 
-    prefix = None
+    prefix: str
     dwim_catchable_exceptions = (InvalidRevisionSpec,)
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
@@ -300,12 +287,12 @@ class RevisionSpec_dwim(RevisionSpec):
     is called so the string describing the revision is kept here until needed.
     """
 
-    help_txt = None
+    help_txt: str
 
     _revno_regex = lazy_regex.lazy_compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
 
     # The revspecs to try
-    _possible_revspecs = []
+    _possible_revspecs: List[Type[registry._ObjectGetter]] = []
 
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)

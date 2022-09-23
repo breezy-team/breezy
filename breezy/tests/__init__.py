@@ -51,6 +51,7 @@ import tempfile
 import threading
 import time
 import traceback
+from typing import Set
 import unittest
 import warnings
 
@@ -860,7 +861,7 @@ def _clever_some_str(value):
             return '<unprintable %s object>' % type(value).__name__
 
 
-traceback._some_str = _clever_some_str
+traceback._some_str = _clever_some_str  # type: ignore
 
 
 # deprecated - use self.knownFailure(), or self.expectFailure.
@@ -3726,7 +3727,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags = set()
+selftest_debug_flags: Set[str] = set()
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,

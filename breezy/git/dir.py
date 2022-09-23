@@ -23,7 +23,7 @@ import os
 try:
     from dulwich.refs import SymrefLoop
 except ImportError:
-    SymrefLoop = KeyError
+    SymrefLoop = KeyError  # type: ignore
 
 from .. import (
     branch as _mod_branch,

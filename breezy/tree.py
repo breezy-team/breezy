@@ -17,6 +17,8 @@
 """Tree classes, representing directory at point in time.
 """
 
+from typing import List, Type
+
 from . import (
     errors,
     lock,
@@ -49,14 +51,14 @@ class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
     """
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     def __eq__(self, other):
         # yes, this is ugly, TODO: best practice __eq__ style.
         return (isinstance(other, TreeEntry)
                 and other.__class__ == self.__class__)
 
-    kind = None
+    kind: str
 
     def kind_character(self):
         return "???"
@@ -402,7 +404,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, path, branch=None):
+    def get_reference_revision(self, path):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
                                   % self.__class__.__name__)
@@ -756,7 +758,7 @@ class InterTree(InterObject):
     _matching_from_tree_format = None
     _matching_to_tree_format = None
 
-    _optimisers = []
+    _optimisers: List[Type[InterTree]] = []
 
     @classmethod
     def is_compatible(kls, source, target):

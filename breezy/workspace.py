@@ -52,7 +52,7 @@ def reset_tree(
     local_tree: WorkingTree,
     basis_tree: Optional[Tree] = None,
     subpath: str = "",
-    dirty_tracker: "DirtyTracker" = None,
+    dirty_tracker=None,
 ) -> None:
     """Reset a tree back to its basis tree.
 

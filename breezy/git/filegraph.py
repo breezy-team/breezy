@@ -26,7 +26,7 @@ from dulwich.errors import (
 try:
     from dulwich.objects import SubmoduleEncountered
 except ImportError:
-    class SubmoduleEncountered(Exception):
+    class SubmoduleEncountered(Exception):  # type: ignore
         pass
 from dulwich.object_store import (
     tree_lookup_path,

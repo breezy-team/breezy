@@ -27,6 +27,7 @@ import contextlib
 import itertools
 import re
 import sys
+from typing import List, Type
 
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
@@ -186,7 +187,7 @@ class InterTags(InterObject):
     """Operations between sets of tags.
     """
 
-    _optimisers = []
+    _optimisers: List[Type[InterTags]] = []
     """The available optimised InterTags types."""
 
     @classmethod

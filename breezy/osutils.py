@@ -21,6 +21,7 @@ import stat
 import sys
 import time
 import codecs
+from typing import Dict, List
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -805,7 +806,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
 
 
 # Cache of formatted offset strings
-_offset_cache = {}
+_offset_cache: Dict[int, str] = {}
 
 
 def format_date_with_offset_in_original_timezone(t, offset=0,
@@ -2027,7 +2028,7 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-_end_of_stream_errors = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
+_end_of_stream_errors: List[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
     _eno = getattr(errno, _eno, None)
     if _eno is not None:

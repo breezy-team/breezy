@@ -57,7 +57,6 @@ from breezy import (
     globbing,
     ignores,
     merge,
-    revision as _mod_revision,
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
@@ -73,6 +72,7 @@ from breezy.bzr import (
 from .. import (
     errors,
     osutils,
+    revision as _mod_revision,
     transport as _mod_transport,
     )
 from ..controldir import ControlDir

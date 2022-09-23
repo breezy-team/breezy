@@ -287,7 +287,7 @@ class TestTransportStore(TestCase):
         my_store.add(stream, b"foo", b'dsc')
         self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
 
-    def test_add_simple_suffixed(self):
+    def test_add_simple_suffixed_dir(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
         my_store.register_suffix('dsc')

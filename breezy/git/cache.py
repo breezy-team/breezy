@@ -67,28 +67,7 @@ def get_remote_cache_transport(repository):
     return get_transport_from_path(path)
 
 
-def check_pysqlite_version(sqlite3):
-    """Check that sqlite library is compatible.
-
-    """
-    if (sqlite3.sqlite_version_info[0] < 3
-            or (sqlite3.sqlite_version_info[0] == 3 and
-                sqlite3.sqlite_version_info[1] < 3)):
-        trace.warning('Needs at least sqlite 3.3.x')
-        raise bzr_errors.BzrError("incompatible sqlite library")
-
-
-try:
-    try:
-        import sqlite3
-        check_pysqlite_version(sqlite3)
-    except (ImportError, bzr_errors.BzrError):
-        from pysqlite2 import dbapi2 as sqlite3
-        check_pysqlite_version(sqlite3)
-except BaseException:
-    trace.warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
-                  'module')
-    raise bzr_errors.BzrError("missing sqlite library")
+import sqlite3
 
 
 _mapdbs = threading.local()

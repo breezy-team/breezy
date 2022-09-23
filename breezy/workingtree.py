@@ -33,6 +33,7 @@ import contextlib
 import errno
 import os
 import sys
+from typing import Optional
 
 import breezy
 
@@ -1326,7 +1327,7 @@ class WorkingTreeFormat(ControlComponentFormat):
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
 
-    supports_versioned_directories = None
+    supports_versioned_directories: bool
 
     supports_merge_modified = True
     """If this format supports storing merge modified hashes."""
@@ -1341,7 +1342,7 @@ class WorkingTreeFormat(ControlComponentFormat):
 
     supports_righthand_parent_id_as_ghost = True
 
-    ignore_filename = None
+    ignore_filename: Optional[str] = None
     """Name of file with ignore patterns, if any. """
 
     def initialize(self, controldir, revision_id=None, from_branch=None,

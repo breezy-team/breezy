@@ -82,7 +82,7 @@ import sys
 import configobj
 from io import BytesIO
 
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Dict
 
 import breezy
 from .lazy_import import lazy_import
@@ -3433,7 +3433,7 @@ class LocationMatcher(SectionMatcher):
 
 # FIXME: _shared_stores should be an attribute of a library state once a
 # library_state object is always available.
-_shared_stores = {}
+_shared_stores: Dict[str, Store] = {}
 _shared_stores_at_exit_installed = False
 
 

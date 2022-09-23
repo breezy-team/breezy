@@ -26,8 +26,6 @@ from breezy import (
     diff,
     email_message,
     gpg,
-    hooks,
-    registry,
     revision as _mod_revision,
     timestamp,
     trace,
@@ -42,6 +40,8 @@ from breezy.bzr.bundle import (
 """)
 from . import (
     errors,
+    hooks,
+    registry,
     )
 
 

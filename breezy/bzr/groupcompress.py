@@ -17,6 +17,7 @@
 """Core compression logic for compressing streams of related files."""
 
 import time
+from typing import Type
 import zlib
 
 from ..lazy_import import lazy_import
@@ -25,8 +26,6 @@ from breezy import (
     annotate,
     config,
     debug,
-    osutils,
-    trace,
     tsort,
     )
 from breezy.bzr import (
@@ -41,6 +40,8 @@ from breezy.i18n import gettext
 
 from .. import (
     errors,
+    osutils,
+    trace,
     )
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
@@ -2244,6 +2245,9 @@ class _GCGraphIndex(object):
             key_dependencies.add_references(node[1], node[3][0])
 
 
+GroupCompressor: Type[_CommonGroupCompressor]
+
+
 from ._groupcompress_py import (
     apply_delta,
     apply_delta_to_source,
@@ -2253,7 +2257,7 @@ from ._groupcompress_py import (
     LinesDeltaIndex,
     )
 try:
-    from ._groupcompress_pyx import (
+    from ._groupcompress_pyx import (  # type: ignore
         apply_delta,
         apply_delta_to_source,
         DeltaIndex,

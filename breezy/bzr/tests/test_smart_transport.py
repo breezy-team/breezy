@@ -26,6 +26,7 @@ import subprocess
 import sys
 import threading
 import time
+from typing import Type
 
 from testtools.matchers import DocTestMatches
 
@@ -1937,9 +1938,9 @@ class TestSmartProtocol(tests.TestCase):
     """
 
     request_encoder = None
-    response_decoder = None
-    server_protocol_class = None
-    client_protocol_class = None
+    response_decoder: Type[protocol._StatefulDecoder]
+    server_protocol_class: Type[protocol.SmartProtocolBase]
+    client_protocol_class: Type[protocol.SmartProtocolBase]
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """

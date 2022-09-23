@@ -429,7 +429,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertPublished(branch_tree.last_revision(),
                              trunk_tree.branch.base)
 
-    def test_push_new_branch_stacked_on(self):
+    def test_push_new_branch_stacked_on_can_use_dir_urls(self):
         """Pushing a new branch with --stacked-on can use directory URLs."""
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         class FooDirectory(object):

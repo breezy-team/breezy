@@ -100,8 +100,8 @@ class LaunchpadService(object):
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     LAUNCHPAD_INSTANCE = {}
-    for instance, domain in LAUNCHPAD_DOMAINS.items():
-        LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
+    for instance, _domain in LAUNCHPAD_DOMAINS.items():
+        LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % _domain
 
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 

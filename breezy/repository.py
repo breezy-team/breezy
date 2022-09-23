@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import List, Type
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import time
@@ -1276,61 +1278,61 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 
     # Set to True or False in derived classes. True indicates that the format
     # supports ghosts gracefully.
-    supports_ghosts = None
+    supports_ghosts: bool
     # Can this repository be given external locations to lookup additional
     # data. Set to True or False in derived classes.
-    supports_external_lookups = None
+    supports_external_lookups: bool
     # Does this format support CHK bytestring lookups. Set to True or False in
     # derived classes.
-    supports_chks = None
+    supports_chks: bool
     # Should fetch trigger a reconcile after the fetch? Only needed for
     # some repository formats that can suffer internal inconsistencies.
-    _fetch_reconcile = False
+    _fetch_reconcile: bool = False
     # Does this format have < O(tree_size) delta generation. Used to hint what
     # code path for commit, amongst other things.
-    fast_deltas = None
+    fast_deltas: bool
     # Does doing a pack operation compress data? Useful for the pack UI command
     # (so if there is one pack, the operation can still proceed because it may
     # help), and for fetching when data won't have come from the same
     # compressor.
-    pack_compresses = False
+    pack_compresses: bool = False
     # Does the repository storage understand references to trees?
-    supports_tree_reference = None
+    supports_tree_reference: bool
     # Is the format experimental ?
-    experimental = False
+    experimental: bool = False
     # Does this repository format escape funky characters, or does it create
     # files with similar names as the versioned files in its contents on disk
     # ?
-    supports_funky_characters = None
+    supports_funky_characters: bool
     # Does this repository format support leaving locks?
-    supports_leaving_lock = None
+    supports_leaving_lock: bool
     # Does this format support the full VersionedFiles interface?
-    supports_full_versioned_files = None
+    supports_full_versioned_files: bool
     # Does this format support signing revision signatures?
-    supports_revision_signatures = True
+    supports_revision_signatures: bool = True
     # Can the revision graph have incorrect parents?
-    revision_graph_can_have_wrong_parents = None
+    revision_graph_can_have_wrong_parents: bool
     # Does this format support setting revision ids?
-    supports_setting_revision_ids = True
+    supports_setting_revision_ids: bool = True
     # Does this format support rich root data?
-    rich_root_data = None
+    rich_root_data: bool
     # Does this format support explicitly versioned directories?
-    supports_versioned_directories = None
+    supports_versioned_directories: bool
     # Can other repositories be nested into one of this format?
-    supports_nesting_repositories = None
+    supports_nesting_repositories: bool
     # Is it possible for revisions to be present without being referenced
     # somewhere ?
-    supports_unreferenced_revisions = None
+    supports_unreferenced_revisions: bool
     # Does this format store the current Branch.nick in a revision when
     # creating commits?
-    supports_storing_branch_nick = True
+    supports_storing_branch_nick: bool = True
     # Does the format support overriding the transport to use
-    supports_overriding_transport = True
+    supports_overriding_transport: bool = True
     # Does the format support setting custom revision properties?
-    supports_custom_revision_properties = True
+    supports_custom_revision_properties: bool = True
     # Does the format record per-file revision metadata?
-    records_per_file_revision = True
-    supports_multiple_authors = True
+    records_per_file_revision: bool = True
+    supports_multiple_authors: bool = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1513,7 +1515,7 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
-    _optimisers = []
+    _optimisers: List[Type[InterRepository]] = []
     """The available optimised InterRepository types."""
 
     def copy_content(self, revision_id=None):

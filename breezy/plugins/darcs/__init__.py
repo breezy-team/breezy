@@ -54,10 +54,6 @@ class DarcsDirFormat(controldir.ControlDirFormat):
     def _known_formats(self):
         return set([DarcsDirFormat()])
 
-    def open(self, transport, _found=False):
-        """Open this directory."""
-        raise DarcsUnsupportedError()
-
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
         raise DarcsUnsupportedError()

@@ -115,7 +115,6 @@ for optimiser in ['InterRemoteGitNonGitRepository',
 class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
-    _serializer = None
     vcs = foreign_vcs_git
     chk_bytes = None
 

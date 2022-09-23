@@ -37,11 +37,6 @@ from breezy import (
     revision,
     urlutils,
     )
-from breezy.bzr import (
-    groupcompress,
-    index,
-    knit,
-    )
 """)
 from .. import (
     errors,
@@ -49,6 +44,12 @@ from .. import (
     )
 from ..registry import Registry
 from ..textmerge import TextMerge
+
+from . import (
+    groupcompress,
+    index,
+    knit,
+    )
 
 
 adapter_registry = Registry()

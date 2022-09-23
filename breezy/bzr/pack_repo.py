@@ -16,6 +16,7 @@
 
 import re
 import sys
+from typing import Type
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -44,6 +45,7 @@ from .. import (
     transport as _mod_transport,
     )
 from ..bzr import (
+    index,
     btree_index,
     )
 
@@ -811,10 +813,10 @@ class RepositoryPackCollection(object):
     :ivar _names: map of {pack_name: (index_size,)}
     """
 
-    pack_factory = None
-    resumed_pack_factory = None
-    normal_packer_class = None
-    optimising_packer_class = None
+    pack_factory: Type[NewPack]
+    resumed_pack_factory: Type[ResumedPack]
+    normal_packer_class: Type[Packer]
+    optimising_packer_class: Type[Packer]
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport, index_builder_class, index_class,
@@ -1912,27 +1914,27 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
 
     # Set this attribute in derived classes to control the repository class
     # created by open and initialize.
-    repository_class = None
+    repository_class: Type[PackRepository]
     # Set this attribute in derived classes to control the
     # _commit_builder_class that the repository objects will have passed to
     # their constructor.
-    _commit_builder_class = None
+    _commit_builder_class: Type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
     # Packs are not confused by ghosts.
-    supports_ghosts = True
+    supports_ghosts: bool = True
     # External references are not supported in pack repositories yet.
-    supports_external_lookups = False
+    supports_external_lookups: bool = False
     # Most pack formats do not use chk lookups.
-    supports_chks = False
+    supports_chks: bool = False
     # What index classes to use
-    index_builder_class = None
-    index_class = None
-    _fetch_uses_deltas = True
-    fast_deltas = False
-    supports_funky_characters = True
-    revision_graph_can_have_wrong_parents = True
+    index_builder_class: Type[index.GraphIndexBuilder]
+    index_class: Type[index.GraphIndex]
+    _fetch_uses_deltas: bool = True
+    fast_deltas: bool = False
+    supports_funky_characters: bool = True
+    revision_graph_can_have_wrong_parents: bool = True
 
     def initialize(self, a_controldir, shared=False):
         """Create a pack based repository.

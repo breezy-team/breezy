@@ -191,7 +191,7 @@ class ForeignRepository(Repository):
     """
 
     # This repository's native version control system
-    vcs = None
+    vcs: ForeignVcs
 
     def has_foreign_revision(self, foreign_revid):
         """Check whether the specified foreign revision is present.
