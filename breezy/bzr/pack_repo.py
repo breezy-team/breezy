@@ -1725,7 +1725,7 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: Type[VersionedFileCommitBuilder]
-    _serializer: Type[Serializer]
+    _serializer: Serializer
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
                  _serializer):
@@ -1922,7 +1922,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     _commit_builder_class: Type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
-    _serializer = None
+    _serializer: Serializer
     # Packs are not confused by ghosts.
     supports_ghosts: bool = True
     # External references are not supported in pack repositories yet.
@@ -1931,7 +1931,7 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     supports_chks: bool = False
     # What index classes to use
     index_builder_class: Type[index.GraphIndexBuilder]
-    index_class: Type[index.GraphIndex]
+    index_class: Type[object]
     _fetch_uses_deltas: bool = True
     fast_deltas: bool = False
     supports_funky_characters: bool = True

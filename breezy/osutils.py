@@ -2030,10 +2030,10 @@ MAX_SOCKET_CHUNK = 64 * 1024
 
 _end_of_stream_errors: List[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
-    _eno = getattr(errno, _eno, None)
-    if _eno is not None:
-        _end_of_stream_errors.append(_eno)
-del _eno
+    try:
+        _end_of_stream_errors.append(getattr(errno, _eno))
+    except AttributeError:
+        pass
 
 
 def read_bytes_from_socket(sock, report_activity=None,

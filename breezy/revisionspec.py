@@ -144,7 +144,7 @@ class RevisionSpec(object):
     """
 
     prefix: str
-    dwim_catchable_exceptions = (InvalidRevisionSpec,)
+    dwim_catchable_exceptions: List[Type[Exception]] = [InvalidRevisionSpec]
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
     If the revspec is part of ``dwim_revspecs``, it may be tried with an
@@ -608,7 +608,7 @@ class RevisionSpec_tag(RevisionSpec):
     """
 
     prefix = 'tag:'
-    dwim_catchable_exceptions = (errors.NoSuchTag, errors.TagsNotSupported)
+    dwim_catchable_exceptions = [errors.NoSuchTag, errors.TagsNotSupported]
 
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
@@ -813,7 +813,7 @@ class RevisionSpec_branch(RevisionSpec):
       branch:/path/to/branch
     """
     prefix = 'branch:'
-    dwim_catchable_exceptions = (errors.NotBranchError,)
+    dwim_catchable_exceptions = [errors.NotBranchError]
 
     def _match_on(self, branch, revs):
         from .branch import Branch

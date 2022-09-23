@@ -24,7 +24,7 @@ import os
 import socket
 import subprocess
 import sys
-from typing import Tuple, Type, Set, Dict
+from typing import Tuple, Type, Set, Dict, Optional
 from binascii import hexlify
 
 from .. import (

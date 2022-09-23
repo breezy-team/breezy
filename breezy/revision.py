@@ -19,7 +19,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 
 from . import (
     errors,
@@ -184,7 +184,7 @@ def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool 
         distance += 1
 
 
-def find_present_ancestors(revision_id: RevisionID, revision_source) -> List[RevisionID]:
+def find_present_ancestors(revision_id: RevisionID, revision_source) -> Dict[RevisionID, Tuple[int, int]]:
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
