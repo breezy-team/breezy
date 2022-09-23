@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Callable, Type
 
 from .. import (
     conflicts,
@@ -25,6 +25,7 @@ from .. import (
     tests,
     transform,
     )
+from ..workingtree import WorkingTree
 from ..bzr import conflicts as bzr_conflicts
 from . import (
     script,
@@ -237,8 +238,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """
 
     # Set by daughter classes
-    _conflict_type = None
-    _assert_conflict = None
+    _conflict_type: Type[conflicts.Conflict]
+    _assert_conflict: Callable[[Any, Any, Any], Any]
 
     # Set by load_tests
     _base_actions = None

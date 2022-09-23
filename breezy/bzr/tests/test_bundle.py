@@ -392,10 +392,10 @@ class BundleTester(object):
         return tests.TestCaseWithTransport.make_branch_and_tree(
             self, path, format)
 
-    def make_branch(self, path, format=None):
+    def make_branch(self, path, format=None, name=None):
         if format is None:
             format = self.bzrdir_format()
-        return tests.TestCaseWithTransport.make_branch(self, path, format)
+        return tests.TestCaseWithTransport.make_branch(self, path, format, name=name)
 
     def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = BytesIO()

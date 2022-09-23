@@ -25,7 +25,6 @@ from .. import (
     win32utils,
     )
 from . import (
-    Feature,
     TestCase,
     TestCaseInTempDir,
     TestSkipped,

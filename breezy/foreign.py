@@ -39,7 +39,7 @@ class VcsMapping(object):
 
     # Prefix used when importing revisions native to the foreign VCS (as
     # opposed to roundtripping bzr-native revisions) using this mapping.
-    revid_prefix = None
+    revid_prefix: bytes
 
     def __init__(self, vcs):
         """Create a new VcsMapping.

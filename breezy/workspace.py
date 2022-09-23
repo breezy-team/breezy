@@ -216,7 +216,8 @@ class Workspace(object):
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> List[str]:
+    def _stage(self) -> Optional[List[str]]:
+        changed: Optional[List[str]]
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they

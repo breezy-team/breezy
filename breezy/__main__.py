@@ -45,7 +45,7 @@ if os.name == "posix":
     # Use better default than ascii with posix filesystems that deal in bytes
     # natively even when the C locale or no locale at all is given. Note that
     # we need an immortal string for the hack, hence the lack of a hyphen.
-    sys._brz_default_fs_enc = "utf8"
+    sys._brz_default_fs_enc = "utf8"  # type: ignore
 
 
 def main():

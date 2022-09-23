@@ -57,11 +57,12 @@ from ..repository import (
     _LazyListJoin,
     RepositoryWriteLockResult,
     )
-from ..bzr.repository import (
+from .repository import (
     MetaDirRepository,
     RepositoryFormatMetaDir,
     )
-from ..bzr.vf_repository import (
+from .serializer import Serializer
+from .vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
@@ -1723,8 +1724,8 @@ class PackRepository(MetaDirVersionedFileRepository):
     # them to None ensures that if the constructor is changed to not initialize
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
-    _commit_builder_class = None
-    _serializer = None
+    _commit_builder_class: Type[VersionedFileCommitBuilder]
+    _serializer: Type[Serializer]
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
                  _serializer):

@@ -37,7 +37,7 @@ import contextlib
 import errno
 import os
 import sys
-from typing import Dict, Set, List, Tuple, Type
+from typing import Dict, Set, List, Tuple, Type, Any
 import warnings
 
 from . import (
@@ -185,7 +185,7 @@ class _OSLock(object):
         raise NotImplementedError()
 
 
-_lock_classes: List[Tuple[str, Type["_fcntl_WriteLock"], Type["_fcntl_ReadLock"]]] = []
+_lock_classes: List[Tuple[str, Any, Any]] = []
 
 
 if have_fcntl:

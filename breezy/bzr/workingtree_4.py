@@ -453,7 +453,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
-                              "Root inventory of this tree")
+                              doc="Root inventory of this tree")
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.

@@ -17,7 +17,7 @@
 """Tree classes, representing directory at point in time.
 """
 
-from typing import List, Type
+from typing import List, Type, TYPE_CHECKING
 
 from . import (
     errors,
@@ -75,7 +75,7 @@ class TreeEntry(object):
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'directory'
 
@@ -86,7 +86,7 @@ class TreeDirectory(TreeEntry):
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'file'
 
@@ -97,7 +97,7 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'symlink'
 
@@ -108,7 +108,7 @@ class TreeLink(TreeEntry):
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'tree-reference'
 
@@ -755,8 +755,10 @@ class InterTree(InterObject):
     # Formats that will be used to test this InterTree. If both are
     # None, this InterTree will not be tested (e.g. because a complex
     # setup is required)
-    _matching_from_tree_format = None
-    _matching_to_tree_format = None
+    if TYPE_CHECKING:
+        from .workingtree import WorkingTreeFormat
+    _matching_from_tree_format: WorkingTreeFormat
+    _matching_to_tree_format: WorkingTreeFormat
 
     _optimisers: List[Type[InterTree]] = []
 

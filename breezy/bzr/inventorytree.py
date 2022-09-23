@@ -24,6 +24,7 @@ except ImportError:  # python < 3.7
 
 import os
 import re
+from typing import Type, TYPE_CHECKING
 
 
 from .. import (
@@ -1143,11 +1144,14 @@ class InterInventoryTree(InterTree):
     """InterTree implementation for InventoryTree objects.
 
     """
+    if TYPE_CHECKING:
+        from ..workingtree import WorkingTreeFormat
+
     # Formats that will be used to test this InterTree. If both are
     # None, this InterTree will not be tested (e.g. because a complex
     # setup is required)
-    _matching_from_tree_format = None
-    _matching_to_tree_format = None
+    _matching_from_tree_format: WorkingTreeFormat
+    _matching_to_tree_format: WorkingTreeFormat
 
     @classmethod
     def is_compatible(kls, source, target):

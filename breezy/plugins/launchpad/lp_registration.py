@@ -214,7 +214,7 @@ class BaseRequest(object):
     """Base request for talking to a XMLRPC server."""
 
     # Set this to the XMLRPC method name.
-    _methodname = None
+    _methodname: str
 
     def _request_params(self):
         """Return the arguments to pass to the method"""

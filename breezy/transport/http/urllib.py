@@ -1128,7 +1128,7 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
-    scheme = None
+    scheme: str
     """The scheme as it appears in the server header (lower cased)"""
 
     _max_retry = 3

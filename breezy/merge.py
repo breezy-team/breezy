@@ -166,7 +166,7 @@ class ConfigurableFileMerger(PerFileMerger):
         is present.
     """
 
-    name_prefix = None
+    name_prefix: str
     default_files = None
 
     def __init__(self, merger):

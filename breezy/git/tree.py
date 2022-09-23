@@ -982,8 +982,6 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
 class InterGitTrees(_mod_tree.InterTree):
     """InterTree that works between two git trees."""
 
-    _matching_from_tree_format = None
-    _matching_to_tree_format = None
     _test_mutable_trees_to_test_trees = None
 
     def __init__(self, source, target):

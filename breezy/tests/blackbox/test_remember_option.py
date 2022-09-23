@@ -32,7 +32,7 @@ class TestRememberMixin(object):
     command: List[str] = []
     # the dir where the command should be run (it should contain a branch for
     # which the tested locations are/will be set)
-    working_dir = None
+    working_dir: str
     # argument list for the first command invocation
     first_use_args: List[str] = []
     # argument list for the next command invocation

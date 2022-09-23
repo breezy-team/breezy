@@ -924,7 +924,6 @@ class cmd_cp(Command):
     """
 
     takes_args = ['names*']
-    takes_options = []
     aliases = ['copy']
     encoding_type = 'replace'
 
@@ -5414,7 +5413,6 @@ class cmd_unbind(Command):
     """
 
     _see_also = ['checkouts', 'bind']
-    takes_args = []
     takes_options = ['directory']
 
     def run(self, directory=u'.'):
@@ -5455,7 +5453,6 @@ class cmd_uncommit(Command):
                             ),
                      ]
     takes_args = ['location?']
-    aliases = []
     encoding_type = 'replace'
 
     def run(self, location=None, dry_run=False, verbose=False,
@@ -6455,7 +6452,6 @@ class cmd_view(Command):
         brz view --delete --all
     """
 
-    _see_also = []
     takes_args = ['file*']
     takes_options = [
         Option('all',

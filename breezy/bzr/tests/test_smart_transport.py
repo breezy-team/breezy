@@ -1937,7 +1937,7 @@ class TestSmartProtocol(tests.TestCase):
     Subclasses can override client_protocol_class and server_protocol_class.
     """
 
-    request_encoder = None
+    request_encoder: object
     response_decoder: Type[protocol._StatefulDecoder]
     server_protocol_class: Type[protocol.SmartProtocolBase]
     client_protocol_class: Type[protocol.SmartProtocolBase]
