@@ -3035,7 +3035,7 @@ class IniFileStore(Store):
         for hook in ConfigHooks['save']:
             hook(self)
 
-    def get_sections(self) -> Iterable[Tuple[Store, str]]:
+    def get_sections(self) -> Iterable[Tuple[Store, Section]]:
         """Get the configobj section in the file order.
 
         Returns: An iterable of (store, section).

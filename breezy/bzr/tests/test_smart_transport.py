@@ -2786,7 +2786,7 @@ class TestVersionOneFeaturesInProtocolThree(
     # method.  So we make server_protocol_class be a static method, rather than
     # simply doing:
     # "server_protocol_class = protocol.build_server_protocol_three".
-    server_protocol_class = staticmethod(protocol.build_server_protocol_three)
+    server_protocol_class = staticmethod(protocol.build_server_protocol_three)  # type: ignore
 
     def setUp(self):
         super(TestVersionOneFeaturesInProtocolThree, self).setUp()

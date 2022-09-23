@@ -839,7 +839,7 @@ def iter_suite_tests(suite):
 TestSkipped = testtools.testcase.TestSkipped
 
 
-class TestNotApplicable(TestSkipped):
+class TestNotApplicable(testtools.testcase.SkipTest):
     """A test is not applicable to the situation where it was run.
 
     This is only normally raised by parameterized tests, if they find that

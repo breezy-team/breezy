@@ -356,7 +356,7 @@ if have_ctypes_win32:
     _function_name = "CreateFileW"
 
     # CreateFile <http://msdn.microsoft.com/en-us/library/aa363858.aspx>
-    _CreateFile = ctypes.WINFUNCTYPE(
+    _CreateFile = ctypes.WINFUNCTYPE(   # type: ignore
         HANDLE,                # return value
         LPWSTR,                # lpFileName
         DWORD,                 # dwDesiredAccess
@@ -365,7 +365,7 @@ if have_ctypes_win32:
         DWORD,                 # dwCreationDisposition
         DWORD,                 # dwFlagsAndAttributes
         HANDLE                 # hTemplateFile
-        )((_function_name, ctypes.windll.kernel32))
+     )((_function_name, ctypes.windll.kernel32))  # type: ignore
 
     INVALID_HANDLE_VALUE = -1
 

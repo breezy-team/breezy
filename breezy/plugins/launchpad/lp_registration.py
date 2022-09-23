@@ -20,7 +20,6 @@ import socket
 from urllib.parse import urlsplit, urlunsplit
 import urllib
 from xmlrpc.client import (
-    __version__ as xmlrpc_version,
     Fault,
     ProtocolError,
     ServerProxy,
