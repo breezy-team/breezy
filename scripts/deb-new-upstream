@@ -981,6 +981,7 @@ def merge_upstream(  # noqa: C901
                 for entry in imported_revids:
                     if entry[0] is None:
                         upstream_revid = entry[2]
+                        break
                 else:
                     upstream_revid = None
                 try:
