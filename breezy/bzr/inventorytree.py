@@ -1150,8 +1150,8 @@ class InterInventoryTree(InterTree):
     # Formats that will be used to test this InterTree. If both are
     # None, this InterTree will not be tested (e.g. because a complex
     # setup is required)
-    _matching_from_tree_format: WorkingTreeFormat
-    _matching_to_tree_format: WorkingTreeFormat
+    _matching_from_tree_format: "WorkingTreeFormat"
+    _matching_to_tree_format: "WorkingTreeFormat"
 
     @classmethod
     def is_compatible(kls, source, target):

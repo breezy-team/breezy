@@ -2083,7 +2083,7 @@ class cmd_init(Command):
                        help='Specify a format for this branch. '
                        'See "help formats" for a full list.',
                        lazy_registry=('breezy.controldir', 'format_registry'),
-                       converter=lambda name: controldir.format_registry.make_controldir(
+                       converter=lambda name: controldir.format_registry.make_controldir(  # type: ignore
                             name),
                        value_switches=True,
                        title="Branch format",
@@ -2206,7 +2206,7 @@ class cmd_init_shared_repository(Command):
                                     ' "brz help formats" for details.',
                                     lazy_registry=(
                                         'breezy.controldir', 'format_registry'),
-                                    converter=lambda name: controldir.format_registry.make_controldir(
+                                    converter=lambda name: controldir.format_registry.make_controldir(  # type: ignore
                                         name),
                                     value_switches=True, title='Repository format'),
                      Option('no-trees',
@@ -3893,7 +3893,7 @@ class cmd_upgrade(Command):
                        help='Upgrade to a specific format.  See "brz help'
                        ' formats" for details.',
                        lazy_registry=('breezy.controldir', 'format_registry'),
-                       converter=lambda name: controldir.format_registry.make_controldir(
+                       converter=lambda name: controldir.format_registry.make_controldir(  # type: ignore
                            name),
                        value_switches=True, title='Branch format'),
         Option('clean',

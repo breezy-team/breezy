@@ -2067,7 +2067,7 @@ class InterBranch(InterObject):
     can be carried out on.
     """
 
-    _optimisers: List[Type[InterBranch]] = []
+    _optimisers: List[Type["InterBranch"]] = []
     """The available optimised InterBranch types."""
 
     @classmethod

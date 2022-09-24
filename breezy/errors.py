@@ -875,6 +875,8 @@ class UpToDateFormat(BzrError):
 
 class NoSuchRevision(InternalBzrError):
 
+    revision: bytes
+
     _fmt = "%(branch)s has no revision %(revision)s"
 
     def __init__(self, branch, revision):

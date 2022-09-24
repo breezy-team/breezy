@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List, Tuple, Type
+from typing import List, Type, Optional
 
 from breezy import (
     revision,
@@ -143,7 +143,7 @@ class RevisionSpec(object):
     (Equivalent to the old Branch method get_revision_info())
     """
 
-    prefix: str
+    prefix: Optional[str] = None
     dwim_catchable_exceptions: List[Type[Exception]] = [InvalidRevisionSpec]
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
@@ -307,7 +307,7 @@ class RevisionSpec_dwim(RevisionSpec):
         if self._revno_regex.match(self.spec) is not None:
             try:
                 return self._try_spectype(RevisionSpec_revno, branch)
-            except RevisionSpec_revno.dwim_catchable_exceptions:
+            except tuple(RevisionSpec_revno.dwim_catchable_exceptions):
                 pass
 
         # Next see what has been registered
@@ -315,7 +315,7 @@ class RevisionSpec_dwim(RevisionSpec):
             rs_class = objgetter.get_obj()
             try:
                 return self._try_spectype(rs_class, branch)
-            except rs_class.dwim_catchable_exceptions:
+            except tuple(rs_class.dwim_catchable_exceptions):
                 pass
 
         # Well, I dunno what it is. Note that we don't try to keep track of the

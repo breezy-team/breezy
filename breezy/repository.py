@@ -1515,7 +1515,7 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
-    _optimisers: List[Type[InterRepository]] = []
+    _optimisers: List[Type["InterRepository"]] = []
     """The available optimised InterRepository types."""
 
     def copy_content(self, revision_id=None):

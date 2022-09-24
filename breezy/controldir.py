@@ -1104,7 +1104,7 @@ class ControlDirFormat(object):
     _default_format: Optional["ControlDirFormat"] = None
     """The default format used for new control directories."""
 
-    _probers: List[Type[Prober]] = []
+    _probers: List[Type["Prober"]] = []
     """The registered format probers, e.g. BzrProber.
 
     This is a list of Prober-derived classes.

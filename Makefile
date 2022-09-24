@@ -71,6 +71,9 @@ check-ci: docs extensions
 flake8:
 	flake8
 
+mypy:
+	mypy breezy
+
 clean:
 	$(PYTHON) setup.py clean
 	-find . -name "*.pyc" -o -name "*.pyo" -o -name "*.so" | xargs rm -f

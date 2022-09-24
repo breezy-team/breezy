@@ -41,7 +41,7 @@ try:
 except ModuleNotFoundError as e:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
-    paramiko = None
+    paramiko = None  # type: ignore
 else:
     from paramiko.sftp_client import SFTPClient
 

@@ -403,9 +403,11 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_a = DummyRepository()
         dummy_a._format = RepositoryFormat()
         dummy_a._format.supports_full_versioned_files = True
+        dummy_a._format.rich_root_data = True
         dummy_b = DummyRepository()
         dummy_b._format = RepositoryFormat()
         dummy_b._format.supports_full_versioned_files = True
+        dummy_b._format.rich_root_data = True
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):

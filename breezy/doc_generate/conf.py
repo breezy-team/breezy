@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 #
 # Bazaar documentation build configuration file, created by
@@ -199,7 +199,7 @@ htmlhelp_basename = 'brz-docs'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
-latex_documents = []
+latex_documents: List[Any] = []
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.

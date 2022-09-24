@@ -1059,6 +1059,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         self._supports_chks = None
         self._supports_external_lookups = None
         self._supports_tree_reference = None
+        self._supports_ghosts = None
         self._supports_funky_characters = None
         self._supports_nesting_repositories = None
         self._rich_root_data = None
@@ -1117,6 +1118,14 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             self._supports_tree_reference = \
                 self._custom_format.supports_tree_reference
         return self._supports_tree_reference
+
+    @property
+    def supports_ghosts(self):
+        if self._supports_ghosts is None:
+            self._ensure_real()
+            self._supports_ghosts = \
+                    self._custom_format.supports_ghosts
+        return self._supports_ghosts
 
     @property
     def revision_graph_can_have_wrong_parents(self):

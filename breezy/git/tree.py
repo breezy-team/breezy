@@ -1602,7 +1602,11 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             raise
         kind = mode_kind(stat_result.st_mode)
         if kind == 'file':
-            return self._file_content_summary(path, stat_result)
+            size = stat_result.st_size
+            executable = self._is_executable_from_path_and_stat(path, stat_result)
+            # try for a stat cache lookup
+            return ('file', size, executable, self._sha_from_stat(
+                path, stat_result))
         elif kind == 'directory':
             # perhaps it looks like a plain directory, but it's really a
             # reference.

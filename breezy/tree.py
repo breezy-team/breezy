@@ -757,10 +757,10 @@ class InterTree(InterObject):
     # setup is required)
     if TYPE_CHECKING:
         from .workingtree import WorkingTreeFormat
-    _matching_from_tree_format: WorkingTreeFormat
-    _matching_to_tree_format: WorkingTreeFormat
+    _matching_from_tree_format: "WorkingTreeFormat"
+    _matching_to_tree_format: "WorkingTreeFormat"
 
-    _optimisers: List[Type[InterTree]] = []
+    _optimisers: List[Type["InterTree"]] = []
 
     @classmethod
     def is_compatible(kls, source, target):

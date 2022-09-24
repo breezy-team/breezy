@@ -836,10 +836,10 @@ def iter_suite_tests(suite):
                         % (type(suite), suite))
 
 
-TestSkipped = testtools.testcase.TestSkipped
+from testtools.testcase import TestSkipped
 
 
-class TestNotApplicable(testtools.testcase.SkipTest):
+class TestNotApplicable(TestSkipped):
     """A test is not applicable to the situation where it was run.
 
     This is only normally raised by parameterized tests, if they find that
@@ -3458,7 +3458,7 @@ class TestDecorator(TestUtil.TestSuite):
             self.addTest(suite)
 
     # Don't need subclass run method with suite emptying
-    run = unittest.TestSuite.run
+    run = unittest.TestSuite.run  # type: ignore
 
 
 class CountingDecorator(TestDecorator):

@@ -187,7 +187,7 @@ class InterTags(InterObject):
     """Operations between sets of tags.
     """
 
-    _optimisers: List[Type[InterTags]] = []
+    _optimisers: List[Type["InterTags"]] = []
     """The available optimised InterTags types."""
 
     @classmethod
