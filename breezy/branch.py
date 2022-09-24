@@ -87,6 +87,8 @@ class Branch(controldir.ControlComponent):
 
     _format: "BranchFormat"
 
+    _last_revision_info_cache: Optional[Tuple[int, RevisionID]]
+
     @property
     def control_transport(self):
         return self._transport

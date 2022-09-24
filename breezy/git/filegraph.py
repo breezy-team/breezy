@@ -24,7 +24,7 @@ from dulwich.errors import (
     NotTreeError,
     )
 try:
-    from dulwich.objects import SubmoduleEncountered
+    from dulwich.objects import SubmoduleEncountered  # type: ignore
 except ImportError:
     class SubmoduleEncountered(Exception):  # type: ignore
         pass

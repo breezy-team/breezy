@@ -1010,7 +1010,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-def parent_directories(filename):
+def parent_directories(filename: str):
     """Return the list of parent directories, deepest first.
 
     For example, parent_directories("a/b/c") -> ["a/b", "a"].

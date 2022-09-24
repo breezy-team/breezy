@@ -2433,7 +2433,7 @@ class CapturedCall(object):
         # client frames. Beyond this we could get more clever, but this is good
         # enough for now.
         stack = traceback.extract_stack()[prefix_length:-5]
-        self.stack = ''.join(traceback.format_list(stack))
+        self._stack = ''.join(traceback.format_list(stack))
 
     def __str__(self):
         return self.call.method.decode('utf-8')
@@ -2442,7 +2442,7 @@ class CapturedCall(object):
         return self.call.method.decode('utf-8')
 
     def stack(self):
-        return self.stack
+        return self._stack
 
 
 class TestCaseWithMemoryTransport(TestCase):

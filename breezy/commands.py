@@ -785,7 +785,7 @@ class Command(object):
                     hook(self)
         self.run = run
 
-    def run(self):
+    def run(self):  # type: ignore
         """Actually run the command.
 
         This is invoked with the options and arguments bound to
