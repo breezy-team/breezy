@@ -76,19 +76,22 @@ class WatchLineWithoutMatchingHrefs(PackageVersionNotPresent):
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
-    def __init__(self, tree, subpath=None, top_level=False, auto_fix=False):
+    def __init__(self, tree, subpath=None, top_level=False, auto_fix=False,
+                 skip_signatures: bool = False):
         self.tree = tree
         self.subpath = subpath
         self.top_level = top_level
         self.auto_fix = auto_fix
+        self.skip_signatures = skip_signatures
 
     def __repr__(self):
-        return "<%s(%r, subpath=%r, top_level=%r, auto_fix=%r)>" % (
+        return "<%s(%r, subpath=%r, top_level=%r, auto_fix=%r, skip_signatures=%r)>" % (
             type(self).__name__, self.tree, self.subpath, self.top_level,
-            self.auto_fix)
+            self.auto_fix, self.skip_signatures)
 
     @classmethod
-    def from_tree(cls, tree, subpath, top_level=False, auto_fix=False):
+    def from_tree(cls, tree, subpath: str, top_level: bool = False,
+                  auto_fix: bool = False, skip_signatures: bool = False):
         if top_level:
             file = 'watch'
         else:
@@ -97,7 +100,8 @@ class UScanSource(UpstreamSource):
             file = osutils.pathjoin(subpath, file)
         if not tree.has_filename(file):
             raise NoWatchFile(tree, file)
-        return cls(tree, subpath=subpath, top_level=top_level, auto_fix=auto_fix)
+        return cls(tree, subpath=subpath, top_level=top_level,
+                   auto_fix=auto_fix, skip_signatures=skip_signatures)
 
     def _export_file(self, name, directory):
         if self.top_level:
@@ -142,6 +146,8 @@ class UScanSource(UpstreamSource):
                     "--package=%s" % package, "--report",
                     "--no-download",
                     "--upstream-version=%s" % current_version]
+            if self.skip_signatures:
+                args.append("--skip-signature")
             text, retcode = _run_dehs_uscan(args, cwd=tmpdir)
             uversionmangle = None
             with open(watch_tempfilename, 'r') as f:
@@ -186,6 +192,8 @@ class UScanSource(UpstreamSource):
                     "--check-dirname-level=0",
                     "--download", '--destdir=%s' % container,
                     "--download-debversion=%s" % version]
+            if self.skip_signatures:
+                args.append("--skip-signature")
             text, r = _run_dehs_uscan(args, cwd=container)
             _xml_report_extract_errors(text)
             orig_files = _xml_report_extract_target_paths(text)

@@ -427,6 +427,7 @@ def find_new_upstream(  # noqa: C901
     include_upstream_history: Optional[bool] = None,
     force_big_version_jump: bool = False,
     require_uscan: bool = False,
+    skip_signatures: bool = False,
 ):
 
     # TODO(jelmer): Find the lastest upstream present in the upstream branch
@@ -509,7 +510,8 @@ def find_new_upstream(  # noqa: C901
         else:
             try:
                 primary_upstream_source = UScanSource.from_tree(
-                    tree, subpath, top_level, auto_fix=True
+                    tree, subpath, top_level, auto_fix=True,
+                    skip_signatures=skip_signatures,
                 )
             except NoWatchFile:
                 # TODO(jelmer): Call out to lintian_brush.watch to generate a
@@ -642,6 +644,7 @@ def import_upstream(
     create_dist:
         Optional[Callable[[Tree, str, Version, str], Optional[str]]] = None,
     force_big_version_jump: bool = False,
+    skip_signatures: bool = False,
 ) -> ImportUpstreamResult:
     """Import a new upstream version into a tree.
 
@@ -715,6 +718,7 @@ def import_upstream(
         include_upstream_history=include_upstream_history,
         create_dist=create_dist,
         force_big_version_jump=force_big_version_jump,
+        skip_signatures=skip_signatures,
     )
 
     with tempfile.TemporaryDirectory() as target_dir:
@@ -834,7 +838,8 @@ def merge_upstream(  # noqa: C901
         Callable[[Tree, str, Version, str], Optional[str]]] = None,
     force_big_version_jump: bool = False,
     debian_revision: Optional[str] = None,
-    require_uscan: bool = False
+    require_uscan: bool = False,
+    skip_signatures: bool = False,
 ) -> MergeUpstreamResult:
     """Merge a new upstream version into a tree.
 
@@ -910,6 +915,7 @@ def merge_upstream(  # noqa: C901
         create_dist=create_dist,
         force_big_version_jump=force_big_version_jump,
         require_uscan=require_uscan,
+        skip_signatures=skip_signatures,
     )
 
     if need_upstream_tarball:
@@ -1149,6 +1155,9 @@ async def main():
         "(defaults to reading debian/upstream/metadata or guessing)")
     parser.add_argument(
         "--verbose", action="store_true")
+    parser.add_argument(
+        "--skip-signatures", action="store_true",
+        help="Skip signature validation")
     args = parser.parse_args()
 
     if args.verbose:
@@ -1205,6 +1214,7 @@ async def main():
                         debian_revision=args.debian_revision,
                         require_uscan=args.require_uscan,
                         location=args.upstream_location,
+                        skip_signatures=args.skip_signatures,
                     )
                 except MalformedTransform:
                     traceback.print_exc()
@@ -1227,6 +1237,7 @@ async def main():
                     include_upstream_history=args.include_upstream_history,
                     create_dist=create_dist,
                     force_big_version_jump=args.force_big_version_jump,
+                    skip_signatures=args.skip_signatures,
                 )
         except MemoryError as e:
             report_fatal("memory-error", str(e))
