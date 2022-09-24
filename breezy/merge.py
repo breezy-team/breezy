@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import contextlib
+import tempfile
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1644,8 +1645,7 @@ class Diff3Merger(Merge3Merger):
         """
         import breezy.patch
         base_path, other_path, this_path = paths
-        temp_dir = osutils.mkdtemp(prefix="bzr-")
-        try:
+        with tempfile.TemporaryDirectory(prefix="bzr-") as temp_dir:
             new_file = osutils.pathjoin(temp_dir, "new")
             this = self.dump_file(
                 temp_dir, "this", self.this_tree, this_path)
@@ -1663,8 +1663,6 @@ class Diff3Merger(Merge3Merger):
                 parent_id = self.tt.final_parent(trans_id)
                 self._dump_conflicts(name, paths, parent_id)
                 self._raw_conflicts.append(('text conflict', trans_id))
-        finally:
-            osutils.rmtree(temp_dir)
 
 
 class PathNotInTree(errors.BzrError):
