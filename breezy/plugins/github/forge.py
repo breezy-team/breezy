@@ -104,25 +104,6 @@ class GitHubLoginRequired(ForgeLoginRequired):
     _fmt = "Action requires GitHub login."
 
 
-def connect_github():
-    """Connect to GitHub.
-    """
-    user_agent = default_user_agent()
-    auth = AuthenticationConfig()
-
-    credentials = auth.get_credentials('https', GITHUB_HOST)
-    if credentials is not None:
-        return Github(credentials['user'], credentials['password'],
-                      user_agent=user_agent)
-
-    # TODO(jelmer): token = auth.get_token('https', GITHUB_HOST)
-    if token is not None:
-        return Github(token, user_agent=user_agent)
-    else:
-        note('Accessing GitHub anonymously. To log in, run \'brz gh-login\'.')
-        return Github(user_agent=user_agent)
-
-
 class GitHubMergeProposal(MergeProposal):
 
     def __init__(self, gh, pr):
@@ -141,7 +122,7 @@ class GitHubMergeProposal(MergeProposal):
     def _branch_from_part(self, part):
         if part['repo'] is None:
             return None
-        return github_url_to_bzr_url(part['repo']['html_url'], part['ref'])
+        return github_url_to_bzr_url(part['repo']['clone_url'], part['ref'])
 
     def get_source_branch_url(self):
         return self._branch_from_part(self._pr['head'])
@@ -210,7 +191,7 @@ class GitHubMergeProposal(MergeProposal):
         # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
         data = {}
         if commit_message:
-            data['commit_message'] = commit_messae
+            data['commit_message'] = commit_message
         response = self._gh._api_request(
             'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
         if response.status == 422:
@@ -424,6 +405,9 @@ class GitHub(Forge):
 
     def __init__(self, transport):
         self._token = retrieve_github_token()
+        if self._token is None:
+            note('Accessing GitHub anonymously. '
+                 'To log in, run \'brz gh-login\'.')
         self.transport = transport
         self._current_user = None
 
@@ -466,7 +450,7 @@ class GitHub(Forge):
                 overwrite=overwrite, name=name, lossy=True,
                 tag_selector=tag_selector)
         return push_result.target_branch, github_url_to_bzr_url(
-            remote_repo['html_url'], name)
+            remote_repo['clone_url'], name)
 
     def get_push_url(self, branch):
         owner, project, branch_name = parse_github_branch_url(branch)
