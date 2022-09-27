@@ -588,7 +588,8 @@ class GitLab(Forge):
             fields['labels'] = labels
         response = self._api_request('POST', path, fields=fields)
         if response.status == 400:
-            raise GitLabError(data.get('message'), data)
+            data = json.loads(response.data)
+            raise GitLabError(data.get('message'), response)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
