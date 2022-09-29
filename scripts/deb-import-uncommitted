@@ -42,7 +42,7 @@ from breezy.plugins.debian.import_dsc import (
 from breezy.plugins.debian.util import MissingChangelogError
 from breezy.plugins.debian.apt_repo import (
     LocalApt,
-    RemotApt,
+    RemoteApt,
     NoAptSources,
     AptSourceError,
 )
@@ -208,9 +208,9 @@ async def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--apt-repository', type=str,
+        '--apt-repositories', type=str,
         help='APT repository to use. Defaults to locally configured.',
-        default=os.environ.get('APT_REPOSITORY'))
+        default=os.environ.get('REPOSITORIES'))
     parser.parse_args()
 
     if args.apt_repository:

@@ -112,6 +112,10 @@ export_upstream_revision_opt = Option(
     'export-upstream-revision',
     help="Select the upstream revision that will be exported.",
     type=str, argname="REVISION")
+apt_repositories_opt = Option(
+    'apt-repositories',
+    help='Apt repository to attempt to fetch from',
+    type=str)
 
 
 class StrictBuildFailed(BzrCommandError):
@@ -208,7 +212,8 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
                           export_upstream=None,
                           export_upstream_revision=None,
                           trust_package=True,
-                          guess_upstream_branch_url=False):
+                          guess_upstream_branch_url=False,
+                          apt=None):
     from .upstream import (
         AptSource,
         SelfSplitSource,
@@ -222,7 +227,7 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
         get_pristine_tar_source,
         )
     yield get_pristine_tar_source(local_tree, packaging_branch)
-    yield AptSource()
+    yield AptSource(apt=apt)
     try:
         yield UScanSource.from_tree(local_tree, subpath, top_level)
     except NoWatchFile:
@@ -262,7 +267,8 @@ def _get_distiller(
         contains_upstream_source=True, top_level=False,
         orig_dir=default_orig_dir, use_existing=False,
         export_upstream=None, export_upstream_revision=None,
-        guess_upstream_branch_url=False):
+        guess_upstream_branch_url=False,
+        apt=None):
     from .util import (
         guess_build_type,
         )
@@ -289,7 +295,8 @@ def _get_distiller(
         config=config, upstream_version=changelog.version.upstream_version,
         top_level=top_level, export_upstream=export_upstream,
         export_upstream_revision=export_upstream_revision,
-        guess_upstream_branch_url=guess_upstream_branch_url))
+        guess_upstream_branch_url=guess_upstream_branch_url,
+        apt=apt))
 
     upstream_provider = UpstreamProvider(
         changelog.package, changelog.version.upstream_version, orig_dir,
@@ -383,7 +390,8 @@ class cmd_builddeb(Command):
         builder_opt, merge_opt, build_dir_opt, orig_dir_opt, split_opt,
         export_upstream_opt, export_upstream_revision_opt, quick_opt,
         reuse_opt, native_opt, source_opt, 'revision', strict_opt,
-        package_merge_opt, guess_upstream_branch_url_opt]
+        package_merge_opt, guess_upstream_branch_url_opt,
+        apt_repositories_opt]
 
     def _get_tree_and_branch(self, location):
         if location is None:
@@ -491,7 +499,8 @@ class cmd_builddeb(Command):
             orig_dir=None, split=None,
             quick=False, reuse=False, native=None,
             source=False, revision=None, package_merge=None,
-            strict=False, guess_upstream_branch_url=False):
+            strict=False, guess_upstream_branch_url=False,
+            apt_repositories=None):
         from debian.changelog import ChangelogParseError
         from .builder import DebBuild
         from .config import UpstreamMetadataSyntaxError
@@ -512,6 +521,12 @@ class cmd_builddeb(Command):
             location)
         tree = self._get_build_tree(revision, tree, branch)
         _check_tree(tree, subpath, strict=strict)
+
+        if apt_repositories is not None:
+            from .apt_repo import RemoteApt
+            apt = RemoteApt.from_string(apt_repositories)
+        else:
+            apt = None
 
         with tree.lock_read():
             try:
@@ -563,7 +578,8 @@ class cmd_builddeb(Command):
                 orig_dir=orig_dir, use_existing=use_existing,
                 top_level=top_level, export_upstream=export_upstream,
                 export_upstream_revision=export_upstream_revision,
-                guess_upstream_branch_url=guess_upstream_branch_url)
+                guess_upstream_branch_url=guess_upstream_branch_url,
+                apt=apt)
 
             build_source_dir = os.path.join(
                 build_dir,
@@ -616,10 +632,10 @@ class cmd_get_orig_source(Command):
         help='Directory from which to retrieve the packaging data',
         short_name='d', type=str)
 
-    takes_options = [directory_opt]
+    takes_options = [directory_opt, apt_repositories_opt]
     takes_args = ["version?"]
 
-    def run(self, directory='.', version=None):
+    def run(self, directory='.', version=None, apt_repositories=None):
         from .upstream import (
             AptSource,
             UpstreamProvider,
@@ -645,9 +661,15 @@ class cmd_get_orig_source(Command):
         if version is None:
             version = changelog.version.upstream_version
 
+        if apt_repositories is not None:
+            from .apt_repo import RemoteApt
+            apt = RemoteApt.from_string(apt_repositories)
+        else:
+            apt = None
+
         upstream_sources = [
             get_pristine_tar_source(tree, tree.branch),
-            AptSource()]
+            AptSource(apt)]
         try:
             uscan_source = UScanSource.from_tree(tree, subpath, larstiq)
         except NoWatchFile:
@@ -1299,10 +1321,12 @@ class cmd_builddeb_do(Command):
 
     takes_args = ['command*']
     takes_options = [
-        Option('no-preparation', help='Don\'t apply/unapply patches.')]
+        Option('no-preparation', help='Don\'t apply/unapply patches.'),
+        apt_repositories_opt]
     aliases = ['bd-do']
 
-    def run(self, command_list=None, no_preparation=False):
+    def run(self, command_list=None, no_preparation=False,
+            apt_repositories=None):
         import subprocess
         from .source_distiller import (
             MergeModeDistiller,
@@ -1364,10 +1388,16 @@ class cmd_builddeb_do(Command):
         if orig_dir is None:
             orig_dir = default_orig_dir
 
+        if apt_repositories is not None:
+            from .apt_repo import RemoteApt
+            apt = RemoteApt.from_string(apt_repositories)
+        else:
+            apt = None
+
         upstream_provider = UpstreamProvider(
             changelog.package, changelog.version.upstream_version, orig_dir,
             [get_pristine_tar_source(t, t.branch),
-             AptSource(),
+             AptSource(apt=apt),
              UScanSource(t, subpath, top_level)])
 
         distiller = MergeModeDistiller(
@@ -1553,7 +1583,7 @@ class LocalTree(object):
 
 def _build_helper(
         local_tree, subpath, packaging_branch, target_dir, builder,
-        guess_upstream_branch_url=False):
+        guess_upstream_branch_url=False, apt=None):
     # TODO(jelmer): Integrate this with cmd_builddeb
     from .builder import (
         do_build,
@@ -1575,7 +1605,7 @@ def _build_helper(
             config=config, changelog=changelog,
             contains_upstream_source=contains_upstream_source,
             top_level=top_level,
-            guess_upstream_branch_url=guess_upstream_branch_url)
+            guess_upstream_branch_url=guess_upstream_branch_url, apt=apt)
 
     return do_build(changelog.package, changelog.version, distiller,
                     local_tree, config, builder, target_dir)
@@ -1601,16 +1631,25 @@ class cmd_debrelease(Command):
     takes_args = ['location?']
     takes_options = [
         strict_opt,
-        Option('skip-upload', help='Skip upload.'), builder_opt]
+        Option('skip-upload', help='Skip upload.'), builder_opt,
+        apt_repositories_opt]
+
 
     def run(self, location='.', strict=True, skip_upload=False,
-            builder=DEFAULT_BUILDER):
+            builder=DEFAULT_BUILDER, apt_repositories=None):
         from .release import release
         from .util import (
             dput_changes,
             )
 
         branch, subpath = Branch.open_containing(location)
+
+        if apt_repositories is not None:
+            from .apt_repo import RemoteApt
+            apt = RemoteApt.from_string(apt_repositories)
+        else:
+            apt = None
+
         # preserve whatever source format we have.
         # TODO(jelmer): Use the local tree if there is one, but check it's
         # clean.
