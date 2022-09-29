@@ -141,9 +141,12 @@ def import_uncommitted(tree, subpath, apt):
         raise MissingChangelogError([cl_path])
 
     with contextlib.ExitStack() as es:
+        es.enter_context(apt)
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
         apt.retrieve_source(package_name, archive_source)
-        subprocess.check_output(['dpkg-source', '-x', fn], cwd=archive_source)
+        [dsc] = [e.name for e in os.scandir(archive_source)
+                 if e.name.endswith('.dsc')]
+        subprocess.check_output(['dpkg-source', '-x', dsc], cwd=archive_source)
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
             archive_cl = Changelog(f)
@@ -211,7 +214,7 @@ async def main():
         '--apt-repositories', type=str,
         help='APT repository to use. Defaults to locally configured.',
         default=os.environ.get('REPOSITORIES'))
-    parser.parse_args()
+    args = parser.parse_args()
 
     if args.apt_repository:
         apt = RemoteApt.from_string(args.apt_repository)

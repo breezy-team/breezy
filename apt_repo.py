@@ -15,10 +15,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
+import shutil
 import subprocess
+import tempfile
+from typing import Optional
 
 from debian.deb822 import Dsc
 
+from breezy.errors import DependencyNotPresent
 from breezy.trace import note
 
 
@@ -54,6 +59,12 @@ class LocalApt(Apt):
 
     def __init__(self):
         self._apt_pkg = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_tp, exc_val, exc_tb):
+        return False
 
     @property
     def apt_pkg(self):
@@ -100,14 +111,15 @@ class LocalApt(Apt):
                 yield version._records
 
     def retrieve_source(self, package_name, target, source_version=None):
-        self._run_apt_source(package, sources.version, target_dir)
+        self._run_apt_source(package_name, target, source_version)
 
     def _get_command(self, package, version_str=None):
         return ['apt', 'source', '-y', '--only-source', '--tar-only',
                 ('%s=%s' % (package, version_str))
                 if version_str is not None else package]
 
-    def _run_apt_source(self, package, version_str, target_dir):
+    def _run_apt_source(self, package: str, target_dir,
+                        version_str: Optional[str]):
         command = self._get_command(package, version_str)
         try:
             subprocess.run(
@@ -134,12 +146,48 @@ class LocalApt(Apt):
             )
 
 
-class RemoteApt(Apt):
+class RemoteApt(LocalApt):
 
     def __init__(self, mirror_uri, distribution=None, components=None):
+        super(RemoteApt, self).__init__()
         self.mirror_uri = mirror_uri
         self.distribution = distribution
         self.components = components
+
+    def __enter__(self):
+        self._td = tempfile.mkdtemp()
+        aptdir = os.path.join(self._td, 'etc', 'apt')
+        os.makedirs(aptdir)
+        # TODO(jelmer): actually import apt keys (we do only use this
+        # where we know the existing sha)
+        with open(os.path.join(aptdir, 'sources.list'), 'w') as f:
+            f.write('deb [trusted=yes] %s %s %s\n' % (
+                self.mirror_uri, self.distribution, ' '.join(self.components)))
+            f.write('deb-src [trusted=yes] %s %s %s\n' % (
+                self.mirror_uri, self.distribution, ' '.join(self.components)))
+        try:
+            import apt
+        except ImportError as e:
+            raise DependencyNotPresent('apt', e)
+        apt.Cache(rootdir=self._td).update()
+        return self
+
+    def __exit__(self, exc_tp, exc_val, exc_tb):
+        shutil.rmtree(self._td)
+        return False
+
+    @property
+    def apt_pkg(self):
+        if self._apt_pkg is None:
+            try:
+                import apt_pkg
+                self._apt_pkg = apt_pkg
+            except ImportError as e:
+                raise DependencyNotPresent('apt_pkg', e)
+            else:
+                self._apt_pkg.init()
+        self._apt_pkg.config.set("Dir", self._td)
+        return self._apt_pkg
 
     @classmethod
     def from_string(cls, text):

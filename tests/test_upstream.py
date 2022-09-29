@@ -120,6 +120,12 @@ class MockApt(Apt):
     def __init__(self, sources):
         self._sources = sources
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_tp, exc_val, exc_tb):
+        return False
+
     def iter_sources(self):
         return iter(self._sources)
 

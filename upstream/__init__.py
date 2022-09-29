@@ -159,35 +159,40 @@ class AptSource(UpstreamSource):
 
     def fetch_tarballs(self, package, upstream_version, target_dir,
                        components=None):
-        from ..apt_repo import NoAptSources, AptSourceError
-        source_name = package
-        try:
-            for source in self.apt.iter_source_by_name(package):
-                filenames = []
-                for entry in source['Files']:
-                    filename = os.path.basename(entry['name'])
-                    if filename.startswith(
-                            "%s_%s.orig" % (package, upstream_version)):
-                        filenames.append(filename)
-                if filenames:
-                    source_version = source["Version"]
-                    break
-            else:
-                note("apt could not find %s/%s.", package, upstream_version)
+        with self.apt:
+            from ..apt_repo import NoAptSources, AptSourceError
+            source_name = package
+            try:
+                for source in self.apt.iter_source_by_name(package):
+                    filenames = []
+                    for entry in source['Files']:
+                        filename = os.path.basename(entry['name'])
+                        if filename.startswith(
+                                "%s_%s.orig" % (package, upstream_version)):
+                            filenames.append(filename)
+                    if filenames:
+                        source_version = source["Version"]
+                        break
+                else:
+                    note("apt could not find %s/%s.",
+                         package, upstream_version)
+                    raise PackageVersionNotPresent(
+                        package, upstream_version, self)
+            except NoAptSources:
+                note('No apt sources configured, skipping')
+                # Handle the case where the apt.sources file contains no source
+                # URIs (LP:375897)
                 raise PackageVersionNotPresent(package, upstream_version, self)
-        except NoAptSources:
-            logging.info('No apt sources configured, skipping')
-            # Handle the case where the apt.sources file contains no source
-            # URIs (LP:375897)
-            raise PackageVersionNotPresent(package, upstream_version, self)
-        note("Using apt to look for the upstream tarball.")
-        try:
-            self.apt.retrieve_source(source_name, target_dir, source_version)
-        except AptSourceError:
-            note("apt found %s/%s but could not download.",
-                 package, source_version)
-            raise PackageVersionNotPresent(package, upstream_version, self)
-        return [os.path.join(target_dir, filename) for filename in filenames]
+            note("Using apt to look for the upstream tarball.")
+            try:
+                self.apt.retrieve_source(
+                    source_name, target_dir, source_version)
+            except AptSourceError:
+                note("apt found %s/%s but could not download.",
+                     package, source_version)
+                raise PackageVersionNotPresent(package, upstream_version, self)
+            return [os.path.join(target_dir, filename)
+                    for filename in filenames]
 
 
 class SelfSplitSource(UpstreamSource):
