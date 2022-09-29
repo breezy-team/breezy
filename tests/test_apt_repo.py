@@ -113,40 +113,43 @@ class LocalAptTests(TestCase):
     def test_get_apt_command_for_source(self):
         self.assertEqual(
             ["apt", "source", "-y", "--only-source", "--tar-only",
-            "apackage=someversion"],
-            LocalApt()._get_command("apackage", "someversion"))
+             "apackage=someversion"],
+            LocalApt(rootdir=None)._get_command("apackage", "someversion"))
         self.assertEqual(
-            ["apt", "source", "-y", "--only-source", "--tar-only",
-            "apackage"],
+            ["apt", "source", '-oDir=/', "-y", "--only-source", "--tar-only",
+             "apackage"],
             LocalApt()._get_command("apackage"))
+        self.assertEqual(
+            ["apt", "source", '-oDir=/tmp/lala',
+             "-y", "--only-source", "--tar-only", "apackage"],
+            LocalApt('/tmp/lala')._get_command("apackage"))
 
-    def test_iter_sources(self):
+    def test_iter_sources_empty(self):
         caller = MockAptCaller()
         sources = MockSources([], [])
         src = LocalApt()
-        src._apt_pkg = MockAptPkg(sources)
         src._run_apt_source = caller.call
+        src.apt_pkg = MockAptPkg(sources)
         self.assertEqual([], list(src.iter_sources()))
         self.assertEqual([], list(src.iter_source_by_name("breezy")))
 
     def test_no_apt_sources(self):
         src = LocalApt()
         sources = MockSources([], [])
-        src._apt_pkg = MockAptPkg(sources)
+
         def raise_systemerror():
             raise SystemError('no apt sources')
-        src._apt_pkg.SourceRecords = raise_systemerror
+        src.apt_pkg = MockAptPkg(sources)
+        src.apt_pkg.SourceRecords = raise_systemerror
         self.assertRaises(
             NoAptSources, list, src.iter_sources())
 
     def test_iter_sources(self):
-        caller = MockAptCaller()
         sources = MockSources(
             ["0.1-1"],
             [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")]])
-        apt_pkg = MockAptPkg(sources)
         src = LocalApt()
-        src._apt_pkg = MockAptPkg(sources)
+        src.apt_pkg = MockAptPkg(sources)
         self.assertEqual([{
                 'Package': 'apackage',
                 'Version': '0.1-1',

@@ -51,33 +51,30 @@ class Apt:
     def iter_binaries(self, binary_name):
         raise NotImplementedError(self.iter_binaries)
 
-    def retrieve_source(self, source_name, target_directory, source_version=None):
+    def retrieve_source(self, source_name, target_directory,
+                        source_version=None):
         raise NotImplementedError(self.retrieve_source)
 
 
 class LocalApt(Apt):
 
-    def __init__(self):
-        self._apt_pkg = None
+    def __init__(self, rootdir="/"):
+        self.apt_pkg = None
+        self._rootdir = rootdir
 
     def __enter__(self):
-        return self
-
-    def __exit__(self, exc_tp, exc_val, exc_tb):
-        return False
-
-    @property
-    def apt_pkg(self):
-        if self._apt_pkg is not None:
-            return self._apt_pkg
         try:
             import apt_pkg
         except ImportError as e:
             raise DependencyNotPresent('apt_pkg', e)
-        else:
-            apt_pkg.init()
-        self._apt_pkg = apt_pkg
-        return self._apt_pkg
+        self.apt_pkg = apt_pkg
+        self.apt_pkg.init()
+        if self._rootdir is not None:
+            self.apt_pkg.config.set("Dir", self._rootdir)
+        return self
+
+    def __exit__(self, exc_tp, exc_val, exc_tb):
+        return False
 
     def iter_sources(self):
         try:
@@ -114,9 +111,14 @@ class LocalApt(Apt):
         self._run_apt_source(package_name, target, source_version)
 
     def _get_command(self, package, version_str=None):
-        return ['apt', 'source', '-y', '--only-source', '--tar-only',
-                ('%s=%s' % (package, version_str))
-                if version_str is not None else package]
+        args = ['apt', 'source']
+        if self._rootdir is not None:
+            args.append('-oDir=%s' % self._rootdir)
+        args.extend([
+            '-y', '--only-source', '--tar-only',
+            ('%s=%s' % (package, version_str))
+            if version_str is not None else package])
+        return args
 
     def _run_apt_source(self, package: str, target_dir,
                         version_str: Optional[str]):
@@ -153,10 +155,11 @@ class RemoteApt(LocalApt):
         self.mirror_uri = mirror_uri
         self.distribution = distribution
         self.components = components
+        self._rootdir = None
 
     def __enter__(self):
-        self._td = tempfile.mkdtemp()
-        aptdir = os.path.join(self._td, 'etc', 'apt')
+        self._rootdir = tempfile.mkdtemp()
+        aptdir = os.path.join(self._rootdir, 'etc', 'apt')
         os.makedirs(aptdir)
         # TODO(jelmer): actually import apt keys (we do only use this
         # where we know the existing sha)
@@ -169,25 +172,19 @@ class RemoteApt(LocalApt):
             import apt
         except ImportError as e:
             raise DependencyNotPresent('apt', e)
-        apt.Cache(rootdir=self._td).update()
+        apt.Cache(rootdir=self._rootdir).update()
+        try:
+            import apt_pkg
+        except ImportError as e:
+            raise DependencyNotPresent('apt_pkg', e)
+        self.apt_pkg = apt_pkg
+        self.apt_pkg.init()
+        self.apt_pkg.config.set("Dir", self._rootdir)
         return self
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
-        shutil.rmtree(self._td)
+        shutil.rmtree(self._rootdir)
         return False
-
-    @property
-    def apt_pkg(self):
-        if self._apt_pkg is None:
-            try:
-                import apt_pkg
-                self._apt_pkg = apt_pkg
-            except ImportError as e:
-                raise DependencyNotPresent('apt_pkg', e)
-            else:
-                self._apt_pkg.init()
-        self._apt_pkg.config.set("Dir", self._td)
-        return self._apt_pkg
 
     @classmethod
     def from_string(cls, text):
