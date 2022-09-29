@@ -250,6 +250,68 @@ def strip_optional(url):
     return url.split('{')[0]
 
 
+class _LazyDict(dict):
+
+    def __init__(self, base, load_fn):
+        self._load_fn = load_fn
+        super(_LazyDict, self).update(base)
+
+    def _load_full(self):
+        super(_LazyDict, self).update(self._load_fn())
+        self._load_fn = None
+
+    def __getitem__(self, key):
+        if self._load_fn is not None:
+            try:
+                return super(_LazyDict, self).__getitem__(key)
+            except KeyError:
+                self._load_full()
+        return super(_LazyDict, self).__getitem__(key)
+
+    def items(self):
+        self._load_full()
+        return super(_LazyDict, self).items()
+
+    def keys(self):
+        self._load_full()
+        return super(_LazyDict, self).keys()
+
+    def values(self):
+        self._load_full()
+        return super(_LazyDict, self).values()
+
+    def __contains__(self, key):
+        if super(_LazyDict, self).__contains__(key):
+            return True
+        if self._load_fn is not None:
+            self._load_full()
+            return super(_LazyDict, self).__contains__(key)
+        return False
+
+    def __delitem__(self, name):
+        raise NotImplementedError
+
+    def __setitem__(self, name, value):
+        raise NotImplementedError
+
+    def get(self, name, default=None):
+        if self._load_fn is not None:
+            try:
+                return super(_LazyDict, self).get(name, default)
+            except KeyError:
+                self._load_full()
+        return super(_LazyDict, self).get(name, default)
+
+    def pop(self):
+        raise NotImplementedError
+
+    def popitem(self):
+        raise NotImplementedError
+
+    def clear(self):
+        raise NotImplementedError
+
+
 class GitHub(Forge):
 
     name = 'github'
@@ -554,11 +616,12 @@ class GitHub(Forge):
             author = self.current_user['login']
         query.append('author:%s' % author)
         for issue in self._search_issues(query=' '.join(query)):
-            url = issue['pull_request']['url']
-            response = self._api_request('GET', url)
-            if response.status != 200:
-                raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
-            yield GitHubMergeProposal(self, json.loads(response.text))
+            def retrieve_full():
+                response = self._api_request('GET', issues['pull_request'])
+                if response.status != 200:
+                    raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
+                return json.loads(response.text)
+            yield GitHubMergeProposal(self, _LazyDict(issue['pull_request'], retrieve_full))
 
     def get_proposal_by_url(self, url):
         raise UnsupportedForge(url)
