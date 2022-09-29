@@ -31,6 +31,7 @@ import tempfile
 import tarfile
 import zipfile
 
+from debian.deb822 import Dsc
 from unittest import expectedFailure
 
 from ....revision import (
@@ -58,6 +59,7 @@ from . import (
     make_new_upstream_tarball_xz,
     TestCaseWithTransport,
     )
+from ..apt_repo import Apt, AptSourceError
 from ..upstream import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
@@ -103,206 +105,155 @@ svn_plugin = ModuleAvailableFeature('breezy.plugins.svn.mapping')
 dulwich = ModuleAvailableFeature('dulwich')
 
 
-class MockSources(object):
-
-    def __init__(self, versions, files):
-        self.restart_called_times = 0
-        self.lookup_called_times = 0
-        self.lookup_package = None
-        self.versions = versions
-        self.version = None
-        self.filess = files
-        self.files = None
-
-    def restart(self):
-        self.restart_called_times += 1
-
-    def lookup(self, package):
-        self.lookup_called_times += 1
-        assert not self.lookup_package or self.lookup_package == package
-        self.lookup_package = package
-        if self.lookup_called_times <= len(self.versions):
-            self.version = self.versions[self.lookup_called_times-1]
-            self.files = self.filess[self.lookup_called_times-1]
-            return True
-        else:
-            self.version = None
-            self.files = None
-            return False
+def MockSource(name, version, files):
+    dsc = Dsc({
+        'Package': name,
+        'Version': version})
+    dsc['Files'] = [
+            {'md5sum': checksum, 'size': size, 'name': name}
+            for (checksum, size, name, kind) in files]
+    return dsc
 
 
-class MockAptPkg(object):
+class MockApt(Apt):
 
     def __init__(self, sources):
-        self.init_called_times = 0
-        self.get_pkg_source_records_called_times = 0
-        self.sources = sources
+        self._sources = sources
 
-    def init(self):
-        self.init_called_times += 1
+    def iter_sources(self):
+        return iter(self._sources)
 
-    def SourceRecords(self):
-        self.get_pkg_source_records_called_times += 1
-        return self.sources
+    def retrieve_source(self, source_name, target_directory, source_version=None):
+        self._run_apt_source(source_name, target_directory, source_version)
 
 
 class MockAptCaller(object):
 
-    def __init__(self, work=False):
+    def __init__(self, work=True):
         self.work = work
         self.called = 0
         self.package = None
         self.version_str = None
         self.target_dir = None
 
-    def call(self, package, version_str, target_dir):
+    def call(self, package, target_dir, version_str):
         self.package = package
         self.version_str = version_str
         self.target_dir = target_dir
         self.called += 1
-        return self.work
+        if not self.work:
+            raise AptSourceError('error')
 
 
 class AptSourceTests(TestCase):
 
-    def test_get_apt_command_for_source(self):
-        self.assertEqual(
-            "apt-get source -y --only-source --tar-only "
-            "apackage=someversion",
-            AptSource()._get_command("apackage", "someversion"))
-
     def test_apt_provider_no_package(self):
-        caller = MockAptCaller()
-        sources = MockSources([], [])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
-        src._run_apt_source = caller.call
+        apt = MockApt({})
+        src = AptSource(apt)
         self.assertRaises(
             PackageVersionNotPresent, src.fetch_tarballs,
-            "apackage", "0.2", "target", _apt_pkg=apt_pkg)
-        self.assertEqual(1, apt_pkg.init_called_times)
-        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
-        self.assertEqual(1, sources.restart_called_times)
-        self.assertEqual(1, sources.lookup_called_times)
-        self.assertEqual("apackage", sources.lookup_package)
-        self.assertEqual(0, caller.called)
+            "apackage", "0.2", "target")
 
     def test_apt_provider_wrong_version(self):
-        caller = MockAptCaller()
-        sources = MockSources(
-            ["0.1-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")]])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
-        src._run_apt_source = caller.call
+        source = MockSource(
+            "apackage", "0.1-1",
+            [("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")])
+        apt = MockApt([source])
+        src = AptSource(apt)
         self.assertRaises(
             PackageVersionNotPresent, src.fetch_tarballs,
-            "apackage", "0.2", "target", _apt_pkg=apt_pkg)
-        self.assertEqual(1, apt_pkg.init_called_times)
-        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
-        self.assertEqual(1, sources.restart_called_times)
-        self.assertEqual(2, sources.lookup_called_times)
-        self.assertEqual("apackage", sources.lookup_package)
-        self.assertEqual(0, caller.called)
+            "apackage", "0.2", "target")
 
     def test_apt_provider_multiple_tarballs(self):
-        caller = MockAptCaller(work=True)
-        sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0, "apackage_0.2.orig.tar.bz2", "tar"),
-              ("checksum", 1, "apackage_0.2.orig-extra.tar.gz", "tar")]])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
-        src._run_apt_source = caller.call
-        paths = src.fetch_tarballs("apackage", "0.2", "target",
-            _apt_pkg=apt_pkg)
+        source1 = MockSource(
+            "apackage", "0.1-1",
+            [("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")])
+        source2 = MockSource(
+            "apackage", "0.2-1",
+            [("checksum", 0, "apackage_0.2.orig.tar.bz2", "tar"),
+             ("checksum", 1, "apackage_0.2.orig-extra.tar.gz", "tar")])
+        caller = MockAptCaller()
+        apt = MockApt([source1, source2])
+        apt._run_apt_source = caller.call
+        src = AptSource(apt)
+        paths = src.fetch_tarballs("apackage", "0.2", "target")
         self.assertEquals(paths, [
             "target/apackage_0.2.orig.tar.bz2",
             "target/apackage_0.2.orig-extra.tar.gz"])
 
     def test_apt_provider_right_version_bz2(self):
-        caller = MockAptCaller(work=True)
-        sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0, "apackage_0.2.orig.tar.bz2", "tar")]])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
-        src._run_apt_source = caller.call
-        paths = src.fetch_tarballs("apackage", "0.2", "target",
-            _apt_pkg=apt_pkg)
+        source1 = MockSource(
+            "apackage", "0.1-1",
+            [("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")])
+        source2 = MockSource(
+            "apackage", "0.2-1", [("checksum", 0, "apackage_0.2.orig.tar.bz2", "tar")])
+        caller = MockAptCaller()
+        apt = MockApt([source1, source2])
+        apt._run_apt_source = caller.call
+        src = AptSource(apt)
+        paths = src.fetch_tarballs("apackage", "0.2", "target")
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.bz2"])
 
     def test_apt_provider_right_version_xz(self):
-        caller = MockAptCaller(work=True)
-        sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0, "apackage_0.2.orig.tar.xz", "tar")]])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
-        src._run_apt_source = caller.call
-        paths = src.fetch_tarballs("apackage", "0.2", "target",
-            _apt_pkg=apt_pkg)
+        source1 = MockSource(
+            "apackage", "0.1-1",
+            [("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")])
+        source2 = MockSource(
+            "apackage", "0.2-1", [("checksum", 0, "apackage_0.2.orig.tar.xz", "tar")])
+        apt = MockApt([source1, source2])
+        caller = MockAptCaller()
+        apt._run_apt_source = caller.call
+        src = AptSource(apt)
+        paths = src.fetch_tarballs("apackage", "0.2", "target")
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.xz"])
+        self.assertEqual("apackage", caller.package)
+        self.assertEqual("0.2-1", caller.version_str)
+        self.assertEqual("target", caller.target_dir)
 
     def test_apt_provider_right_version(self):
-        caller = MockAptCaller(work=True)
-        sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0, "apackage_0.2.orig.tar.gz", "tar")]])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
-        src._run_apt_source = caller.call
-        paths = src.fetch_tarballs("apackage", "0.2", "target",
-            _apt_pkg=apt_pkg)
+        source1 = MockSource(
+            "apackage", "0.1-1", [("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")])
+        source2 = MockSource(
+            "apackage", "0.2-1", [("checksum", 0, "apackage_0.2.orig.tar.gz", "tar")])
+        apt = MockApt([source1, source2])
+        caller = MockAptCaller()
+        apt._run_apt_source = caller.call
+        src = AptSource(apt)
+        paths = src.fetch_tarballs("apackage", "0.2", "target")
         self.assertEquals(paths, ["target/apackage_0.2.orig.tar.gz"])
-        self.assertEqual(1, apt_pkg.init_called_times)
-        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
-        self.assertEqual(1, sources.restart_called_times)
-        # Only called twice means it stops when the command works.
-        self.assertEqual(2, sources.lookup_called_times)
-        self.assertEqual("apackage", sources.lookup_package)
         self.assertEqual(1, caller.called)
         self.assertEqual("apackage", caller.package)
         self.assertEqual("0.2-1", caller.version_str)
         self.assertEqual("target", caller.target_dir)
 
     def test_apt_provider_right_version_command_fails(self):
-        caller = MockAptCaller()
-        sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0, "apackage_0.2.orig.tar.gz", "tar")]])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
-        src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
-            "apackage", "0.2", "target",
-            _apt_pkg=apt_pkg)
-        self.assertEqual(1, apt_pkg.init_called_times)
-        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
-        self.assertEqual(1, sources.restart_called_times)
-        # Only called twice means it stops when the command fails.
-        self.assertEqual(3, sources.lookup_called_times)
-        self.assertEqual("apackage", sources.lookup_package)
+        source1 = MockSource("apackage", "0.1-1", [("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")])
+        source2 = MockSource("apackage", "0.2-1", [("checksum", 0, "apackage_0.2.orig.tar.gz", "tar")])
+        apt = MockApt([source1, source2])
+        caller = MockAptCaller(work=False)
+        apt._run_apt_source = caller.call
+        src = AptSource(apt)
+        self.assertRaises(
+            PackageVersionNotPresent, src.fetch_tarballs,
+            "apackage", "0.2", "target")
         self.assertEqual(1, caller.called)
         self.assertEqual("apackage", caller.package)
         self.assertEqual("0.2-1", caller.version_str)
         self.assertEqual("target", caller.target_dir)
 
     def test_apt_provider_right_version_is_native(self):
-        caller = MockAptCaller(work=True)
-        sources = MockSources(["0.1-1", "0.2-1"],
-            [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")],
-             [("checksum", 0, "apackage_0.2-1.orig.tar.gz", "tar")]])
-        apt_pkg = MockAptPkg(sources)
-        src = AptSource()
+        source1 = MockSource(
+            "apackage", "0.1-1",
+            [("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")])
+        source2 = MockSource(
+            "apackage",  "0.2-1",
+             [("checksum", 0, "apackage_0.2-1.orig.tar.gz", "tar")])
+        apt = MockApt([source1, source2])
+        caller = MockAptCaller()
+        src = AptSource(apt)
         src._run_apt_source = caller.call
         self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
-            "apackage", "0.2", "target", _apt_pkg=apt_pkg)
-        self.assertEqual(1, apt_pkg.init_called_times)
-        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
-        self.assertEqual(1, sources.restart_called_times)
-        self.assertEqual(3, sources.lookup_called_times)
-        self.assertEqual("apackage", sources.lookup_package)
+            "apackage", "0.2", "target")
         self.assertEqual(0, caller.called)
 
 

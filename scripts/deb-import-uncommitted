@@ -143,6 +143,7 @@ def import_uncommitted(tree, subpath, apt):
     with contextlib.ExitStack() as es:
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
         apt.retrieve_source(package_name, archive_source)
+        subprocess.check_output(['dpkg-source', '-x', fn], cwd=archive_source)
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
             archive_cl = Changelog(f)
@@ -213,7 +214,7 @@ async def main():
     parser.parse_args()
 
     if args.apt_repository:
-        apt = RemoteApt(args.apt_repository)
+        apt = RemoteApt.from_string(args.apt_repository)
     else:
         apt = LocalApt()
     local_tree, subpath = WorkingTree.open_containing('.')

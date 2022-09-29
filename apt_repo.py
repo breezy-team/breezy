@@ -17,6 +17,10 @@
 
 import subprocess
 
+from debian.deb822 import Dsc
+
+from breezy.trace import note
+
 
 class NoAptSources(Exception):
     """No apt sources were configured."""
@@ -31,50 +35,83 @@ class AptSourceError(Exception):
 
 class Apt:
 
-    def iter_sources(self, distribution):
+    def iter_source_by_name(self, source_name):
+        for source in self.iter_sources():
+            if source['Package'] == source_name:
+                yield source
+
+    def iter_sources(self):
         raise NotImplementedError(self.iter_sources)
 
-    def iter_binaries(self, distribution):
+    def iter_binaries(self, binary_name):
         raise NotImplementedError(self.iter_binaries)
 
-    def retrieve_source(self, package_name, target_directory):
+    def retrieve_source(self, source_name, target_directory, source_version=None):
         raise NotImplementedError(self.retrieve_source)
 
 
 class LocalApt(Apt):
 
-    def iter_sources(self, distribution):
-        import apt_pkg
-        from debian.deb822 import Deb822
-        apt_pkg.init()
+    def __init__(self):
+        self._apt_pkg = None
 
-        # TODO(jelmer): Filter by distribution
+    @property
+    def apt_pkg(self):
+        if self._apt_pkg is not None:
+            return self._apt_pkg
+        try:
+            import apt_pkg
+        except ImportError as e:
+            raise DependencyNotPresent('apt_pkg', e)
+        else:
+            apt_pkg.init()
+        self._apt_pkg = apt_pkg
+        return self._apt_pkg
 
-        sources = apt_pkg.SourceRecords()
+    def iter_sources(self):
+        try:
+            sources = self.apt_pkg.SourceRecords()
+        except SystemError:
+            raise NoAptSources()
+
         sources.restart()
         while sources.step():
-            source = Deb822(sources.record)
-            yield source
+            yield Dsc(sources.record)
 
-    def iter_binaries(self, distribution):
-        import apt
-        from debian.deb822 import Deb822
+    def iter_source_by_name(self, source_name):
+        try:
+            sources = self.apt_pkg.SourceRecords()
+        except SystemError:
+            raise NoAptSources()
 
-        # TODO(jelmer): Filter by distribution
+        sources.restart()
+        while sources.lookup(source_name):
+            yield Dsc(sources.record)
+
+    def iter_binaries(self, binary_name):
+        try:
+            import apt
+        except ImportError as e:
+            raise DependencyNotPresent('apt', e)
 
         cache = apt.Cache()
         for pkg in cache:
             for version in pkg.versions:
                 yield version._records
 
-    def retrieve_source(self, package_name, target):
+    def retrieve_source(self, package_name, target, source_version=None):
+        self._run_apt_source(package, sources.version, target_dir)
+
+    def _get_command(self, package, version_str=None):
+        return ['apt', 'source', '-y', '--only-source', '--tar-only',
+                ('%s=%s' % (package, version_str))
+                if version_str is not None else package]
+
+    def _run_apt_source(self, package, version_str, target_dir):
+        command = self._get_command(package, version_str)
         try:
             subprocess.run(
-                ["apt", "source", package_name],
-                cwd=target,
-                check=True,
-                stderr=subprocess.PIPE,
-            )
+                command, cwd=target_dir, stderr=subprocess.PIPE, check=True)
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.splitlines()
             if stderr[-1] == (
@@ -99,5 +136,12 @@ class LocalApt(Apt):
 
 class RemoteApt(Apt):
 
-    def __init__(self, mirror_uri):
+    def __init__(self, mirror_uri, distribution=None, components=None):
         self.mirror_uri = mirror_uri
+        self.distribution = distribution
+        self.components = components
+
+    @classmethod
+    def from_string(cls, text):
+        (mirror_uri, distribution, rest) = text.split(' ', 3)
+        return cls(mirror_uri, distribution, rest.split())

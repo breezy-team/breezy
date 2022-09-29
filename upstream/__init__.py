@@ -151,56 +151,43 @@ class UpstreamSource(object):
 class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
+    def __init__(self, apt=None):
+        if apt is None:
+            from ..apt_repo import LocalApt
+            apt = LocalApt()
+        self.apt = apt
+
     def fetch_tarballs(self, package, upstream_version, target_dir,
-                       _apt_pkg=None, components=None):
-        if _apt_pkg is None:
-            try:
-                import apt_pkg
-            except ImportError as e:
-                raise DependencyNotPresent('apt_pkg', e)
-        else:
-            apt_pkg = _apt_pkg
-        apt_pkg.init()
-
-        # Handle the case where the apt.sources file contains no source
-        # URIs (LP:375897)
+                       components=None):
+        from ..apt_repo import NoAptSources, AptSourceError
+        source_name = package
         try:
-            sources = apt_pkg.SourceRecords()
-        except SystemError:
+            for source in self.apt.iter_source_by_name(package):
+                filenames = []
+                for entry in source['Files']:
+                    filename = os.path.basename(entry['name'])
+                    if filename.startswith(
+                            "%s_%s.orig" % (package, upstream_version)):
+                        filenames.append(filename)
+                if filenames:
+                    source_version = source["Version"]
+                    break
+            else:
+                note("apt could not find %s/%s.", package, upstream_version)
+                raise PackageVersionNotPresent(package, upstream_version, self)
+        except NoAptSources:
+            logging.info('No apt sources configured, skipping')
+            # Handle the case where the apt.sources file contains no source
+            # URIs (LP:375897)
             raise PackageVersionNotPresent(package, upstream_version, self)
-
-        sources.restart()
         note("Using apt to look for the upstream tarball.")
-        while sources.lookup(package):
-            filenames = []
-            for (checksum, size, filename, filekind) in sources.files:
-                if filekind != "tar":
-                    continue
-                filename = os.path.basename(filename)
-                if filename.startswith(
-                        "%s_%s.orig" % (package, upstream_version)):
-                    filenames.append(filename)
-            if filenames:
-                if self._run_apt_source(package, sources.version, target_dir):
-                    return [os.path.join(target_dir, filename)
-                            for filename in filenames]
-                else:
-                    note("apt found %s/%s but could not download.",
-                         package, sources.version)
-        note("apt could not find %s/%s.", package, upstream_version)
-        raise PackageVersionNotPresent(package, upstream_version, self)
-
-    def _get_command(self, package, version_str):
-        return 'apt-get source -y --only-source --tar-only %s=%s' % \
-            (package, version_str)
-
-    def _run_apt_source(self, package, version_str, target_dir):
-        command = self._get_command(package, version_str)
-        proc = subprocess.Popen(command, shell=True, cwd=target_dir)
-        proc.wait()
-        if proc.returncode != 0:
-            return False
-        return True
+        try:
+            self.apt.retrieve_source(source_name, target_dir, source_version)
+        except AptSourceError:
+            note("apt found %s/%s but could not download.",
+                 package, source_version)
+            raise PackageVersionNotPresent(package, upstream_version, self)
+        return [os.path.join(target_dir, filename) for filename in filenames]
 
 
 class SelfSplitSource(UpstreamSource):

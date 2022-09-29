@@ -111,6 +111,7 @@ def make_new_upstream_tarball_lzma(source, dest):
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
             'blackbox',
+            'test_apt_repo',
             'test_builder',
             'test_bzrtools_import',
             'test_commit_message',
