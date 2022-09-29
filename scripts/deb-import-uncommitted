@@ -40,7 +40,12 @@ from breezy.plugins.debian.import_dsc import (
     DistributionBranchSet,
 )
 from breezy.plugins.debian.util import MissingChangelogError
-from breezy.plugins.debian.apt_repo import LocalApt, NoAptSources, AptSourceError
+from breezy.plugins.debian.apt_repo import (
+    LocalApt,
+    RemotApt,
+    NoAptSources,
+    AptSourceError,
+)
 
 BRANCH_NAME = "missing-commits"
 
@@ -126,7 +131,7 @@ class TreeUpstreamVersionMissing(Exception):
         )
 
 
-def import_uncommitted(tree, subpath):
+def import_uncommitted(tree, subpath, apt):
     cl_path = os.path.join(subpath, "debian/changelog")
     try:
         with tree.get_file(cl_path) as f:
@@ -137,7 +142,6 @@ def import_uncommitted(tree, subpath):
 
     with contextlib.ExitStack() as es:
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
-        apt = LocalApt()
         apt.retrieve_source(package_name, archive_source)
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
@@ -202,11 +206,19 @@ def report_fatal(code, description):
 async def main():
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--apt-repository', type=str,
+        help='APT repository to use. Defaults to locally configured.',
+        default=os.environ.get('APT_REPOSITORY'))
     parser.parse_args()
 
+    if args.apt_repository:
+        apt = RemoteApt(args.apt_repository)
+    else:
+        apt = LocalApt()
     local_tree, subpath = WorkingTree.open_containing('.')
     try:
-        ret = import_uncommitted(local_tree, subpath)
+        ret = import_uncommitted(local_tree, subpath, apt)
     except AptSourceError as e:
         if isinstance(e.reason, list):
             reason = e.reason[-1]
