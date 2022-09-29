@@ -617,9 +617,9 @@ class GitHub(Forge):
         query.append('author:%s' % author)
         for issue in self._search_issues(query=' '.join(query)):
             def retrieve_full():
-                response = self._api_request('GET', issues['pull_request'])
+                response = self._api_request('GET', issue['pull_request']['url'])
                 if response.status != 200:
-                    raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
+                    raise UnexpectedHttpStatus(issue['pull_request']['url'], response.status, headers=response.getheaders())
                 return json.loads(response.text)
             yield GitHubMergeProposal(self, _LazyDict(issue['pull_request'], retrieve_full))
 
