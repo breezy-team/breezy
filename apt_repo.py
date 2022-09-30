@@ -51,6 +51,10 @@ class Apt:
     def iter_binaries(self, binary_name):
         raise NotImplementedError(self.iter_binaries)
 
+    def retrieve_orig(self, source_name, target_directory,
+                      orig_version=None):
+        raise NotImplementedError(self.retrieve_source)
+
     def retrieve_source(self, source_name, target_directory,
                         source_version=None):
         raise NotImplementedError(self.retrieve_source)
@@ -107,25 +111,32 @@ class LocalApt(Apt):
             for version in pkg.versions:
                 yield version._records
 
-    def retrieve_source(self, package_name, target, source_version=None):
-        self._run_apt_source(package_name, target, source_version)
+    def retrieve_source(self, package_name, target, source_version=None,
+                        tar_only=False):
+        self._run_apt_source(package_name, target, source_version,
+                             tar_only=tar_only)
 
-    def _get_command(self, package, version_str=None):
-        args = ['apt', 'source']
+    def _get_command(self, package, version_str=None, tar_only=False):
+        args = ['apt', 'source', '-d']
         if self._rootdir is not None:
             args.append('-oDir=%s' % self._rootdir)
+        if tar_only:
+            args.append('--tar-only')
         args.extend([
-            '-y', '--only-source', '--tar-only',
+            '-y', '--only-source',
             ('%s=%s' % (package, version_str))
             if version_str is not None else package])
         return args
 
     def _run_apt_source(self, package: str, target_dir,
-                        version_str: Optional[str]):
-        command = self._get_command(package, version_str)
+                        version_str: Optional[str] = None,
+                        tar_only: bool = False):
+        command = self._get_command(package, version_str, tar_only=tar_only)
         try:
             subprocess.run(
-                command, cwd=target_dir, stderr=subprocess.PIPE, check=True)
+                command, cwd=target_dir, stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                check=True)
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.splitlines()
             if stderr[-1] == (

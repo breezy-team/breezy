@@ -27,6 +27,7 @@ from urllib.request import urlopen
 
 import breezy.bzr
 import breezy.git
+from breezy.trace import note
 
 try:
     from breezy.transport import NoSuchFile
@@ -83,7 +84,7 @@ def select_vcswatch_packages():
 
 
 def download_snapshot(package, version, output_dir, no_preparation=False):
-    logging.info("Downloading %s %s", package, version)
+    note("Downloading %s %s", package, version)
     srcfiles_url = (
         "https://snapshot.debian.org/mr/package/%s/%s/"
         "srcfiles?fileinfo=1" % (package, version)
@@ -96,6 +97,7 @@ def download_snapshot(package, version, output_dir, no_preparation=False):
         local_path = os.path.join(output_dir, os.path.basename(filename))
         with open(local_path, "wb") as f:
             url = "https://snapshot.debian.org/file/%s" % hsh
+            note('.. Downloading %s', url)
             with urlopen(url) as g:
                 f.write(g.read())
     args = []
@@ -149,6 +151,7 @@ def import_uncommitted(tree, subpath, apt):
         apt.retrieve_source(package_name, archive_source)
         [dsc] = [e.name for e in os.scandir(archive_source)
                  if e.name.endswith('.dsc')]
+        note("Unpacking source")
         subprocess.check_output(['dpkg-source', '-x', dsc], cwd=archive_source)
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
@@ -162,13 +165,13 @@ def import_uncommitted(tree, subpath, apt):
             raise TreeVersionNotInArchiveChangelog(tree_cl.version)
         if len(missing_versions) == 0:
             raise NoMissingVersions(tree_cl.version, archive_cl.version)
-        logging.info("Missing versions: %s", ", ".join(map(str, missing_versions)))
+        note("Missing versions: %s", ", ".join(map(str, missing_versions)))
         ret = []
         dbs = DistributionBranchSet()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs.add_branch(db)
         if tree_cl.version.debian_revision:
-            logging.info(
+            note(
                 "Extracting upstream version %s.", tree_cl.version.upstream_version
             )
             upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
@@ -189,7 +192,7 @@ def import_uncommitted(tree, subpath, apt):
             )
             version_path[version] = output_dir
         for version in reversed(missing_versions):
-            logging.info("Importing %s", version)
+            note("Importing %s", version)
             dsc_path = os.path.join(
                 version_path[version], "%s_%s.dsc" % (package_name, version)
             )
@@ -218,6 +221,8 @@ async def main():
         help='APT repository to use. Defaults to locally configured.',
         default=os.environ.get('REPOSITORIES'))
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
 
     if args.apt_repositories:
         apt = RemoteApt.from_string(args.apt_repositories)
@@ -267,7 +272,7 @@ async def main():
                 },
             }, f)
 
-    logging.info('Imported %d uploads.', len(ret))
+    note('Imported %d uploads.', len(ret))
 
 
 if __name__ == "__main__":

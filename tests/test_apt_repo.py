@@ -112,16 +112,20 @@ class LocalAptTests(TestCase):
 
     def test_get_apt_command_for_source(self):
         self.assertEqual(
-            ["apt", "source", "-y", "--only-source", "--tar-only",
+            ["apt", "source", "-d", "-y", "--only-source",
              "apackage=someversion"],
             LocalApt(rootdir=None)._get_command("apackage", "someversion"))
         self.assertEqual(
-            ["apt", "source", '-oDir=/', "-y", "--only-source", "--tar-only",
+            ["apt", "source", "-d", '-oDir=/', "-y", "--only-source",
              "apackage"],
             LocalApt()._get_command("apackage"))
         self.assertEqual(
-            ["apt", "source", '-oDir=/tmp/lala',
-             "-y", "--only-source", "--tar-only", "apackage"],
+            ["apt", "source", "-d", '-oDir=/', "--tar-only", "-y",
+             "--only-source", "apackage"],
+            LocalApt()._get_command("apackage", tar_only=True))
+        self.assertEqual(
+            ["apt", "source", "-d", '-oDir=/tmp/lala',
+             "-y", "--only-source", "apackage"],
             LocalApt('/tmp/lala')._get_command("apackage"))
 
     def test_iter_sources_empty(self):

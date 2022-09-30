@@ -129,7 +129,8 @@ class MockApt(Apt):
     def iter_sources(self):
         return iter(self._sources)
 
-    def retrieve_source(self, source_name, target_directory, source_version=None):
+    def retrieve_source(self, source_name, target_directory,
+                        source_version=None, tar_only=False):
         self._run_apt_source(source_name, target_directory, source_version)
 
 

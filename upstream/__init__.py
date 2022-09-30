@@ -186,7 +186,8 @@ class AptSource(UpstreamSource):
             note("Using apt to look for the upstream tarball.")
             try:
                 self.apt.retrieve_source(
-                    source_name, target_dir, source_version)
+                    source_name, target_dir, source_version,
+                    tar_only=True)
             except AptSourceError:
                 note("apt found %s/%s but could not download.",
                      package, source_version)
