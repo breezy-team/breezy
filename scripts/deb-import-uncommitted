@@ -217,15 +217,21 @@ async def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--apt-repositories', type=str,
+        '--apt-repository', type=str,
         help='APT repository to use. Defaults to locally configured.',
-        default=os.environ.get('REPOSITORIES'))
+        default=os.environ.get('APT_REPOSITORY') or os.environ.get('REPOSITORIES'))
+    parser.add_argument(
+        '--apt-repository-key', type=str,
+        help=('APT repository key to use for validation, '
+              'if --apt-repository is set.'),
+        default=os.environ.get('APT_REPOSITORY_KEY'))
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    if args.apt_repositories:
-        apt = RemoteApt.from_string(args.apt_repositories)
+    if args.apt_repository:
+        apt = RemoteApt.from_string(
+            args.apt_repository, args.apt_repository_key)
     else:
         apt = LocalApt()
     local_tree, subpath = WorkingTree.open_containing('.')

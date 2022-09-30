@@ -112,10 +112,13 @@ export_upstream_revision_opt = Option(
     'export-upstream-revision',
     help="Select the upstream revision that will be exported.",
     type=str, argname="REVISION")
-apt_repositories_opt = Option(
-    'apt-repositories',
+apt_repository_opts = [Option(
+    'apt-repository',
     help='Apt repository to attempt to fetch from',
-    type=str)
+    type=str), Option(
+    'apt-repository-key',
+    help='Apt repository key to use for validation',
+    type=str)]
 
 
 class StrictBuildFailed(BzrCommandError):
@@ -391,7 +394,7 @@ class cmd_builddeb(Command):
         export_upstream_opt, export_upstream_revision_opt, quick_opt,
         reuse_opt, native_opt, source_opt, 'revision', strict_opt,
         package_merge_opt, guess_upstream_branch_url_opt,
-        apt_repositories_opt]
+        ] + apt_repository_opts
 
     def _get_tree_and_branch(self, location):
         if location is None:
@@ -500,7 +503,7 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, package_merge=None,
             strict=False, guess_upstream_branch_url=False,
-            apt_repositories=None):
+            apt_repository=None, apt_repository_key=None):
         from debian.changelog import ChangelogParseError
         from .builder import DebBuild
         from .config import UpstreamMetadataSyntaxError
@@ -522,9 +525,9 @@ class cmd_builddeb(Command):
         tree = self._get_build_tree(revision, tree, branch)
         _check_tree(tree, subpath, strict=strict)
 
-        if apt_repositories is not None:
+        if apt_repository is not None:
             from .apt_repo import RemoteApt
-            apt = RemoteApt.from_string(apt_repositories)
+            apt = RemoteApt.from_string(apt_repository, apt_repository_key)
         else:
             apt = None
 
@@ -632,10 +635,11 @@ class cmd_get_orig_source(Command):
         help='Directory from which to retrieve the packaging data',
         short_name='d', type=str)
 
-    takes_options = [directory_opt, apt_repositories_opt]
+    takes_options = [directory_opt] + apt_repository_opts
     takes_args = ["version?"]
 
-    def run(self, directory='.', version=None, apt_repositories=None):
+    def run(self, directory='.', version=None, apt_repository=None,
+            apt_repository_key=None):
         from .upstream import (
             AptSource,
             UpstreamProvider,
@@ -661,9 +665,9 @@ class cmd_get_orig_source(Command):
         if version is None:
             version = changelog.version.upstream_version
 
-        if apt_repositories is not None:
+        if apt_repository is not None:
             from .apt_repo import RemoteApt
-            apt = RemoteApt.from_string(apt_repositories)
+            apt = RemoteApt.from_string(apt_repository, apt_repository_key)
         else:
             apt = None
 
@@ -1322,11 +1326,11 @@ class cmd_builddeb_do(Command):
     takes_args = ['command*']
     takes_options = [
         Option('no-preparation', help='Don\'t apply/unapply patches.'),
-        apt_repositories_opt]
+        ] + apt_repository_opts
     aliases = ['bd-do']
 
     def run(self, command_list=None, no_preparation=False,
-            apt_repositories=None):
+            apt_repository=None, apt_repository_key=None):
         import subprocess
         from .source_distiller import (
             MergeModeDistiller,
@@ -1388,9 +1392,9 @@ class cmd_builddeb_do(Command):
         if orig_dir is None:
             orig_dir = default_orig_dir
 
-        if apt_repositories is not None:
+        if apt_repository is not None:
             from .apt_repo import RemoteApt
-            apt = RemoteApt.from_string(apt_repositories)
+            apt = RemoteApt.from_string(apt_repository, apt_repository_key)
         else:
             apt = None
 
@@ -1632,11 +1636,12 @@ class cmd_debrelease(Command):
     takes_options = [
         strict_opt,
         Option('skip-upload', help='Skip upload.'), builder_opt,
-        apt_repositories_opt]
+        ] + apt_repository_opts
 
 
     def run(self, location='.', strict=True, skip_upload=False,
-            builder=DEFAULT_BUILDER, apt_repositories=None):
+            builder=DEFAULT_BUILDER, apt_repository=None,
+            apt_repository_key=None):
         from .release import release
         from .util import (
             dput_changes,
@@ -1644,9 +1649,9 @@ class cmd_debrelease(Command):
 
         branch, subpath = Branch.open_containing(location)
 
-        if apt_repositories is not None:
+        if apt_repository is not None:
             from .apt_repo import RemoteApt
-            apt = RemoteApt.from_string(apt_repositories)
+            apt = RemoteApt.from_string(apt_repository, apt_repository_key)
         else:
             apt = None
 

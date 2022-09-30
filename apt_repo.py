@@ -161,24 +161,30 @@ class LocalApt(Apt):
 
 class RemoteApt(LocalApt):
 
-    def __init__(self, mirror_uri, distribution=None, components=None):
+    def __init__(self, mirror_uri, distribution=None, components=None,
+                 key_path=None):
         super(RemoteApt, self).__init__()
         self.mirror_uri = mirror_uri
         self.distribution = distribution
         self.components = components
+        self.key_path = key_path
         self._rootdir = None
 
     def __enter__(self):
         self._rootdir = tempfile.mkdtemp()
         aptdir = os.path.join(self._rootdir, 'etc', 'apt')
         os.makedirs(aptdir)
-        # TODO(jelmer): actually import apt keys (we do only use this
-        # where we know the existing sha)
+        if self.key_path:
+            tag = "[signed-by=%s]" % self.key_path
+        else:
+            tag = "[trusted=yes]"
         with open(os.path.join(aptdir, 'sources.list'), 'w') as f:
-            f.write('deb [trusted=yes] %s %s %s\n' % (
-                self.mirror_uri, self.distribution, ' '.join(self.components)))
-            f.write('deb-src [trusted=yes] %s %s %s\n' % (
-                self.mirror_uri, self.distribution, ' '.join(self.components)))
+            f.write('deb %s %s %s %s\n' % (
+                self.mirror_uri, tag, self.distribution,
+                ' '.join(self.components)))
+            f.write('deb-src %s %s %s %s\n' % (
+                self.mirror_uri, tag, self.distribution,
+                ' '.join(self.components)))
         try:
             import apt
         except ImportError as e:
@@ -198,6 +204,6 @@ class RemoteApt(LocalApt):
         return False
 
     @classmethod
-    def from_string(cls, text):
+    def from_string(cls, text, key_path=None):
         (mirror_uri, distribution, rest) = text.split(' ', 3)
-        return cls(mirror_uri, distribution, rest.split())
+        return cls(mirror_uri, distribution, rest.split(), key_path=key_path)
