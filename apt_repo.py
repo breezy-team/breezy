@@ -180,10 +180,10 @@ class RemoteApt(LocalApt):
             tag = "[trusted=yes]"
         with open(os.path.join(aptdir, 'sources.list'), 'w') as f:
             f.write('deb %s %s %s %s\n' % (
-                self.mirror_uri, tag, self.distribution,
+                tag, self.mirror_uri, self.distribution,
                 ' '.join(self.components)))
             f.write('deb-src %s %s %s %s\n' % (
-                self.mirror_uri, tag, self.distribution,
+                tag, self.mirror_uri, self.distribution,
                 ' '.join(self.components)))
         try:
             import apt
