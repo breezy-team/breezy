@@ -219,8 +219,8 @@ async def main():
         default=os.environ.get('REPOSITORIES'))
     args = parser.parse_args()
 
-    if args.apt_repository:
-        apt = RemoteApt.from_string(args.apt_repository)
+    if args.apt_repositories:
+        apt = RemoteApt.from_string(args.apt_repositories)
     else:
         apt = LocalApt()
     local_tree, subpath = WorkingTree.open_containing('.')
