@@ -165,8 +165,9 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
             ["find", self.extracted_debianised, "-perm",
              "0000", "-exec", "chmod", "644", "{}", ";"])
         for part in self.dsc['files']:
-            if part['name'].startswith(
-                    "%s_%s.orig" % (name, str(version.upstream_version))):
+            if (part['name'].startswith(
+                    "%s_%s.orig" % (name, str(version.upstream_version)))
+                    and not part['name'].endswith('.asc')):
                 self.upstream_tarballs.append((
                     os.path.abspath(os.path.join(
                         osutils.dirname(self.dsc_path), part['name'])),
