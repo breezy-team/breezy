@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+import pwd
 import shutil
 import subprocess
 import tempfile
@@ -196,7 +197,12 @@ class RemoteApt(LocalApt):
             raise DependencyNotPresent('apt_pkg', e)
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
-        self.apt_pkg.config.set("APT::Sandbox::User", os.environ['USER'])
+        try:
+            username = pwd.getpwuid(os.getuid()).pw_name
+        except KeyError:
+            pass
+        else:
+            self.apt_pkg.config.set("APT::Sandbox::User", username)
         self.apt_pkg.config.set("Dir", self._rootdir)
         return self
 
