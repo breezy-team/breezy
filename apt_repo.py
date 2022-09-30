@@ -196,6 +196,7 @@ class RemoteApt(LocalApt):
             raise DependencyNotPresent('apt_pkg', e)
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
+        self.apt_pkg.config.set("APT::Sandbox::User", os.environ['USER'])
         self.apt_pkg.config.set("Dir", self._rootdir)
         return self
 
