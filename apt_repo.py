@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 from typing import Optional
 
-from debian.deb822 import Dsc
+from debian.deb822 import Dsc, Deb822
 
 from breezy.errors import DependencyNotPresent
 from breezy.trace import note
@@ -49,7 +49,7 @@ class Apt:
     def iter_sources(self):
         raise NotImplementedError(self.iter_sources)
 
-    def iter_binaries(self, binary_name):
+    def iter_binaries(self):
         raise NotImplementedError(self.iter_binaries)
 
     def retrieve_orig(self, source_name, target_directory,
@@ -72,8 +72,10 @@ class LocalApt(Apt):
             import apt_pkg
         except ImportError as e:
             raise DependencyNotPresent('apt_pkg', e)
+        import apt
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
+        self.cache = apt.Cache(rootdir=self._rootdir)
         if self._rootdir is not None:
             self.apt_pkg.config.set("Dir", self._rootdir)
         return self
@@ -101,16 +103,10 @@ class LocalApt(Apt):
         while sources.lookup(source_name):
             yield Dsc(sources.record)
 
-    def iter_binaries(self, binary_name):
-        try:
-            import apt
-        except ImportError as e:
-            raise DependencyNotPresent('apt', e)
-
-        cache = apt.Cache()
-        for pkg in cache:
+    def iter_binaries(self):
+        for pkg in self.cache:
             for version in pkg.versions:
-                yield version._records
+                yield Deb822(version._records.record)
 
     def retrieve_source(self, package_name, target, source_version=None,
                         tar_only=False):
@@ -190,7 +186,8 @@ class RemoteApt(LocalApt):
             import apt
         except ImportError as e:
             raise DependencyNotPresent('apt', e)
-        apt.Cache(rootdir=self._rootdir).update()
+        self.cache = apt.Cache(rootdir=self._rootdir)
+        self.cache.update()
         try:
             import apt_pkg
         except ImportError as e:
