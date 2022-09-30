@@ -28,7 +28,10 @@ from urllib.request import urlopen
 import breezy.bzr
 import breezy.git
 
-from breezy.errors import NoSuchFile
+try:
+    from breezy.transport import NoSuchFile
+except ImportError:
+    from breezy.errors import NoSuchFile
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog
