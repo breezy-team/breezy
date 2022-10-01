@@ -22,6 +22,7 @@ import logging
 import os
 import subprocess
 import tempfile
+from typing import List
 
 from urllib.request import urlopen
 from urllib.error import HTTPError
@@ -36,7 +37,7 @@ except ImportError:
     from breezy.errors import NoSuchFile
 from breezy.workingtree import WorkingTree
 
-from debian.changelog import Changelog
+from debian.changelog import Changelog, Version
 
 from breezy.plugins.debian.info import versions_dict
 from breezy.plugins.debian.upstream import PackageVersionNotPresent
@@ -169,7 +170,7 @@ def import_uncommitted(tree, subpath, apt):
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
             archive_cl = Changelog(f)
-        missing_versions = []
+        missing_versions: List[Version] = []
         for block in archive_cl:
             if block.version == tree_cl.version:
                 break
@@ -185,7 +186,8 @@ def import_uncommitted(tree, subpath, apt):
         dbs.add_branch(db)
         if tree_cl.version.debian_revision:
             note(
-                "Extracting upstream version %s.", tree_cl.version.upstream_version
+                "Extracting upstream version %s.",
+                tree_cl.version.upstream_version
             )
             upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
             try:
@@ -193,6 +195,7 @@ def import_uncommitted(tree, subpath, apt):
                     tree_cl.package, tree_cl.version.upstream_version
                 )
             except PackageVersionNotPresent:
+                # TODO(jelmer): Should we import it instead?
                 raise TreeUpstreamVersionMissing(tree_cl.version.upstream_version)
             db.extract_upstream_tree(upstream_tips, upstream_dir)
         no_preparation = not tree.has_filename(".pc/applied-patches")
@@ -210,8 +213,7 @@ def import_uncommitted(tree, subpath, apt):
                 version_path[version], "%s_%s.dsc" % (package_name, version)
             )
             tag_name = db.import_package(dsc_path)
-            revision = db.pristine_upstream_source.version_as_revisions(
-                tree_cl.package, version)
+            revision = db.branch.tags.lookup_tag(tag_name)
             ret.append((tag_name, version, revision))
     return ret
 
