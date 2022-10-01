@@ -174,8 +174,8 @@ class AptSource(UpstreamSource):
                         source_version = source["Version"]
                         break
                 else:
-                    note("apt could not find %s/%s.",
-                         package, upstream_version)
+                    note("%r could not find %s/%s.",
+                          self.apt, package, upstream_version)
                     raise PackageVersionNotPresent(
                         package, upstream_version, self)
             except NoAptSources:

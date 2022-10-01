@@ -67,6 +67,9 @@ class LocalApt(Apt):
         self.apt_pkg = None
         self._rootdir = rootdir
 
+    def __repr__(self):
+        return "%s(%r)" % (type(self).__name__, self._rootdir)
+
     def __enter__(self):
         try:
             import apt_pkg
@@ -166,6 +169,11 @@ class RemoteApt(LocalApt):
         self.components = components
         self.key_path = key_path
         self._rootdir = None
+
+    def __repr__(self):
+        return "%s(%r, distribution=%r, components=%r, key_path=%r)" % (
+            type(self).__name__, self.mirror_uri, self.distribution,
+            self.components, self.key_path)
 
     def __enter__(self):
         self._rootdir = tempfile.mkdtemp()
