@@ -283,7 +283,7 @@ async def main():
             'snapshot-download-failed', 'Downloading %s failed: %s' % (e.url, e.inner))
         return 1
 
-    if os.environ.get('SVP_API') == 1:
+    if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'description': 'Import archive changes missing from the VCS.',
@@ -297,7 +297,7 @@ async def main():
                 },
             }, f)
 
-    note('Imported %d uploads.', len(ret))
+    note('Imported uploads: %s.', [v[1] for v in ret])
 
 
 if __name__ == "__main__":
