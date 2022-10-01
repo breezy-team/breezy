@@ -24,6 +24,7 @@ import subprocess
 import tempfile
 
 from urllib.request import urlopen
+from urllib.error import HTTPError
 
 import breezy.bzr
 import breezy.git
@@ -83,6 +84,13 @@ def select_vcswatch_packages():
     return packages
 
 
+class SnapshotDownloadError(Exception):
+
+    def __init__(self, url, e):
+        self.url = url
+        self.inner = inner
+
+
 def download_snapshot(package, version, output_dir, no_preparation=False):
     note("Downloading %s %s", package, version)
     srcfiles_url = (
@@ -98,8 +106,13 @@ def download_snapshot(package, version, output_dir, no_preparation=False):
         with open(local_path, "wb") as f:
             url = "https://snapshot.debian.org/file/%s" % hsh
             note('.. Downloading %s', url)
-            with urlopen(url) as g:
-                f.write(g.read())
+            try:
+                with urlopen(url) as g:
+                    f.write(g.read())
+            except HTTPError as e:
+                if e.status == 504:
+                    raise SnapshotDownloadError(e)
+                raise e
     args = []
     if no_preparation:
         args.append("--no-preparation")
@@ -263,6 +276,10 @@ async def main():
     except NoMissingVersions as e:
         report_fatal("nothing-to-do", str(e))
         return 0
+    except SnapshotDownloadError as e:
+        report_fatal(
+            'snapshot-download-failed', 'Downloading %s failed: %s' % (e.url, e.inner))
+        return 1
 
     if os.environ.get('SVP_API') == 1:
         with open(os.environ['SVP_RESULT'], 'w') as f:
