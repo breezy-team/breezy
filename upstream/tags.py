@@ -21,8 +21,7 @@ from itertools import islice
 import re
 from typing import Optional
 
-from debian.changelog import Version
-
+from ....repository import Repository
 from ....revision import Revision
 from ....errors import (
     BzrError,
@@ -32,7 +31,9 @@ from ....errors import (
 from debmutate.versions import mangle_version_for_git
 
 
-def possible_upstream_tag_names(package: Optional[str], version: Version, component: Optional[str] = None, try_hard=True):
+def possible_upstream_tag_names(package: Optional[str], version: str,
+                                component: Optional[str] = None,
+                                try_hard=True):
     tags = []
     if component is None:
         # compatibility with git-buildpackage
@@ -120,7 +121,8 @@ def _rev_is_upstream_import(
     return False
 
 
-def _rev_is_upstream_merge(revision: Revision, package: Optional[str], version):
+def _rev_is_upstream_merge(
+        revision: Revision, package: Optional[str], version: str) -> bool:
     if revision.message.lower().startswith(
             ("Merge tag 'v%s' into debian/" % version).lower()):
         return True
@@ -130,7 +132,12 @@ def _rev_is_upstream_merge(revision: Revision, package: Optional[str], version):
     return False
 
 
-def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version):
+def upstream_version_tag_start_revids(
+        tag_dict, package: Optional[str], version: str):
+    """Find Debian tags related to a particular upstream version.
+
+    This can be used by search_for_upstream_version
+    """
     candidate_tag_start = [
         'debian/%s-' % mangle_version_for_git(version),
         'debian-%s' % version,
@@ -149,8 +156,9 @@ def upstream_version_tag_start_revids(tag_dict, package: Optional[str], version)
 
 
 def search_for_upstream_version(
-        repository, start_revids, package: Optional[str],
-        version, component=None, md5=None,
+        repository: Repository, start_revids, package: Optional[str],
+        version: str, component: Optional[str] = None,
+        md5: Optional[str] = None,
         scan_depth=None):
     """Find possible upstream revisions that don't have appropriate tags."""
     todo = []

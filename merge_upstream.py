@@ -61,7 +61,7 @@ TAG_PREFIX = "upstream-"
 
 # TODO(jelmer): Move into debmutate
 def changelog_add_new_version(
-        tree, subpath, upstream_version, distribution_name, changelog,
+        tree, subpath, upstream_version: str, distribution_name, changelog,
         package):
     """Add an entry to the changelog for a new version.
 

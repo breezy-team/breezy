@@ -26,7 +26,6 @@ from base64 import (
     )
 import configparser
 from debian.copyright import globs_to_re
-from debian.changelog import Version
 import errno
 from io import BytesIO
 import os
@@ -50,6 +49,7 @@ from .... import (
     osutils,
     revision as _mod_revision,
     )
+from ....branch import Branch
 from ....commit import NullCommitReporter
 from ....errors import (
     BzrError,
@@ -288,8 +288,17 @@ def revision_pristine_tar_format(rev):
 
 class BasePristineTarSource(UpstreamSource):
 
+    branch: Branch
+
     def _has_revision(self, revid, md5):
         raise NotImplementedError(self._has_revision)
+
+    def possible_tag_names(self, package: Optional[str], version: str,
+                           component: Optional[str], try_hard: bool = True):
+        raise NotImplementedError(self.possible_tag_names)
+
+    def tag_name(self, version, component=None, distro=None):
+        raise NotImplementedError(self.tag_name)
 
     def tag_version(self, version, revid, component=None):
         """Tags the upstream branch's last revision with an upstream version.
@@ -331,9 +340,11 @@ class BasePristineTarSource(UpstreamSource):
         return ret
 
     def has_version(
-            self, package: Optional[str], version: Version, tarballs=None, try_hard=True):
+            self, package: Optional[str], version: str, tarballs=None,
+            try_hard=True):
         if tarballs is None:
-            return self.has_version_component(package, version, component=None, try_hard=try_hard)
+            return self.has_version_component(
+                package, version, component=None, try_hard=try_hard)
         else:
             for (tarball, component, md5) in tarballs:
                 if not self.has_version_component(
@@ -351,7 +362,7 @@ class BasePristineTarSource(UpstreamSource):
         return ret
 
     def version_component_as_revision(
-            self, package: Optional[str], version: Version,
+            self, package: Optional[str], version: str,
             component: Optional[str], md5: Optional[str] = None):
         with self.branch.lock_read():
             for tag_name in self.possible_tag_names(
@@ -391,7 +402,7 @@ class BasePristineTarSource(UpstreamSource):
         raise NotImplementedError(self._search_for_upstream_version)
 
     def has_version_component(
-            self, package: Optional[str], version: Version, component,
+            self, package: Optional[str], version: str, component,
             md5=None, try_hard=True):
         for tag_name in self.possible_tag_names(
                 package, version, component=component, try_hard=try_hard):
@@ -549,10 +560,11 @@ class BzrPristineTarSource(BasePristineTarSource):
         return target_filename
 
     def possible_tag_names(
-            self, package: Optional[str], version: Version,
+            self, package: Optional[str], version: str,
             component: Optional[str],
             try_hard: bool = True):
-        return possible_upstream_tag_names(package, version, component, try_hard=try_hard)
+        return possible_upstream_tag_names(
+            package, version, component, try_hard=try_hard)
 
     def get_pristine_tar_delta(self, package, version, dest_filename,
                                revid=None):
@@ -605,7 +617,7 @@ class BzrPristineTarSource(BasePristineTarSource):
             for component in components]
 
     def _search_for_upstream_version(
-            self, package, version, component, md5=None):
+            self, package: str, version: str, component, md5=None):
         start_revids = []
         sources = []
         sources.append('main branch')
@@ -724,14 +736,14 @@ class GitPristineTarSource(BasePristineTarSource):
     def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
 
-        :param version: the Version object to extract the upstream
-            part of the version number from.
+        :param version: the upstream vrsion to use
         :param component: Name of the component (None for base)
         :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
         if self.gbp_tag_format is not None:
-            return gbp_expand_tag_name(self.gbp_tag_format, mangle_version_for_git(version))
+            return gbp_expand_tag_name(
+                self.gbp_tag_format, mangle_version_for_git(version))
         # In git, the convention is to use a slash
         if distro is None:
             name = "upstream/" + mangle_version_for_git(version)
@@ -885,12 +897,15 @@ class GitPristineTarSource(BasePristineTarSource):
                 return False
         return True
 
-    def possible_tag_names(self, package: Optional[str], version: Version, component: Optional[str], try_hard: bool = True):
+    def possible_tag_names(self, package: Optional[str], version: str,
+                           component: Optional[str], try_hard: bool = True):
         tags = []
         if self.gbp_tag_format:
-            tags.append(gbp_expand_tag_name(self.gbp_tag_format, mangle_version_for_git(version)))
-
-        tags.extend(possible_upstream_tag_names(package, version, component, try_hard=try_hard))
+            tags.append(
+                gbp_expand_tag_name(
+                    self.gbp_tag_format, mangle_version_for_git(version)))
+        tags.extend(possible_upstream_tag_names(
+            package, version, component, try_hard=try_hard))
 
         return tags
 
@@ -999,7 +1014,7 @@ class GitPristineTarSource(BasePristineTarSource):
             for component in components]
 
     def _search_for_upstream_version(
-            self, package: Optional[str], version: Version, component,
+            self, package: Optional[str], version: str, component,
             md5=None):
         start_revids = []
         sources = []

@@ -25,8 +25,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-
-from debian.changelog import Version
+from typing import Optional
 
 from debmutate.versions import debianize_upstream_version
 
@@ -88,7 +87,7 @@ def new_tarball_name(package, version, old_name):
 class UpstreamSource(object):
     """A source for upstream versions (uscan, debian/rules, etc)."""
 
-    def get_latest_version(self, package, current_version):
+    def get_latest_version(self, package: str, current_version: str):
         """Check what the latest upstream version is.
 
         Args:
@@ -100,7 +99,7 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_latest_version)
 
-    def get_recent_versions(self, package, since_version=None):
+    def get_recent_versions(self, package: str, since_version: Optional[str] = None):
         """Retrieve recent version strings.
 
         :param package: Name of the package
@@ -109,7 +108,7 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_recent_versions)
 
-    def version_as_revisions(self, package, version, tarballs=None):
+    def version_as_revisions(self, package: str, version: str, tarballs=None):
         """Lookup the revision ids for a particular version.
 
         :param package: Package name
@@ -120,7 +119,7 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.version_as_revisions)
 
-    def has_version(self, package, version, tarballs=None):
+    def has_version(self, package: str, version: str, tarballs=None):
         """Check whether this upstream source contains a particular package.
 
         :param package: Package name
@@ -129,7 +128,8 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.has_version)
 
-    def fetch_tarballs(self, package, version, target_dir, components=None):
+    def fetch_tarballs(self, package: str, version: str, target_dir: str,
+                       components=None):
         """Fetch the source tarball for a particular version.
 
         :param package: Name of the package
@@ -260,6 +260,9 @@ class StackedUpstreamSource(UpstreamSource):
         for source in self._sources:
             for unmangled, mangled in source.get_recent_versions(package, since_version):
                 versions[mangled] = unmangled
+        # TODO(jelmer): Perhaps there are better ways of comparing arbitrary
+        # upstream versions?
+        from debian.changelog import Version
         return [(u, m) for (m, u) in sorted(versions.items(), key=lambda v: Version(v[0]))]
 
     def version_as_revisions(self, package, version, tarballs=None):
@@ -529,10 +532,9 @@ class DirectoryScanSource(UpstreamSource):
     def __init__(self, path):
         self.path = os.path.abspath(path)
 
-    def fetch_tarballs(self, package, version, target_dir, components=None):
-        v = Version(version)
-        v.epoch = None
-        prefix = '%s_%s.orig' % (package, v)
+    def fetch_tarballs(self, package: str, version: str, target_dir,
+                       components=None):
+        prefix = '%s_%s.orig' % (package, version)
         ret = []
         for entry in os.scandir(self.path):
             if entry.name.startswith(prefix):
