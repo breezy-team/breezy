@@ -2,6 +2,7 @@ breezy-debian (2.8.71) UNRELEASED; urgency=medium
 
   * Add new deb-update-packaging script.
   * Add --skip-signatures argument to deb-new-upstream.
+  * Factor out apt repository access.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 16 Sep 2022 16:56:40 +0100
 
