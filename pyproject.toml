@@ -1,2 +1,9 @@
 [build-system]
-requires = ["packaging", "setuptools", "wheel", "setuptools-rust", "configobj", "cython>=0.29", "pyyaml"]
+requires = [
+    "packaging",
+    "setuptools",
+    "setuptools-rust",
+    "configobj",
+    "cython>=0.29",
+    "pyyaml",
+]
