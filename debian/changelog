@@ -1,10 +1,10 @@
-breezy-debian (2.8.71) UNRELEASED; urgency=medium
+breezy-debian (2.8.71) unstable; urgency=medium
 
   * Add new deb-update-packaging script.
   * Add --skip-signatures argument to deb-new-upstream.
   * Factor out apt repository access.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 16 Sep 2022 16:56:40 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 02 Oct 2022 13:49:36 +0100
 
 breezy-debian (2.8.70) unstable; urgency=medium
 
