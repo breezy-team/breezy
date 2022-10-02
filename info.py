@@ -18,7 +18,7 @@
 
 brz_plugin_name = 'debian'
 
-brz_plugin_version = (2, 8, 51, 'final', 0)
+brz_plugin_version = (2, 8, 71, 'final', 0)
 
 brz_commands = [
     "builddeb",
