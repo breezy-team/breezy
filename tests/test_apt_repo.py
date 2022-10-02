@@ -116,11 +116,11 @@ class LocalAptTests(TestCase):
              "apackage=someversion"],
             LocalApt(rootdir=None)._get_command("apackage", "someversion"))
         self.assertEqual(
-            ["apt", "source", "-d", '-oDir=/', "-y", "--only-source",
+            ["apt", "source", "-d", "-y", "--only-source",
              "apackage"],
             LocalApt()._get_command("apackage"))
         self.assertEqual(
-            ["apt", "source", "-d", '-oDir=/', "--tar-only", "-y",
+            ["apt", "source", "-d", "--tar-only", "-y",
              "--only-source", "apackage"],
             LocalApt()._get_command("apackage", tar_only=True))
         self.assertEqual(
