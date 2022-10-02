@@ -1,3 +1,10 @@
+breezy-debian (2.8.72) UNRELEASED; urgency=medium
+
+  * apt_repo: Default to no rootdir, since apt.Cache tries to create
+    files in / otherwise.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 02 Oct 2022 14:41:09 +0100
+
 breezy-debian (2.8.71) unstable; urgency=medium
 
   * Add new deb-update-packaging script.

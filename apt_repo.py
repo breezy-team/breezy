@@ -63,7 +63,7 @@ class Apt:
 
 class LocalApt(Apt):
 
-    def __init__(self, rootdir="/"):
+    def __init__(self, rootdir=None):
         self.apt_pkg = None
         self._rootdir = rootdir
 
