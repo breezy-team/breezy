@@ -36,8 +36,16 @@ if __name__ == '__main__':
           author_email="breezy-core@googlegroups.com",
           license="GNU GPL v2",
           url="https://code.breezy-vcs.org/breezy-debian",
-          install_requires=['pyyaml', 'breezy>=3.1.0', 'debmutate'],
-          scripts=['scripts/deb-auto-backport', 'scripts/deb-import-uncommitted', 'scripts/deb-new-upstream'],
+          install_requires=[
+              'pyyaml',
+              'breezy>=3.1.0',
+              'debmutate',
+            ],
+          scripts=[
+              'scripts/deb-auto-backport',
+              'scripts/deb-import-uncommitted',
+              'scripts/deb-new-upstream',
+          ],
           entry_points={
               'console_scripts': [
                   'deb-update-packaging=breezy.plugins.debian.update_packaging:main',
@@ -47,4 +55,5 @@ if __name__ == '__main__':
                     'breezy.plugins.debian.tests',
                     'breezy.plugins.debian.tests.blackbox',
                     'breezy.plugins.debian.upstream'],
+          package_data={'breezy.plugins.debian': ['py.typed']},
           package_dir={'breezy.plugins.debian': '.'})
