@@ -17,8 +17,6 @@
 """Support for looking up URLs from pypi.
 """
 
-from __future__ import absolute_import
-
 from ... import (
     version_info,  # noqa: F401
     )
