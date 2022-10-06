@@ -187,6 +187,7 @@ class GitCommitBuilder(CommitBuilder):
         encoding = self._revprops.pop(u'git-explicit-encoding', 'utf-8')
         c.encoding = encoding.encode('ascii')
         c.committer = fix_person_identifier(self._committer.encode(encoding))
+        pseudoheaders = []
         try:
             author = self._revprops.pop('author')
         except KeyError:
@@ -195,21 +196,22 @@ class GitCommitBuilder(CommitBuilder):
             except KeyError:
                 author = self._committer
             else:
-                if len(authors) > 1:
-                    raise Exception("Unable to convert multiple authors")
-                elif len(authors) == 0:
+                if len(authors) == 0:
                     author = self._committer
                 else:
                     author = authors[0]
+                    for coauthor in authors[1:]:
+                        pseudoheaders.append(
+                            b'Co-authored-by: %s'
+                            % fix_person_identifier(coauthor.encode(encoding)))
         c.author = fix_person_identifier(author.encode(encoding))
         bugstext = self._revprops.pop('bugs', None)
         if bugstext is not None:
-            message += "\n"
             for url, status in bugtracker.decode_bug_urls(bugstext):
                 if status == bugtracker.FIXED:
-                    message += "Fixes: %s\n" % url
+                    pseudoheaders.append(("Fixes: %s" % url).encode(encoding))
                 elif status == bugtracker.RELATED:
-                    message += "Bug: %s\n" % url
+                    pseudoheaders.append(("Bug: %s" % url).encode(encoding))
                 else:
                     raise bugtracker.InvalidBugStatus(status)
         if self._revprops:
@@ -219,6 +221,10 @@ class GitCommitBuilder(CommitBuilder):
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.message = message.encode(encoding)
+        if pseudoheaders:
+            if not c.message.endswith(b"\n"):
+                c.message += b"\n"
+            c.message += b"\n" + b"".join([line + b"\n" for line in pseudoheaders])
         create_signatures = self._config_stack.get('create_signatures')
         if (create_signatures in (
                 _mod_config.SIGN_ALWAYS, _mod_config.SIGN_WHEN_POSSIBLE)):

@@ -104,25 +104,6 @@ class GitHubLoginRequired(ForgeLoginRequired):
     _fmt = "Action requires GitHub login."
 
 
-def connect_github():
-    """Connect to GitHub.
-    """
-    user_agent = default_user_agent()
-    auth = AuthenticationConfig()
-
-    credentials = auth.get_credentials('https', GITHUB_HOST)
-    if credentials is not None:
-        return Github(credentials['user'], credentials['password'],
-                      user_agent=user_agent)
-
-    # TODO(jelmer): token = auth.get_token('https', GITHUB_HOST)
-    if token is not None:
-        return Github(token, user_agent=user_agent)
-    else:
-        note('Accessing GitHub anonymously. To log in, run \'brz gh-login\'.')
-        return Github(user_agent=user_agent)
-
-
 class GitHubMergeProposal(MergeProposal):
 
     def __init__(self, gh, pr):
@@ -141,7 +122,7 @@ class GitHubMergeProposal(MergeProposal):
     def _branch_from_part(self, part):
         if part['repo'] is None:
             return None
-        return github_url_to_bzr_url(part['repo']['html_url'], part['ref'])
+        return github_url_to_bzr_url(part['repo']['clone_url'], part['ref'])
 
     def get_source_branch_url(self):
         return self._branch_from_part(self._pr['head'])
@@ -210,7 +191,7 @@ class GitHubMergeProposal(MergeProposal):
         # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
         data = {}
         if commit_message:
-            data['commit_message'] = commit_messae
+            data['commit_message'] = commit_message
         response = self._gh._api_request(
             'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
         if response.status == 422:
@@ -267,6 +248,68 @@ def github_url_to_bzr_url(url, branch_name):
 
 def strip_optional(url):
     return url.split('{')[0]
+
+
+class _LazyDict(dict):
+
+    def __init__(self, base, load_fn):
+        self._load_fn = load_fn
+        super(_LazyDict, self).update(base)
+
+    def _load_full(self):
+        super(_LazyDict, self).update(self._load_fn())
+        self._load_fn = None
+
+    def __getitem__(self, key):
+        if self._load_fn is not None:
+            try:
+                return super(_LazyDict, self).__getitem__(key)
+            except KeyError:
+                self._load_full()
+        return super(_LazyDict, self).__getitem__(key)
+
+    def items(self):
+        self._load_full()
+        return super(_LazyDict, self).items()
+
+    def keys(self):
+        self._load_full()
+        return super(_LazyDict, self).keys()
+
+    def values(self):
+        self._load_full()
+        return super(_LazyDict, self).values()
+
+    def __contains__(self, key):
+        if super(_LazyDict, self).__contains__(key):
+            return True
+        if self._load_fn is not None:
+            self._load_full()
+            return super(_LazyDict, self).__contains__(key)
+        return False
+
+    def __delitem__(self, name):
+        raise NotImplementedError
+
+    def __setitem__(self, name, value):
+        raise NotImplementedError
+
+    def get(self, name, default=None):
+        if self._load_fn is not None:
+            try:
+                return super(_LazyDict, self).get(name, default)
+            except KeyError:
+                self._load_full()
+        return super(_LazyDict, self).get(name, default)
+
+    def pop(self):
+        raise NotImplementedError
+
+    def popitem(self):
+        raise NotImplementedError
+
+    def clear(self):
+        raise NotImplementedError
 
 
 class GitHub(Forge):
@@ -424,6 +467,9 @@ class GitHub(Forge):
 
     def __init__(self, transport):
         self._token = retrieve_github_token()
+        if self._token is None:
+            note('Accessing GitHub anonymously. '
+                 'To log in, run \'brz gh-login\'.')
         self.transport = transport
         self._current_user = None
 
@@ -466,7 +512,7 @@ class GitHub(Forge):
                 overwrite=overwrite, name=name, lossy=True,
                 tag_selector=tag_selector)
         return push_result.target_branch, github_url_to_bzr_url(
-            remote_repo['html_url'], name)
+            remote_repo['clone_url'], name)
 
     def get_push_url(self, branch):
         owner, project, branch_name = parse_github_branch_url(branch)
@@ -570,11 +616,12 @@ class GitHub(Forge):
             author = self.current_user['login']
         query.append('author:%s' % author)
         for issue in self._search_issues(query=' '.join(query)):
-            url = issue['pull_request']['url']
-            response = self._api_request('GET', url)
-            if response.status != 200:
-                raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
-            yield GitHubMergeProposal(self, json.loads(response.text))
+            def retrieve_full():
+                response = self._api_request('GET', issue['pull_request']['url'])
+                if response.status != 200:
+                    raise UnexpectedHttpStatus(issue['pull_request']['url'], response.status, headers=response.getheaders())
+                return json.loads(response.text)
+            yield GitHubMergeProposal(self, _LazyDict(issue['pull_request'], retrieve_full))
 
     def get_proposal_by_url(self, url):
         raise UnsupportedForge(url)

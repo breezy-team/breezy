@@ -37,10 +37,6 @@ import shutil
 from shutil import rmtree
 import socket
 import subprocess
-# We need to import both tempfile and mkdtemp as we export the later on posix
-# and need the former on windows
-import tempfile
-from tempfile import mkdtemp
 import unicodedata
 
 from breezy import (
@@ -360,10 +356,6 @@ def _win32_getcwd():
     return _win32_fixdrive(_win32_fix_separators(_getcwd()))
 
 
-def _win32_mkdtemp(*args, **kwargs):
-    return _win32_fixdrive(_win32_fix_separators(tempfile.mkdtemp(*args, **kwargs)))
-
-
 def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
@@ -427,7 +419,6 @@ basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
 # These were already lazily imported into local scope
-# mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
 lstat = os.lstat
 fstat = os.fstat
@@ -446,7 +437,6 @@ if sys.platform == 'win32':
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath
     getcwd = _win32_getcwd
-    mkdtemp = _win32_mkdtemp
     rename = _rename_wrap_exception(_win32_rename)
     try:
         from . import _walkdirs_win32

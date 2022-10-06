@@ -1,5 +1,12 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-rust"]
+requires = [
+    "packaging",
+    "setuptools",
+    "setuptools-rust",
+    "configobj",
+    "cython>=0.29",
+    "pyyaml",
+]
 
 [tool.mypy]
 python_version = "3.6"
@@ -8,4 +15,3 @@ warn_return_any = true
 warn_unused_configs = true
 exclude = [
     '^breezy/util/simplemapi\.py$'
-]

@@ -2642,19 +2642,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if tar_file is None:
             return None
         destination = to_bzrdir.create_repository()
-        try:
-            tar = tarfile.open('repository', fileobj=tar_file,
-                               mode='r|bz2')
-            tmpdir = osutils.mkdtemp()
-            try:
-                tar.extractall(tmpdir)
-                tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
-                tmp_repo = tmp_bzrdir.open_repository()
-                tmp_repo.copy_content_into(destination, revision_id)
-            finally:
-                osutils.rmtree(tmpdir)
-        finally:
-            tar_file.close()
+        with tarfile.open('repository', fileobj=tar_file,
+                          mode='r|bz2') as tar, \
+             osutils.TemporaryDirectory() as tmpdir:
+            tar.extractall(tmpdir)
+            tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
+            tmp_repo = tmp_bzrdir.open_repository()
+            tmp_repo.copy_content_into(destination, revision_id)
         return destination
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
