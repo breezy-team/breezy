@@ -263,8 +263,8 @@ class Annotator(object):
                 self._annotate_one(text_key, text, num_lines)
         try:
             annotations = self._annotations_cache[key]
-        except KeyError:
-            raise errors.RevisionNotPresent(key, self._vf)
+        except KeyError as exc:
+            raise errors.RevisionNotPresent(key, self._vf) as exc
         return annotations, self._text_cache[key]
 
     def _get_heads_provider(self):

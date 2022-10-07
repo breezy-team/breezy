@@ -1084,16 +1084,16 @@ class BTreeGraphIndex(object):
                         cur_keys.append(cur_in_key)
                         try:
                             cur_in_key = next(in_keys_iter)
-                        except StopIteration:
-                            raise InputDone
+                        except StopIteration as exc:
+                            raise InputDone from exc
                     # At this point cur_in_key must be >= cur_fixed_key
                 # step the cur_fixed_key until we pass the cur key, or walk off
                 # the end
                 while cur_in_key >= cur_fixed_key:
                     try:
                         cur_fixed_offset, cur_fixed_key = next(fixed_keys_iter)
-                    except StopIteration:
-                        raise FixedDone
+                    except StopIteration as exc:
+                        raise FixedDone from exc
         except InputDone:
             # We consumed all of the input, nothing more to do
             pass

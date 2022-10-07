@@ -339,9 +339,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             return Branch.open(bound_loc,
                                possible_transports=possible_transports)
-        except (errors.NotBranchError, errors.ConnectionError) as e:
+        except (errors.NotBranchError, errors.ConnectionError) as exc:
             raise errors.BoundBranchConnectionFailure(
-                self, bound_loc, e)
+                self, bound_loc, exc) from exc
 
     def set_bound_location(self, location):
         """Set the target where this branch is bound to.
@@ -682,9 +682,9 @@ class BzrBranch8(BzrBranch):
             except ValueError:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
-                except errors.RevisionNotPresent as e:
+                except errors.RevisionNotPresent as exc:
                     raise errors.GhostRevisionsHaveNoRevno(
-                        revision_id, e.revision_id)
+                        revision_id, exc.revision_id) from exc
                 index = len(self._partial_revision_history_cache) - 1
                 if index < 0:
                     raise errors.NoSuchRevision(self, revision_id)
@@ -728,13 +728,13 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
-        except _mod_transport.NoSuchFile:
-            raise errors.NotBranchError(path=name, controldir=controldir)
+        except _mod_transport.NoSuchFile as exc:
+            raise errors.NotBranchError(path=name, controldir=controldir) from exc
         try:
             format_string = transport.get_bytes("format")
-        except _mod_transport.NoSuchFile:
+        except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=controldir)
+                path=transport.base, controldir=controldir) from exc
         return klass._find_format(format_registry, 'branch', format_string)
 
     def _branch_class(self):
@@ -802,9 +802,9 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
                 a_controldir=a_controldir, _repository=found_repository,
                 ignore_fallbacks=ignore_fallbacks,
                 possible_transports=possible_transports)
-        except _mod_transport.NoSuchFile:
+        except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=a_controldir)
+                path=transport.base, controldir=a_controldir) from exc
 
     @property
     def _matchingcontroldir(self):
