@@ -29,6 +29,9 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* Add --recurse-nested argument to 'brz export'.
+  (Jelmer Vernooĳ)
+
 Improvements
 ************
 
@@ -67,6 +70,9 @@ Improvements
 * git: Split out and separately report ProtectedBranchHookDeclined.
   (Jelmer Vernooĳ)
 
+* git: Avoid reading entire pack files into memory.
+  (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -101,6 +107,12 @@ Bug Fixes
 * Fix handling of chunked HTTP requests.
   (Jelmer Vernooĳ)
 
+* git: Fix handling of date: revision specs.
+  (Jelmer Vernooĳ)
+
+* git: Support insteadOf / pushInsteadOf.
+  (Jelmer Vernooĳ)
+
 Documentation
 *************
 
@@ -131,6 +143,10 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for brz developers.
 
+* File ids are mostly gone from the API. There are a few select
+  cases where they are still used.
+  (Jelmer Vernooĳ)
+
 * python2-cleanup: Remove obsolete __cmp__. (Jelmer Vernooĳ)
 
 * bzr: Support name argument in ControlDir.push_branch.
@@ -153,10 +169,6 @@ Internals
   (Jelmer Vernooĳ)
 
 * Lockdir now uses yaml rather than RIO.
-  (Jelmer Vernooĳ)
-
-* File ids are mostly gone from the API. There are a few select
-  cases where they are still used.
   (Jelmer Vernooĳ)
 
 Testing
