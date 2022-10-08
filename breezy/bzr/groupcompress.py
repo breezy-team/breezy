@@ -42,7 +42,7 @@ from .. import (
     errors,
     osutils,
     trace,
-    )
+)
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
 from .versionedfile import (
@@ -54,7 +54,7 @@ from .versionedfile import (
     FulltextContentFactory,
     VersionedFilesWithFallbacks,
     UnavailableRepresentation,
-    )
+)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.

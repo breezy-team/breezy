@@ -127,6 +127,8 @@ class ControlDir(ControlComponent):
     API users to check for magic attributes to see what features are supported.
     """
 
+    hooks: hooks.Hooks
+
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
         from."""

@@ -24,7 +24,7 @@
 import contextlib
 import os
 import sys
-from typing import List, Union
+from typing import Type, List, Union, Optional
 
 from . import (
     i18n,
@@ -34,7 +34,6 @@ from . import (
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
 
 import breezy
 from breezy import (
@@ -49,11 +48,6 @@ from .hooks import Hooks
 from .i18n import gettext
 from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
-
-
-class BzrOptionError(errors.CommandError):
-
-    _fmt = "Error in command line options"
 
 
 class CommandAvailableInPlugin(Exception):
@@ -285,7 +279,8 @@ def guess_command(cmd_name):
     return candidate
 
 
-def get_cmd_object(cmd_name, plugins_override=True):
+def get_cmd_object(
+        cmd_name: str, plugins_override: bool = True) -> Type["Command"]:
     """Return the command object for a command.
 
     plugins_override
@@ -474,11 +469,13 @@ class Command(object):
     takes_args: List[str] = []
     takes_options: List[Union[str, option.Option]] = []
     encoding_type: str = 'strict'
-    invoked_as = None
+    invoked_as: Optional[str] = None
     l10n: bool = True
     _see_also: List[str]
 
     hidden: bool = False
+
+    hooks: Hooks
 
     def __init__(self):
         """Construct an instance of this command."""
@@ -1224,6 +1221,7 @@ def display_command(func):
             sys.stdout.flush()
             return result
         except IOError as e:
+            import errno
             if getattr(e, 'errno', None) is None:
                 raise
             if e.errno != errno.EPIPE:

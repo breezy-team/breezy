@@ -16,16 +16,14 @@
 
 """Map from Git sha's to Bazaar objects."""
 
-from dulwich.objects import (
-    sha_to_hex,
-    hex_to_sha,
-    )
 import os
 import threading
 
 from dulwich.objects import (
+    sha_to_hex,
+    hex_to_sha,
     ShaFile,
-    )
+)
 
 from .. import (
     bedding,
@@ -33,17 +31,17 @@ from .. import (
     osutils,
     registry,
     trace,
-    )
+)
 from ..bzr import (
     btree_index as _mod_btree_index,
     index as _mod_index,
     versionedfile,
-    )
+)
 from ..transport import (
     get_transport_from_path,
     FileExists,
     NoSuchFile,
-    )
+)
 
 
 def get_cache_dir():
@@ -65,9 +63,6 @@ def get_remote_cache_transport(repository):
         if not os.path.isdir(path):
             os.mkdir(path)
     return get_transport_from_path(path)
-
-
-import sqlite3
 
 
 _mapdbs = threading.local()
@@ -399,6 +394,7 @@ class SqliteGitShaMap(GitShaMap):
     """Bazaar GIT Sha map that uses a sqlite database for storage."""
 
     def __init__(self, path=None):
+        import sqlite3
         self.path = path
         if path is None:
             self.db = sqlite3.connect(":memory:")

@@ -32,6 +32,7 @@ from breezy import (
 from breezy.bzr import (
     knit as _mod_knit,
     versionedfile,
+    serializer,
     xml5,
     xml6,
     xml7,

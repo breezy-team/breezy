@@ -778,6 +778,7 @@ class DiffFromTool(DiffPath):
         import tempfile
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
+        import tempfile
         self._root = tempfile.mkdtemp(prefix='brz-diff-')
 
     @classmethod
