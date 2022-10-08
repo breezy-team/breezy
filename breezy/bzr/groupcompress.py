@@ -25,7 +25,6 @@ from breezy import (
     annotate,
     config,
     debug,
-    osutils,
     trace,
     tsort,
     )
@@ -41,6 +40,7 @@ from breezy.i18n import gettext
 
 from .. import (
     errors,
+    osutils,
     )
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
@@ -2253,7 +2253,7 @@ from ._groupcompress_py import (
     LinesDeltaIndex,
     )
 try:
-    from ._groupcompress_pyx import (
+    from ._groupcompress_pyx import (  # type: ignore
         apply_delta,
         apply_delta_to_source,
         DeltaIndex,

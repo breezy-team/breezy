@@ -24,7 +24,7 @@
 import contextlib
 import os
 import sys
-from typing import Type
+from typing import Type, List, Union, Optional
 
 from . import (
     i18n,
@@ -465,14 +465,16 @@ class Command(object):
             class Foo(Command):
                 __doc__ = "My help goes here"
     """
-    aliases = []
-    takes_args = []
-    takes_options = []
-    encoding_type = 'strict'
-    invoked_as = None
-    l10n = True
+    aliases: List[str] = []
+    takes_args: List[str] = []
+    takes_options: List[Union[str, option.Option]] = []
+    encoding_type: str = 'strict'
+    invoked_as: Optional[str] = None
+    l10n: bool = True
 
     hidden = False
+
+    hooks: Hooks
 
     def __init__(self):
         """Construct an instance of this command."""
