@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 #    setup.py -- Install the brz-debian plugin
 #    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
@@ -23,37 +23,9 @@
 from info import brz_plugin_version
 
 if __name__ == '__main__':
-
-    from distutils.core import setup
+    from setuptools import setup
 
     version_string = ".".join(
             [str(v) for v in brz_plugin_version[:3]])
 
-    setup(name="brz-debian",
-          version=version_string,
-          description="Build a .deb from a Breezy-versioned branch",
-          author="Breezy Developers",
-          author_email="breezy-core@googlegroups.com",
-          license="GNU GPL v2",
-          url="https://code.breezy-vcs.org/breezy-debian",
-          install_requires=[
-              'pyyaml',
-              'breezy>=3.1.0',
-              'debmutate',
-            ],
-          scripts=[
-              'scripts/deb-auto-backport',
-              'scripts/deb-import-uncommitted',
-              'scripts/deb-new-upstream',
-          ],
-          entry_points={
-              'console_scripts': [
-                  'deb-update-packaging=breezy.plugins.debian.update_packaging:main',
-              ]
-          },
-          packages=['breezy.plugins.debian',
-                    'breezy.plugins.debian.tests',
-                    'breezy.plugins.debian.tests.blackbox',
-                    'breezy.plugins.debian.upstream'],
-          package_data={'breezy.plugins.debian': ['py.typed']},
-          package_dir={'breezy.plugins.debian': '.'})
+    setup(version=version_string)
