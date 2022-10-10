@@ -60,19 +60,20 @@ class TreeVersionNotInArchive(Exception):
 
 def check_up_to_date(tree, subpath, apt):
     cl_path = os.path.join(subpath, "debian/changelog")
+    released_tree_versions = []
     try:
         with tree.get_file(cl_path) as f:
             tree_cl = Changelog(f)
-            if distribution_is_unreleased(tree_cl[0].distributions):
-                try:
-                    last_released_tree_version = tree_cl[1].version
-                except IndexError:
-                    last_released_tree_version = None
-            else:
-                last_released_tree_version = tree_cl[0].version
+            for block in tree_cl:
+                if distribution_is_unreleased(tree_cl[0].distributions):
+                    continue
+                released_tree_versions.append(block.version)
             package = tree_cl.package
     except FileNotFoundError:
         raise MissingChangelogError([cl_path])
+
+    released_tree_versions.sort()
+    last_released_tree_version = released_tree_versions[-1]
 
     archive_versions = []
     with apt:
@@ -80,17 +81,21 @@ def check_up_to_date(tree, subpath, apt):
             archive_versions.append(entry['Version'])
 
     archive_versions.sort()
+    last_archive_version = archive_versions[-1]
 
     if not archive_versions:
+        if last_released_tree_version is None:
+            # Package has not made it into the archive yet
+            return
         raise PackageMissingInArchive(package)
 
     if last_released_tree_version not in archive_versions:
         raise TreeVersionNotInArchive(
             last_released_tree_version, archive_versions)
 
-    if archive_versions[-1] > last_released_tree_version:
+    if last_archive_version not in released_tree_versions:
         raise NewArchiveVersion(
-            archive_versions[-1], last_released_tree_version)
+            last_archive_version, released_tree_versions)
 
 
 async def main():
