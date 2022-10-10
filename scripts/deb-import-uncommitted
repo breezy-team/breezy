@@ -234,7 +234,9 @@ async def main():
     parser.add_argument(
         '--apt-repository', type=str,
         help='APT repository to use. Defaults to locally configured.',
-        default=os.environ.get('APT_REPOSITORY') or os.environ.get('REPOSITORIES'))
+        default=(
+            os.environ.get('APT_REPOSITORY')
+            or os.environ.get('REPOSITORIES')))
     parser.add_argument(
         '--apt-repository-key', type=str,
         help=('APT repository key to use for validation, '
@@ -280,7 +282,8 @@ async def main():
         return 0
     except SnapshotDownloadError as e:
         report_fatal(
-            'snapshot-download-failed', 'Downloading %s failed: %s' % (e.url, e.inner))
+            'snapshot-download-failed',
+            'Downloading %s failed: %s' % (e.url, e.inner))
         return 1
 
     if os.environ.get('SVP_API') == '1':
