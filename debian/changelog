@@ -1,3 +1,10 @@
+breezy-debian (2.8.73) UNRELEASED; urgency=medium
+
+  * Add new script deb-vcs-up-to-date: checks whether the local tree is
+    up to date with the archive
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Oct 2022 18:05:42 +0100
+
 breezy-debian (2.8.72) unstable; urgency=medium
 
   * apt_repo: Default to no rootdir, since apt.Cache tries to create
