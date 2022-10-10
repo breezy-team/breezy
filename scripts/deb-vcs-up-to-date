@@ -1,0 +1,105 @@
+#!/usr/bin/python3
+# Copyright (C) 2022 Jelmer Vernooij <jelmer@jelmer.uk>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+import asyncio
+import logging
+import os
+
+from debian.changelog import Changelog
+from debmutate.changelog import distribution_is_unreleased
+
+from breezy.workingtree import WorkingTree
+from breezy.plugins.debian.apt_repo import (
+    LocalApt,
+    RemoteApt,
+    NoAptSources,
+    AptSourceError,
+)
+
+
+async def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--apt-repository', type=str,
+        help='APT repository to use. Defaults to locally configured.',
+        default=(
+            os.environ.get('APT_REPOSITORY')
+            or os.environ.get('REPOSITORIES')))
+    parser.add_argument(
+        '--apt-repository-key', type=str,
+        help=('APT repository key to use for validation, '
+              'if --apt-repository is set.'),
+        default=os.environ.get('APT_REPOSITORY_KEY'))
+    parser.add_argument(
+        'directory', default='.', nargs='?',
+        type=str, help='Path to working tree')
+
+    import breezy.bzr
+    import breezy.git
+
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+    if args.apt_repository:
+        apt = RemoteApt.from_string(
+            args.apt_repository, args.apt_repository_key)
+    else:
+        apt = LocalApt()
+    tree, subpath = WorkingTree.open_containing(args.directory)
+
+    cl_path = os.path.join(subpath, "debian/changelog")
+    with tree.get_file(cl_path) as f:
+        tree_cl = Changelog(f)
+        if distribution_is_unreleased(tree_cl[0].distributions):
+            last_released_tree_version = tree_cl[1].version
+        else:
+            last_released_tree_version = tree_cl[0].version
+        package = tree_cl.package
+
+    archive_versions = []
+    with apt:
+        for entry in apt.iter_source_by_name(package):
+            archive_versions.append(entry['Version'])
+
+    archive_versions.sort()
+
+    if not archive_versions:
+        logging.fatal(
+            '%s not found in the specified archive', package)
+        return 1
+
+    if last_released_tree_version not in archive_versions:
+        logging.fatal(
+            'Last released tree version %s not in archive',
+            last_released_tree_version)
+        return 1
+
+    if archive_versions[-1] > last_released_tree_version:
+        logging.fatal(
+            'Archive versions exist that are missing in tree: %s',
+            archive_versions[-1])
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(asyncio.run(main()))
