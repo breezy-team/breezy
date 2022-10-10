@@ -89,7 +89,7 @@ class SnapshotDownloadError(Exception):
 
     def __init__(self, url, e):
         self.url = url
-        self.inner = inner
+        self.inner = e
 
 
 def download_snapshot(package, version, output_dir, no_preparation=False):
@@ -150,7 +150,7 @@ class TreeUpstreamVersionMissing(Exception):
         )
 
 
-def import_uncommitted(tree, subpath, apt):
+def import_uncommitted(tree, subpath, apt, source_version=None):
     cl_path = os.path.join(subpath, "debian/changelog")
     try:
         with tree.get_file(cl_path) as f:
@@ -162,10 +162,11 @@ def import_uncommitted(tree, subpath, apt):
     with contextlib.ExitStack() as es:
         es.enter_context(apt)
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
-        apt.retrieve_source(package_name, archive_source)
+        apt.retrieve_source(
+            package_name, archive_source, source_version=source_version)
         [dsc] = [e.name for e in os.scandir(archive_source)
                  if e.name.endswith('.dsc')]
-        note("Unpacking source")
+        note("Unpacking source %s", dsc)
         subprocess.check_output(['dpkg-source', '-x', dsc], cwd=archive_source)
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
@@ -242,6 +243,9 @@ async def main():
         help=('APT repository key to use for validation, '
               'if --apt-repository is set.'),
         default=os.environ.get('APT_REPOSITORY_KEY'))
+    parser.add_argument(
+        '--version', type=str,
+        help='Source version to import')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -253,7 +257,8 @@ async def main():
         apt = LocalApt()
     local_tree, subpath = WorkingTree.open_containing('.')
     try:
-        ret = import_uncommitted(local_tree, subpath, apt)
+        ret = import_uncommitted(
+            local_tree, subpath, apt, source_version=args.version)
     except AptSourceError as e:
         if isinstance(e.reason, list):
             reason = e.reason[-1]
@@ -300,7 +305,7 @@ async def main():
                 },
             }, f)
 
-    note('Imported uploads: %s.', [v[1] for v in ret])
+    note('Imported uploads: %s.', [str(v[1]) for v in ret])
 
 
 if __name__ == "__main__":
