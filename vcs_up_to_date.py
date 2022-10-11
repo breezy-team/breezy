@@ -59,9 +59,8 @@ class TreeVersionNotInArchive(Exception):
 
 
 def check_up_to_date(tree, subpath, apt):
-    cl_path = os.path.join(subpath, "debian/changelog")
     released_tree_versions = []
-    tree_cl, top_level = find_changelog(tree, cl_path, max_blocks=None)
+    tree_cl, top_level = find_changelog(tree, subpath, max_blocks=None)
     for block in tree_cl:
         if distribution_is_unreleased(block.distributions):
             continue
