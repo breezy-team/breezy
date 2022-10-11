@@ -23,7 +23,7 @@ from debian.changelog import Changelog
 from debmutate.changelog import distribution_is_unreleased
 
 from breezy.workingtree import WorkingTree
-from breezy.plugins.debian.util import MissingChangelogError
+from breezy.plugins.debian.util import MissingChangelogError, find_changelog
 from breezy.plugins.debian.apt_repo import (
     LocalApt,
     RemoteApt,
@@ -61,18 +61,17 @@ class TreeVersionNotInArchive(Exception):
 def check_up_to_date(tree, subpath, apt):
     cl_path = os.path.join(subpath, "debian/changelog")
     released_tree_versions = []
-    try:
-        with tree.get_file(cl_path) as f:
-            tree_cl = Changelog(f)
-            for block in tree_cl:
-                if distribution_is_unreleased(tree_cl[0].distributions):
-                    continue
-                released_tree_versions.append(block.version)
-            package = tree_cl.package
-    except FileNotFoundError:
-        raise MissingChangelogError([cl_path])
+    tree_cl, top_level = find_changelog(tree, cl_path, max_blocks=None)
+    for block in tree_cl:
+        if distribution_is_unreleased(block.distributions):
+            continue
+        released_tree_versions.append(block.version)
+    package = tree_cl.package
 
     released_tree_versions.sort()
+    if not released_tree_versions:
+        # Package hasn't made it into the archive yet?
+        return
     last_released_tree_version = released_tree_versions[-1]
 
     archive_versions = []
@@ -131,7 +130,9 @@ async def main():
     tree, subpath = WorkingTree.open_containing(args.directory)
 
     try:
-        check_up_to_date(tree, subpath, apt)
+        check_up_to_date(
+            tree, subpath, apt,
+            ignore_missing_changelog=args.ignore_missing_changelog)
     except TreeVersionNotInArchive as exc:
         logging.fatal(
             'Last released tree version %s not in archive',
