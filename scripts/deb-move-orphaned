@@ -370,6 +370,7 @@ def main():
                 'description': "Move package to QA team.",
                 'versions': versions_dict(),
                 'target-branch-url': result.new_vcs_url,
+                'value': 60,
                 'context': result.json()}, f)
 
     if result.new_vcs_url:
