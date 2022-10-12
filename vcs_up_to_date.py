@@ -79,13 +79,14 @@ def check_up_to_date(tree, subpath, apt):
             archive_versions.append(entry['Version'])
 
     archive_versions.sort()
-    last_archive_version = archive_versions[-1]
 
     if not archive_versions:
         if last_released_tree_version is None:
             # Package has not made it into the archive yet
             return
         raise PackageMissingInArchive(package)
+
+    last_archive_version = archive_versions[-1]
 
     if last_released_tree_version not in archive_versions:
         raise TreeVersionNotInArchive(
