@@ -229,8 +229,8 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
     from .upstream.pristinetar import (
         get_pristine_tar_source,
         )
-    yield get_pristine_tar_source(local_tree, packaging_branch)
     yield AptSource(apt=apt)
+    yield get_pristine_tar_source(local_tree, packaging_branch)
     try:
         yield UScanSource.from_tree(local_tree, subpath, top_level)
     except NoWatchFile:
