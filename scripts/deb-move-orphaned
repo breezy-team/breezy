@@ -184,14 +184,22 @@ class AlreadyOrphaned(Exception):
     """Package is already orphaned."""
 
 
+class MissingControlFile(Exception):
+    """Control file can not be found."""
+
+
 def orphan(
         local_tree, subpath, update_changelog, committer, update_vcs=True,
         salsa_push=True, salsa_user="debian", dry_run=False,
         check_wnpp=True) -> OrphanResult:
-    control_path = local_tree.abspath(osutils.pathjoin(subpath, "debian/control"))
+    control_path = local_tree.abspath(
+        osutils.pathjoin(subpath, "debian/control"))
     changelog_entries = []
     with ExitStack() as es:
-        control = es.enter_context(ControlEditor(path=control_path))
+        try:
+            control = es.enter_context(ControlEditor(path=control_path))
+        except FileNotFoundError as e:
+            raise MissingControlFile(e.filename)
         if check_wnpp:
             try:
                 wnpp_bug = find_wnpp_bug(control.source["Source"])
@@ -201,13 +209,16 @@ def orphan(
             wnpp_bug = None
         if set_maintainer_to_qa_team(control):
             if wnpp_bug is not None:
-                changelog_entries.append("Orphan package - see bug %d." % wnpp_bug)
+                changelog_entries.append(
+                    "Orphan package - see bug %d." % wnpp_bug)
             else:
                 changelog_entries.append("Orphan package.")
-        result = OrphanResult(wnpp_bug=wnpp_bug, package=control.source["Source"])
+        result = OrphanResult(
+            wnpp_bug=wnpp_bug, package=control.source["Source"])
 
         if update_vcs:
-            (result.old_vcs_url, result.new_vcs_url) = set_vcs_fields_to_salsa_user(
+            (result.old_vcs_url,
+             result.new_vcs_url) = set_vcs_fields_to_salsa_user(
                 control, salsa_user)
             result.salsa_user = salsa_user
             if result.old_vcs_url == result.new_vcs_url:
@@ -362,6 +373,9 @@ def main():
         report_fatal(
             "generated-file", "unable to edit generated file: %r" % e
         )
+        return 1
+    except MissingControlFile as e:
+        report_fatal("missing-control-file", "Missing control file: %r" % e)
         return 1
 
     if os.environ.get('SVP_API') == '1':
