@@ -30,7 +30,7 @@ from contextlib import contextmanager, ExitStack
 import os
 import stat
 import tempfile
-from typing import Optional
+from typing import Optional, List
 
 from debian import deb822
 from debian.changelog import Version, Changelog, VersionError
@@ -49,7 +49,7 @@ from ...errors import (
     NoWorkingTree,
     UnrelatedBranches,
     )
-from ...revision import NULL_REVISION
+from ...revision import NULL_REVISION, RevisionID
 from ...trace import warning, mutter
 from ...transport import (
     get_transport,
@@ -296,7 +296,7 @@ class DistributionBranch(object):
         """
         return self.get_lesser_branches() + self.get_greater_branches()
 
-    def tag_name(self, version, vendor: Optional[str]):
+    def tag_name(self, version: Version, vendor: Optional[str]) -> str:
         """Gets the name of the tag that is used for the version.
 
         :param version: the Version object that the tag should refer to.
@@ -307,7 +307,9 @@ class DistributionBranch(object):
         else:
             return mangle_version(self.branch, str(version))
 
-    def has_version(self, version, md5=None, vendor=None):
+    def has_version(
+            self, version: Version, md5: Optional[str] = None,
+            vendor: Optional[str] = None) -> bool:
         """Whether this branch contains the package version specified.
 
         The version must be judged present by having the appropriate tag
@@ -336,7 +338,8 @@ class DistributionBranch(object):
                 return True
         return False
 
-    def contained_versions(self, versions):
+    def contained_versions(
+            self, versions: List[Version]) -> Tuple[List[Version], List[Version]]:
         """Splits a list of versions depending on presence in the branch.
 
         Partitions the input list of versions depending on whether they
@@ -369,7 +372,7 @@ class DistributionBranch(object):
                 not_contained.append(version)
         return contained, not_contained
 
-    def missing_versions(self, versions):
+    def missing_versions(self, versions: List[Version]) -> List[Version]:
         """Returns the versions from the list that the branch does not have.
 
         Looks at all the versions specified and returns a list of the ones
@@ -387,7 +390,7 @@ class DistributionBranch(object):
         index = versions.index(last_contained)
         return versions[:index]
 
-    def last_contained_version(self, versions):
+    def last_contained_version(self, versions: List[Version]) -> Optional[Version]:
         """Returns the highest version from the list present in this branch.
 
         It assumes that the input list of versions is sorted with the
@@ -404,7 +407,7 @@ class DistributionBranch(object):
                 return version
         return None
 
-    def revid_of_version(self, version):
+    def revid_of_version(self, version: Version) -> RevisionID:
         """Returns the revision id corresponding to that version.
 
         :param version: the Version object that you wish to retrieve the
@@ -425,7 +428,8 @@ class DistributionBranch(object):
                 return self.branch.tags.lookup_tag(other_tag_name)
         return self.branch.tags.lookup_tag(str(version))
 
-    def tag_version(self, version, revid=None, vendor=None):
+    def tag_version(self, version: Version, revid: Optional[RevisionID] = None,
+                    vendor: Optional[str] = None) -> str:
         """Tags the branch's last revision with the given version.
 
         Sets a tag on the last revision of the branch with a tag that refers
@@ -442,7 +446,7 @@ class DistributionBranch(object):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name
 
-    def is_version_native(self, version):
+    def is_version_native(self, version: Version) -> bool:
         """Determines whether the given version is native.
 
         :param version: the Version object to test. Must be present in
@@ -562,7 +566,7 @@ class DistributionBranch(object):
                 return branch
         return None
 
-    def get_parents(self, versions):
+    def get_parents(self, versions: List[Version]):
         """Return the list of parents for a specific version.
 
         This method returns the list of revision ids that should be parents
@@ -587,9 +591,9 @@ class DistributionBranch(object):
             version.
         """
         assert len(versions) > 0, "Need a version to import"
-        mutter("Getting parents of %s" % str(versions))
+        mutter("Getting parents of %s", versions)
         missing_versions = self.missing_versions(versions)
-        mutter("Versions we don't have are %s" % str(missing_versions))
+        mutter("Versions we don't have are %s", missing_versions)
         last_contained_version = self.last_contained_version(versions)
         parents = []
         if last_contained_version is not None:
@@ -933,8 +937,9 @@ class DistributionBranch(object):
                     if needs_add:
                         self.tree.add(['debian', 'debian/bzr-builddeb.conf'])
 
-    def import_debian(self, debian_part, version, parents, md5,
-                      native=False, timestamp=None, file_ids_from=None):
+    def import_debian(self, debian_part, version, parents, md5, *,
+                      native: bool = False, timestamp=None,
+                      file_ids_from: Optional[Tree] = None):
         """Import the debian part of a source package.
 
         :param debian_part: the path of a directory containing the unpacked
@@ -1000,16 +1005,16 @@ class DistributionBranch(object):
             self.tree.branch.repository._format.
             supports_custom_revision_properties)
         revprops = {}
-        if supports_revprops:
-            revprops["deb-md5"] = md5
-        if native and supports_revprops:
-            revprops['deb-native'] = "True"
         if authors:
             revprops['authors'] = "\n".join(authors)
-        if thanks and supports_revprops:
-            revprops['deb-thanks'] = "\n".join(thanks)
-        if bugs and supports_revprops:
-            revprops['bugs'] = "\n".join(bugs)
+        if supports_revprops:
+            revprops["deb-md5"] = md5
+            if native:
+                revprops['deb-native'] = "True"
+            if thanks:
+                revprops['deb-thanks'] = "\n".join(thanks)
+            if bugs:
+                revprops['bugs'] = "\n".join(bugs)
         timezone = None
         if timestamp is not None:
             timezone = timestamp[1]
@@ -1019,7 +1024,7 @@ class DistributionBranch(object):
             message, revprops=revprops, timestamp=timestamp, timezone=timezone)
         return self.tag_version(version, revid=revid)
 
-    def upstream_parents(self, package, versions, version):
+    def upstream_parents(self, package: str, versions, version):
         """Get the parents for importing a new upstream.
 
         The upstream parents will be the last upstream version,
@@ -1142,7 +1147,8 @@ class DistributionBranch(object):
                 debian_part, version, parents, md5, timestamp=timestamp,
                 file_ids_from=file_ids_from)
 
-    def get_native_parents(self, version, versions):
+    def get_native_parents(
+            self, version: Version, versions: List[Version]) -> List[RevisionID]:
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is None:
             parents = []
