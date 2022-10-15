@@ -19,12 +19,13 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from debian.changelog import Version
-
 from contextlib import ExitStack
 import os
 import subprocess
 import tempfile
+from typing import Optional
+
+from debian.changelog import Version
 
 from ... import osutils
 from ...trace import mutter
@@ -50,7 +51,7 @@ class SourceExtractor(object):
         self.upstream_tarballs = []
         self.exit_stack = ExitStack()
 
-    def extract(self):
+    def extract(self, apply_patches: bool = False):
         """Extract the package to a new temporary directory."""
         raise NotImplementedError(self.extract)
 
@@ -67,7 +68,7 @@ class SourceExtractor(object):
 class OneZeroSourceExtractor(SourceExtractor):
     """Source extract for the "1.0" source format."""
 
-    def extract(self):
+    def extract(self, apply_patches: bool = False):
         """Extract the package to a new temporary directory."""
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
@@ -108,7 +109,7 @@ class OneZeroSourceExtractor(SourceExtractor):
 class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
     """Source extractor for the "3.0 (native)" source format."""
 
-    def extract(self):
+    def extract(self, apply_patches = False):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
@@ -133,12 +134,13 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
 class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
     """Source extractor for the "3.0 (quilt)" source format."""
 
-    def extract(self):
+    def extract(self, apply_patches = False):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
-        proc = subprocess.Popen(
-            "dpkg-source --skip-debianization -x %s"
-            % (dsc_filename,), shell=True,
+        args = ['--skip-debianization', '-x']
+        if not apply_patches:
+            args.append('--skip-patches')
+        proc = subprocess.Popen(['dpkg-source'] + args + [dsc_filename],
             cwd=tempdir, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
@@ -190,10 +192,10 @@ SOURCE_EXTRACTORS[FORMAT_3_0_NATIVE] = ThreeDotZeroNativeSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor
 
 
-def extract(dsc_filename, dsc):
+def extract(dsc_filename: str, dsc: str, *, apply_patches: bool = False) -> None:
     format = dsc.get('Format', FORMAT_1_0).strip()
     extractor_cls = SOURCE_EXTRACTORS.get(format)
     if extractor_cls is None:
         raise AssertionError(
             "Don't know how to import source format %s yet" % format)
-    return extractor_cls(dsc_filename, dsc)
+    return extractor_cls(dsc_filename, dsc, apply_patches=apply_patches)

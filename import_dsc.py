@@ -30,7 +30,7 @@ from contextlib import contextmanager, ExitStack
 import os
 import stat
 import tempfile
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from debian import deb822
 from debian.changelog import Version, Changelog, VersionError
@@ -54,6 +54,7 @@ from ...trace import warning, mutter
 from ...transport import (
     get_transport,
     )
+from ...tree import Tree
 
 from .bzrtools_import import import_dir
 from .errors import (
@@ -1085,7 +1086,7 @@ class DistributionBranch(object):
     def _import_normal_package(
             self, package, version, versions, debian_part, md5,
             upstream_part, upstream_tarballs, timestamp=None, author=None,
-            file_ids_from=None, pull_debian=True, force_pristine_tar=False):
+            file_ids_from=None, pull_debian=True, force_pristine_tar=False) -> str:
         """Import a source package.
 
         :param package: Package name
@@ -1183,9 +1184,13 @@ class DistributionBranch(object):
                 debian_part, version, parents, md5, native=True,
                 timestamp=timestamp, file_ids_from=file_ids_from)
 
-    def import_package(self, dsc_filename, use_time_from_changelog=True,
-                       file_ids_from=None, pull_debian=True,
-                       force_pristine_tar=False):
+    def import_package(
+            self, dsc_filename: str, *,
+            use_time_from_changelog: bool = True,
+            file_ids_from: Optional[Tree] = None,
+            pull_debian: bool = True,
+            force_pristine_tar: bool = False,
+            apply_patches: bool = False) -> str:
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
@@ -1196,7 +1201,7 @@ class DistributionBranch(object):
         with open(dsc_filename) as f:
             dsc = deb822.Dsc(f.read())
         version = Version(dsc['Version'])
-        with extract(dsc_filename, dsc) as extractor:
+        with extract(dsc_filename, dsc, apply_patches=apply_patches) as extractor:
             cl = get_changelog_from_source(extractor.extracted_debianised)
             timestamp = None
             author = None

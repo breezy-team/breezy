@@ -22,15 +22,17 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import List
+from typing import List, Dict, Tuple, Optional
 
 from urllib.request import urlopen
 from urllib.error import HTTPError
 
 import breezy.bzr
 import breezy.git
+from breezy.revision import RevisionID
 from breezy.trace import note
 from breezy.transform import MalformedTransform
+from breezy.tree import Tree
 
 from breezy.transport import NoSuchFile
 from breezy.workingtree import WorkingTree
@@ -90,9 +92,7 @@ class SnapshotDownloadError(Exception):
         self.inner = e
 
 
-def download_snapshot(
-        package: str, version: Version, output_dir: str,
-        skip_patches: bool = False):
+def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     note("Downloading %s %s", package, version)
     srcfiles_url = (
         "https://snapshot.debian.org/mr/package/%s/%s/"
@@ -114,15 +114,10 @@ def download_snapshot(
                 if e.status == 504:
                     raise SnapshotDownloadError(e) from e
                 raise
-    args = []
-    if skip_patches:
-        args.append("--skip-patches")
     file_version = Version(version)
     file_version.epoch = None
-    subprocess.check_call(
-        ["dpkg-source"] + args + ["-x", "%s_%s.dsc" % (package, file_version)],
-        cwd=output_dir,
-    )
+    dsc_filename = "%s_%s.dsc" % (package, file_version)
+    return os.path.join(output_dir, dsc_filename)
 
 
 class NoMissingVersions(Exception):
@@ -152,7 +147,9 @@ class TreeUpstreamVersionMissing(Exception):
         )
 
 
-def import_uncommitted(tree, subpath, apt, source_version=None):
+def import_uncommitted(
+        tree: Tree, subpath: str, apt,
+        source_version: Optional[str] = None) -> List[Tuple[str, Version, RevisionID]]:
     cl_path = os.path.join(subpath, "debian/changelog")
     try:
         with tree.get_file(cl_path) as f:
@@ -188,34 +185,26 @@ def import_uncommitted(tree, subpath, apt, source_version=None):
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs.add_branch(db)
         if tree_cl.version.debian_revision:
-            note(
-                "Extracting upstream version %s.",
-                tree_cl.version.upstream_version
-            )
+            note("Extracting upstream version %s.",
+                tree_cl.version.upstream_version)
             upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
             try:
                 upstream_tips = db.pristine_upstream_source.version_as_revisions(
-                    tree_cl.package, tree_cl.version.upstream_version
-                )
+                    tree_cl.package, tree_cl.version.upstream_version)
             except PackageVersionNotPresent:
                 # TODO(jelmer): Should we import it instead?
                 raise TreeUpstreamVersionMissing(tree_cl.version.upstream_version) from e
             db.extract_upstream_tree(upstream_tips, upstream_dir)
-        skip_patches = not tree.has_filename(".pc/applied-patches")
-        version_path = {}
+        applied_patches = tree.has_filename(".pc/applied-patches")
+        version_path: Dict[Version, str] = {}
         for version in missing_versions:
             output_dir = es.enter_context(tempfile.TemporaryDirectory())
-            download_snapshot(
-                package_name, version, output_dir,
-                skip_patches=skip_patches,
-            )
-            version_path[version] = output_dir
+            version_path[version] = download_snapshot(
+                package_name, version, output_dir)
         for version in reversed(missing_versions):
             note("Importing %s", version)
-            dsc_path = os.path.join(
-                version_path[version], "%s_%s.dsc" % (package_name, version)
-            )
-            tag_name = db.import_package(dsc_path)
+            dsc_path = version_path[version]
+            tag_name = db.import_package(dsc_path, apply_patches=applied_patches)
             revision = db.branch.tags.lookup_tag(tag_name)
             ret.append((tag_name, version, revision))
     return ret
