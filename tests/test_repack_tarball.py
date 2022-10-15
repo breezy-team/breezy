@@ -22,16 +22,10 @@ import os
 import shutil
 import tarfile
 
-try:
-    from ....transport import (
-        NoSuchFile,
-        FileExists,
-        )
-except ImportError:
-    from ....errors import (
-        NoSuchFile,
-        FileExists,
-        )
+from ....transport import (
+    NoSuchFile,
+    FileExists,
+    )
 
 from ..repack_tarball import (
     repack_tarball,

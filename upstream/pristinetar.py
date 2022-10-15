@@ -64,10 +64,7 @@ from ....trace import (
     note,
     warning,
     )
-try:
-    from ....transport import NoSuchFile
-except ImportError:
-    from ....errors import NoSuchFile
+from ....transport import NoSuchFile
 
 from .branch import (
     git_snapshot_data_from_version,

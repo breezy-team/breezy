@@ -30,11 +30,9 @@ from urllib.error import HTTPError
 import breezy.bzr
 import breezy.git
 from breezy.trace import note
+from breezy.transform import MalformedTransform
 
-try:
-    from breezy.transport import NoSuchFile
-except ImportError:
-    from breezy.errors import NoSuchFile
+from breezy.transport import NoSuchFile
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog, Version
@@ -289,6 +287,9 @@ async def main():
         report_fatal(
             'snapshot-download-failed',
             'Downloading %s failed: %s' % (e.url, e.inner))
+        return 1
+    except MalformedTransform as e:
+        report_fatal('malformed-transform', str(e))
         return 1
 
     if os.environ.get('SVP_API') == '1':

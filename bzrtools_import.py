@@ -30,10 +30,7 @@ from ...osutils import (
 from ...trace import warning
 from ...tree import Tree
 from ...transform import resolve_conflicts
-try:
-    from ...transport import NoSuchFile
-except ImportError:
-    from ...errors import NoSuchFile
+from ...transport import NoSuchFile
 
 
 class UnknownType(BzrError):

@@ -21,10 +21,7 @@ import os
 
 from debian.changelog import Version
 
-try:
-    from ....transport import FileExists
-except ImportError:
-    from ....errors import FileExists
+from ....transport import FileExists
 
 from ..upstream import MissingUpstreamTarball
 from ..source_distiller import (

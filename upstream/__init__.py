@@ -35,10 +35,7 @@ from ....trace import (
     note,
     warning,
     )
-try:
-    from ....transport import NoSuchFile
-except ImportError:
-    from ....errors import NoSuchFile
+from ....transport import NoSuchFile
 
 from ..repack_tarball import (
     get_filetype,
