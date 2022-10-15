@@ -60,8 +60,8 @@ class RevisionSpec_package(RevisionSpec):
             revision_id = branch.tags.lookup_tag(version_spec)
             return RevisionInfo.from_revision_id(
                 branch, revision_id)
-        except NoSuchTag:
-            raise UnknownVersion(version_spec)
+        except NoSuchTag as e:
+            raise UnknownVersion(version_spec) from e
 
 
 class RevisionSpec_upstream(RevisionSpec):
@@ -91,7 +91,7 @@ class RevisionSpec_upstream(RevisionSpec):
         except MissingChangelogError as e:
             raise InvalidRevisionSpec(
                 self.user_spec, branch,
-                "no debian/changelog file found: %s" % e)
+                "no debian/changelog file found: %s" % e) from e
         if self.spec == '':
             version_spec = cl.version.upstream_version
             if not cl.version.debian_version:
@@ -113,5 +113,5 @@ class RevisionSpec_upstream(RevisionSpec):
                 cl.package, version_spec)[None]
             return RevisionInfo.from_revision_id(
                 branch, revision_id)
-        except NoSuchTag:
-            raise UnknownVersion(version_spec)
+        except NoSuchTag as e:
+            raise UnknownVersion(version_spec) from e

@@ -102,7 +102,7 @@ class TarLzma2TgzRepacker(TgzRepacker):
         try:
             import lzma
         except ImportError as e:
-            raise DependencyNotPresent('lzma', e)
+            raise DependencyNotPresent('lzma', e) from e
         content = lzma.decompress(self.source_f.read())
         with gzip.GzipFile(mode='w', fileobj=target_f) as gz:
             gz.write(content)

@@ -537,7 +537,7 @@ class cmd_builddeb(Command):
             except UpstreamMetadataSyntaxError as e:
                 raise BzrCommandError(
                     gettext('Unable to parse upstream metadata file %s: %s')
-                    % (e.path, e.error))
+                    % (e.path, e.error)) from e
             if reuse:
                 note(gettext("Reusing existing build dir"))
                 dont_purge = True
@@ -552,7 +552,7 @@ class cmd_builddeb(Command):
             except ChangelogParseError as e:
                 raise BzrCommandError(
                     gettext("Unable to parse changelog: %s") %
-                    e)
+                    e) from e
 
             if package_merge:
                 try:
@@ -597,7 +597,7 @@ class cmd_builddeb(Command):
             try:
                 builder.export()
             except DebcargoError as e:
-                raise BzrCommandError(str(e))
+                raise BzrCommandError(str(e)) from e
             if not export_only:
                 run_hook(tree, 'pre-build', config, wd=build_source_dir)
                 builder.build()
@@ -945,11 +945,11 @@ class cmd_merge_upstream(Command):
                     try:
                         primary_upstream_source = UScanSource.from_tree(
                             tree, subpath, top_level)
-                    except NoWatchFile:
+                    except NoWatchFile as e:
                         if upstream_branch_source is None:
                             raise BzrCommandError(gettext(
                                 "no upstream source location known; "
-                                "add watch file or specify upstream repository?"))
+                                "add watch file or specify upstream repository?")) from e
                         primary_upstream_source = upstream_branch_source
 
             if revision is not None:
@@ -991,12 +991,12 @@ class cmd_merge_upstream(Command):
                 try:
                     upstream_revisions = upstream_branch_source\
                         .version_as_revisions(package, version)
-                except PackageVersionNotPresent:
+                except PackageVersionNotPresent as e:
                     raise BzrCommandError(
                         "Version %s can not be found in upstream branch %r. "
                         "Specify the revision manually using --revision or "
                         "adjust 'export-upstream-revision' in the "
-                        "configuration." % (version, upstream_branch_source))
+                        "configuration." % (version, upstream_branch_source)) from e
             if need_upstream_tarball:
                 target_dir = self.enter_context(tempfile.TemporaryDirectory())
                 try:
@@ -1019,7 +1019,7 @@ class cmd_merge_upstream(Command):
                         "different to the new upstream tarball, or they "
                         "are of different formats. Either delete the target "
                         "file, or use it as the argument to import."
-                        % e.path)
+                        % e.path) from e
                 try:
                     conflicts, imported_revids = do_merge(
                         tree, subpath, tarball_filenames, package, version,
@@ -1028,7 +1028,7 @@ class cmd_merge_upstream(Command):
                         force_pristine_tar=force_pristine_tar,
                         files_excluded=files_excluded)
                 except PreviousVersionTagMissing as e:
-                    raise BzrCommandError(str(e))
+                    raise BzrCommandError(str(e)) from e
             if (current_version is not None and
                     Version(current_version) >= Version(version)):
                 raise BzrCommandError(
@@ -1120,9 +1120,9 @@ class cmd_import_dsc(Command):
             )
         try:
             tree, subpath = WorkingTree.open_containing('.')
-        except NotBranchError:
+        except NotBranchError as e:
             raise BzrCommandError(gettext(
-                "There is no tree to import the packages in to"))
+                "There is no tree to import the packages in to")) from e
         with tree.lock_write():
             _check_uncommitted(tree, subpath)
             if files_list is None:
@@ -1425,16 +1425,16 @@ class cmd_builddeb_do(Command):
             builder.before_build()
         try:
             builder.build()
-        except BuildFailedError:
+        except BuildFailedError as e:
             raise BzrCommandError(gettext(
-                'Not updating the working tree as the command failed.'))
+                'Not updating the working tree as the command failed.')) from e
         finally:
             if not no_preparation:
                 try:
                     builder.after_build()
-                except subprocess.CalledProcessError:
+                except subprocess.CalledProcessError as e:
                     raise BzrCommandError(gettext(
-                        'After build processing failed. Aborting.'))
+                        'After build processing failed. Aborting.')) from e
         note(gettext("Copying debian/ back"))
         if top_level:
             destination = ''
@@ -1670,8 +1670,8 @@ class cmd_debrelease(Command):
                 if not skip_upload:
                     try:
                         source_path = changes_files['source']
-                    except KeyError:
+                    except KeyError as e:
                         raise BzrCommandError(
-                            'No source package was created by build command')
+                            'No source package was created by build command') from e
                     dput_changes(source_path)
             local_tree.branch.push(branch)

@@ -573,8 +573,8 @@ def find_previous_upload(tree, subpath, merge=False):
     """
     try:
         cl, top_level = find_changelog(tree, subpath, merge, max_blocks=None)
-    except ChangelogParseError:
-        raise UnableToFindPreviousUpload()
+    except ChangelogParseError as e:
+        raise UnableToFindPreviousUpload() from e
     return changelog_find_previous_upload(cl)
 
 
@@ -899,9 +899,10 @@ def export_with_nested(tree, dest, **kwargs):
         try:
             try:
                 return export(tree, dest, recurse_nested=True, **kwargs)
-            except TypeError:  # brz < 3.3
+            except TypeError as e:  # brz < 3.3
                 if any(tree.iter_references()):
-                    raise NotImplementedError('unable to export tree references')
+                    raise NotImplementedError(
+                        'unable to export tree references') from e
                 return export(tree, dest, **kwargs)
         except BaseException:
             if os.path.isfile(dest):

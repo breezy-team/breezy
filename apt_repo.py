@@ -74,7 +74,7 @@ class LocalApt(Apt):
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e)
+            raise DependencyNotPresent('apt_pkg', e) from e
         import apt
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
@@ -89,8 +89,8 @@ class LocalApt(Apt):
     def iter_sources(self):
         try:
             sources = self.apt_pkg.SourceRecords()
-        except SystemError:
-            raise NoAptSources()
+        except SystemError as e:
+            raise NoAptSources() from e
 
         sources.restart()
         while sources.step():
@@ -99,8 +99,8 @@ class LocalApt(Apt):
     def iter_source_by_name(self, source_name):
         try:
             sources = self.apt_pkg.SourceRecords()
-        except SystemError:
-            raise NoAptSources()
+        except SystemError as e:
+            raise NoAptSources() from e
 
         sources.restart()
         while sources.lookup(source_name):
@@ -142,21 +142,21 @@ class LocalApt(Apt):
             if stderr[-1] == (
                 b"E: You must put some 'source' URIs in your sources.list"
             ):
-                raise NoAptSources()
+                raise NoAptSources() from e
             CS = b"\x1b[1;31mE: \x1b[0m"
             CE = b"\x1b[0m"
             if stderr[-1] == (
                 CS + b"You must put some 'deb-src' URIs in your sources.list" +
                 CE
             ):
-                raise NoAptSources()
+                raise NoAptSources() from e
             if stderr[-1].startswith(b"E: "):
-                raise AptSourceError(stderr[-1][3:].decode())
+                raise AptSourceError(stderr[-1][3:].decode()) from e
             if stderr[-1].startswith(CS):
-                raise AptSourceError(stderr[-1][len(CS): -len(CE)].decode())
+                raise AptSourceError(stderr[-1][len(CS): -len(CE)].decode()) from e
             raise AptSourceError(
                 [line.decode("utf-8", "surrogateescape") for line in stderr]
-            )
+            ) from e
 
 
 class RemoteApt(LocalApt):
@@ -193,13 +193,13 @@ class RemoteApt(LocalApt):
         try:
             import apt
         except ImportError as e:
-            raise DependencyNotPresent('apt', e)
+            raise DependencyNotPresent('apt', e) from e
         self.cache = apt.Cache(rootdir=self._rootdir)
         self.cache.update()
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e)
+            raise DependencyNotPresent('apt_pkg', e) from e
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
         try:

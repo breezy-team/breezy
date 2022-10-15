@@ -278,5 +278,5 @@ class DebcargoDistiller(SourceDistiller):
                 '--config', self.tree.abspath(os.path.join(*debcargo_path)),
                 '--directory', target, crate]
                 + ([crate_version] if crate_version else []))
-        except subprocess.CalledProcessError:
-            raise DebcargoError()
+        except subprocess.CalledProcessError as e:
+            raise DebcargoError() from e

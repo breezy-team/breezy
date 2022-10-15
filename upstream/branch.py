@@ -449,8 +449,8 @@ class UpstreamBranchSource(UpstreamSource):
             try:
                 return RevisionSpec.from_string(
                     revspec).as_revision_id(self.upstream_branch)
-            except (InvalidRevisionSpec, NoSuchTag):
-                raise PackageVersionNotPresent(package, version, self)
+            except (InvalidRevisionSpec, NoSuchTag) as e:
+                raise PackageVersionNotPresent(package, version, self) from e
         else:
             for revspec in guess_upstream_revspec(package, version):
                 note(gettext('No upstream upstream-revision format '
@@ -524,8 +524,8 @@ class UpstreamBranchSource(UpstreamSource):
                 try:
                     since_revision = self.version_as_revision(
                         package, since_version)
-                except PackageVersionNotPresent:
-                    raise PreviousVersionTagMissing(package, since_version)
+                except PackageVersionNotPresent as e:
+                    raise PreviousVersionTagMissing(package, since_version) from e
             else:
                 since_revision = None
             for tag, revision in tags.items():
@@ -587,7 +587,7 @@ class UpstreamBranchSource(UpstreamSource):
                     rev_tree, target_filename, format='tgz', root=tarball_base)
             except UnsupportedOperation as e:
                 note('Not exporting revision from upstream branch: %s', e)
-                raise PackageVersionNotPresent(package, version, self)
+                raise PackageVersionNotPresent(package, version, self) from e
             else:
                 mutter(
                     "Exporting upstream branch revision %s to create "
@@ -669,17 +669,17 @@ def run_dist_command(
             subprocess.check_call(command, env=env, cwd=dir, shell=True)
         except subprocess.CalledProcessError as e:
             if e.returncode == 2:
-                raise NotImplementedError
+                raise NotImplementedError from e
             if e.returncode == 137:
-                raise MemoryError(str(e))
+                raise MemoryError(str(e)) from e
             try:
                 import json
                 with open(env['DIST_RESULT'], 'r') as f:
                     result = json.load(f)
                 raise DistCommandFailed(
-                    result['description'], result['result_code'])
-            except FileNotFoundError:
-                raise DistCommandFailed(str(e))
+                    result['description'], result['result_code']) from e
+            except FileNotFoundError as ex:
+                raise DistCommandFailed(str(e)) from ex
 
     with ExitStack() as es:
         td = es.enter_context(tempfile.TemporaryDirectory())

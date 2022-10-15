@@ -78,7 +78,7 @@ def refresh_quilt_patches(
                     ],
                 )
             else:
-                raise QuiltPatchPushFailure(name, e)
+                raise QuiltPatchPushFailure(name, e) from e
     patches.pop_all()
     try:
         local_tree.commit(

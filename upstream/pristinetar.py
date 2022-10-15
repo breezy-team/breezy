@@ -149,7 +149,7 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     except OSError as e:
         if e.errno == errno.ENOENT:
-            raise PristineTarError("pristine-tar is not installed")
+            raise PristineTarError("pristine-tar is not installed") from e
         else:
             raise
     (stdout, stderr) = proc.communicate(delta)
@@ -177,7 +177,7 @@ def commit_pristine_tar(dest, tarball_path, upstream=None, committer=None):
                 stderr=subprocess.PIPE, env=env)
     except OSError as e:
         if e.errno == errno.ENOENT:
-            raise PristineTarError("pristine-tar is not installed")
+            raise PristineTarError("pristine-tar is not installed") from e
         else:
             raise
     (stdout, stderr) = proc.communicate()
@@ -214,7 +214,7 @@ def make_pristine_tar_delta(dest, tarball_path):
                 stderr=subprocess.PIPE)
     except OSError as e:
         if e.errno == errno.ENOENT:
-            raise PristineTarError("pristine-tar is not installed")
+            raise PristineTarError("pristine-tar is not installed") from e
         else:
             raise
     (stdout, stderr) = proc.communicate()
@@ -394,8 +394,8 @@ class BasePristineTarSource(UpstreamSource):
                 return revid
             try:
                 return self.branch.tags.lookup_tag(tag_name)
-            except NoSuchTag:
-                raise PackageVersionNotPresent(package, version, self)
+            except NoSuchTag as e:
+                raise PackageVersionNotPresent(package, version, self) from e
 
     def _search_for_upstream_version(
             self, package, version, component, md5=None):
@@ -540,8 +540,8 @@ class BzrPristineTarSource(BasePristineTarSource):
         revid = self.version_component_as_revision(package, version, component)
         try:
             rev = self.branch.repository.get_revision(revid)
-        except NoSuchRevision:
-            raise PackageVersionNotPresent(package, version, self)
+        except NoSuchRevision as e:
+            raise PackageVersionNotPresent(package, version, self) from e
         if revision_has_pristine_tar_delta(rev):
             format = revision_pristine_tar_format(rev)
         else:
@@ -556,7 +556,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         except PristineTarError as e:
             warning('Unable to reconstruct %s using pristine tar: %s',
                     target_filename, e)
-            raise PackageVersionNotPresent(package, version, self)
+            raise PackageVersionNotPresent(package, version, self) from e
         return target_filename
 
     def possible_tag_names(
@@ -879,7 +879,7 @@ class GitPristineTarSource(BasePristineTarSource):
         except PristineTarError as e:
             warning('Unable to reconstruct %s/%s using pristine tar: %s',
                     package, version, e)
-            raise PackageVersionNotPresent(package, version, self)
+            raise PackageVersionNotPresent(package, version, self) from e
         return target_filename
 
     def _has_revision(self, revid, md5=None):
@@ -953,7 +953,7 @@ class GitPristineTarSource(BasePristineTarSource):
                     ['pristine-tar', 'checkout', dest_filename],
                     cwd=self.branch.repository.user_transport.local_abspath('.'))
             except subprocess.CalledProcessError as e:
-                raise PristineTarError(str(e))
+                raise PristineTarError(str(e)) from e
             return dest_filename
 
     def _components_by_pristine_tar(self, package=None):

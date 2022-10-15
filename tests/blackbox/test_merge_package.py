@@ -91,8 +91,8 @@ class TestMergePackageBB(BuilddebTestCase):
         try:
             Merger.hooks.install_named_hook(
                 "pre_merge", pre_merge_fix_ancestry, "fix ancestry")
-        except errors.UnknownHook:
-            raise TestNotApplicable("pre_merge hook requires bzr 2.5")
+        except errors.UnknownHook as e:
+            raise TestNotApplicable("pre_merge hook requires bzr 2.5") from e
         self.run_bzr_error(
             ['branches for the merge source and target have diverged'],
             'merge %s' % merge_source)

@@ -112,7 +112,7 @@ def download_snapshot(package, version, output_dir, no_preparation=False):
                     f.write(g.read())
             except HTTPError as e:
                 if e.status == 504:
-                    raise SnapshotDownloadError(e)
+                    raise SnapshotDownloadError(e) from e
                 raise e
     args = []
     if no_preparation:
@@ -156,8 +156,8 @@ def import_uncommitted(tree, subpath, apt, source_version=None):
         with tree.get_file(cl_path) as f:
             tree_cl = Changelog(f)
             package_name = tree_cl.package
-    except NoSuchFile:
-        raise MissingChangelogError([cl_path])
+    except NoSuchFile as e:
+        raise MissingChangelogError([cl_path]) from e
 
     with contextlib.ExitStack() as es:
         es.enter_context(apt)
@@ -197,7 +197,7 @@ def import_uncommitted(tree, subpath, apt, source_version=None):
                 )
             except PackageVersionNotPresent:
                 # TODO(jelmer): Should we import it instead?
-                raise TreeUpstreamVersionMissing(tree_cl.version.upstream_version)
+                raise TreeUpstreamVersionMissing(tree_cl.version.upstream_version) from e
             db.extract_upstream_tree(upstream_tips, upstream_dir)
         no_preparation = not tree.has_filename(".pc/applied-patches")
         version_path = {}

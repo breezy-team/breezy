@@ -1287,10 +1287,10 @@ class DistributionBranch(object):
         try:
             upstream_tips = self.pristine_upstream_source.version_as_revisions(
                     package, previous_version)
-        except PackageVersionNotPresent:
+        except PackageVersionNotPresent as e:
             raise PreviousVersionTagMissing(
                 previous_version,
-                self.pristine_upstream_source.tag_name(previous_version))
+                self.pristine_upstream_source.tag_name(previous_version)) from e
         self.extract_upstream_tree(upstream_tips, tempdir)
 
     def has_merged_upstream_revisions(

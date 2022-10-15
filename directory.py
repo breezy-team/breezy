@@ -168,7 +168,7 @@ class AptDirectory(object):
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e)
+            raise DependencyNotPresent('apt_pkg', e) from e
         apt_pkg.init()
 
         sources = apt_pkg.SourceRecords()
@@ -192,10 +192,10 @@ class AptDirectory(object):
 
         try:
             vcs, url = source_package_vcs_url(control)
-        except KeyError:
+        except KeyError as e:
             note("Retrieving Vcs locating from %s Debian version %s", name,
                  version)
-            raise urlutils.InvalidURL(path=url, extra='no VCS URL found')
+            raise urlutils.InvalidURL(path=url, extra='no VCS URL found') from e
 
         note("Resolved package URL from Debian package %s/%s: %s",
              name, version, url)
@@ -214,7 +214,7 @@ class DgitDirectory(object):
         try:
             import apt_pkg
         except ImportError as e:
-            raise DependencyNotPresent('apt_pkg', e)
+            raise DependencyNotPresent('apt_pkg', e) from e
 
         apt_pkg.init()
 

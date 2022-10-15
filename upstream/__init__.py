@@ -178,20 +178,20 @@ class AptSource(UpstreamSource):
                           self.apt, package, upstream_version)
                     raise PackageVersionNotPresent(
                         package, upstream_version, self)
-            except NoAptSources:
+            except NoAptSources as e:
                 note('No apt sources configured, skipping')
                 # Handle the case where the apt.sources file contains no source
                 # URIs (LP:375897)
-                raise PackageVersionNotPresent(package, upstream_version, self)
+                raise PackageVersionNotPresent(package, upstream_version, self) from e
             note("Using apt to look for the upstream tarball.")
             try:
                 self.apt.retrieve_source(
                     source_name, target_dir, source_version,
                     tar_only=True)
-            except AptSourceError:
+            except AptSourceError as e:
                 note("apt found %s/%s but could not download.",
                      package, source_version)
-                raise PackageVersionNotPresent(package, upstream_version, self)
+                raise PackageVersionNotPresent(package, upstream_version, self) from e
             return [os.path.join(target_dir, filename)
                     for filename in filenames]
 
@@ -363,8 +363,8 @@ class UpstreamProvider(object):
             try:
                 paths = self.source.fetch_tarballs(
                     self.package, self.version, self.store_dir)
-            except PackageVersionNotPresent:
-                raise MissingUpstreamTarball(self.package, self.version)
+            except PackageVersionNotPresent as e:
+                raise MissingUpstreamTarball(self.package, self.version) from e
             assert isinstance(paths, list)
         else:
             note("Using the upstream tarball that is present in %s" %

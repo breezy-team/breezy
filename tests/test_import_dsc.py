@@ -1007,8 +1007,8 @@ class DistributionBranchTests(BuilddebTestCase):
                 basedir, "package", version.upstream_version,
                 {},
                 upstream_tarballs=[(os.path.abspath(tar_path), None, self.fake_md5_1)])
-        except PristineTarDeltaTooLarge:
-            raise tests.TestSkipped("Pristine tar version does not support xz")
+        except PristineTarDeltaTooLarge as e:
+            raise tests.TestSkipped("Pristine tar version does not support xz") from e
         tree = self.up_tree1
         branch = tree.branch
         revno, rev_id = branch.last_revision_info()
