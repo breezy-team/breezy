@@ -190,7 +190,7 @@ def import_uncommitted(
             try:
                 upstream_tips = db.pristine_upstream_source.version_as_revisions(
                     tree_cl.package, tree_cl.version.upstream_version)
-            except PackageVersionNotPresent:
+            except PackageVersionNotPresent as e:
                 # TODO(jelmer): Should we import it instead?
                 raise TreeUpstreamVersionMissing(tree_cl.version.upstream_version) from e
             db.extract_upstream_tree(upstream_tips, upstream_dir)
