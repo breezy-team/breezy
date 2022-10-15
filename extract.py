@@ -138,7 +138,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
     def extract(self):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
-        args = ['--no-preparation', '-x']
+        args = ['--no-preparation']
         if not self.apply_patches:
             args.extend(['--skip-patches', '--unapply-patches'])
         else:
