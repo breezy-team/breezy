@@ -25,7 +25,7 @@ import tempfile
 from typing import List, Dict, Tuple, Optional
 
 from urllib.request import urlopen
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 import breezy.bzr
 import breezy.git
@@ -87,9 +87,8 @@ def select_vcswatch_packages():
 
 class SnapshotDownloadError(Exception):
 
-    def __init__(self, url, e):
+    def __init__(self, url):
         self.url = url
-        self.inner = e
 
 
 def download_snapshot(package: str, version: Version, output_dir: str) -> str:
@@ -111,9 +110,9 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                 with urlopen(url) as g:
                     f.write(g.read())
             except HTTPError as e:
-                if e.status == 504:
-                    raise SnapshotDownloadError(e) from e
-                raise
+                raise SnapshotDownloadError(e) from e
+            except URLError as e:
+                raise SnapshotDownloadError(e) from e
     file_version = Version(version)
     file_version.epoch = None
     dsc_filename = "%s_%s.dsc" % (package, file_version)
