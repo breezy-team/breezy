@@ -90,7 +90,9 @@ class SnapshotDownloadError(Exception):
         self.inner = e
 
 
-def download_snapshot(package, version, output_dir, no_preparation=False):
+def download_snapshot(
+        package: str, version: Version, output_dir: str,
+        skip_patches: bool = False):
     note("Downloading %s %s", package, version)
     srcfiles_url = (
         "https://snapshot.debian.org/mr/package/%s/%s/"
@@ -111,12 +113,14 @@ def download_snapshot(package, version, output_dir, no_preparation=False):
             except HTTPError as e:
                 if e.status == 504:
                     raise SnapshotDownloadError(e) from e
-                raise e
+                raise
     args = []
-    if no_preparation:
-        args.append("--no-preparation")
+    if skip_patches:
+        args.append("--skip-patches")
+    file_version = Version(version)
+    file_version.epoch = None
     subprocess.check_call(
-        ["dpkg-source"] + args + ["-x", "%s_%s.dsc" % (package, version)],
+        ["dpkg-source"] + args + ["-x", "%s_%s.dsc" % (package, file_version)],
         cwd=output_dir,
     )
 
@@ -197,13 +201,13 @@ def import_uncommitted(tree, subpath, apt, source_version=None):
                 # TODO(jelmer): Should we import it instead?
                 raise TreeUpstreamVersionMissing(tree_cl.version.upstream_version) from e
             db.extract_upstream_tree(upstream_tips, upstream_dir)
-        no_preparation = not tree.has_filename(".pc/applied-patches")
+        skip_patches = not tree.has_filename(".pc/applied-patches")
         version_path = {}
         for version in missing_versions:
             output_dir = es.enter_context(tempfile.TemporaryDirectory())
             download_snapshot(
                 package_name, version, output_dir,
-                no_preparation=no_preparation
+                skip_patches=skip_patches,
             )
             version_path[version] = output_dir
         for version in reversed(missing_versions):
