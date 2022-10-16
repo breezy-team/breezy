@@ -16,6 +16,7 @@
 
 """Support for GitLab."""
 
+from datetime import datetime
 import json
 import os
 import re
@@ -341,8 +342,7 @@ class GitLabMergeProposal(MergeProposal):
         merged_at = self._mr.get('merged_at')
         if merged_at is None:
             return None
-        import iso8601
-        return iso8601.parse_date(merged_at)
+        return datetime.strptime(merged_at.translate(None, ':-'), "%Y%m%dT%H%M%S.%fZ")
 
     def post_comment(self, body):
         kwargs = {'body': body}
