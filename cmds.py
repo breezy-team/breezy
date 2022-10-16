@@ -1,5 +1,5 @@
 #    __init__.py -- The plugin for bzr
-#    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
+#    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org>
 #                  2006, 2007 James Westby <jw+debian@jameswestby.net>
 #                  2007 Reinhard Tartler <siretart@tauware.de>
 #                  2008-2011 Canonical Ltd.
@@ -28,20 +28,19 @@ from typing import Optional
 
 from ... import (
     urlutils,
-    )
+)
 from ...branch import Branch
 from ...controldir import (
     ControlDir,
     NoColocatedBranchSupport,
-    )
+)
 from ...commands import Command
 from ...errors import (
-    BzrError,
     BzrCommandError,
     NotBranchError,
     NotLocalUrl,
     NoWorkingTree,
-    )
+)
 from ...transport import (
     FileExists,
     NoSuchFile,
@@ -56,15 +55,15 @@ from . import (
     default_orig_dir,
     default_result_dir,
     gettext,
-    )
+)
 from .config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
     BUILD_TYPE_SPLIT,
-    )
+)
 from .util import (
     debuild_config,
-    )
+)
 
 dont_purge_opt = Option(
     'dont-purge',
@@ -143,7 +142,7 @@ def _get_changelog_info(tree, subpath, last_version=None, package=None,
         find_last_distribution,
         lookup_distribution,
         MissingChangelogError,
-        )
+    )
     DEFAULT_FALLBACK_DISTRIBUTION = "debian"
     current_version = last_version
     try:
@@ -190,7 +189,7 @@ def _get_upstream_branch_source(
         export_upstream = guess_upstream_url
     from .upstream.branch import (
         LazyUpstreamBranchSource,
-        )
+    )
     upstream_revision_map = {}
     if export_upstream_revision:
         upstream_revision_map[version] = export_upstream_revision
@@ -211,7 +210,7 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
         AptSource,
         SelfSplitSource,
         DirectoryScanSource,
-        )
+    )
     from .upstream.uscan import (
         UScanSource,
         NoWatchFile,
@@ -307,7 +306,8 @@ def _get_distiller(
     elif build_type == BUILD_TYPE_NATIVE:
         return NativeSourceDistiller(tree, subpath, use_existing=use_existing)
     else:
-        return FullSourceDistiller(tree, subpath, upstream_provider, use_existing=use_existing)
+        return FullSourceDistiller(
+            tree, subpath, upstream_provider, use_existing=use_existing)
 
 
 class cmd_builddeb(Command):
@@ -451,8 +451,8 @@ class cmd_builddeb(Command):
             if supplied is not None:
                 if is_local:
                     supplied = os.path.join(
-                            urlutils.local_path_from_url(location),
-                            supplied)
+                        urlutils.local_path_from_url(location),
+                        supplied)
                     supplied = os.path.realpath(supplied)
             return supplied
 
@@ -509,7 +509,7 @@ class cmd_builddeb(Command):
             )
 
         location, build_options, source = self._branch_and_build_options(
-                branch_or_build_options_list, source)
+            branch_or_build_options_list, source)
         tree, branch, is_local, location, subpath = self._get_tree_and_branch(
             location)
         tree = self._get_build_tree(revision, tree, branch)
@@ -535,7 +535,7 @@ class cmd_builddeb(Command):
             build_type = self._build_type(merge, native, split)
 
             contains_upstream_source = tree_contains_upstream_source(
-                    tree, subpath)
+                tree, subpath)
             try:
                 (changelog, top_level) = find_changelog(
                     tree, subpath, merge=not contains_upstream_source)
@@ -554,9 +554,9 @@ class cmd_builddeb(Command):
                     build_options.extend(["-sa", "-v0"])
                 else:
                     build_options.append("-v%s" % str(prev_version))
-                    if (prev_version.upstream_version !=
-                            changelog.version.upstream_version or
-                            prev_version.epoch != changelog.version.epoch):
+                    if (prev_version.upstream_version
+                            != changelog.version.upstream_version
+                            or prev_version.epoch != changelog.version.epoch):
                         build_options.append("-sa")
             build_cmd = self._get_build_command(
                 config, builder, quick, build_options)
@@ -607,8 +607,8 @@ class cmd_builddeb(Command):
                 if is_local:
                     target_dir = result_dir or default_result_dir
                     target_dir = os.path.join(
-                            urlutils.local_path_from_url(location),
-                            target_dir)
+                        urlutils.local_path_from_url(location),
+                        target_dir)
                 else:
                     target_dir = "."
                 if not os.path.exists(target_dir):
@@ -876,8 +876,8 @@ class cmd_merge_upstream(Command):
                     upstream_branch = Branch.open(location)
                 except NotBranchError:
                     upstream_branch = None
-            elif (upstream_branch is None and
-                    config.upstream_branch is not None):
+            elif (upstream_branch is None
+                    and config.upstream_branch is not None):
                 note(gettext("Using upstream branch %s (from configuration)"),
                      config.upstream_branch)
                 upstream_branch = Branch.open(config.upstream_branch)
@@ -976,8 +976,8 @@ class cmd_merge_upstream(Command):
                         "version number using --version."))
             note(gettext("Using version string %s."), version)
             # Look up the revision id from the version string
-            if (upstream_revisions is None and
-                    upstream_branch_source is not None):
+            if (upstream_revisions is None
+                    and upstream_branch_source is not None):
                 try:
                     upstream_revisions = upstream_branch_source\
                         .version_as_revisions(package, version)
@@ -1019,8 +1019,8 @@ class cmd_merge_upstream(Command):
                         files_excluded=files_excluded)
                 except PreviousVersionTagMissing as e:
                     raise BzrCommandError(str(e)) from e
-            if (current_version is not None and
-                    Version(current_version) >= Version(version)):
+            if (current_version is not None
+                    and Version(current_version) >= Version(version)):
                 raise BzrCommandError(
                     gettext("Upstream version %s has already been merged.") %
                     version)
@@ -1160,8 +1160,8 @@ class cmd_import_dsc(Command):
                                    last_version.upstream_version)})
                     upstream_tips = db.pristine_upstream_source\
                         .version_as_revisions(
-                                changelog.package,
-                                last_version.upstream_version)
+                            changelog.package,
+                            last_version.upstream_version)
                     db.extract_upstream_tree(upstream_tips, tempdir)
                 else:
                     db.create_empty_upstream_tree(tempdir)
@@ -1335,7 +1335,6 @@ class cmd_builddeb_do(Command):
             )
         from .upstream.uscan import (
             UScanSource,
-            NoWatchFile,
             )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
@@ -1395,7 +1394,7 @@ class cmd_builddeb_do(Command):
              UScanSource(t, subpath, top_level)])
 
         distiller = MergeModeDistiller(
-                t, subpath, upstream_provider, top_level=top_level)
+            t, subpath, upstream_provider, top_level=top_level)
 
         build_source_dir = os.path.join(
             build_dir,
@@ -1434,8 +1433,8 @@ class cmd_builddeb_do(Command):
         source_debian = os.path.join(build_source_dir, 'debian')
         for filename in os.listdir(source_debian):
             proc = subprocess.Popen('cp -apf "%s" "%s"' % (
-                 os.path.join(source_debian, filename), destination),
-                 shell=True)
+                os.path.join(source_debian, filename), destination),
+                shell=True)
             proc.wait()
             if proc.returncode != 0:
                 raise BzrCommandError(gettext('Copying back debian/ failed'))
@@ -1557,9 +1556,9 @@ class LocalTree(object):
         # Remote, inaccessible
         self._td = tempfile.mkdtemp()
         to_dir = self.branch.controldir.sprout(
-                get_transport(self._td).base, None,
-                create_tree_if_local=True,
-                source_branch=self.branch)
+            get_transport(self._td).base, None,
+            create_tree_if_local=True,
+            source_branch=self.branch)
         try:
             pristine_tar_branch = self.branch.controldir.open_branch(
                 name="pristine-tar")
@@ -1595,7 +1594,7 @@ def _build_helper(
         local_tree, subpath)
 
     distiller = _get_distiller(
-            local_tree, subpath, packaging_branch, build_type=None,
+        local_tree, subpath, packaging_branch, build_type=None,
             config=config, changelog=changelog,
             contains_upstream_source=contains_upstream_source,
             top_level=top_level,
@@ -1628,7 +1627,6 @@ class cmd_debrelease(Command):
         Option('skip-upload', help='Skip upload.'), builder_opt,
         ] + apt_repository_opts
 
-
     def run(self, location='.', strict=True, skip_upload=False,
             builder=DEFAULT_BUILDER, apt_repository=None,
             apt_repository_key=None):
@@ -1654,9 +1652,9 @@ class cmd_debrelease(Command):
 
             with tempfile.TemporaryDirectory() as td:
                 changes_files = _build_helper(
-                        local_tree, subpath, local_tree.branch,
-                        target_dir=(td if not skip_upload else None),
-                        builder=builder)
+                    local_tree, subpath, local_tree.branch,
+                    target_dir=(td if not skip_upload else None),
+                    builder=builder, apt=apt)
                 if not skip_upload:
                     try:
                         source_path = changes_files['source']

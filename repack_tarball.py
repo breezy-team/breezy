@@ -32,7 +32,7 @@ import zipfile
 from ...errors import (
     BzrError,
     DependencyNotPresent,
-    )
+)
 from ...transport import get_transport, FileExists
 
 from .util import open_file, open_file_via_transport
@@ -137,7 +137,7 @@ def get_filetype(filename):
         ".tbz2": "bz2",
         ".tar": "tar",
         ".zip": "zip"
-        }
+    }
     for filetype, name in types.items():
         if filename.endswith(filetype):
             return name
@@ -153,7 +153,7 @@ def get_repacker_class(source_format, target_format):
         ("xz", "gz"): TarLzma2TgzRepacker,
         ("tar", "gz"): TarTgzRepacker,
         ("zip", "gz"): ZipTgzRepacker,
-        }
+    }
     return known_formatters.get((source_format, target_format))
 
 

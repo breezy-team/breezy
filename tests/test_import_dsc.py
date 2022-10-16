@@ -37,11 +37,10 @@ from ....tests.features import (
 from . import make_new_upstream_tarball_xz
 
 from ..import_dsc import (
-        DistributionBranch,
-        DistributionBranchSet,
-        _default_config_for_tree,
-        get_changelog_from_source,
-        )
+    DistributionBranch,
+    DistributionBranchSet,
+    get_changelog_from_source,
+)
 from ..upstream.pristinetar import (
         PristineTarDeltaTooLarge,
         )
@@ -263,7 +262,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.tag_upstream_version(db, version)
         self.assertEqual(
             db.pristine_upstream_source.version_as_revisions(
-                "package", version), 
+                "package", version),
             {None: revid})
 
     def test_contained_versions(self):
@@ -899,7 +898,7 @@ class DistributionBranchTests(BuilddebTestCase):
         write_to_file(os.path.join(basedir, "BUGS"), b"")
         write_to_file(os.path.join(basedir, "NEWS"), b"")
         self.db1.import_upstream(basedir, "package", version2.upstream_version,
-                { None: [self.up_tree1.branch.last_revision()] }, [(None, None, None)])
+                {None: [self.up_tree1.branch.last_revision()]}, [(None, None, None)])
         tree = self.up_tree1
         branch = tree.branch
         revno, rev_id = branch.last_revision_info()

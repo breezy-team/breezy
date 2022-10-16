@@ -93,7 +93,7 @@ def write_dep3_patch_header(
     if revision_id is not None:
         try:
             (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
-                    revision_id)
+                revision_id)
         except errors.InvalidRevisionId:
             header.add_header("X-Bzr-Revision-Id", revision_id.decode('utf-8'))
         else:

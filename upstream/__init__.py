@@ -21,22 +21,19 @@
 import os
 import re
 import shutil
-import subprocess
-import sys
 import tarfile
 import tempfile
-from typing import Optional
+from typing import Optional, Dict
 
 from debmutate.versions import debianize_upstream_version
 
 from ....errors import BzrError, DependencyNotPresent
 from .... import osutils
+from ....revision import RevisionID
 from ....trace import (
     note,
     warning,
     )
-from ....transport import NoSuchFile
-
 from ..repack_tarball import (
     get_filetype,
     repack_tarball,
@@ -105,7 +102,9 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_recent_versions)
 
-    def version_as_revisions(self, package: str, version: str, tarballs=None):
+    def version_as_revisions(
+            self, package: str, version: str,
+            tarballs=None) -> Dict[Optional[str], RevisionID]:
         """Lookup the revision ids for a particular version.
 
         :param package: Package name
@@ -262,7 +261,9 @@ class StackedUpstreamSource(UpstreamSource):
         from debian.changelog import Version
         return [(u, m) for (m, u) in sorted(versions.items(), key=lambda v: Version(v[0]))]
 
-    def version_as_revisions(self, package, version, tarballs=None):
+    def version_as_revisions(
+            self, package, version,
+            tarballs=None):
         for source in self._sources:
             try:
                 return source.version_as_revisions(package, version, tarballs)
@@ -273,7 +274,7 @@ class StackedUpstreamSource(UpstreamSource):
                         source, e)
         raise PackageVersionNotPresent(package, version, self)
 
-    def has_version(self, package, version, tarballs=None):
+    def has_version(self, package: str, version: str, tarballs=None) -> bool:
         for source in self._sources:
             if source.has_version(package, version, tarballs):
                 return True

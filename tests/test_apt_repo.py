@@ -23,7 +23,7 @@ from breezy.tests import TestCase
 from debian.deb822 import Dsc
 
 
-from ..apt_repo import LocalApt, NoAptSources, AptSourceError
+from ..apt_repo import LocalApt, NoAptSources
 
 
 class MockSources(object):

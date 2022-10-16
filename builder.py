@@ -124,9 +124,9 @@ def do_build(package_name, version, distiller, local_tree, config,
         build_source_dir = os.path.join(
             bd, package_name + "-" + version.upstream_version)
         builder = DebBuild(
-                distiller, build_source_dir,
-                build_command,
-                use_existing=False)
+            distiller, build_source_dir,
+            build_command,
+            use_existing=False)
         builder.prepare()
         run_hook(local_tree, 'pre-export', config)
         builder.export()

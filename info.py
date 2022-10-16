@@ -25,7 +25,7 @@ brz_commands = [
     "merge_upstream",
     "import_dsc",
     "bd_do",
-    ]
+]
 
 
 def versions_dict():

@@ -38,8 +38,7 @@ from debmutate.versions import mangle_version_for_git
 
 from ... import (
     controldir,
-    osutils,
-    )
+)
 from ...config import ConfigObj
 from ...errors import (
     BzrError,
@@ -744,7 +743,7 @@ class DistributionBranch(object):
 
             def key(a):
                 if a is None:
-                    return None
+                    return ""
                 return a
             for component in sorted(upstream_revids.keys(), key=key):
                 if len(real_parents) > 0:

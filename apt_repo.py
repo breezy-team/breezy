@@ -25,7 +25,6 @@ from typing import Optional
 from debian.deb822 import Dsc, Deb822
 
 from breezy.errors import DependencyNotPresent
-from breezy.trace import note
 
 
 class NoAptSources(Exception):

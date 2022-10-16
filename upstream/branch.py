@@ -37,7 +37,6 @@ from debmutate.versions import (
 from .... import osutils
 from ....branch import (
     Branch,
-    BranchWriteLockResult,
     )
 from ....errors import (
     BzrError,

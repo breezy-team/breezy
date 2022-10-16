@@ -18,14 +18,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 from itertools import islice
-import re
 from typing import Optional
 
 from ....repository import Repository
 from ....revision import Revision
-from ....errors import (
-    BzrError,
-    )
 
 
 from debmutate.versions import mangle_version_for_git

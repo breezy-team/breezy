@@ -16,13 +16,10 @@ from ...bzr import generate_ids
 
 from contextlib import ExitStack
 
-from ... import urlutils
-from ...controldir import ControlDir
-from ...errors import BzrCommandError, NotBranchError, BzrError
+from ...errors import BzrError
 from ...osutils import (
     file_iterator,
     basename,
-    file_kind,
     splitpath,
     normpath,
     is_inside_any,
@@ -30,7 +27,6 @@ from ...osutils import (
 from ...trace import warning
 from ...tree import Tree
 from ...transform import resolve_conflicts
-from ...transport import NoSuchFile
 
 
 class UnknownType(BzrError):

@@ -19,16 +19,13 @@ import asyncio
 import logging
 import os
 
-from debian.changelog import Changelog
 from debmutate.changelog import distribution_is_unreleased
 
 from breezy.workingtree import WorkingTree
-from breezy.plugins.debian.util import MissingChangelogError, find_changelog
+from breezy.plugins.debian.util import find_changelog
 from breezy.plugins.debian.apt_repo import (
     LocalApt,
     RemoteApt,
-    NoAptSources,
-    AptSourceError,
 )
 
 

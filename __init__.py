@@ -1,5 +1,5 @@
 #    __init__.py -- The plugin for bzr
-#    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
+#    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org>
 #                  2006, 2007 James Westby <jw+debian@jameswestby.net>
 #                  2007 Reinhard Tartler <siretart@tauware.de>
 #                  2008 Canonical Ltd.
@@ -25,14 +25,14 @@
 
 import os
 
-import breezy
+import breezy  # noqa: F401
 from ...commands import plugin_cmds
 from ...hooks import install_lazy_named_hook
 from ... import trace
 
 from .info import (
     brz_plugin_version as version_info,
-    )
+)   # noqa: F401
 
 
 from ...i18n import load_plugin_translations
@@ -41,15 +41,15 @@ gettext = translation.gettext
 
 
 commands = {
-        "builddeb_do": ["bd-do"],
-        "builddeb": ["bd", "debuild"],
-        "get_orig_source": [],
-        "dep3_patch": [],
-        "import_dsc": [],
-        "import_upstream": [],
-        "merge_upstream": ["mu"],
-        "debrelease": [],
-        }
+    "builddeb_do": ["bd-do"],
+    "builddeb": ["bd", "debuild"],
+    "get_orig_source": [],
+    "dep3_patch": [],
+    "import_dsc": [],
+    "import_upstream": [],
+    "merge_upstream": ["mu"],
+    "debrelease": [],
+}
 
 for command, aliases in commands.items():
     plugin_cmds.register_lazy(

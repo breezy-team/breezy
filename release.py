@@ -19,13 +19,12 @@
 #
 
 import os
-import shlex
-import subprocess
-import sys
 
-from debmutate.changelog import release as mark_for_release, ChangelogEditor, distribution_is_unreleased
-
-from ... import osutils
+from debmutate.changelog import (
+    release as mark_for_release,
+    ChangelogEditor,
+    distribution_is_unreleased
+)
 
 from .changelog import debcommit_release
 

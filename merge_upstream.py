@@ -29,7 +29,6 @@
 import os
 import tempfile
 
-from debian.changelog import Version
 from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
 from debmutate.versions import new_package_version
 
@@ -37,15 +36,11 @@ from ... import osutils
 from ...revision import NULL_REVISION
 from ...trace import note
 
-from .errors import (
-    BzrError,
-    )
 from .import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
-    PreviousVersionTagMissing,
     UpstreamAlreadyImported,
-    )
+)
 from .repack_tarball import repack_tarball
 from .util import (
     component_from_orig_tarball,
@@ -53,7 +48,7 @@ from .util import (
     FORMAT_3_0_QUILT,
     FORMAT_3_0_NATIVE,
     tree_get_source_format,
-    )
+)
 
 
 TAG_PREFIX = "upstream-"
@@ -129,7 +124,8 @@ def do_import(
                 package, current_version, tempdir)
         else:
             db.create_empty_upstream_tree(tempdir)
-        if db.pristine_upstream_source.has_version(package, version, try_hard=False):
+        if db.pristine_upstream_source.has_version(
+                package, version, try_hard=False):
             raise UpstreamAlreadyImported(version)
 
         parents = {None: []}

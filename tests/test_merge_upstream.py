@@ -21,7 +21,6 @@
 from debian.changelog import Changelog, Version
 
 from ....tests import (
-    TestCase,
     TestCaseWithTransport,
     )
 

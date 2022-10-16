@@ -20,7 +20,6 @@
 
 from email.message import Message
 from email.parser import Parser
-from io import BytesIO, TextIOWrapper
 
 from ....revision import (
     NULL_REVISION,

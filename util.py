@@ -219,9 +219,9 @@ def find_changelog(t, subpath='', merge=False, max_blocks=1, strict=False):
             # "." then it will have found debian/changelog. Try and detect
             # this.
             debian_file = osutils.pathjoin(subpath, 'debian')
-            if (t.is_versioned(debian_file) and
-                    t.kind(debian_file) == 'symlink' and
-                    t.get_symlink_target(debian_file) == '.'):
+            if (t.is_versioned(debian_file)
+                    and t.kind(debian_file) == 'symlink'
+                    and t.get_symlink_target(debian_file) == '.'):
                 changelog_file = 'changelog'
                 top_level = True
         mutter("Using '%s' to get package information", changelog_file)
@@ -738,8 +738,8 @@ def component_from_orig_tarball(tarball_filename, package, version):
         return base[1:]
     else:
         raise ValueError(
-                "Invalid extra characters in tarball filename %s" %
-                tarball_filename)
+            "Invalid extra characters in tarball filename %s" %
+            tarball_filename)
 
 
 class TarFailed(BzrError):
@@ -771,8 +771,8 @@ def extract_orig_tarball(tarball_filename, component, target,
     if tarball_filename.endswith(".tar.bz2"):
         tar_args.append('xjf')
         tf = TarFile.bz2open(tarball_filename)
-    elif (tarball_filename.endswith(".tar.lzma") or
-          tarball_filename.endswith(".tar.xz")):
+    elif (tarball_filename.endswith(".tar.lzma")
+            or tarball_filename.endswith(".tar.xz")):
         tar_args.append('xJf')
         tf = TarFile.xzopen(tarball_filename)
     elif tarball_filename.endswith(".tar"):

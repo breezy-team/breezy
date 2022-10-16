@@ -23,7 +23,6 @@ from contextlib import ExitStack
 import os
 import subprocess
 import tempfile
-from typing import Optional
 
 from debian.changelog import Version
 

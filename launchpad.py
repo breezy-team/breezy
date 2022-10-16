@@ -18,11 +18,9 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from ...bedding import config_dir
 from ...trace import (
     mutter,
-    note,
-    )
+)
 
 try:
     from launchpadlib.launchpad import Launchpad

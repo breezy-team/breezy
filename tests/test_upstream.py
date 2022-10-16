@@ -26,8 +26,6 @@ from base64 import standard_b64encode
 
 import bz2
 import os
-import shutil
-import tempfile
 import tarfile
 import zipfile
 
@@ -41,14 +39,12 @@ from ....revision import (
 from ....tests import (
     TestCase,
     )
-from ....transport import NoSuchFile
 from ....tests.features import (
     ModuleAvailableFeature,
-    PluginLoadedFeature,
-    )
+)
 from ..config import (
     DebBuildConfig,
-    )
+)
 
 from . import (
     LzmaFeature,
@@ -84,17 +80,12 @@ from ..upstream.branch import (
     PreviousVersionTagMissing,
     )
 from ..upstream.pristinetar import (
-    get_pristine_tar_source,
     is_upstream_tag,
     revision_pristine_tar_format,
     revision_pristine_tar_delta,
     upstream_tag_version,
     GitPristineTarSource,
     BzrPristineTarSource,
-    )
-from ..upstream.uscan import (
-    UScanSource,
-    UScanError,
     )
 
 

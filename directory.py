@@ -18,9 +18,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import re
-import sys
-
 from ... import urlutils
 from ...directory_service import directories
 from ...errors import DependencyNotPresent
