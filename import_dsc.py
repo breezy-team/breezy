@@ -459,8 +459,6 @@ class DistributionBranch(object):
         rev_tree = self.branch.repository.revision_tree(revid)
         (config_fileid, config_path,
          current_config) = _default_config_for_tree(rev_tree)
-        if _is_tree_native(current_config):
-            return True
         rev = self.branch.repository.get_revision(revid)
         try:
             prop = rev.properties["deb-native"]
@@ -893,51 +891,6 @@ class DistributionBranch(object):
                 force_pristine_tar=force_pristine_tar,
                 committer=committer, files_excluded=files_excluded)
 
-    def _mark_native_config(self, native):
-        poss_native_tree = self.branch.basis_tree()
-        (config_fileid, config_relpath,
-         current_config) = _default_config_for_tree(poss_native_tree)
-        current_native = _is_tree_native(current_config)
-        if current_config is not None:
-            # Add that back to the current tree
-            current_config.filename = self.tree.abspath(config_relpath)
-            dir_path = osutils.dirname(current_config.filename)
-            if not os.path.exists(dir_path):
-                os.mkdir(dir_path)
-            current_config.write()
-            dirname = osutils.dirname(config_relpath)
-            dir_id = poss_native_tree.path2id(dirname)
-            if self.tree.supports_setting_file_ids():
-                self.tree.add([dirname, config_relpath],
-                              ids=[dir_id, config_fileid])
-            else:
-                self.tree.add([dirname, config_relpath])
-        if native != current_native:
-            if current_config is None:
-                needs_add = True
-                if native:
-                    current_config = ConfigObj()
-                    current_config['BUILDDEB'] = {}
-            if current_config is not None:
-                if native:
-                    current_config['BUILDDEB']['native'] = True
-                else:
-                    del current_config['BUILDDEB']['native']
-                    if len(current_config['BUILDDEB']) == 0:
-                        del current_config['BUILDDEB']
-                if len(current_config) == 0:
-                    self.tree.remove([
-                        '.bzr-builddeb',
-                        '.bzr-builddeb/default.conf',
-                        'debian/bzr-builddeb.conf'],
-                        keep_files=False)
-                else:
-                    current_config.filename = os.path.join(
-                        self.tree.basedir, 'debian', 'bzr-builddeb.conf')
-                    current_config.write()
-                    if needs_add:
-                        self.tree.add(['debian', 'debian/bzr-builddeb.conf'])
-
     def import_debian(self, debian_part, version, parents, md5, *,
                       native: bool = False, timestamp=None,
                       file_ids_from: Optional[Tree] = None):
@@ -1020,7 +973,6 @@ class DistributionBranch(object):
         if timestamp is not None:
             timezone = timestamp[1]
             timestamp = timestamp[0]
-        self._mark_native_config(native)
         revid = self.tree.commit(
             message, revprops=revprops, timestamp=timestamp, timezone=timezone)
         return self.tag_version(version, revid=revid)
@@ -1412,16 +1364,6 @@ def get_changelog_from_source(dir, max_blocks=None):
     cl = Changelog()
     cl.parse_changelog(content, strict=False, max_blocks=max_blocks)
     return cl
-
-
-def _is_tree_native(config):
-    if config is not None:
-        try:
-            current_value = config['BUILDDEB']['native']
-        except KeyError:
-            current_value = False
-        return current_value == "True"
-    return False
 
 
 def _default_config_for_tree(tree):

@@ -4,6 +4,7 @@ breezy-debian (2.8.73) UNRELEASED; urgency=medium
     up to date with the archive
   * Add --version argument to deb-import-uncommitted.
   * Bump minimum breezy to 3.3.
+  * Don't add builddeb.conf files when importing packages.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Oct 2022 18:05:42 +0100
 
