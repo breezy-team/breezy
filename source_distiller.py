@@ -28,10 +28,7 @@ import tempfile
 from ... import errors as bzr_errors
 from ...trace import note
 
-try:
-    from ...transport import NoSuchFile, FileExists
-except ImportError:
-    from ...errors import NoSuchFile, FileExists
+from ...transport import NoSuchFile, FileExists
 
 from .util import (
     export_with_nested,

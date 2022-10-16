@@ -33,11 +33,7 @@ from ...errors import (
     BzrError,
     DependencyNotPresent,
     )
-from ...transport import get_transport
-try:
-    from ...transport import FileExists
-except ImportError:
-    from ...errors import FileExists
+from ...transport import get_transport, FileExists
 
 from .util import open_file, open_file_via_transport
 

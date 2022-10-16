@@ -46,10 +46,7 @@ from ... import (
     osutils,
     urlutils,
     )
-try:
-    from ...transport import NoSuchFile
-except ImportError:
-    from ...errors import NoSuchFile
+from ...transport import NoSuchFile
 from ...export import export
 from ...trace import (
     mutter,
