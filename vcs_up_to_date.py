@@ -94,7 +94,7 @@ def check_up_to_date(tree, subpath, apt):
 
     if last_archive_version not in released_tree_versions:
         raise NewArchiveVersion(
-            last_archive_version, released_tree_versions)
+            last_archive_version, last_released_tree_version)
 
 
 async def main():
