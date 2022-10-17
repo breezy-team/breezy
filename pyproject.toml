@@ -6,4 +6,6 @@ requires = [
     "configobj",
     "cython>=0.29",
     "pyyaml",
+    "wheel",
 ]
+build-backend = "setuptools.build_meta"
