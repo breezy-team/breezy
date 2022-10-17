@@ -84,12 +84,14 @@ from breezy.plugins.debian.merge_upstream import (
     do_merge,
     get_existing_imported_upstream_revids,
     get_tarballs,
-    PreviousVersionTagMissing,
 )
 from breezy.plugins.debian.repack_tarball import (
     UnsupportedRepackFormat,
 )
 
+from breezy.plugins.debian.upstream.branch import (
+    PreviousVersionTagMissing,
+)
 from breezy.plugins.debian.upstream.pristinetar import (
     PristineTarError,
     get_pristine_tar_source,

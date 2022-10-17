@@ -798,13 +798,13 @@ class cmd_merge_upstream(Command):
             changelog_add_new_version,
             do_merge,
             get_tarballs,
-            PreviousVersionTagMissing,
             )
         from .upstream import (
             PackageVersionNotPresent,
             TarfileSource,
             )
         from .upstream.branch import (
+            PreviousVersionTagMissing,
             UpstreamBranchSource,
             run_dist_command,
             )
