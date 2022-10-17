@@ -15,6 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__all__ = [
+    'PackageMissingInArchive',
+    'NewArchiveVersion',
+    'MissingChangelogError',
+    'TreeVersionNotInArchive',
+    'check_up_to_date',
+]
+
 import asyncio
 import logging
 import os
@@ -22,7 +30,7 @@ import os
 from debmutate.changelog import distribution_is_unreleased
 
 from breezy.workingtree import WorkingTree
-from breezy.plugins.debian.util import find_changelog
+from breezy.plugins.debian.util import find_changelog, MissingChangelogError
 from breezy.plugins.debian.apt_repo import (
     LocalApt,
     RemoteApt,
