@@ -2,6 +2,7 @@
 requires = [
     "packaging",
     "setuptools",
+    "setuptools-gettext",
     "setuptools-rust",
     "configobj",
     "cython>=0.29",
