@@ -24,10 +24,11 @@ except ModuleNotFoundError as e:
     sys.exit(1)
 
 
-# NOTE: The directory containing setup.py, whether run by 'python setup.py' or
-# './setup.py' or the equivalent with another path, should always be at the
-# start of the path, so this should find the right one...
-import breezy
+try:
+    import setuptools_gettext
+except ModuleNotFoundError as e:
+    sys.stderr.write("[ERROR] Please install setuptools_gettext (%s)\n" % e)
+    sys.exit(1)
 
 I18N_FILES = []
 for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
@@ -44,7 +45,7 @@ except ImportError:
 from distutils.command.install import install
 from distutils.command.install_data import install_data
 from distutils.command.install_scripts import install_scripts
-from distutils.command.build import build
+from setuptools import Command
 from distutils.command.build_scripts import build_scripts
 
 ###############################
@@ -77,18 +78,17 @@ class brz_install(install):
         self.single_version_externally_managed = True
 
 
-class bzr_build(build):
-    """Customized build distutils action.
-    Generate brz.1.
+class build_man(Command):
+    """Generate brz.1.
     """
 
-    sub_commands = build.sub_commands + [
-        ('build_mo', lambda _: True),
-        ]
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
 
     def run(self):
-        build.run(self)
-
         from tools import generate_docs
         generate_docs.main(argv=["brz", "man"])
 
@@ -97,11 +97,11 @@ class bzr_build(build):
 ## Setup
 ########################
 
-from breezy.bzr_distutils import build_mo
+from setuptools.command.build import build
+build.sub_commands.append(('build_mo', lambda _: True))
 
 command_classes = {
-    'build': bzr_build,
-    'build_mo': build_mo,
+    'build_man': build_man,
     'build_scripts': brz_build_scripts,
     'install': brz_install,
 }
@@ -252,9 +252,10 @@ if unavailable_files:
 
 # ad-hoc for easy_install
 DATA_FILES = []
-if 'bdist_egg' not in sys.argv:
+if 'bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv:
     # generate and install brz.1 only with plain install, not the
     # easy_install one
+    build.sub_commands.append(('build_man', lambda _: True))
     DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
 
 DATA_FILES = DATA_FILES + I18N_FILES
@@ -276,12 +277,4 @@ setup(
         RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
         RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
     ],
-    # install files from selftest suite
-    package_data={'breezy': ['doc/api/*.txt',
-                             'tests/test_patches_data/*',
-                             'help_topics/en/*.txt',
-                             'tests/ssl_certs/ca.crt',
-                             'tests/ssl_certs/server_without_pass.key',
-                             'tests/ssl_certs/server_with_pass.key',
-                             'tests/ssl_certs/server.crt',
-]})
+)
