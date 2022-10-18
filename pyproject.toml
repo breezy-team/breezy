@@ -7,3 +7,4 @@ requires = [
     "cython>=0.29",
     "pyyaml",
 ]
+build-backend = "setuptools.build_meta"
