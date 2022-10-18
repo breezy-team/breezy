@@ -29,6 +29,7 @@ from urllib.error import HTTPError, URLError
 
 import breezy.bzr
 import breezy.git
+from breezy.errors import NotBranchError
 from breezy.revision import RevisionID
 from breezy.trace import note
 from breezy.transform import MalformedTransform
@@ -44,6 +45,7 @@ from breezy.plugins.debian.upstream import PackageVersionNotPresent
 from breezy.plugins.debian.import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
+    VersionAlreadyImported,
 )
 from breezy.plugins.debian.util import MissingChangelogError
 from breezy.plugins.debian.apt_repo import (
@@ -203,7 +205,14 @@ def import_uncommitted(
         for version in reversed(missing_versions):
             note("Importing %s", version)
             dsc_path = version_path[version]
-            tag_name = db.import_package(dsc_path, apply_patches=applied_patches)
+            try:
+                tag_name = db.import_package(dsc_path, apply_patches=applied_patches)
+            except VersionAlreadyImported as e:
+                # Present in the repository, just not on the branch
+                note("%s was already imported (tag: %s), just not on the "
+                     "branch. Updating tree.", e.version, e.tag_name) 
+                tag_name = e.tag_name
+                db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
             revision = db.branch.tags.lookup_tag(tag_name)
             ret.append((tag_name, version, revision))
     return ret
@@ -245,7 +254,13 @@ async def main():
             args.apt_repository, args.apt_repository_key)
     else:
         apt = LocalApt()
-    local_tree, subpath = WorkingTree.open_containing('.')
+    try:
+        local_tree, subpath = WorkingTree.open_containing('.')
+    except NotBranchError:
+        report_fatal(
+            "not-branch-error",
+            "Not running in a version-controlled directory")
+        return 1
     try:
         ret = import_uncommitted(
             local_tree, subpath, apt, source_version=args.version)

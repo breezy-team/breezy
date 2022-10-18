@@ -36,6 +36,7 @@ from debian import deb822
 from debian.changelog import Version, Changelog, VersionError
 from debmutate.versions import mangle_version_for_git
 
+from ...branch import Branch
 from ... import (
     controldir,
 )
@@ -45,6 +46,7 @@ from ...errors import (
     AlreadyBranchError,
     NotBranchError,
     NoRoundtrippingSupport,
+    NoSuchTag,
     NoWorkingTree,
     UnrelatedBranches,
     )
@@ -89,6 +91,13 @@ class UpstreamAlreadyImported(BzrError):
 
     def __init__(self, version):
         BzrError.__init__(self, version=str(version))
+
+
+class VersionAlreadyImported(BzrError):
+    _fmt = "Debian version %(version)s has already been imported."
+
+    def __init__(self, version, tag_name):
+        BzrError.__init__(self, version=str(version), tag_name=tag_name)
 
 
 class DscCache(object):
@@ -303,9 +312,9 @@ class DistributionBranch(object):
         :return: a String with the name of the tag.
         """
         if vendor is not None and version.debian_revision:
-            return mangle_version(self.branch, '%s/%s' % (vendor, version))
+            return '%s/%s' % (vendor, mangle_version(self.branch, version))
         else:
-            return mangle_version(self.branch, str(version))
+            return mangle_version(self.branch, version)
 
     def has_version(
             self, version: Version, md5: Optional[str] = None,
@@ -323,18 +332,8 @@ class DistributionBranch(object):
         :return: True if this branch contains the specified version of the
             package. False otherwise.
         """
-        version = mangle_version(self.branch, str(version))
-        if branch_has_debian_version(self.branch, str(version), md5=md5):
-            return True
-        # TODO(jelmer): There is some overlap here with revid_of_version
-        for debian_tag_name in ["debian-%s" % version, "debian/%s" % version]:
-            if branch_has_debian_version(self.branch, debian_tag_name, md5=md5):
-                return True
-        for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
-            if branch_has_debian_version(self.branch, ubuntu_tag_name, md5=md5):
-                return True
-        for other_tag_name in ["v%s" % version]:
-            if branch_has_debian_version(self.branch, other_tag_name, md5=md5):
+        for tag in self.possible_tags(version):
+            if branch_has_debian_version(self.branch, tag, md5=md5):
                 return True
         return False
 
@@ -407,6 +406,23 @@ class DistributionBranch(object):
                 return version
         return None
 
+    def possible_tags(self, version: Version, vendor: Optional[str] = None):
+        if vendor:
+            if version.debian_revision:
+                for tag_name in ["%s-%s" % (vendor, version), "%s/%s" % (vendor, version)]:
+                    yield tag_name
+            else:
+                yield str(version)
+        else:
+            version = mangle_version(self.branch, version)
+            yield str(version)
+            for tag_name in ["debian-%s" % version, "debian/%s" % version]:
+                yield tag_name
+            for tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
+                yield tag_name
+            for tag_name in ["v%s" % version]:
+                yield tag_name
+
     def revid_of_version(self, version: Version) -> RevisionID:
         """Returns the revision id corresponding to that version.
 
@@ -414,19 +430,22 @@ class DistributionBranch(object):
             revision id of. The Version must be present in the branch.
         :return: the revision id corresponding to that version
         """
-        if branch_has_debian_version(self.branch, str(version)):
-            return self.branch.tags.lookup_tag(str(version))
-        version = mangle_version(self.branch, str(version))
-        for debian_tag_name in ["debian-%s" % version, "debian/%s" % version]:
-            if branch_has_debian_version(self.branch, debian_tag_name):
-                return self.branch.tags.lookup_tag(debian_tag_name)
-        for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
-            if branch_has_debian_version(self.branch, ubuntu_tag_name):
-                return self.branch.tags.lookup_tag(ubuntu_tag_name)
-        for other_tag_name in ["v%s" % version]:
-            if branch_has_debian_version(self.branch, other_tag_name):
-                return self.branch.tags.lookup_tag(other_tag_name)
-        return self.branch.tags.lookup_tag(str(version))
+        tag = self.tag_of_version(version)
+        if tag is None:
+            raise NoSuchTag(version)
+        return self.branch.tags.lookup_tag(tag)
+
+    def tag_of_version(self, version: Version, vendor: Optional[str] = None) -> RevisionID:
+        """Returns the revision id corresponding to that version.
+
+        :param version: the Version object that you wish to retrieve the
+            revision id of. The Version must be present in the branch.
+        :return: the tag corresponding to that version
+        """
+        for tag in self.possible_tags(version, vendor):
+            if branch_has_debian_version(self.branch, tag):
+                return tag
+        raise None
 
     def tag_version(self, version: Version, revid: Optional[RevisionID] = None,
                     vendor: Optional[str] = None) -> str:
@@ -1167,8 +1186,8 @@ class DistributionBranch(object):
                 author = safe_decode(cl.author)
             versions = _get_safe_versions_from_changelog(cl)
             if self.has_version(version):
-                raise AssertionError(
-                        "Trying to import version %s again" % str(version))
+                raise VersionAlreadyImported(
+                    version, tag_name=self.tag_of_version(version))
             # TODO: check that the versions list is correctly ordered,
             # as some methods assume that, and it's not clear what
             # should happen if it isn't.
@@ -1382,11 +1401,11 @@ def _default_config_for_tree(tree):
     return fileid, path, config
 
 
-def mangle_version(branch, version):
+def mangle_version(branch: Branch, version: Version) -> str:
     git = getattr(branch.repository, '_git', None)
     if git:
         return mangle_version_for_git(version)
-    return version
+    return str(version)
 
 
 def branch_has_debian_version(branch, tag_name, md5=None):
