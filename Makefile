@@ -288,7 +288,7 @@ po/brz.pot: $(PYFILES) $(DOCFILES)
 .PHONY: dist check-dist-tarball
 
 # build a distribution source tarball
-dist: 
+dist:
 	version=`./brz version --short` && \
 	echo Building distribution of brz $$version && \
 	expbasedir=`mktemp -t -d tmp_brz_dist.XXXXXXXXXX` && \
