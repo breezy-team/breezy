@@ -89,8 +89,9 @@ def select_vcswatch_packages():
 
 class SnapshotDownloadError(Exception):
 
-    def __init__(self, url):
+    def __init__(self, url, inner):
         self.url = url
+        self.inner = inner
 
 
 def download_snapshot(package: str, version: Version, output_dir: str) -> str:
@@ -112,9 +113,9 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                 with urlopen(url) as g:
                     f.write(g.read())
             except HTTPError as e:
-                raise SnapshotDownloadError(e) from e
+                raise SnapshotDownloadError(url, e) from e
             except URLError as e:
-                raise SnapshotDownloadError(e) from e
+                raise SnapshotDownloadError(url, e) from e
     file_version = Version(version)
     file_version.epoch = None
     dsc_filename = "%s_%s.dsc" % (package, file_version)
