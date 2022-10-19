@@ -101,9 +101,14 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
         "srcfiles?fileinfo=1" % (package, version)
     )
     files = {}
-    for hsh, entries in json.load(urlopen(srcfiles_url))["fileinfo"].items():
-        for entry in entries:
-            files[entry["name"]] = hsh
+    try:
+        for hsh, entries in json.load(urlopen(srcfiles_url))["fileinfo"].items():
+            for entry in entries:
+                files[entry["name"]] = hsh
+        except HTTPError as e:
+            raise SnapshotDownloadError(srcfiles_url, e) from e
+        except URLError as e:
+            raise SnapshotDownloadError(srcfiles_url, e) from e
     for filename, hsh in files.items():
         local_path = os.path.join(output_dir, os.path.basename(filename))
         with open(local_path, "wb") as f:
