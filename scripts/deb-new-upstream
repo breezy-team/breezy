@@ -1062,8 +1062,9 @@ def merge_upstream(  # noqa: C901
 
 
 def report_fatal(
-        code: str, description: str, upstream_version: Optional[str] = None,
-        conflicts=None, hint: Optional[str] = None):
+        code: str, description: str, *, upstream_version: Optional[str] = None,
+        conflicts=None, hint: Optional[str] = None,
+        transient: Optional[bool] = None, stage=None):
     if os.environ.get('SVP_API') == '1':
         context = {}
         if upstream_version is not None:
@@ -1074,6 +1075,8 @@ def report_fatal(
             json.dump({
                 'result_code': code,
                 'hint': hint,
+                'transient': transient,
+                'stage': stage,
                 'description': description,
                 'versions': versions_dict(),
                 'context': context}, f)
@@ -1176,6 +1179,7 @@ async def main():
                 "control-files-in-root",
                 "control files live in root rather than debian/ "
                 "(LarstIQ mode)",
+                transient=False,
             )
             return 1
 
@@ -1222,10 +1226,10 @@ async def main():
                         "Malformed tree transform during new upstream merge"
                     )
                     error_code = "malformed-transform"
-                    report_fatal(error_code, error_description)
+                    report_fatal(error_code, error_description, transient=False)
                     return 1
                 except UncommittedChanges as e:
-                    report_fatal('uncommitted-changes', str(e))
+                    report_fatal('uncommitted-changes', str(e), transient=False)
                     return 1
             else:
                 result = import_upstream(
@@ -1247,7 +1251,8 @@ async def main():
                 report_fatal(
                     "nothing-to-do",
                     "Last upstream version %s already imported." % e.version,
-                    upstream_version=e.version
+                    upstream_version=e.version,
+                    transient=False
                 )
             else:
                 report_fatal(
@@ -1255,13 +1260,14 @@ async def main():
                     "Last upstream version %s already imported. " % e.version,
                     upstream_version=e.version,
                     hint="Import a snapshot by specifying --snapshot."
+                    transient=False
                 )
             return 1
         except UpstreamBranchLocationInvalid as e:
             report_fatal(
                 "upstream-branch-invalid",
                 "The upstream branch location (%s) is invalid: %s" % (
-                    e.url, e.extra))
+                    e.url, e.extra), transient=False)
             return 1
         except ChangelogGeneratedFile as e:
             report_fatal(
@@ -1275,7 +1281,9 @@ async def main():
                 "Unable to repack file %s to supported tarball format."
                 % (os.path.basename(e.location))
             )
-            report_fatal("unsupported-repack-format", error_description)
+            report_fatal(
+                "unsupported-repack-format", error_description,
+                transient=False)
             return 1
         except NewUpstreamMissing as e:
             report_fatal(
@@ -1286,25 +1294,26 @@ async def main():
             report_fatal(
                 "nothing-to-do",
                 "Last upstream version %s already merged." % e.version,
-                upstream_version=e.version)
+                upstream_version=e.version, transient=False)
             return 1
         except NoWatchFile:
             report_fatal(
                 "no-watch-file",
-                "No watch file is present, but --require-uscan was specified")
+                "No watch file is present, but --require-uscan was specified",
+                transient=False)
             return 1
         except PreviousVersionTagMissing as e:
             report_fatal(
                 "previous-upstream-missing",
                 "Previous upstream version %s missing (tag: %s)."
-                % (e.version, e.tag_name),
+                % (e.version, e.tag_name), transient=False
             )
             return 1
         except InvalidFormatUpstreamVersion as e:
             report_fatal(
                 "invalid-upstream-version-format",
                 "%r reported invalid format version string %s." % (
-                    e.source, e.version),
+                    e.source, e.version), transient=False
             )
             return 1
         except PristineTarError as e:
@@ -1315,29 +1324,36 @@ async def main():
                 e.location,
                 e.error,
             )
+            transient = None
             error_code = "upstream-branch-unavailable"
             if "Fossil branches are not yet supported" in str(e.error):
                 error_code = "upstream-unsupported-vcs-fossil"
+                transient = False
             if "Mercurial branches are not yet supported." in str(e.error):
                 error_code = "upstream-unsupported-vcs-hg"
+                transient = False
             if "Subversion branches are not yet supported." in str(e.error):
                 error_code = "upstream-unsupported-vcs-svn"
+                transient = False
             if "Darcs branches are not yet supported" in str(e.error):
                 error_code = "upstream-unsupported-vcs-darcs"
+                transient = False
             if "Unsupported protocol for url" in str(e.error):
+                transient = False
                 if "svn://" in str(e.error):
                     error_code = "upstream-unsupported-vcs-svn"
                 elif "cvs+pserver://" in str(e.error):
                     error_code = "upstream-unsupported-vcs-cvs"
                 else:
                     error_code = "upstream-unsupported-vcs"
-            report_fatal(error_code, error_description)
+            report_fatal(error_code, error_description, transient=transient)
             return 1
         except UpstreamBranchUnknown:
             report_fatal(
                 "upstream-branch-unknown",
                 "Upstream branch location unknown.",
                 hint="Set 'Repository' field in debian/upstream/metadata?",
+                transient=False
             )
             return 1
         except UpstreamMergeConflicted as e:
@@ -1348,18 +1364,20 @@ async def main():
             report_fatal(
                 "upstream-merged-conflicts",
                 "Merging upstream version %s resulted in conflicts." % e.version,
-                upstream_version=e.version, conflicts=conflicts)
+                upstream_version=e.version, conflicts=conflicts,
+                transient=False)
             return 1
         except PackageIsNative as e:
             report_fatal(
                 "native-package",
                 "Package %s is native; unable to merge new upstream." % (e.package,),
+                transient=False
             )
             return 1
         except ChangelogParseError as e:
             error_description = str(e)
             error_code = "unparseable-changelog"
-            report_fatal(error_code, error_description)
+            report_fatal(error_code, error_description, transient=False)
             return 1
         except UpstreamVersionMissingInUpstreamBranch as e:
             error_description = "Upstream version %s not in upstream branch %r" % (
@@ -1367,18 +1385,20 @@ async def main():
                 e.branch,
             )
             error_code = "upstream-version-missing-in-upstream-branch"
-            report_fatal(error_code, error_description)
+            report_fatal(error_code, error_description, transient=False)
             return 1
         except InconsistentSourceFormatError as e:
             report_fatal(
                 "inconsistent-source-format",
                 "Inconsistencies in type of package: %s" % e,
+                transient=False
             )
             return 1
         except WatchLineWithoutMatches as e:
             report_fatal(
                 "uscan-watch-line-without-matches",
                 "UScan did not find matches for line: %s" % e.line.strip(),
+                transient=False
             )
             return 1
         except NoRoundtrippingSupport:
@@ -1387,7 +1407,7 @@ async def main():
                 "packaging repository."
             )
             error_code = "roundtripping-error"
-            report_fatal(error_code, error_description)
+            report_fatal(error_code, error_description, transport=False)
             return 1
         except UScanError as e:
             error_description = str(e)
@@ -1400,23 +1420,27 @@ async def main():
         except UpstreamMetadataSyntaxError as e:
             report_fatal(
                 "upstream-metadata-syntax-error",
-                "Unable to parse %s: %s" % (e.path, e.error),
+                "Unable to parse %s: %s" % (e.path, e.error), transport=False,
             )
             return 1
         except InvalidNormalization as e:
             error_description = str(e)
             error_code = "invalid-path-normalization"
-            report_fatal(error_code, error_description)
+            report_fatal(error_code, error_description, transport=False)
             return 1
         except MissingChangelogError as e:
-            report_fatal("missing-changelog", "Missing changelog %s" % e)
+            report_fatal(
+                "missing-changelog", "Missing changelog %s" % e,
+                transport=False)
             return 1
         except DistCommandFailed as e:
-            report_fatal(e.kind or "dist-command-failed", e.error)
+            report_fatal(e.kind or "dist-command-failed", e.error, transport=False,
+                         stage=("dist", ))
             return 1
         except MissingUpstreamTarball as e:
             report_fatal(
-                "missing-upstream-tarball", "Missing upstream tarball: %s" % e
+                "missing-upstream-tarball",
+                "Missing upstream tarball: %s" % e
             )
             return 1
         except NewUpstreamTarballMissing as e:
@@ -1440,18 +1464,18 @@ async def main():
                 "newer-upstream-version-already-imported",
                 "A newer upstream release (%s) has already been imported. "
                 "Found: %s" % (e.old_upstream_version, e.new_upstream_version),
-                upstream_version=e.new_upstream_version
+                upstream_version=e.new_upstream_version, transient=False
             )
             return 1
         except WatchSyntaxError as e:
-            report_fatal('watch-syntax-error', str(e))
+            report_fatal('watch-syntax-error', str(e), transient=False)
             return 1
         except BigVersionJump as e:
             report_fatal(
                 "big-version-jump",
                 "There was a big jump in upstream versions: %s ⇒ %s" % (
                     e.old_upstream_version, e.new_upstream_version),
-                upstream_version=e.new_upstream_version)
+                upstream_version=e.new_upstream_version, transient=False)
             return 1
         except OSError as e:
             if e.errno == errno.ENOSPC:
@@ -1530,7 +1554,7 @@ async def main():
                         "%s%s" % (e.retcode, e.stderr, e.extra)
                     )
                     error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description)
+                    report_fatal(error_code, error_description, transient=False)
                     return 1
                 except QuiltPatchPushFailure as e:
                     error_description = (
@@ -1538,7 +1562,7 @@ async def main():
                         % (e.patch_name, e.actual_error.extra)
                     )
                     error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description)
+                    report_fatal(error_code, error_description, transient=False)
                     return 1
 
             logging.info(
