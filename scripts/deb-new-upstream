@@ -677,8 +677,6 @@ def import_upstream(
     """
     # TODO(jelmer): support more components
     components = [None]
-    if subpath is None:
-        subpath = ""
     config = debuild_config(tree, subpath)
     (changelog, top_level) = find_changelog(
         tree, subpath, merge=False, max_blocks=2)
@@ -871,8 +869,7 @@ def merge_upstream(  # noqa: C901
     Returns:
       MergeUpstreamResult object
     """
-    if subpath is None:
-        subpath = ""
+    components = [None]
     config = debuild_config(tree, subpath)
     (changelog, top_level) = find_changelog(
         tree, subpath, merge=False, max_blocks=2)
