@@ -1,4 +1,4 @@
-breezy-debian (2.8.73) UNRELEASED; urgency=medium
+breezy-debian (2.8.73) unstable; urgency=medium
 
   * Add new script deb-vcs-up-to-date: checks whether the local tree is
     up to date with the archive
@@ -8,7 +8,7 @@ breezy-debian (2.8.73) UNRELEASED; urgency=medium
   * deb-import-uncommitted: cope with already present revisions that are
     just not on the branch.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 10 Oct 2022 18:05:42 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 20 Oct 2022 22:58:24 +0100
 
 breezy-debian (2.8.72) unstable; urgency=medium
 
