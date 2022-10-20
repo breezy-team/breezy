@@ -67,7 +67,8 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
         from_project = None
     else:
         if orig_forge == salsa:
-            from_project = urlutils.URL.from_string(orig_branch.controldir.user_url).path
+            from_project = urlutils.URL.from_string(
+                orig_branch.controldir.user_url).path
         else:
             from_project = None
 
@@ -140,7 +141,8 @@ def connect_udd_mirror():
 def find_wnpp_bug(source):
     conn = connect_udd_mirror()
     cursor = conn.cursor()
-    cursor.execute("select id from wnpp where type = 'O' and source = %s", (source,))
+    cursor.execute(
+        "SELECT id FROM wnpp WHERE type = 'O' AND source = %s", (source,))
     entry = cursor.fetchone()
     if entry is None:
         raise KeyError

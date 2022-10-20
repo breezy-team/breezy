@@ -27,8 +27,8 @@ from typing import List, Dict, Tuple, Optional
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 
-import breezy.bzr
-import breezy.git
+import breezy.bzr  # noqa: F401
+import breezy.git  # noqa: F401
 from breezy.errors import NotBranchError
 from breezy.revision import RevisionID
 from breezy.trace import note
@@ -102,13 +102,14 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     )
     files = {}
     try:
-        for hsh, entries in json.load(urlopen(srcfiles_url))["fileinfo"].items():
+        for hsh, entries in json.load(
+                urlopen(srcfiles_url))["fileinfo"].items():
             for entry in entries:
                 files[entry["name"]] = hsh
-        except HTTPError as e:
-            raise SnapshotDownloadError(srcfiles_url, e) from e
-        except URLError as e:
-            raise SnapshotDownloadError(srcfiles_url, e) from e
+    except HTTPError as e:
+        raise SnapshotDownloadError(srcfiles_url, e) from e
+    except URLError as e:
+        raise SnapshotDownloadError(srcfiles_url, e) from e
     for filename, hsh in files.items():
         local_path = os.path.join(output_dir, os.path.basename(filename))
         with open(local_path, "wb") as f:
@@ -156,7 +157,8 @@ class TreeUpstreamVersionMissing(Exception):
 
 def import_uncommitted(
         tree: Tree, subpath: str, apt,
-        source_version: Optional[str] = None) -> List[Tuple[str, Version, RevisionID]]:
+        source_version: Optional[str] = None
+        ) -> List[Tuple[str, Version, RevisionID]]:
     cl_path = os.path.join(subpath, "debian/changelog")
     try:
         with tree.get_file(cl_path) as f:
@@ -193,14 +195,16 @@ def import_uncommitted(
         dbs.add_branch(db)
         if tree_cl.version.debian_revision:
             note("Extracting upstream version %s.",
-                tree_cl.version.upstream_version)
+                 tree_cl.version.upstream_version)
             upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
             try:
-                upstream_tips = db.pristine_upstream_source.version_as_revisions(
-                    tree_cl.package, tree_cl.version.upstream_version)
+                upstream_tips = (
+                    db.pristine_upstream_source.version_as_revisions(
+                        tree_cl.package, tree_cl.version.upstream_version))
             except PackageVersionNotPresent as e:
                 # TODO(jelmer): Should we import it instead?
-                raise TreeUpstreamVersionMissing(tree_cl.version.upstream_version) from e
+                raise TreeUpstreamVersionMissing(
+                    tree_cl.version.upstream_version) from e
             db.extract_upstream_tree(upstream_tips, upstream_dir)
         applied_patches = tree.has_filename(".pc/applied-patches")
         version_path: Dict[Version, str] = {}
@@ -212,11 +216,12 @@ def import_uncommitted(
             note("Importing %s", version)
             dsc_path = version_path[version]
             try:
-                tag_name = db.import_package(dsc_path, apply_patches=applied_patches)
+                tag_name = db.import_package(
+                    dsc_path, apply_patches=applied_patches)
             except VersionAlreadyImported as e:
                 # Present in the repository, just not on the branch
                 note("%s was already imported (tag: %s), just not on the "
-                     "branch. Updating tree.", e.version, e.tag_name) 
+                     "branch. Updating tree.", e.version, e.tag_name)
                 tag_name = e.tag_name
                 db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
             revision = db.branch.tags.lookup_tag(tag_name)

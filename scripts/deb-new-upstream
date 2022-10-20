@@ -39,28 +39,18 @@ from breezy.branch import Branch
 from breezy.controldir import ControlDir
 from breezy.errors import (
     InvalidNormalization,
-    NotBranchError,
     NoCommits,
     InvalidHttpResponse,
     NoRoundtrippingSupport,
     UncommittedChanges,
 )
-try:
-    from breezy.transport import (
-        FileExists,
-        NoSuchFile,
-        UnsupportedProtocol,
-    )
-except ImportError:
-    from breezy.errors import (
-        FileExists,
-        NoSuchFile,
-        UnsupportedProtocol,
-    )
-try:
-    from breezy.workingtree import PointlessMerge
-except ImportError:
-    from breezy.errors import PointlessMerge
+from breezy.transport import (
+    FileExists,
+    NoSuchFile,
+    UnsupportedProtocol,
+)
+
+from breezy.workingtree import PointlessMerge
 from breezy.transport import (
     Transport,
     UnusableRedirect,
@@ -95,10 +85,6 @@ from breezy.plugins.debian.upstream.branch import (
 from breezy.plugins.debian.upstream.pristinetar import (
     PristineTarError,
     get_pristine_tar_source,
-)
-from breezy.plugins.quilt.quilt import (
-    QuiltError,
-    QuiltPatches,
 )
 
 from breezy.plugins.debian.util import (
@@ -549,7 +535,8 @@ def find_new_upstream(  # noqa: C901
         )
 
     if old_upstream_version:
-        if strip_dfsg_suffix(str(old_upstream_version)) == strip_dfsg_suffix(str(new_upstream_version)):
+        if (strip_dfsg_suffix(str(old_upstream_version))
+                == strip_dfsg_suffix(str(new_upstream_version))):
             raise UpstreamAlreadyImported(new_upstream_version)
         if old_upstream_version > new_upstream_version:
             if version_kind == "release" and matches_release(
@@ -986,8 +973,8 @@ def merge_upstream(  # noqa: C901
                 try:
                     try:
                         conflicts = tree.merge_from_branch(
-                            pristine_tar_source.branch, to_revision=upstream_revid
-                        )
+                            pristine_tar_source.branch,
+                            to_revision=upstream_revid)
                     except NoCommits:
                         # Maybe it's somewhere in our history, but
                         # there isn't a viable upstream branch.
@@ -1006,8 +993,8 @@ def merge_upstream(  # noqa: C901
         (changelog, top_level) = find_changelog(
             tree, subpath, False, max_blocks=2)
     except (ChangelogParseError, MissingChangelogError):
-        # If there was a conflict that affected debian/changelog, then that might be
-        # to blame.
+        # If there was a conflict that affected debian/changelog, then that
+        # might be to blame.
         if conflicts:
             raise UpstreamMergeConflicted(old_upstream_version, conflicts)
         raise
@@ -1226,10 +1213,12 @@ async def main():
                         "Malformed tree transform during new upstream merge"
                     )
                     error_code = "malformed-transform"
-                    report_fatal(error_code, error_description, transient=False)
+                    report_fatal(
+                        error_code, error_description, transient=False)
                     return 1
                 except UncommittedChanges as e:
-                    report_fatal('uncommitted-changes', str(e), transient=False)
+                    report_fatal(
+                        'uncommitted-changes', str(e), transient=False)
                     return 1
             else:
                 result = import_upstream(
@@ -1287,7 +1276,8 @@ async def main():
             return 1
         except NewUpstreamMissing as e:
             report_fatal(
-                "new-upstream-missing", "Unable to find new upstream source.", e
+                "new-upstream-missing",
+                "Unable to find new upstream source.", e
             )
             return 1
         except UpstreamAlreadyMerged as e:
@@ -1320,10 +1310,9 @@ async def main():
             report_fatal("pristine-tar-error", "Pristine tar error: %s" % e)
             return 1
         except UpstreamBranchUnavailable as e:
-            error_description = "The upstream branch at %s was unavailable: %s" % (
-                e.location,
-                e.error,
-            )
+            error_description = (
+                "The upstream branch at %s was unavailable: %s" % (
+                    e.location, e.error))
             transient = None
             error_code = "upstream-branch-unavailable"
             if "Fossil branches are not yet supported" in str(e.error):
@@ -1363,14 +1352,16 @@ async def main():
                 conflicts = [[c.path, c.typestring] for c in e.conflicts]
             report_fatal(
                 "upstream-merged-conflicts",
-                "Merging upstream version %s resulted in conflicts." % e.version,
+                "Merging upstream version %s resulted in conflicts."
+                % e.version,
                 upstream_version=e.version, conflicts=conflicts,
                 transient=False)
             return 1
         except PackageIsNative as e:
             report_fatal(
                 "native-package",
-                "Package %s is native; unable to merge new upstream." % (e.package,),
+                "Package %s is native; unable to merge new upstream." % (
+                    e.package,),
                 transient=False
             )
             return 1
@@ -1380,10 +1371,9 @@ async def main():
             report_fatal(error_code, error_description, transient=False)
             return 1
         except UpstreamVersionMissingInUpstreamBranch as e:
-            error_description = "Upstream version %s not in upstream branch %r" % (
-                e.version,
-                e.branch,
-            )
+            error_description = (
+                "Upstream version %s not in upstream branch %r" % (
+                    e.version, e.branch))
             error_code = "upstream-version-missing-in-upstream-branch"
             report_fatal(error_code, error_description, transient=False)
             return 1
@@ -1434,8 +1424,9 @@ async def main():
                 transport=False)
             return 1
         except DistCommandFailed as e:
-            report_fatal(e.kind or "dist-command-failed", e.error, transport=False,
-                         stage=("dist", ))
+            report_fatal(
+                e.kind or "dist-command-failed", e.error, transport=False,
+                stage=("dist", ))
             return 1
         except MissingUpstreamTarball as e:
             report_fatal(
@@ -1493,9 +1484,11 @@ async def main():
         if result.upstream_branch:
             svp_context["upstream_branch_url"] = full_branch_url(
                 result.upstream_branch)
-            svp_context["upstream_branch_browse"] = result.upstream_branch_browse
+            svp_context["upstream_branch_browse"] = (
+                result.upstream_branch_browse)
 
-        svp_context["include_upstream_history"] = result.include_upstream_history
+        svp_context["include_upstream_history"] = (
+            result.include_upstream_history)
 
         if args.import_only:
             logging.info(
@@ -1535,7 +1528,8 @@ async def main():
                     logging.info("%s", n)
 
             patch_series_path = os.path.join(subpath, "debian/patches/series")
-            if args.refresh_patches and local_tree.has_filename(patch_series_path):
+            if args.refresh_patches and local_tree.has_filename(
+                    patch_series_path):
                 from breezy.plugins.debian.quilt_refresh import (
                     QuiltError,
                     QuiltPatchPushFailure,
@@ -1554,7 +1548,8 @@ async def main():
                         "%s%s" % (e.retcode, e.stderr, e.extra)
                     )
                     error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description, transient=False)
+                    report_fatal(
+                        error_code, error_description, transient=False)
                     return 1
                 except QuiltPatchPushFailure as e:
                     error_description = (
@@ -1562,7 +1557,8 @@ async def main():
                         % (e.patch_name, e.actual_error.extra)
                     )
                     error_code = "quilt-refresh-error"
-                    report_fatal(error_code, error_description, transient=False)
+                    report_fatal(
+                        error_code, error_description, transient=False)
                     return 1
 
             logging.info(

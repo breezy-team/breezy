@@ -30,7 +30,7 @@ testsuite:
 check:: flake8
 
 flake8:
-	flake8 .
+	flake8 . scripts/deb-*
 
 docker:
 	buildah build -t ghcr.io/breezy-team/deb-new-upstream:latest -f Dockerfile.deb-new-upstream .

@@ -178,8 +178,8 @@ def report_fatal(
 async def main():
     import argparse
 
-    import breezy.bzr
-    import breezy.git
+    import breezy.bzr  # noqa: F401
+    import breezy.git  # noqa: F401
 
     parser = argparse.ArgumentParser()
     distro_info = DebianDistroInfo()
