@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 import pwd
 import shutil
@@ -36,6 +37,12 @@ class AptSourceError(Exception):
 
     def __init__(self, reason):
         self.reason = reason
+
+
+def _convert_apt_pkg_error(e):
+    if '28: No space left on device':
+        return IOError(errno.ENOSPC, str(e))
+    return e
 
 
 class Apt:
@@ -77,7 +84,10 @@ class LocalApt(Apt):
         import apt
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
-        self.cache = apt.Cache(rootdir=self._rootdir)
+        try:
+            self.cache = apt.Cache(rootdir=self._rootdir)
+        except apt_pkg.Error as e:
+            raise _convert_apt_pkg_error(e) from e
         if self._rootdir is not None:
             self.apt_pkg.config.set("Dir", self._rootdir)
         return self
@@ -193,12 +203,15 @@ class RemoteApt(LocalApt):
             import apt
         except ImportError as e:
             raise DependencyNotPresent('apt', e) from e
-        self.cache = apt.Cache(rootdir=self._rootdir)
-        self.cache.update()
         try:
             import apt_pkg
         except ImportError as e:
             raise DependencyNotPresent('apt_pkg', e) from e
+        try:
+            self.cache = apt.Cache(rootdir=self._rootdir)
+        except apt_pkg.Error as e:
+            raise _convert_apt_pkg_error(e) from e
+        self.cache.update()
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
         try:
