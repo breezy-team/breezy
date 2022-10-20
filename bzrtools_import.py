@@ -95,7 +95,7 @@ def _get_paths_to_process(
 
 def _import_archive(
         tree: Tree, archive_file: str, file_ids_from,
-        target_tree = None, exclude=None):
+        target_tree=None, exclude=None):
     prefix = common_directory(names_of_files(archive_file))
     with tree.transform() as tt:
         removed = set()
@@ -163,7 +163,8 @@ def _import_archive(
                                     found_file_id = None
                                     continue
                             break
-                if found_file_id is not None and found_file_id != existing_file_id:
+                if (found_file_id is not None
+                        and found_file_id != existing_file_id):
                     # Found a specific file id in one of the source trees
                     tt.version_file(trans_id=trans_id, file_id=found_file_id)
                     if existing_file_id is not None:

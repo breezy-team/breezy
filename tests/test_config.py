@@ -136,6 +136,7 @@ class DebBuildConfigTests(TestCaseWithTransport):
         self.assertRaises(
             UpstreamMetadataSyntaxError, DebBuildConfig, [], tree=self.tree)
 
+
 try:
     from ...svn.config import SubversionBuildPackageConfig  # noqa: F401
 except ImportError:

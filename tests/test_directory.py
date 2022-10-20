@@ -84,7 +84,8 @@ class VcsHgUrlToBzrUrlTests(TestCase):
     def test_with_branch(self):
         self.assertEqual(
             'https://bitbucket.org/jelmer/dulwich,branch=foo',
-            vcs_hg_url_to_bzr_url('https://bitbucket.org/jelmer/dulwich -b foo'))
+            vcs_hg_url_to_bzr_url(
+                'https://bitbucket.org/jelmer/dulwich -b foo'))
 
 
 class VcsCvsUrlToBzrUrlTests(TestCase):

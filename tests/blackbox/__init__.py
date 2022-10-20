@@ -1,6 +1,6 @@
 #    __init__.py -- blackbox test suite for builddeb.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -19,19 +19,17 @@
 #
 
 def load_tests(loader, basic_tests, pattern):
-  testmod_names = [
-          'test_builddeb',
-          'test_debrelease',
-          'test_dep3',
-          'test_do',
-          'test_get_tar',
-          'test_import_dsc',
-          'test_import_upstream',
-          'test_merge_package',
-          'test_merge_upstream',
-          ]
-  basic_tests.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
-                      for i in testmod_names]))
-  return basic_tests
-
-# vim: ts=2 sts=2 sw=2
+    testmod_names = [
+        'test_builddeb',
+        'test_debrelease',
+        'test_dep3',
+        'test_do',
+        'test_get_tar',
+        'test_import_dsc',
+        'test_import_upstream',
+        'test_merge_package',
+        'test_merge_upstream',
+    ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+        ["%s.%s" % (__name__, i) for i in testmod_names]))
+    return basic_tests

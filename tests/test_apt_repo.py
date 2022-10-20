@@ -157,10 +157,16 @@ class LocalAptTests(TestCase):
         self.assertEqual([{
                 'Package': 'apackage',
                 'Version': '0.1-1',
-                'Files': [{'md5sum': 'checksum', 'size': '0', 'name': 'apackage_0.1.orig.tar.gz'}]}],
+                'Files': [{
+                    'md5sum': 'checksum',
+                    'size': '0',
+                    'name': 'apackage_0.1.orig.tar.gz'}]}],
             list(src.iter_sources()))
         self.assertEqual([{
                 'Package': 'apackage',
                 'Version': '0.1-1',
-                'Files': [{'md5sum': 'checksum', 'size': '0', 'name': 'apackage_0.1.orig.tar.gz'}]}],
+                'Files': [{
+                    'md5sum': 'checksum',
+                    'size': '0',
+                    'name': 'apackage_0.1.orig.tar.gz'}]}],
             list(src.iter_source_by_name('apackage')))

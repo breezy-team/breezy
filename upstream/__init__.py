@@ -93,7 +93,8 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_latest_version)
 
-    def get_recent_versions(self, package: str, since_version: Optional[str] = None):
+    def get_recent_versions(
+            self, package: str, since_version: Optional[str] = None):
         """Retrieve recent version strings.
 
         :param package: Name of the package
@@ -171,14 +172,15 @@ class AptSource(UpstreamSource):
                         break
                 else:
                     note("%r could not find %s/%s.",
-                          self.apt, package, upstream_version)
+                         self.apt, package, upstream_version)
                     raise PackageVersionNotPresent(
                         package, upstream_version, self)
             except NoAptSources as e:
                 note('No apt sources configured, skipping')
                 # Handle the case where the apt.sources file contains no source
                 # URIs (LP:375897)
-                raise PackageVersionNotPresent(package, upstream_version, self) from e
+                raise PackageVersionNotPresent(
+                    package, upstream_version, self) from e
             note("Using apt to look for the upstream tarball.")
             try:
                 self.apt.retrieve_source(
@@ -187,7 +189,8 @@ class AptSource(UpstreamSource):
             except AptSourceError as e:
                 note("apt found %s/%s but could not download.",
                      package, source_version)
-                raise PackageVersionNotPresent(package, upstream_version, self) from e
+                raise PackageVersionNotPresent(
+                    package, upstream_version, self) from e
             return [os.path.join(target_dir, filename)
                     for filename in filenames]
 
@@ -254,12 +257,15 @@ class StackedUpstreamSource(UpstreamSource):
     def get_recent_versions(self, package, since_version=None):
         versions = {}
         for source in self._sources:
-            for unmangled, mangled in source.get_recent_versions(package, since_version):
+            for unmangled, mangled in source.get_recent_versions(
+                    package, since_version):
                 versions[mangled] = unmangled
         # TODO(jelmer): Perhaps there are better ways of comparing arbitrary
         # upstream versions?
         from debian.changelog import Version
-        return [(u, m) for (m, u) in sorted(versions.items(), key=lambda v: Version(v[0]))]
+        return [(u, m)
+                for (m, u) in sorted(versions.items(),
+                                     key=lambda v: Version(v[0]))]
 
     def version_as_revisions(
             self, package, version,
@@ -521,7 +527,9 @@ class LaunchpadReleaseFileSource(UpstreamSource):
     def get_latest_version(self, package, version):
         versions = list(self._all_versions())
         versions.sort()
-        return (versions[-1][1], debianize_upstream_version(versions[-1][1], package))
+        return (
+            versions[-1][1],
+            debianize_upstream_version(versions[-1][1], package))
 
 
 class DirectoryScanSource(UpstreamSource):

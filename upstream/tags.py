@@ -54,7 +54,8 @@ def possible_upstream_tag_names(package: Optional[str], version: str,
             tags.append("v.%s" % version)
     else:
         tags.append('upstream-%s/%s' % (version, component))
-        tags.append('upstream/%s/%s' % (mangle_version_for_git(version), component))
+        tags.append('upstream/%s/%s' % (
+            mangle_version_for_git(version), component))
     return tags
 
 

@@ -105,7 +105,8 @@ def debcommit(
         reporter=reporter)
 
 
-def debcommit_release(tree, committer=None, subpath="", message=None, vendor=None):
+def debcommit_release(
+        tree, committer=None, subpath="", message=None, vendor=None):
     cl_path = posixpath.join(subpath, "debian/changelog")
     if message is None or vendor is None:
         cl = Changelog(tree.get_file(cl_path), max_blocks=1)
@@ -115,7 +116,8 @@ def debcommit_release(tree, committer=None, subpath="", message=None, vendor=Non
         if vendor is None:
             from .util import suite_to_distribution
             vendor = suite_to_distribution(cl[0].distributions)
-    tag_name = tree_debian_tag_name(tree, tree.branch, subpath=subpath, vendor=vendor)
+    tag_name = tree_debian_tag_name(
+        tree, tree.branch, subpath=subpath, vendor=vendor)
     if tag_name is None:
         raise UnreleasedChanges(cl_path)
     revid = tree.commit(committer=committer, message=message)

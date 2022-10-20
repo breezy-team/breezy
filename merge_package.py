@@ -136,7 +136,8 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
             # Instantiate a `DistributionBranch` object for the merge target
             # (packaging) branch.
             db = DistributionBranch(tree.branch, tree.branch)
-            with tempfile.TemporaryDirectory(dir=os.path.join(tree.basedir, '..')) as tempdir:
+            with tempfile.TemporaryDirectory(
+                    dir=os.path.join(tree.basedir, '..')) as tempdir:
                 # Extract the merge target's upstream tree into a temporary
                 # directory.
                 db.extract_upstream_tree({None: ut_revid}, tempdir)

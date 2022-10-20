@@ -1,6 +1,6 @@
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
 #    Copyright (C) 2010 Canonical Ltd
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -55,7 +55,8 @@ class TestImportUpstream(TestBaseImportDsc):
     def make_upstream_tree(self):
         """Make an upstream tree with its own history."""
         upstreamtree = self.make_branch_and_tree('upstream')
-        self.make_unpacked_upstream_source(transport=upstreamtree.controldir.root_transport)
+        self.make_unpacked_upstream_source(
+            transport=upstreamtree.controldir.root_transport)
         upstreamtree.smart_add(['upstream'])
         upstreamtree.commit('upstream release')
         return upstreamtree
@@ -67,10 +68,13 @@ class TestImportUpstream(TestBaseImportDsc):
         return upstreamtree.commit('new commit')
 
     def make_workingdir(self):
-        """Make a working directory with both upstream source and debian packaging."""
+        """Make a working directory with upstream source and debian packaging.
+        """
         tree = self.make_branch_and_tree('working')
-        self.make_unpacked_upstream_source(transport=tree.controldir.root_transport)
-        self.make_debian_dir(tree.controldir.root_transport.local_abspath('debian'))
+        self.make_unpacked_upstream_source(
+            transport=tree.controldir.root_transport)
+        self.make_debian_dir(
+            tree.controldir.root_transport.local_abspath('debian'))
         tree.smart_add(['working'])
         tree.commit('save changes')
         return tree
@@ -82,15 +86,19 @@ class TestImportUpstream(TestBaseImportDsc):
         self.make_upstream_tarball()
         self.make_real_source_package()
         tree = self.make_branch_and_tree('working')
-        self.make_unpacked_upstream_source(transport=tree.controldir.root_transport)
-        self.make_debian_dir(tree.controldir.root_transport.local_abspath('debian'))
+        self.make_unpacked_upstream_source(
+            transport=tree.controldir.root_transport)
+        self.make_debian_dir(
+            tree.controldir.root_transport.local_abspath('debian'))
         tree.smart_add(['working'])
         tree.commit('save changes')
         tar_path = "../%s" % self.upstream_tarball_name
-        out, err = self.run_bzr(['import-upstream', self.upstream_version,
-            tar_path], working_dir='working')
-        self.assertEqual('Imported %s as tag:upstream-%s.\n' % (tar_path,
-            self.upstream_version), out)
+        out, err = self.run_bzr(
+            ['import-upstream', self.upstream_version,
+             tar_path], working_dir='working')
+        self.assertEqual(
+            'Imported %s as tag:upstream-%s.\n' % (
+                tar_path, self.upstream_version), out)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())
@@ -103,8 +111,9 @@ class TestImportUpstream(TestBaseImportDsc):
         # situations where this is first called.
         upstreamtree = self.make_upstream_tree()
         tree = self.make_workingdir()
-        self.run_bzr(['import-upstream', self.upstream_version, "../%s" %
-            self.upstream_tarball_name, '../upstream'],
+        self.run_bzr(
+            ['import-upstream', self.upstream_version,
+             "../%s" % self.upstream_tarball_name, '../upstream'],
             working_dir='working')
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -118,29 +127,31 @@ class TestImportUpstream(TestBaseImportDsc):
         tree = self.make_workingdir()
         # XXX: refactor: make this an API call - running blackbox in test prep
         # is ugly.
-        self.run_bzr(['import-upstream', self.upstream_version, "../%s" %
-            self.upstream_tarball_name, '../upstream'],
+        self.run_bzr(
+            ['import-upstream', self.upstream_version,
+             "../%s" % self.upstream_tarball_name, '../upstream'],
             working_dir='working')
         new_version = Version('0.2-1')
         self.make_upstream_tarball(new_version.upstream_version)
-        upstream_parent = self.make_upstream_change(upstreamtree)
-        self.run_bzr(['import-upstream', new_version.upstream_version, "../%s" %
-            self._upstream_tarball_name(self.package_name, new_version.upstream_version), '../upstream'],
+        self.make_upstream_change(upstreamtree)
+        self.run_bzr(
+            ['import-upstream', new_version.upstream_version,
+             "../%s" % self._upstream_tarball_name(
+                 self.package_name, new_version.upstream_version),
+             '../upstream'],
             working_dir='working')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())
-        revtree = self.assertHasImportArtifacts(tree, new_version.upstream_version)
+        revtree = self.assertHasImportArtifacts(
+            tree, new_version.upstream_version)
         self.assertUpstreamContentAndFileIdFromTree(revtree, upstreamtree)
         # Check parents: we want
         # [previous_import, upstream_parent] to reflect that the 'branch' is
         # the tarball branch aka upstream branch [ugh], and then a merge in
         # from upstream so that cherrypicks do the right thing.
         tags = tree.branch.tags
-        self.assertEqual([tags.lookup_tag(self.upstream_tag(self.upstream_version)),
-            upstreamtree.branch.last_revision()],
+        self.assertEqual(
+            [tags.lookup_tag(self.upstream_tag(self.upstream_version)),
+             upstreamtree.branch.last_revision()],
             revtree.get_parent_ids())
-
-
-# vim: ts=4 sts=4 sw=4
-

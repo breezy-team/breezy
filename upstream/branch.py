@@ -101,12 +101,14 @@ def upstream_tag_to_version(tag_name, package=None):
             return version
     if len(tag_name) >= 2 and tag_name[0] == "v" and tag_name[1].isdigit():
         tag_name = tag_name[1:]
-    if len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.') and tag_name[2].isdigit():
+    if (len(tag_name) >= 3 and tag_name[0] == "v" and tag_name[1] in ('/', '.')
+            and tag_name[2].isdigit()):
         tag_name = tag_name[2:]
     if all([c.isdigit() or c in (".", "~", "_") for c in tag_name]):
         return tag_name
     parts = tag_name.split('.')
-    if len(parts) > 1 and all(p.isdigit() for p in parts[:-1]) and parts[-1].isalnum():
+    if (len(parts) > 1 and all(p.isdigit() for p in parts[:-1])
+            and parts[-1].isalnum()):
         return tag_name
     return None
 
@@ -146,12 +148,16 @@ def _upstream_branch_version(
                     upstream_version = upstream_tag_to_version(
                             tag, package=package)
                     if upstream_version is not None:
-                        mangled_version = debianize_upstream_version(upstream_version, package)
+                        mangled_version = debianize_upstream_version(
+                            upstream_version, package)
                         if r == upstream_revision:
                             # Well, that's simple
                             return upstream_version, mangled_version
-                        if last_upstream is None or Version(last_upstream[1]) < Version(mangled_version):
-                            last_upstream = (upstream_version, mangled_version, '+')
+                        if (last_upstream is None
+                            or Version(last_upstream[1])  # type: ignore
+                                < Version(mangled_version)):
+                            last_upstream = (
+                                upstream_version, mangled_version, '+')
             if r == upstream_revision and last_upstream:
                 # The last upstream release was after us
                 last_upstream = (last_upstream[0], last_upstream[1], '~')
@@ -166,7 +172,8 @@ def _upstream_branch_version(
             # Assume we were just somewhere after the last release
             last_upstream = (previous_version, previous_version, '+')
     else:
-        if previous_version is not None and Version(last_upstream[1]) < Version(previous_version):
+        if (previous_version is not None
+                and Version(last_upstream[1]) < Version(previous_version)):
             if '~' not in previous_version:
                 warning(
                     'last found upstream version %s (%s) is lower than '
@@ -175,8 +182,10 @@ def _upstream_branch_version(
                 last_upstream = (previous_version, previous_version, '+')
             else:
                 last_upstream = (previous_version, previous_version, '~')
-    upstream_version = add_rev(last_upstream[0], upstream_revision, last_upstream[2])
-    mangled_upstream_version = add_rev(last_upstream[1], upstream_revision, last_upstream[2])
+    upstream_version = add_rev(
+        last_upstream[0], upstream_revision, last_upstream[2])
+    mangled_upstream_version = add_rev(
+        last_upstream[1], upstream_revision, last_upstream[2])
     return upstream_version, mangled_upstream_version
 
 
@@ -343,7 +352,8 @@ def get_export_upstream_revision(config=None, version=None):
     return rev
 
 
-def guess_upstream_tag(package, version, is_snapshot: bool = False) -> Iterable[str]:
+def guess_upstream_tag(package, version,
+                       is_snapshot: bool = False) -> Iterable[str]:
     yield version
     if package:
         for prefix in ['rust-']:
@@ -484,9 +494,11 @@ class UpstreamBranchSource(UpstreamSource):
 
     def get_latest_snapshot_version(self, package, current_version):
         revid = self.upstream_branch.last_revision()
-        version, mangled_version = self.get_version(package, current_version, revid)
+        version, mangled_version = self.get_version(
+            package, current_version, revid)
         if mangled_version is not None:
-            self.upstream_revision_map[mangled_version] = 'revid:%s' % revid.decode('utf-8')
+            self.upstream_revision_map[mangled_version] = (
+                'revid:%s' % revid.decode('utf-8'))
         return version, mangled_version
 
     def get_latest_release_version(self, package, current_version):
@@ -507,8 +519,10 @@ class UpstreamBranchSource(UpstreamSource):
         elif self.version_kind == "auto":
             version = self.get_latest_release_version(package, current_version)
             if version is None:
-                note(gettext('No upstream releases found, falling back to snapshot.'))
-                version = self.get_latest_snapshot_version(package, current_version)
+                note(gettext(
+                    'No upstream releases found, falling back to snapshot.'))
+                version = self.get_latest_snapshot_version(
+                    package, current_version)
             return version
         else:
             raise ValueError(self.version_kind)
@@ -524,7 +538,8 @@ class UpstreamBranchSource(UpstreamSource):
                     since_revision = self.version_as_revision(
                         package, since_version)
                 except PackageVersionNotPresent as e:
-                    raise PreviousVersionTagMissing(package, since_version) from e
+                    raise PreviousVersionTagMissing(
+                        package, since_version) from e
             else:
                 since_revision = None
             for tag, revision in tags.items():
@@ -533,7 +548,8 @@ class UpstreamBranchSource(UpstreamSource):
                     continue
                 mangled_version = debianize_upstream_version(version, package)
                 self.upstream_revision_map[mangled_version] = 'tag:%s' % tag
-                if since_version is not None and mangled_version <= since_version:
+                if (since_version is not None
+                        and mangled_version <= since_version):
                     continue
                 if since_revision and not graph.is_ancestor(
                         since_revision, revision):
@@ -660,8 +676,9 @@ def _dupe_vcs_tree(tree, directory):
 
 
 def run_dist_command(
-        rev_tree: Tree, package: Optional[str], version: Version, target_dir: str,
-        dist_command: str, include_controldir: bool = False) -> bool:
+        rev_tree: Tree, package: Optional[str], version: Version,
+        target_dir: str, dist_command: str,
+        include_controldir: bool = False) -> bool:
 
     def _run_and_interpret(command, env, dir):
         try:

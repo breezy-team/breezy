@@ -1,6 +1,6 @@
 #    test_builddeb.py -- Blackbox tests for builddeb.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -34,13 +34,16 @@ class TestBaseImportDsc(BuilddebTestCase):
     def _upstream_dir(self, package_name, upstream_version):
         return package_name + '-' + upstream_version
 
-    upstream_dir = property(lambda self:self._upstream_dir(self.package_name,
-        self.upstream_version))
+    upstream_dir = property(
+        lambda self: self._upstream_dir(
+            self.package_name, self.upstream_version))
 
     def _upstream_tarball_name(self, package_name, upstream_version):
-      return package_name + '_' + upstream_version + '.orig.tar.gz'
-    upstream_tarball_name = property(lambda self:
-        self._upstream_tarball_name(self.package_name, self.upstream_version))
+        return package_name + '_' + upstream_version + '.orig.tar.gz'
+
+    upstream_tarball_name = property(
+        lambda self: self._upstream_tarball_name(
+            self.package_name, self.upstream_version))
 
     def make_unpacked_upstream_source(self, transport=None):
         if transport is None:
@@ -82,10 +85,9 @@ class TestBaseImportDsc(BuilddebTestCase):
         upstream_dir = self.make_upstream_tarball(upstream_version)
         debian_dir = os.path.join(upstream_dir, 'debian')
         self.make_debian_dir(debian_dir, version=version)
-        proc = subprocess.Popen('dpkg-source -b --format=1.0 %s' % \
-                                upstream_dir,
-                                shell=True,
-                                stdout=subprocess.PIPE)
+        proc = subprocess.Popen(
+            'dpkg-source -b --format=1.0 %s' % upstream_dir,
+            shell=True, stdout=subprocess.PIPE)
         proc.wait()
         self.assertEqual(proc.returncode, 0)
         shutil.rmtree(upstream_dir)
@@ -103,7 +105,8 @@ class TestImportDsc(TestBaseImportDsc):
         dsc_name = self.make_real_source_package(version="0.2-1")
         self.run_bzr('import-dsc %s' % dsc_name)
         tree.lock_read()
-        expected_shape = ['README', 'debian/', 'debian/changelog',
+        expected_shape = [
+            'README', 'debian/', 'debian/changelog',
             'debian/control']
         try:
             if getattr(self, "check_tree_shape", None):
@@ -120,7 +123,8 @@ class TestImportDsc(TestBaseImportDsc):
         tree = self.make_branch_and_tree('.')
         self.run_bzr('import-dsc %s' % dsc_name)
         tree.lock_read()
-        expected_shape = ['README', 'debian/', 'debian/changelog',
+        expected_shape = [
+            'README', 'debian/', 'debian/changelog',
             'debian/control']
         try:
             if getattr(self, "check_tree_shape", None):

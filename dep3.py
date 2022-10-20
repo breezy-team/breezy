@@ -98,7 +98,8 @@ def write_dep3_patch_header(
             header.add_header("X-Bzr-Revision-Id", revision_id.decode('utf-8'))
         else:
             if mapping.vcs.abbreviation == "git":
-                header.add_header("X-Git-Commit", foreign_revid.decode('utf-8'))
+                header.add_header(
+                    "X-Git-Commit", foreign_revid.decode('utf-8'))
     f.write(str(header))
 
 

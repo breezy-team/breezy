@@ -939,7 +939,8 @@ class cmd_merge_upstream(Command):
                         if upstream_branch_source is None:
                             raise BzrCommandError(gettext(
                                 "no upstream source location known; "
-                                "add watch file or specify upstream repository?")) from e
+                                "add watch file or specify "
+                                "upstream repository?")) from e
                         primary_upstream_source = upstream_branch_source
 
             if revision is not None:
@@ -958,11 +959,13 @@ class cmd_merge_upstream(Command):
 
             if version is None and upstream_revisions is not None:
                 # Look up the version from the upstream revision
-                unmangled_version, version = upstream_branch_source.get_version(
-                    package, current_version, upstream_revisions[None])
+                unmangled_version, version = (
+                    upstream_branch_source.get_version(
+                        package, current_version, upstream_revisions[None]))
             elif version is None and primary_upstream_source is not None:
-                unmangled_version, version = primary_upstream_source.get_latest_version(
-                    package, current_version)
+                unmangled_version, version = (
+                    primary_upstream_source.get_latest_version(
+                        package, current_version))
             if version is None:
                 if upstream_branch_source is not None:
                     raise BzrCommandError(gettext(
@@ -986,7 +989,8 @@ class cmd_merge_upstream(Command):
                         "Version %s can not be found in upstream branch %r. "
                         "Specify the revision manually using --revision or "
                         "adjust 'export-upstream-revision' in the "
-                        "configuration." % (version, upstream_branch_source)) from e
+                        "configuration." % (version, upstream_branch_source)
+                    ) from e
             if need_upstream_tarball:
                 target_dir = self.enter_context(tempfile.TemporaryDirectory())
                 try:
@@ -1238,7 +1242,8 @@ class cmd_import_upstream(Command):
             raise BzrCommandError(
                 gettext("Version %s is already present.") % version)
         tagged_versions = {}
-        for tversion, tcomponents in db.pristine_upstream_source.iter_versions():
+        for tversion, tcomponents in (
+                db.pristine_upstream_source.iter_versions()):
             tagged_versions[Version(tversion)] = tcomponents
         tag_order = sorted(tagged_versions.keys())
         if tag_order:
@@ -1595,10 +1600,10 @@ def _build_helper(
 
     distiller = _get_distiller(
         local_tree, subpath, packaging_branch, build_type=None,
-            config=config, changelog=changelog,
-            contains_upstream_source=contains_upstream_source,
-            top_level=top_level,
-            guess_upstream_branch_url=guess_upstream_branch_url, apt=apt)
+        config=config, changelog=changelog,
+        contains_upstream_source=contains_upstream_source,
+        top_level=top_level,
+        guess_upstream_branch_url=guess_upstream_branch_url, apt=apt)
 
     return do_build(changelog.package, changelog.version, distiller,
                     local_tree, config, builder, target_dir)
@@ -1660,6 +1665,7 @@ class cmd_debrelease(Command):
                         source_path = changes_files['source']
                     except KeyError as e:
                         raise BzrCommandError(
-                            'No source package was created by build command') from e
+                            'No source package was created by build command'
+                        ) from e
                     dput_changes(source_path)
             local_tree.branch.push(branch)

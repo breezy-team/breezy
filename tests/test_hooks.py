@@ -45,7 +45,8 @@ class HookTests(TestCaseInTempDir):
         with open(self.default_conf, 'wb') as f:
             f.write(b'[HOOKS]\npre-build = false\n')
         config = DebBuildConfig([(self.default_conf, False)])
-        self.assertRaises(HookFailedError, run_hook, MockTree(), 'pre-build', config)
+        self.assertRaises(
+            HookFailedError, run_hook, MockTree(), 'pre-build', config)
 
     def test_run_hook_when_hook_passes(self):
         with open(self.default_conf, 'wb') as f:

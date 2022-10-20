@@ -162,7 +162,8 @@ class LocalApt(Apt):
             if stderr[-1].startswith(b"E: "):
                 raise AptSourceError(stderr[-1][3:].decode()) from e
             if stderr[-1].startswith(CS):
-                raise AptSourceError(stderr[-1][len(CS): -len(CE)].decode()) from e
+                raise AptSourceError(
+                    stderr[-1][len(CS): -len(CE)].decode()) from e
             raise AptSourceError(
                 [line.decode("utf-8", "surrogateescape") for line in stderr]
             ) from e

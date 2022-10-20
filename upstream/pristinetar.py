@@ -933,8 +933,8 @@ class GitPristineTarSource(BasePristineTarSource):
             self, package, version, component, target_dir):
         """Reconstruct a pristine-tar tarball from a git revision."""
         try:
-            dest_filename, delta_bytes, delta_id, delta_sig = self.get_pristine_tar_delta(
-                package, version)
+            (dest_filename, delta_bytes, delta_id,
+             delta_sig) = self.get_pristine_tar_delta(package, version)
         except PristineTarDeltaAbsent:
             revid = self.version_component_as_revision(
                 package, version, component)
@@ -948,7 +948,8 @@ class GitPristineTarSource(BasePristineTarSource):
             try:
                 subprocess.check_call(
                     ['pristine-tar', 'checkout', dest_filename],
-                    cwd=self.branch.repository.user_transport.local_abspath('.'))
+                    cwd=self.branch.repository.user_transport.local_abspath(
+                        '.'))
             except subprocess.CalledProcessError as e:
                 raise PristineTarError(str(e)) from e
             return dest_filename
@@ -999,10 +1000,13 @@ class GitPristineTarSource(BasePristineTarSource):
         if components is None:
             # Scan tags for components
             try:
-                components = self._components_by_version()[version].keys()
+                components = list(
+                    self._components_by_version()[version].keys())
             except KeyError:
                 try:
-                    components = self._components_by_pristine_tar(package)[version].keys()
+                    components = list(
+                        self._components_by_pristine_tar(
+                            package)[version].keys())
                 except KeyError:
                     components = [None]
         return [

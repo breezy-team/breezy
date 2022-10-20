@@ -78,7 +78,8 @@ class UpstreamMetadataConfig(object):
         try:
             self.metadata = yaml.safe_load(text)
         except yaml.composer.ComposerError as e:
-            all_metadata = [x for x in yaml.safe_load_all(text) if x is not None]
+            all_metadata = [
+                x for x in yaml.safe_load_all(text) if x is not None]
             if len(all_metadata) != 1:
                 raise UpstreamMetadataSyntaxError(
                     'debian/upstream/metadata',
@@ -88,7 +89,8 @@ class UpstreamMetadataConfig(object):
             self.metadata = all_metadata[0]
         except (yaml.scanner.ScannerError, yaml.composer.ComposerError,
                 yaml.parser.ParserError) as e:
-            raise UpstreamMetadataSyntaxError('debian/upstream/metadata', e) from e
+            raise UpstreamMetadataSyntaxError(
+                'debian/upstream/metadata', e) from e
         if isinstance(self.metadata, str):
             raise UpstreamMetadataSyntaxError(
               'debian/upstream/metadata', TypeError(self.metadata))

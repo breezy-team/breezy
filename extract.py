@@ -113,7 +113,7 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
         tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
-            ['dpkg-source' ,'-x', dsc_filename],
+            ['dpkg-source', '-x', dsc_filename],
             cwd=tempdir, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
@@ -143,7 +143,8 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         else:
             args.extend(['--no-unapply-patches'])
         proc = subprocess.Popen(
-            ['dpkg-source', '-x', '--skip-debianization'] + args + [dsc_filename],
+            ['dpkg-source', '-x', '--skip-debianization'] + args
+            + [dsc_filename],
             cwd=tempdir, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
@@ -195,7 +196,8 @@ SOURCE_EXTRACTORS[FORMAT_3_0_NATIVE] = ThreeDotZeroNativeSourceExtractor
 SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor
 
 
-def extract(dsc_filename: str, dsc: str, *, apply_patches: bool = False) -> None:
+def extract(dsc_filename: str, dsc: str, *,
+            apply_patches: bool = False) -> None:
     format = dsc.get('Format', FORMAT_1_0).strip()
     extractor_cls = SOURCE_EXTRACTORS.get(format)
     if extractor_cls is None:

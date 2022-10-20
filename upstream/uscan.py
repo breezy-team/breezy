@@ -82,7 +82,8 @@ class UScanSource(UpstreamSource):
         self.skip_signatures = skip_signatures
 
     def __repr__(self):
-        return "<%s(%r, subpath=%r, top_level=%r, auto_fix=%r, skip_signatures=%r)>" % (
+        return ("<%s(%r, subpath=%r, top_level=%r, auto_fix=%r,"
+                "skip_signatures=%r)>") % (
             type(self).__name__, self.tree, self.subpath, self.top_level,
             self.auto_fix, self.skip_signatures)
 

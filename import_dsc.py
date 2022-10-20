@@ -338,7 +338,8 @@ class DistributionBranch(object):
         return False
 
     def contained_versions(
-            self, versions: List[Version]) -> Tuple[List[Version], List[Version]]:
+            self,
+            versions: List[Version]) -> Tuple[List[Version], List[Version]]:
         """Splits a list of versions depending on presence in the branch.
 
         Partitions the input list of versions depending on whether they
@@ -389,7 +390,8 @@ class DistributionBranch(object):
         index = versions.index(last_contained)
         return versions[:index]
 
-    def last_contained_version(self, versions: List[Version]) -> Optional[Version]:
+    def last_contained_version(
+            self, versions: List[Version]) -> Optional[Version]:
         """Returns the highest version from the list present in this branch.
 
         It assumes that the input list of versions is sorted with the
@@ -409,7 +411,8 @@ class DistributionBranch(object):
     def possible_tags(self, version: Version, vendor: Optional[str] = None):
         if vendor:
             if version.debian_revision:
-                for tag_name in ["%s-%s" % (vendor, version), "%s/%s" % (vendor, version)]:
+                for tag_name in ["%s-%s" % (vendor, version),
+                                 "%s/%s" % (vendor, version)]:
                     yield tag_name
             else:
                 yield str(version)
@@ -435,7 +438,8 @@ class DistributionBranch(object):
             raise NoSuchTag(version)
         return self.branch.tags.lookup_tag(tag)
 
-    def tag_of_version(self, version: Version, vendor: Optional[str] = None) -> RevisionID:
+    def tag_of_version(self, version: Version,
+                       vendor: Optional[str] = None) -> RevisionID:
         """Returns the revision id corresponding to that version.
 
         :param version: the Version object that you wish to retrieve the
@@ -549,7 +553,8 @@ class DistributionBranch(object):
                 pristine_upstream_revids = branch.pristine_upstream_source\
                     .version_as_revisions(
                         package, version, tarballs=upstream_tarballs)
-                for (component, pristine_upstream_revid) in pristine_upstream_revids.items():
+                for (component, pristine_upstream_revid) in (
+                        pristine_upstream_revids.items()):
                     if not graph.is_ancestor(
                            up_branch.last_revision(), pristine_upstream_revid):
                         return False
@@ -623,7 +628,8 @@ class DistributionBranch(object):
                  self.revid_of_version(last_contained_version))]
         else:
             mutter("We don't have any of those versions")
-        for branch in list(reversed(self.get_lesser_branches())) + self.get_greater_branches():
+        for branch in (list(reversed(self.get_lesser_branches()))
+                       + self.get_greater_branches()):
             merged, missing_versions = \
                 branch.contained_versions(missing_versions)
             if merged:
@@ -651,8 +657,9 @@ class DistributionBranch(object):
         :param version: the upstream version string
         """
         assert isinstance(version, str)
-        pull_revisions = pull_branch.pristine_upstream_source.version_as_revisions(
-            package, version)
+        pull_revisions = (
+                pull_branch.pristine_upstream_source.version_as_revisions(
+                    package, version))
         for (component, pull_revision) in pull_revisions.items():
             mutter("Fetching upstream part %s of %s from revision %s",
                    component, version, pull_revision)
@@ -706,11 +713,14 @@ class DistributionBranch(object):
                     "Can't find the needed upstream part for version %s" %
                     version)
         if (native
-                and self.pristine_upstream_branch.last_revision() == NULL_REVISION
-                and pull_branch.pristine_upstream_branch.last_revision() != NULL_REVISION):
+                and self.pristine_upstream_branch.last_revision()
+                == NULL_REVISION
+                and pull_branch.pristine_upstream_branch.last_revision()
+                != NULL_REVISION):
             # in case the package wasn't native before then we pull
             # the upstream. These checks may be a bit restrictive.
-            self.pristine_upstream_tree.pull(pull_branch.pristine_upstream_branch)
+            self.pristine_upstream_tree.pull(
+                pull_branch.pristine_upstream_branch)
             pull_branch.pristine_upstream_branch.tags.merge_to(
                     self.pristine_upstream_branch.tags)
         elif native:
@@ -836,8 +846,9 @@ class DistributionBranch(object):
                 upstream_branch.tags.merge_to(
                     self.pristine_upstream_branch.tags)
                 parents.append(revid)
-                target_tree = self.pristine_upstream_branch.repository.revision_tree(
-                        revid)
+                target_tree = (
+                    self.pristine_upstream_branch.repository.revision_tree(
+                        revid))
             if file_ids_from is not None:
                 upstream_trees = file_ids_from + upstream_trees
             if self.tree:
@@ -869,12 +880,14 @@ class DistributionBranch(object):
                     tb[1] for tb in upstream_tarballs if tb[1] is not None]
             else:
                 exclude = []
-            (tag, revid, pristine_tar_imported) = self.pristine_upstream_source.import_component_tarball(
-                package, version, self.pristine_upstream_tree, parents,
-                component, md5, tarball, author=author, timestamp=timestamp,
-                exclude=exclude, force_pristine_tar=force_pristine_tar,
-                committer=committer, files_excluded=files_excluded,
-                reuse_existing=True)
+            (tag, revid, pristine_tar_imported) = (
+                self.pristine_upstream_source.import_component_tarball(
+                    package, version, self.pristine_upstream_tree, parents,
+                    component, md5, tarball, author=author,
+                    timestamp=timestamp, exclude=exclude,
+                    force_pristine_tar=force_pristine_tar,
+                    committer=committer, files_excluded=files_excluded,
+                    reuse_existing=True))
             self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid, pristine_tar_imported))
             self.branch.fetch(self.pristine_upstream_branch)
@@ -1029,8 +1042,9 @@ class DistributionBranch(object):
                 pull_branch = pull_parents[1][0]
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
-                pull_revids = pull_branch.pristine_upstream_source.version_as_revisions(
-                    package, pull_version.upstream_version)
+                pull_revids = (
+                    pull_branch.pristine_upstream_source.version_as_revisions(
+                        package, pull_version.upstream_version))
                 if list(pull_revids.keys()) != [None]:
                     raise MultipleUpstreamTarballsNotSupported()
                 pull_revid = pull_revids[None]
@@ -1056,7 +1070,8 @@ class DistributionBranch(object):
     def _import_normal_package(
             self, package, version, versions, debian_part, md5,
             upstream_part, upstream_tarballs, timestamp=None, author=None,
-            file_ids_from=None, pull_debian=True, force_pristine_tar=False) -> str:
+            file_ids_from=None, pull_debian=True,
+            force_pristine_tar=False) -> str:
         """Import a source package.
 
         :param package: Package name
@@ -1119,14 +1134,16 @@ class DistributionBranch(object):
                 file_ids_from=file_ids_from)
 
     def get_native_parents(
-            self, version: Version, versions: List[Version]) -> List[RevisionID]:
+            self, version: Version,
+            versions: List[Version]) -> List[RevisionID]:
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is None:
             parents = []
         else:
             parents = [self.revid_of_version(last_contained_version)]
         missing_versions = self.missing_versions(versions)
-        for branch in list(reversed(self.get_lesser_branches())) + self.get_greater_branches():
+        for branch in (list(reversed(self.get_lesser_branches()))
+                       + self.get_greater_branches()):
             merged, missing_versions = \
                 branch.contained_versions(missing_versions)
             if merged:
@@ -1171,7 +1188,8 @@ class DistributionBranch(object):
         with open(dsc_filename) as f:
             dsc = deb822.Dsc(f.read())
         version = Version(dsc['Version'])
-        with extract(dsc_filename, dsc, apply_patches=apply_patches) as extractor:
+        with extract(dsc_filename, dsc,
+                     apply_patches=apply_patches) as extractor:
             cl = get_changelog_from_source(extractor.extracted_debianised)
             timestamp = None
             author = None
@@ -1271,7 +1289,8 @@ class DistributionBranch(object):
         except PackageVersionNotPresent as e:
             raise PreviousVersionTagMissing(
                 previous_version,
-                self.pristine_upstream_source.tag_name(previous_version)) from e
+                self.pristine_upstream_source.tag_name(previous_version)
+            ) from e
         self.extract_upstream_tree(upstream_tips, tempdir)
 
     def has_merged_upstream_revisions(
@@ -1301,19 +1320,25 @@ class DistributionBranch(object):
                 es.enter_context(upstream_branch.lock_read())
             if upstream_branch is not None:
                 if upstream_revisions is None:
-                    upstream_revisions = {None: upstream_branch.last_revision()}
+                    upstream_revisions = {
+                        None: upstream_branch.last_revision()}
                 if (not force and
-                        self.has_merged_upstream_revisions(self.branch.last_revision(), upstream_branch.repository, upstream_revisions)):
+                        self.has_merged_upstream_revisions(
+                            self.branch.last_revision(),
+                            upstream_branch.repository, upstream_revisions)):
                     raise UpstreamBranchAlreadyMerged
             upstream_tarballs = [
                 (os.path.abspath(fn), component, md5sum_filename(fn)) for
                 (fn, component) in
                 tarball_filenames]
-            with _extract_tarballs_to_tempdir(upstream_tarballs) as tarball_dir:
+            with _extract_tarballs_to_tempdir(
+                    upstream_tarballs) as tarball_dir:
                 # FIXME: should use upstream_parents()?
                 parents = {None: []}
-                if self.pristine_upstream_branch.last_revision() != NULL_REVISION:
-                    parents = {None: [self.pristine_upstream_branch.last_revision()]}
+                if (self.pristine_upstream_branch.last_revision()
+                        != NULL_REVISION):
+                    parents = {
+                        None: [self.pristine_upstream_branch.last_revision()]}
                 imported_revids = self.import_upstream(
                     tarball_dir, package, version, parents,
                     upstream_tarballs=upstream_tarballs,

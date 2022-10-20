@@ -71,8 +71,7 @@ class UScanOutputParsingTests(TestCase):
 <upstream-url>ftp://ftp.samba.org/pub/tdb/tdb-1.2.9.tar.gz</upstream-url>
 <status>Newer version available</status>
 </dehs>"""
-        self.assertEquals("1.2.9",
-            _xml_report_extract_upstream_version(text))
+        self.assertEquals("1.2.9", _xml_report_extract_upstream_version(text))
 
     def test__xml_report_extract_warnings(self):
         text = b"""

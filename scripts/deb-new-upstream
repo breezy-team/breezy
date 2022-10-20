@@ -1259,7 +1259,7 @@ async def main():
                     "nothing-to-do",
                     "Last upstream version %s already imported. " % e.version,
                     upstream_version=e.version,
-                    hint="Import a snapshot by specifying --snapshot."
+                    hint="Import a snapshot by specifying --snapshot.",
                     transient=False
                 )
             return 1

@@ -81,23 +81,23 @@ class TestGetOrigSource(BuilddebTestCase):
 
     def test_get_orig_source_error_no_changelog(self):
         self.run_bzr_error(
-        ['Could not find changelog at .*debian/changelog or .*changelog.'],
-        "get-orig-source")
+            ['Could not find changelog at .*debian/changelog or .*changelog.'],
+            "get-orig-source")
 
     def test_get_orig_source_error_no_tar(self):
         self.make_unpacked_source()
         self.run_bzr_error(
-            ['Unable to find the needed upstream tarball for package test, '\
-            'version 0.1.'],
+            ['Unable to find the needed upstream tarball for package test, '
+             'version 0.1.'],
             "get-orig-source")
 
     def test_get_orig_source(self):
-        tree = self.make_source_with_upstream()
+        self.make_source_with_upstream()
         self.run_bzr(['get-orig-source'])
         self.assertPathExists('../test_0.1.orig.tar.gz')
 
     def test_get_orig_source_directory(self):
-        tree = self.make_source_with_upstream("somedir")
+        self.make_source_with_upstream("somedir")
         self.run_bzr(['get-orig-source', '-d', 'somedir'])
         self.assertPathExists('../test_0.1.orig.tar.gz')
 
@@ -110,7 +110,8 @@ class TestGetOrigSource(BuilddebTestCase):
         self.assertPathExists('../test_0.1.orig.tar.gz')
 
     def test_get_orig_source_explicit_version_not_found(self):
-        tree = self.make_source_with_upstream()
+        self.make_source_with_upstream()
         self.run_bzr_error([
-            'brz: ERROR: Unable to find the needed upstream tarball for package test, version 0.3.'],
+            'brz: ERROR: Unable to find the needed upstream tarball for '
+            'package test, version 0.3.'],
             'get-orig-source 0.3')

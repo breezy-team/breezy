@@ -22,8 +22,15 @@ po/breezy-debian.pot: $(PYFILES) $(DOCFILES)
 	  --from-code ISO-8859-1 --sort-by-file --join --add-comments=i18n: \
 	  -d breezy-debian -p po -o breezy-debian.pot
 
-check:
+check:: testsuite
+
+testsuite:
 	BRZ_PLUGINS_AT=debian@$(shell pwd) $(BRZ) $(BRZ_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
+
+check:: flake8
+
+flake8:
+	flake8 .
 
 docker:
 	buildah build -t ghcr.io/breezy-team/deb-new-upstream:latest -f Dockerfile.deb-new-upstream .

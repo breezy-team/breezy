@@ -30,9 +30,9 @@ from ...commands import plugin_cmds
 from ...hooks import install_lazy_named_hook
 from ... import trace
 
-from .info import (
+from .info import (  # noqa: F401
     brz_plugin_version as version_info,
-)   # noqa: F401
+)
 
 
 from ...i18n import load_plugin_translations

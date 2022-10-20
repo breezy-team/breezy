@@ -1,6 +1,6 @@
 #    test_builddeb.py -- Blackbox tests for builddeb.
 #    Copyright (C) 2009 Canonical Ltd.
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -217,7 +217,8 @@ class TestMergePackageBB(BuilddebTestCase):
                     tree.merge_from_branch(utree.branch, to_revision=urevid)
                     utree.branch.tags.merge_to(tree.branch.tags)
                     if urevid is not None:
-                        msg += 'Merged tree %s|%s. ' % (tree_nick(utree), urevid)
+                        msg += 'Merged tree %s|%s. ' % (
+                            tree_nick(utree), urevid)
                     else:
                         msg += 'Merged tree %s. ' % utree
                 if paths is not None:

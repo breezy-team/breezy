@@ -20,7 +20,6 @@
 """Tests for the merge_changelog code."""
 
 import logging
-import sys
 
 from testtools.content_type import ContentType
 from testtools.content import Content
@@ -28,7 +27,7 @@ from testtools.content import Content
 from .... import (
     merge,
     tests,
-    )
+)
 from ... import debian
 from .. import merge_changelog
 from ....tests.features import ExecutableFeature
@@ -136,7 +135,7 @@ class TestMergeChangelog(tests.TestCase):
 
     def setUp(self):
         super(tests.TestCase, self).setUp()
-        # Intercept warnings from merge_changelog's logger: this is where 
+        # Intercept warnings from merge_changelog's logger: this is where
         self.logged_warnings = self.make_utf8_encoded_stringio()
         self.addCleanup(self.addMergeChangelogWarningsDetail)
         handler = logging.StreamHandler(self.logged_warnings)

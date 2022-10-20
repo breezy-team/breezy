@@ -192,7 +192,8 @@ class AptDirectory(object):
         except KeyError as e:
             note("Retrieving Vcs locating from %s Debian version %s", name,
                  version)
-            raise urlutils.InvalidURL(path=url, extra='no VCS URL found') from e
+            raise urlutils.InvalidURL(
+                path=url, extra='no VCS URL found') from e
 
         note("Resolved package URL from Debian package %s/%s: %s",
              name, version, url)
