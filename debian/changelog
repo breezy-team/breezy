@@ -1,3 +1,10 @@
+breezy-debian (2.8.74) UNRELEASED; urgency=medium
+
+  * Fix uncaught error in deb-import-uncommitted.
+  * Use flake8 to verify formatting of all code..
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 21 Oct 2022 00:10:38 +0100
+
 breezy-debian (2.8.73) unstable; urgency=medium
 
   * Add new script deb-vcs-up-to-date: checks whether the local tree is
