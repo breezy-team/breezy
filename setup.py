@@ -69,15 +69,6 @@ class brz_build_scripts(build_scripts):
                     os.path.join(self.build_dir, ext.name))
 
 
-class brz_install(install):
-    """Turns out easy_install was always just a bad idea."""
-
-    def finalize_options(self):
-        install.finalize_options(self)
-        # Get us off the do_egg_install() path
-        self.single_version_externally_managed = True
-
-
 class build_man(Command):
     """Generate brz.1.
     """
@@ -103,7 +94,6 @@ build.sub_commands.append(('build_mo', lambda _: True))
 command_classes = {
     'build_man': build_man,
     'build_scripts': brz_build_scripts,
-    'install': brz_install,
 }
 
 from distutils import log
@@ -263,6 +253,19 @@ DATA_FILES = DATA_FILES + I18N_FILES
 import site
 site.ENABLE_USER_SITE = "--user" in sys.argv
 
+rust_extensions = [
+    RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+]
+entry_points = {}
+
+if os.environ.get('CIBUILDWHEEL', '0') == '0':
+    rust_extensions.append(
+        RustExtension("brz", binding=Binding.Exec, strip=Strip.All))
+else:
+    # Fall back to python main on cibuildwheels, since it doesn't provide
+    # -lpython3.7 to link binaries against
+    entry_points.setdefault('console_scripts', []).append('brz=breezy.__main__:main')
+
 # std setup
 setup(
     scripts=[# TODO(jelmer): Only install the git scripts if
@@ -273,8 +276,6 @@ setup(
     data_files=DATA_FILES,
     cmdclass=command_classes,
     ext_modules=ext_modules,
-    rust_extensions=[
-        RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
-        RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
-    ],
+    entry_points=entry_points,
+    rust_extensions=rust_extensions,
 )
