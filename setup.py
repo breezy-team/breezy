@@ -137,50 +137,8 @@ else:
         have_cython = True
 
 
-class build_ext_if_possible(build_ext):
-
-    user_options = build_ext.user_options + [
-        ('allow-python-fallback', None,
-         "When an extension cannot be built, allow falling"
-         " back to the pure-python implementation.")
-        ]
-
-    def initialize_options(self):
-        super(build_ext_if_possible, self).initialize_options()
-        self.ext_map = {}
-        self.allow_python_fallback = False
-
-    def run(self):
-        try:
-            super(build_ext_if_possible, self).run()
-        except DistutilsPlatformError:
-            e = sys.exc_info()[1]
-            if not self.allow_python_fallback:
-                log.warn('\n  Cannot build extensions.\n'
-                         '  Use "build_ext --allow-python-fallback" to use'
-                         ' slower python implementations instead.\n')
-                raise
-            log.warn(str(e))
-            log.warn('\n  Extensions cannot be built.\n'
-                     '  Using the slower Python implementations instead.\n')
-
-    def build_extension(self, ext):
-        try:
-            super(build_ext_if_possible, self).build_extension(ext)
-        except CCompilerError:
-            if not self.allow_python_fallback:
-                log.warn('\n  Cannot build extension "%s".\n'
-                         '  Use "build_ext --allow-python-fallback" to use'
-                         ' slower python implementations instead.\n'
-                         % (ext.name,))
-                raise
-            log.warn('\n  Building of "%s" extension failed.\n'
-                     '  Using the slower Python implementation instead.'
-                     % (ext.name,))
-
-
 # Override the build_ext if we have Cython available
-command_classes['build_ext'] = build_ext_if_possible
+command_classes['build_ext'] = build_ext
 unavailable_files = []
 
 
@@ -219,7 +177,8 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
     ext_modules.append(
         Extension(
             module_name, source, define_macros=define_macros,
-            libraries=libraries, include_dirs=include_dirs))
+            libraries=libraries, include_dirs=include_dirs,
+            optional=os.environ.get('CIBUILDWHEEL', '0') != '1'))
 
 
 add_cython_extension('breezy.bzr._simple_set_pyx')
