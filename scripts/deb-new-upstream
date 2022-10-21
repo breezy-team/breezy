@@ -1397,7 +1397,7 @@ async def main():
                 "packaging repository."
             )
             error_code = "roundtripping-error"
-            report_fatal(error_code, error_description, transport=False)
+            report_fatal(error_code, error_description, transient=False)
             return 1
         except UScanError as e:
             error_description = str(e)
@@ -1410,22 +1410,22 @@ async def main():
         except UpstreamMetadataSyntaxError as e:
             report_fatal(
                 "upstream-metadata-syntax-error",
-                "Unable to parse %s: %s" % (e.path, e.error), transport=False,
+                "Unable to parse %s: %s" % (e.path, e.error), transient=False,
             )
             return 1
         except InvalidNormalization as e:
             error_description = str(e)
             error_code = "invalid-path-normalization"
-            report_fatal(error_code, error_description, transport=False)
+            report_fatal(error_code, error_description, transient=False)
             return 1
         except MissingChangelogError as e:
             report_fatal(
                 "missing-changelog", "Missing changelog %s" % e,
-                transport=False)
+                transient=False)
             return 1
         except DistCommandFailed as e:
             report_fatal(
-                e.kind or "dist-command-failed", e.error, transport=False,
+                e.kind or "dist-command-failed", e.error, transient=False,
                 stage=("dist", ))
             return 1
         except MissingUpstreamTarball as e:
