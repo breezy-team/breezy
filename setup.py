@@ -102,7 +102,6 @@ build.sub_commands.append(('build_mo', lambda _: True))
 
 command_classes = {
     'build_man': build_man,
-    'build_scripts': brz_build_scripts,
     'install': brz_install,
 }
 
@@ -209,9 +208,14 @@ if unavailable_files:
     print("")
 
 
+if 'editable_wheel' not in sys.argv:
+    command_classes['build_scripts'] = brz_build_scripts
+
+
 # ad-hoc for easy_install
 DATA_FILES = []
-if 'bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv:
+if ('bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv
+        and 'editable_wheel' not in sys.argv):
     # generate and install brz.1 only with plain install, not the
     # easy_install one
     build.sub_commands.append(('build_man', lambda _: True))
