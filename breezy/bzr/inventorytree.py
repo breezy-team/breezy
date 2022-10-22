@@ -787,7 +787,7 @@ class _SmartAddHelper(object):
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
         if action is None:
-            from .add import AddAction
+            from ..add import AddAction
             self.action = AddAction()
         else:
             self.action = action
