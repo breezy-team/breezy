@@ -130,14 +130,12 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
-    SPECIAL_FILENAMES = ('.bzrrules', '.bzrignore')
-
     def supports_symlinks(self):
         return True
 
     @classmethod
     def is_special_filename(cls, name):
-        return name in cls.SPECIAL_FILENAMES
+        return name.startswith('.bzr')
 
     def _get_root_inventory(self):
         return self._inventory
