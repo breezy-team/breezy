@@ -258,6 +258,12 @@ class GitTree(_mod_tree.Tree):
 
     supports_file_ids = False
 
+    SPECIAL_FILENAMES = ('.gitignore', '.gitattributes')
+
+    @classmethod
+    def is_special_file(cls, name):
+        return name in cls.SPECIAL_FILENAMES
+
     def supports_symlinks(self):
         return True
 

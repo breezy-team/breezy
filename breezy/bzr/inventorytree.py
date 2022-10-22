@@ -49,14 +49,9 @@ from ..repository import (
 from ..revisiontree import (
     RevisionTree,
     )
-lazy_import.lazy_import(globals(), """
-from breezy import (
-    add,
-    )
 from breezy.bzr import (
     inventory as _mod_inventory,
     )
-""")
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
@@ -135,8 +130,14 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
+    SPECIAL_FILENAMES = ('.bzrrules', '.bzrignore')
+
     def supports_symlinks(self):
         return True
+
+    @classmethod
+    def is_special_filename(cls, name):
+        return name in cls.SPECIAL_FILENAMES
 
     def _get_root_inventory(self):
         return self._inventory
@@ -786,7 +787,8 @@ class _SmartAddHelper(object):
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
         if action is None:
-            self.action = add.AddAction()
+            from .add import AddAction
+            self.action = AddAction()
         else:
             self.action = action
         self._invdelta = {}

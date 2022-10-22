@@ -200,10 +200,18 @@ class Tree(object):
         """
         return True
 
+    def supports_tree_reference(self):
+        raise NotImplementedError(self.supports_tree_reference)
+
     def supports_symlinks(self):
         """Does this tree support symbolic links?
         """
         return True
+
+    def is_special_filename(self, name):
+        """Is the specified filename special to the VCS.
+        """
+        return False
 
     @property
     def supports_file_ids(self):
