@@ -449,7 +449,7 @@ class DistributionBranch(object):
         for tag in self.possible_tags(version, vendor):
             if branch_has_debian_version(self.branch, tag):
                 return tag
-        raise None
+        return None
 
     def tag_version(self, version: Version, revid: Optional[RevisionID] = None,
                     vendor: Optional[str] = None) -> str:
