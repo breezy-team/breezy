@@ -791,7 +791,7 @@ class DistributionBranch(object):
             self.branch.fetch(self.pristine_upstream_branch, revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
-    def import_upstream(self, upstream_part, package, version,
+    def import_upstream(self, upstream_part: str, package: str, version: str,
                         upstream_parents, upstream_tarballs,
                         upstream_branch=None, upstream_revisions=None,
                         timestamp=None, author=None, file_ids_from=None,
