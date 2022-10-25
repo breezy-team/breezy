@@ -18,20 +18,25 @@
 import asyncio
 import contextlib
 import json
+from hashlib import sha1
 import logging
 import os
 import subprocess
 import tempfile
-from typing import List, Dict, Tuple, Optional
+from typing import List, Tuple, Optional
 
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 
+from debmutate.control import ControlEditor
+from debmutate.changelog import ChangelogEditor
+
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
+from breezy import urlutils
 from breezy.errors import NotBranchError
-from breezy.revision import RevisionID
-from breezy.trace import note
+from breezy.revision import RevisionID, NULL_REVISION
+from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
 from breezy.tree import Tree
 
@@ -40,6 +45,8 @@ from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog, Version
 
+from breezy.plugins.debian.changelog import debcommit
+from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
 from breezy.plugins.debian.info import versions_dict
 from breezy.plugins.debian.upstream import PackageVersionNotPresent
 from breezy.plugins.debian.import_dsc import (
@@ -47,8 +54,8 @@ from breezy.plugins.debian.import_dsc import (
     DistributionBranchSet,
     VersionAlreadyImported,
 )
-from breezy.plugins.debian.util import MissingChangelogError
 from breezy.plugins.debian.apt_repo import (
+    Apt,
     LocalApt,
     RemoteApt,
     NoAptSources,
@@ -94,6 +101,21 @@ class SnapshotDownloadError(Exception):
         self.inner = inner
 
 
+class SnapshotMissing(Exception):
+
+    def __init__(self, source_name, source_version):
+        self.source_name = source_name
+        self.source_version = source_version
+
+
+class SnapshotHashMismatch(Exception):
+
+    def __init__(self, filename, actual_hash, expected_hash):
+        self.filename = filename
+        self.actual_hash = actual_hash
+        self.expected_hash = expected_hash
+
+
 def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     note("Downloading %s %s", package, version)
     srcfiles_url = (
@@ -102,26 +124,35 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     )
     files = {}
     try:
-        for hsh, entries in json.load(
-                urlopen(srcfiles_url))["fileinfo"].items():
-            for entry in entries:
-                files[entry["name"]] = hsh
+        srcfiles = json.load(urlopen(srcfiles_url))
     except HTTPError as e:
+        if e.status == 404:
+            raise SnapshotMissing(package, version) from e
         raise SnapshotDownloadError(srcfiles_url, e) from e
     except URLError as e:
         raise SnapshotDownloadError(srcfiles_url, e) from e
+
+    for hsh, entries in srcfiles["fileinfo"].items():
+        for entry in entries:
+            files[entry["name"]] = hsh
     for filename, hsh in files.items():
         local_path = os.path.join(output_dir, os.path.basename(filename))
-        with open(local_path, "wb") as f:
-            url = "https://snapshot.debian.org/file/%s" % hsh
-            note('.. Downloading %s', url)
-            try:
-                with urlopen(url) as g:
-                    f.write(g.read())
-            except HTTPError as e:
-                raise SnapshotDownloadError(url, e) from e
-            except URLError as e:
-                raise SnapshotDownloadError(url, e) from e
+        try:
+            with open(local_path, "rb") as f:
+                actual_hsh = sha1(f.read()).hexdigest()
+            if actual_hsh != hsh:
+                raise SnapshotHashMismatch(filename, actual_hsh, hsh)
+        except FileNotFoundError:
+            with open(local_path, "wb") as f:
+                url = "https://snapshot.debian.org/file/%s" % hsh
+                note('.. Downloading %s -> %s', url, filename)
+                try:
+                    with urlopen(url) as g:
+                        f.write(g.read())
+                except HTTPError as e:
+                    raise SnapshotDownloadError(url, e) from e
+                except URLError as e:
+                    raise SnapshotDownloadError(url, e) from e
     file_version = Version(version)
     file_version.epoch = None
     dsc_filename = "%s_%s.dsc" % (package, file_version)
@@ -156,22 +187,16 @@ class TreeUpstreamVersionMissing(Exception):
 
 
 def import_uncommitted(
-        tree: Tree, subpath: str, apt,
-        source_version: Optional[str] = None
+        tree: Tree, subpath: str, apt: Apt,
+        source_name: str,
+        archive_version: Optional[Version] = None,
+        tree_version: Optional[Version] = None,
         ) -> List[Tuple[str, Version, RevisionID]]:
-    cl_path = os.path.join(subpath, "debian/changelog")
-    try:
-        with tree.get_file(cl_path) as f:
-            tree_cl = Changelog(f)
-            package_name = tree_cl.package
-    except NoSuchFile as e:
-        raise MissingChangelogError([cl_path]) from e
-
     with contextlib.ExitStack() as es:
         es.enter_context(apt)
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
         apt.retrieve_source(
-            package_name, archive_source, source_version=source_version)
+            source_name, archive_source, source_version=archive_version)
         [dsc] = [e.name for e in os.scandir(archive_source)
                  if e.name.endswith('.dsc')]
         note("Unpacking source %s", dsc)
@@ -181,40 +206,45 @@ def import_uncommitted(
             archive_cl = Changelog(f)
         missing_versions: List[Version] = []
         for block in archive_cl:
-            if block.version == tree_cl.version:
+            if tree_version is not None and block.version == tree_version:
                 break
             missing_versions.append(block.version)
         else:
-            raise TreeVersionNotInArchiveChangelog(tree_cl.version)
+            if tree_version is not None:
+                raise TreeVersionNotInArchiveChangelog(tree_version)
         if len(missing_versions) == 0:
-            raise NoMissingVersions(tree_cl.version, archive_cl.version)
+            raise NoMissingVersions(tree_version, archive_cl.version)
         note("Missing versions: %s", ", ".join(map(str, missing_versions)))
         ret = []
         dbs = DistributionBranchSet()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs.add_branch(db)
-        if tree_cl.version.debian_revision:
-            note("Extracting upstream version %s.",
-                 tree_cl.version.upstream_version)
-            upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
+        applied_patches = tree.has_filename(".pc/applied-patches")
+        if tree_version and tree_version.debian_revision:
             try:
                 upstream_tips = (
                     db.pristine_upstream_source.version_as_revisions(
-                        tree_cl.package, tree_cl.version.upstream_version))
+                        source_name, tree_version.upstream_version))
             except PackageVersionNotPresent as e:
-                # TODO(jelmer): Should we import it instead?
                 raise TreeUpstreamVersionMissing(
-                    tree_cl.version.upstream_version) from e
-            db.extract_upstream_tree(upstream_tips, upstream_dir)
-        applied_patches = tree.has_filename(".pc/applied-patches")
-        version_path: Dict[Version, str] = {}
-        for version in missing_versions:
-            output_dir = es.enter_context(tempfile.TemporaryDirectory())
-            version_path[version] = download_snapshot(
-                package_name, version, output_dir)
+                    tree_version.upstream_version) from e
+            else:
+                note("Extracting upstream version %s.",
+                     tree_version.upstream_version)
+                upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
+                db.extract_upstream_tree(upstream_tips, upstream_dir)
+        else:
+            upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
+            db.create_empty_upstream_tree(upstream_dir)
+        output_dir = es.enter_context(tempfile.TemporaryDirectory())
         for version in reversed(missing_versions):
+            try:
+                dsc_path = download_snapshot(source_name, version, output_dir)
+            except SnapshotMissing as e:
+                warning('Missing snapshot for %s (never uploaded?), skipping.',
+                        e.source_version)
+                continue
             note("Importing %s", version)
-            dsc_path = version_path[version]
             try:
                 tag_name = db.import_package(
                     dsc_path, apply_patches=applied_patches)
@@ -224,12 +254,12 @@ def import_uncommitted(
                      "branch. Updating tree.", e.version, e.tag_name)
                 tag_name = e.tag_name
                 db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
-            revision = db.branch.tags.lookup_tag(tag_name)
-            ret.append((tag_name, version, revision))
+            revid = db.branch.tags.lookup_tag(tag_name)
+            ret.append((tag_name, version, revid))
     return ret
 
 
-def report_fatal(code, description):
+def report_fatal(code, description, *, hint=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
@@ -237,6 +267,21 @@ def report_fatal(code, description):
                 'result_code': code,
                 'description': description}, f)
     logging.fatal('%s', description)
+    if hint:
+        logging.info('%s', hint)
+
+
+def set_vcs_git_url(control, vcs_git_base: Optional[str],
+                    vcs_browser_base: Optional[str]):
+    old_vcs_url = control.source.get("Vcs-Git")
+    if vcs_git_base is not None:
+        control.source["Vcs-Git"] = urlutils.join(
+            vcs_git_base, "%s.git" % control.source['Source'])
+    new_vcs_url = control.source.get("Vcs-Git")
+    if vcs_browser_base:
+        control.source["Vcs-Browser"] = urlutils.join(
+            vcs_browser_base, control.source['Source'])
+    return (old_vcs_url, new_vcs_url)
 
 
 async def main():
@@ -256,6 +301,15 @@ async def main():
     parser.add_argument(
         '--version', type=str,
         help='Source version to import')
+    parser.add_argument(
+        '--vcs-git-base', type=str,
+        help='Set Vcs-Git URL')
+    parser.add_argument(
+        '--vcs-browser-base', type=str,
+        help='Set Vcs-Browser URL')
+    parser.add_argument(
+        '--package', type=str, help='Package to import',
+        default=os.environ.get('PACKAGE'))
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -272,20 +326,47 @@ async def main():
             "not-branch-error",
             "Not running in a version-controlled directory")
         return 1
+
+    cl_path = os.path.join(subpath, "debian/changelog")
+    try:
+        with local_tree.get_file(cl_path) as f:
+            tree_cl = Changelog(f)
+            source_name = tree_cl.package
+            tree_version = tree_cl.version
+    except NoSuchFile as e:
+        if local_tree.last_revision() == NULL_REVISION and args.package:
+            source_name = args.package
+            tree_version = None
+            tree_cl = None
+        else:
+            if local_tree.last_revision() == NULL_REVISION:
+                hint = "Tree is empty. Specify --package?"
+            else:
+                hint = None
+            report_fatal(
+                "missing-changelog",
+                "Missing changelog: %s" % e.path,
+                hint=hint)
+            return 1
+    else:
+        if args.package and tree_cl.package != args.package:
+            report_fatal(
+                'inconsistent-package',
+                'Inconsistent package name: %s specified, %s found' % (
+                    args.package, tree_cl.package))
+            return 1
+
     try:
         ret = import_uncommitted(
-            local_tree, subpath, apt, source_version=args.version)
+            local_tree, subpath, apt, source_name=source_name,
+            archive_version=Version(args.version) if args.version else None,
+            tree_version=tree_version)
     except AptSourceError as e:
         if isinstance(e.reason, list):
             reason = e.reason[-1]
         else:
             reason = e.reason
         report_fatal("apt-source-error", reason)
-        return 1
-    except MissingChangelogError as e:
-        report_fatal(
-            "missing-changelog",
-            "Missing changelog: %s" % e.location[0])
         return 1
     except NoAptSources:
         report_fatal(
@@ -306,15 +387,39 @@ async def main():
             'snapshot-download-failed',
             'Downloading %s failed: %s' % (e.url, e.inner))
         return 1
+    except SnapshotHashMismatch as e:
+        report_fatal(
+            'snapshot-hash-mismatch',
+            'Snapshot hash mismatch for %s: %s != %s' % (
+                e.filename, e.expected_hash, e.actual_hash))
+        return 1
     except MalformedTransform as e:
         report_fatal('malformed-transform', str(e))
         return 1
+
+    if args.vcs_git_base:
+        with ControlEditor(local_tree.abspath('debian/control')) as control:
+            (old_vcs_url, new_vcs_url) = set_vcs_git_url(
+                 control, args.vcs_git_base, args.vcs_browser_base)
+        if old_vcs_url != new_vcs_url:
+            note('Updating Vcs-Git URL to %s', new_vcs_url)
+            with ChangelogEditor(
+                    local_tree.abspath('debian/changelog')) as changelog:
+                changelog.add_entry(['Set Vcs-Git header.'])
+            debcommit(local_tree, subpath=subpath)
+            target_branch_url = vcs_git_url_to_bzr_url(new_vcs_url)
+        else:
+            target_branch_url = None
+    else:
+        target_branch_url = None
 
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'description': 'Import archive changes missing from the VCS.',
                 'versions': versions_dict(),
+                'value': 60 + sum(
+                     [60 if 'nmu' in str(e[1]) else 20 for e in ret]),
                 'commit-message': "Import missing uploads: %s." % (
                     ", ".join([str(v) for t, v, rs in ret])),
                 'context': {
@@ -322,6 +427,7 @@ async def main():
                         [(tag_name, str(version))
                          for (tag_name, version, rs) in ret],
                 },
+                'target-branch-url': target_branch_url,
             }, f)
 
     note('Imported uploads: %s.', [str(v[1]) for v in ret])

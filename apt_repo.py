@@ -47,6 +47,12 @@ def _convert_apt_pkg_error(e):
 
 class Apt:
 
+    def __enter__(self):
+        raise NotImplementedError(self.__enter__)
+
+    def __exit__(self, exc_tp, exc_val, exc_tb):
+        raise NotImplementedError(self.__exit__)
+
     def iter_source_by_name(self, source_name):
         for source in self.iter_sources():
             if source['Package'] == source_name:

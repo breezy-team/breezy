@@ -34,6 +34,7 @@ from debmutate.deb822 import ChangeConflict
 from debmutate.reformatting import GeneratedFile, FormattingUnpreservable
 
 from breezy.plugins.debian.info import versions_dict
+from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
 
 
 BRANCH_NAME = "orphan"
@@ -380,12 +381,17 @@ def main():
         report_fatal("missing-control-file", "Missing control file: %r" % e)
         return 1
 
+    if result.new_vcs_url:
+        target_branch_url = vcs_git_url_to_bzr_url(result.new_vcs_url)
+    else:
+        target_branch_url = None
+
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'description': "Move package to QA team.",
                 'versions': versions_dict(),
-                'target-branch-url': result.new_vcs_url,
+                'target-branch-url': target_branch_url,
                 'value': 60,
                 'context': result.json()}, f)
 
