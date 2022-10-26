@@ -49,9 +49,14 @@ from ..repository import (
 from ..revisiontree import (
     RevisionTree,
     )
+lazy_import.lazy_import(globals(), """
+from breezy import (
+    add,
+    )
 from breezy.bzr import (
     inventory as _mod_inventory,
     )
+""")
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
@@ -785,8 +790,7 @@ class _SmartAddHelper(object):
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
         if action is None:
-            from ..add import AddAction
-            self.action = AddAction()
+            self.action = add.AddAction()
         else:
             self.action = action
         self._invdelta = {}
