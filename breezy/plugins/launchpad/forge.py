@@ -227,6 +227,8 @@ class Launchpad(Forge):
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 
+    supports_merge_proposal_title = False
+
     supports_merge_proposal_commit_message = True
 
     supports_allow_collaboration = False

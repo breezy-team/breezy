@@ -276,6 +276,8 @@ class Forge(object):
     # proposals?
     supports_merge_proposal_labels = None
 
+    supports_merge_proposal_title = None
+
     @property
     def name(self):
         """Name of this instance."""
