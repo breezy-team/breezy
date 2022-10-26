@@ -93,7 +93,6 @@ build.sub_commands.append(('build_mo', lambda _: True))
 
 command_classes = {
     'build_man': build_man,
-    'install': brz_install,
 }
 
 from distutils import log
