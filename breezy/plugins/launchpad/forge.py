@@ -28,6 +28,7 @@ from ...forge import (
     MergeProposalBuilder,
     MergeProposalExists,
     UnsupportedForge,
+    TitleUnsupported,
     )
 
 from ... import (
@@ -168,6 +169,12 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def get_commit_message(self):
         return self._mp.commit_message
+
+    def get_title(self):
+        raise TitleUnsupported(self)
+
+    def set_title(self):
+        raise TitleUnsupported(self)
 
     def set_commit_message(self, commit_message):
         self._mp.commit_message = commit_message
@@ -603,12 +610,15 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             _call_webservice(mp.setStatus, status=u'Approved',
                              revid=self.source_branch.last_revision())
 
-    def create_proposal(self, description, reviewers=None, labels=None,
+    def create_proposal(self, description, title=None,
+                        reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
+        if title:
+            raise TitleUnsupported(self)
         if prerequisite_branch is not None:
             prereq = self.launchpad.branches.getByUrl(
                 url=prerequisite_branch.user_url)

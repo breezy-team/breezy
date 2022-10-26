@@ -151,6 +151,12 @@ class GitHubMergeProposal(MergeProposal):
     def get_commit_message(self):
         return None
 
+    def get_title(self):
+        return self._pr.get('title')
+
+    def set_title(self, title):
+        self._patch(title=title)
+
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
 
@@ -688,7 +694,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None,
+    def create_proposal(self, description, title=None, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
@@ -698,8 +704,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):
             self.target_repo_name = self.target_repo_name[:-4]
-        # TODO(jelmer): Allow setting title explicitly?
-        title = determine_title(description)
+        if title is None:
+            title = determine_title(description)
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
         assignees = []
