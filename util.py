@@ -895,13 +895,7 @@ def detect_version_kind(upstream_version):
 def export_with_nested(tree, dest, **kwargs):
     with tree.lock_read():
         try:
-            try:
-                return export(tree, dest, recurse_nested=True, **kwargs)
-            except TypeError as e:  # brz < 3.3
-                if any(tree.iter_references()):
-                    raise NotImplementedError(
-                        'unable to export tree references') from e
-                return export(tree, dest, **kwargs)
+            return export(tree, dest, recurse_nested=True, **kwargs)
         except BaseException:
             if os.path.isfile(dest):
                 os.unlink(dest)
