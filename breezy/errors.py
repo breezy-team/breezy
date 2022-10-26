@@ -542,7 +542,7 @@ class UnsupportedFormatError(BzrError):
 
 
 
-class UnsupportedVcs(BzrError):
+class UnsupportedVcs(UnsupportedFormatError):
 
     vcs: str
 
