@@ -19,6 +19,7 @@
 """Black-box tests for running brz outside of a working tree."""
 
 import os
+import tempfile
 
 from breezy import (
     osutils,
@@ -33,7 +34,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
 
     def test_cwd_log(self):
         # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-        tmp_dir = osutils.realpath(osutils.mkdtemp())
+        tmp_dir = osutils.realpath(tempfile.mkdtemp())
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')
         self.addCleanup(osutils.rmtree, tmp_dir)
@@ -56,7 +57,7 @@ class TestOutsideWT(tests.ChrootedTestCase):
         # in a brz tree (though if there is one at or above $TEMPDIR, this is
         # false and may cause test failures).
         # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-        tmp_dir = osutils.realpath(osutils.mkdtemp())
+        tmp_dir = osutils.realpath(tempfile.mkdtemp())
         self.addCleanup(osutils.rmtree, tmp_dir)
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')

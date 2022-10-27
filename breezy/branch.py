@@ -61,6 +61,16 @@ class UnstackableBranchFormat(errors.BzrError):
         self.url = url
 
 
+class BindingUnsupported(errors.UnsupportedOperation):
+
+    _fmt = "Branch at %(url)s does not support binding."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self)
+        self.branch = branch
+        self.url = branch.user_url
+
+
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
@@ -68,6 +78,10 @@ class Branch(controldir.ControlComponent):
     :ivar _master_branch_cache: cached result of get_master_branch, see
         _clear_cached_state.
     """
+
+    controldir: controldir.ControlDir
+
+    name: Optional[str]
 
     @property
     def control_transport(self):
@@ -652,7 +666,7 @@ class Branch(controldir.ControlComponent):
         :param other: The branch to bind to
         :type other: Branch
         """
-        raise errors.UpgradeRequired(self.user_url)
+        raise BindingUnsupported(self)
 
     def get_append_revisions_only(self):
         """Whether it is only possible to append revisions to the history.
@@ -1207,7 +1221,8 @@ class Branch(controldir.ControlComponent):
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-               repository=None, lossy=False, tag_selector=None):
+               repository=None, lossy=False, tag_selector=None,
+               name=None):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1218,7 +1233,7 @@ class Branch(controldir.ControlComponent):
         if (repository_policy is not None
                 and repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
-        result = to_controldir.create_branch(repository=repository)
+        result = to_controldir.create_branch(repository=repository, name=name)
         if lossy:
             raise errors.LossyPushToSameVCS(self, result)
         with self.lock_read(), result.lock_write():

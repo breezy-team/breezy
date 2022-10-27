@@ -21,6 +21,7 @@ import contextlib
 import errno
 import os
 from stat import S_IEXEC, S_ISREG
+import tempfile
 import time
 
 from .. import (
@@ -33,6 +34,7 @@ from .. import (
     osutils,
     revision as _mod_revision,
     trace,
+    transport as _mod_transport,
     tree,
     ui,
     urlutils,
@@ -849,7 +851,7 @@ class TreeTransformBase(TreeTransform):
         try:
             if path is None or self._tree.kind(path) != 'file':
                 return None
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
         return path
 
@@ -1447,22 +1449,7 @@ class InventoryTreeTransform(DiskTreeTransform):
 
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
-        # don't follow final symlinks
-        abs = self._tree.abspath(path)
-        if abs in self._relpaths:
-            return self._relpaths[abs]
-        dirname, basename = os.path.split(abs)
-        if dirname not in self._realpaths:
-            self._realpaths[dirname] = os.path.realpath(dirname)
-        dirname = self._realpaths[dirname]
-        abs = osutils.pathjoin(dirname, basename)
-        if dirname in self._relpaths:
-            relpath = osutils.pathjoin(self._relpaths[dirname], basename)
-            relpath = relpath.rstrip('/\\')
-        else:
-            relpath = self._tree.relpath(abs)
-        self._relpaths[abs] = relpath
-        return relpath
+        return self._tree.get_canonical_path(path)
 
     def tree_kind(self, trans_id):
         """Determine the file kind in the working tree.
@@ -1474,7 +1461,7 @@ class InventoryTreeTransform(DiskTreeTransform):
             return None
         try:
             return osutils.file_kind(self._tree.abspath(path))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
@@ -1867,7 +1854,7 @@ class TransformPreview(InventoryTreeTransform):
 
     def __init__(self, tree, pb=None, case_sensitive=True):
         tree.lock_read()
-        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
+        limbodir = tempfile.mkdtemp(prefix='bzr-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):
@@ -2045,7 +2032,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
     def iter_child_entries(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         todo = [(child_trans_id, trans_id) for child_trans_id in
                 self._all_children(trans_id)]
         for entry, trans_id in self._make_inv_entries(todo):
@@ -2116,7 +2103,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
         """See Tree.get_file_mtime"""
         file_id = self.path2id(path)
         if file_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         if not self._content_change(file_id):
             return self._transform._tree.get_file_mtime(
                 self._transform._tree.id2path(file_id))
@@ -2152,7 +2139,7 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name)
                 if not isinstance(link_or_sha1, str):
-                    link_or_sha1 = link_or_sha1.decode(osutils._fs_enc)
+                    link_or_sha1 = os.fsdecode(link_or_sha1)
         executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 

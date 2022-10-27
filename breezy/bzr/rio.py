@@ -32,8 +32,8 @@
 
 import re
 
-from . import osutils
-from .iterablefile import IterableFile
+from .. import osutils
+from ..iterablefile import IterableFile
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.
@@ -345,6 +345,8 @@ def read_patch_stanza(line_iter):
 try:
     from ._rio_pyx import (
         _read_stanza_utf8,
+        )
+    from ._rio_rs import (
         _valid_tag,
         )
 except ImportError as e:

@@ -31,7 +31,7 @@ class DirtyTrackerTests(TestCaseWithTransport):
         self.tree = self.make_branch_and_tree('tree')
         try:
             from lintian_brush.dirty_tracker import DirtyTracker
-        except ImportError:
+        except ModuleNotFoundError:
             self.skipTest('pyinotify not available')
         self.tracker = DirtyTracker(self.tree)
 

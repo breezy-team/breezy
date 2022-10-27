@@ -64,7 +64,7 @@ class TestRefreshData(TestCaseWithRepository):
         tree = self.make_branch_and_memory_tree('target')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'root-id'])
+        tree.add([''], ids=[b'root-id'])
         tree.commit('foo', rev_id=b'commit-in-target')
         repo = tree.branch.repository
         token = repo.lock_write().repository_token

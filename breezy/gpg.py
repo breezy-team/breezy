@@ -189,7 +189,7 @@ class GPGStrategy(object):
             self.context = gpg.Context()
             self.context.armor = True
             self.context.signers = self._get_signing_keys()
-        except ImportError:
+        except ModuleNotFoundError:
             pass  # can't use verify()
 
     def _get_signing_keys(self):
@@ -228,13 +228,13 @@ class GPGStrategy(object):
         try:
             import gpg  # noqa: F401
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
     def sign(self, content, mode):
         try:
             import gpg
-        except ImportError as error:
+        except ModuleNotFoundError as error:
             raise GpgNotInstalled(
                 'Set create_signatures=no to disable creating signatures.')
 
@@ -266,7 +266,7 @@ class GPGStrategy(object):
         """
         try:
             import gpg
-        except ImportError as error:
+        except ModuleNotFoundError as error:
             raise GpgNotInstalled(
                 'Set check_signatures=ignore to disable verifying signatures.')
 

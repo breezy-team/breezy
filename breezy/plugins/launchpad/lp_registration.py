@@ -17,10 +17,7 @@
 from io import BytesIO
 import os
 import socket
-try:
-    from urllib.parse import urlsplit, urlunsplit
-except ImportError:
-    from urlparse import urlsplit, urlunsplit  # noqa: F401
+from urllib.parse import urlsplit, urlunsplit
 import urllib
 from xmlrpc.client import (
     __version__ as xmlrpc_version,

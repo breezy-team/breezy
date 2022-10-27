@@ -90,7 +90,7 @@ def dir_reader_scenarios():
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
                       _native_to_unicode=_already_unicode)))
-        except ImportError:
+        except ModuleNotFoundError:
             pass
     return scenarios
 
@@ -950,10 +950,6 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         self.assertEqual({'a-b', 'a', 'a0b'},
                          osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
-    def test_mkdtemp(self):
-        tmpdir = osutils._win32_mkdtemp(dir='.')
-        self.assertFalse('\\' in tmpdir)
-
     def test_rename(self):
         with open('a', 'wb') as a:
             a.write(b'foo\n')
@@ -1163,14 +1159,13 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
-        osutils._fs_enc = 'UTF-8'
 
         # this should raise on error
         def attempt():
-            for dirdetail, dirblock in osutils.walkdirs(b'.'):
+            for dirdetail, dirblock in osutils.walkdirs(b'.', codecs.utf_8_decode):
                 pass
 
-        self.assertRaises(errors.BadFilenameEncoding, attempt)
+        self.assertRaises(UnicodeDecodeError, attempt)
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1232,34 +1227,30 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        self.overrideAttr(osutils, '_fs_enc')
         self.overrideAttr(osutils, '_selected_dir_reader')
 
-    def assertDirReaderIs(self, expected, top):
+    def assertDirReaderIs(self, expected, top, fs_enc=None):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
         # Force it to redetect
         osutils._selected_dir_reader = None
         # Nothing to list, but should still trigger the selection logic
-        self.assertEqual([((b'', top), [])], list(osutils._walkdirs_utf8('.')))
+        self.assertEqual([((b'', top), [])], list(osutils._walkdirs_utf8('.', fs_enc=fs_enc)))
         self.assertIsInstance(osutils._selected_dir_reader, expected)
 
     def test_force_walkdirs_utf8_fs_utf8(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
-        osutils._fs_enc = 'utf-8'
-        self.assertDirReaderIs(UTF8DirReaderFeature.module.UTF8DirReader, b".")
+        self.assertDirReaderIs(UTF8DirReaderFeature.module.UTF8DirReader, b".", fs_enc='utf-8')
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
-        osutils._fs_enc = 'ascii'
         self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader, b".")
+            UTF8DirReaderFeature.module.UTF8DirReader, b".", fs_enc='ascii')
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
-        osutils._fs_enc = 'iso-8859-1'
-        self.assertDirReaderIs(osutils.UnicodeDirReader, ".")
+        self.assertDirReaderIs(osutils.UnicodeDirReader, ".", fs_enc='iso-8859-1')
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
@@ -1899,8 +1890,8 @@ class TestReadLink(tests.TestCaseInTempDir):
         self.assertEqual(self.target, os.readlink(self.link))
 
     def test_os_readlink_link_decoding(self):
-        self.assertEqual(self.target.encode(osutils._fs_enc),
-                         os.readlink(self.link.encode(osutils._fs_enc)))
+        self.assertEqual(os.fsencode(self.target),
+                         os.readlink(os.fsencode(self.link)))
 
 
 class TestConcurrency(tests.TestCase):
@@ -2110,11 +2101,8 @@ class TestGetHomeDir(tests.TestCase):
     def test_posix_home_unicode(self):
         self.requireFeature(features.ByteStringNamedFilesystem)
         self.overrideEnv('HOME', '/home/\xa7test')
-        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
-        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
-        osutils._fs_enc = "iso8859-5"
-        # In python 3, os.environ returns unicode
-        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        fsdecode = lambda x: x.decode('iso8859-1', 'surrogateescape')
+        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir(fsdecode))
 
 
 class TestGetuserUnicode(tests.TestCase):

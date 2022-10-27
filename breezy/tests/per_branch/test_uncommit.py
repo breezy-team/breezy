@@ -71,7 +71,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_memory_tree('local')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         tree.lock_write()

@@ -30,7 +30,7 @@ class Path2IdTests(TestCaseWithTree):
             self.skipTest("working tree does not support setting file ids")
         self.build_tree(['wta/bla', 'wta/dir/', 'wta/dir/file'])
         work_a.add(['bla', 'dir', 'dir/file'],
-                   [b'bla-id', b'dir-id', b'file-id'])
+                   ids=[b'bla-id', b'dir-id', b'file-id'])
         work_a.commit('add files')
         self.tree_a = self.workingtree_to_test_tree(work_a)
 

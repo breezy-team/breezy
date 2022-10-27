@@ -36,8 +36,8 @@ class TestStores(object):
     """Mixin template class that provides some common tests for stores"""
 
     def check_content(self, store, fileid, value):
-        f = store.get(fileid)
-        self.assertEqual(f.read(), value)
+        with store.get(fileid) as f:
+            self.assertEqual(f.read(), value)
 
     def fill_store(self, store):
         store.add(BytesIO(b'hello'), b'a')

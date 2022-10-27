@@ -18,6 +18,7 @@ import bz2
 from io import BytesIO
 import os
 import sys
+import tempfile
 
 from ... import (
     diff,
@@ -27,6 +28,7 @@ from ... import (
     revision as _mod_revision,
     tests,
     treebuilder,
+    transport as _mod_transport,
     )
 from .. import (
     bzrdir,
@@ -159,7 +161,7 @@ class MockTree(InventoryTree):
         try:
             result.write(self.contents[path])
         except KeyError:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         result.seek(0, 0)
         return result
 
@@ -478,7 +480,7 @@ class BundleTester(object):
         """
 
         if checkout_dir is None:
-            checkout_dir = osutils.mkdtemp(prefix='test-branch-', dir='.')
+            checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
@@ -503,7 +505,7 @@ class BundleTester(object):
                 for path in old.all_versioned_paths():
                     try:
                         old_file = old.get_file(path)
-                    except errors.NoSuchFile:
+                    except _mod_transport.NoSuchFile:
                         continue
                     self.assertEqual(
                         old_file.read(), new.get_file(path).read())
@@ -580,7 +582,7 @@ class BundleTester(object):
         self.b1 = self.tree1.branch
 
         self.build_tree_contents([('b1/one', b'one\n')])
-        self.tree1.add('one', b'one-id')
+        self.tree1.add('one', ids=b'one-id')
         self.tree1.set_root_id(b'root-id')
         self.tree1.commit('add one', rev_id=b'a@cset-0-1')
 
@@ -598,7 +600,7 @@ class BundleTester(object):
         tt.apply()
         # have to fix length of file-id so that we can predictably rewrite
         # a (length-prefixed) record containing it later.
-        self.tree1.add('with space.txt', b'withspace-id')
+        self.tree1.add('with space.txt', ids=b'withspace-id')
         self.tree1.add([
             'dir', 'dir/filein subdir.c', 'dir/WithCaps.txt', 'dir/ pre space', 'dir/nolastnewline.txt', 'sub', 'sub/sub', 'sub/sub/nonempty.txt', 'sub/sub/emptyfile.txt'
             ])
@@ -842,7 +844,7 @@ class BundleTester(object):
                  u'William Dod\xe9\n').encode('utf-8'))
         f.close()
 
-        self.tree1.add([u'with Dod\N{Euro Sign}'], [b'withdod-id'])
+        self.tree1.add([u'with Dod\N{Euro Sign}'], ids=[b'withdod-id'])
         self.tree1.commit(u'i18n commit from William Dod\xe9',
                           rev_id=b'i18n-1', committer=u'William Dod\xe9')
 
@@ -959,7 +961,7 @@ class BundleTester(object):
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         tree.commit('One', revprops={u'one': 'two',
                                      u'empty': ''}, rev_id=b'rev1')
         self.b1 = tree.branch
@@ -977,7 +979,7 @@ class BundleTester(object):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
                     revprops={u'a': '4', u'b': '3', u'c': '2', u'd': '1'})
         self.b1 = tree.branch
@@ -995,7 +997,7 @@ class BundleTester(object):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         # Revisions themselves do not require anything about revision property
         # keys, other than that they are a basestring, and do not contain
         # whitespace.
@@ -1126,12 +1128,12 @@ class BundleTester(object):
         self.b1 = self.tree1.branch
         # rev1 is not present in bundle, done by fetch
         self.build_tree_contents([('tree/file2', b'contents1')])
-        self.tree1.add('file2', b'file2-id')
+        self.tree1.add('file2', ids=b'file2-id')
         self.tree1.commit('rev1', rev_id=b'reva')
         self.build_tree_contents([('tree/file3', b'contents2')])
         # rev2 is present in bundle, and done by fetch
         # having file1 in the bunle causes file1's versionedfile to be opened.
-        self.tree1.add('file3', b'file3-id')
+        self.tree1.add('file3', ids=b'file3-id')
         rev2 = self.tree1.commit('rev2')
         # Updating file2 should not cause an attempt to add to file1's vf
         target = self.tree1.controldir.sprout('target').open_workingtree()
@@ -1157,7 +1159,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         tree.commit('One', revprops={u'one': 'two',
                                      u'empty': ''}, rev_id=b'rev1')
         self.b1 = tree.branch
@@ -1190,7 +1192,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         tree.commit('One', revprops={u'one': 'two',
                                      u'empty': ''}, rev_id=b'rev1')
         self.b1 = tree.branch
@@ -1219,7 +1221,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
                     revprops={u'a': '4', u'b': '3', u'c': '2', u'd': '1'})
         self.b1 = tree.branch
@@ -1245,7 +1247,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        tree.add([''], [b'TREE_ROOT'])
+        tree.add([''], ids=[b'TREE_ROOT'])
         # Revisions themselves do not require anything about revision property
         # keys, other than that they are a basestring, and do not contain
         # whitespace.
@@ -1366,7 +1368,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
     def test_creation(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', b'contents1\nstatic\n')])
-        tree.add('file', b'fileid-2')
+        tree.add('file', ids=b'fileid-2')
         tree.commit('added file', rev_id=b'rev1')
         self.build_tree_contents([('tree/file', b'contents2\nstatic\n')])
         tree.commit('changed file', rev_id=b'rev2')

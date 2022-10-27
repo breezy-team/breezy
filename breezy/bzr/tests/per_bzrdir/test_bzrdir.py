@@ -37,6 +37,7 @@ from breezy.tests import (
     TestSkipped,
     )
 from breezy.bzr.tests.per_bzrdir import TestCaseWithBzrDir
+from breezy.transport import FileExists
 from breezy.transport.local import (
     LocalTransport,
     )
@@ -121,7 +122,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                     continue
                 try:
                     stat = source.stat(path)
-                except errors.NoSuchFile:
+                except transport.NoSuchFile:
                     self.fail('%s not in source' % path)
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
@@ -551,7 +552,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk', ],
                         transport=transport)
         self.assertTrue(transport.has('.bzr'))
-        self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
+        self.assertRaises((FileExists, errors.DirectoryNotEmpty),
                           bd.retire_bzrdir, limit=0)
 
     def test_get_branch_transport(self):

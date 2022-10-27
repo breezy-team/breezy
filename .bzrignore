@@ -59,12 +59,12 @@ breezy/_chunks_to_lines_pyx.c
 breezy/bzr/_dirstate_helpers_pyx.c
 breezy/bzr/_groupcompress_pyx.c
 breezy/bzr/_knit_load_data_pyx.c
+breezy/bzr/_rio_pyx.c
 breezy/_known_graph_pyx.c
 breezy/_readdir_pyx.c
-breezy/_rio_pyx.c
-breezy/_simple_set_pyx.c
-breezy/_simple_set_pyx.h
-breezy/_simple_set_pyx_api.h
+breezy/bzr/_simple_set_pyx.c
+breezy/bzr/_simple_set_pyx.h
+breezy/bzr/_simple_set_pyx_api.h
 breezy/_walkdirs_win32.c
 # built extension modules
 breezy/_*.dll
@@ -77,3 +77,7 @@ selftest.log
 doc/developers/api/*.txt
 __pycache__
 .mypy_cache
+# rust bits
+./target
+./Cargo.lock
+./brz

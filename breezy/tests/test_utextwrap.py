@@ -191,6 +191,7 @@ try:
         def setUp(self):
             setup_both(self, TestIndent, test_textwrap.IndentTestCases)
 
+
 except ImportError:
 
     class TestWrap(tests.TestCase):

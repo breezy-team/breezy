@@ -29,12 +29,12 @@ import zipfile
 from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
-from .errors import (BzrError, NoSuchFile, CommandError, NotBranchError)
+from .errors import (BzrError, CommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
 from .trace import warning
 from .transform import resolve_conflicts
-from .transport import get_transport
+from .transport import get_transport, NoSuchFile
 from .workingtree import WorkingTree
 
 
@@ -282,7 +282,7 @@ def import_archive_to_transform(tree, archive_file, tt):
             tt.create_symlink(member.linkname, trans_id)
         else:
             continue
-        if tt.tree_file_id(trans_id) is None:
+        if not tt.final_is_versioned(trans_id):
             name = basename(member.name.rstrip('/'))
             file_id = generate_ids.gen_file_id(name)
             tt.version_file(trans_id, file_id=file_id)

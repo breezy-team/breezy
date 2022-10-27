@@ -61,12 +61,7 @@ like
 <https://code.launchpad.net/~bzr/ubuntu/hardy/bzr/bzr-ppa>.
 or
 <lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
-with the ``bzr-builddeb`` plugin.
-
-The page <http://wiki.bazaar.canonical.com/PpaPackagingBranches> is a
-reference to where the PPA packaging branches for each of the source
-packages in the ``~bzr`` PPAs may be found.
-
+with the ``brz-debian`` plugin.
 
 Supported releases
 ------------------

@@ -251,7 +251,7 @@ class RemoteTransport(transport.ConnectedTransport):
         transport._file_streams[self.abspath(relpath)] = result
         return result
 
-    def put_bytes(self, relpath, raw_bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
                 'raw_bytes must be bytes string, not %s' % type(raw_bytes))
@@ -262,7 +262,7 @@ class RemoteTransport(transport.ConnectedTransport):
         self._ensure_ok(resp)
         return len(raw_bytes)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         """See Transport.put_bytes_non_atomic."""
@@ -605,7 +605,7 @@ class HintingSSHTransport(transport.Transport):
     # other end is a git or bzr repository.
 
     def __init__(self, url):
-        raise errors.UnsupportedProtocol(
+        raise transport.UnsupportedProtocol(
             url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
             'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
 

@@ -17,11 +17,6 @@
 # Author: Martin Pool <mbp@canonical.com>
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-import patiencediff
-""")
-
 
 class TextMerge(object):
     """Base class for text-mergers
@@ -134,16 +129,17 @@ class Merge2(TextMerge):
         """Return structured merge info.
         See TextMerge docstring.
         """
+        import patiencediff
         sm = patiencediff.PatienceSequenceMatcher(
             None, self.lines_a, self.lines_b)
         pos_a = 0
         pos_b = 0
         for ai, bi, l in sm.get_matching_blocks():
             # non-matching lines
-            yield(self.lines_a[pos_a:ai], self.lines_b[pos_b:bi])
+            yield (self.lines_a[pos_a:ai], self.lines_b[pos_b:bi])
             # matching lines
-            yield(self.lines_a[ai:ai + l],)
+            yield (self.lines_a[ai:ai + l],)
             pos_a = ai + l
             pos_b = bi + l
         # final non-matching lines
-        yield(self.lines_a[pos_a:-1], self.lines_b[pos_b:-1])
+        yield (self.lines_a[pos_a:-1], self.lines_b[pos_b:-1])

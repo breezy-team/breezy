@@ -193,11 +193,10 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(list(inv.iter_entries()), [])
 
     def test_revision_tree_none(self):
-        # GitRepository.revision_tree(None) returns the null tree.
+        # GitRepository.revision_tree('null':') returns the null tree.
         repo = self.git_repo
         tree = repo.revision_tree(revision.NULL_REVISION)
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
-        self.assertIs(None, tree.path2id(''))
 
     def test_get_parent_map_null(self):
         self.assertEqual({revision.NULL_REVISION: ()},
@@ -267,8 +266,25 @@ class RevpropsRepository(tests.TestCaseWithTransport):
         rev = wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo('.')
         self.assertEqual(
-            b'base\n'
+            b'base\n\n'
             b'Fixes: https://github.com/jelmer/dulwich/issues/123\n',
+            r[r.head()].message)
+
+    def test_authors(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={
+                'authors': (
+                    'Jelmer Vernooij <jelmer@example.com>\n'
+                    'Martin Packman <bz2@example.com>\n'),
+                })
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(
+            r[r.head()].author, b'Jelmer Vernooij <jelmer@example.com>')
+        self.assertEqual(
+            b'base\n\nCo-authored-by: Martin Packman <bz2@example.com>\n',
             r[r.head()].message)
 
 

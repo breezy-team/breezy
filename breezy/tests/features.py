@@ -241,7 +241,7 @@ class _HTTPSServerFeature(Feature):
         try:
             import ssl  # noqa: F401
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
     def feature_name(self):
@@ -267,7 +267,7 @@ class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 
     def _probe(self):
-        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
+        if sys.getfilesystemencoding().upper() in ('UTF-8', 'UTF8'):
             return True
         return False
 
@@ -338,12 +338,12 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         from breezy import tests
 
         if tests.TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
             tests.TestCaseWithMemoryTransport.TEST_ROOT = root
         else:
             root = tests.TestCaseWithMemoryTransport.TEST_ROOT
-        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-                               dir=root)
+        tdir = tempfile.mkdtemp(prefix='case-sensitive-probe-', suffix='',
+                                dir=root)
         name_a = osutils.pathjoin(tdir, 'a')
         name_A = osutils.pathjoin(tdir, 'A')
         os.mkdir(name_a)

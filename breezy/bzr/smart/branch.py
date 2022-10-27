@@ -21,6 +21,7 @@ import fastbencode as bencode
 from ... import (
     errors,
     revision as _mod_revision,
+    transport as _mod_transport,
     )
 from ...controldir import ControlDir
 from .request import (
@@ -89,7 +90,7 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         """
         try:
             content = branch.control_transport.get_bytes('branch.conf')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             content = b''
         return SuccessfulSmartServerResponse((b'ok', ), content)
 

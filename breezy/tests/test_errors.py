@@ -53,13 +53,6 @@ class TestErrors(tests.TestCase):
                 self.assertFalse(True, ('"message" not allowed in '
                                         '"errors.%s._fmt"' % c.__name__))
 
-    def test_bad_filename_encoding(self):
-        error = errors.BadFilenameEncoding(b'bad/filen\xe5me', 'UTF-8')
-        self.assertContainsRe(
-            str(error),
-            "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
-            " filesystem encoding UTF-8$")
-
     def test_duplicate_help_prefix(self):
         error = errors.DuplicateHelpPrefix('foo')
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
@@ -172,13 +165,6 @@ class TestErrors(tests.TestCase):
         self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
                              str(error))
         self.assertFalse(error.internal_error)
-
-    def test_too_many_concurrent_requests(self):
-        error = errors.TooManyConcurrentRequests("a medium")
-        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
-                             "request limit. Be sure to finish_writing and finish_reading on "
-                             "the currently open request.",
-                             str(error))
 
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
@@ -300,47 +286,6 @@ class TestErrors(tests.TestCase):
             "Could not understand response from smart server: ('not yes',)",
             str(e))
 
-    def test_unknown_container_format(self):
-        """Test the formatting of UnknownContainerFormatError."""
-        e = errors.UnknownContainerFormatError('bad format string')
-        self.assertEqual(
-            "Unrecognised container format: 'bad format string'",
-            str(e))
-
-    def test_unexpected_end_of_container(self):
-        """Test the formatting of UnexpectedEndOfContainerError."""
-        e = errors.UnexpectedEndOfContainerError()
-        self.assertEqual(
-            "Unexpected end of container stream", str(e))
-
-    def test_unknown_record_type(self):
-        """Test the formatting of UnknownRecordTypeError."""
-        e = errors.UnknownRecordTypeError("X")
-        self.assertEqual(
-            "Unknown record type: 'X'",
-            str(e))
-
-    def test_invalid_record(self):
-        """Test the formatting of InvalidRecordError."""
-        e = errors.InvalidRecordError("xxx")
-        self.assertEqual(
-            "Invalid record: xxx",
-            str(e))
-
-    def test_container_has_excess_data(self):
-        """Test the formatting of ContainerHasExcessDataError."""
-        e = errors.ContainerHasExcessDataError("excess bytes")
-        self.assertEqual(
-            "Container has data after end marker: 'excess bytes'",
-            str(e))
-
-    def test_duplicate_record_name_error(self):
-        """Test the formatting of DuplicateRecordNameError."""
-        e = errors.DuplicateRecordNameError(b"n\xc3\xa5me")
-        self.assertEqual(
-            u"Container has multiple records with the same name: n\xe5me",
-            str(e))
-
     def test_check_error(self):
         e = errors.BzrCheckError('example check failure')
         self.assertEqual(
@@ -391,27 +336,6 @@ class TestErrors(tests.TestCase):
         self.assertEqual(
             "Error received from smart server: ('error', 'tuple')", str(err))
 
-    def test_untranslateable_error_from_smart_server(self):
-        error_tuple = ('error', 'tuple')
-        orig_err = errors.ErrorFromSmartServer(error_tuple)
-        err = errors.UnknownErrorFromSmartServer(orig_err)
-        self.assertEqual(
-            "Server sent an unexpected error: ('error', 'tuple')", str(err))
-
-    def test_smart_message_handler_error(self):
-        # Make an exc_info tuple.
-        try:
-            raise Exception("example error")
-        except Exception:
-            err = errors.SmartMessageHandlerError(sys.exc_info())
-        # GZ 2010-11-08: Should not store exc_info in exception instances.
-        try:
-            self.assertStartsWith(
-                str(err), "The message handler raised an exception:\n")
-            self.assertEndsWith(str(err), "Exception: example error\n")
-        finally:
-            del err
-
     def test_unresumable_write_group(self):
         repo = "dummy repo"
         wg_tokens = ['token']
@@ -445,14 +369,6 @@ class TestErrors(tests.TestCase):
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
                'Please use `brz unbind` to fix.')
         self.assertEqualDiff(msg, str(error))
-
-    def test_retry_with_new_packs(self):
-        fake_exc_info = ('{exc type}', '{exc value}', '{exc traceback}')
-        error = errors.RetryWithNewPacks(
-            '{context}', reload_occurred=False, exc_info=fake_exc_info)
-        self.assertEqual(
-            'Pack files have changed, reload and retry. context: '
-            '{context} {exc value}', str(error))
 
 
 class PassThroughError(errors.BzrError):

@@ -2278,7 +2278,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
     def test_load_unknown(self):
         # Provide a list with one test - this test.
         # And generate a list of the tests in  the suite.
-        self.assertRaises(errors.NoSuchFile, self.run_selftest,
+        self.assertRaises(transport.NoSuchFile, self.run_selftest,
                           load_list='missing file name', list_only=True)
 
 
@@ -2659,9 +2659,8 @@ class TestStartBzrSubProcess(tests.TestCase):
     def test_run_brz_subprocess_no_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [])
         command = self._popen_args[0]
-        self.assertEqual(sys.executable, command[0])
-        self.assertEqual(self.get_brz_path(), command[1])
-        self.assertEqual(['--no-plugins'], command[2:])
+        self.assertEqual(self.get_brz_path(), command[0])
+        self.assertEqual(['--no-plugins'], command[1:])
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
@@ -3156,7 +3155,7 @@ class TestLoadTestIdList(tests.TestCaseInTempDir):
         fl.close()
 
     def test_load_unknown(self):
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(transport.NoSuchFile,
                           tests.load_test_id_list, 'i_do_not_exist')
 
     def test_load_test_list(self):

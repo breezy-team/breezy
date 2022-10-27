@@ -81,7 +81,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         so that the failing ones are clearly separated from the passing ones.
         """
         if fs_enc is None:
-            fs_enc = osutils._fs_enc
+            fs_enc = sys.getfilesystemencoding()
         if sys.platform == 'darwin':
             encoded = path.encode(fs_enc)
             import unicodedata
@@ -94,7 +94,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
                     % (path, fs_enc))
 
     def _check_can_encode_paths(self):
-        fs_enc = osutils._fs_enc
+        fs_enc = sys.getfilesystemencoding()
         terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
         dir_name = self.info['directory']

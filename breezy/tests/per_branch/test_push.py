@@ -82,7 +82,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         checkout = self.make_branch_and_tree('checkout')
         try:
             checkout.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         rev1 = checkout.commit('master')
@@ -100,7 +100,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         checkout = self.make_branch_and_tree('checkout')
         try:
             checkout.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         other = master_tree.branch.controldir.sprout(
@@ -117,7 +117,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         bound = self.make_branch('bound')
         try:
             bound.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             raise tests.TestNotApplicable(
                 'Format does not support bound branches')
         other = bound.controldir.sprout('other').open_branch()
@@ -344,14 +344,18 @@ class TestPushHook(per_branch.TestCaseWithBranch):
         local = self.make_branch('local')
         try:
             local.bind(target)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # We can't bind this format to itself- typically it is the local
             # branch that doesn't support binding.  As of May 2007
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
             local = controldir.ControlDir.create_branch_convenience('local2')
-            local.bind(target)
+            try:
+                local.bind(target)
+            except branch.BindingUnsupported:
+                raise tests.TestNotApplicable(
+                    'default format does not support binding')
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(
             'post_push', self.capture_post_push_hook, None)

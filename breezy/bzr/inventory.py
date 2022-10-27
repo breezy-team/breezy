@@ -48,7 +48,7 @@ from .. import (
     osutils,
     trace,
     )
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 
 class InvalidEntryName(errors.InternalBzrError):
