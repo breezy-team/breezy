@@ -18,6 +18,7 @@ import bz2
 from io import BytesIO
 import os
 import sys
+import tempfile
 
 from ... import (
     diff,
@@ -479,7 +480,7 @@ class BundleTester(object):
         """
 
         if checkout_dir is None:
-            checkout_dir = osutils.mkdtemp(prefix='test-branch-', dir='.')
+            checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)

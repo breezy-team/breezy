@@ -31,7 +31,7 @@ In breezy.conf the following options may be set:
 editor=name-of-program
 email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
-create_signatures=always|never|when-required(default)
+create_signatures=always|never|when-possible|when-required(default)
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
@@ -125,6 +125,7 @@ CHECK_NEVER = 2
 SIGN_WHEN_REQUIRED = 0
 SIGN_ALWAYS = 1
 SIGN_NEVER = 2
+SIGN_WHEN_POSSIBLE = 3
 
 
 POLICY_NONE = 0
@@ -255,6 +256,8 @@ def signing_policy_from_unicode(signature_string):
         return SIGN_NEVER
     if signature_string.lower() == 'always':
         return SIGN_ALWAYS
+    if signature_string.lower() == 'when-possible':
+        return SIGN_WHEN_POSSIBLE
     raise ValueError("Invalid signing policy '%s'"
                      % signature_string)
 
@@ -1552,8 +1555,8 @@ class AuthenticationConfig(object):
         conf = self._get_config()
         section = conf.get(section_name)
         if section is None:
-            conf[section] = {}
-            section = conf[section]
+            conf[section_name] = {}
+            section = conf[section_name]
         section[option_name] = value
         self._save()
 
@@ -2513,7 +2516,7 @@ option_registry.register(
            help='''\
 GPG Signing policy.
 
-Possible values: always, never, when-required (default)
+Possible values: always, never, when-required (default), when-possible
 
 This option controls whether bzr will always create
 gpg signatures or not on commits.

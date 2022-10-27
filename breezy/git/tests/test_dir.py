@@ -55,6 +55,15 @@ class TestGitDir(tests.TestCaseInTempDir):
             controldir.BranchReferenceLoop,
             gd.get_branch_reference, name='loop')
 
+    def test_open_reference_loop(self):
+        r = GitRepo.init(".")
+        r.refs.set_symbolic_ref(b'refs/heads/loop', b'refs/heads/loop')
+
+        gd = controldir.ControlDir.open('.')
+        self.assertRaises(
+            controldir.BranchReferenceLoop,
+            gd.open_branch, name='loop')
+
     def test_open_existing(self):
         GitRepo.init(".")
 

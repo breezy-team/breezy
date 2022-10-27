@@ -20,6 +20,7 @@ from operator import itemgetter
 from ... import errors, osutils, transport
 from ...trace import show_error, note
 
+from breezy import controldir
 from .helpers import (
     best_format_for_objects_in_a_repository,
     single_plural,

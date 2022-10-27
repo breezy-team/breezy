@@ -176,6 +176,7 @@ isolated_environ = {
     'all_proxy': None,
     'ALL_PROXY': None,
     'BZR_REMOTE_PATH': None,
+    'BRZ_SSH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
@@ -2693,8 +2694,8 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-            root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
-                                                    suffix='.tmp'))
+            root = osutils.realpath(tempfile.mkdtemp(prefix='testbzr-',
+                                                     suffix='.tmp'))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
