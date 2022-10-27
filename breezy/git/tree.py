@@ -381,10 +381,10 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 decode_git_path(relpath))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
-                posixpath.join('modules', decode_git_path(info[1])))
+                posixpath.join('modules', decode_git_path(section)))
             if not nested_repo_transport.has('.'):
                 nested_repo_transport = self._repository.controldir.user_transport.clone(
-                    posixpath.join(decode_git_path(info[1]), '.git'))
+                    posixpath.join(decode_git_path(section), '.git'))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
