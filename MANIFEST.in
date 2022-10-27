@@ -1,6 +1,6 @@
 include README.rst setup.py COPYING.txt
 # FIXME: Not needed, remove after 2.7.0 -- vila 2016-02-07
-include BRANCH.TODO INSTALL Makefile MANIFEST.in NEWS profile_imports.py README_BDIST_RPM .rsyncexclude .testr.conf TODO tools/brz_epydoc tools/packaging/lp-upload-release tools/subunit-sum breezy/plugins/news_merge/README breezy/plugins/po_merge/README breezy/tests/ssl_certs/ca.key breezy/tests/ssl_certs/server.csr breezy/tests/ssl_certs/server.extensions.cnf SECURITY.md CODE_OF_CONDUCT.md
+include BRANCH.TODO INSTALL Makefile MANIFEST.in NEWS profile_imports.py .rsyncexclude .testr.conf TODO tools/brz_epydoc tools/packaging/lp-upload-release tools/subunit-sum breezy/plugins/news_merge/README breezy/plugins/po_merge/README breezy/tests/ssl_certs/ca.key breezy/tests/ssl_certs/server.csr breezy/tests/ssl_certs/server.extensions.cnf SECURITY.md CODE_OF_CONDUCT.md
 # bzr export still create some empty dirs that need to be removed
 # breezy/plugins/weave_fmt/tests/ breezy/store/revision/ doc/ja/_templates/ man1/ man1
 recursive-include tools/win32 *
