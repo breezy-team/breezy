@@ -315,7 +315,10 @@ class GitLabMergeProposal(MergeProposal):
 
     def merge(self, commit_message=None):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
-        self._mr.merge(merge_commit_message=commit_message)
+        ret = self.gl._merge_mr(
+            self._mr['project_id'], self._mr['iid'],
+            kwargs={"merge_commit_message": commit_message})
+        self._mr.update(ret)
 
     def can_be_merged(self):
         if self._mr['merge_status'] == 'cannot_be_merged':
@@ -332,7 +335,7 @@ class GitLabMergeProposal(MergeProposal):
             raise ValueError(self._mr['merge_status'])
 
     def get_merged_by(self):
-        user = self._mr.get('merged_by')
+        user = self._mr.get('merge_user')
         if user is None:
             return None
         return user['username']
@@ -556,6 +559,16 @@ class GitLab(Forge):
             return json.loads(response.data)
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get('message'))
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        _unexpected_status(path, response)
+
+    def _merge_mr(self, project_id, iid, kwargs):
+        path = 'projects/%s/merge_requests/%s/merge' % (
+            urlutils.quote(str(project_id), ''), iid)
+        response = self._api_request('PUT', path, fields=kwargs)
+        if response.status == 200:
+            return json.loads(response.data)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
