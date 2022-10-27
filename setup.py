@@ -69,15 +69,6 @@ class brz_build_scripts(build_scripts):
                     os.path.join(self.build_dir, ext.name))
 
 
-class brz_install(install):
-    """Turns out easy_install was always just a bad idea."""
-
-    def finalize_options(self):
-        install.finalize_options(self)
-        # Get us off the do_egg_install() path
-        self.single_version_externally_managed = True
-
-
 class build_man(Command):
     """Generate brz.1.
     """
@@ -102,8 +93,6 @@ build.sub_commands.append(('build_mo', lambda _: True))
 
 command_classes = {
     'build_man': build_man,
-    'build_scripts': brz_build_scripts,
-    'install': brz_install,
 }
 
 from distutils import log
@@ -137,50 +126,8 @@ else:
         have_cython = True
 
 
-class build_ext_if_possible(build_ext):
-
-    user_options = build_ext.user_options + [
-        ('allow-python-fallback', None,
-         "When an extension cannot be built, allow falling"
-         " back to the pure-python implementation.")
-        ]
-
-    def initialize_options(self):
-        super(build_ext_if_possible, self).initialize_options()
-        self.ext_map = {}
-        self.allow_python_fallback = False
-
-    def run(self):
-        try:
-            super(build_ext_if_possible, self).run()
-        except DistutilsPlatformError:
-            e = sys.exc_info()[1]
-            if not self.allow_python_fallback:
-                log.warn('\n  Cannot build extensions.\n'
-                         '  Use "build_ext --allow-python-fallback" to use'
-                         ' slower python implementations instead.\n')
-                raise
-            log.warn(str(e))
-            log.warn('\n  Extensions cannot be built.\n'
-                     '  Using the slower Python implementations instead.\n')
-
-    def build_extension(self, ext):
-        try:
-            super(build_ext_if_possible, self).build_extension(ext)
-        except CCompilerError:
-            if not self.allow_python_fallback:
-                log.warn('\n  Cannot build extension "%s".\n'
-                         '  Use "build_ext --allow-python-fallback" to use'
-                         ' slower python implementations instead.\n'
-                         % (ext.name,))
-                raise
-            log.warn('\n  Building of "%s" extension failed.\n'
-                     '  Using the slower Python implementation instead.'
-                     % (ext.name,))
-
-
 # Override the build_ext if we have Cython available
-command_classes['build_ext'] = build_ext_if_possible
+command_classes['build_ext'] = build_ext
 unavailable_files = []
 
 
@@ -219,7 +166,8 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
     ext_modules.append(
         Extension(
             module_name, source, define_macros=define_macros,
-            libraries=libraries, include_dirs=include_dirs))
+            libraries=libraries, include_dirs=include_dirs,
+            optional=os.environ.get('CIBUILDWHEEL', '0') != '1'))
 
 
 add_cython_extension('breezy.bzr._simple_set_pyx')
@@ -250,9 +198,14 @@ if unavailable_files:
     print("")
 
 
+if 'editable_wheel' not in sys.argv:
+    command_classes['build_scripts'] = brz_build_scripts
+
+
 # ad-hoc for easy_install
 DATA_FILES = []
-if 'bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv:
+if ('bdist_egg' not in sys.argv and 'bdist_wheel' not in sys.argv
+        and 'editable_wheel' not in sys.argv):
     # generate and install brz.1 only with plain install, not the
     # easy_install one
     build.sub_commands.append(('build_man', lambda _: True))
@@ -262,6 +215,19 @@ DATA_FILES = DATA_FILES + I18N_FILES
 
 import site
 site.ENABLE_USER_SITE = "--user" in sys.argv
+
+rust_extensions = [
+    RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
+]
+entry_points = {}
+
+if os.environ.get('CIBUILDWHEEL', '0') == '0':
+    rust_extensions.append(
+        RustExtension("brz", binding=Binding.Exec, strip=Strip.All))
+else:
+    # Fall back to python main on cibuildwheels, since it doesn't provide
+    # -lpython3.7 to link binaries against
+    entry_points.setdefault('console_scripts', []).append('brz=breezy.__main__:main')
 
 # std setup
 setup(
@@ -273,8 +239,6 @@ setup(
     data_files=DATA_FILES,
     cmdclass=command_classes,
     ext_modules=ext_modules,
-    rust_extensions=[
-        RustExtension("brz", binding=Binding.Exec, strip=Strip.All),
-        RustExtension("breezy.bzr._rio_rs", "lib-rio/Cargo.toml", binding=Binding.PyO3),
-    ],
+    entry_points=entry_points,
+    rust_extensions=rust_extensions,
 )
