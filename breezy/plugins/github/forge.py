@@ -151,6 +151,12 @@ class GitHubMergeProposal(MergeProposal):
     def get_commit_message(self):
         return None
 
+    def get_title(self):
+        return self._pr.get('title')
+
+    def set_title(self, title):
+        self._patch(title=title)
+
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
 
@@ -242,6 +248,22 @@ def parse_github_branch_url(branch):
     return owner, repo_name, branch.name
 
 
+def parse_github_pr_url(url):
+    (scheme, user, password, host, port, path) = urlutils.parse_url(
+        url)
+    if host != GITHUB_HOST:
+        raise NotGitHubUrl(url)
+    try:
+        (owner, repo_name, pull, pr_id) = path.strip('/').split('/')
+    except IndexError as e:
+        raise ValueError('Not a PR URL') from e
+
+    if pull != 'pull':
+        raise ValueError('Not a PR URL')
+
+    return (owner, repo_name, pr_id)
+
+
 def github_url_to_bzr_url(url, branch_name):
     return git_url_to_bzr_url(url, branch_name)
 
@@ -318,6 +340,7 @@ class GitHub(Forge):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    supports_merge_proposal_title = True
     supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
 
@@ -624,7 +647,17 @@ class GitHub(Forge):
             yield GitHubMergeProposal(self, _LazyDict(issue['pull_request'], retrieve_full))
 
     def get_proposal_by_url(self, url):
-        raise UnsupportedForge(url)
+        try:
+            (owner, repo, pr_id) = parse_github_pr_url(url)
+        except NotGitHubUrl as e:
+            raise UnsupportedForge(url) from e
+        api_url = 'https://api.github.com/repos/%s/%s/pulls/%s' % (
+            owner, repo, pr_id)
+        response = self._api_request('GET', api_url)
+        if response.status != 200:
+            raise UnexpectedHttpStatus(api_url, response.status, headers=response.getheaders())
+        data = json.loads(response.text)
+        return GitHubMergeProposal(self, data)
 
     def iter_my_forks(self, owner=None):
         if owner:
@@ -688,7 +721,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None,
+    def create_proposal(self, description, title=None, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
@@ -698,8 +731,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):
             self.target_repo_name = self.target_repo_name[:-4]
-        # TODO(jelmer): Allow setting title explicitly?
-        title = determine_title(description)
+        if title is None:
+            title = determine_title(description)
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
         assignees = []
