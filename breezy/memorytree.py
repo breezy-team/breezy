@@ -26,6 +26,7 @@ from . import (
     errors,
     lock,
     revision as _mod_revision,
+    transport as _mod_transport,
     )
 from .bzr.inventory import Inventory
 from .bzr.inventorytree import MutableInventoryTree
@@ -283,7 +284,7 @@ class MemoryTree(MutableInventoryTree):
             for path in paths:
                 file_id = self.path2id(path)
                 if file_id is None:
-                    raise errors.NoSuchFile(path)
+                    raise _mod_transport.NoSuchFile(path)
                 file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):

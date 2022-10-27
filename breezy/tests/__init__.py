@@ -3058,7 +3058,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         try:
             mode = transport.stat(relpath).st_mode
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.fail("path %s is not a directory; no such file"
                       % (relpath))
         if not stat.S_ISDIR(mode):
@@ -3821,7 +3821,7 @@ def load_test_id_list(file_name):
         if e.errno != errno.ENOENT:
             raise
         else:
-            raise errors.NoSuchFile(file_name)
+            raise _mod_transport.NoSuchFile(file_name)
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -3988,8 +3988,6 @@ def _test_suite_testmod_names():
         'breezy.tests.per_workingtree',
         'breezy.tests.test__annotator',
         'breezy.tests.test__known_graph',
-        'breezy.tests.test__simple_set',
-        'breezy.tests.test__static_tuple',
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
@@ -4035,12 +4033,12 @@ def _test_suite_testmod_names():
         'breezy.tests.test_filters',
         'breezy.tests.test_filter_tree',
         'breezy.tests.test_foreign',
+        'breezy.tests.test_forge',
         'breezy.tests.test_generate_docs',
         'breezy.tests.test_globbing',
         'breezy.tests.test_gpg',
         'breezy.tests.test_graph',
         'breezy.tests.test_grep',
-        'breezy.tests.test_hashcache',
         'breezy.tests.test_help',
         'breezy.tests.test_hooks',
         'breezy.tests.test_http',
@@ -4067,7 +4065,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_memorybranch',
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
-        'breezy.tests.test_merge3',
         'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
@@ -4086,7 +4083,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_permissions',
         'breezy.tests.test_plugins',
         'breezy.tests.test_progress',
-        'breezy.tests.test_propose',
         'breezy.tests.test_pyutils',
         'breezy.tests.test_reconcile',
         'breezy.tests.test_reconfigure',
@@ -4096,8 +4092,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_revision',
         'breezy.tests.test_revisionspec',
         'breezy.tests.test_revisiontree',
-        'breezy.tests.test_rio',
-        'breezy.tests.test__rio',
         'breezy.tests.test_rules',
         'breezy.tests.test_url_policy_open',
         'breezy.tests.test_sampler',
@@ -4162,7 +4156,6 @@ def _test_suite_modules_to_doctest():
         'breezy.decorators',
         'breezy.iterablefile',
         'breezy.lockdir',
-        'breezy.merge3',
         'breezy.option',
         'breezy.pyutils',
         'breezy.symbol_versioning',

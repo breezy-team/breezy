@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """WorkingTree object and friends.
 
 A WorkingTree represents the editable working copy of a branch.
@@ -61,6 +63,7 @@ from .i18n import gettext
 from . import mutabletree
 from .symbol_versioning import deprecated_method, deprecated_in
 from .trace import mutter, note
+from .transport import NoSuchFile
 
 
 class SettingFileIdUnsupported(errors.BzrError):
@@ -73,10 +76,16 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
+class PointlessMerge(errors.BzrError):
+
+    _fmt = "Nothing to merge."
+
+
 class WorkingTree(mutabletree.MutableTree, ControlComponent):
     """Working copy tree.
 
-    :ivar basedir: The root of the tree on disk. This is a unicode path object
+    Attributes:
+      basedir: The root of the tree on disk. This is a unicode path object
         (as opposed to a URL).
     """
 
@@ -92,7 +101,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                  _controldir=None):
         """Construct a WorkingTree instance. This is not a public API.
 
-        :param branch: A branch to override probing for the branch.
+        Args:
+          branch: A branch to override probing for the branch.
         """
         self._format = _format
         self.controldir = _controldir
@@ -124,7 +134,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.
 
-        :param filename: A filename within the tree. This is a relative path
+        Args:
+          filename: A filename within the tree. This is a relative path
             from the root of this tree.
 
         This is true IF and ONLY IF the filename is part of the meta data
@@ -181,7 +192,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def get_config_stack(self):
         """Retrieve the config stack for this tree.
 
-        :return: A ``breezy.config.Stack``
+        Returns:
+          A ``breezy.config.Stack``
         """
         # For the moment, just provide the branch config stack.
         return self.branch.get_config_stack()
@@ -207,7 +219,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         TODO: give this a new exception.
         If there is one, it is returned, along with the unused portion of path.
 
-        :return: The WorkingTree that contains 'path', and the rest of path
+        Returns:
+          The WorkingTree that contains 'path', and the rest of path
         """
         if path is None:
             path = osutils.getcwd()
@@ -252,13 +265,18 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def safe_relpath_files(self, file_list, canonicalize=True, apply_view=True):
         """Convert file_list into a list of relpaths in tree.
 
-        :param self: A tree to operate on.
-        :param file_list: A list of user provided paths or None.
-        :param apply_view: if True and a view is set, apply it or check that
+        Args:
+          self: A tree to operate on.
+          file_list: A list of user provided paths or None.
+          apply_view: if True and a view is set, apply it or check that
             specified files are within it
-        :return: A list of relative paths.
-        :raises errors.PathNotChild: When a provided path is in a different self
-            than self.
+
+        Returns:
+          A list of relative paths.
+
+        Raises:
+          errors.PathNotChild: When a provided path is in a different self than
+             self
         """
         if file_list is None:
             return None
@@ -352,7 +370,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             file_obj = open(abspath, 'rb')
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise NoSuchFile(path)
             raise
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
@@ -391,7 +409,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             parents = [last_rev]
         try:
             merges_bytes = self._transport.get_bytes('pending-merges')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
@@ -463,7 +481,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                         kinds[pos] = osutils.file_kind(fullpath)
                     except OSError as e:
                         if e.errno == errno.ENOENT:
-                            raise errors.NoSuchFile(fullpath)
+                            raise NoSuchFile(fullpath)
 
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
@@ -471,10 +489,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         This is equivalent to retrieving the current list of parent ids
         and setting the list to its value plus revision_id.
 
-        :param revision_id: The revision id to add to the parent list. It may
+        Args:
+          revision_id: The revision id to add to the parent list. It may
             be a ghost revision as long as its not the first parent to be
             added, or the allow_leftmost_as_ghost parameter is set True.
-        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
+          allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         with self.lock_write():
             parents = self.get_parent_ids() + [revision_id]
@@ -490,9 +509,10 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         simpler to use that api. If you have the parent already available, using
         this api is preferred.
 
-        :param parent_tuple: The (revision id, tree) to add to the parent list.
+        Args:
+          parent_tuple: The (revision id, tree) to add to the parent list.
             If the revision_id is a ghost, pass None for the tree.
-        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
+          allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         with self.lock_tree_write():
             parent_ids = self.get_parent_ids() + [parent_tuple[0]]
@@ -596,7 +616,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         set_parent_trees rather than set_parent_ids. set_parent_ids is however
         an easier API to use.
 
-        :param revision_ids: The revision_ids to set as the parent ids of this
+        Args:
+          revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
         with self.lock_tree_write():
@@ -630,8 +651,9 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
         The default implementation assumes no stat cache is present.
 
-        :param path: The path.
-        :param stat_result: The stat result being looked up.
+        Args:
+          path: The path.
+          stat_result: The stat result being looked up.
         """
         return None
 
@@ -639,8 +661,9 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                           merge_type=None, force=False):
         """Merge from a branch into this working tree.
 
-        :param branch: The branch to merge from.
-        :param to_revision: If non-None, the merge will merge to to_revision,
+        Args:
+          branch: The branch to merge from.
+          to_revision: If non-None, the merge will merge to to_revision,
             but not beyond it. to_revision does not need to be in the history
             of the branch when it is supplied. If None, to_revision defaults to
             branch.last_revision().
@@ -666,7 +689,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             else:
                 merger.set_base_revision(from_revision, branch)
             if merger.base_rev_id == merger.other_rev_id:
-                raise errors.PointlessMerge
+                raise PointlessMerge()
             merger.backup_files = False
             if merge_type is None:
                 merger.merge_type = Merge3Merger
@@ -703,7 +726,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             return osutils.readlink(abspath)
         except OSError as e:
             if getattr(e, 'errno', None) == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise NoSuchFile(path)
             raise
 
     def subsume(self, other_tree):
@@ -734,9 +757,10 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         This does not include files that have been deleted in this
         tree. Skips the control directory.
 
-        :param include_root: if True, return an entry for the root
-        :param from_dir: start from this directory or None for the root
-        :param recursive: whether to recurse into subdirectories or not
+        Args:
+          include_root: if True, return an entry for the root
+          from_dir: start from this directory or None for the root
+          recursive: whether to recurse into subdirectories or not
         """
         raise NotImplementedError(self.list_files)
 
@@ -782,8 +806,9 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         This default implementation just copies the file, then
         adds the target.
 
-        :param from_rel: From location (relative to tree root)
-        :param to_rel: Target location (relative to tree root)
+        Args:
+          from_rel: From location (relative to tree root)
+          to_rel: Target location (relative to tree root)
         """
         import shutil
         shutil.copyfile(self.abspath(from_rel), self.abspath(to_rel))
@@ -807,8 +832,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param paths: The paths to stop versioning.
-        :raises NoSuchFile: if any path is not currently versioned.
+        Args:
+          paths: The paths to stop versioning.
+
+        Raises:
+          NoSuchFile: if any path is not currently versioned.
         """
         raise NotImplementedError(self.unversion)
 
@@ -940,21 +968,21 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
         This also locks the branch, and can be unlocked via self.unlock().
 
-        :return: A breezy.lock.LogicalLockResult.
+        Returns: A breezy.lock.LogicalLockResult.
         """
         raise NotImplementedError(self.lock_read)
 
     def lock_tree_write(self):
         """See MutableTree.lock_tree_write, and WorkingTree.unlock.
 
-        :return: A breezy.lock.LogicalLockResult.
+        return: A breezy.lock.LogicalLockResult.
         """
         raise NotImplementedError(self.lock_tree_write)
 
     def lock_write(self):
         """See MutableTree.lock_write, and WorkingTree.unlock.
 
-        :return: A breezy.lock.LogicalLockResult.
+        Returns: A breezy.lock.LogicalLockResult.
         """
         raise NotImplementedError(self.lock_write)
 
@@ -1051,7 +1079,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def _set_root_id(self, file_id):
         """Set the root id for this tree, in a format specific manner.
 
-        :param file_id: The file id to assign to the root. It must not be
+        Args:
+          file_id: The file id to assign to the root. It must not be
             present in the current inventory or an error will occur. It must
             not be None, but rather a valid file id.
         """
@@ -1095,9 +1124,10 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
 
-        :param revision: The target revision to update to. Must be in the
+        Args:
+          revision: The target revision to update to. Must be in the
             revision history.
-        :param old_tip: If branch.update() has already been run, the value it
+          old_tip: If branch.update() has already been run, the value it
             returned (old tip of the branch or None). _marker is used
             otherwise.
         """
@@ -1128,7 +1158,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         raise NotImplementedError(self.walkdirs)
 
-    @deprecated_method(deprecated_in((3, 0, 1)))
     def auto_resolve(self):
         """Automatically resolve text conflicts according to contents.
 
@@ -1137,7 +1166,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         into files that have text conflicts.  The corresponding .THIS .BASE and
         .OTHER files are deleted, as per 'resolve'.
 
-        :return: a tuple of lists: (un_resolved, resolved).
+        Returns: a tuple of lists: (un_resolved, resolved).
         """
         with self.lock_tree_write():
             un_resolved = []
@@ -1160,7 +1189,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         corruption after actions have occurred. The default implementation is a
         just a no-op.
 
-        :return: None. An exception should be raised if there is an error.
+        Returns: None. An exception should be raised if there is an error.
         """
         return
 
@@ -1190,14 +1219,17 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def get_canonical_paths(self, paths):
         """Like get_canonical_path() but works on multiple items.
 
-        :param paths: A sequence of paths relative to the root of the tree.
-        :return: A list of paths, with each item the corresponding input path
-            adjusted to account for existing elements that match case
-            insensitively.
+        Args:
+          paths: A sequence of paths relative to the root of the tree.
+
+        Returns:
+          A list of paths, with each item the corresponding input path
+          adjusted to account for existing elements that match case
+          insensitively.
         """
         with self.lock_read():
             for path in paths:
-                yield path
+                yield path.strip('/')
 
     def get_canonical_path(self, path):
         """Returns the first item in the tree that matches a path.
@@ -1216,9 +1248,12 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         If you need to resolve many names from the same tree, you should
         use get_canonical_paths() to avoid O(N) behaviour.
 
-        :param path: A paths relative to the root of the tree.
-        :return: The input path adjusted to account for existing elements
-        that match case insensitively.
+        Args:
+          path: A paths relative to the root of the tree.
+
+        Returns:
+          The input path adjusted to account for existing elements
+          that match case insensitively.
         """
         with self.lock_read():
             return next(self.get_canonical_paths([path]))
@@ -1313,15 +1348,16 @@ class WorkingTreeFormat(ControlComponentFormat):
                    accelerator_tree=None, hardlink=False):
         """Initialize a new working tree in controldir.
 
-        :param controldir: ControlDir to initialize the working tree in.
-        :param revision_id: allows creating a working tree at a different
+        Args:
+          controldir: ControlDir to initialize the working tree in.
+          revision_id: allows creating a working tree at a different
             revision than the branch is at.
-        :param from_branch: Branch to checkout
-        :param accelerator_tree: A tree which can be used for retrieving file
+          from_branch: Branch to checkout
+          accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
-        :param hardlink: If true, hard-link files from accelerator_tree,
+          hardlink: If true, hard-link files from accelerator_tree,
             where possible.
         """
         raise NotImplementedError(self.initialize)

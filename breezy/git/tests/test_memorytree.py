@@ -18,6 +18,7 @@
 """Tests for the GitMemoryTree class."""
 
 from ... import errors
+from ...transport import NoSuchFile
 from . import TestCaseWithTransport
 
 
@@ -165,11 +166,11 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.rename_one('foo', 'bar')
         self.assertEqual('bar', tree.id2path(b'foo-id'))
         self.assertEqual(b'content\n', tree._file_transport.get_bytes('bar'))
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
         tree.commit('two', rev_id=b'rev-two')
         self.assertEqual(b'content\n', tree._file_transport.get_bytes('bar'))
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
 
         rev_tree2 = tree.branch.repository.revision_tree(b'rev-two')

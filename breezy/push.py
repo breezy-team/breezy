@@ -96,7 +96,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             raise errors.CommandError(gettext(
                 "Target directory %s already contains a .bzr directory, "
                 "but it is not valid.") % (location,))
-        except errors.FileExists:
+        except transport.FileExists:
             if not use_existing_dir:
                 raise errors.CommandError(gettext("Target directory %s"
                                                   " already exists, but does not have a .bzr"
@@ -105,7 +105,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             # This shouldn't occur, but if it does the FileExists error will be
             # more informative than an UnboundLocalError for br_to.
             raise
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             if not create_prefix:
                 raise errors.CommandError(gettext("Parent directory of %s"
                                                   " does not exist."

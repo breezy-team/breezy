@@ -16,7 +16,7 @@
 
 from breezy.tests import TestCase
 
-from breezy.plugins.gitlab.hoster import (
+from breezy.plugins.gitlab.forge import (
     parse_gitlab_merge_request_url,
     NotMergeRequestUrl,
     NotGitLabUrl,

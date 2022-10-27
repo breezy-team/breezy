@@ -19,17 +19,17 @@
 import json
 import os
 
-from ...propose import (
+from ...forge import (
     determine_title,
-    Hoster,
-    HosterLoginRequired,
+    Forge,
+    ForgeLoginRequired,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
     ReopenFailed,
-    UnsupportedHoster,
+    UnsupportedForge,
     )
 
 from ... import (
@@ -60,12 +60,20 @@ API_GITHUB_URL = 'https://api.github.com'
 DEFAULT_PER_PAGE = 50
 
 
-def store_github_token(scheme, host, token):
-    with open(os.path.join(bedding.config_dir(), 'github.conf'), 'w') as f:
-        f.write(token)
+def store_github_token(token):
+    auth_config = AuthenticationConfig()
+    auth_config._set_option('Github', 'scheme', 'https')
+    auth_config._set_option('Github', 'url', API_GITHUB_URL)
+    auth_config._set_option('Github', 'private_token', token)
 
 
-def retrieve_github_token(scheme, host):
+def retrieve_github_token():
+    auth_config = AuthenticationConfig()
+    section = auth_config._get_config().get('Github')
+    if section:
+        return section.get('private_token')
+
+    # Backwards compatibility
     path = os.path.join(bedding.config_dir(), 'github.conf')
     if not os.path.exists(path):
         return None
@@ -91,7 +99,7 @@ class NotGitHubUrl(errors.BzrError):
         self.url = url
 
 
-class GitHubLoginRequired(HosterLoginRequired):
+class GitHubLoginRequired(ForgeLoginRequired):
 
     _fmt = "Action requires GitHub login."
 
@@ -147,6 +155,9 @@ class GitHubMergeProposal(MergeProposal):
     def get_target_branch_url(self):
         return self._branch_from_part(self._pr['base'])
 
+    def set_target_branch_name(self, name):
+        self._patch(base=name)
+
     def get_source_project(self):
         return self._pr['head']['repo']['full_name']
 
@@ -162,7 +173,7 @@ class GitHubMergeProposal(MergeProposal):
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
 
-    def _patch(self, data):
+    def _patch(self, **data):
         response = self._gh._api_request(
             'PATCH', self._pr['url'], body=json.dumps(data).encode('utf-8'))
         if response.status == 422:
@@ -173,10 +184,9 @@ class GitHubMergeProposal(MergeProposal):
         self._pr = json.loads(response.text)
 
     def set_description(self, description):
-        self._patch({
-            'body': description,
-            'title': determine_title(description),
-            })
+        self._patch(
+            body=description,
+            title=determine_title(description))
 
     def is_merged(self):
         return bool(self._pr.get('merged_at'))
@@ -186,12 +196,12 @@ class GitHubMergeProposal(MergeProposal):
 
     def reopen(self):
         try:
-            self._patch({'state': 'open'})
+            self._patch(state='open')
         except ValidationFailed as e:
             raise ReopenFailed(e.error['errors'][0]['message'])
 
     def close(self):
-        self._patch({'state': 'closed'})
+        self._patch(state='closed')
 
     def can_be_merged(self):
         return self._pr['mergeable']
@@ -259,7 +269,7 @@ def strip_optional(url):
     return url.split('{')[0]
 
 
-class GitHub(Hoster):
+class GitHub(Forge):
 
     name = 'github'
 
@@ -413,7 +423,7 @@ class GitHub(Hoster):
         return WEB_GITHUB_URL
 
     def __init__(self, transport):
-        self._token = retrieve_github_token('https', GITHUB_HOST)
+        self._token = retrieve_github_token()
         self.transport = transport
         self._current_user = None
 
@@ -426,6 +436,8 @@ class GitHub(Hoster):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
@@ -534,7 +546,7 @@ class GitHub(Hoster):
         try:
             parse_github_url(url)
         except NotGitHubUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         transport = get_transport(
             API_GITHUB_URL, possible_transports=possible_transports)
         return cls(transport)
@@ -565,7 +577,7 @@ class GitHub(Hoster):
             yield GitHubMergeProposal(self, json.loads(response.text))
 
     def get_proposal_by_url(self, url):
-        raise UnsupportedHoster(url)
+        raise UnsupportedForge(url)
 
     def iter_my_forks(self, owner=None):
         if owner:

@@ -25,11 +25,11 @@ but this depends on the transport.
 import re
 from tempfile import TemporaryFile
 
-from breezy import (
+from breezy.tests import TestCase
+from .. import (
     rio,
     )
-from breezy.tests import TestCase
-from breezy.rio import (
+from ..rio import (
     RioReader,
     Stanza,
     read_stanza,

@@ -20,6 +20,7 @@ from .. import (
     controldir,
     pyutils,
     registry,
+    transport as _mod_transport,
     )
 
 
@@ -47,7 +48,7 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         except errors.BadHttpRequest as e:
             if e.reason == 'no such method: .bzr':

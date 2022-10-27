@@ -21,7 +21,7 @@
 #define STATIC_TUPLE_MODULE
 
 #include <Python.h>
-#include "python-compat.h"
+#include "../python-compat.h"
 
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
@@ -888,7 +888,7 @@ static PyMappingMethods StaticTuple_as_mapping = {
 
 PyTypeObject StaticTuple_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "breezy._static_tuple_c.StaticTuple",        /* tp_name */
+    "breezy.bzr._static_tuple_c.StaticTuple",        /* tp_name */
     sizeof(StaticTuple),                         /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
     (destructor)StaticTuple_dealloc,             /* tp_dealloc */
@@ -1011,7 +1011,7 @@ PYMOD_INIT_FUNC(_static_tuple_c)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    if (import_breezy___simple_set_pyx() == -1) {
+    if (import_breezy__bzr___simple_set_pyx() == -1) {
         return PYMOD_ERROR;
     }
     setup_interned_tuples(m);

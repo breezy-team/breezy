@@ -29,11 +29,11 @@ from breezy import (
     hooks,
     registry,
     revision as _mod_revision,
-    rio,
     timestamp,
     trace,
     )
 from breezy.bzr import (
+    rio,
     testament,
     )
 from breezy.bzr.bundle import (

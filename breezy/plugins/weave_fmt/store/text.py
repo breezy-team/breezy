@@ -25,9 +25,10 @@ from io import BytesIO
 import os
 
 from .... import osutils
-from ....errors import BzrError, NoSuchFile, FileExists
+from ....errors import BzrError
 from . import TransportStore
 from ....trace import mutter
+from ....transport import NoSuchFile, FileExists
 
 
 class TextStore(TransportStore):

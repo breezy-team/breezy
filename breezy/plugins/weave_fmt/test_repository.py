@@ -29,7 +29,6 @@ from ...bzr.bzrdir import (
     )
 from ...errors import (
     IllegalPath,
-    NoSuchFile,
     )
 from ...repository import (
     InterRepository,
@@ -41,6 +40,9 @@ from ...bzr.serializer import (
 from ...tests import (
     TestCase,
     TestCaseWithTransport,
+    )
+from ...transport import (
+    NoSuchFile,
     )
 
 from . import xml4

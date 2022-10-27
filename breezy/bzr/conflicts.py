@@ -26,7 +26,6 @@ lazy_import(globals(), """
 from breezy import (
     cache_utf8,
     errors,
-    rio,
     transform,
     osutils,
     )
@@ -35,6 +34,10 @@ from breezy import (
 from ..conflicts import (
     Conflict as BaseConflict,
     ConflictList as BaseConflictList,
+    )
+from .. import transport as _mod_transport
+from . import (
+    rio,
     )
 
 
@@ -63,7 +66,7 @@ class Conflict(BaseConflict):
         return s
 
     def _cmp_list(self):
-        return [type(self), self.path, self.file_id]
+        return [self.typestring, self.path, self.file_id]
 
     def __cmp__(self, other):
         if getattr(other, "_cmp_list", None) is None:
@@ -348,7 +351,7 @@ class ContentsConflict(PathConflict):
             # suffix_to_remove
             tt.delete_contents(
                 tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # There are valid cases where 'item.suffix_to_remove' either
             # never existed or was already deleted (including the case
             # where the user deleted it)
@@ -428,7 +431,7 @@ class TextConflict(Conflict):
         #                can't be auto resolved does not seem ideal.
         try:
             kind = tree.kind(self.path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return
         if kind != 'file':
             raise NotImplementedError("Conflict is not a file")

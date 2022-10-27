@@ -28,11 +28,14 @@ import re
 
 from .. import (
     branch as _mod_branch,
+    controldir,
     debug,
     errors,
     lazy_import,
     osutils,
     revision,
+    trace,
+    transport as _mod_transport,
     )
 from ..controldir import (
     ControlDir,
@@ -49,9 +52,6 @@ from ..revisiontree import (
 lazy_import.lazy_import(globals(), """
 from breezy import (
     add,
-    controldir,
-    trace,
-    transport as _mod_transport,
     )
 from breezy.bzr import (
     inventory as _mod_inventory,
@@ -223,7 +223,7 @@ class InventoryTree(Tree):
         """
         inv, ie = self._path2inv_ie(path)
         if ie is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         return ie
 
     def _path2inv_ie(self, path):
@@ -1064,7 +1064,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         """See Tree.path_content_summary."""
         try:
             entry = self._path2ie(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return ('missing', None, None, None)
         kind = entry.kind
         if kind == 'file':
@@ -1115,7 +1115,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             for result in self._repository.iter_files_bytes(repo_desired_files):
                 yield result
         except errors.RevisionNotPresent as e:
-            raise errors.NoSuchFile(e.file_id)
+            raise _mod_transport.NoSuchFile(e.file_id)
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
@@ -1505,7 +1505,7 @@ class InterInventoryTree(InterTree):
         """
         file_id = self.source.path2id(path)
         if file_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         try:
             return self.target.id2path(file_id, recurse=recurse)
         except errors.NoSuchId:
@@ -1520,7 +1520,7 @@ class InterInventoryTree(InterTree):
         """
         file_id = self.target.path2id(path)
         if file_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         try:
             return self.source.id2path(file_id, recurse=recurse)
         except errors.NoSuchId:

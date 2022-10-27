@@ -412,12 +412,6 @@ class TestRevert(TestCaseWithTransport):
 
 class TestAutoResolve(TestCaseWithTransport):
 
-    def _auto_resolve(self, tree):
-        """Call auto_resolve on tree expecting deprecation"""
-        return self.applyDeprecated(
-            symbol_versioning.deprecated_in((3, 0, 1)),
-            tree.auto_resolve,)
-
     def test_auto_resolve(self):
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', b'Hello')])
@@ -433,24 +427,24 @@ class TestAutoResolve(TestCaseWithTransport):
         this.merge_from_branch(other.branch)
         self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        self._auto_resolve(this)
+        this.auto_resolve()
         self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '<<<<<<<')])
-        self._auto_resolve(this)
+        this.auto_resolve()
         self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '=======')])
-        self._auto_resolve(this)
+        this.auto_resolve()
         self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '\n>>>>>>>')])
-        remaining, resolved = self._auto_resolve(this)
+        remaining, resolved = this.auto_resolve()
         self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
         self.build_tree_contents([('this/hello', b'hELLO wORLD')])
-        remaining, resolved = self._auto_resolve(this)
+        remaining, resolved = this.auto_resolve()
         self.assertEqual([], this.conflicts())
         self.assertEqual([_mod_bzr_conflicts.TextConflict('hello', b'hello_id')],
                          resolved)
@@ -490,7 +484,7 @@ class TestAutoResolve(TestCaseWithTransport):
         tree.add('hello', ids=b'hello-id')
         file_conflict = _mod_bzr_conflicts.TextConflict('hello', b'hello-id')
         tree.set_conflicts([file_conflict])
-        remaining, resolved = self._auto_resolve(tree)
+        remaining, resolved = tree.auto_resolve()
         self.assertEqual(
             remaining,
             conflicts.ConflictList([_mod_bzr_conflicts.TextConflict(u'hello', 'hello-id')]))
@@ -500,7 +494,7 @@ class TestAutoResolve(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         file_conflict = _mod_bzr_conflicts.TextConflict('hello', b'hello-id')
         tree.set_conflicts([file_conflict])
-        remaining, resolved = self._auto_resolve(tree)
+        remaining, resolved = tree.auto_resolve()
         self.assertEqual(remaining, [])
         self.assertEqual(
             resolved,

@@ -22,7 +22,7 @@ from ... import (
 from .. import (
     chk_map,
     )
-from ...static_tuple import StaticTuple
+from ..static_tuple import StaticTuple
 stuple = StaticTuple
 
 

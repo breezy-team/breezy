@@ -32,17 +32,17 @@ from ...git.urls import git_url_to_bzr_url
 from ...trace import mutter
 from ...transport import get_transport
 
-from ...propose import (
+from ...forge import (
     determine_title,
-    Hoster,
+    Forge,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
     SourceNotDerivedFromTarget,
-    UnsupportedHoster,
-    HosterLoginRequired,
+    UnsupportedForge,
+    ForgeLoginRequired,
     )
 
 
@@ -107,9 +107,9 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-class GitLabLoginMissing(HosterLoginRequired):
+class GitLabLoginMissing(ForgeLoginRequired):
 
-    _fmt = ("Please log into GitLab instance at %(hoster)s")
+    _fmt = ("Please log into GitLab instance at %(forge)s")
 
 
 class GitlabLoginError(errors.BzrError):
@@ -154,21 +154,12 @@ class ProjectCreationTimeout(errors.BzrError):
         self.timeout = timeout
 
 
-def default_config_path():
-    return os.path.join(bedding.config_dir(), 'gitlab.conf')
-
-
 def store_gitlab_token(name, url, private_token):
     """Store a GitLab token in a configuration file."""
-    import configparser
-    config = configparser.ConfigParser()
-    path = default_config_path()
-    config.read([path])
-    config.add_section(name)
-    config[name]['url'] = url
-    config[name]['private_token'] = private_token
-    with open(path, 'w') as f:
-        config.write(f)
+    from breezy.config import AuthenticationConfig
+    auth_config = AuthenticationConfig()
+    auth_config._set_option(name, 'url', url)
+    auth_config._set_option(name, 'private_token', private_token)
 
 
 def iter_tokens():
@@ -176,8 +167,14 @@ def iter_tokens():
     config = configparser.ConfigParser()
     config.read(
         [os.path.expanduser(p) for p in _DEFAULT_FILES] +
-        [default_config_path()])
+        # backwards compatibility
+        [os.path.join(bedding.config_dir(), 'gitlab.conf')])
     for name, section in config.items():
+        yield name, section
+
+    from breezy.config import AuthenticationConfig
+    auth_config = AuthenticationConfig()
+    for name, section in auth_config._get_config().iteritems():
         yield name, section
 
 
@@ -291,6 +288,9 @@ class GitLabMergeProposal(MergeProposal):
         return self._branch_url_from_project(
             self._mr['target_project_id'], self._mr['target_branch'])
 
+    def set_target_branch_name(self, name):
+        self._update(branch=name)
+
     def _get_project_name(self, project_id):
         source_project = self.gl._get_project(project_id)
         return source_project['path_with_namespace']
@@ -354,8 +354,8 @@ def gitlab_url_to_bzr_url(url, name):
     return git_url_to_bzr_url(url, branch=name)
 
 
-class GitLab(Hoster):
-    """GitLab hoster implementation."""
+class GitLab(Forge):
+    """GitLab forge implementation."""
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
@@ -609,6 +609,8 @@ class GitLab(Hoster):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = base_branch.get_config_stack().get('fork-namespace')
@@ -708,14 +710,14 @@ class GitLab(Hoster):
                 raise GitLabLoginMissing(self.base_url)
             else:
                 raise GitlabLoginError(response.text)
-        raise UnsupportedHoster(self.base_url)
+        raise UnsupportedForge(self.base_url)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         try:
             (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         transport = get_transport(
             'https://%s' % host, possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
@@ -727,13 +729,16 @@ class GitLab(Hoster):
             resp = transport.request(
                 'GET', 'https://%s/api/v4/projects/%s' % (host, urlutils.quote(str(project), '')))
         except errors.UnexpectedHttpStatus as e:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
+        except errors.RedirectRequested:
+            # GitLab doesn't send redirects for these URLs
+            raise UnsupportedForge(url)
         else:
             if not resp.getheader('X-Gitlab-Feature-Category'):
-                raise UnsupportedHoster(url)
+                raise UnsupportedForge(url)
             if resp.status in (200, 401):
                 raise GitLabLoginMissing('https://%s/' % host)
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
 
     @classmethod
     def iter_instances(cls):
@@ -764,14 +769,14 @@ class GitLab(Hoster):
         try:
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         except NotMergeRequestUrl as e:
             if self.base_hostname == e.host:
                 raise
             else:
-                raise UnsupportedHoster(url)
+                raise UnsupportedForge(url)
         if self.base_hostname != host:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         project = self._get_project(project)
         mr = self._get_merge_request(project['path_with_namespace'], merge_id)
         return GitLabMergeProposal(self, mr)

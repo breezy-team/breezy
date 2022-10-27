@@ -1332,7 +1332,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         idx, reload_counter = self.make_combined_index_with_missing()
         idx._reload_func = None
         # Without a _reload_func we just raise the exception
-        self.assertRaises(errors.NoSuchFile, idx.key_count)
+        self.assertRaises(transport.NoSuchFile, idx.key_count)
 
     def test_key_count_reloads_and_fails(self):
         # We have deleted all underlying indexes, so we will try to reload, but
@@ -1340,7 +1340,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         # loop trying to reload
         idx, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertRaises(errors.NoSuchFile, idx.key_count)
+        self.assertRaises(transport.NoSuchFile, idx.key_count)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_iter_entries_reloads(self):
@@ -1368,12 +1368,12 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         index, reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
         # Without a _reload_func we just raise the exception
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries, [('3',)])
 
     def test_iter_entries_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries, [('3',)])
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_iter_all_entries_reloads(self):
@@ -1398,12 +1398,12 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_iter_all_entries_no_reload(self):
         index, reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
-        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
+        self.assertListRaises(transport.NoSuchFile, index.iter_all_entries)
 
     def test_iter_all_entries_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
+        self.assertListRaises(transport.NoSuchFile, index.iter_all_entries)
 
     def test_iter_entries_prefix_reloads(self):
         index, reload_counter = self.make_combined_index_with_missing()
@@ -1425,13 +1425,13 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_iter_entries_prefix_no_reload(self):
         index, reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries_prefix,
                               [(b'1',)])
 
     def test_iter_entries_prefix_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries_prefix,
                               [(b'1',)])
 
     def make_index_with_simple_nodes(self, name, num_nodes=1):
@@ -1489,12 +1489,12 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_validate_no_reload(self):
         idx, reload_counter = self.make_combined_index_with_missing()
         idx._reload_func = None
-        self.assertRaises(errors.NoSuchFile, idx.validate)
+        self.assertRaises(transport.NoSuchFile, idx.validate)
 
     def test_validate_reloads_and_fails(self):
         idx, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertRaises(errors.NoSuchFile, idx.validate)
+        self.assertRaises(transport.NoSuchFile, idx.validate)
 
     def test_find_ancestors_across_indexes(self):
         key1 = (b'key-1',)

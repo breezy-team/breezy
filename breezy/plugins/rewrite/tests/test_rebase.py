@@ -19,7 +19,6 @@
 from ....conflicts import ConflictList
 from ....errors import (
     UnknownFormatError,
-    NoSuchFile,
     ConflictsInTree,
     )
 from ....graph import (
@@ -29,6 +28,9 @@ from ....graph import (
 from ....revision import NULL_REVISION
 from ....tests import TestCase, TestCaseWithTransport
 from ....tests.matchers import RevisionHistoryMatches
+from ....transport import (
+    NoSuchFile,
+    )
 
 from ..rebase import (
     marshall_rebase_plan,

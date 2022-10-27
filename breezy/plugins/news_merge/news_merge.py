@@ -17,7 +17,9 @@
 """Merge logic for news_merge plugin."""
 
 from .parser import simple_parse_lines
-from ... import merge, merge3
+from ... import merge
+from merge3 import Merge3
+import patiencediff
 
 
 class NewsMerger(merge.ConfigurableFileMerger):
@@ -38,8 +40,9 @@ class NewsMerger(merge.ConfigurableFileMerger):
         this_lines = list(simple_parse_lines(params.this_lines))
         other_lines = list(simple_parse_lines(params.other_lines))
         base_lines = list(simple_parse_lines(params.base_lines))
-        m3 = merge3.Merge3(base_lines, this_lines, other_lines,
-                           allow_objects=True)
+        m3 = Merge3(
+            base_lines, this_lines, other_lines,
+            sequence_matcher=patiencediff.PatienceSequenceMatcher)
         result_chunks = []
         for group in m3.merge_groups():
             if group[0] == 'conflict':

@@ -18,10 +18,12 @@
 
 from io import BytesIO
 
+import gzip
 import os
 import time
 
-from ...controldir import ControlDir
+from ...branch import Branch
+from ...controldir import ControlDir, BranchReferenceLoop
 from ...errors import (
     ConnectionReset,
     DivergedBranches,
@@ -40,10 +42,13 @@ from ...urlutils import join as urljoin
 
 from ..mapping import default_mapping
 from ..remote import (
+    GitSmartRemoteNotSupported,
+    GitRemoteRevisionTree,
     split_git_url,
     parse_git_error,
     parse_git_hangup,
     HeadUpdateFailed,
+    ProtectedBranchHookDeclined,
     RemoteGitError,
     RemoteGitBranchFormat,
     _git_url_and_path_from_transport,
@@ -96,6 +101,11 @@ class ParseGitErrorTests(TestCase):
     def test_unknown(self):
         e = parse_git_error("url", "foo")
         self.assertIsInstance(e, RemoteGitError)
+
+    def test_connection_closed(self):
+        e = parse_git_error(
+            "url", "The remote server unexpectedly closed the connection.")
+        self.assertIsInstance(e, TransportError)
 
     def test_notbrancherror(self):
         e = parse_git_error("url", "\n Could not find Repository foo/bar")
@@ -166,6 +176,15 @@ Email support@github.com for help
                     'GitLab: You are not allowed to push code to '
                     'protected branches on this project.')))
 
+    def test_protected_branch(self):
+        self.assertEqual(
+            ProtectedBranchHookDeclined(
+                msg='protected branch hook declined'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'protected branch hook declined')))
+
     def test_host_key_verification(self):
         self.assertEqual(
             TransportError('Host key verification failed'),
@@ -194,7 +213,7 @@ class ParseHangupTests(TestCase):
 
     def test_not_set(self):
         self.assertIsInstance(
-            parse_git_hangup('http://', HangupException()), HangupException)
+            parse_git_hangup('http://', HangupException()), ConnectionReset)
 
     def test_single_line(self):
         self.assertEqual(
@@ -801,7 +820,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
             author=b'author <author@example.com>')
 
         remote = ControlDir.open(self.remote_url)
-        self.assertEqual(b'refs/heads/master', remote.get_branch_reference(''))
+        self.assertEqual(
+            remote.user_url.rstrip('/') + ',branch=master', remote.get_branch_reference(''))
         self.assertEqual(None, remote.get_branch_reference('master'))
 
     def test_get_branch_nick(self):
@@ -842,3 +862,43 @@ class GitUrlAndPathFromTransportTests(TestCase):
             'https://github.com/dulwich/dulwich,branch=master')
         self.assertEqual(split_url.scheme, 'https')
         self.assertEqual(split_url.path, '/dulwich/dulwich')
+
+
+class RemoteRevisionTreeTests(TestCaseWithTransport):
+
+    _test_needs_features = [ExecutableFeature('git')]
+
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self.remote_real = GitRepo.init('remote', mkdir=True)
+        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.permit_url(self.remote_url)
+        c1 = self.remote_real.do_commit(
+            message=b'message',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>')
+
+    def test_open(self):
+        br = Branch.open(self.remote_url)
+        t = br.basis_tree()
+        self.assertIsInstance(t, GitRemoteRevisionTree)
+        self.assertRaises(GitSmartRemoteNotSupported, t.is_versioned, 'la')
+        self.assertRaises(GitSmartRemoteNotSupported, t.has_filename, 'la')
+        self.assertRaises(GitSmartRemoteNotSupported, t.get_file_text, 'la')
+        self.assertRaises(GitSmartRemoteNotSupported, t.list_files, 'la')
+
+    def test_archive(self):
+        br = Branch.open(self.remote_url)
+        t = br.basis_tree()
+        chunks = list(t.archive('tgz', 'foo.tar.gz'))
+        with gzip.GzipFile(fileobj=BytesIO(b''.join(chunks))) as g:
+            self.assertEqual('', g.filename)
+
+    def test_archive_unsupported(self):
+        # archive is not supported over HTTP, so simulate that
+        br = Branch.open(self.remote_url)
+        t = br.basis_tree()
+        def raise_unsupp(*args, **kwargs):
+            raise GitSmartRemoteNotSupported(raise_unsupp, None)
+        self.overrideAttr(t._repository.controldir._client, 'archive', raise_unsupp)
+        self.assertRaises(GitSmartRemoteNotSupported, t.archive, 'tgz', 'foo.tar.gz')

@@ -170,7 +170,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in self._blobs.items()}
+        self._blobs = {k: v for (k, v) in self._blobs.items() if v is not None}
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha))

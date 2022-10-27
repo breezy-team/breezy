@@ -32,6 +32,55 @@ FORMAT_ONE = b"Bazaar pack format 1 (introduced in 0.18)"
 _whitespace_re = re.compile(b'[\t\n\x0b\x0c\r ]')
 
 
+class ContainerError(errors.BzrError):
+    """Base class of container errors."""
+
+
+class UnknownContainerFormatError(ContainerError):
+
+    _fmt = "Unrecognised container format: %(container_format)r"
+
+    def __init__(self, container_format):
+        self.container_format = container_format
+
+
+class UnexpectedEndOfContainerError(ContainerError):
+
+    _fmt = "Unexpected end of container stream"
+
+
+class UnknownRecordTypeError(ContainerError):
+
+    _fmt = "Unknown record type: %(record_type)r"
+
+    def __init__(self, record_type):
+        self.record_type = record_type
+
+
+class InvalidRecordError(ContainerError):
+
+    _fmt = "Invalid record: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
+
+class ContainerHasExcessDataError(ContainerError):
+
+    _fmt = "Container has data after end marker: %(excess)r"
+
+    def __init__(self, excess):
+        self.excess = excess
+
+
+class DuplicateRecordNameError(ContainerError):
+
+    _fmt = "Container has multiple records with the same name: %(name)s"
+
+    def __init__(self, name):
+        self.name = name.decode("utf-8")
+
+
 def _check_name(name):
     """Do some basic checking of 'name'.
 
@@ -42,7 +91,7 @@ def _check_name(name):
     :seealso: _check_name_encoding
     """
     if _whitespace_re.search(name) is not None:
-        raise errors.InvalidRecordError("%r is not a valid name." % (name,))
+        raise InvalidRecordError("%r is not a valid name." % (name,))
 
 
 def _check_name_encoding(name):
@@ -56,7 +105,7 @@ def _check_name_encoding(name):
     try:
         name.decode('utf-8')
     except UnicodeDecodeError as e:
-        raise errors.InvalidRecordError(str(e))
+        raise InvalidRecordError(str(e))
 
 
 class ContainerSerialiser(object):
@@ -245,7 +294,7 @@ class BaseReader(object):
     def _read_line(self):
         line = self._source.readline()
         if not line.endswith(b'\n'):
-            raise errors.UnexpectedEndOfContainerError()
+            raise UnexpectedEndOfContainerError()
         return line.rstrip(b'\n')
 
 
@@ -313,15 +362,15 @@ class ContainerReader(BaseReader):
             elif record_kind == b'':
                 # End of stream encountered, but no End Marker record seen, so
                 # this container is incomplete.
-                raise errors.UnexpectedEndOfContainerError()
+                raise UnexpectedEndOfContainerError()
             else:
                 # Unknown record type.
-                raise errors.UnknownRecordTypeError(record_kind)
+                raise UnknownRecordTypeError(record_kind)
 
     def _read_format(self):
         format = self._read_line()
         if format != FORMAT_ONE:
-            raise errors.UnknownContainerFormatError(format)
+            raise UnknownContainerFormatError(format)
 
     def validate(self):
         """Validate this container and its records.
@@ -343,11 +392,11 @@ class ContainerReader(BaseReader):
                 # risk that the same unicode string has been encoded two
                 # different ways.
                 if name_tuple in all_names:
-                    raise errors.DuplicateRecordNameError(name_tuple[0])
+                    raise DuplicateRecordNameError(name_tuple[0])
                 all_names.add(name_tuple)
         excess_bytes = self.reader_func(1)
         if excess_bytes != b'':
-            raise errors.ContainerHasExcessDataError(excess_bytes)
+            raise ContainerHasExcessDataError(excess_bytes)
 
 
 class BytesRecordReader(BaseReader):
@@ -368,7 +417,7 @@ class BytesRecordReader(BaseReader):
         try:
             length = int(length_line)
         except ValueError:
-            raise errors.InvalidRecordError(
+            raise InvalidRecordError(
                 "%r is not a valid length." % (length_line,))
 
         # Read the list of names.
@@ -393,7 +442,7 @@ class BytesRecordReader(BaseReader):
         self._remaining_length -= length_to_read
         bytes = self.reader_func(length_to_read)
         if len(bytes) != length_to_read:
-            raise errors.UnexpectedEndOfContainerError()
+            raise UnexpectedEndOfContainerError()
         return bytes
 
     def validate(self):
@@ -470,7 +519,7 @@ class ContainerPushParser(object):
         line = self._consume_line()
         if line is not None:
             if line != FORMAT_ONE:
-                raise errors.UnknownContainerFormatError(line)
+                raise UnknownContainerFormatError(line)
             self._state_handler = self._state_expecting_record_type
 
     def _state_expecting_record_type(self):
@@ -483,7 +532,7 @@ class ContainerPushParser(object):
                 self.finished = True
                 self._state_handler = self._state_expecting_nothing
             else:
-                raise errors.UnknownRecordTypeError(record_type)
+                raise UnknownRecordTypeError(record_type)
 
     def _state_expecting_length(self):
         line = self._consume_line()
@@ -491,7 +540,7 @@ class ContainerPushParser(object):
             try:
                 self._current_record_length = int(line)
             except ValueError:
-                raise errors.InvalidRecordError(
+                raise InvalidRecordError(
                     "%r is not a valid length." % (line,))
             self._state_handler = self._state_expecting_name
 

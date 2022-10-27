@@ -45,6 +45,11 @@ class TestSetup(tests.TestCaseInTempDir):
         if not os.path.isfile(os.path.join(self.source_dir, 'setup.py')):
             self.skipTest(
                 'There is no setup.py file adjacent to the breezy directory')
+        if os.environ.get('GITHUB_ACTIONS') == 'true':
+            # On GitHub CI, for some reason rustc can't be found.
+            # Marking as known failing for now.
+            self.knownFailure(
+                'rustc can not be found in the GitHub actions environment')
         try:
             import distutils.sysconfig
             makefile_path = distutils.sysconfig.get_makefile_filename()

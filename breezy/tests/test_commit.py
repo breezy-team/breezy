@@ -24,6 +24,7 @@ from .. import (
     controldir,
     errors,
     trace,
+    transport as _mod_transport,
     )
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
@@ -802,10 +803,10 @@ create_signatures=always
         # simulate network failure
 
         def raise_(self, arg, arg2, arg3=None, arg4=None):
-            raise errors.NoSuchFile('foo')
+            raise _mod_transport.NoSuchFile('foo')
         repository.add_inventory = raise_
         repository.add_inventory_by_delta = raise_
-        self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertRaises(_mod_transport.NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
 
     def test_selected_file_merge_commit(self):

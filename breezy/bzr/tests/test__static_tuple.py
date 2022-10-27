@@ -24,11 +24,13 @@ import operator
 import sys
 
 from breezy import (
-    _static_tuple_py,
     debug,
     osutils,
-    static_tuple,
     tests,
+    )
+from breezy.bzr import (
+    _static_tuple_py,
+    static_tuple,
     )
 from breezy.tests import (
     features,
@@ -39,8 +41,8 @@ def load_tests(loader, standard_tests, pattern):
     """Parameterize tests for all versions of groupcompress."""
     global compiled_static_tuple_feature
     suite, compiled_static_tuple_feature = tests.permute_tests_for_extension(
-        standard_tests, loader, 'breezy._static_tuple_py',
-        'breezy._static_tuple_c')
+        standard_tests, loader, 'breezy.bzr._static_tuple_py',
+        'breezy.bzr._static_tuple_c')
     return suite
 
 
