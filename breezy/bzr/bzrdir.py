@@ -34,7 +34,6 @@ import contextlib
 from breezy import (
     branch as _mod_branch,
     lockable_files,
-    lockdir,
     osutils,
     repository,
     revision as _mod_revision,
@@ -65,6 +64,7 @@ from .. import (
     config,
     controldir,
     errors,
+    lockdir,
     transport as _mod_transport,
     )
 from ..transport import (

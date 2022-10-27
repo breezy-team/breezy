@@ -24,6 +24,7 @@ import breezy.bzr
 import breezy.git
 
 from . import (
+    controldir,
     errors,
     transport,
     )
@@ -36,7 +37,6 @@ import breezy
 from breezy import (
     branch as _mod_branch,
     bugtracker,
-    controldir,
     directory_service,
     delta,
     config as _mod_config,

@@ -21,6 +21,7 @@ strings.
 """
 
 import sys
+from typing import Dict
 
 
 class StaticTuple(tuple):
@@ -80,4 +81,4 @@ _valid_types = (bytes, str, StaticTuple, int, float, None.__class__, bool)
 # the _empty_tuple singleton has been created yet or not.
 _empty_tuple = None
 _empty_tuple = StaticTuple()
-_interned_tuples = {}
+_interned_tuples: Dict[StaticTuple, StaticTuple] = {}

@@ -311,7 +311,7 @@ class ConflictList(object):
 class Conflict(object):
     """Base class for conflicts."""
 
-    typestring = None
+    typestring: str
 
     def __init__(self, path):
         self.path = path
