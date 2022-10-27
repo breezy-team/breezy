@@ -59,6 +59,11 @@ class ReopenFailed(errors.BzrError):
     _fmt = "Reopening the merge proposal failed: %(error)s."
 
 
+class TitleUnsupported(errors.BzrError):
+
+    _fmt = "The merge proposal %(mp)s does not support a title."
+
+
 class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
@@ -128,6 +133,14 @@ class MergeProposal(object):
     def set_description(self, description):
         """Set the description of the merge proposal."""
         raise NotImplementedError(self.set_description)
+
+    def get_title(self):
+        """Get the title."""
+        raise NotImplementedError(self.get_title)
+
+    def set_title(self, title):
+        """Get the title."""
+        raise NotImplementedError(self.set_title)
 
     def get_commit_message(self):
         """Get the proposed commit message."""
@@ -233,22 +246,24 @@ class MergeProposalBuilder(object):
         """
         raise NotImplementedError(self.get_infotext)
 
-    def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None,
+    def create_proposal(self, description, title=None, reviewers=None,
+                        labels=None, prerequisite_branch=None,
+                        commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Create a proposal to merge a branch for merging.
 
-        :param description: Description for the merge proposal
-        :param reviewers: Optional list of people to ask reviews from
-        :param labels: Labels to attach to the proposal
-        :param prerequisite_branch: Optional prerequisite branch
-        :param commit_message: Optional commit message
-        :param work_in_progress:
+        Args:
+          description: Description for the merge proposal
+          reviewers: Optional list of people to ask reviews from
+          labels: Labels to attach to the proposal
+          prerequisite_branch: Optional prerequisite branch
+          commit_message: Optional commit message
+          work_in_progress:
             Whether this merge proposal is still a work-in-progress
-        :param allow_collaboration:
+          allow_collaboration:
             Whether to allow changes to the branch from the target branch
             maintainer(s)
-        :return: A `MergeProposal` object
+        Returns: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
 
@@ -260,6 +275,8 @@ class Forge(object):
     # Does this forge support arbitrary labels being attached to merge
     # proposals?
     supports_merge_proposal_labels: bool
+
+    supports_merge_proposal_title = None
 
     @property
     def name(self):
