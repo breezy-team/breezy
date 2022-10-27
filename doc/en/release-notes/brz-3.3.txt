@@ -1,0 +1,238 @@
+####################
+Breezy Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+brz 3.3.1
+#########
+
+:3.3.1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin
+   developers, but interesting for brz developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and
+   suite.  This can include new facilities for writing tests, fixes to
+   spurious test failures and changes to the way things should be tested.
+
+brz 3.3.0
+#########
+
+:3.3.0: 2022-10-07
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+* Breezy now uses the system merge3 rather than bundling its own copy.
+  (Jelmer Vernooĳ)
+
+* Breezy now requires PyYAML. (Jelmer Vernooĳ)
+
+* Breezy now requires setuptools-rust and a rust compiler to
+  be built. (Martin Packman, Jelmer Vernooĳ)
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+* Add --recurse-nested argument to 'brz export'.
+  (Jelmer Vernooĳ)
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance
+   or memory usage, or better results.
+
+* Add an ``extra`` for installing PGP dependencies.
+  (Jelmer Vernooĳ)
+
+* Convert multiple authors to the Co-authored-by field.
+  (Jelmer Vernooĳ)
+
+* github: Lazily load github pull requests, improving
+  performance. (Jelmer Vernooĳ)
+
+* github: Return canonical URLs for branches.
+  (Jelmer Vernooĳ)
+
+* Avoid deprecated distutils.version, ahead of removal.
+  (Jelmer Vernooĳ)
+
+* Add a docker file. (Jelmer Vernooĳ)
+
+* launchpad: Store Launchpad credentials in authentication.conf.
+  (Jelmer Vernooĳ)
+
+* git: Support accessing git branch configuration.
+  (Jelmer Vernooĳ)
+
+* pgp: Add support for create_signatures=when-possible
+  (Jelmer Vernooĳ)
+
+* propose: By default, don't push tags when proposing changes.
+  (Jelmer Vernooĳ)
+
+* git: Split out and separately report ProtectedBranchHookDeclined.
+  (Jelmer Vernooĳ)
+
+* git: Avoid reading entire pack files into memory.
+  (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+* git: Fix handling of empty directories in iter_changes.
+  (Jelmer Vernooĳ)
+
+* fastimport: Open stdin in binary mode. (Alexander Grund)
+
+* Fix printing of exceptions for unsupported formats.
+  (Jelmer Vernooĳ)
+
+* Fix compatibility with modern dulwich.
+  (Jelmer Vernooĳ)
+
+* bzr: Only update working tree when pushing to active branch.
+  (Jelmer Vernooĳ)
+
+* gitlab: Fix API access; now seems to reject ';' as separator of url parameters.
+  (Jelmer Vernooĳ)
+
+* Launchpad: Fix instance iteration.
+  (Jelmer Vernooĳ)
+
+* git: Fix remote branch reference handling.
+  (Jelmer Vernooĳ)
+
+* git: Handle symref loops. (Jelmer Vernooĳ)
+
+* Fix handling of chunked HTTP requests.
+  (Jelmer Vernooĳ)
+
+* git: Fix handling of date: revision specs.
+  (Jelmer Vernooĳ)
+
+* git: Support insteadOf / pushInsteadOf.
+  (Jelmer Vernooĳ)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+* Add link to Matrix room, point to new IRC channel.
+  (Jelmer Vernooĳ)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+* Various errors have moved out of ``breezy.errors`` to
+  the modules they are related to. Including:
+  UnsupportedProtocol, FileExists and NoSuchFile from breezy.errors => breezy.transport
+  (Jelmer Vernooĳ)
+
+* Add ``MergeProposal.set_target_branch()`` method.
+  (Jelmer Vernooĳ)
+
+* Move ``static_tuple`` to ``breezy.bzr``. (Jelmer Vernooĳ)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin
+   developers, but interesting for brz developers.
+
+* File ids are mostly gone from the API. There are a few select
+  cases where they are still used.
+  (Jelmer Vernooĳ)
+
+* python2-cleanup: Remove obsolete __cmp__. (Jelmer Vernooĳ)
+
+* bzr: Support name argument in ControlDir.push_branch.
+  (Jelmer Vernooĳ)
+
+* Fix flake8 with newer versions of flake8.
+  (Jelmer Vernooĳ)
+
+* Avoid deprecated urllib.parse.{splittype,splitport,splithost}.
+  (Jelmer Vernooĳ)
+
+* Improve handling of remote git trees; improved performance,
+  support for more functions.
+  (Jelmer Vernooĳ)
+
+* git: Raise custom error for unknown encodings in Git commits.
+  (Jelmer Vernooĳ)
+
+* Use google docstrings in more places, fixing errors from pydoctor in the process.
+  (Jelmer Vernooĳ)
+
+* Lockdir now uses yaml rather than RIO.
+  (Jelmer Vernooĳ)
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and
+   suite.  This can include new facilities for writing tests, fixes to
+   spurious test failures and changes to the way things should be tested.
+
+* Disable known failing test_build_and_install on GitHub.
+  (Jelmer Vernooĳ)
+
+* bashcomp: Preserve environment when invoking brz.
+  (Jelmer Vernooĳ)
+
+..
+   vim: tw=74 ft=rst ff=unix

@@ -892,7 +892,7 @@ class RemoteRevisionTreeTests(TestCaseWithTransport):
         t = br.basis_tree()
         chunks = list(t.archive('tgz', 'foo.tar.gz'))
         with gzip.GzipFile(fileobj=BytesIO(b''.join(chunks))) as g:
-            self.assertEqual('', g.filename)
+            self.assertEqual('', g.name)
 
     def test_archive_unsupported(self):
         # archive is not supported over HTTP, so simulate that

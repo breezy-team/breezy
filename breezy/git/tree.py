@@ -19,6 +19,7 @@
 
 from collections import deque
 import errno
+from functools import partial
 from io import BytesIO
 import os
 
@@ -257,18 +258,31 @@ class GitTree(_mod_tree.Tree):
                                         require_versioned=True):
         if paths is None:
             return None
+
+        def include(t, p):
+            if t.is_versioned(p):
+                return True
+            # Include directories, since they may exist but just be
+            # empty
+            try:
+                if t.kind(p) == 'directory':
+                    return True
+            except _mod_transport.NoSuchFile:
+                return False
+            return False
+
         if require_versioned:
             trees = [self] + (trees if trees is not None else [])
             unversioned = set()
             for p in paths:
                 for t in trees:
-                    if t.is_versioned(p):
+                    if include(t, p):
                         break
                 else:
                     unversioned.add(p)
             if unversioned:
                 raise errors.PathsNotVersionedError(unversioned)
-        return filter(self.is_versioned, paths)
+        return filter(partial(include, self), paths)
 
     def _submodule_config(self):
         if self._submodules is None:

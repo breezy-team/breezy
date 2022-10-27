@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+import tempfile
 
 import breezy
 from .. import (
@@ -34,7 +35,7 @@ class MoreTests(tests.TestCaseWithTransport):
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
-        dtmp = osutils.mkdtemp()
+        dtmp = tempfile.mkdtemp()
         self.addCleanup(osutils.rmtree, dtmp)
         # On Mac OSX, /tmp actually expands to /private/tmp
         dtmp = realpath(dtmp)

@@ -1,2 +1,12 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-rust"]
+requires = [
+    "packaging",
+    "setuptools>=60",
+    "setuptools-gettext",
+    "setuptools-rust",
+    "configobj",
+    "cython>=0.29",
+    "pyyaml",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"

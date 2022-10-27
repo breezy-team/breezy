@@ -56,6 +56,5 @@ class cmd_github_login(Command):
             raise errors.CommandError(e.data['message'])
         # TODO(jelmer): This should really use something in
         # AuthenticationConfig
-        from .github import store_github_token
-        store_github_token(scheme='https', host='github.com',
-                           token=authorization.token)
+        from .forge import store_github_token
+        store_github_token(token=authorization.token)

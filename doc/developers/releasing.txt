@@ -205,9 +205,9 @@ Update the source code
    this can slow down the freeze, feel free to gently remind them about
    their duties ;) If you feel unsafe resolving the conflicts or it's too
    time consuming, contact the related devs and skip this merge.
-     
+
    Alternatively, think about automating these merges.
-    
+
 #. In the release branch, update  ``version_info`` in ``./breezy/__init__.py``.
    Make sure the corresponding milestone exists.
    Double check that ./brz ``_script_version`` matches ``version_info``. Check
