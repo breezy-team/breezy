@@ -267,6 +267,12 @@ class GitLabMergeProposal(MergeProposal):
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
 
+    def get_title(self):
+        return self._mr.get('title')
+
+    def set_title(self, title):
+        self._update(title=title)
+
     def _branch_url_from_project(self, project_id, branch_name):
         if project_id is None:
             return None
@@ -361,6 +367,7 @@ class GitLab(Forge):
     """GitLab forge implementation."""
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_title = True
     supports_merge_proposal_commit_message = False
     supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
@@ -832,9 +839,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+    def create_proposal(self, description, title=None, reviewers=None,
+                        labels=None, prerequisite_branch=None,
+                        commit_message=None, work_in_progress=False,
+                        allow_collaboration=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -843,7 +851,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
-        title = determine_title(description)
+        if title is None:
+            title = determine_title(description)
         if work_in_progress:
             title = 'WIP: %s' % title
         # TODO(jelmer): Allow setting milestone field
