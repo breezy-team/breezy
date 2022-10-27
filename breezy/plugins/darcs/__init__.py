@@ -26,7 +26,9 @@ from breezy import (
     )
 
 
-class DarcsUnsupportedError(errors.UnsupportedFormatError):
+class DarcsUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "darcs"
 
     _fmt = ('Darcs branches are not yet supported. '
             'To interoperate with darcs branches, use fastimport.')

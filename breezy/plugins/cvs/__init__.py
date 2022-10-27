@@ -28,7 +28,9 @@ from ... import (
 from ...transport import register_transport_proto
 
 
-class CVSUnsupportedError(errors.UnsupportedFormatError):
+class CVSUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "cvs"
 
     _fmt = ("CVS working trees are not supported. To convert CVS projects to "
             "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "

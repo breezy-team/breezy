@@ -27,7 +27,9 @@ from ... import (
     )
 
 
-class FossilUnsupportedError(errors.UnsupportedFormatError):
+class FossilUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "fossil"
 
     _fmt = ('Fossil branches are not yet supported. '
             'To interoperate with Fossil branches, use fastimport.')

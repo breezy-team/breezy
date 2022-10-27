@@ -30,7 +30,6 @@ import textwrap
 
 from breezy import (
     branch as _mod_branch,
-    hooks,
     revision as _mod_revision,
     ui,
     urlutils,
@@ -42,6 +41,7 @@ from breezy.i18n import gettext
 
 from . import (
     errors,
+    hooks,
     registry,
     trace,
     transport as _mod_transport,
@@ -124,6 +124,8 @@ class ControlDir(ControlComponent):
     raising an exception when it is not supported, rather than requiring the
     API users to check for magic attributes to see what features are supported.
     """
+
+    hooks: hooks.Hooks
 
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
