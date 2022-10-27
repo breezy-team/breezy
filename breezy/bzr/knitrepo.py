@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import Type
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
@@ -30,6 +32,7 @@ from breezy import (
 from breezy.bzr import (
     knit as _mod_knit,
     versionedfile,
+    serializer,
     xml5,
     xml6,
     xml7,
@@ -42,6 +45,7 @@ from .. import (
 from ..repository import (
     InterRepository,
     IsInWriteGroupError,
+    Repository,
     )
 from ..bzr.repository import (
     RepositoryFormatMetaDir,
@@ -118,8 +122,8 @@ class KnitRepository(MetaDirVersionedFileRepository):
     # them to None ensures that if the constructor is changed to not initialize
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
-    _commit_builder_class = None
-    _serializer = None
+    _commit_builder_class: Type[VersionedFileCommitBuilder]
+    _serializer: Type[serializer.Serializer]
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
                  _serializer):
@@ -231,11 +235,11 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
 
     # Set this attribute in derived classes to control the repository class
     # created by open and initialize.
-    repository_class = None
+    repository_class: Type[Repository]
     # Set this attribute in derived classes to control the
     # _commit_builder_class that the repository objects will have passed to
     # their constructor.
-    _commit_builder_class = None
+    _commit_builder_class: Type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
 
