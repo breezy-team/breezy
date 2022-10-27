@@ -20,6 +20,7 @@
 
 import base64
 import stat
+from typing import Optional
 
 import fastbencode as bencode
 

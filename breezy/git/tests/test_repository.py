@@ -240,7 +240,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
         r = dulwich.repo.Repo('.')
         self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
 
-    def test_authors(self):
+    def test_authors_single_author(self):
         wt = self.make_branch_and_tree('.', format='git')
         revid = wt.commit(
             "base", allow_pointless=True,
