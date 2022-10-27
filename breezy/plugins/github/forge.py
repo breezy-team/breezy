@@ -16,6 +16,7 @@
 
 """Support for GitHub."""
 
+from datetime import datetime
 import json
 import os
 
@@ -216,8 +217,7 @@ class GitHubMergeProposal(MergeProposal):
         merged_at = self._pr.get('merged_at')
         if merged_at is None:
             return None
-        import iso8601
-        return iso8601.parse_date(merged_at)
+        return datetime.strptime(merged_at.translate(None, ':-'), "%Y%m%dT%H%M%S.%fZ")
 
     def post_comment(self, body):
         data = {'body': body}
