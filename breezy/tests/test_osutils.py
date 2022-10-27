@@ -950,10 +950,6 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         self.assertEqual({'a-b', 'a', 'a0b'},
                          osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
-    def test_mkdtemp(self):
-        tmpdir = osutils._win32_mkdtemp(dir='.')
-        self.assertFalse('\\' in tmpdir)
-
     def test_rename(self):
         with open('a', 'wb') as a:
             a.write(b'foo\n')

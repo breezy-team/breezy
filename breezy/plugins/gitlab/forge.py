@@ -267,6 +267,12 @@ class GitLabMergeProposal(MergeProposal):
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
 
+    def get_title(self):
+        return self._mr.get('title')
+
+    def set_title(self, title):
+        self._update(title=title)
+
     def _branch_url_from_project(self, project_id, branch_name):
         if project_id is None:
             return None
@@ -315,7 +321,10 @@ class GitLabMergeProposal(MergeProposal):
 
     def merge(self, commit_message=None):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
-        self._mr.merge(merge_commit_message=commit_message)
+        ret = self.gl._merge_mr(
+            self._mr['project_id'], self._mr['iid'],
+            kwargs={"merge_commit_message": commit_message})
+        self._mr.update(ret)
 
     def can_be_merged(self):
         if self._mr['merge_status'] == 'cannot_be_merged':
@@ -332,7 +341,7 @@ class GitLabMergeProposal(MergeProposal):
             raise ValueError(self._mr['merge_status'])
 
     def get_merged_by(self):
-        user = self._mr.get('merged_by')
+        user = self._mr.get('merge_user')
         if user is None:
             return None
         return user['username']
@@ -358,6 +367,7 @@ class GitLab(Forge):
     """GitLab forge implementation."""
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_title = True
     supports_merge_proposal_commit_message = False
     supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
@@ -560,6 +570,16 @@ class GitLab(Forge):
             raise errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
+    def _merge_mr(self, project_id, iid, kwargs):
+        path = 'projects/%s/merge_requests/%s/merge' % (
+            urlutils.quote(str(project_id), ''), iid)
+        response = self._api_request('PUT', path, fields=kwargs)
+        if response.status == 200:
+            return json.loads(response.data)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        _unexpected_status(path, response)
+
     def _post_merge_request_note(self, project_id, iid, kwargs):
         path = 'projects/%s/merge_requests/%s/notes' % (
             urlutils.quote(str(project_id), ''), iid)
@@ -588,7 +608,8 @@ class GitLab(Forge):
             fields['labels'] = labels
         response = self._api_request('POST', path, fields=fields)
         if response.status == 400:
-            raise GitLabError(data.get('message'), data)
+            data = json.loads(response.data)
+            raise GitLabError(data.get('message'), response)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
@@ -818,9 +839,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+    def create_proposal(self, description, title=None, reviewers=None,
+                        labels=None, prerequisite_branch=None,
+                        commit_message=None, work_in_progress=False,
+                        allow_collaboration=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -829,7 +851,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
-        title = determine_title(description)
+        if title is None:
+            title = determine_title(description)
         if work_in_progress:
             title = 'WIP: %s' % title
         # TODO(jelmer): Allow setting milestone field

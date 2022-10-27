@@ -68,18 +68,15 @@ class Conflict(BaseConflict):
     def _cmp_list(self):
         return [self.typestring, self.path, self.file_id]
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if getattr(other, "_cmp_list", None) is None:
-            return -1
+            return False
         x = self._cmp_list()
         y = other._cmp_list()
-        return (x > y) - (x < y)
+        return x == y
 
     def __hash__(self):
         return hash((type(self), self.path, self.file_id))
-
-    def __eq__(self, other):
-        return self.__cmp__(other) == 0
 
     def __ne__(self, other):
         return not self.__eq__(other)

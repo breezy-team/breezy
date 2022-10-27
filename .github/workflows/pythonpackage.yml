@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.7, 3.8, 3.9, "3.10"]
         experimental: [false]
 # See https://github.com/actions/toolkit/issues/399
 #        include:
@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -U pip setuptools
+          pip install -U pip "setuptools>=60" setuptools-gettext
           pip install -U pip coverage codecov flake8 testtools paramiko fastbencode fastimport configobj cython testscenarios six docutils $TEST_REQUIRE sphinx sphinx_epytext launchpadlib patiencediff pyinotify git+https://github.com/dulwich/dulwich setuptools-rust pyyaml merge3
       - name: Build docs
         run: |
