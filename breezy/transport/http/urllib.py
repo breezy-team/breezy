@@ -19,8 +19,6 @@
 There are separate implementation modules for each http client implementation.
 """
 
-from __future__ import absolute_import
-
 DEBUG = 0
 
 import base64

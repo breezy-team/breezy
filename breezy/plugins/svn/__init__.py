@@ -31,7 +31,9 @@ from ...revisionspec import (
     )
 
 
-class SubversionUnsupportedError(errors.UnsupportedFormatError):
+class SubversionUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "svn"
 
     _fmt = ('Subversion branches are not yet supported. '
             'To interoperate with Subversion branches, use fastimport.')
