@@ -6606,7 +6606,7 @@ class cmd_remove_branch(Command):
             if (active_branch is not None and
                     br.control_url == active_branch.control_url):
                 raise errors.CommandError(
-                    gettext("Branch is active. Use --force to remove it.")) from exc
+                    gettext("Branch is active. Use --force to remove it."))
         br.controldir.destroy_branch(br.name)
 
 
