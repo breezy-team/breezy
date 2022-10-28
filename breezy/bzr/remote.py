@@ -1049,6 +1049,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     supports_full_versioned_files = True
     supports_leaving_lock = True
     supports_overriding_transport = False
+    supports_ghosts = True
 
     def __init__(self):
         _mod_repository.RepositoryFormat.__init__(self)
@@ -1059,7 +1060,6 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
         self._supports_chks = None
         self._supports_external_lookups = None
         self._supports_tree_reference = None
-        self._supports_ghosts = None
         self._supports_funky_characters = None
         self._supports_nesting_repositories = None
         self._rich_root_data = None
@@ -1118,14 +1118,6 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             self._supports_tree_reference = \
                 self._custom_format.supports_tree_reference
         return self._supports_tree_reference
-
-    @property
-    def supports_ghosts(self):
-        if self._supports_ghosts is None:
-            self._ensure_real()
-            self._supports_ghosts = \
-                    self._custom_format.supports_ghosts
-        return self._supports_ghosts
 
     @property
     def revision_graph_can_have_wrong_parents(self):
@@ -1212,9 +1204,9 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             try:
                 self._custom_format = _mod_repository.network_format_registry.get(
                     self._network_name)
-            except KeyError:
-                raise errors.UnknownFormatError(kind='repository',
-                                                format=self._network_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(
+                    kind='repository', format=self._network_name) from e
 
     @property
     def _fetch_order(self):

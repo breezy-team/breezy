@@ -19,10 +19,7 @@
 import gzip
 import re
 
-try:
-    from dulwich.refs import SymrefLoop
-except ImportError:
-    SymrefLoop = KeyError  # type: ignore
+from dulwich.refs import SymrefLoop
 
 from .. import (
     config,

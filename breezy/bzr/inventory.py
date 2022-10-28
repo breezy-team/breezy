@@ -27,10 +27,7 @@
 # created, but it's not for now.
 ROOT_ID = b"TREE_ROOT"
 
-try:
-    from collections.abc import deque  # type: ignore
-except ImportError:  # python < 3.7
-    from collections import deque
+from collections import deque
 
 
 from ..lazy_import import lazy_import

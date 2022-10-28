@@ -1277,7 +1277,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
     def test__get_option_policy_normal(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
-            self.my_location_config._get_config_policy(
+            self.my_location_config._get_option_policy(
                 'http://www.example.com', 'normal_option'),
             config.POLICY_NONE)
 
