@@ -651,7 +651,7 @@ class BazaarObjectStore(BaseObjectStore):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
         obj = self[sha]
-        return (obj.type, obj.as_raw_string())
+        return (obj.type_num, obj.as_raw_string())
 
     def __contains__(self, sha):
         # See if sha is in map

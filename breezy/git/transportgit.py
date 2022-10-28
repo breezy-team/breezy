@@ -794,7 +794,7 @@ class TransportObjectStore(PackBasedObjectStore):
 
         with self.pack_transport.open_write_stream(
                 "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
-            entries, data_sum = write_pack_objects(datafile, pack_tuples)
+            entries, data_sum = write_pack_objects(datafile.write, pack_tuples)
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         with self.pack_transport.open_write_stream(
                 "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
