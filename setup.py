@@ -221,12 +221,15 @@ rust_extensions = [
 ]
 entry_points = {}
 
-if os.environ.get('CIBUILDWHEEL', '0') == '0':
+if (os.environ.get('CIBUILDWHEEL', '0') == '0'
+        and '__pypy__' not in sys.builtin_module_names):
     rust_extensions.append(
         RustExtension("brz", binding=Binding.Exec, strip=Strip.All))
 else:
     # Fall back to python main on cibuildwheels, since it doesn't provide
     # -lpython3.7 to link binaries against
+
+    # also, disable it for PyPy. See https://foss.heptapod.net/pypy/pypy/-/issues/3286
     entry_points.setdefault('console_scripts', []).append('brz=breezy.__main__:main')
 
 # std setup
