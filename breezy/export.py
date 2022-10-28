@@ -150,7 +150,7 @@ def _export_iter_entries(tree, subdir, skip_special=True, recurse_nested=False):
         if path == '':
             continue
 
-        if skip_special and tree.is_special_filename(entry.name):
+        if skip_special and tree.is_special_path(path):
             continue
         if path == subdir:
             if entry.kind == 'directory':

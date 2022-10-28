@@ -208,8 +208,8 @@ class Tree(object):
         """
         return True
 
-    def is_special_filename(self, name):
-        """Is the specified filename special to the VCS.
+    def is_special_path(self, path):
+        """Is the specified path special to the VCS.
         """
         return False
 

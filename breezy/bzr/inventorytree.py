@@ -139,8 +139,8 @@ class InventoryTree(Tree):
         return True
 
     @classmethod
-    def is_special_filename(cls, name):
-        return name.startswith('.bzr')
+    def is_special_path(cls, path):
+        return path.startswith('.bzr')
 
     def _get_root_inventory(self):
         return self._inventory

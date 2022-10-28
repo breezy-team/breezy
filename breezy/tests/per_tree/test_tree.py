@@ -377,7 +377,7 @@ class TestSupportsVersionableKind(TestCaseWithTree):
 
 class TestSpecialFilename(TestCaseWithTree):
 
-    def test_is_special_filename(self):
+    def test_is_special_path(self):
         work_tree = self.make_branch_and_tree('tree')
         tree = self._convert_tree(work_tree)
-        self.assertFalse(tree.is_special_filename('foo'))
+        self.assertFalse(tree.is_special_path('foo'))
