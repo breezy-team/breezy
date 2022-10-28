@@ -276,7 +276,7 @@ class Forge(object):
     # proposals?
     supports_merge_proposal_labels: bool
 
-    supports_merge_proposal_title = None
+    supports_merge_proposal_title: bool
 
     @property
     def name(self):

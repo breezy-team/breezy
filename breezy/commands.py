@@ -280,7 +280,7 @@ def guess_command(cmd_name):
 
 
 def get_cmd_object(
-        cmd_name: str, plugins_override: bool = True) -> Command:
+        cmd_name: str, plugins_override: bool = True) -> "Command":
     """Return the command object for a command.
 
     plugins_override
@@ -301,7 +301,7 @@ def get_cmd_object(
 
 def _get_cmd_object(
         cmd_name: str, plugins_override: bool = True,
-        check_missing: bool = True) -> Command:
+        check_missing: bool = True) -> "Command":
     """Get a command object.
 
     :param cmd_name: The name of the command.
