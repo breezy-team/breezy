@@ -183,7 +183,7 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
     try:
         import lzma
     except ModuleNotFoundError as exc:
-        raise errors.DependencyNotPresent('lzma', e) as exc
+        raise errors.DependencyNotPresent('lzma', e) from exc
 
     compressor = lzma.LZMACompressor(
         format={

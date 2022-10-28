@@ -977,7 +977,7 @@ class cmd_cp(Command):
                 except transport.NoSuchFile as exc:
                     raise errors.CommandError(
                         gettext('Could not copy %s => %s: %s is not versioned.')
-                        % (src, dst, dst_parent)) as exc
+                        % (src, dst, dst_parent)) from exc
                 if dst_parent_kind != 'directory':
                     raise errors.CommandError(
                         gettext('Could not copy to %s: %s is not a directory.')
