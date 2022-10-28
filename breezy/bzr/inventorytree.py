@@ -138,6 +138,10 @@ class InventoryTree(Tree):
     def supports_symlinks(self):
         return True
 
+    @classmethod
+    def is_special_path(cls, path):
+        return path.startswith('.bzr')
+
     def _get_root_inventory(self):
         return self._inventory
 

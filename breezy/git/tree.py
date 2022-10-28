@@ -261,6 +261,10 @@ class GitTree(_mod_tree.Tree):
 
     supports_file_ids = False
 
+    @classmethod
+    def is_special_path(cls, path):
+        return path.startswith('.git')
+
     def supports_symlinks(self):
         return True
 
