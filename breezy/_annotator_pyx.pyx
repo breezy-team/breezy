@@ -52,9 +52,6 @@ from cpython.tuple cimport (
     )
 
 cdef extern from "Python.h":
-    ctypedef struct PyListObject:
-        PyObject **ob_item
-
     void PyTuple_SET_ITEM_ptr "PyTuple_SET_ITEM" (object, Py_ssize_t,
                                                   PyObject *)
 
@@ -180,14 +177,10 @@ cdef int _apply_parent_annotations(annotations, parent_annotations,
     matching_blocks defines the ranges that match.
     """
     cdef Py_ssize_t parent_idx, lines_idx, match_len, idx
-    cdef PyListObject *par_list
-    cdef PyListObject *ann_list
-    cdef PyObject **par_temp
-    cdef PyObject **ann_temp
+    cdef PyObject *par_temp
+    cdef PyObject *ann_temp
 
     _check_annotations_are_lists(annotations, parent_annotations)
-    par_list = <PyListObject *>parent_annotations
-    ann_list = <PyListObject *>annotations
     # For NEWS and breezy/builtins.py, over 99% of the lines are simply copied
     # across from the parent entry. So this routine is heavily optimized for
     # that. Would be interesting if we could use memcpy() but we have to incref
@@ -195,12 +188,12 @@ cdef int _apply_parent_annotations(annotations, parent_annotations,
     for parent_idx, lines_idx, match_len in matching_blocks:
         _check_match_ranges(parent_annotations, annotations,
                             parent_idx, lines_idx, match_len)
-        par_temp = par_list.ob_item + parent_idx
-        ann_temp = ann_list.ob_item + lines_idx
         for idx from 0 <= idx < match_len:
-            Py_INCREF_ptr(par_temp[idx])
-            Py_DECREF_ptr(ann_temp[idx])
-            ann_temp[idx] = par_temp[idx]
+            par_temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
+            ann_temp = PyList_GET_ITEM(annotations, lines_idx + idx)
+            Py_INCREF_ptr(par_temp)
+            Py_DECREF_ptr(ann_temp)
+            PyList_SetItem(annotations, lines_idx + idx, <object>par_temp)
     return 0
 
 
