@@ -51,10 +51,7 @@ from dulwich.pack import (
     compute_file_sha,
     write_pack_object,
     )
-try:
-    from dulwich.refs import SymrefLoop
-except ImportError:  # dulwich < 0.20.46
-    SymrefLoop = KeyError
+from dulwich.refs import SymrefLoop
 from dulwich.repo import (
     BaseRepo,
     InfoRefsContainer,

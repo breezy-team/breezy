@@ -274,9 +274,9 @@ class Forge(object):
 
     # Does this forge support arbitrary labels being attached to merge
     # proposals?
-    supports_merge_proposal_labels = None
+    supports_merge_proposal_labels: bool
 
-    supports_merge_proposal_title = None
+    supports_merge_proposal_title: bool
 
     @property
     def name(self):
@@ -285,18 +285,18 @@ class Forge(object):
 
     # Does this forge support suggesting a commit message in the
     # merge proposal?
-    supports_merge_proposal_commit_message = None
+    supports_merge_proposal_commit_message: bool
 
     # The base_url that would be visible to users. I.e. https://github.com/
     # rather than https://api.github.com/
-    base_url = None
+    base_url: str
 
     # The syntax to use for formatting merge proposal descriptions.
     # Common values: 'plain', 'markdown'
-    merge_proposal_description_format = None
+    merge_proposal_description_format: str
 
     # Does this forge support the allow_collaboration flag?
-    supports_allow_collaboration = False
+    supports_allow_collaboration: bool = False
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,

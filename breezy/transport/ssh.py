@@ -24,6 +24,7 @@ import os
 import socket
 import subprocess
 import sys
+from typing import Tuple, Type, Set, Dict, Optional
 from binascii import hexlify
 
 from .. import (
@@ -40,7 +41,7 @@ try:
 except ModuleNotFoundError as e:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
-    paramiko = None
+    paramiko = None  # type: ignore
 else:
     from paramiko.sftp_client import SFTPClient
 
@@ -49,8 +50,8 @@ class StrangeHostname(errors.BzrError):
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
-SYSTEM_HOSTKEYS = {}
-BRZ_HOSTKEYS = {}
+SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
+BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
 
 
 class SSHVendorManager(object):
@@ -333,7 +334,7 @@ class ParamikoVendor(SSHVendor):
                                          msg='Unable to invoke remote bzr')
 
 
-_ssh_connection_errors = (EOFError, OSError, IOError, socket.error)
+_ssh_connection_errors: Tuple[Type[Exception], ...] = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
     vendor = ParamikoVendor()
     register_ssh_vendor('paramiko', vendor)
@@ -671,7 +672,7 @@ def os_specific_subprocess_params():
 
 
 import weakref
-_subproc_weakrefs = set()
+_subproc_weakrefs: Set[weakref.ref] = set()
 
 
 def _close_ssh_proc(proc, sock):

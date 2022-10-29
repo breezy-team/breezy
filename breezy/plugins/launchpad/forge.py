@@ -222,8 +222,6 @@ class LaunchpadMergeProposal(MergeProposal):
 class Launchpad(Forge):
     """The Launchpad hosting service."""
 
-    name = 'launchpad'
-
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 

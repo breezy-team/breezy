@@ -722,7 +722,7 @@ class Graph(object):
                                  all_unique_searcher._iterations)
             unique_tip_searchers = next_unique_searchers
 
-    def get_parent_map(self, revisions):
+    def get_parent_map(self, revisions):   # type: ignore
         """Get a map of key:parent_list for revisions.
 
         This implementation delegates to get_parents, for old parent_providers

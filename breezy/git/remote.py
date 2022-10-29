@@ -19,10 +19,7 @@
 import gzip
 import re
 
-try:
-    from dulwich.refs import SymrefLoop
-except ImportError:
-    SymrefLoop = KeyError
+from dulwich.refs import SymrefLoop
 
 from .. import (
     config,
@@ -125,7 +122,6 @@ import os
 import select
 
 import urllib.parse as urlparse
-from urllib.parse import splituser
 
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')

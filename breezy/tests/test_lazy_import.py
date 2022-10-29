@@ -972,7 +972,7 @@ class TestImportProcessor(TestCase):
                         '    two,\n'
                         '    )\n')
 
-    def test_from_one_import_two(self):
+    def test_from_one_import_two_two(self):
         exp = {'two': (['one'], 'two', {})}
         self.check(exp, 'from one import two\n')
         self.check(exp, 'from one import (two)\n')

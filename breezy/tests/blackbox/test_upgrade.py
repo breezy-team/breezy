@@ -21,7 +21,7 @@ import stat
 from breezy import (
     bzr,
     controldir,
-    lockable_files,
+    lockdir,
     ui,
     urlutils,
     )
@@ -57,7 +57,7 @@ class ConvertOldTestToMeta(controldir.Converter):
 
 class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
 
-    _lock_class = lockable_files.TransportLock
+    _lock_class = lockdir.LockDir
 
     def get_converter(self, format=None):
         return ConvertOldTestToMeta()

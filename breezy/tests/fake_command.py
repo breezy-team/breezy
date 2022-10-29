@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from . import test_commands
-test_commands.lazy_command_imported = True
+test_commands.lazy_command_imported = True  # type: ignore
 
 
 class cmd_fake(object):

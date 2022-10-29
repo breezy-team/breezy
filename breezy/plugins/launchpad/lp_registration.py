@@ -20,7 +20,6 @@ import socket
 from urllib.parse import urlsplit, urlunsplit
 import urllib
 from xmlrpc.client import (
-    __version__ as xmlrpc_version,
     Fault,
     ProtocolError,
     ServerProxy,
@@ -100,8 +99,8 @@ class LaunchpadService(object):
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     LAUNCHPAD_INSTANCE = {}
-    for instance, domain in LAUNCHPAD_DOMAINS.items():
-        LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
+    for instance, _domain in LAUNCHPAD_DOMAINS.items():
+        LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % _domain
 
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
@@ -214,7 +213,7 @@ class BaseRequest(object):
     """Base request for talking to a XMLRPC server."""
 
     # Set this to the XMLRPC method name.
-    _methodname = None
+    _methodname: str
 
     def _request_params(self):
         """Return the arguments to pass to the method"""

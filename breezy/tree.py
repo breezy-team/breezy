@@ -17,6 +17,8 @@
 """Tree classes, representing directory at point in time.
 """
 
+from typing import List, Type, TYPE_CHECKING, Optional
+
 from . import (
     errors,
     lock,
@@ -49,14 +51,14 @@ class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
     """
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     def __eq__(self, other):
         # yes, this is ugly, TODO: best practice __eq__ style.
         return (isinstance(other, TreeEntry)
                 and other.__class__ == self.__class__)
 
-    kind = None
+    kind: str
 
     def kind_character(self):
         return "???"
@@ -73,7 +75,7 @@ class TreeEntry(object):
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'directory'
 
@@ -84,7 +86,7 @@ class TreeDirectory(TreeEntry):
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'file'
 
@@ -95,7 +97,7 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'symlink'
 
@@ -106,7 +108,7 @@ class TreeLink(TreeEntry):
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
 
-    __slots__ = []
+    __slots__: List[str] = []
 
     kind = 'tree-reference'
 
@@ -410,7 +412,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, path, branch=None):
+    def get_reference_revision(self, path):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
                                   % self.__class__.__name__)
@@ -761,10 +763,12 @@ class InterTree(InterObject):
     # Formats that will be used to test this InterTree. If both are
     # None, this InterTree will not be tested (e.g. because a complex
     # setup is required)
-    _matching_from_tree_format = None
-    _matching_to_tree_format = None
+    if TYPE_CHECKING:
+        from .workingtree import WorkingTreeFormat
+    _matching_from_tree_format: Optional["WorkingTreeFormat"] = None
+    _matching_to_tree_format: Optional["WorkingTreeFormat"] = None
 
-    _optimisers = []
+    _optimisers: List[Type["InterTree"]] = []
 
     @classmethod
     def is_compatible(kls, source, target):

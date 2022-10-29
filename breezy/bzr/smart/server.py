@@ -348,7 +348,7 @@ class SmartServerHooks(Hooks):
                       "in which case the server will exit normally.", (2, 4))
 
 
-SmartTCPServer.hooks = SmartServerHooks()
+SmartTCPServer.hooks = SmartServerHooks()  # type: ignore
 
 
 def _local_path_for_transport(transport):

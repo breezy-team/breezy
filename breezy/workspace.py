@@ -50,7 +50,7 @@ def reset_tree(
     local_tree: WorkingTree,
     basis_tree: Optional[Tree] = None,
     subpath: str = "",
-    dirty_tracker: "DirtyTracker" = None,
+    dirty_tracker=None,
 ) -> None:
     """Reset a tree back to its basis tree.
 
@@ -214,7 +214,8 @@ class Workspace(object):
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> List[str]:
+    def _stage(self) -> Optional[List[str]]:
+        changed: Optional[List[str]]
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they

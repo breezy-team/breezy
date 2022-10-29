@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -82,6 +82,12 @@ class Branch(controldir.ControlComponent):
     controldir: controldir.ControlDir
 
     name: Optional[str]
+
+    base: str
+
+    _format: "BranchFormat"
+
+    _last_revision_info_cache: Optional[Tuple[int, RevisionID]]
 
     @property
     def control_transport(self):
@@ -1758,7 +1764,7 @@ class BranchHooks(Hooks):
 
 
 # install the default hooks into the Branch class.
-Branch.hooks = BranchHooks()
+Branch.hooks = BranchHooks()  # type: ignore
 
 
 class ChangeBranchTipParams(object):
@@ -2063,7 +2069,7 @@ class InterBranch(InterObject):
     can be carried out on.
     """
 
-    _optimisers = []
+    _optimisers: List[Type["InterBranch"]] = []
     """The available optimised InterBranch types."""
 
     @classmethod

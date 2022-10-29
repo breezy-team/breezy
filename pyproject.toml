@@ -10,3 +10,10 @@ requires = [
     "wheel",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+python_version = "3.7"
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_configs = true
+exclude = ['^breezy/util/simplemapi\.py$']

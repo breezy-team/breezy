@@ -649,7 +649,7 @@ class TestInvalidStatusServer(TestBadStatusServer):
     Both implementations raises the same error as for a bad status.
     """
 
-    _req_handler_class = InvalidStatusRequestHandler
+    _req_handler_class = InvalidStatusRequestHandler  # type: ignore
 
 
 class BadProtocolRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -1853,7 +1853,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         self.assertEndsWith(response, expected_end_of_response)
 
 
-class ForbiddenRequestHandler(http_server.TestingHTTPRequestHandler):
+class NotSmartServerRequestHandler(http_server.TestingHTTPRequestHandler):
     """No smart server here request handler."""
 
     def do_POST(self):
@@ -1863,7 +1863,7 @@ class ForbiddenRequestHandler(http_server.TestingHTTPRequestHandler):
 class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
     """Test smart client behaviour against an http server without smarts."""
 
-    _req_handler_class = ForbiddenRequestHandler
+    _req_handler_class = NotSmartServerRequestHandler
 
     def test_probe_smart_server(self):
         """Test error handling against server refusing smart requests."""

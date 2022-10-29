@@ -107,7 +107,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """Returns the directory containing the control directory."""
         return self._base
 
-    base = property(_get_base, doc="The URL for the root of this branch.")
+    base = property(_get_base, doc="The URL for the root of this branch.")  # type: ignore
 
     @property
     def user_transport(self):

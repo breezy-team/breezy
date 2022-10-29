@@ -33,6 +33,7 @@ import contextlib
 import errno
 import os
 import sys
+from typing import Optional
 
 import breezy
 
@@ -537,39 +538,9 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             if updated:
                 self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
-    def path_content_summary(self, path, _lstat=os.lstat,
-                             _mapper=osutils.file_kind_from_stat_mode):
+    def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        abspath = self.abspath(path)
-        try:
-            stat_result = _lstat(abspath)
-        except OSError as e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                # no file.
-                return ('missing', None, None, None)
-            # propagate other errors
-            raise
-        kind = _mapper(stat_result.st_mode)
-        if kind == 'file':
-            return self._file_content_summary(path, stat_result)
-        elif kind == 'directory':
-            # perhaps it looks like a plain directory, but it's really a
-            # reference.
-            if self._directory_is_tree_reference(path):
-                kind = 'tree-reference'
-            return kind, None, None, None
-        elif kind == 'symlink':
-            target = osutils.readlink(abspath)
-            return ('symlink', None, None, target)
-        else:
-            return (kind, None, None, None)
-
-    def _file_content_summary(self, path, stat_result):
-        size = stat_result.st_size
-        executable = self._is_executable_from_path_and_stat(path, stat_result)
-        # try for a stat cache lookup
-        return ('file', size, executable, self._sha_from_stat(
-            path, stat_result))
+        raise NotImplementedError(self.path_content_summary)
 
     def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
         """Common ghost checking functionality from set_parent_*.
@@ -1326,7 +1297,7 @@ class WorkingTreeFormat(ControlComponentFormat):
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
 
-    supports_versioned_directories = None
+    supports_versioned_directories: bool
 
     supports_merge_modified = True
     """If this format supports storing merge modified hashes."""
@@ -1341,7 +1312,7 @@ class WorkingTreeFormat(ControlComponentFormat):
 
     supports_righthand_parent_id_as_ghost = True
 
-    ignore_filename = None
+    ignore_filename: Optional[str] = None
     """Name of file with ignore patterns, if any. """
 
     def initialize(self, controldir, revision_id=None, from_branch=None,

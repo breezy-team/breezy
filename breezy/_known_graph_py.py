@@ -17,10 +17,7 @@
 """Implementation of Graph algorithms when we have already loaded everything.
 """
 
-try:
-    from collections.abc import deque
-except ImportError:  # python < 3.7
-    from collections import deque
+from collections import deque
 from . import (
     errors,
     revision,

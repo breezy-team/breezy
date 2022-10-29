@@ -26,7 +26,7 @@ from breezy.tests import (
     )
 
 try:
-    from .. import _simple_set_pyx
+    from .. import _simple_set_pyx  # type: ignore
 except ImportError:
     _simple_set_pyx = None
 

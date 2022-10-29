@@ -16,10 +16,7 @@
 
 """Tests for the StaticTuple type."""
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 import operator
 import sys
 
