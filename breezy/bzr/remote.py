@@ -1049,7 +1049,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     supports_full_versioned_files = True
     supports_leaving_lock = True
     supports_overriding_transport = False
-    supports_ghosts = True
+    supports_ghosts = False
 
     def __init__(self):
         _mod_repository.RepositoryFormat.__init__(self)

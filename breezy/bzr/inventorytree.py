@@ -21,7 +21,7 @@ from collections import deque
 
 import os
 import re
-from typing import Type, TYPE_CHECKING
+from typing import Type, TYPE_CHECKING, Optional
 
 
 from .. import (
@@ -1141,15 +1141,6 @@ class InterInventoryTree(InterTree):
     """InterTree implementation for InventoryTree objects.
 
     """
-    if TYPE_CHECKING:
-        from ..workingtree import WorkingTreeFormat
-
-    # Formats that will be used to test this InterTree. If both are
-    # None, this InterTree will not be tested (e.g. because a complex
-    # setup is required)
-    _matching_from_tree_format: "WorkingTreeFormat"
-    _matching_to_tree_format: "WorkingTreeFormat"
-
     @classmethod
     def is_compatible(kls, source, target):
         # The default implementation is naive and uses the public API, so

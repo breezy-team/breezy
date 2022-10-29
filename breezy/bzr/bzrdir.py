@@ -25,13 +25,12 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
+import contextlib
 import sys
 from typing import Set
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import contextlib
-
 from breezy import (
     branch as _mod_branch,
     lockable_files,
@@ -45,13 +44,13 @@ from breezy import (
 from breezy.bzr import (
     branch as _mod_bzrbranch,
     fetch,
+    fullhistory as fullhistorybranch,
+    knitpack_repo,
     remote,
     vf_search,
     workingtree_3,
     workingtree_4,
     )
-from breezy.bzr import fullhistory as fullhistorybranch
-from breezy.bzr import knitpack_repo
 from breezy.i18n import gettext
 """)
 

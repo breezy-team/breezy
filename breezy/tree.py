@@ -17,7 +17,7 @@
 """Tree classes, representing directory at point in time.
 """
 
-from typing import List, Type, TYPE_CHECKING
+from typing import List, Type, TYPE_CHECKING, Optional
 
 from . import (
     errors,
@@ -757,8 +757,8 @@ class InterTree(InterObject):
     # setup is required)
     if TYPE_CHECKING:
         from .workingtree import WorkingTreeFormat
-    _matching_from_tree_format: "WorkingTreeFormat"
-    _matching_to_tree_format: "WorkingTreeFormat"
+    _matching_from_tree_format: Optional["WorkingTreeFormat"] = None
+    _matching_to_tree_format: Optional["WorkingTreeFormat"] = None
 
     _optimisers: List[Type["InterTree"]] = []
 
