@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         python-version: [3.7, 3.8, 3.9, "3.10"]
         experimental: [false]
 # See https://github.com/actions/toolkit/issues/399
@@ -29,6 +29,10 @@ jobs:
         run: |
           sudo apt install quilt
         if: "matrix.os == 'ubuntu-latest'"
+      - name: Install dependencies (brew)
+        run: |
+          brew install quilt
+        if: "matrix.os == 'macos-latest'"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
