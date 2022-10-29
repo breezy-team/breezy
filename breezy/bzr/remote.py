@@ -1049,6 +1049,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     supports_full_versioned_files = True
     supports_leaving_lock = True
     supports_overriding_transport = False
+    supports_ghosts = False
 
     def __init__(self):
         _mod_repository.RepositoryFormat.__init__(self)
@@ -1203,9 +1204,9 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             try:
                 self._custom_format = _mod_repository.network_format_registry.get(
                     self._network_name)
-            except KeyError:
-                raise errors.UnknownFormatError(kind='repository',
-                                                format=self._network_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(
+                    kind='repository', format=self._network_name) from e
 
     @property
     def _fetch_order(self):

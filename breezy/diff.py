@@ -775,6 +775,7 @@ class DiffFromTool(DiffPath):
     def __init__(self, command_template: Union[str, List[str]],
             old_tree: Tree, new_tree: Tree, to_file,
                  path_encoding='utf-8'):
+        import tempfile
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
         import tempfile

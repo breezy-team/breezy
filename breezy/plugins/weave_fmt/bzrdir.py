@@ -32,6 +32,7 @@ from ...controldir import (
     )
 from ... import (
     errors,
+    lockable_files,
     )
 from ...transport import (
     get_transport,
@@ -46,7 +47,6 @@ import warnings
 from breezy import (
     branch as _mod_branch,,
     graph,
-    lockable_files,
     lockdir,
     osutils,
     revision as _mod_revision,

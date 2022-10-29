@@ -308,7 +308,7 @@ class FetchFromRemoteTestBase(object):
 
     _test_needs_features = [ExecutableFeature('git')]
 
-    _to_format = None
+    _to_format: str
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
@@ -495,7 +495,7 @@ class PushToRemoteBase(object):
 
     _test_needs_features = [ExecutableFeature('git')]
 
-    _from_format = None
+    _from_format: str
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)

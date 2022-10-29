@@ -329,7 +329,7 @@ class SmartClientHooks(hooks.Hooks):
                       "accessible.", None)
 
 
-_SmartClient.hooks = SmartClientHooks()
+_SmartClient.hooks = SmartClientHooks()  # type: ignore
 
 
 class CallHookParams(object):

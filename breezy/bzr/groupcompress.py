@@ -17,6 +17,7 @@
 """Core compression logic for compressing streams of related files."""
 
 import time
+from typing import Type
 import zlib
 
 from ..lazy_import import lazy_import
@@ -25,7 +26,6 @@ from breezy import (
     annotate,
     config,
     debug,
-    trace,
     tsort,
     )
 from breezy.bzr import (
@@ -41,7 +41,8 @@ from breezy.i18n import gettext
 from .. import (
     errors,
     osutils,
-    )
+    trace,
+)
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
 from .versionedfile import (
@@ -53,7 +54,7 @@ from .versionedfile import (
     FulltextContentFactory,
     VersionedFilesWithFallbacks,
     UnavailableRepresentation,
-    )
+)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -2242,6 +2243,9 @@ class _GCGraphIndex(object):
             # Add parent refs from graph_index (and discard parent refs
             # that the graph_index has).
             key_dependencies.add_references(node[1], node[3][0])
+
+
+GroupCompressor: Type[_CommonGroupCompressor]
 
 
 from ._groupcompress_py import (

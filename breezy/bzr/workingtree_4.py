@@ -38,13 +38,11 @@ from breezy import (
     debug,
     filters as _mod_filters,
     osutils,
-    revision as _mod_revision,
     revisiontree,
     trace,
     views,
     )
 from breezy.bzr import (
-    dirstate,
     generate_ids,
     transform as bzr_transform,
     )
@@ -52,8 +50,8 @@ from breezy.bzr import (
 
 from .. import (
     errors,
+    revision as _mod_revision,
     )
-from .inventory import Inventory, ROOT_ID, entry_factory
 from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
@@ -83,10 +81,12 @@ from ..tree import (
 from ..workingtree import (
     WorkingTree,
     )
+from .inventory import Inventory, ROOT_ID, entry_factory
 from .workingtree import (
     InventoryWorkingTree,
     WorkingTreeFormatMetaDir,
     )
+from . import dirstate
 
 
 class DirStateWorkingTree(InventoryWorkingTree):
@@ -453,7 +453,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
-                              "Root inventory of this tree")
+                              doc="Root inventory of this tree")
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.

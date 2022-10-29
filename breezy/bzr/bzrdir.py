@@ -25,12 +25,12 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
+import contextlib
 import sys
+from typing import Set
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import contextlib
-
 from breezy import (
     branch as _mod_branch,
     lockable_files,
@@ -44,13 +44,13 @@ from breezy import (
 from breezy.bzr import (
     branch as _mod_bzrbranch,
     fetch,
+    fullhistory as fullhistorybranch,
+    knitpack_repo,
     remote,
     vf_search,
     workingtree_3,
     workingtree_4,
     )
-from breezy.bzr import fullhistory as fullhistorybranch
-from breezy.bzr import knitpack_repo
 from breezy.i18n import gettext
 """)
 
@@ -1144,7 +1144,7 @@ class BzrFormat(object):
     :ivar features: Dictionary mapping feature names to their necessity
     """
 
-    _present_features = set()
+    _present_features: Set[str] = set()
 
     def __init__(self):
         self.features = {}
@@ -1838,24 +1838,6 @@ class ConvertMetaToColo(controldir.Converter):
 
     def __init__(self, target_format):
         """Create a converter.that upgrades a metadir to the colo format.
-
-        :param target_format: The final metadir format that is desired.
-        """
-        self.target_format = target_format
-
-    def convert(self, to_convert, pb):
-        """See Converter.convert()."""
-        to_convert.transport.put_bytes('branch-format',
-                                       self.target_format.as_string())
-        return BzrDir.open_from_transport(to_convert.root_transport)
-
-
-class ConvertMetaToColo(controldir.Converter):
-    """Convert a 'development-colo' bzrdir to a '2a' bzrdir."""
-
-    def __init__(self, target_format):
-        """Create a converter that converts a 'development-colo' metadir
-        to a '2a' metadir.
 
         :param target_format: The final metadir format that is desired.
         """

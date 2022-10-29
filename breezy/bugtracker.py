@@ -257,8 +257,8 @@ class IntegerBugTracker(BugTracker):
     def check_bug_id(self, bug_id):
         try:
             int(bug_id)
-        except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Must be an integer")
+        except ValueError as exc:
+            raise MalformedBugIdentifier(bug_id, "Must be an integer") from exc
 
 
 class UniqueIntegerBugTracker(IntegerBugTracker):
@@ -307,12 +307,12 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
     def check_bug_id(self, bug_id):
         try:
             (project, bug_id) = bug_id.rsplit('/', 1)
-        except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Expected format: project/id")
+        except ValueError as exc:
+            raise MalformedBugIdentifier(bug_id, "Expected format: project/id") from exc
         try:
             int(bug_id)
-        except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Bug id must be an integer")
+        except ValueError as exc:
+            raise MalformedBugIdentifier(bug_id, "Bug id must be an integer") from exc
 
     def _get_bug_url(self, bug_id):
         (project, bug_id) = bug_id.rsplit('/', 1)
@@ -443,8 +443,8 @@ def decode_bug_urls(bug_text):
     for line in bug_text.splitlines():
         try:
             url, status = line.split(None, 2)
-        except ValueError:
-            raise InvalidLineInBugsProperty(line)
+        except ValueError as exc:
+            raise InvalidLineInBugsProperty(line) from exc
         if status not in ALLOWED_BUG_STATUSES:
             raise InvalidBugStatus(status)
         yield url, status

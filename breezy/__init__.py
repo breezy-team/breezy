@@ -156,7 +156,7 @@ def _patch_filesystem_default_encoding(new_enc):
 _fs_enc = sys.getfilesystemencoding()
 if getattr(sys, "_brz_default_fs_enc", None) is not None:
     if (_fs_enc is None or codecs.lookup(_fs_enc).name == "ascii"):
-        _fs_enc = _patch_filesystem_default_encoding(sys._brz_default_fs_enc)
+        _fs_enc = _patch_filesystem_default_encoding(sys._brz_default_fs_enc)  # type: ignore
 if _fs_enc is None:
     _fs_enc = "ascii"
 else:

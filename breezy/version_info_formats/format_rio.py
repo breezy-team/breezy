@@ -97,4 +97,4 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
                       " revision object and a RIO stanza.", (1, 15))
 
 
-RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()
+RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()  # type: ignore

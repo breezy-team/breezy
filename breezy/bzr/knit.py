@@ -68,7 +68,6 @@ from breezy import (
     ui,
     )
 from breezy.bzr import (
-    index as _mod_index,
     pack,
     static_tuple,
     tuned_gzip,
@@ -107,6 +106,9 @@ from ..bzr.versionedfile import (
     sort_groupcompress,
     UnavailableRepresentation,
     VersionedFilesWithFallbacks,
+    )
+from . import (
+    index as _mod_index,
     )
 
 

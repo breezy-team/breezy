@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -82,6 +82,12 @@ class Branch(controldir.ControlComponent):
     controldir: controldir.ControlDir
 
     name: Optional[str]
+
+    base: str
+
+    _format: "BranchFormat"
+
+    _last_revision_info_cache: Optional[Tuple[int, RevisionID]]
 
     @property
     def control_transport(self):
@@ -371,8 +377,8 @@ class Branch(controldir.ControlComponent):
         if len(revno) == 1:
             try:
                 return self.get_rev_id(revno[0])
-            except errors.RevisionNotPresent as e:
-                raise errors.GhostRevisionsHaveNoRevno(revno[0], e.revision_id)
+            except errors.RevisionNotPresent as exc:
+                raise errors.GhostRevisionsHaveNoRevno(revno[0], exc.revision_id) from exc
         revision_id_to_revno = self.get_revision_id_to_revno_map()
         revision_ids = [revision_id for revision_id, this_revno
                         in revision_id_to_revno.items()
@@ -405,11 +411,11 @@ class Branch(controldir.ControlComponent):
         try:
             revno = self.revision_id_to_revno(revision_id)
             return (revno,)
-        except errors.NoSuchRevision:
+        except errors.NoSuchRevision as exc:
             # We need to load and use the full revno map after all
             result = self.get_revision_id_to_revno_map().get(revision_id)
             if result is None:
-                raise errors.NoSuchRevision(self, revision_id)
+                raise errors.NoSuchRevision(self, revision_id) from exc
         return result
 
     def get_revision_id_to_revno_map(self):
@@ -790,10 +796,10 @@ class Branch(controldir.ControlComponent):
             if isinstance(url, str):
                 try:
                     url.encode('ascii')
-                except UnicodeEncodeError:
+                except UnicodeEncodeError as exc:
                     raise urlutils.InvalidURL(
                         url, "Urls must be 7-bit ascii, "
-                        "use breezy.urlutils.escape")
+                        "use breezy.urlutils.escape") from exc
             url = urlutils.relative_url(self.base, url)
         with self.lock_write():
             self._set_parent_location(url)
@@ -1028,8 +1034,8 @@ class Branch(controldir.ControlComponent):
         history = self._revision_history()
         try:
             return history.index(revision_id) + 1
-        except ValueError:
-            raise errors.NoSuchRevision(self, revision_id)
+        except ValueError as exc:
+            raise errors.NoSuchRevision(self, revision_id) from exc
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -1087,8 +1093,8 @@ class Branch(controldir.ControlComponent):
             parent = urlutils.local_path_to_url(parent)
         try:
             return urlutils.join(self.base[:-1], parent)
-        except urlutils.InvalidURLJoin:
-            raise errors.InaccessibleParent(parent, self.user_url)
+        except urlutils.InvalidURLJoin as exc:
+            raise errors.InaccessibleParent(parent, self.user_url) from exc
 
     def _get_parent_location(self):
         raise NotImplementedError(self._get_parent_location)
@@ -1374,7 +1380,7 @@ class Branch(controldir.ControlComponent):
         format = self._get_checkout_format(lightweight=lightweight)
         try:
             checkout = format.initialize_on_transport(t)
-        except errors.AlreadyControlDirError:
+        except errors.AlreadyControlDirError as exc:
             # It's fine if the control directory already exists,
             # as long as there is no existing branch and working tree.
             checkout = controldir.ControlDir.open_from_transport(t)
@@ -1383,7 +1389,7 @@ class Branch(controldir.ControlComponent):
             except errors.NotBranchError:
                 pass
             else:
-                raise errors.AlreadyControlDirError(t.base)
+                raise errors.AlreadyControlDirError(t.base) from exc
             if (checkout.control_transport.base
                     == self.controldir.control_transport.base):
                 # When checking out to the same control directory,
@@ -1758,7 +1764,7 @@ class BranchHooks(Hooks):
 
 
 # install the default hooks into the Branch class.
-Branch.hooks = BranchHooks()
+Branch.hooks = BranchHooks()  # type: ignore
 
 
 class ChangeBranchTipParams(object):
@@ -2063,7 +2069,7 @@ class InterBranch(InterObject):
     can be carried out on.
     """
 
-    _optimisers = []
+    _optimisers: List[Type["InterBranch"]] = []
     """The available optimised InterBranch types."""
 
     @classmethod

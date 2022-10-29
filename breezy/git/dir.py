@@ -20,10 +20,7 @@
 import contextlib
 import os
 
-try:
-    from dulwich.refs import SymrefLoop
-except ImportError:
-    SymrefLoop = KeyError
+from dulwich.refs import SymrefLoop
 
 from .. import (
     branch as _mod_branch,

@@ -47,10 +47,11 @@ from ..repository import (
     IsInWriteGroupError,
     Repository,
     )
-from ..bzr.repository import (
+from .repository import (
     RepositoryFormatMetaDir,
     )
-from ..bzr.vf_repository import (
+from .serializer import Serializer
+from .vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -123,7 +124,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
     _commit_builder_class: Type[VersionedFileCommitBuilder]
-    _serializer: Type[serializer.Serializer]
+    _serializer: Serializer
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
                  _serializer):

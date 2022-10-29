@@ -84,7 +84,7 @@ def splitport(host):
     return host, None
 
 
-class addinfourl(urllib_request.addinfourl):
+class addinfourl(urllib_request.addinfourl):  # type: ignore
     '''Replacement addinfourl class compatible with python-2.7's xmlrpclib
 
     In python-2.7, xmlrpclib expects that the response object that it receives
@@ -315,7 +315,7 @@ class AbstractHTTPConnection:
         self.sock = _ReportingSocket(sock, self._report_activity)
 
 
-class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):
+class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):  # type: ignore
 
     # XXX: Needs refactoring at the caller level.
     def __init__(self, host, port=None, proxied_host=None,
@@ -332,7 +332,7 @@ class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):
         self._wrap_socket_for_reporting(self.sock)
 
 
-class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
+class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):  # type: ignore
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  proxied_host=None,
@@ -1126,7 +1126,7 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
-    scheme = None
+    scheme: str
     """The scheme as it appears in the server header (lower cased)"""
 
     _max_retry = 3

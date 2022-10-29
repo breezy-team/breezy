@@ -280,7 +280,7 @@ def guess_command(cmd_name):
 
 
 def get_cmd_object(
-        cmd_name: str, plugins_override: bool = True) -> Type["Command"]:
+        cmd_name: str, plugins_override: bool = True) -> "Command":
     """Return the command object for a command.
 
     plugins_override
@@ -299,7 +299,9 @@ def get_cmd_object(
                                   % cmd_name)
 
 
-def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
+def _get_cmd_object(
+        cmd_name: str, plugins_override: bool = True,
+        check_missing: bool = True) -> "Command":
     """Get a command object.
 
     :param cmd_name: The name of the command.
@@ -313,7 +315,7 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     # in a Unicode name. In that case, they should just get a
     # 'command not found' error later.
     # In the future, we may actually support Unicode command names.
-    cmd = None
+    cmd: Optional[Command] = None
     # Get a command
     for hook in Command.hooks['get_command']:
         cmd = hook(cmd, cmd_name)
@@ -471,8 +473,9 @@ class Command(object):
     encoding_type: str = 'strict'
     invoked_as: Optional[str] = None
     l10n: bool = True
+    _see_also: List[str]
 
-    hidden = False
+    hidden: bool = False
 
     hooks: Hooks
 
@@ -781,7 +784,7 @@ class Command(object):
                     hook(self)
         self.run = run
 
-    def run(self):
+    def run(self):  # type: ignore
         """Actually run the command.
 
         This is invoked with the options and arguments bound to
@@ -882,7 +885,7 @@ class CommandHooks(Hooks):
             "object.", (2, 6))
 
 
-Command.hooks = CommandHooks()
+Command.hooks = CommandHooks()  # type: ignore
 
 
 def parse_args(command, argv, alias_argv=None):

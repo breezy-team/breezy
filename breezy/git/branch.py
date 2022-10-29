@@ -21,6 +21,7 @@
 import contextlib
 from io import BytesIO
 from collections import defaultdict
+from typing import Dict
 
 from dulwich.config import (
     ConfigFile as GitConfigFile,
@@ -465,7 +466,7 @@ class GitBranch(ForeignBranch):
         self._user_transport = controldir.user_transport.clone('.')
         self._control_transport = controldir.control_transport.clone('.')
         self._tag_refs = None
-        params = {}
+        params: Dict[str, str] = {}
         try:
             self.name = ref_to_branch_name(ref)
         except ValueError:

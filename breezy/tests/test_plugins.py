@@ -23,6 +23,7 @@ import logging
 import os
 import sys
 import types
+from typing import Dict, List, Any
 
 import breezy
 from .. import (
@@ -153,7 +154,7 @@ dir_source = '%s'
 
 class TestLoadingPlugins(BaseTestPlugins):
 
-    activeattributes = {}
+    activeattributes: Dict[str, List[Any]] = {}
 
     def test_plugins_with_the_same_name_are_not_loaded(self):
         # This test tests that having two plugins in different directories does

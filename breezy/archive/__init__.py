@@ -80,8 +80,8 @@ def create_archive(format, tree, name, root=None, subdir=None,
                    force_mtime=None, recurse_nested=False):
     try:
         archive_fn = format_registry.get(format)
-    except KeyError:
-        raise errors.NoSuchExportFormat(format)
+    except KeyError as exc:
+        raise errors.NoSuchExportFormat(format) from exc
     return archive_fn(tree, name, root=root, subdir=subdir,
                       force_mtime=force_mtime,
                       recurse_nested=recurse_nested)

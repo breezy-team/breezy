@@ -29,6 +29,7 @@ it.
 import errno
 from io import BytesIO
 import sys
+from typing import Dict, Any
 
 from stat import S_ISDIR
 
@@ -47,7 +48,7 @@ from .. import (
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.
-_file_streams = {}
+_file_streams: Dict[str, Any] = {}
 
 
 def _get_protocol_handlers():

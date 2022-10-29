@@ -17,13 +17,11 @@
 """Tree classes, representing directory at point in time.
 """
 
-try:
-    from collections.abc import deque
-except ImportError:  # python < 3.7
-    from collections import deque
+from collections import deque
 
 import os
 import re
+from typing import Type, TYPE_CHECKING, Optional
 
 
 from .. import (
@@ -1147,12 +1145,6 @@ class InterInventoryTree(InterTree):
     """InterTree implementation for InventoryTree objects.
 
     """
-    # Formats that will be used to test this InterTree. If both are
-    # None, this InterTree will not be tested (e.g. because a complex
-    # setup is required)
-    _matching_from_tree_format = None
-    _matching_to_tree_format = None
-
     @classmethod
     def is_compatible(kls, source, target):
         # The default implementation is naive and uses the public API, so

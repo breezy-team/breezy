@@ -1303,7 +1303,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _read_submodule_head(self, path):
         return read_submodule_head(self.abspath(path))
 
-    def get_reference_revision(self, path, branch=None):
+    def get_reference_revision(self, path):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
             (index, subpath) = self._lookup_index(

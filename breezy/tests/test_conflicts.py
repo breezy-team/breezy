@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+from typing import List, Tuple, Dict, Any, Callable, Type
 
 from .. import (
     conflicts,
@@ -24,6 +25,7 @@ from .. import (
     tests,
     transform,
     )
+from ..workingtree import WorkingTree
 from ..bzr import conflicts as bzr_conflicts
 from . import (
     script,
@@ -159,7 +161,7 @@ class TestConflictList(tests.TestCase):
 # FIXME: Tests missing for DuplicateID conflict type
 class TestResolveConflicts(script.TestCaseWithTransportAndScript):
 
-    preamble = None  # The setup script set by daughter classes
+    preamble: str  # The setup script set by daughter classes
 
     def setUp(self):
         super(TestResolveConflicts, self).setUp()
@@ -236,15 +238,18 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """
 
     # Set by daughter classes
-    _conflict_type = None
-    _assert_conflict = None
+    _conflict_type: Type[conflicts.Conflict]
+    _assert_conflict: Callable[[Any, Any, Any], Any]
 
     # Set by load_tests
     _base_actions = None
     _this = None
     _other = None
 
-    scenarios = []
+    scenarios: List[Tuple[
+        Dict[str, Any],
+        Tuple[str, Dict[str, Any]],
+        Tuple[str, Dict[str, Any]]]] = []
     """The scenario list for the conflict type defined by the class.
 
     Each scenario is of the form:
