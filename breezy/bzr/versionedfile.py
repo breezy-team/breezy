@@ -39,7 +39,6 @@ from breezy import (
     )
 from breezy.bzr import (
     groupcompress,
-    index,
     knit,
     )
 """)
@@ -49,6 +48,10 @@ from .. import (
     )
 from ..registry import Registry
 from ..textmerge import TextMerge
+
+from . import (
+    index,
+    )
 
 
 adapter_registry = Registry()

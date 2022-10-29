@@ -26,6 +26,7 @@ import subprocess
 import sys
 import threading
 import time
+from typing import Type, Optional
 
 from testtools.matchers import DocTestMatches
 
@@ -1936,10 +1937,10 @@ class TestSmartProtocol(tests.TestCase):
     Subclasses can override client_protocol_class and server_protocol_class.
     """
 
-    request_encoder = None
-    response_decoder = None
-    server_protocol_class = None
-    client_protocol_class = None
+    request_encoder: object
+    response_decoder: Type[protocol._StatefulDecoder]
+    server_protocol_class: Type[protocol.SmartProtocolBase]
+    client_protocol_class: Optional[Type[protocol.SmartProtocolBase]] = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """
@@ -2785,7 +2786,7 @@ class TestVersionOneFeaturesInProtocolThree(
     # method.  So we make server_protocol_class be a static method, rather than
     # simply doing:
     # "server_protocol_class = protocol.build_server_protocol_three".
-    server_protocol_class = staticmethod(protocol.build_server_protocol_three)
+    server_protocol_class = staticmethod(protocol.build_server_protocol_three)  # type: ignore
 
     def setUp(self):
         super(TestVersionOneFeaturesInProtocolThree, self).setUp()
@@ -2835,7 +2836,7 @@ class TestProtocolThree(TestSmartProtocol):
 
     request_encoder = protocol.ProtocolThreeRequester
     response_decoder = protocol.ProtocolThreeDecoder
-    server_protocol_class = protocol.ProtocolThreeDecoder
+    server_protocol_class = protocol.ProtocolThreeDecoder  # type: ignore
 
     def test_trivial_request(self):
         """Smoke test for the simplest possible v3 request: empty headers, no
@@ -3207,7 +3208,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
 
     request_encoder = protocol.ProtocolThreeRequester
     response_decoder = protocol.ProtocolThreeDecoder
-    server_protocol_class = protocol.ProtocolThreeDecoder
+    server_protocol_class = protocol.ProtocolThreeDecoder  # type: ignore
 
     def make_client_encoder_and_output(self):
         result = self.make_client_protocol_and_output()

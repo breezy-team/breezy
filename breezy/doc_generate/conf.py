@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+from typing import Dict, Any, List
+
 #
 # Bazaar documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.
@@ -100,7 +103,7 @@ html_theme = 'agogo'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {
+html_theme_options: Dict[str, Any] = {
     # Unfortunately, the right sidebar breaks under IE6 and maybe IE7.
     # So we stick with the default left placement to cater for users stuck
     # on those browsers.
@@ -196,7 +199,7 @@ htmlhelp_basename = 'brz-docs'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
-latex_documents = []
+latex_documents: List[Any] = []
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.

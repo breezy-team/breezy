@@ -21,6 +21,7 @@ import stat
 import sys
 import time
 import codecs
+from typing import Dict, List
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -795,7 +796,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
 
 
 # Cache of formatted offset strings
-_offset_cache = {}
+_offset_cache: Dict[int, str] = {}
 
 
 def format_date_with_offset_in_original_timezone(t, offset=0,
@@ -999,7 +1000,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-def parent_directories(filename):
+def parent_directories(filename: str):
     """Return the list of parent directories, deepest first.
 
     For example, parent_directories("a/b/c") -> ["a/b", "a"].
@@ -2017,12 +2018,12 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-_end_of_stream_errors = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
+_end_of_stream_errors: List[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
-    _eno = getattr(errno, _eno, None)
-    if _eno is not None:
-        _end_of_stream_errors.append(_eno)
-del _eno
+    try:
+        _end_of_stream_errors.append(getattr(errno, _eno))
+    except AttributeError:
+        pass
 
 
 def read_bytes_from_socket(sock, report_activity=None,

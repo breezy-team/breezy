@@ -17,10 +17,7 @@
 """Tests for profiling data collection."""
 
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 import threading
 
 from .. import (

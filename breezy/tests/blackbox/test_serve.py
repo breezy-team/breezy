@@ -17,10 +17,9 @@
 
 """Tests of the brz serve command."""
 
-import os
 import signal
 import sys
-from _thread import interrupt_main
+from _thread import interrupt_main  # type: ignore
 
 import threading
 

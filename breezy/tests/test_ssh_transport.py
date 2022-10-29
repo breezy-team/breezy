@@ -230,7 +230,7 @@ class SubprocessVendorsTests(TestCase):
                 "-s", "--", "host", "sftp"]
             )
 
-    def test_openssh_command_tricked(self):
+    def test_openssh_command_strange_hostname(self):
         vendor = SSHCorpSubprocessVendor()
         self.assertRaises(
             StrangeHostname,

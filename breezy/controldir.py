@@ -24,6 +24,8 @@ see breezy.bzrdir.BzrDir.
 
 """
 
+from typing import List, Type, Optional
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
@@ -950,7 +952,7 @@ class ControlDirHooks(hooks.Hooks):
 
 
 # install the default hooks
-ControlDir.hooks = ControlDirHooks()
+ControlDir.hooks = ControlDirHooks()  # type: ignore
 
 
 class ControlComponentFormat(object):
@@ -1101,10 +1103,10 @@ class ControlDirFormat(object):
                                  working tree.
     """
 
-    _default_format = None
+    _default_format: Optional["ControlDirFormat"] = None
     """The default format used for new control directories."""
 
-    _probers = []
+    _probers: List[Type["Prober"]] = []
     """The registered format probers, e.g. BzrProber.
 
     This is a list of Prober-derived classes.

@@ -19,6 +19,7 @@
 
 import optparse
 import re
+from typing import Dict
 
 from . import (
     errors,
@@ -141,12 +142,12 @@ class Option(object):
     """
 
     # The dictionary of standard options. These are always legal.
-    STD_OPTIONS = {}
+    STD_OPTIONS: Dict[str, "Option"] = {}
 
     # The dictionary of commonly used options. these are only legal
     # if a command explicitly references them by name in the list
     # of supported options.
-    OPTIONS = {}
+    OPTIONS: Dict[str, "Option"] = {}
 
     def __init__(self, name, help='', type=None, argname=None,
                  short_name=None, param_name=None, custom_callback=None,

@@ -30,10 +30,7 @@ import os
 import sys
 import time
 
-try:
-    import _thread
-except ImportError:
-    import thread as _thread
+import _thread
 
 import breezy
 from ...lazy_import import lazy_import

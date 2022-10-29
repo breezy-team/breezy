@@ -43,6 +43,8 @@ from io import (
     BytesIO,
     )
 
+from typing import List, Tuple, Dict
+
 from .. import (
     errors,
     osutils,
@@ -63,6 +65,10 @@ class ContentFilter(object):
 
     def __repr__(self):
         return "reader: %s, writer: %s" % (self.reader, self.writer)
+
+
+Preferences = List[Tuple[str, str]]
+Stack = List[ContentFilter]
 
 
 class ContentFilterContext(object):
@@ -168,7 +174,7 @@ filter_stacks_registry = registry.Registry()
 
 # Cache of preferences -> stack
 # TODO: make this per branch (say) rather than global
-_stack_cache = {}
+_stack_cache: Dict[Preferences, Stack] = {}
 
 
 def _get_registered_names():
@@ -178,7 +184,7 @@ def _get_registered_names():
     return filter_stacks_registry.keys()
 
 
-def _get_filter_stack_for(preferences):
+def _get_filter_stack_for(preferences: Preferences) -> Stack:
     """Get the filter stack given a sequence of preferences.
 
     :param preferences: a sequence of (name,value) tuples where

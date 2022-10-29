@@ -158,7 +158,9 @@ class TestHooks(tests.TestCase):
         self.assertEqual("demo", set_rh_lazy_hooks[0][1])
         self.assertEqual(list(TestHooks.hooks['set_rh']), [set_rh])
 
-    def set_rh(): return None
+    @classmethod
+    def set_rh(cls):
+        return None
 
     def test_install_named_hook_lazy(self):
         hooks = Hooks("breezy.tests.hooks", "some_hooks")
@@ -221,7 +223,8 @@ class TestHook(tests.TestCase):
         hook.hook(callback, "my callback")
         self.assertEqual([callback], list(hook))
 
-    def lazy_callback():
+    @classmethod
+    def lazy_callback(cls):
         pass
 
     def test_lazy_hook(self):
