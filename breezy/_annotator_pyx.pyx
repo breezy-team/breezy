@@ -65,28 +65,19 @@ cdef extern from "Python.h":
 from . import _annotator_py
 
 
-cdef int _check_annotations_are_lists(annotations,
-                                      parent_annotations) except -1:
-    if not PyList_CheckExact(annotations):
-        raise TypeError('annotations must be a list')
-    if not PyList_CheckExact(parent_annotations):
-        raise TypeError('parent_annotations must be a list')
-    return 0
-
-
-cdef int _check_match_ranges(parent_annotations, annotations,
+cdef int _check_match_ranges(list parent_annotations, list annotations,
                              Py_ssize_t parent_idx, Py_ssize_t lines_idx,
                              Py_ssize_t match_len) except -1:
-    if parent_idx + match_len > PyList_GET_SIZE(parent_annotations):
+    if parent_idx + match_len > len(parent_annotations):
         raise ValueError('Match length exceeds len of'
                          ' parent_annotations %s > %s'
                          % (parent_idx + match_len,
-                            PyList_GET_SIZE(parent_annotations)))
-    if lines_idx + match_len > PyList_GET_SIZE(annotations):
+                            len(parent_annotations)))
+    if lines_idx + match_len > len(annotations):
         raise ValueError('Match length exceeds len of'
                          ' annotations %s > %s'
                          % (lines_idx + match_len,
-                            PyList_GET_SIZE(annotations)))
+                            len(annotations)))
     return 0
 
 
@@ -170,7 +161,7 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
     return new_ann
 
 
-cdef int _apply_parent_annotations(annotations, parent_annotations,
+cdef int _apply_parent_annotations(list annotations, list parent_annotations,
                                    matching_blocks) except -1:
     """Apply the annotations from parent_annotations into annotations.
 
@@ -180,7 +171,6 @@ cdef int _apply_parent_annotations(annotations, parent_annotations,
     cdef PyObject *par_temp
     cdef PyObject *ann_temp
 
-    _check_annotations_are_lists(annotations, parent_annotations)
     # For NEWS and breezy/builtins.py, over 99% of the lines are simply copied
     # across from the parent entry. So this routine is heavily optimized for
     # that. Would be interesting if we could use memcpy() but we have to incref
@@ -188,23 +178,18 @@ cdef int _apply_parent_annotations(annotations, parent_annotations,
     for parent_idx, lines_idx, match_len in matching_blocks:
         _check_match_ranges(parent_annotations, annotations,
                             parent_idx, lines_idx, match_len)
-        for idx from 0 <= idx < match_len:
-            par_temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
-            ann_temp = PyList_GET_ITEM(annotations, lines_idx + idx)
-            Py_INCREF_ptr(par_temp)
-            Py_DECREF_ptr(ann_temp)
-            PyList_SetItem(annotations, lines_idx + idx, <object>par_temp)
+        annotations[lines_idx:lines_idx + match_len] = parent_annotations[parent_idx:parent_idx + match_len]
     return 0
 
 
-cdef int _merge_annotations(this_annotation, annotations, parent_annotations,
+cdef int _merge_annotations(object this_annotation, list annotations,
+                            list parent_annotations,
                             matching_blocks, ann_cache) except -1:
     cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
     cdef Py_ssize_t pos
-    cdef PyObject *ann_temp
-    cdef PyObject *par_temp
+    cdef object ann
+    cdef object par
 
-    _check_annotations_are_lists(annotations, parent_annotations)
     last_ann = None
     last_parent = None
     last_res = None
@@ -215,9 +200,9 @@ cdef int _merge_annotations(this_annotation, annotations, parent_annotations,
         # this parent wins over the current annotation
         for idx from 0 <= idx < match_len:
             ann_idx = lines_idx + idx
-            ann_temp = PyList_GET_ITEM(annotations, ann_idx)
-            par_temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
-            if (ann_temp == par_temp):
+            ann = annotations[ann_idx]
+            par_ann = parent_annotations[parent_idx + idx]
+            if (ann == par_ann):
                 # This is parent, do nothing
                 # Pointer comparison is fine here. Value comparison would
                 # be ok, but it will be handled in the final if clause by
@@ -226,23 +211,18 @@ cdef int _merge_annotations(this_annotation, annotations, parent_annotations,
                 # PyObject_RichCompareBool using pointer comparison drops
                 # timing from 215ms => 125ms
                 continue
-            par_ann = <object>par_temp
-            ann = <object>ann_temp
             if (ann is this_annotation):
                 # Originally claimed 'this', but it was really in this
                 # parent
-                Py_INCREF(par_ann)
-                PyList_SetItem(annotations, ann_idx, par_ann)
+                annotations[ann_idx] = par_ann
                 continue
             # Resolve the fact that both sides have a different value for
             # last modified
             if (ann is last_ann and par_ann is last_parent):
-                Py_INCREF(last_res)
-                PyList_SetItem(annotations, ann_idx, last_res)
+                annotations[ann_idx] = last_res
             else:
                 new_ann = _combine_annotations(ann, par_ann, ann_cache)
-                Py_INCREF(new_ann)
-                PyList_SetItem(annotations, ann_idx, new_ann)
+                annotations[ann_idx] = new_ann
                 last_ann = ann
                 last_parent = par_ann
                 last_res = new_ann
