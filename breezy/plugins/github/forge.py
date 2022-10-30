@@ -61,6 +61,10 @@ API_GITHUB_URL = 'https://api.github.com'
 DEFAULT_PER_PAGE = 50
 
 
+def parse_timestring(ts):
+    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+
+
 def store_github_token(token):
     auth_config = AuthenticationConfig()
     auth_config._set_option('Github', 'scheme', 'https')
@@ -217,7 +221,7 @@ class GitHubMergeProposal(MergeProposal):
         merged_at = self._pr.get('merged_at')
         if merged_at is None:
             return None
-        return datetime.strptime(merged_at.translate(None, ':-'), "%Y%m%dT%H%M%S.%fZ")
+        return parse_timestring(merged_at)
 
     def post_comment(self, body):
         data = {'body': body}
