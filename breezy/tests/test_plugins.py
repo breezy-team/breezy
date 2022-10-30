@@ -950,7 +950,7 @@ class TestLoadEnvPlugin(BaseTestPlugins):
             yield from old_discover(**kwargs)
             yield d
         self.overrideAttr(Distribution, 'discover', override_discover)
-        eps = [ep for ep in entry_points() if ep.group == 'breezy.plugin']
+        eps = [ep for ep in entry_points().values() if ep.group == 'breezy.plugin']
         self.assertEqual(['plugin'], [ep.name for ep in eps])
         self.load_with_paths(['.'])
 

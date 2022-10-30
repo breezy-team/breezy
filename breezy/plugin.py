@@ -112,7 +112,7 @@ def _load_plugins_from_entrypoints(state):
         try:
             eps = entry_points(group='breezy.plugin')
         except TypeError:  # python < 3.10 didn't support group argument
-            eps = [ep for ep in entry_points()
+            eps = [ep for ep in entry_points().values()
                     if ep.group == 'breezy.plugin']
         for ep in eps:
             fullname = _MODULE_PREFIX + ep.name
