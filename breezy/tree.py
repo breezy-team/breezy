@@ -17,6 +17,8 @@
 """Tree classes, representing directory at point in time.
 """
 
+__docformat__ = "google"
+
 from typing import List, Type, TYPE_CHECKING, Optional
 
 from . import (
@@ -226,19 +228,20 @@ class Tree(object):
                      want_unversioned=False):
         """Return a TreeDelta of the changes from other to this tree.
 
-        :param other: A tree to compare with.
-        :param specific_files: An optional list of file paths to restrict the
+        Args:
+          other: A tree to compare with.
+          specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
             trees (including optional extra_trees) are used, and all children of
             matched directories are included.
-        :param want_unchanged: An optional boolean requesting the inclusion of
+          want_unchanged: An optional boolean requesting the inclusion of
             unchanged entries in the result.
-        :param extra_trees: An optional list of additional trees to use when
+          extra_trees: An optional list of additional trees to use when
             mapping the contents of specific_files (paths) to their identities.
-        :param require_versioned: An optional boolean (defaults to False). When
+          require_versioned: An optional boolean (defaults to False). When
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
-        :param want_unversioned: Scan for unversioned paths.
+          want_unversioned: Scan for unversioned paths.
 
         The comparison will be performed by an InterTree object looked up on
         self and other.
@@ -279,9 +282,10 @@ class Tree(object):
     def get_parent_ids(self):
         """Get the parent ids for this tree.
 
-        :return: a list of parent ids. [] is returned to indicate
+        Returns: a list of parent ids. [] is returned to indicate
         a tree with no parents.
-        :raises: BzrError if the parents are not known.
+        Raises:
+          BzrError: if the parents are not known.
         """
         raise NotImplementedError(self.get_parent_ids)
 
@@ -292,8 +296,9 @@ class Tree(object):
     def is_ignored(self, filename):
         """Check whether the filename is ignored by this tree.
 
-        :param filename: The relative filename within the tree.
-        :return: True if the filename is ignored.
+        Args:
+          filename: The relative filename within the tree.
+        Returns: True if the filename is ignored.
         """
         return False
 
@@ -335,9 +340,11 @@ class Tree(object):
     def iter_child_entries(self, path):
         """Iterate over the children of a directory or tree reference.
 
-        :param path: Path of the directory
-        :raise NoSuchFile: When the path does not exist
-        :return: Iterator over entries in the directory
+        Args:
+          path: Path of the directory
+        Raises:
+          NoSuchFile: When the path does not exist
+        Returns: Iterator over entries in the directory
         """
         raise NotImplementedError(self.iter_child_entries)
 
@@ -345,11 +352,12 @@ class Tree(object):
                    recurse_nested=False):
         """List all files in this tree.
 
-        :param include_root: Whether to include the entry for the tree root
-        :param from_dir: Directory under which to list files
-        :param recursive: Whether to list files recursively
-        :param recurse_nested: enter nested trees
-        :return: iterator over tuples of
+        Args:
+          include_root: Whether to include the entry for the tree root
+          from_dir: Directory under which to list files
+          recursive: Whether to list files recursively
+          recurse_nested: enter nested trees
+        Returns: iterator over tuples of
             (path, versioned, kind, inventory entry)
         """
         raise NotImplementedError(self.list_files)
@@ -363,7 +371,7 @@ class Tree(object):
     def get_containing_nested_tree(self, path):
         """Find the nested tree that contains a path.
 
-        :return: tuple with (nested tree and path inside the nested tree)
+        Returns: tuple with (nested tree and path inside the nested tree)
         """
         for nested_path in self.iter_references():
             nested_path += '/'
@@ -376,9 +384,11 @@ class Tree(object):
     def get_nested_tree(self, path):
         """Open the nested tree at the specified path.
 
-        :param path: Path from which to resolve tree reference.
-        :return: A Tree object for the nested tree
-        :raise MissingNestedTree: If the nested tree can not be resolved
+        Args:
+          path: Path from which to resolve tree reference.
+        Returns: A Tree object for the nested tree
+        Raises:
+          MissingNestedTree: If the nested tree can not be resolved
         """
         raise NotImplementedError(self.get_nested_tree)
 
@@ -400,8 +410,9 @@ class Tree(object):
         All the attributes returned are for the canonical form, not the
         convenient form (if content filters are in use.)
 
-        :param path: A relative path within the tree.
-        :return: A tuple containing kind, size, exec, sha1-or-link.
+        Args:
+          path: A relative path within the tree.
+        Returns: A tuple containing kind, size, exec, sha1-or-link.
             Kind is always present (see tree.kind()).
             size is present if kind is file and the size of the
                 canonical form can be cheaply determined, None otherwise.
@@ -439,8 +450,9 @@ class Tree(object):
         The default implementation returns (self.get_file, None) for backwards
         compatibility.
 
-        :param path: The path of the file.
-        :return: A tuple (file_handle, stat_value_or_None). If the tree has
+        Args:
+          path: The path of the file.
+        Returns: A tuple (file_handle, stat_value_or_None). If the tree has
             no stat facility, or need for a stat cache feedback during commit,
             it may return None for the second element of the tuple.
         """
@@ -449,9 +461,10 @@ class Tree(object):
     def get_file_text(self, path):
         """Return the byte content of a file.
 
-        :param path: The path of the file.
+        Args:
+          path: The path of the file.
 
-        :returns: A single byte string for the whole file.
+        Returns: A single byte string for the whole file.
         """
         with self.get_file(path) as my_file:
             return my_file.read()
@@ -459,7 +472,8 @@ class Tree(object):
     def get_file_lines(self, path):
         """Return the content of a file, as lines.
 
-        :param path: The path of the file.
+        Args:
+          path: The path of the file.
         """
         return osutils.split_lines(self.get_file_text(path))
 
@@ -468,10 +482,11 @@ class Tree(object):
 
         The default implementation returns a sha1.
 
-        :param path: The path that this file can be found at.
+        Args:
+          path: The path that this file can be found at.
             These must point to the same object.
-        :param stat_value: Optional stat value for the object
-        :return: Tuple with verifier name and verifier data
+          stat_value: Optional stat value for the object
+        Returns: Tuple with verifier name and verifier data
         """
         return ("SHA1", self.get_file_sha1(path, stat_value=stat_value))
 
@@ -482,15 +497,17 @@ class Tree(object):
             where possible, as the underlying repository implementation may
             have quicker access to a non-sha1 verifier.
 
-        :param path: The path that this file can be found at.
-        :param stat_value: Optional stat value for the object
+        Args:
+          path: The path that this file can be found at.
+          stat_value: Optional stat value for the object
         """
         raise NotImplementedError(self.get_file_sha1)
 
     def get_file_mtime(self, path):
         """Return the modification time for a file.
 
-        :param path: The path that this file can be found at.
+        Args:
+          path: The path that this file can be found at.
         """
         raise NotImplementedError(self.get_file_mtime)
 
@@ -505,7 +522,8 @@ class Tree(object):
     def is_executable(self, path):
         """Check if a file is executable.
 
-        :param path: The path that this file can be found at.
+        Args:
+          path: The path that this file can be found at.
         """
         raise NotImplementedError(self.is_executable)
 
@@ -525,7 +543,8 @@ class Tree(object):
         this implementation, it is a tuple containing a single bytestring with
         the complete text of the file.
 
-        :param desired_files: a list of (path, identifier) pairs
+        Args:
+          desired_files: a list of (path, identifier) pairs
         """
         for path, identifier in desired_files:
             # We wrap the string in a tuple so that we can return an iterable
@@ -540,8 +559,10 @@ class Tree(object):
 
         It is assumed that the caller already knows that path is referencing
         a symlink.
-        :param path: The path of the file.
-        :return: The path the symlink points to.
+
+        Args:
+          path: The path of the file.
+        Returns: The path the symlink points to.
         """
         raise NotImplementedError(self.get_symlink_target)
 
@@ -552,18 +573,21 @@ class Tree(object):
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
-        :param path: The file to produce an annotated version from
-        :param default_revision: For lines that don't match a basis, mark them
+
+        Args;
+          path: The file to produce an annotated version from
+          default_revision: For lines that don't match a basis, mark them
             with this revision id. Not all implementations will make use of
             this value.
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def is_versioned(self, path):
+    def is_versioned(self, path: str) -> bool:
         """Check whether path is versioned.
 
-        :param path: Path to check
-        :return: boolean
+        Args:
+          path: Path to check
+        Returns: boolean
         """
         raise NotImplementedError(self.is_versioned)
 
@@ -575,12 +599,13 @@ class Tree(object):
         All matches in all trees will be used, and all children of matched
         directories will be used.
 
-        :param paths: The filenames to find related paths for (if None, returns
+        Args:
+          paths: The filenames to find related paths for (if None, returns
             None)
-        :param trees: The trees to find file_ids within
-        :param require_versioned: if true, all specified filenames must occur in
+          trees: The trees to find file_ids within
+          require_versioned: if true, all specified filenames must occur in
             at least one tree.
-        :return: a set of paths for the specified filenames and their children
+        Returns: a set of paths for the specified filenames and their children
             in `tree`
         """
         raise NotImplementedError(self.find_related_paths_across_trees)
@@ -588,7 +613,7 @@ class Tree(object):
     def lock_read(self):
         """Lock this tree for multiple read only operations.
 
-        :return: A breezy.lock.LogicalLockResult.
+        Returns: A breezy.lock.LogicalLockResult.
         """
         return lock.LogicalLockResult(self.unlock)
 
@@ -601,16 +626,18 @@ class Tree(object):
         tree via a repository or some other means. Callers are responsible
         for finding the ultimate source for a revision tree.
 
-        :param revision_id: The revision_id of the requested tree.
-        :return: A Tree.
-        :raises: NoSuchRevision if the tree cannot be obtained.
+        Args:
+          revision_id: The revision_id of the requested tree.
+        Returns: A Tree.
+        Raises:
+          NoSuchRevision: if the tree cannot be obtained.
         """
         raise errors.NoSuchRevisionInTree(self, revision_id)
 
     def unknowns(self):
         """What files are present in this tree and unknown.
 
-        :return: an iterator over the unknown files.
+        Returns: an iterator over the unknown files.
         """
         return iter([])
 
@@ -620,7 +647,7 @@ class Tree(object):
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
 
-        :return: set of paths.
+        Returns: set of paths.
         """
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
@@ -650,10 +677,11 @@ class Tree(object):
            versioning system. If 'unknown' the file is not versioned.
         One of 'kind' and 'versioned_kind' must not be 'unknown'.
 
-        :param prefix: Start walking from prefix within the tree rather than
-        at the root. This allows one to walk a subtree but get paths that are
-        relative to a tree rooted higher up.
-        :return: an iterator over the directory data.
+        Args:
+          prefix: Start walking from prefix within the tree rather than
+            at the root. This allows one to walk a subtree but get paths that are
+            relative to a tree rooted higher up.
+        Returns: an iterator over the directory data.
         """
         raise NotImplementedError(self.walkdirs)
 
@@ -667,9 +695,10 @@ class Tree(object):
         Writers will be applied in last-to-first order.
         Either the path or the file-id needs to be provided.
 
-        :param path: path relative to the root of the tree
+        Args:
+          path: path relative to the root of the tree
             or None if unknown
-        :return: the list of filters - [] if there are none
+        Returns: the list of filters - [] if there are none
         """
         from . import debug, filters
         filter_pref_names = filters._get_registered_names()
@@ -687,7 +716,7 @@ class Tree(object):
         The function takes a path (relative to the top of the tree) and a
         file-id as parameters.
 
-        :return: None if content filtering is not supported by this tree.
+        Returns: None if content filtering is not supported by this tree.
         """
         if self.supports_content_filtering():
             return self._content_filter_stack
@@ -698,11 +727,12 @@ class Tree(object):
                           _default_searcher=None):
         """Find the preferences for filenames in a tree.
 
-        :param path_names: an iterable of paths to find attributes for.
+        Args:
+          path_names: an iterable of paths to find attributes for.
           Paths are given relative to the root of the tree.
-        :param pref_names: the list of preferences to lookup - None for all
-        :param _default_searcher: private parameter to assist testing - don't use
-        :return: an iterator of tuple sequences, one per path-name.
+          pref_names: the list of preferences to lookup - None for all
+          _default_searcher: private parameter to assist testing - don't use
+        Returns: an iterator of tuple sequences, one per path-name.
           See _RulesSearcher.get_items for details on the tuple sequence.
         """
         from . import rules
@@ -781,19 +811,20 @@ class InterTree(InterObject):
                 want_unversioned=False):
         """Return the changes from source to target.
 
-        :return: A TreeDelta.
-        :param specific_files: An optional list of file paths to restrict the
+        Returns: A TreeDelta.
+        Args:
+          specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
             trees (including optional extra_trees) are used, and all children of
             matched directories are included.
-        :param want_unchanged: An optional boolean requesting the inclusion of
+          want_unchanged: An optional boolean requesting the inclusion of
             unchanged entries in the result.
-        :param extra_trees: An optional list of additional trees to use when
+          extra_trees: An optional list of additional trees to use when
             mapping the contents of specific_files (paths) to file_ids.
-        :param require_versioned: An optional boolean (defaults to False). When
+          require_versioned: An optional boolean (defaults to False). When
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
-        :param want_unversioned: Scan for unversioned paths.
+          want_unversioned: Scan for unversioned paths.
         """
         from . import delta
         trees = (self.source,)
@@ -825,16 +856,18 @@ class InterTree(InterObject):
         requirement to expand the search due to renames may result in children
         that should be found early being found late in the search, after
         lexically later results have been returned.
-        :param require_versioned: Raise errors.PathsNotVersionedError if a
+
+        Args:
+          require_versioned: Raise errors.PathsNotVersionedError if a
             path in the specific_files list is not versioned in one of
             source, target or extra_trees.
-        :param specific_files: An optional list of file paths to restrict the
+          specific_files: An optional list of file paths to restrict the
             comparison to. When mapping filenames to ids, all matches in all
             trees (including optional extra_trees) are used, and all children
             of matched directories are included. The parents in the target tree
             of the specific files up to and including the root of the tree are
             always evaluated for changes too.
-        :param want_unversioned: Should unversioned files be returned in the
+          want_unversioned: Should unversioned files be returned in the
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
@@ -848,11 +881,12 @@ class InterTree(InterObject):
         This only checks that the contents of the files are the same,
         it does not touch anything else.
 
-        :param source_path: Path of the file in the source tree
-        :param target_path: Path of the file in the target tree
-        :param source_stat: Optional stat value of the file in the source tree
-        :param target_stat: Optional stat value of the file in the target tree
-        :return: Boolean indicating whether the files have the same contents
+        Args:
+          source_path: Path of the file in the source tree
+          target_path: Path of the file in the target tree
+          source_stat: Optional stat value of the file in the source tree
+          target_stat: Optional stat value of the file in the target tree
+        Returns: Boolean indicating whether the files have the same contents
         """
         with self.lock_read():
             source_verifier_kind, source_verifier_data = (
@@ -878,26 +912,31 @@ class InterTree(InterObject):
     def find_target_path(self, path, recurse='none'):
         """Find target tree path.
 
-        :param path: Path to search for (exists in source)
-        :return: path in target, or None if there is no equivalent path.
-        :raise NoSuchFile: If the path doesn't exist in source
+        Args:
+          path: Path to search for (exists in source)
+        Returns: path in target, or None if there is no equivalent path.
+        Raises:
+          NoSuchFile: If the path doesn't exist in source
         """
         raise NotImplementedError(self.find_target_path)
 
     def find_source_path(self, path, recurse='none'):
         """Find the source tree path.
 
-        :param path: Path to search for (exists in target)
-        :return: path in source, or None if there is no equivalent path.
-        :raise NoSuchFile: if the path doesn't exist in target
+        Args:
+          path: Path to search for (exists in target)
+        Returns: path in source, or None if there is no equivalent path.
+        Raises:
+          NoSuchFile: if the path doesn't exist in target
         """
         raise NotImplementedError(self.find_source_path)
 
     def find_target_paths(self, paths, recurse='none'):
         """Find target tree paths.
 
-        :param paths: Iterable over paths in target to search for
-        :return: Dictionary mapping from source paths to paths in target , or
+        Args:
+          paths: Iterable over paths in target to search for
+        Returns: Dictionary mapping from source paths to paths in target , or
             None if there is no equivalent path.
         """
         ret = {}
@@ -908,8 +947,9 @@ class InterTree(InterObject):
     def find_source_paths(self, paths, recurse='none'):
         """Find source tree paths.
 
-        :param paths: Iterable over paths in target to search for
-        :return: Dictionary mapping from target paths to paths in source, or
+        Args:
+          paths: Iterable over paths in target to search for
+        Returns: Dictionary mapping from target paths to paths in source, or
             None if there is no equivalent path.
         """
         ret = {}
@@ -921,10 +961,11 @@ class InterTree(InterObject):
 def find_previous_paths(from_tree, to_tree, paths, recurse='none'):
     """Find previous tree paths.
 
-    :param from_tree: From tree
-    :param to_tree: To tree
-    :param paths: Iterable over paths in from_tree to search for
-    :return: Dictionary mapping from from_tree paths to paths in to_tree, or
+    Args:
+      from_tree: From tree
+      to_tree: To tree
+      paths: Iterable over paths in from_tree to search for
+    Returns: Dictionary mapping from from_tree paths to paths in to_tree, or
         None if there is no equivalent path.
     """
     return InterTree.get(to_tree, from_tree).find_source_paths(paths, recurse=recurse)
@@ -933,11 +974,13 @@ def find_previous_paths(from_tree, to_tree, paths, recurse='none'):
 def find_previous_path(from_tree, to_tree, path, recurse='none'):
     """Find previous tree path.
 
-    :param from_tree: From tree
-    :param to_tree: To tree
-    :param path: Path to search for (exists in from_tree)
-    :return: path in to_tree, or None if there is no equivalent path.
-    :raise NoSuchFile: If the path doesn't exist in from_tree
+    Args:
+      from_tree: From tree
+      to_tree: To tree
+      path: Path to search for (exists in from_tree)
+    Returns: path in to_tree, or None if there is no equivalent path.
+    Raises:
+      NoSuchFile: If the path doesn't exist in from_tree
     """
     return InterTree.get(to_tree, from_tree).find_source_path(
         path, recurse=recurse)
@@ -946,10 +989,11 @@ def find_previous_path(from_tree, to_tree, path, recurse='none'):
 def get_canonical_path(tree, path, normalize):
     """Find the canonical path of an item, ignoring case.
 
-    :param tree: Tree to traverse
-    :param path: Case-insensitive path to look up
-    :param normalize: Function to normalize a filename for comparison
-    :return: The canonical path
+    Args:
+      tree: Tree to traverse
+      path: Case-insensitive path to look up
+      normalize: Function to normalize a filename for comparison
+    Returns: The canonical path
     """
     # go walkin...
     cur_path = ''

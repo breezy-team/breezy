@@ -48,8 +48,9 @@ def report_notmarked(bug, task, section):
 def read_news_bugnos(path):
     """Read the bug numbers closed by a particular NEWS file
 
-    :param path: Path to the NEWS file
-    :return: list of bug numbers that were closed.
+    Args:
+      path: Path to the NEWS file
+    Returns: list of bug numbers that were closed.
     """
     # Pattern to find bug numbers
     bug_pattern = re.compile(r"\#([0-9]+)")
