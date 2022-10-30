@@ -34,7 +34,7 @@ from debmutate.changelog import ChangelogEditor
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy import urlutils
-from breezy.errors import NotBranchError
+from breezy.errors import NotBranchError, NoSuchTag
 from breezy.revision import RevisionID, NULL_REVISION
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
@@ -178,6 +178,14 @@ class TreeVersionNotInArchiveChangelog(Exception):
         )
 
 
+class TreeVersionWithoutTag(Exception):
+    def __init__(self, tree_version, tag_name):
+        self.tree_version = tree_version
+        super(TreeVersionWithoutTag, self).__init__(
+            "unable to find revision for version %s; no tags (e.g. %s)" % (
+                tree_version, tag_name))
+
+
 class TreeUpstreamVersionMissing(Exception):
     def __init__(self, upstream_version):
         self.upstream_version = upstream_version
@@ -234,7 +242,10 @@ def import_uncommitted(
         dbs.add_branch(db)
 
         if tree_version is not None:
-            tree_version_revid = db.revid_of_version(tree_version)
+            try:
+                tree_version_revid = db.revid_of_version(tree_version)
+            except NoSuchTag as e:
+                raise TreeVersionWithoutTag(tree_version, e.tag_name) from e
             if tree_version_revid != tree.last_revision():
                 # There are changes since the last tree version.
                 note("Commits exist on the branch since last upload to archive")
@@ -420,6 +431,9 @@ async def main():
         report_fatal(
             "no-apt-sources",
             "No sources configured in /etc/apt/sources.list")
+        return 1
+    except TreeVersionWithoutTag as e:
+        report_fatal("tree-version-not-found", str(e))
         return 1
     except TreeUpstreamVersionMissing as e:
         report_fatal("tree-upstream-version-missing", str(e))

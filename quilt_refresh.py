@@ -85,8 +85,8 @@ def refresh_quilt_patches(
                 )
                 continue
             m = re.match(
-                "Patch debian/patches/(.*) does not apply \(enforce with -f\)",
-                lines[-1])
+                r"Patch debian/patches/(.*) does not apply "
+                r"\(enforce with -f\)", lines[-1])
             if m:
                 assert m.group(1) == name
                 raise QuiltPatchDoesNotApply(name, e) from e
