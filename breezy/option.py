@@ -17,6 +17,8 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+__docformat__ = "google"
+
 import optparse
 import re
 from typing import Dict
@@ -137,8 +139,9 @@ def get_merge_type(typestring):
 class Option(object):
     """Description of a command line option
 
-    :ivar _short_name: If this option has a single-letter name, this is it.
-    Otherwise None.
+    Attributes:
+      _short_name: If this option has a single-letter name, this is it.
+         Otherwise None.
     """
 
     # The dictionary of standard options. These are always legal.
@@ -154,27 +157,22 @@ class Option(object):
                  hidden=False):
         """Make a new command option.
 
-        :param name: regular name of the command, used in the double-dash
+        Args:
+          name: regular name of the command, used in the double-dash
             form and also as the parameter to the command's run()
             method (unless param_name is specified).
-
-        :param help: help message displayed in command help
-
-        :param type: function called to parse the option argument, or
+          help: help message displayed in command help
+          type: function called to parse the option argument, or
             None (default) if this option doesn't take an argument.
-
-        :param argname: name of option argument, if any
-
-        :param short_name: short option code for use with a single -, e.g.
+          argname: name of option argument, if any
+          short_name: short option code for use with a single -, e.g.
             short_name="v" to enable parsing of -v.
-
-        :param param_name: name of the parameter which will be passed to
+          param_name: name of the parameter which will be passed to
             the command's run() method.
-
-        :param custom_callback: a callback routine to be called after normal
+          custom_callback: a callback routine to be called after normal
             processing. The signature of the callback routine is
             (option, name, new_value, parser).
-        :param hidden: If True, the option should be hidden in help and
+          hidden: If True, the option should be hidden in help and
             documentation.
         """
         self.name = name
@@ -324,20 +322,21 @@ class RegistryOption(Option):
         """
         Constructor.
 
-        :param name: The option name.
-        :param help: Help for the option.
-        :param registry: A Registry containing the values
-        :param converter: Callable to invoke with the value name to produce
+        Args:
+          name: The option name.
+          help: Help for the option.
+          registry: A Registry containing the values
+          converter: Callable to invoke with the value name to produce
             the value.  If not supplied, self.registry.get is used.
-        :param value_switches: If true, each possible value is assigned its
+          value_switches: If true, each possible value is assigned its
             own switch.  For example, instead of '--format knit',
             '--knit' can be used interchangeably.
-        :param enum_switch: If true, a switch is provided with the option name,
+          enum_switch: If true, a switch is provided with the option name,
             which takes a value.
-        :param lazy_registry: A tuple of (module name, attribute name) for a
+          lazy_registry: A tuple of (module name, attribute name) for a
             registry to be lazily loaded.
-        :param short_name: The short name for the enum switch, if any
-        :param short_value_switches: A dict mapping values to short names
+          short_name: The short name for the enum switch, if any
+          short_value_switches: A dict mapping values to short names
         """
         Option.__init__(self, name, help, type=self.convert,
                         short_name=short_name)
