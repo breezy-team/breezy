@@ -17,7 +17,7 @@
 
 """Tests for the MemoryTree class."""
 
-from .. import errors
+from .. import errors, transport
 from ..memorytree import MemoryTree
 from . import TestCaseWithTransport
 from ..treebuilder import TreeBuilder
@@ -189,11 +189,11 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.rename_one('foo', 'bar')
         self.assertEqual('bar', tree.id2path(b'foo-id'))
         self.assertEqual(b'content\n', tree._file_transport.get_bytes('bar'))
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(transport.NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
         tree.commit('two', rev_id=b'rev-two')
         self.assertEqual(b'content\n', tree._file_transport.get_bytes('bar'))
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(transport.NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
 
         rev_tree2 = tree.branch.repository.revision_tree(b'rev-two')

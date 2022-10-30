@@ -16,16 +16,14 @@
 
 """Map from Git sha's to Bazaar objects."""
 
-from dulwich.objects import (
-    sha_to_hex,
-    hex_to_sha,
-    )
 import os
 import threading
 
 from dulwich.objects import (
+    sha_to_hex,
+    hex_to_sha,
     ShaFile,
-    )
+)
 
 from .. import (
     bedding,
@@ -33,15 +31,17 @@ from .. import (
     osutils,
     registry,
     trace,
-    )
+)
 from ..bzr import (
     btree_index as _mod_btree_index,
     index as _mod_index,
     versionedfile,
-    )
+)
 from ..transport import (
     get_transport_from_path,
-    )
+    FileExists,
+    NoSuchFile,
+)
 
 
 def get_cache_dir():
@@ -63,30 +63,6 @@ def get_remote_cache_transport(repository):
         if not os.path.isdir(path):
             os.mkdir(path)
     return get_transport_from_path(path)
-
-
-def check_pysqlite_version(sqlite3):
-    """Check that sqlite library is compatible.
-
-    """
-    if (sqlite3.sqlite_version_info[0] < 3
-            or (sqlite3.sqlite_version_info[0] == 3 and
-                sqlite3.sqlite_version_info[1] < 3)):
-        trace.warning('Needs at least sqlite 3.3.x')
-        raise bzr_errors.BzrError("incompatible sqlite library")
-
-
-try:
-    try:
-        import sqlite3
-        check_pysqlite_version(sqlite3)
-    except (ImportError, bzr_errors.BzrError):
-        from pysqlite2 import dbapi2 as sqlite3
-        check_pysqlite_version(sqlite3)
-except BaseException:
-    trace.warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
-                  'module')
-    raise bzr_errors.BzrError("missing sqlite library")
 
 
 _mapdbs = threading.local()
@@ -199,7 +175,7 @@ class BzrGitCacheFormat(object):
         try:
             format_name = transport.get_bytes('format')
             format = formats.get(format_name)
-        except bzr_errors.NoSuchFile:
+        except NoSuchFile:
             format = formats.get('default')
             format.initialize(transport)
         return format.open(transport)
@@ -229,7 +205,7 @@ class BzrGitCacheFormat(object):
             else:
                 try:
                     repo_transport.mkdir('git')
-                except bzr_errors.FileExists:
+                except FileExists:
                     pass
                 transport = repo_transport.clone('git')
         else:
@@ -418,6 +394,7 @@ class SqliteGitShaMap(GitShaMap):
     """Bazaar GIT Sha map that uses a sqlite database for storage."""
 
     def __init__(self, path=None):
+        import sqlite3
         self.path = path
         if path is None:
             self.db = sqlite3.connect(":memory:")
@@ -830,7 +807,7 @@ class IndexGitShaMap(GitShaMap):
         if transport is not None:
             try:
                 transport.mkdir('git')
-            except bzr_errors.FileExists:
+            except FileExists:
                 pass
             return cls(transport.clone('git'))
         return cls(get_transport_from_path(get_cache_dir()))
@@ -988,7 +965,7 @@ def migrate_ancient_formats(repo_transport):
         return
     try:
         repo_transport.mkdir("git")
-    except bzr_errors.FileExists:
+    except FileExists:
         return
     # Prefer migrating git.db over git.tdb, since the latter may not
     # be openable on some platforms.

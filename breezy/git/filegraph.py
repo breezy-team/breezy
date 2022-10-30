@@ -23,11 +23,7 @@ import stat
 from dulwich.errors import (
     NotTreeError,
     )
-try:
-    from dulwich.objects import SubmoduleEncountered
-except ImportError:
-    class SubmoduleEncountered(Exception):
-        pass
+from dulwich.objects import SubmoduleEncountered
 from dulwich.object_store import (
     tree_lookup_path,
     )
@@ -71,11 +67,12 @@ class GitFileLastChangeScanner(object):
                                  (target_sha, path, commit_id))
         while True:
             parent_commits = []
-            for parent_commit in [store[c] for c in commit.parents]:
+            for parent_id in commit.parents:
                 try:
+                    parent_commit = store[parent_id]
                     mode, sha = tree_lookup_path(store.__getitem__,
                                                  parent_commit.tree, path)
-                except (NotTreeError, KeyError):
+                except (KeyError, NotTreeError):
                     continue
                 else:
                     parent_commits.append(parent_commit)

@@ -338,12 +338,12 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         from breezy import tests
 
         if tests.TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
             tests.TestCaseWithMemoryTransport.TEST_ROOT = root
         else:
             root = tests.TestCaseWithMemoryTransport.TEST_ROOT
-        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-                               dir=root)
+        tdir = tempfile.mkdtemp(prefix='case-sensitive-probe-', suffix='',
+                                dir=root)
         name_a = osutils.pathjoin(tdir, 'a')
         name_A = osutils.pathjoin(tdir, 'A')
         os.mkdir(name_a)
@@ -406,7 +406,7 @@ testtools = ModuleAvailableFeature('testtools')
 flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
 lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
-pkg_resources_feature = ModuleAvailableFeature('pkg_resources')
+importlib_metadata_feature = ModuleAvailableFeature('importlib.metadata')
 
 pyinotify = ModuleAvailableFeature('pyinotify')
 

@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import List, Type, Optional
 
 from breezy import (
     revision,
@@ -28,20 +29,6 @@ from . import (
     revision as _mod_revision,
     trace,
     )
-
-
-class InvalidRevisionSpec(errors.BzrError):
-
-    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch_url)s%(extra)s")
-
-    def __init__(self, spec, branch, extra=None):
-        errors.BzrError.__init__(self, branch=branch, spec=spec)
-        self.branch_url = getattr(branch, 'user_url', str(branch))
-        if extra:
-            self.extra = '\n' + str(extra)
-        else:
-            self.extra = ''
 
 
 class InvalidRevisionSpec(errors.BzrError):
@@ -156,8 +143,8 @@ class RevisionSpec(object):
     (Equivalent to the old Branch method get_revision_info())
     """
 
-    prefix = None
-    dwim_catchable_exceptions = (InvalidRevisionSpec,)
+    prefix: Optional[str] = None
+    dwim_catchable_exceptions: List[Type[Exception]] = [InvalidRevisionSpec]
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
     If the revspec is part of ``dwim_revspecs``, it may be tried with an
@@ -300,12 +287,12 @@ class RevisionSpec_dwim(RevisionSpec):
     is called so the string describing the revision is kept here until needed.
     """
 
-    help_txt = None
+    help_txt: str
 
     _revno_regex = lazy_regex.lazy_compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
 
     # The revspecs to try
-    _possible_revspecs = []
+    _possible_revspecs: List[Type[registry._ObjectGetter]] = []
 
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)
@@ -320,7 +307,7 @@ class RevisionSpec_dwim(RevisionSpec):
         if self._revno_regex.match(self.spec) is not None:
             try:
                 return self._try_spectype(RevisionSpec_revno, branch)
-            except RevisionSpec_revno.dwim_catchable_exceptions:
+            except tuple(RevisionSpec_revno.dwim_catchable_exceptions):
                 pass
 
         # Next see what has been registered
@@ -328,7 +315,7 @@ class RevisionSpec_dwim(RevisionSpec):
             rs_class = objgetter.get_obj()
             try:
                 return self._try_spectype(rs_class, branch)
-            except rs_class.dwim_catchable_exceptions:
+            except tuple(rs_class.dwim_catchable_exceptions):
                 pass
 
         # Well, I dunno what it is. Note that we don't try to keep track of the
@@ -621,7 +608,7 @@ class RevisionSpec_tag(RevisionSpec):
     """
 
     prefix = 'tag:'
-    dwim_catchable_exceptions = (errors.NoSuchTag, errors.TagsNotSupported)
+    dwim_catchable_exceptions = [errors.NoSuchTag, errors.TagsNotSupported]
 
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
@@ -826,7 +813,7 @@ class RevisionSpec_branch(RevisionSpec):
       branch:/path/to/branch
     """
     prefix = 'branch:'
-    dwim_catchable_exceptions = (errors.NotBranchError,)
+    dwim_catchable_exceptions = [errors.NotBranchError]
 
     def _match_on(self, branch, revs):
         from .branch import Branch

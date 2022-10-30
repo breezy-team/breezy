@@ -16,16 +16,14 @@
 
 """Management of hosted branches."""
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
 
 
-from ...propose import hosters
-hosters.register_lazy("gitlab", __name__ + '.hoster', "GitLab")
+from ...forge import forges
+forges.register_lazy("gitlab", __name__ + '.forge', "GitLab")
 
 
 def test_suite():

@@ -27,7 +27,9 @@ from ... import (
     )
 
 
-class FossilUnsupportedError(errors.UnsupportedFormatError):
+class FossilUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "fossil"
 
     _fmt = ('Fossil branches are not yet supported. '
             'To interoperate with Fossil branches, use fastimport.')
@@ -43,7 +45,7 @@ class FossilDirFormat(controldir.ControlDirFormat):
         return "Fossil control directory"
 
     def initialize_on_transport(self, transport):
-        raise errors.UninitializableFormat(self)
+        raise errors.UninitializableFormat(format=self)
 
     def is_supported(self):
         return False
@@ -53,7 +55,7 @@ class FossilDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise FossilUnsupportedError()
+        raise FossilUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there

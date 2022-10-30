@@ -38,7 +38,7 @@ class DoErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do()."""
 
     def do(self):
-        raise errors.NoSuchFile('xyzzy')
+        raise transport.NoSuchFile('xyzzy')
 
 
 class DoUnexpectedErrorRequest(request.SmartServerRequest):
@@ -56,7 +56,7 @@ class ChunkErrorRequest(request.SmartServerRequest):
         pass
 
     def do_chunk(self, bytes):
-        raise errors.NoSuchFile('xyzzy')
+        raise transport.NoSuchFile('xyzzy')
 
 
 class EndErrorRequest(request.SmartServerRequest):
@@ -71,7 +71,7 @@ class EndErrorRequest(request.SmartServerRequest):
         pass
 
     def do_end(self):
-        raise errors.NoSuchFile('xyzzy')
+        raise transport.NoSuchFile('xyzzy')
 
 
 class CheckJailRequest(request.SmartServerRequest):
@@ -191,7 +191,7 @@ class TestRequestHanderErrorTranslation(TestCase):
 
     def test_NoSuchFile(self):
         self.assertTranslationEqual(
-            (b'NoSuchFile', b'path'), errors.NoSuchFile('path'))
+            (b'NoSuchFile', b'path'), transport.NoSuchFile('path'))
 
     def test_LockContention(self):
         # For now, LockContentions are always transmitted with no details.

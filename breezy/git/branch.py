@@ -21,6 +21,7 @@
 import contextlib
 from io import BytesIO
 from collections import defaultdict
+from typing import Dict
 
 from dulwich.config import (
     ConfigFile as GitConfigFile,
@@ -451,19 +452,21 @@ class GitBranch(ForeignBranch):
     def user_transport(self):
         return self._user_transport
 
-    def __init__(self, controldir, repository, ref, format):
+    def __init__(self, controldir, repository, ref: bytes, format):
         self.repository = repository
         self._format = format
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
+        if not isinstance(ref, bytes):
+            raise TypeError("ref is invalid: %r" % ref)
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone('.')
         self._control_transport = controldir.control_transport.clone('.')
         self._tag_refs = None
-        params = {}
+        params: Dict[str, str] = {}
         try:
             self.name = ref_to_branch_name(ref)
         except ValueError:
@@ -1056,7 +1059,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     self.target.set_reference_info(
                         tree.path2id(decode_git_path(path)), url.decode('utf-8'),
                         decode_git_path(path))
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             pass
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
@@ -1211,7 +1214,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             result.new_revid = stop_revision
             for name, sha in (
                     self.source.repository._git.refs.as_dict(b"refs/tags").items()):
-                if tag_selector and not tag_selector(name):
+                if tag_selector and not tag_selector(name.decode('utf-8')):
                     continue
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)

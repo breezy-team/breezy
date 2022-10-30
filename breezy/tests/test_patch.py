@@ -35,9 +35,6 @@ class TestPatch(TestCaseInTempDir):
             f.write(b'\x00')
         self.assertRaises(BinaryFile, diff3, 'unused', 'this', 'other', 'base')
 
-
-class TestPatch(TestCaseInTempDir):
-
     def test_missing_patch(self):
         self.assertRaises(PatchInvokeError, run_patch, '.', [],
                           _patch_cmd='/unlikely/to/exist')

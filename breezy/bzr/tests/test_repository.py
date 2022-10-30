@@ -403,9 +403,11 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_a = DummyRepository()
         dummy_a._format = RepositoryFormat()
         dummy_a._format.supports_full_versioned_files = True
+        dummy_a._format.rich_root_data = True
         dummy_b = DummyRepository()
         dummy_b._format = RepositoryFormat()
         dummy_b._format.supports_full_versioned_files = True
+        dummy_b._format.rich_root_data = True
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):
@@ -523,7 +525,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree(b'dull')
         with revision_tree.lock_read():
             self.assertRaises(
-                errors.NoSuchFile, revision_tree.get_file_lines, u'')
+                transport.NoSuchFile, revision_tree.get_file_lines, u'')
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)
@@ -560,54 +562,6 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         self.addCleanup(repo.unlock)
         index = repo.chk_bytes._index._graph_index._indices[0]
         self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
-
-    def test_fetch_combines_groups(self):
-        builder = self.make_branch_builder('source', format='2a')
-        builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', b'content\n'))],
-            revision_id=b'1')
-        builder.build_snapshot([b'1'], [
-            ('modify', ('file', b'content-2\n'))],
-            revision_id=b'2')
-        builder.finish_series()
-        source = builder.get_branch()
-        target = self.make_repository('target', format='2a')
-        target.fetch(source.repository)
-        target.lock_read()
-        self.addCleanup(target.unlock)
-        details = target.texts._index.get_build_details(
-            [(b'file-id', b'1',), (b'file-id', b'2',)])
-        file_1_details = details[(b'file-id', b'1')]
-        file_2_details = details[(b'file-id', b'2')]
-        # The index, and what to read off disk, should be the same for both
-        # versions of the file.
-        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
-
-    def test_fetch_combines_groups(self):
-        builder = self.make_branch_builder('source', format='2a')
-        builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', b'content\n'))],
-            revision_id=b'1')
-        builder.build_snapshot([b'1'], [
-            ('modify', ('file', b'content-2\n'))],
-            revision_id=b'2')
-        builder.finish_series()
-        source = builder.get_branch()
-        target = self.make_repository('target', format='2a')
-        target.fetch(source.repository)
-        target.lock_read()
-        self.addCleanup(target.unlock)
-        details = target.texts._index.get_build_details(
-            [(b'file-id', b'1',), (b'file-id', b'2',)])
-        file_1_details = details[(b'file-id', b'1')]
-        file_2_details = details[(b'file-id', b'2')]
-        # The index, and what to read off disk, should be the same for both
-        # versions of the file.
-        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
 
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')

@@ -19,8 +19,6 @@
 There are separate implementation modules for each http client implementation.
 """
 
-from __future__ import absolute_import
-
 DEBUG = 0
 
 import base64
@@ -39,7 +37,7 @@ import http.client as http_client
 
 import urllib.request as urllib_request
 
-from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
+from urllib.parse import urljoin, urlencode, urlparse
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -68,6 +66,7 @@ from ...trace import mutter, mutter_callsite
 from ...transport import (
     ConnectedTransport,
     UnusableRedirect,
+    NoSuchFile,
     )
 
 from . import default_user_agent, ssl
@@ -77,7 +76,15 @@ checked_kerberos = False
 kerberos = None
 
 
-class addinfourl(urllib_request.addinfourl):
+def splitport(host):
+    m = re.fullmatch('(.*):([0-9]*)', host, re.DOTALL)
+    if m:
+        host, port = m.groups()
+        return host, port or None
+    return host, None
+
+
+class addinfourl(urllib_request.addinfourl):  # type: ignore
     '''Replacement addinfourl class compatible with python-2.7's xmlrpclib
 
     In python-2.7, xmlrpclib expects that the response object that it receives
@@ -167,7 +174,7 @@ class Response(http_client.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301, 302, 303, 307, 308, 403, 404, 501]
+    _body_ignored_responses = [301, 302, 303, 307, 308, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -308,7 +315,7 @@ class AbstractHTTPConnection:
         self.sock = _ReportingSocket(sock, self._report_activity)
 
 
-class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):
+class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):  # type: ignore
 
     # XXX: Needs refactoring at the caller level.
     def __init__(self, host, port=None, proxied_host=None,
@@ -325,7 +332,7 @@ class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):
         self._wrap_socket_for_reporting(self.sock)
 
 
-class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
+class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):  # type: ignore
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  proxied_host=None,
@@ -690,7 +697,8 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                                      # FIXME: implements 100-continue
                                      # None, # We don't send the body yet
                                      request.data,
-                                     headers, encode_chunked=False)
+                                     headers,
+                                     encode_chunked=(headers.get('Transfer-Encoding') == 'chunked'))
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
@@ -1118,7 +1126,7 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
-    scheme = None
+    scheme: str
     """The scheme as it appears in the server header (lower cased)"""
 
     _max_retry = 3
@@ -1537,9 +1545,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
-        selector = request.selector
-        url_scheme, url_selector = splittype(selector)
-        sel_host, uri = splithost(url_selector)
+        uri = urlparse(request.selector).path
 
         A1 = ('%s:%s:%s' %
               (auth['user'], auth['realm'], auth['password'])).encode('utf-8')
@@ -1954,7 +1960,7 @@ class HttpTransport(ConnectedTransport):
         response = self.request('GET', abspath, headers=headers)
 
         if response.status == 404:  # not found
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         elif response.status == 416:
             # We don't know which, but one of the ranges we specified was
             # wrong.
@@ -2440,7 +2446,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         resp = self.request('OPTIONS', abspath)
         if resp.status == 404:
-            raise errors.NoSuchFile(abspath)
+            raise NoSuchFile(abspath)
         if resp.status in (403, 405):
             raise errors.InvalidHttpResponse(
                 abspath,

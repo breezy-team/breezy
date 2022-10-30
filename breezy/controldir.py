@@ -24,30 +24,29 @@ see breezy.bzrdir.BzrDir.
 
 """
 
+from typing import List, Type, Optional
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
 
 from breezy import (
     branch as _mod_branch,
-    hooks,
     revision as _mod_revision,
-    transport as _mod_transport,
-    trace,
     ui,
     urlutils,
     )
 from breezy.transport import local
-from breezy.push import (
-    PushResult,
-    )
 
 from breezy.i18n import gettext
 """)
 
 from . import (
     errors,
+    hooks,
     registry,
+    trace,
+    transport as _mod_transport,
     )
 
 
@@ -65,6 +64,14 @@ class BranchReferenceLoop(errors.BzrError):
 
     def __init__(self, branch):
         errors.BzrError.__init__(self, branch=branch)
+
+
+class NoColocatedBranchSupport(errors.BzrError):
+
+    _fmt = ("%(controldir)r does not support co-located branches.")
+
+    def __init__(self, controldir):
+        self.controldir = controldir
 
 
 class ControlComponent(object):
@@ -119,6 +126,8 @@ class ControlDir(ControlComponent):
     raising an exception when it is not supported, rather than requiring the
     API users to check for magic attributes to see what features are supported.
     """
+
+    hooks: hooks.Hooks
 
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
@@ -275,7 +284,7 @@ class ControlDir(ControlComponent):
           reference branch, or None for regular branches.
         """
         if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+            raise NoColocatedBranchSupport(self)
         return None
 
     def set_branch_reference(self, target_branch, name=None):
@@ -438,16 +447,17 @@ class ControlDir(ControlComponent):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    tag_selector=None):
+                    tag_selector=None, name=None):
         """Push the source branch into this ControlDir."""
-        br_to = None
+        from .push import PushResult
         # If we can open a branch, use its direct repository, otherwise see
         # if there is a repository without a branch.
         try:
-            br_to = self.open_branch()
+            br_to = self.open_branch(name=name)
         except errors.NotBranchError:
             # Didn't find a branch, can we find a repository?
             repository_to = self.find_repository()
+            br_to = None
         else:
             # Found a branch, so we must have found a repository
             repository_to = br_to.repository
@@ -464,7 +474,7 @@ class ControlDir(ControlComponent):
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.sprout(
                 self, revision_id=revision_id, lossy=lossy,
-                tag_selector=tag_selector)
+                tag_selector=tag_selector, name=name)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
@@ -493,12 +503,18 @@ class ControlDir(ControlComponent):
                     tag_selector=tag_selector)
                 push_result.workingtree_updated = None  # Not applicable
             else:
-                with tree_to.lock_write():
+                if br_to.name == tree_to.branch.name:
+                    with tree_to.lock_write():
+                        push_result.branch_push_result = source.push(
+                            tree_to.branch, overwrite, stop_revision=revision_id,
+                            lossy=lossy, tag_selector=tag_selector)
+                        tree_to.update()
+                    push_result.workingtree_updated = True
+                else:
                     push_result.branch_push_result = source.push(
-                        tree_to.branch, overwrite, stop_revision=revision_id,
+                        br_to, overwrite, stop_revision=revision_id,
                         lossy=lossy, tag_selector=tag_selector)
-                    tree_to.update()
-                push_result.workingtree_updated = True
+                    push_result.workingtree_updated = None  # Not applicable
             push_result.old_revno = push_result.branch_push_result.old_revno
             push_result.old_revid = push_result.branch_push_result.old_revid
             push_result.target_branch = \
@@ -620,7 +636,7 @@ class ControlDir(ControlComponent):
                 yield value
             try:
                 subdirs = list_current(current_transport)
-            except (errors.NoSuchFile, errors.PermissionDenied):
+            except (_mod_transport.NoSuchFile, errors.PermissionDenied):
                 continue
             if recurse:
                 for subdir in sorted(subdirs, reverse=True):
@@ -936,7 +952,7 @@ class ControlDirHooks(hooks.Hooks):
 
 
 # install the default hooks
-ControlDir.hooks = ControlDirHooks()
+ControlDir.hooks = ControlDirHooks()  # type: ignore
 
 
 class ControlComponentFormat(object):
@@ -1087,10 +1103,10 @@ class ControlDirFormat(object):
                                  working tree.
     """
 
-    _default_format = None
+    _default_format: Optional["ControlDirFormat"] = None
     """The default format used for new control directories."""
 
-    _probers = []
+    _probers: List[Type["Prober"]] = []
     """The registered format probers, e.g. BzrProber.
 
     This is a list of Prober-derived classes.

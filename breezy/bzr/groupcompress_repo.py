@@ -57,7 +57,7 @@ from .pack_repo import (
 from ..bzr.vf_repository import (
     StreamSource,
     )
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 
 class GCPack(NewPack):

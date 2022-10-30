@@ -104,12 +104,12 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
 
 def _load_plugins_from_entrypoints(state):
     try:
-        import pkg_resources
+        from importlib.metadata import entry_points
     except ModuleNotFoundError:
-        # No pkg_resources, no entrypoints.
+        # No importlib.metadata, no entrypoints.
         pass
     else:
-        for ep in pkg_resources.iter_entry_points('breezy.plugin'):
+        for ep in entry_points(group='breezy.plugin'):
             fullname = _MODULE_PREFIX + ep.name
             if fullname in sys.modules:
                 continue

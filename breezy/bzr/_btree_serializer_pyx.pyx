@@ -69,7 +69,7 @@ from ._str_helpers cimport (
     safe_string_from_size,
     )
 
-from .._static_tuple_c cimport (
+from ._static_tuple_c cimport (
     import_static_tuple_c,
     StaticTuple,
     StaticTuple_New,

@@ -31,7 +31,7 @@ In breezy.conf the following options may be set:
 editor=name-of-program
 email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
-create_signatures=always|never|when-required(default)
+create_signatures=always|never|when-possible|when-required(default)
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
@@ -82,7 +82,7 @@ import sys
 import configobj
 from io import BytesIO
 
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Dict
 
 import breezy
 from .lazy_import import lazy_import
@@ -98,7 +98,6 @@ from breezy import (
     lock,
     lockdir,
     osutils,
-    transport,
     ui,
     urlutils,
     win32utils,
@@ -113,6 +112,7 @@ from . import (
     lazy_regex,
     registry,
     trace,
+    transport,
     )
 from .option import Option as CommandOption
 
@@ -125,6 +125,7 @@ CHECK_NEVER = 2
 SIGN_WHEN_REQUIRED = 0
 SIGN_ALWAYS = 1
 SIGN_NEVER = 2
+SIGN_WHEN_POSSIBLE = 3
 
 
 POLICY_NONE = 0
@@ -227,6 +228,14 @@ class NoSuchConfigOption(errors.BzrError):
         errors.BzrError.__init__(self, option_name=option_name)
 
 
+class NoSuchAlias(errors.BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        errors.BzrError.__init__(self, alias_name=alias_name)
+
+
 def signature_policy_from_unicode(signature_string):
     """Convert a string to a signing policy."""
     if signature_string.lower() == 'check-available':
@@ -247,6 +256,8 @@ def signing_policy_from_unicode(signature_string):
         return SIGN_NEVER
     if signature_string.lower() == 'always':
         return SIGN_ALWAYS
+    if signature_string.lower() == 'when-possible':
+        return SIGN_WHEN_POSSIBLE
     raise ValueError("Invalid signing policy '%s'"
                      % signature_string)
 
@@ -1048,7 +1059,7 @@ class GlobalConfig(LockableConfig):
             self.reload()
             aliases = self._get_parser().get('ALIASES')
             if not aliases or alias_name not in aliases:
-                raise errors.NoSuchAlias(alias_name)
+                raise NoSuchAlias(alias_name)
             del aliases[alias_name]
             self._write_config_file()
 
@@ -1544,8 +1555,8 @@ class AuthenticationConfig(object):
         conf = self._get_config()
         section = conf.get(section_name)
         if section is None:
-            conf[section] = {}
-            section = conf[section]
+            conf[section_name] = {}
+            section = conf[section_name]
         section[option_name] = value
         self._save()
 
@@ -2013,7 +2024,7 @@ class TransportConfig(object):
             for hook in OldConfigHooks['load']:
                 hook(self)
             return f
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             return BytesIO()
         except errors.PermissionDenied:
             trace.warning(
@@ -2505,7 +2516,7 @@ option_registry.register(
            help='''\
 GPG Signing policy.
 
-Possible values: always, never, when-required (default)
+Possible values: always, never, when-required (default), when-possible
 
 This option controls whether bzr will always create
 gpg signatures or not on commits.
@@ -3024,7 +3035,7 @@ class IniFileStore(Store):
         for hook in ConfigHooks['save']:
             hook(self)
 
-    def get_sections(self) -> Iterable[Tuple[Store, str]]:
+    def get_sections(self) -> Iterable[Tuple[Store, Section]]:
         """Get the configobj section in the file order.
 
         Returns: An iterable of (store, section).
@@ -3032,7 +3043,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except (errors.NoSuchFile, errors.PermissionDenied):
+        except (transport.NoSuchFile, errors.PermissionDenied):
             # If the file can't be read, there is no sections
             return
         cobj = self._config_obj
@@ -3047,7 +3058,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string(b'')
         if section_id in self.dirty_sections:
@@ -3422,7 +3433,7 @@ class LocationMatcher(SectionMatcher):
 
 # FIXME: _shared_stores should be an attribute of a library state once a
 # library_state object is always available.
-_shared_stores = {}
+_shared_stores: Dict[str, Store] = {}
 _shared_stores_at_exit_installed = False
 
 

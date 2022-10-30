@@ -21,6 +21,7 @@ import stat
 import sys
 import time
 import codecs
+from typing import Dict, List
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -36,10 +37,6 @@ import shutil
 from shutil import rmtree
 import socket
 import subprocess
-# We need to import both tempfile and mkdtemp as we export the later on posix
-# and need the former on windows
-import tempfile
-from tempfile import mkdtemp
 import unicodedata
 
 from breezy import (
@@ -215,6 +212,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param unlink_func: A way to delete the target file if the full rename
         succeeds
     """
+    from .transport import NoSuchFile
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
@@ -233,7 +231,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (errors.NoSuchFile,):
+    except NoSuchFile:
         pass
     except IOError as e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
@@ -358,10 +356,6 @@ def _win32_getcwd():
     return _win32_fixdrive(_win32_fix_separators(_getcwd()))
 
 
-def _win32_mkdtemp(*args, **kwargs):
-    return _win32_fixdrive(_win32_fix_separators(tempfile.mkdtemp(*args, **kwargs)))
-
-
 def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
@@ -425,7 +419,6 @@ basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
 # These were already lazily imported into local scope
-# mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
 lstat = os.lstat
 fstat = os.fstat
@@ -444,7 +437,6 @@ if sys.platform == 'win32':
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath
     getcwd = _win32_getcwd
-    mkdtemp = _win32_mkdtemp
     rename = _rename_wrap_exception(_win32_rename)
     try:
         from . import _walkdirs_win32
@@ -804,7 +796,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
 
 
 # Cache of formatted offset strings
-_offset_cache = {}
+_offset_cache: Dict[int, str] = {}
 
 
 def format_date_with_offset_in_original_timezone(t, offset=0,
@@ -1008,7 +1000,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-def parent_directories(filename):
+def parent_directories(filename: str):
     """Return the list of parent directories, deepest first.
 
     For example, parent_directories("a/b/c") -> ["a/b", "a"].
@@ -2026,12 +2018,12 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-_end_of_stream_errors = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
+_end_of_stream_errors: List[int] = [errno.ECONNRESET, errno.EPIPE, errno.EINVAL]
 for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
-    _eno = getattr(errno, _eno, None)
-    if _eno is not None:
-        _end_of_stream_errors.append(_eno)
-del _eno
+    try:
+        _end_of_stream_errors.append(getattr(errno, _eno))
+    except AttributeError:
+        pass
 
 
 def read_bytes_from_socket(sock, report_activity=None,
@@ -2206,11 +2198,11 @@ file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
 
 def file_stat(f, _lstat=os.lstat):
     try:
-        # XXX cache?
         return _lstat(f)
     except OSError as e:
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
-            raise errors.NoSuchFile(f)
+            from .transport import NoSuchFile
+            raise NoSuchFile(f)
         raise
 
 

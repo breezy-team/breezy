@@ -20,8 +20,6 @@ If possible, uses inotify to track changes in the tree - providing
 high performance in large trees with a small number of changes.
 """
 
-from __future__ import absolute_import
-
 from contextlib import ExitStack
 import errno
 import os
@@ -29,10 +27,11 @@ import shutil
 from typing import Optional, List
 
 from .clean_tree import iter_deletables
-from .errors import BzrError, DependencyNotPresent, NoSuchFile
+from .errors import BzrError, DependencyNotPresent
 from .osutils import is_inside
 from .trace import warning
 from .transform import revert
+from .transport import NoSuchFile
 from .tree import Tree
 from .workingtree import WorkingTree
 
@@ -51,7 +50,7 @@ def reset_tree(
     local_tree: WorkingTree,
     basis_tree: Optional[Tree] = None,
     subpath: str = "",
-    dirty_tracker: "DirtyTracker" = None,
+    dirty_tracker=None,
 ) -> None:
     """Reset a tree back to its basis tree.
 
@@ -215,7 +214,8 @@ class Workspace(object):
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> List[str]:
+    def _stage(self) -> Optional[List[str]]:
+        changed: Optional[List[str]]
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they

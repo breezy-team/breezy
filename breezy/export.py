@@ -71,6 +71,8 @@ def export(tree, dest, format=None, root=None, subdir=None,
                     tree.get_revision_id()).timestamp
             except errors.NoSuchRevision:
                 pass
+            except errors.UnsupportedOperation:
+                pass
     else:
         force_mtime = None
 
@@ -148,9 +150,7 @@ def _export_iter_entries(tree, subdir, skip_special=True, recurse_nested=False):
         if path == '':
             continue
 
-        # The .bzr* namespace is reserved for "magic" files like
-        # .bzrignore and .bzrrules - do not export these
-        if skip_special and path.startswith(".bzr"):
+        if skip_special and tree.is_special_path(path):
             continue
         if path == subdir:
             if entry.kind == 'directory':

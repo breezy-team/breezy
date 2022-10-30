@@ -22,15 +22,19 @@ Currently only tells the user that Mercurial is not supported.
 from ... import (
     controldir,
     errors,
+    transport as _mod_transport,
     )
 
 from ... import version_info  # noqa: F401
 
 
-class MercurialUnsupportedError(errors.UnsupportedFormatError):
+class MercurialUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "hg"
 
     _fmt = ('Mercurial branches are not yet supported. '
             'To interoperate with Mercurial, use the fastimport format.')
+
 
 
 class LocalHgDirFormat(controldir.ControlDirFormat):
@@ -53,7 +57,7 @@ class LocalHgDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise MercurialUnsupportedError()
+        raise MercurialUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there
@@ -71,7 +75,7 @@ class LocalHgProber(controldir.Prober):
     def _has_hg_dumb_repository(transport):
         try:
             return transport.has_any([".hg/requires", ".hg/00changelog.i"])
-        except (errors.NoSuchFile, errors.PermissionDenied,
+        except (_mod_transport.NoSuchFile, errors.PermissionDenied,
                 errors.InvalidHttpResponse):
             return False
 

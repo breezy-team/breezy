@@ -716,7 +716,7 @@ class TestInventoryEntry(TestCase):
         dir = inventory.InventoryLink(b'123', 'hello.c', ROOT_ID)
         self.assertEqual(dir.kind_character(), '')
 
-    def test_link_kind_character(self):
+    def test_tree_ref_kind_character(self):
         dir = TreeReference(b'123', 'hello.c', ROOT_ID)
         self.assertEqual(dir.kind_character(), '+')
 

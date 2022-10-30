@@ -39,9 +39,7 @@ from .. import (
     errors,
     urlutils,
     )
-from ..errors import (FileExists,
-                      NoSuchFile,
-                      TransportError,
+from ..errors import (TransportError,
                       LockError,
                       PathError,
                       ParamikoNotPresent,
@@ -50,6 +48,8 @@ from ..osutils import fancy_rename
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,
+    FileExists,
+    NoSuchFile,
     _file_streams,
     ssh,
     ConnectedTransport,

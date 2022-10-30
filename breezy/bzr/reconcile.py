@@ -261,7 +261,7 @@ class KnitReconciler(VersionedFileRepoReconciler):
         new_inventories.insert_record_stream(stream)
         # if this worked, the set of new_inventory_vf.names should equal
         # the revisionds list
-        if not(set(new_inventories.keys()) == set(revision_keys)):
+        if set(new_inventories.keys()) != set(revision_keys):
             raise AssertionError()
         self.pb.update(gettext('Writing weave'))
         self.repo._activate_new_inventory()

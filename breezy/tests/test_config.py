@@ -40,6 +40,7 @@ from .. import (
     registry as _mod_registry,
     tests,
     trace,
+    transport as _mod_transport,
     )
 from ..bzr import (
     remote,
@@ -369,14 +370,14 @@ class FakeControlFilesAndTransport(object):
         try:
             return BytesIO(self.files[filename])
         except KeyError:
-            raise errors.NoSuchFile(filename)
+            raise _mod_transport.NoSuchFile(filename)
 
     def get_bytes(self, filename):
         # from Transport
         try:
             return self.files[filename]
         except KeyError:
-            raise errors.NoSuchFile(filename)
+            raise _mod_transport.NoSuchFile(filename)
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
@@ -1276,7 +1277,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
     def test__get_option_policy_normal(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
-            self.my_location_config._get_config_policy(
+            self.my_location_config._get_option_policy(
                 'http://www.example.com', 'normal_option'),
             config.POLICY_NONE)
 
@@ -1292,7 +1293,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
                 'http://www.example.com/norecurse', 'normal_option'),
             config.POLICY_NORECURSE)
 
-    def test__get_option_policy_normal(self):
+    def test__get_option_policy_normal_appendpath(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
             self.my_location_config._get_option_policy(
@@ -1476,13 +1477,6 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
 
     def test_BRZ_EMAIL_OVERRIDES(self):
         self.overrideEnv('BRZ_EMAIL', "Robert Collins <robertc@example.org>")
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        self.assertEqual("Robert Collins <robertc@example.org>",
-                         my_config.username())
-
-    def test_BRZ_EMAIL_OVERRIDES(self):
-        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",
@@ -2866,7 +2860,7 @@ class TestTransportIniFileStore(TestStore):
     def test_loading_unknown_file_fails(self):
         store = config.TransportIniFileStore(self.get_transport(),
                                              'I-do-not-exist')
-        self.assertRaises(errors.NoSuchFile, store.load)
+        self.assertRaises(_mod_transport.NoSuchFile, store.load)
 
     def test_invalid_content(self):
         store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')

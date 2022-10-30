@@ -31,7 +31,6 @@ from breezy import (
     transport,
     )
 from breezy.errors import (
-    FileExists,
     UninitializableFormat,
     )
 
@@ -45,6 +44,7 @@ from breezy.tests import (
     multiply_tests,
     )
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
+from breezy.transport import FileExists
 from breezy.bzr.vf_repository import (
     InterDifferingSerializer,
     )

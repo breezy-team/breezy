@@ -19,6 +19,7 @@
 import codecs
 import locale
 import sys
+from typing import Set
 
 from .. import (
     osutils,
@@ -39,8 +40,8 @@ class FakeCodec(object):
     implemented they cannot be removed. Be careful with naming to avoid
     collisions between tests.
     """
-    _registered = False
-    _enabled_encodings = set()
+    _registered: bool = False
+    _enabled_encodings: Set[str] = set()
 
     def add(self, encoding_name):
         """Adding encoding name to fake.

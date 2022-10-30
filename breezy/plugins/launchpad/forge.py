@@ -21,13 +21,14 @@ import re
 import shutil
 import tempfile
 
-from ...propose import (
-    Hoster,
+from ...forge import (
+    Forge,
     LabelsUnsupported,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
-    UnsupportedHoster,
+    UnsupportedForge,
+    TitleUnsupported,
     )
 
 from ... import (
@@ -142,6 +143,10 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_repository.git_identity,
                 ref=self._mp.target_git_path.encode('utf-8'))
 
+    def set_target_branch_name(self, name):
+        # The launchpad API doesn't support changing branch names today.
+        raise NotImplementedError(self.set_target_branch_name)
+
     @property
     def url(self):
         return lp_api.canonical_url(self._mp)
@@ -164,6 +169,12 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def get_commit_message(self):
         return self._mp.commit_message
+
+    def get_title(self):
+        raise TitleUnsupported(self)
+
+    def set_title(self):
+        raise TitleUnsupported(self)
 
     def set_commit_message(self, commit_message):
         self._mp.commit_message = commit_message
@@ -208,13 +219,13 @@ class LaunchpadMergeProposal(MergeProposal):
         self._mp.createComment(content=body)
 
 
-class Launchpad(Hoster):
+class Launchpad(Forge):
     """The Launchpad hosting service."""
-
-    name = 'launchpad'
 
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
+
+    supports_merge_proposal_title = False
 
     supports_merge_proposal_commit_message = True
 
@@ -259,7 +270,7 @@ class Launchpad(Hoster):
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
             return Launchpad(uris.LPNET_SERVICE_ROOT)
-        raise UnsupportedHoster(url)
+        raise UnsupportedForge(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
         url, params = urlutils.split_segment_parameters(branch.user_url)
@@ -295,6 +306,8 @@ class Launchpad(Hoster):
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
                      revision_id=None, overwrite=False, allow_lossy=True,
                      tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
         try:
@@ -503,9 +516,9 @@ class Launchpad(Hoster):
         LAUNCHPAD_CODE_DOMAINS = [
             ('code.%s' % domain) for domain in lp_uris.LAUNCHPAD_DOMAINS.values()]
         if host not in LAUNCHPAD_CODE_DOMAINS:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
-        # UnsupportedHoster
+        # UnsupportedForge
         # See https://api.launchpad.net/devel/#branch_merge_proposal
         # the syntax is:
         # https://api.launchpad.net/devel/~<author.name>/<project.name>/<branch.name>/+merge/<id>
@@ -597,12 +610,15 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             _call_webservice(mp.setStatus, status=u'Approved',
                              revid=self.source_branch.last_revision())
 
-    def create_proposal(self, description, reviewers=None, labels=None,
+    def create_proposal(self, description, title=None,
+                        reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
+        if title:
+            raise TitleUnsupported(self)
         if prerequisite_branch is not None:
             prereq = self.launchpad.branches.getByUrl(
                 url=prerequisite_branch.user_url)

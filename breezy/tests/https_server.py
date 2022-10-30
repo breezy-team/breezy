@@ -97,8 +97,8 @@ class HTTPSServer(http_server.HttpServer):
     _url_protocol = 'https'
 
     # The real servers depending on the protocol
-    http_server_class = {'HTTP/1.0': TestingHTTPSServer,
-                         'HTTP/1.1': TestingThreadingHTTPSServer,
+    http_server_class = {'HTTP/1.0': TestingHTTPSServer,  # type: ignore
+                         'HTTP/1.1': TestingThreadingHTTPSServer,  # type: ignore
                          }
 
     # Provides usable defaults since an https server requires both a

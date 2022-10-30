@@ -20,6 +20,7 @@
 
 import base64
 import stat
+from typing import Optional
 
 import fastbencode as bencode
 
@@ -87,6 +88,14 @@ class UnknownMercurialCommitExtra(errors.BzrError):
         errors.BzrError.__init__(self)
         self.object = object
         self.fields = b",".join(fields)
+
+
+class UnknownCommitEncoding(errors.BzrError):
+    _fmt = "Unknown commit encoding: %(encoding)s"
+
+    def __init__(self, encoding):
+        errors.BzrError.__init__(self)
+        self.encoding = encoding
 
 
 def escape_file_id(file_id):
@@ -409,9 +418,15 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.git_metadata = None
 
         def decode_using_encoding(rev, commit, encoding):
-            rev.committer = commit.committer.decode(encoding)
-            if commit.committer != commit.author:
-                rev.properties[u'author'] = commit.author.decode(encoding)
+            try:
+                rev.committer = commit.committer.decode(encoding)
+            except LookupError:
+                raise UnknownCommitEncoding(encoding)
+            try:
+                if commit.committer != commit.author:
+                    rev.properties[u'author'] = commit.author.decode(encoding)
+            except LookupError:
+                raise UnknownCommitEncoding(encoding)
             rev.message, rev.git_metadata = self._decode_commit_message(
                 rev, commit.message, encoding)
 
@@ -443,7 +458,8 @@ class BzrGitMapping(foreign.VcsMapping):
                 'utf-8', 'surrogateescape')
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
-                rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string().decode('utf-8', 'surrogateescape')
+                rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string().decode(
+                    'utf-8', 'surrogateescape')
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         rev.parent_ids = None
@@ -514,7 +530,10 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         message = self._extract_hg_metadata(rev, message)
         message = self._extract_git_svn_metadata(rev, message)
         message, metadata = self._extract_bzr_metadata(rev, message)
-        return message.decode(encoding), metadata
+        try:
+            return message.decode(encoding), metadata
+        except LookupError:
+            raise UnknownCommitEncoding(encoding)
 
     def _encode_commit_message(self, rev, message, encoding):
         ret = message.encode(encoding)

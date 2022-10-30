@@ -33,6 +33,7 @@ import contextlib
 import errno
 import os
 import sys
+from typing import Optional
 
 import breezy
 
@@ -63,6 +64,7 @@ from .i18n import gettext
 from . import mutabletree
 from .symbol_versioning import deprecated_method, deprecated_in
 from .trace import mutter, note
+from .transport import NoSuchFile
 
 
 class SettingFileIdUnsupported(errors.BzrError):
@@ -73,6 +75,11 @@ class SettingFileIdUnsupported(errors.BzrError):
 class ShelvingUnsupported(errors.BzrError):
 
     _fmt = "This format does not support shelving changes."
+
+
+class PointlessMerge(errors.BzrError):
+
+    _fmt = "Nothing to merge."
 
 
 class WorkingTree(mutabletree.MutableTree, ControlComponent):
@@ -364,7 +371,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             file_obj = open(abspath, 'rb')
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise NoSuchFile(path)
             raise
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
@@ -403,7 +410,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             parents = [last_rev]
         try:
             merges_bytes = self._transport.get_bytes('pending-merges')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
@@ -475,7 +482,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                         kinds[pos] = osutils.file_kind(fullpath)
                     except OSError as e:
                         if e.errno == errno.ENOENT:
-                            raise errors.NoSuchFile(fullpath)
+                            raise NoSuchFile(fullpath)
 
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
@@ -531,39 +538,9 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             if updated:
                 self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
-    def path_content_summary(self, path, _lstat=os.lstat,
-                             _mapper=osutils.file_kind_from_stat_mode):
+    def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        abspath = self.abspath(path)
-        try:
-            stat_result = _lstat(abspath)
-        except OSError as e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                # no file.
-                return ('missing', None, None, None)
-            # propagate other errors
-            raise
-        kind = _mapper(stat_result.st_mode)
-        if kind == 'file':
-            return self._file_content_summary(path, stat_result)
-        elif kind == 'directory':
-            # perhaps it looks like a plain directory, but it's really a
-            # reference.
-            if self._directory_is_tree_reference(path):
-                kind = 'tree-reference'
-            return kind, None, None, None
-        elif kind == 'symlink':
-            target = osutils.readlink(abspath)
-            return ('symlink', None, None, target)
-        else:
-            return (kind, None, None, None)
-
-    def _file_content_summary(self, path, stat_result):
-        size = stat_result.st_size
-        executable = self._is_executable_from_path_and_stat(path, stat_result)
-        # try for a stat cache lookup
-        return ('file', size, executable, self._sha_from_stat(
-            path, stat_result))
+        raise NotImplementedError(self.path_content_summary)
 
     def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
         """Common ghost checking functionality from set_parent_*.
@@ -683,7 +660,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             else:
                 merger.set_base_revision(from_revision, branch)
             if merger.base_rev_id == merger.other_rev_id:
-                raise errors.PointlessMerge
+                raise PointlessMerge()
             merger.backup_files = False
             if merge_type is None:
                 merger.merge_type = Merge3Merger
@@ -720,7 +697,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             return osutils.readlink(abspath)
         except OSError as e:
             if getattr(e, 'errno', None) == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise NoSuchFile(path)
             raise
 
     def subsume(self, other_tree):
@@ -1320,7 +1297,7 @@ class WorkingTreeFormat(ControlComponentFormat):
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
 
-    supports_versioned_directories = None
+    supports_versioned_directories: bool
 
     supports_merge_modified = True
     """If this format supports storing merge modified hashes."""
@@ -1335,7 +1312,7 @@ class WorkingTreeFormat(ControlComponentFormat):
 
     supports_righthand_parent_id_as_ghost = True
 
-    ignore_filename = None
+    ignore_filename: Optional[str] = None
     """Name of file with ignore patterns, if any. """
 
     def initialize(self, controldir, revision_id=None, from_branch=None,

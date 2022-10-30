@@ -129,7 +129,7 @@ class MapiMessage(Structure):
 
 lpMapiMessage = POINTER(MapiMessage)
 
-MAPI = windll.mapi32
+MAPI = windll.mapi32  # type: ignore
 MAPISendMail = MAPI.MAPISendMail
 MAPISendMail.restype = c_ulong
 MAPISendMail.argtypes = (LHANDLE, c_ulong, lpMapiMessage, FLAGS, c_ulong)
@@ -152,7 +152,7 @@ MAPILogoff.restype = c_ulong
 MAPILogoff.argtypes = (LHANDLE, c_ulong, FLAGS, c_ulong)
 
 
-class MAPIError(WindowsError):
+class MAPIError(WindowsError):  # type: ignore
 
     def __init__(self, code):
         WindowsError.__init__(self)

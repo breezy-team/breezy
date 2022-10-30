@@ -51,6 +51,7 @@ import tempfile
 import threading
 import time
 import traceback
+from typing import Set
 import unittest
 import warnings
 
@@ -176,6 +177,7 @@ isolated_environ = {
     'all_proxy': None,
     'ALL_PROXY': None,
     'BZR_REMOTE_PATH': None,
+    'BRZ_SSH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
@@ -835,7 +837,7 @@ def iter_suite_tests(suite):
                         % (type(suite), suite))
 
 
-TestSkipped = testtools.testcase.TestSkipped
+from testtools.testcase import TestSkipped
 
 
 class TestNotApplicable(TestSkipped):
@@ -860,7 +862,7 @@ def _clever_some_str(value):
             return '<unprintable %s object>' % type(value).__name__
 
 
-traceback._some_str = _clever_some_str
+traceback._some_str = _clever_some_str  # type: ignore
 
 
 # deprecated - use self.knownFailure(), or self.expectFailure.
@@ -2432,7 +2434,7 @@ class CapturedCall(object):
         # client frames. Beyond this we could get more clever, but this is good
         # enough for now.
         stack = traceback.extract_stack()[prefix_length:-5]
-        self.stack = ''.join(traceback.format_list(stack))
+        self._stack = ''.join(traceback.format_list(stack))
 
     def __str__(self):
         return self.call.method.decode('utf-8')
@@ -2441,7 +2443,7 @@ class CapturedCall(object):
         return self.call.method.decode('utf-8')
 
     def stack(self):
-        return self.stack
+        return self._stack
 
 
 class TestCaseWithMemoryTransport(TestCase):
@@ -2693,8 +2695,8 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-            root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
-                                                    suffix='.tmp'))
+            root = osutils.realpath(tempfile.mkdtemp(prefix='testbzr-',
+                                                     suffix='.tmp'))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
@@ -3058,7 +3060,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         try:
             mode = transport.stat(relpath).st_mode
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.fail("path %s is not a directory; no such file"
                       % (relpath))
         if not stat.S_ISDIR(mode):
@@ -3457,7 +3459,7 @@ class TestDecorator(TestUtil.TestSuite):
             self.addTest(suite)
 
     # Don't need subclass run method with suite emptying
-    run = unittest.TestSuite.run
+    run = unittest.TestSuite.run  # type: ignore
 
 
 class CountingDecorator(TestDecorator):
@@ -3726,7 +3728,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags = set()
+selftest_debug_flags: Set[str] = set()
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
@@ -3821,7 +3823,7 @@ def load_test_id_list(file_name):
         if e.errno != errno.ENOENT:
             raise
         else:
-            raise errors.NoSuchFile(file_name)
+            raise _mod_transport.NoSuchFile(file_name)
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -3988,8 +3990,6 @@ def _test_suite_testmod_names():
         'breezy.tests.per_workingtree',
         'breezy.tests.test__annotator',
         'breezy.tests.test__known_graph',
-        'breezy.tests.test__simple_set',
-        'breezy.tests.test__static_tuple',
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
@@ -4035,12 +4035,12 @@ def _test_suite_testmod_names():
         'breezy.tests.test_filters',
         'breezy.tests.test_filter_tree',
         'breezy.tests.test_foreign',
+        'breezy.tests.test_forge',
         'breezy.tests.test_generate_docs',
         'breezy.tests.test_globbing',
         'breezy.tests.test_gpg',
         'breezy.tests.test_graph',
         'breezy.tests.test_grep',
-        'breezy.tests.test_hashcache',
         'breezy.tests.test_help',
         'breezy.tests.test_hooks',
         'breezy.tests.test_http',
@@ -4085,7 +4085,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_permissions',
         'breezy.tests.test_plugins',
         'breezy.tests.test_progress',
-        'breezy.tests.test_propose',
         'breezy.tests.test_pyutils',
         'breezy.tests.test_reconcile',
         'breezy.tests.test_reconfigure',
@@ -4095,8 +4094,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_revision',
         'breezy.tests.test_revisionspec',
         'breezy.tests.test_revisiontree',
-        'breezy.tests.test_rio',
-        'breezy.tests.test__rio',
         'breezy.tests.test_rules',
         'breezy.tests.test_url_policy_open',
         'breezy.tests.test_sampler',

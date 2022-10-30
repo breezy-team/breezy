@@ -44,7 +44,7 @@ from . import (
     TestCaseWithTransport,
     test_merge_core,
     )
-from ..workingtree import WorkingTree
+from ..workingtree import WorkingTree, PointlessMerge
 
 
 class TestMerge(TestCaseWithTransport):
@@ -54,7 +54,7 @@ class TestMerge(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         rev_a = wt.commit("lala!")
         self.assertEqual([rev_a], wt.get_parent_ids())
-        self.assertRaises(errors.PointlessMerge, wt.merge_from_branch,
+        self.assertRaises(PointlessMerge, wt.merge_from_branch,
                           wt.branch)
         self.assertEqual([rev_a], wt.get_parent_ids())
         return wt
@@ -2005,33 +2005,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         entries = list(merge_obj._entries_lca())
         # Only the kind was changed (content)
         self.assertEqual([], entries)
-
-    def test_interesting_files(self):
-        # Two files modified, but we should filter one of them
-        builder = self.get_builder()
-        builder.build_snapshot(None,
-                               [('add', (u'', b'a-root-id', 'directory', None)),
-                                ('add', (u'a', b'a-id', 'file', b'content\n')),
-                                   ('add', (u'b', b'b-id', 'file', b'content\n'))],
-                               revision_id=b'A-id')
-        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
-        builder.build_snapshot([b'C-id', b'B-id'],
-                               [('modify', ('a', b'new-content\n')),
-                                ('modify', ('b', b'new-content\n'))],
-                               revision_id=b'E-id')
-        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
-        merge_obj = self.make_merge_obj(builder, b'E-id',
-                                        interesting_files=['b'])
-        entries = list(merge_obj._entries_lca())
-        root_id = b'a-root-id'
-        self.assertEqual([(b'b-id', True,
-                           ((u'b', [u'b', u'b']), u'b', u'b'),
-                           ((root_id, [root_id, root_id]), root_id, root_id),
-                           ((u'b', [u'b', u'b']), u'b', u'b'),
-                           ((False, [False, False]), False, False),
-                           False),
-                          ], entries)
 
     def test_interesting_file_in_this(self):
         # This renamed the file, but it should still match the entry in other

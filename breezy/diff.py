@@ -26,7 +26,6 @@ lazy_import(globals(), """
 import errno
 import patiencediff
 import subprocess
-import tempfile
 
 from breezy import (
     controldir,
@@ -42,6 +41,7 @@ from breezy.i18n import gettext
 from . import (
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from .registry import (
     Registry,
@@ -254,6 +254,7 @@ def default_style_unified(diff_opts):
 def external_diff(old_label, oldlines, new_label, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
+    import tempfile
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
@@ -752,7 +753,7 @@ class DiffText(DiffPath):
                 return []
             try:
                 return tree.get_file_lines(path)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return []
         try:
             from_text = _get_text(self.old_tree, from_path)
@@ -774,9 +775,11 @@ class DiffFromTool(DiffPath):
     def __init__(self, command_template: Union[str, List[str]],
             old_tree: Tree, new_tree: Tree, to_file,
                  path_encoding='utf-8'):
+        import tempfile
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        self._root = osutils.mkdtemp(prefix='brz-diff-')
+        import tempfile
+        self._root = tempfile.mkdtemp(prefix='brz-diff-')
 
     @classmethod
     def from_string(klass,

@@ -51,6 +51,7 @@ from dulwich.pack import (
     compute_file_sha,
     write_pack_object,
     )
+from dulwich.refs import SymrefLoop
 from dulwich.repo import (
     BaseRepo,
     InfoRefsContainer,
@@ -74,17 +75,19 @@ from .. import (
     )
 from ..errors import (
     AlreadyControlDirError,
-    FileExists,
     LockBroken,
     LockContention,
     NotLocalUrl,
-    NoSuchFile,
     ReadError,
     TransportNotPossible,
     )
 
 from ..lock import LogicalLockResult
 from ..trace import warning
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    )
 
 
 class TransportRefsContainer(RefsContainer):
@@ -272,7 +275,7 @@ class TransportRefsContainer(RefsContainer):
         try:
             realnames, _ = self.follow(name)
             realname = realnames[-1]
-        except (KeyError, IndexError):
+        except (KeyError, IndexError, SymrefLoop):
             realname = name
         if realname == b'HEAD':
             transport = self.worktree_transport
@@ -633,8 +636,8 @@ class TransportObjectStore(PackBasedObjectStore):
                         warning('Unable to read pack file %s',
                                 self.pack_transport.abspath(pack_name))
                         continue
-                    # TODO(jelmer): Don't read entire file into memory?
-                    f = BytesIO(f.read())
+                    from tempfile import SpooledTemporaryFile
+                    f = SpooledTemporaryFile(f.read())
                     pd = PackData(pack_name, f)
                 else:
                     pd = PackData(
@@ -764,17 +767,31 @@ class TransportObjectStore(PackBasedObjectStore):
         :param path: Path to the pack file.
         """
         f.seek(0)
-        p = Pack('', resolve_ext_ref=self.get_raw)
-        p._data = PackData.from_file(f, len(f.getvalue()))
-        p._data.pack = p
-        p._idx_load = lambda: MemoryPackIndex(
-            p.data.sorted_entries(), p.data.get_stored_checksum())
+        data = PackData.from_file(f, len(f.getvalue()))
+        if hasattr(Pack, 'sorted_entries'):
+            from dulwich.pack import _PackTupleIterable, PackInflater
+            sorted_entries = list(
+                data.sorted_entries(resolve_ext_ref=self.get_raw))
+            pack_sha = iter_sha1(entry[0] for entry in sorted_entries)
+            inflater = PackInflater.for_pack_data(
+                data, resolve_ext_ref=self.get_raw)
+            pack_tuples = _PackTupleIterable(lambda: iter(inflater), len(data))
+        else:  # dulwich < 0.20.47
+            p = Pack('', resolve_ext_ref=self.get_raw)
+            p._data = data
+            p._data.pack = p
+            sorted_entries = p.data.sorted_entries()
 
-        pack_sha = p.index.objects_sha1()
+            p._idx_load = lambda: MemoryPackIndex(
+                sorted_entries,
+                p.data.get_stored_checksum())
+
+            pack_sha = p.index.objects_sha1()
+            pack_tuples = p.pack_tuples()
 
         with self.pack_transport.open_write_stream(
                 "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
-            entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
+            entries, data_sum = write_pack_objects(datafile.write, pack_tuples)
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         with self.pack_transport.open_write_stream(
                 "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:

@@ -16,8 +16,6 @@
 
 """Tests for tree transform."""
 
-from __future__ import absolute_import
-
 import os
 
 from ...transform import ROOT_PARENT, conflict_pass, resolve_conflicts, revert

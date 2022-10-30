@@ -29,6 +29,7 @@ from .. import (
     revision,
     tests,
     trace,
+    transport as _mod_transport,
     )
 from ..bzr import (
     branch as bzrbranch,
@@ -37,6 +38,7 @@ from ..bzr import (
     )
 
 from ..bzr import groupcompress_repo
+from ..bzr.pack_repo import PackCommitBuilder
 
 # This is the dummy foreign revision control system, used
 # mainly here in the testsuite to test the foreign VCS infrastructure.
@@ -123,7 +125,7 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
         return (revno, revid)
 
 
-class DummyForeignCommitBuilder(vf_repository.VersionedFileCommitBuilder):
+class DummyForeignCommitBuilder(PackCommitBuilder):
 
     def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
@@ -258,7 +260,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
                                          a_controldir=a_controldir,
                                          _repository=found_repository,
                                          name=name)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
 
@@ -326,7 +328,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):

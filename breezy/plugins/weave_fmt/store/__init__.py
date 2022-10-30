@@ -28,6 +28,7 @@ import os
 
 from .... import (
     errors,
+    transport as _mod_transport,
     )
 from ....bzr import (
     versionedfile,
@@ -156,7 +157,7 @@ class TransportStore(Store):
         for name in names:
             try:
                 return self._get(name)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
         raise KeyError(fileid)
 

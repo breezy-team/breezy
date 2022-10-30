@@ -53,6 +53,7 @@ from ..bzr.testament import (
     StrictTestament3,
     )
 from ..tree import InterTree
+from ..transport import NoSuchFile
 from ..tsort import (
     topo_sort,
     )
@@ -127,7 +128,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
         intertree = InterTree.get(ptree, base_bzr_tree)
         try:
             ppath = intertree.find_source_paths(decoded_path, recurse='none')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             continue
         if ppath is None:
             continue

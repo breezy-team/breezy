@@ -50,7 +50,6 @@ import breezy.bzr.branch
 from ..fullhistory import BzrBranchFormat5
 from ...errors import (
     NotBranchError,
-    NoColocatedBranchSupport,
     UnknownFormatError,
     UnsupportedFormatError,
     )
@@ -229,7 +228,7 @@ class SampleBzrDir(bzrdir.BzrDir):
     def create_branch(self, name=None):
         """See ControlDir.create_branch."""
         if name is not None:
-            raise NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         return SampleBranch(self)
 
     def create_workingtree(self):

@@ -30,10 +30,7 @@ import os
 import sys
 import time
 
-try:
-    import _thread
-except ImportError:
-    import thread as _thread
+import _thread
 
 import breezy
 from ...lazy_import import lazy_import
@@ -1179,6 +1176,16 @@ class SmartClientAlreadyConnectedSocketMedium(SmartClientSocketMedium):
         pass
 
 
+class TooManyConcurrentRequests(errors.InternalBzrError):
+
+    _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
+            " Be sure to finish_writing and finish_reading on the"
+            " currently open request.")
+
+    def __init__(self, medium):
+        self.medium = medium
+
+
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an SmartClientStreamMedium."""
 
@@ -1190,7 +1197,7 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         # and the setting/unsetting of _current_request likewise moved into
         # that class : but its unneeded overhead for now. RBC 20060922
         if self._medium._current_request is not None:
-            raise errors.TooManyConcurrentRequests(self._medium)
+            raise TooManyConcurrentRequests(self._medium)
         self._medium._current_request = self
 
     def _accept_bytes(self, bytes):

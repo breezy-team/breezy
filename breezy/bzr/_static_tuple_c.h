@@ -109,7 +109,7 @@ import_static_tuple_c(void)
     struct type_description types[] = {
         {"StaticTuple", &_p_StaticTuple_Type},
         {NULL}};
-    return _import_extension_module("breezy._static_tuple_c",
+    return _import_extension_module("breezy.bzr._static_tuple_c",
         functions, types);
 }
 

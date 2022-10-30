@@ -17,18 +17,20 @@
 """Core compression logic for compressing streams of related files."""
 
 import time
+from typing import Type
 import zlib
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     debug,
-    osutils,
-    static_tuple,
     tsort,
     )
 from breezy.bzr import (
     knit,
+    pack,
+    pack_repo,
+    static_tuple,
     )
 
 from breezy.i18n import gettext
@@ -36,8 +38,9 @@ from breezy.i18n import gettext
 
 from .. import (
     errors,
+    osutils,
     trace,
-    )
+)
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
 from .versionedfile import (
@@ -49,7 +52,7 @@ from .versionedfile import (
     FulltextContentFactory,
     VersionedFilesWithFallbacks,
     UnavailableRepresentation,
-    )
+)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -1512,7 +1515,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _find_from_fallback(self, missing):
@@ -2244,6 +2247,9 @@ class _GCGraphIndex(object):
             key_dependencies.add_references(node[1], node[3][0])
 
 
+GroupCompressor: Type[_CommonGroupCompressor]
+
+
 from ._groupcompress_py import (
     apply_delta,
     apply_delta_to_source,
@@ -2253,7 +2259,7 @@ from ._groupcompress_py import (
     LinesDeltaIndex,
     )
 try:
-    from ._groupcompress_pyx import (
+    from ._groupcompress_pyx import (  # type: ignore
         apply_delta,
         apply_delta_to_source,
         DeltaIndex,

@@ -34,14 +34,14 @@ from .. import (
     urlutils,
     )
 from ..errors import (
-    FileExists,
     LockError,
     InProcessTransport,
-    NoSuchFile,
     TransportNotPossible,
     )
 from ..transport import (
     AppendBasedFileStream,
+    FileExists,
+    NoSuchFile,
     _file_streams,
     LateReadError,
     )
@@ -162,10 +162,11 @@ class MemoryTransport(transport.Transport):
         self._files[_abspath] = (raw_bytes, mode)
         return len(raw_bytes)
 
-    def symlink(self, source, target):
-        _abspath = self._resolve_symlinks(target)
+    def symlink(self, source, link_name):
+        """Create a symlink pointing to source named link_name."""
+        _abspath = self._abspath(link_name)
         self._check_parent(_abspath)
-        self._symlinks[_abspath] = self._abspath(source)
+        self._symlinks[_abspath] = source.split('/')
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
@@ -314,12 +315,6 @@ class MemoryTransport(transport.Transport):
                 r.append(i)
                 r = self._symlinks.get('/'.join(r), r)
         return '/' + '/'.join(r)
-
-    def symlink(self, source, link_name):
-        """Create a symlink pointing to source named link_name."""
-        _abspath = self._abspath(link_name)
-        self._check_parent(_abspath)
-        self._symlinks[_abspath] = source.split('/')
 
     def readlink(self, link_name):
         _abspath = self._abspath(link_name)

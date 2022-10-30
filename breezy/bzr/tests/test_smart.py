@@ -530,7 +530,7 @@ class TestSmartServerRequestInitializeBzrDir(
         """Initializing a missing directory should fail like the bzrdir api."""
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(transport.NoSuchFile,
                           request.execute, b'subdir')
 
     def test_initialized_dir(self):
@@ -571,7 +571,7 @@ class TestSmartServerRequestBzrDirInitializeEx(
         backing = self.get_transport()
         name = self.make_controldir('reference')._format.network_name()
         request = smart_dir.SmartServerRequestBzrDirInitializeEx(backing)
-        self.assertRaises(errors.NoSuchFile, request.execute, name,
+        self.assertRaises(transport.NoSuchFile, request.execute, name,
                           b'subdir/dir', b'False', b'False', b'False', b'',
                           b'', b'', b'', b'False')
 
@@ -581,7 +581,7 @@ class TestSmartServerRequestBzrDirInitializeEx(
         name = self.make_controldir('reference')._format.network_name()
         request = smart_dir.SmartServerRequestBzrDirInitializeEx(backing)
         self.make_controldir('subdir')
-        self.assertRaises(errors.FileExists, request.execute, name, b'subdir',
+        self.assertRaises(transport.FileExists, request.execute, name, b'subdir',
                           b'False', b'False', b'False', b'', b'', b'', b'',
                           b'False')
 
@@ -1440,8 +1440,8 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         branch = self.make_branch('.', format='knit')
         repository = branch.repository
         response = request.execute(b'')
-        branch_nonce = branch.control_files._lock.peek().get('nonce')
-        repository_nonce = repository.control_files._lock.peek().get('nonce')
+        branch_nonce = branch.control_files._lock.peek().nonce
+        repository_nonce = repository.control_files._lock.peek().nonce
         self.assertEqual(smart_req.SmartServerResponse(
             (b'ok', branch_nonce, repository_nonce)),
             response)
@@ -2177,7 +2177,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         request = smart_repo.SmartServerRepositoryLockWrite(backing)
         repository = self.make_repository('.', format='knit')
         response = request.execute(b'')
-        nonce = repository.control_files._lock.peek().get('nonce')
+        nonce = repository.control_files._lock.peek().nonce
         self.assertEqual(smart_req.SmartServerResponse(
             (b'ok', nonce)), response)
         # The repository is now locked.  Verify that with a new repository
@@ -2848,3 +2848,4 @@ class TestSmartServerBranchRequestGetAllReferenceInfo(TestLockedBranch):
         self.assertEqual(
             [[b'some/path', b'http://www.example.com/', b'']],
             bencode.bdecode(response.body))
+
