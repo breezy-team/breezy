@@ -31,7 +31,7 @@ from .. import (
     plugin,
     tests,
     )
-from ..tests.features import pkg_resources_feature
+from ..tests.features import importlib_metadata_feature
 
 
 # TODO: Write a test for plugin decoration of commands.
@@ -929,23 +929,30 @@ class DummyPlugin(object):
 
 class TestLoadEnvPlugin(BaseTestPlugins):
 
-    _test_needs_features = [pkg_resources_feature]
+    _test_needs_features = [importlib_metadata_feature]
 
     def setup_plugin(self, source=""):
         # This test tests a new plugin appears in breezy.plugin.plugins().
         # check the plugin is not loaded already
         self.assertPluginUnknown('plugin')
         # write a plugin that _cannot_ fail to load.
-        import pkg_resources
-        d = pkg_resources.Distribution(__file__)
-        ep = pkg_resources.EntryPoint.parse(
-            'plugin = ' + __name__ + ':DummyPlugin', dist=d)
-        d._ep_map = {'breezy.plugin': {'plugin': ep}}
-        pkg_resources.working_set.add(d, 'plugin', replace=True)
-        eps = list(pkg_resources.iter_entry_points('breezy.plugin'))
+        from importlib.metadata import Distribution, entry_points, EntryPoint
+        class DummyDistribution:
+
+            def __init__(self, name, entry_points):
+                self._normalized_name = self.name = name
+                self.entry_points = entry_points
+        ep = EntryPoint(name='plugin', group='breezy.plugin',
+                        value=__name__ + ':DummyPlugin')
+        d = DummyDistribution('lala', [ep])
+        old_discover = Distribution.discover
+        def override_discover(**kwargs):
+            yield from old_discover(**kwargs)
+            yield d
+        self.overrideAttr(Distribution, 'discover', override_discover)
+        eps = list(entry_points(group='breezy.plugin'))
         self.assertEqual(['plugin'], [ep.name for ep in eps])
         self.load_with_paths(['.'])
-        self.addCleanup(d._ep_map.clear)
 
     def test_plugin_loaded(self):
         self.assertPluginUnknown('plugin')
