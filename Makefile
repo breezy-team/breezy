@@ -69,7 +69,7 @@ check-ci: docs extensions
 # Note that at present this gives many false warnings, because it doesn't
 # know about identifiers loaded through lazy_import.
 flake8:
-	flake8
+	flake8 breezy
 
 mypy:
 	mypy breezy
