@@ -186,6 +186,12 @@ class TreeUpstreamVersionMissing(Exception):
         )
 
 
+class UnreleasedChangesSinceTreeVersion(Exception):
+    def __init__(self, tree_version):
+        super(UnreleasedChangesSinceTreeVersion, self).__init__(
+            "there are unreleased changes since %s" % tree_version)
+
+
 def find_missing_versions(archive_cl, tree_version):
     missing_versions: List[Version] = []
     for block in archive_cl:
@@ -203,6 +209,7 @@ def import_uncommitted(
         source_name: str,
         archive_version: Optional[Version] = None,
         tree_version: Optional[Version] = None,
+        merge_unreleased: bool = True,
         ) -> List[Tuple[str, Version, RevisionID]]:
     with contextlib.ExitStack() as es:
         es.enter_context(apt)
@@ -225,6 +232,22 @@ def import_uncommitted(
         dbs = DistributionBranchSet()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
         dbs.add_branch(db)
+
+        if tree_version is not None:
+            tree_version_revid = db.revid_of_version(tree_version)
+            if tree_version_revid != tree.last_revision():
+                # There are changes since the last tree version.
+                note("Commits exist on the branch since last upload to archive")
+                if not merge_unreleased:
+                    raise UnreleasedChangesSinceTreeVersion(tree_version)
+
+                merge_into = tree.last_revision()
+                tree.update(revision=tree_version_revid)
+            else:
+                merge_into = None
+        else:
+            merge_into = None
+
         applied_patches = tree.has_filename(".pc/applied-patches")
         if tree_version and tree_version.debian_revision:
             try:
@@ -262,6 +285,19 @@ def import_uncommitted(
                 db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
             revid = db.branch.tags.lookup_tag(tag_name)
             ret.append((tag_name, version, revid))
+
+    if merge_into:
+        to_merge = tree.last_revision()
+        tree.update(revision=merge_into)
+        tree.merge_from_branch(tree.branch, to_revision=to_merge)
+        revid = debcommit(
+            tree, subpath=subpath,
+            message='Merge archive versions: %r' % ', '.join([
+                str(v) for (t, v, r) in ret]))
+        parent_ids = tree.branch.repository.get_revision(revid).parent_ids
+        assert parent_ids == [merge_into, to_merge], \
+            "Expected parents to be %r, was %r" % (
+                [merge_into, to_merge], parent_ids)
     return ret
 
 
@@ -313,6 +349,11 @@ async def main():
     parser.add_argument(
         '--vcs-browser-base', type=str,
         help='Set Vcs-Browser URL')
+    parser.add_argument(
+        '--no-merge-unreleased',
+        action='store_true',
+        help=('Error rather than merge when there are '
+              'unreleased changes'))
     parser.add_argument(
         '--package', type=str, help='Package to import',
         default=os.environ.get('PACKAGE'))
@@ -366,7 +407,8 @@ async def main():
         ret = import_uncommitted(
             local_tree, subpath, apt, source_name=source_name,
             archive_version=Version(args.version) if args.version else None,
-            tree_version=tree_version)
+            tree_version=tree_version,
+            merge_unreleased=not args.no_merge_unreleased)
     except AptSourceError as e:
         if isinstance(e.reason, list):
             reason = e.reason[-1]
@@ -381,6 +423,9 @@ async def main():
         return 1
     except TreeUpstreamVersionMissing as e:
         report_fatal("tree-upstream-version-missing", str(e))
+        return 1
+    except UnreleasedChangesSinceTreeVersion as e:
+        report_fatal("unreleased-changes", str(e))
         return 1
     except TreeVersionNotInArchiveChangelog as e:
         report_fatal("tree-version-not-in-archive-changelog", str(e))

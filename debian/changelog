@@ -1,3 +1,9 @@
+breezy-debian (2.8.75) UNRELEASED; urgency=medium
+
+  * deb-import-uncommitted: Handle presence of unuploaded changes.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 30 Oct 2022 12:53:01 +0000
+
 breezy-debian (2.8.74) unstable; urgency=medium
 
   * Fix uncaught error in deb-import-uncommitted.
