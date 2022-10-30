@@ -1214,7 +1214,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             result.new_revid = stop_revision
             for name, sha in (
                     self.source.repository._git.refs.as_dict(b"refs/tags").items()):
-                if tag_selector and not tag_selector(name):
+                if tag_selector and not tag_selector(name.decode('utf-8')):
                     continue
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)
