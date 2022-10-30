@@ -414,14 +414,22 @@ async def main():
         target_branch_url = None
 
     if os.environ.get('SVP_API') == '1':
+        if len(ret) == 1:
+            commit_message = "Import missing upload: %s" % ret[0][1]
+            description = 'Import uploaded version: %s' % (
+                ret[0][1])
+        else:
+            commit_message = "Import missing uploads: %s." % (
+                    ", ".join([str(v) for t, v, rs in ret]))
+            description = 'Import uploaded versions: %r' % (
+                [str(v) for t, v, rs in ret])
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
-                'description': 'Import uploaded versions missing from the VCS.',
+                'description': description,
                 'versions': versions_dict(),
                 'value': 60 + sum(
                      [60 if 'nmu' in str(e[1]) else 20 for e in ret]),
-                'commit-message': "Import missing uploads: %s." % (
-                    ", ".join([str(v) for t, v, rs in ret])),
+                'commit-message': commit_message,
                 'context': {
                     'versions': [tag_name for (tag_name, version, rs) in ret],
                     'tags':
