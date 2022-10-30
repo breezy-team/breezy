@@ -416,13 +416,14 @@ async def main():
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
-                'description': 'Import archive changes missing from the VCS.',
+                'description': 'Import uploaded versions missing from the VCS.',
                 'versions': versions_dict(),
                 'value': 60 + sum(
                      [60 if 'nmu' in str(e[1]) else 20 for e in ret]),
                 'commit-message': "Import missing uploads: %s." % (
                     ", ".join([str(v) for t, v, rs in ret])),
                 'context': {
+                    'versions': [tag_name for (tag_name, version, rs) in ret],
                     'tags':
                         [(tag_name, str(version))
                          for (tag_name, version, rs) in ret],
