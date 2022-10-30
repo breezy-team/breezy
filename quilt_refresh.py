@@ -38,6 +38,12 @@ class QuiltPatchPushFailure(Exception):
         self.actual_error = actual_error
 
 
+class QuiltPatchDoesNotApply(Exception):
+    def __init__(self, patch_name, error_lines):
+        self.patch_name = patch_name
+        self.error_lines = error_lines
+
+
 def refresh_quilt_patches(
     local_tree: Tree,
     committer: Optional[str] = None,
@@ -59,7 +65,7 @@ def refresh_quilt_patches(
             m = re.match(
                 "Patch debian/patches/(.*) can be reverse-applied",
                 lines[-1])
-            if m and getattr(patches, "delete", None):
+            if m:
                 assert m.group(1) == name
                 patches.delete(name, remove=True)
                 with ChangelogEditor(
@@ -77,8 +83,14 @@ def refresh_quilt_patches(
                         "debian/changelog",
                     ],
                 )
-            else:
-                raise QuiltPatchPushFailure(name, e) from e
+                continue
+            m = re.match(
+                "Patch debian/patches/(.*) does not apply \(enforce with -f\)",
+                lines[-1])
+            if m:
+                assert m.group(1) == name
+                raise QuiltPatchDoesNotApply(name, e) from e
+            raise QuiltPatchPushFailure(name, e) from e
     patches.pop_all()
     try:
         local_tree.commit(

@@ -1542,6 +1542,19 @@ async def main():
                         committer=committer,
                         subpath=subpath,
                     )
+                except QuiltPatchDoesNotApply as e:
+                    error_description = (
+                        "Quilt patch %s no longer applies" % e.patch_name)
+                    error_code = "quilt-patch-out-of-date"
+                    report_fatal(error_code, error_description)
+                    return 1
+                except QuiltPatchPushFailure as e:
+                    error_description = (
+                        "An error occurred refreshing quilt patch %s"
+                        % (e.patch_name, ))
+                    error_code = "quilt-refresh-error"
+                    report_fatal(error_code, error_description)
+                    return 1
                 except QuiltError as e:
                     error_description = (
                         "An error (%d) occurred refreshing quilt patches: "
