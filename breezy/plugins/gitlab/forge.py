@@ -59,6 +59,10 @@ def mp_status_to_status(status):
         'closed': 'closed'}[status]
 
 
+def parse_timestring(ts):
+    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+
 class NotGitLabUrl(errors.BzrError):
 
     _fmt = "Not a GitLab URL: %(url)s"
@@ -351,7 +355,7 @@ class GitLabMergeProposal(MergeProposal):
         merged_at = self._mr.get('merged_at')
         if merged_at is None:
             return None
-        return datetime.strptime(merged_at.translate(None, ':-'), "%Y%m%dT%H%M%S.%fZ")
+        return parse_timestring(merged_at)
 
     def post_comment(self, body):
         kwargs = {'body': body}

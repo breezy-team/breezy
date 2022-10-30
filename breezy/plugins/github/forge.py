@@ -221,7 +221,7 @@ class GitHubMergeProposal(MergeProposal):
         merged_at = self._pr.get('merged_at')
         if merged_at is None:
             return None
-        return parse_time(merged_at)
+        return parse_timestring(merged_at)
 
     def post_comment(self, body):
         data = {'body': body}
