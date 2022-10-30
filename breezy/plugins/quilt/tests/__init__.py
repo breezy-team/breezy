@@ -24,6 +24,10 @@ from ....tests import (
     TestCaseWithTransport,
     TestCaseInTempDir,
     )
+from ....tests.features import ExecutableFeature
+
+
+quilt_feature = ExecutableFeature('quilt')
 
 
 def load_tests(loader, basic_tests, pattern):
