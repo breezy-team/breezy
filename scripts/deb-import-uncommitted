@@ -186,6 +186,18 @@ class TreeUpstreamVersionMissing(Exception):
         )
 
 
+def find_missing_versions(archive_cl, tree_version):
+    missing_versions: List[Version] = []
+    for block in archive_cl:
+        if tree_version is not None and block.version == tree_version:
+            break
+        missing_versions.append(block.version)
+    else:
+        if tree_version is not None:
+            raise TreeVersionNotInArchiveChangelog(tree_version)
+    return missing_versions
+
+
 def import_uncommitted(
         tree: Tree, subpath: str, apt: Apt,
         source_name: str,
@@ -204,17 +216,11 @@ def import_uncommitted(
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
         with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
             archive_cl = Changelog(f)
-        missing_versions: List[Version] = []
-        for block in archive_cl:
-            if tree_version is not None and block.version == tree_version:
-                break
-            missing_versions.append(block.version)
-        else:
-            if tree_version is not None:
-                raise TreeVersionNotInArchiveChangelog(tree_version)
+        missing_versions = find_missing_versions(archive_cl, tree_version)
         if len(missing_versions) == 0:
             raise NoMissingVersions(tree_version, archive_cl.version)
         note("Missing versions: %s", ", ".join(map(str, missing_versions)))
+
         ret = []
         dbs = DistributionBranchSet()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
