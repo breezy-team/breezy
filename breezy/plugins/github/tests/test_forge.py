@@ -1,4 +1,4 @@
-# Copyright (C) 2020 Jelmer Vernooij <jelmer@jelmer.uk>
+# Copyright (C) 2022 Jelmer Vernooij
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,18 +12,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from unittest import TestLoader, TestSuite
+"""Tests for GitHub."""
+
+from datetime import datetime
+
+from ....tests import TestCase
+
+from ..forge import parse_timestring
 
 
-def test_suite():
-    result = TestSuite()
+class ParseTimestringTests(TestCase):
 
-    loader = TestLoader()
-    from . import test_forge
-
-    loader = TestLoader()
-    result.addTests(loader.loadTestsFromModule(test_forge))
-
-    return result
+    def test_simple(self):
+        self.assertEqual(
+            datetime(2011, 1, 26, 19, 1, 12),
+            parse_timestring("2011-01-26T19:01:12Z"))
