@@ -32,9 +32,6 @@ The plugin also provides the following commands:
 
 """
 
-# The XMLRPC server address can be overridden by setting the environment
-# variable $BRZ_LP_XMLRPC_URL
-
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
 from ... import (
@@ -82,11 +79,9 @@ _register_directory()
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_account',
-        'test_register',
         'test_lp_api',
         'test_lp_directory',
         'test_lp_login',
-        'test_lp_service',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
         ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
