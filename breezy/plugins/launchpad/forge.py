@@ -109,6 +109,9 @@ class LaunchpadMergeProposal(MergeProposal):
     def __init__(self, mp):
         self._mp = mp
 
+    def get_web_url(self):
+        return self.web_link
+
     def get_source_branch_url(self):
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity
@@ -507,6 +510,17 @@ class Launchpad(Forge):
             return self.launchpad.people.getByEmail(email=person)
         else:
             return self.launchpad.people[person]
+
+    def get_web_url(self, branch):
+        (vcs, user, password, path, params) = self._split_url(branch.user_url)
+        if vcs == 'bzr':
+            branch_lp = self._get_lp_bzr_branch_from_branch(branch)
+            return branch_lp.web_link
+        elif vcs == 'git':
+            (repo_lp, ref_lp) = self._get_lp_git_ref_from_branch(branch)
+            return ref_lp.web_link
+        else:
+            raise AssertionError
 
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.

@@ -120,6 +120,9 @@ class GitHubMergeProposal(MergeProposal):
 
     name = 'GitHub'
 
+    def get_web_url(self):
+        return self._pr['html_url']
+
     @property
     def url(self):
         return self._pr['html_url']
@@ -545,6 +548,15 @@ class GitHub(Forge):
         owner, project, branch_name = parse_github_branch_url(branch)
         repo = self._get_repo(owner, project)
         return github_url_to_bzr_url(repo['ssh_url'], branch_name)
+
+    def get_web_url(self, branch):
+        owner, project, branch_name = parse_github_branch_url(branch)
+        repo = self._get_repo(owner, project)
+        if branch_name:
+            # TODO(jelmer): Don't hardcode this
+            return repo['html_url'] + '/tree/' + branch_name
+        else:
+            return repo['html_url']
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)

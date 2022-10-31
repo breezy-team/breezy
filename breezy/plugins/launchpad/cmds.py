@@ -46,42 +46,10 @@ class cmd_launchpad_open(Command):
         ]
     takes_args = ['location?']
 
-    def _possible_locations(self, location):
-        """Yield possible external locations for the branch at 'location'."""
-        yield location
-        try:
-            branch = _mod_branch.Branch.open_containing(location)[0]
-        except NotBranchError:
-            return
-        branch_url = branch.get_public_branch()
-        if branch_url is not None:
-            yield branch_url
-        branch_url = branch.get_push_location()
-        if branch_url is not None:
-            yield branch_url
-
-    def _get_web_url(self, service, location):
-        from .lp_registration import (
-            InvalidURL,
-            NotLaunchpadBranch)
-        for branch_url in self._possible_locations(location):
-            try:
-                return service.get_web_url_from_branch_url(branch_url)
-            except (NotLaunchpadBranch, InvalidURL):
-                pass
-        raise NotLaunchpadBranch(branch_url)
-
     def run(self, location=None, dry_run=False):
-        from .lp_registration import (
-            LaunchpadService)
-        if location is None:
-            location = u'.'
-        web_url = self._get_web_url(LaunchpadService(), location)
-        trace.note(gettext('Opening %s in web browser') % web_url)
-        if not dry_run:
-            import webbrowser   # this import should not be lazy
-            # otherwise brz.exe lacks this module
-            webbrowser.open(web_url)
+        trace.warning('lp-open is deprecated. Please use web-open instead')
+        from breezy.plugins.propose.cmds import cmd_web_open
+        return cmd_web_open().run(location=location, dry_run=dry_run)
 
 
 class cmd_launchpad_login(Command):
