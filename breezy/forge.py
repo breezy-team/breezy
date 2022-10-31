@@ -323,6 +323,10 @@ class Forge(object):
         """Get the push URL for a branch."""
         raise NotImplementedError(self.get_push_url)
 
+    def get_web_url(self, branch):
+        """Get the web viewing URL for a branch."""
+        raise NotImplementedError(self.get_web_url)
+
     def get_proposer(self, source_branch, target_branch):
         """Get a merge proposal creator.
 

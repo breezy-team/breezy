@@ -634,6 +634,15 @@ class GitLab(Forge):
         return gitlab_url_to_bzr_url(
             project['ssh_url_to_repo'], branch_name)
 
+    def get_web_url(self, branch):
+        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        project = self._get_project(project_name)
+        if branch_name:
+            # TODO(jelmer): Use API to get this URL
+            return project['web_url'] + '/-/tree/' + branch_name
+        else:
+            return project['web_url']
+
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
