@@ -21,6 +21,8 @@
 
 # TODO: Specific "examples" property on commands for consistent formatting.
 
+__docformat__ = "google"
+
 import contextlib
 import os
 import sys
@@ -30,6 +32,7 @@ from . import (
     i18n,
     option,
     osutils,
+    trace,
     )
 
 from .lazy_import import lazy_import
@@ -39,7 +42,6 @@ import breezy
 from breezy import (
     cmdline,
     debug,
-    trace,
     ui,
     )
 """)
@@ -87,7 +89,8 @@ class CommandInfo(object):
 class CommandRegistry(registry.Registry):
     """Special registry mapping command names to command classes.
 
-    :ivar overridden_registry: Look in this registry for commands being
+    Attributes:
+      overridden_registry: Look in this registry for commands being
         overridden by this registry.  This can be used to tell plugin commands
         about the builtin they're decorating.
     """
@@ -112,8 +115,9 @@ class CommandRegistry(registry.Registry):
     def register(self, cmd, decorate=False):
         """Utility function to help register a command
 
-        :param cmd: Command subclass to register
-        :param decorate: If true, allow overriding an existing command
+        Args:
+          cmd: Command subclass to register
+          decorate: If true, allow overriding an existing command
             of the same name; the old command is returned by this function.
             Otherwise it is an error to try to override an existing command.
         """
@@ -145,9 +149,10 @@ class CommandRegistry(registry.Registry):
     def register_lazy(self, command_name, aliases, module_name):
         """Register a command without loading its module.
 
-        :param command_name: The primary name of the command.
-        :param aliases: A list of aliases for the command.
-        :module_name: The module that the command lives in.
+        Args:
+          command_name: The primary name of the command.
+          aliases: A list of aliases for the command.
+          module_name: The module that the command lives in.
         """
         key = self._get_name(command_name)
         registry.Registry.register_lazy(self, key, module_name, command_name,
@@ -242,8 +247,10 @@ _GUESS_OVERRIDES = {
 def guess_command(cmd_name):
     """Guess what command a user typoed.
 
-    :param cmd_name: Command to search for
-    :return: None if no command was found, name of a command otherwise
+    Args:
+      cmd_name: Command to search for
+    Returns:
+      None if no command was found, name of a command otherwise
     """
     names = set()
     for name in all_command_names():
@@ -304,12 +311,17 @@ def _get_cmd_object(
         check_missing: bool = True) -> "Command":
     """Get a command object.
 
-    :param cmd_name: The name of the command.
-    :param plugins_override: Allow plugins to override builtins.
-    :param check_missing: Look up commands not found in the regular index via
+    Args:
+      cmd_name: The name of the command.
+      plugins_override: Allow plugins to override builtins.
+      check_missing: Look up commands not found in the regular index via
         the get_missing_command hook.
-    :return: A Command object instance
-    :raises KeyError: If no command is found.
+
+    Returns:
+      A Command object instance
+
+    Raises:
+      KeyError: If no command is found.
     """
     # We want only 'ascii' command names, but the user may have typed
     # in a Unicode name. In that case, they should just get a
@@ -355,9 +367,14 @@ def _try_plugin_provider(cmd_name):
 def probe_for_provider(cmd_name):
     """Look for a provider for cmd_name.
 
-    :param cmd_name: The command name.
-    :return: plugin_metadata, provider for getting cmd_name.
-    :raises NoPluginAvailable: When no provider can supply the plugin.
+    Args:
+      cmd_name: The command name.
+
+    Returns:
+      plugin_metadata, provider for getting cmd_name.
+
+    Raises:
+      NoPluginAvailable: When no provider can supply the plugin.
     """
     # look for providers that provide this command but aren't installed
     for provider in command_providers_registry:
@@ -421,9 +438,10 @@ class Command(object):
     summary, then a complete description of the command.  A grammar
     description will be inserted.
 
-    :cvar aliases: Other accepted names for this command.
+    Attributes:
+      aliases: Other accepted names for this command.
 
-    :cvar takes_args: List of argument forms, marked with whether they are
+      takes_args: List of argument forms, marked with whether they are
         optional, repeated, etc.  Examples::
 
             ['to_location', 'from_branch?', 'file*']
@@ -432,14 +450,14 @@ class Command(object):
         * 'from_branch' is optional
         * 'file' can be specified 0 or more times
 
-    :cvar takes_options: List of options that may be given for this command.
+      takes_options: List of options that may be given for this command.
         These can be either strings, referring to globally-defined options, or
         option objects.  Retrieve through options().
 
-    :cvar hidden: If true, this command isn't advertised.  This is typically
+      hidden: If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
 
-    :cvar encoding_type: Command objects will get a 'outf' attribute, which has
+      encoding_type: Command objects will get a 'outf' attribute, which has
         been setup to properly handle encoding of unicode strings.
         encoding_type determines what will happen when characters cannot be
         encoded:
@@ -453,14 +471,14 @@ class Command(object):
         encoding_type = 'exact', then sys.stdout is forced to be a binary
         stream, and line-endings will not mangled.
 
-    :cvar invoked_as:
+      invoked_as:
         A string indicating the real name under which this command was
         invoked, before expansion of aliases.
         (This may be None if the command was constructed and run in-process.)
 
-    :cvar hooks: An instance of CommandHooks.
+      hooks: An instance of CommandHooks.
 
-    :cvar __doc__: The help shown by 'brz help command' for this command.
+      __doc__: The help shown by 'brz help command' for this command.
         This is set by assigning explicitly to __doc__ so that -OO can
         be used::
 
@@ -532,13 +550,14 @@ class Command(object):
                       see_also_as_links=False, verbose=True):
         """Return a text string with help for this command.
 
-        :param additional_see_also: Additional help topics to be
+        Args:
+          additional_see_also: Additional help topics to be
             cross-referenced.
-        :param plain: if False, raw help (reStructuredText) is
+          plain: if False, raw help (reStructuredText) is
             returned instead of plain text.
-        :param see_also_as_links: if True, convert items in 'See also'
+          see_also_as_links: if True, convert items in 'See also'
             list to internal links (used by bzr_man rstx generator)
-        :param verbose: if True, display the full help, otherwise
+          verbose: if True, display the full help, otherwise
             leave out the descriptive sections and just display
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
@@ -695,8 +714,12 @@ class Command(object):
 
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
-        :param additional_terms: Additional help topics to cross-reference.
-        :return: A list of help topics.
+
+        Args:
+          additional_terms: Additional help topics to cross-reference.
+
+        Returns:
+          A list of help topics.
         """
         see_also = set(getattr(self, '_see_also', []))
         if additional_terms:
@@ -1061,18 +1084,21 @@ def get_alias(cmd, config=None):
 def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     """Execute a command.
 
-    :param argv: The command-line arguments, without the program name from
+    Args:
+      argv: The command-line arguments, without the program name from
         argv[0] These should already be decoded. All library/test code calling
         run_bzr should be passing valid strings (don't need decoding).
-    :param load_plugins: What function to call when triggering plugin loading.
+      load_plugins: What function to call when triggering plugin loading.
         This function should take no arguments and cause all plugins to be
         loaded.
-    :param disable_plugins: What function to call when disabling plugin
+      disable_plugins: What function to call when disabling plugin
         loading. This function should take no arguments and cause all plugin
         loading to be prohibited (so that code paths in your application that
         know about some plugins possibly being present will fail to import
         those plugins even if they are installed.)
-    :return: Returns a command exit code or raises an exception.
+
+    Returns:
+      Returns a command exit code or raises an exception.
 
     Special master options: these must come before the command because
     they control how the command is interpreted.
@@ -1275,12 +1301,14 @@ def main(argv=None):
 
     Typically `breezy.initialize` should be called first.
 
-    :param argv: list of unicode command-line arguments similar to sys.argv.
+    Args:
+      argv: list of unicode command-line arguments similar to sys.argv.
         argv[0] is script name usually, it will be ignored.
         Don't pass here sys.argv because this list contains plain strings
         and not unicode; pass None instead.
 
-    :return: exit code of brz command.
+    Returns:
+      exit code of brz command.
     """
     if argv is not None:
         argv = argv[1:]
@@ -1330,9 +1358,12 @@ class HelpCommandIndex(object):
     def get_topics(self, topic):
         """Search for topic amongst commands.
 
-        :param topic: A topic to search for.
-        :return: A list which is either empty or contains a single
-            Command entry.
+        Args:
+          topic: A topic to search for.
+
+        Returns:
+          A list which is either empty or contains a single
+          Command entry.
         """
         if topic and topic.startswith(self.prefix):
             topic = topic[len(self.prefix):]

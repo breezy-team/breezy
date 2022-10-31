@@ -29,6 +29,10 @@ from .... import (
     )
 from ....merge import Merger
 from ....mutabletree import MutableTree
+from ....tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 
 from .. import (
     pre_merge_quilt,
@@ -39,12 +43,8 @@ from .. import (
 from ..quilt import QuiltPatches
 from ..merge import tree_unapply_patches
 
-from .test_wrapper import quilt_feature
+from . import quilt_feature
 
-from ....tests import (
-    TestCaseWithTransport,
-    TestSkipped,
-    )
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 +++ base/a	2012-01-02 20:03:59.710666215 +0100
