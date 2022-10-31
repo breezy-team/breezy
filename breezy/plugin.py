@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Breezy plugin support.
 
 Which plugins to load can be configured by setting these environment variables:
@@ -58,7 +60,8 @@ def disable_plugins(state=None):
 
     Future calls to load_plugins() will be ignored.
 
-    :param state: The library state object that records loaded plugins.
+    Args:
+      state: The library state object that records loaded plugins.
     """
     if state is None:
         state = breezy.get_global_state()
@@ -73,9 +76,10 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
     files (and whatever other extensions are used in the platform,
     such as `*.pyd`).
 
-    :param path: The list of paths to search for plugins.  By default,
+    Args:
+      path: The list of paths to search for plugins.  By default,
         it is populated from the __path__ of the breezy.plugins package.
-    :param state: The library state object that records loaded plugins.
+      state: The library state object that records loaded plugins.
     """
     if state is None:
         state = breezy.get_global_state()
@@ -105,7 +109,12 @@ def _load_plugins_from_entrypoints(state):
         # No importlib.metadata, no entrypoints.
         pass
     else:
-        for ep in entry_points(group='breezy.plugin'):
+        try:
+            eps = entry_points(group='breezy.plugin')
+        except TypeError:  # python < 3.10 didn't support group argument
+            eps = [ep[0] for ep in entry_points().values()
+                    if ep[0].group == 'breezy.plugin']
+        for ep in eps:
             fullname = _MODULE_PREFIX + ep.name
             if fullname in sys.modules:
                 continue
@@ -342,9 +351,12 @@ def describe_plugins(show_paths=False, state=None):
 
     Includes both those that have loaded, and those that failed to load.
 
-    :param show_paths: If true, include the plugin path.
-    :param state: The library state object to inspect.
-    :returns: Iterator of text lines (including newlines.)
+    Args:
+      show_paths: If true, include the plugin path.
+      state: The library state object to inspect.
+
+    Returns:
+      Iterator of text lines (including newlines.)
     """
     if state is None:
         state = breezy.get_global_state()
@@ -425,8 +437,9 @@ def sanitise_plugin_name(name):
 def _load_plugin_module(name, dir):
     """Load plugin by name.
 
-    :param name: The plugin name in the breezy.plugins namespace.
-    :param dir: The directory the plugin is loaded from for error messages.
+    Args:
+      name: The plugin name in the breezy.plugins namespace.
+      dir: The directory the plugin is loaded from for error messages.
     """
     if _MODULE_PREFIX + name in sys.modules:
         return
@@ -497,9 +510,12 @@ class PluginsHelpIndex(object):
 
         This will not trigger loading of new plugins.
 
-        :param topic: A topic to search for.
-        :return: A list which is either empty or contains a single
-            RegisteredTopic entry.
+        Args:
+          topic: A topic to search for.
+
+        Returns:
+          A list which is either empty or contains a single
+          RegisteredTopic entry.
         """
         if not topic:
             return []
@@ -520,14 +536,16 @@ class ModuleHelpTopic(object):
     def __init__(self, module):
         """Constructor.
 
-        :param module: The module for which help should be generated.
+        Args:
+          module: The module for which help should be generated.
         """
         self.module = module
 
     def get_help_text(self, additional_see_also=None, verbose=True):
         """Return a string with the help for this topic.
 
-        :param additional_see_also: Additional help topics to be
+        Args:
+          additional_see_also: Additional help topics to be
             cross-referenced.
         """
         from . import help_topics
@@ -585,7 +603,8 @@ class PlugIn(object):
     def load_plugin_tests(self, loader):
         """Return the adapted plugin's test suite.
 
-        :param loader: The custom loader that should be used to load additional
+        Args:
+          loader: The custom loader that should be used to load additional
             tests.
         """
         if getattr(self.module, 'load_tests', None) is not None:
