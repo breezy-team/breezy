@@ -86,7 +86,6 @@ def load_tests(loader, basic_tests, pattern):
         'test_lp_api',
         'test_lp_directory',
         'test_lp_login',
-        'test_lp_open',
         'test_lp_service',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
