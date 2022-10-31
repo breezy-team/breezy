@@ -16,6 +16,8 @@
 
 """Launchpad URIs."""
 
+from urllib.parse import urlparse, urlunparse
+
 
 # We use production as the default because edge has been deprecated circa
 # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
@@ -49,3 +51,46 @@ service_roots = dict(
     dev=DEV_SERVICE_ROOT,
     test_dev=TEST_DEV_SERVICE_ROOT,
 )
+
+
+def lookup_service_root(root):
+    """Dereference an alias to a service root.
+
+    A recognized server alias such as "staging" gets turned into the
+    appropriate URI. A URI gets returned as is. Any other string raises a
+    ValueError.
+    """
+    if root in service_roots:
+        return service_roots[root]
+
+    # It's not an alias. Is it a valid URL?
+    (scheme, netloc, path, parameters, query, fragment) = urlparse(root)
+    if scheme != "" and netloc != "":
+        return root
+
+    # It's not an alias or a valid URL.
+    raise ValueError(
+        "%s is not a valid URL or an alias for any Launchpad " "server" % root
+    )
+
+
+def web_root_for_service_root(service_root):
+    """Turn a service root URL into a web root URL.
+
+    This is done heuristically, not with a lookup.
+    """
+    service_root = lookup_service_root(service_root)
+    web_root_uri = urlparse(service_root)
+    web_root_uri = web_root_uri._replace(path="")
+    web_root_uri = web_root_uri._replace(
+        netloc=web_root_uri.netloc.replace("api.", "", 1))
+    return str(web_root_uri)
+
+
+def canonical_url(object):
+    """Return the canonical URL for a branch."""
+    scheme, netloc, path, params, query, fragment = urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlunparse((scheme, netloc, path, params, query, fragment))

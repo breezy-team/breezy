@@ -188,7 +188,7 @@ class cmd_lp_find_proposal(Command):
 
     def run(self, revision=None):
         from ... import ui
-        from . import lp_api
+        from . import uris
         import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
         with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
@@ -201,7 +201,7 @@ class cmd_lp_find_proposal(Command):
                 raise CommandError(gettext('No review found.'))
             trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
-                webbrowser.open(lp_api.canonical_url(mp))
+                webbrowser.open(uris.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
         from . import uris, lp_api

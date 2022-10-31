@@ -330,12 +330,3 @@ class LaunchpadBranch(object):
         lca = graph.find_unique_lca(self.bzr.last_revision(),
                                     other.bzr.last_revision())
         return self.bzr.repository.revision_tree(lca)
-
-
-def canonical_url(object):
-    """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse(
-        str(object.self_link))
-    path = '/'.join(path.split('/')[2:])
-    netloc = netloc.replace('api.', 'code.')
-    return urlunparse((scheme, netloc, path, params, query, fragment))

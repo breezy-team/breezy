@@ -148,7 +148,7 @@ class LaunchpadMergeProposal(MergeProposal):
 
     @property
     def url(self):
-        return lp_api.canonical_url(self._mp)
+        return lp_uris.canonical_url(self._mp)
 
     def is_merged(self):
         return (self._mp.queue_status == 'Merged')
@@ -250,7 +250,7 @@ class Launchpad(Forge):
 
     @property
     def base_url(self):
-        return lp_api.uris.web_root_for_service_root(self._api_base_url)
+        return lp_uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
         return "Launchpad(service_root=%s)" % self._api_base_url
@@ -597,7 +597,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
-                raise MergeProposalExists(lp_api.canonical_url(mp))
+                raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
@@ -729,7 +729,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
-                raise MergeProposalExists(lp_api.canonical_url(mp))
+                raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
