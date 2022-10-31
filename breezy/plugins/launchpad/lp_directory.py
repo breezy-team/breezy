@@ -17,7 +17,6 @@
 """Directory lookup that uses Launchpad."""
 
 from urllib.parse import urlsplit
-from xmlrpc.client import Fault
 
 from ... import (
     debug,
@@ -25,16 +24,13 @@ from ... import (
     trace,
     transport,
     )
+from ...urlutils import InvalidURL
 from ...i18n import gettext
 
 from .uris import (
     DEFAULT_INSTANCE,
     LAUNCHPAD_DOMAINS,
-    )
-from .lp_registration import (
-    InvalidURL,
-    LaunchpadService,
-    ResolveLaunchpadPathRequest,
+    LPNET_SERVICE_ROOT,
     )
 from .account import get_lp_login
 
@@ -107,14 +103,23 @@ def _update_url_scheme(url):
     return url, path
 
 
+def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
+    from .lp_api import connect_launchpad
+    lp = connect_launchpad(api_base_url, version='devel')
+    lp_branch = lp.branches.getByPath(path=path)
+    if not lp_branch:
+        raise InvalidURL("Unknown Launchpad path: %s" % path)
+    return {'urls': [lp_branch.composePublicURL(scheme='ssh')]}
+
+
 class LaunchpadDirectory(object):
 
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""
         return self._resolve(url)
 
-    def _resolve_locally(self, path, url, _request_factory):
-        # This is the best I could work out about XMLRPC. If an lp: url
+    def _resolve_locally(self, path, url, _api_resolver):
+        # This is the best I could work out. If an lp: url
         # includes ~user, then it is specially validated. Otherwise, it is just
         # sent to +branch/$path.
         _, netloc, _, _, _ = urlsplit(url)
@@ -125,9 +130,8 @@ class LaunchpadDirectory(object):
         maybe_invalid = False
         if path.startswith('~'):
             # A ~user style path, validate it a bit.
-            # If a path looks fishy, fall back to asking XMLRPC to
-            # resolve it for us. That way we still get their nicer error
-            # messages.
+            # If a path looks fishy, fall back to asking the API to
+            # resolve it for us.
             parts = path.split('/')
             if (len(parts) < 3
                     or (parts[1] in ('ubuntu', 'debian') and len(parts) < 5)):
@@ -136,22 +140,10 @@ class LaunchpadDirectory(object):
         else:
             base += '+branch/'
         if maybe_invalid:
-            return self._resolve_via_xmlrpc(path, url, _request_factory)
+            return _api_resolver(path, url)
         return {'urls': [base + path]}
 
-    def _resolve_via_xmlrpc(self, path, url, _request_factory):
-        service = LaunchpadService.for_url(url)
-        resolve = _request_factory(path)
-        try:
-            result = resolve.submit(service)
-        except Fault as fault:
-            raise InvalidURL(
-                path=url, extra=fault.faultString)
-        return result
-
-    def _resolve(self, url,
-                 _request_factory=ResolveLaunchpadPathRequest,
-                 _lp_login=None):
+    def _resolve(self, url, _api_resolver=_resolve_via_api, _lp_login=None):
         """Resolve the base URL for this transport."""
         url, path = _update_url_scheme(url)
         if _lp_login is None:
@@ -159,15 +151,15 @@ class LaunchpadDirectory(object):
         path = path.strip('/')
         path = _expand_user(path, url, _lp_login)
         if _lp_login is not None:
-            result = self._resolve_locally(path, url, _request_factory)
+            result = self._resolve_locally(path, url, _api_resolver)
             if 'launchpad' in debug.debug_flags:
                 local_res = result
-                result = self._resolve_via_xmlrpc(path, url, _request_factory)
+                result = _api_resolver(path, url)
                 trace.note(gettext(
                     'resolution for {0}\n  local: {1}\n remote: {2}').format(
                     url, local_res['urls'], result['urls']))
         else:
-            result = self._resolve_via_xmlrpc(path, url, _request_factory)
+            result = _api_resolver(path, url)
 
         if 'launchpad' in debug.debug_flags:
             trace.mutter("resolve_lp_path(%r) == %r", url, result)
