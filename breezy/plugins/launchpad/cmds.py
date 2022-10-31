@@ -140,7 +140,8 @@ class cmd_launchpad_login(Command):
                 self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
                                 (name,))
         if check_account:
-            from .lp_api import connect_launchpad, lookup_service_root
+            from .lp_api import connect_launchpad
+            from .uris import lookup_service_root
             connect_launchpad(lookup_service_root(service_root))
 
 
@@ -188,7 +189,7 @@ class cmd_lp_find_proposal(Command):
 
     def run(self, revision=None):
         from ... import ui
-        from . import lp_api
+        from . import uris
         import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
         with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
@@ -201,11 +202,10 @@ class cmd_lp_find_proposal(Command):
                 raise CommandError(gettext('No review found.'))
             trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
-                webbrowser.open(lp_api.canonical_url(mp))
+                webbrowser.open(uris.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
-        from launchpadlib import uris
-        from . import lp_api
+        from . import uris, lp_api
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
         lp_base_url = uris.LPNET_SERVICE_ROOT
         launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
