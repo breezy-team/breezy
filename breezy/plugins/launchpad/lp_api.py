@@ -62,7 +62,6 @@ from launchpadlib.credentials import (
 from launchpadlib.launchpad import (
     Launchpad,
 )
-from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
@@ -86,16 +85,6 @@ def check_launchpadlib_compatibility():
             'launchpadlib',
             'At least launchpadlib %s is required, but installed version is %s'
             % (MINIMUM_LAUNCHPADLIB_VERSION, installed_version))
-
-
-def lookup_service_root(service_root):
-    try:
-        return uris.lookup_service_root(service_root)
-    except ValueError:
-        if service_root != 'qastaging':
-            raise
-        staging_root = uris.lookup_service_root('staging')
-        return staging_root.replace('staging', 'qastaging')
 
 
 class NoLaunchpadBranch(errors.BzrError):
@@ -235,49 +224,6 @@ class LaunchpadBranch(object):
         if url is not None:
             yield url
         yield bzr_branch.base
-
-    @staticmethod
-    def tweak_url(url, launchpad):
-        """Adjust a URL to work with staging, if needed."""
-        if str(launchpad._root_uri) == uris.STAGING_SERVICE_ROOT:
-            return url.replace('bazaar.launchpad.net',
-                               'bazaar.staging.launchpad.net')
-        elif str(launchpad._root_uri) == lookup_service_root('qastaging'):
-            return url.replace('bazaar.launchpad.net',
-                               'bazaar.qastaging.launchpad.net')
-        return url
-
-    @classmethod
-    def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
-        """Find a Launchpad branch from a bzr branch."""
-        check_update = True
-        for url in cls.candidate_urls(bzr_branch):
-            url = cls.tweak_url(url, launchpad)
-            if not cls.plausible_launchpad_url(url):
-                continue
-            lp_branch = launchpad.branches.getByUrl(url=url)
-            if lp_branch is not None:
-                break
-        else:
-            if not create_missing:
-                raise NoLaunchpadBranch(bzr_branch)
-            lp_branch = cls.create_now(launchpad, bzr_branch)
-            check_update = False
-        return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
-
-    @classmethod
-    def create_now(cls, launchpad, bzr_branch):
-        """Create a Bazaar branch on Launchpad for the supplied branch."""
-        url = cls.tweak_url(bzr_branch.get_push_location(), launchpad)
-        if not cls.plausible_launchpad_url(url):
-            raise errors.BzrError(gettext('%s is not registered on Launchpad') %
-                                  bzr_branch.base)
-        bzr_branch.create_clone_on_transport(transport.get_transport(url))
-        lp_branch = launchpad.branches.getByUrl(url=url)
-        if lp_branch is None:
-            raise errors.BzrError(gettext('%s is not registered on Launchpad') %
-                                  url)
-        return lp_branch
 
     def get_target(self):
         """Return the 'LaunchpadBranch' for the target of this one."""
