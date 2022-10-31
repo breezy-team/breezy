@@ -107,6 +107,9 @@ def main():
     from breezy.workingtree import WorkingTree
     from breezy.revisionspec import RevisionSpec
 
+    import breezy.bzr  # noqa: F401
+    import breezy.git  # noqa: F401
+
     parser = argparse.ArgumentParser('deb-update-packaging')
     parser.add_argument(
         '--since', type=str, help='Revision since when to update')
