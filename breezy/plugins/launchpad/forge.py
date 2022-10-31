@@ -110,6 +110,9 @@ class LaunchpadMergeProposal(MergeProposal):
     def __init__(self, mp):
         self._mp = mp
 
+    def get_web_url(self):
+        return self._mp['web_link']
+
     def get_source_branch_url(self):
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity

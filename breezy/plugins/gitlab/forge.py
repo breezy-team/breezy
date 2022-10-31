@@ -260,6 +260,9 @@ class GitLabMergeProposal(MergeProposal):
     def url(self):
         return self._mr['web_url']
 
+    def get_web_url(self):
+        return self._mr['web_url']
+
     def get_description(self):
         return self._mr['description']
 

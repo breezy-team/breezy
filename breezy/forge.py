@@ -126,6 +126,9 @@ class MergeProposal(object):
     def __init__(self, url=None):
         self.url = url
 
+    def get_web_url(self):
+        raise NotImplementedError(self.get_web_url)
+
     def get_description(self):
         """Get the description of the merge proposal."""
         raise NotImplementedError(self.get_description)

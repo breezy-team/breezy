@@ -120,6 +120,9 @@ class GitHubMergeProposal(MergeProposal):
 
     name = 'GitHub'
 
+    def get_web_url(self):
+        return self._pr['html_url']
+
     @property
     def url(self):
         return self._pr['html_url']
