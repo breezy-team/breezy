@@ -46,7 +46,6 @@ from breezy.plugins.launchpad import (
     uris as lp_uris,
     )
 
-from launchpadlib import uris
 """)
 from ...transport import get_transport
 
@@ -239,7 +238,7 @@ class Launchpad(Forge):
 
     @property
     def name(self):
-        if self._api_base_url == uris.LPNET_SERVICE_ROOT:
+        if self._api_base_url == lp_uris.LPNET_SERVICE_ROOT:
             return 'Launchpad'
         return 'Launchpad at %s' % self.base_url
 
@@ -269,7 +268,7 @@ class Launchpad(Forge):
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
-            return Launchpad(uris.LPNET_SERVICE_ROOT)
+            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
@@ -484,7 +483,7 @@ class Launchpad(Forge):
     @classmethod
     def iter_instances(cls):
         credential_store = lp_api.get_credential_store()
-        for service_root in set(uris.service_roots.values()):
+        for service_root in set(lp_uris.service_roots.values()):
             auth_engine = lp_api.get_auth_engine(service_root)
             creds = credential_store.load(auth_engine.unique_consumer_id)
             if creds is not None:

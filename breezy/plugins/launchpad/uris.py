@@ -32,3 +32,20 @@ LAUNCHPAD_DOMAINS = {
 LAUNCHPAD_BAZAAR_DOMAINS = [
     'bazaar.%s' % domain
     for domain in LAUNCHPAD_DOMAINS.values()]
+
+LPNET_SERVICE_ROOT = "https://api.launchpad.net/"
+QASTAGING_SERVICE_ROOT = "https://api.qastaging.launchpad.net/"
+STAGING_SERVICE_ROOT = "https://api.staging.launchpad.net/"
+DEV_SERVICE_ROOT = "https://api.launchpad.test/"
+DOGFOOD_SERVICE_ROOT = "https://api.dogfood.paddev.net/"
+TEST_DEV_SERVICE_ROOT = "http://api.launchpad.test:8085/"
+
+service_roots = dict(
+    production=LPNET_SERVICE_ROOT,
+    edge=LPNET_SERVICE_ROOT,
+    qastaging=QASTAGING_SERVICE_ROOT,
+    staging=STAGING_SERVICE_ROOT,
+    dogfood=DOGFOOD_SERVICE_ROOT,
+    dev=DEV_SERVICE_ROOT,
+    test_dev=TEST_DEV_SERVICE_ROOT,
+)
