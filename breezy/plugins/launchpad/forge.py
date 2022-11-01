@@ -46,7 +46,6 @@ from breezy.plugins.launchpad import (
     uris as lp_uris,
     )
 
-from launchpadlib import uris
 """)
 from ...transport import get_transport
 
@@ -110,6 +109,9 @@ class LaunchpadMergeProposal(MergeProposal):
     def __init__(self, mp):
         self._mp = mp
 
+    def get_web_url(self):
+        return self.web_link
+
     def get_source_branch_url(self):
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity
@@ -149,7 +151,7 @@ class LaunchpadMergeProposal(MergeProposal):
 
     @property
     def url(self):
-        return lp_api.canonical_url(self._mp)
+        return lp_uris.canonical_url(self._mp)
 
     def is_merged(self):
         return (self._mp.queue_status == 'Merged')
@@ -239,7 +241,7 @@ class Launchpad(Forge):
 
     @property
     def name(self):
-        if self._api_base_url == uris.LPNET_SERVICE_ROOT:
+        if self._api_base_url == lp_uris.LPNET_SERVICE_ROOT:
             return 'Launchpad'
         return 'Launchpad at %s' % self.base_url
 
@@ -251,7 +253,7 @@ class Launchpad(Forge):
 
     @property
     def base_url(self):
-        return lp_api.uris.web_root_for_service_root(self._api_base_url)
+        return lp_uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
         return "Launchpad(service_root=%s)" % self._api_base_url
@@ -267,9 +269,15 @@ class Launchpad(Forge):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        if re.match(hostname, '(bazaar|git).*\.launchpad\.net'):
+            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
+        raise UnsupportedForge(hostname)
+
+    @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
-            return Launchpad(uris.LPNET_SERVICE_ROOT)
+            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
@@ -484,7 +492,7 @@ class Launchpad(Forge):
     @classmethod
     def iter_instances(cls):
         credential_store = lp_api.get_credential_store()
-        for service_root in set(uris.service_roots.values()):
+        for service_root in set(lp_uris.service_roots.values()):
             auth_engine = lp_api.get_auth_engine(service_root)
             creds = credential_store.load(auth_engine.unique_consumer_id)
             if creds is not None:
@@ -508,6 +516,17 @@ class Launchpad(Forge):
             return self.launchpad.people.getByEmail(email=person)
         else:
             return self.launchpad.people[person]
+
+    def get_web_url(self, branch):
+        (vcs, user, password, path, params) = self._split_url(branch.user_url)
+        if vcs == 'bzr':
+            branch_lp = self._get_lp_bzr_branch_from_branch(branch)
+            return branch_lp.web_link
+        elif vcs == 'git':
+            (repo_lp, ref_lp) = self._get_lp_git_ref_from_branch(branch)
+            return ref_lp.web_link
+        else:
+            raise AssertionError
 
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.
@@ -598,7 +617,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
-                raise MergeProposalExists(lp_api.canonical_url(mp))
+                raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
@@ -730,7 +749,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
-                raise MergeProposalExists(lp_api.canonical_url(mp))
+                raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
