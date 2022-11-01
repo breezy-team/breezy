@@ -627,6 +627,14 @@ class GitHub(Forge):
             return True
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        if hostname == GITHUB_HOST:
+            transport = get_transport(
+                API_GITHUB_URL, possible_transports=possible_transports)
+            return cls(transport)
+        raise UnsupportedForge(hostname)
+
+    @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         try:
             parse_github_url(url)

@@ -269,6 +269,12 @@ class Launchpad(Forge):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        if re.match(hostname, '(bazaar|git).*\.launchpad\.net'):
+            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
+        raise UnsupportedForge(hostname)
+
+    @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
             return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
