@@ -17,6 +17,7 @@
 """Helper functions for proposing merges."""
 
 import re
+from typing import Optional, Type
 
 from . import (
     errors,
@@ -468,9 +469,11 @@ def get_forge_by_hostname(hostname: str):
     """Get a forge from a hostname.
     """
     for instance in iter_forge_instances():
-
         try:
-            return instance.check_
+            return instance.get_forge_by_hostname(hostname)
+        except UnsupportedForge:
+            pass
+    raise UnsupportedForge(hostname)
 
 
 def iter_forge_instances(forge: Optional[Type[Forge]] = None):
