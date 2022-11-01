@@ -260,6 +260,9 @@ class GitLabMergeProposal(MergeProposal):
     def url(self):
         return self._mr['web_url']
 
+    def get_web_url(self):
+        return self._mr['web_url']
+
     def get_description(self):
         return self._mr['description']
 
@@ -631,6 +634,15 @@ class GitLab(Forge):
         return gitlab_url_to_bzr_url(
             project['ssh_url_to_repo'], branch_name)
 
+    def get_web_url(self, branch):
+        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        project = self._get_project(project_name)
+        if branch_name:
+            # TODO(jelmer): Use API to get this URL
+            return project['web_url'] + '/-/tree/' + branch_name
+        else:
+            return project['web_url']
+
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
@@ -736,6 +748,21 @@ class GitLab(Forge):
             else:
                 raise GitlabLoginError(response.text)
         raise UnsupportedForge(self.base_url)
+
+    @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        base_url = 'https://%s' % hostname
+        credentials = get_credentials_by_url(base_url)
+        if credentials is not None:
+            transport = get_transport(
+                base_url, possible_transports=possible_transports)
+            instance = cls(transport, credentials.get('private_token'))
+            instance._retrieve_user()
+            return instance
+        # We could potentially probe for e.g. /api/v4/metadata here
+        # But none of the non-project APIs appear to be accessible without
+        # authentication :-(
+        raise UnsupportedForge(hostname)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
