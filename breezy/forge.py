@@ -362,6 +362,12 @@ class Forge(object):
         raise NotImplementedError(self.hosts)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        """Create a Forge object if this forge knows about a hostname.
+        """
+        raise NotImplementedError(self.probe_from_hostname)
+
+    @classmethod
     def probe_from_branch(cls, branch):
         """Create a Forge object if this forge knows about a branch."""
         url = urlutils.strip_segment_parameters(branch.user_url)
@@ -369,9 +375,10 @@ class Forge(object):
             url, possible_transports=[branch.control_transport])
 
     @classmethod
-    def probe_from_url(cls, url, possible_forges=None):
+    def probe_from_url(cls, url, possible_transports=None):
         """Create a Forge object if this forge knows about a URL."""
-        raise NotImplementedError(cls.probe_from_url)
+        hostname = urlutils.URL.from_string(url).host
+        return cls.probe_from_hostname(hostname, possible_forges)
 
     def iter_my_proposals(self, status='open', author=None):
         """Iterate over the proposals created by the currently logged in user.
@@ -457,7 +464,16 @@ def get_forge(branch, possible_forges=None):
     raise UnsupportedForge(branch)
 
 
-def iter_forge_instances(forge=None):
+def get_forge_by_hostname(hostname: str):
+    """Get a forge from a hostname.
+    """
+    for instance in iter_forge_instances():
+
+        try:
+            return instance.check_
+
+
+def iter_forge_instances(forge: Optional[Type[Forge]] = None):
     """Iterate over all known forge instances.
 
     :return: Iterator over Forge instances

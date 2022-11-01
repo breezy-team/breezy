@@ -750,6 +750,21 @@ class GitLab(Forge):
         raise UnsupportedForge(self.base_url)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        base_url = 'https://%s' % hostname
+        credentials = get_credentials_by_url(base_url)
+        if credentials is not None:
+            transport = get_transport(
+                base_url, possible_transports=possible_transports)
+            instance = cls(transport, credentials.get('private_token'))
+            instance._retrieve_user()
+            return instance
+        # We could potentially probe for e.g. /api/v4/metadata here
+        # But none of the non-project APIs appear to be accessible without
+        # authentication :-(
+        raise UnsupportedForge(hostname)
+
+    @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         try:
             (host, project) = parse_gitlab_url(url)
