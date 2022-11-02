@@ -248,7 +248,8 @@ def import_uncommitted(
                 raise TreeVersionWithoutTag(tree_version, e.tag_name) from e
             if tree_version_revid != tree.last_revision():
                 # There are changes since the last tree version.
-                note("Commits exist on the branch since last upload to archive")
+                note(
+                    "Commits exist on the branch since last upload to archive")
                 if not merge_unreleased:
                     raise UnreleasedChangesSinceTreeVersion(tree_version)
 
