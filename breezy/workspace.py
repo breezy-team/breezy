@@ -191,7 +191,12 @@ class Workspace(object):
         self._dirty_tracker = get_dirty_tracker(
             self.tree, subpath=self.subpath, use_inotify=self.use_inotify)
         if self._dirty_tracker:
-            self._es.enter_context(self._dirty_tracker)
+            from .dirty_tracker import TooManyOpenFiles
+            try:
+                self._es.enter_context(self._dirty_tracker)
+            except TooManyOpenFiles:
+                warning('Too many files open; not using inotify')
+                self._dirty_tracker = None
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
