@@ -62,6 +62,8 @@ class _Process(ProcessEvent):  # type: ignore
 class DirtyTracker(object):
     """Track the changes to (part of) a working tree."""
 
+    _process: _Process
+
     def __init__(self, tree: WorkingTree, subpath: str = ".") -> None:
         self._tree = tree
         self._subpath = subpath
@@ -104,15 +106,15 @@ class DirtyTracker(object):
     def is_dirty(self) -> bool:
         """Check whether there are any changes."""
         self._process_pending()
-        return bool(self._process.paths)
+        return bool(self._paths)
 
     def paths(self) -> Set[str]:
         """Return the paths that have changed."""
         self._process_pending()
-        return self._process.paths
+        return self._paths
 
     @property
-    def _paths(self):
+    def _paths(self) -> Set[str]:
         return self._process.paths
 
     @property
