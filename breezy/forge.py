@@ -470,7 +470,7 @@ def get_forge_by_hostname(hostname: str):
     """
     for instance in iter_forge_instances():
         try:
-            return instance.get_forge_by_hostname(hostname)
+            return instance.probe_from_hostname(hostname)
         except UnsupportedForge:
             pass
     raise UnsupportedForge(hostname)
