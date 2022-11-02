@@ -40,6 +40,11 @@ MASK = (
 )
 
 
+
+class TooManyOpenFiles(Exception):
+    """Too many open files."""
+
+
 class _Process(ProcessEvent):  # type: ignore
 
     paths: Set[str]
@@ -69,7 +74,12 @@ class DirtyTracker(object):
         self._subpath = subpath
 
     def __enter__(self):
-        self._wm = WatchManager()
+        try:
+            self._wm = WatchManager()
+        except OSError as e:
+            if "EMFILE" in e.args[0]:
+                raise TooManyOpenFiles()
+            raise
         self._process = _Process()
         self._notifier = Notifier(self._wm, self._process)
         self._notifier.coalesce_events(True)
