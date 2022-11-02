@@ -1000,7 +1000,7 @@ def merge_upstream(  # noqa: C901
     if skip_empty:
         changes = tree.iter_changes(tree.basis_tree())
         try:
-            changes.next()
+            next(changes)
         except StopIteration:
             tree.set_pending_merges([])
             raise ReleaseWithoutChanges(new_upstream_version)
