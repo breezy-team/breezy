@@ -178,6 +178,7 @@ class Workspace(object):
         self.subpath = subpath
         self.use_inotify = use_inotify
         self._dirty_tracker = None
+        self._es = ExitStack()
 
     @classmethod
     def from_path(cls, path, use_inotify=None):
@@ -186,15 +187,15 @@ class Workspace(object):
 
     def __enter__(self):
         check_clean_tree(self.tree)
+        self._es.__enter__()
         self._dirty_tracker = get_dirty_tracker(
             self.tree, subpath=self.subpath, use_inotify=self.use_inotify)
+        if self._dirty_tracker:
+            self._es.enter_context(self._dirty_tracker)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._dirty_tracker:
-            del self._dirty_tracker
-            self._dirty_tracker = None
-        return False
+        return self._es.__exit__(exc_type, exc_val, exc_tb)
 
     def tree_path(self, path=''):
         """Return a path relative to the tree subpath used by this workspace.

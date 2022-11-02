@@ -62,23 +62,35 @@ class _Process(ProcessEvent):  # type: ignore
 class DirtyTracker(object):
     """Track the changes to (part of) a working tree."""
 
+    _process: _Process
+
     def __init__(self, tree: WorkingTree, subpath: str = ".") -> None:
         self._tree = tree
+        self._subpath = subpath
+
+    def __enter__(self):
         self._wm = WatchManager()
         self._process = _Process()
         self._notifier = Notifier(self._wm, self._process)
         self._notifier.coalesce_events(True)
 
         def check_excluded(p: str) -> bool:
-            return tree.is_control_filename(tree.relpath(p))  # type: ignore
+            return self._tree.is_control_filename(self._tree.relpath(p))  # type: ignore
 
         self._wdd = self._wm.add_watch(
-            tree.abspath(subpath),
+            self._tree.abspath(self._subpath),
             MASK,
             rec=True,
             auto_add=True,
             exclude_filter=check_excluded,
         )
+
+        return self
+
+    def __exit__(self, exc_val, exc_typ, exc_tb):
+        self._wdd.clear()
+        self._wm.close()
+        return False
 
     def _process_pending(self) -> None:
         if self._notifier.check_events(timeout=0):
@@ -94,12 +106,20 @@ class DirtyTracker(object):
     def is_dirty(self) -> bool:
         """Check whether there are any changes."""
         self._process_pending()
-        return bool(self._process.paths)
+        return bool(self._paths)
 
     def paths(self) -> Set[str]:
         """Return the paths that have changed."""
         self._process_pending()
+        return self._paths
+
+    @property
+    def _paths(self) -> Set[str]:
         return self._process.paths
+
+    @property
+    def _created(self):
+        return self._process.created
 
     def relpaths(self) -> Set[str]:
         """Return the paths relative to the tree root that changed."""
