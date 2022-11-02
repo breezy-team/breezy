@@ -1277,8 +1277,7 @@ async def main():
         except NewUpstreamMissing as e:
             report_fatal(
                 "new-upstream-missing",
-                "Unable to find new upstream source.", e
-            )
+                "Unable to find new upstream source.")
             return 1
         except UpstreamAlreadyMerged as e:
             report_fatal(
@@ -1533,6 +1532,7 @@ async def main():
                 from breezy.plugins.debian.quilt_refresh import (
                     QuiltError,
                     QuiltPatchPushFailure,
+                    QuiltPatchDoesNotApply,
                     refresh_quilt_patches,
                 )
                 logging.info("Refresh quilt patches.")
