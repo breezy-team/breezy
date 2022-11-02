@@ -81,3 +81,4 @@ __pycache__
 ./target
 ./Cargo.lock
 ./brz
+.pytest_cache
