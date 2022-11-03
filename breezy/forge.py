@@ -221,7 +221,7 @@ class MergeProposal(object):
         raise NotImplementedError(self.post_comment)
 
     def reopen(self):
-        """Reopen the merge proposal if it is closed."""
+        """Reopen this merge proposal."""
         raise NotImplementedError(self.reopen)
 
 
@@ -366,7 +366,7 @@ class Forge(object):
     def probe_from_hostname(cls, hostname, possible_transports=None):
         """Create a Forge object if this forge knows about a hostname.
         """
-        raise NotImplementedError(self.probe_from_hostname)
+        raise NotImplementedError(cls.probe_from_hostname)
 
     @classmethod
     def probe_from_branch(cls, branch):
@@ -379,7 +379,7 @@ class Forge(object):
     def probe_from_url(cls, url, possible_transports=None):
         """Create a Forge object if this forge knows about a URL."""
         hostname = urlutils.URL.from_string(url).host
-        return cls.probe_from_hostname(hostname, possible_forges)
+        return cls.probe_from_hostname(hostname, possible_transports=possible_transports)
 
     def iter_my_proposals(self, status='open', author=None):
         """Iterate over the proposals created by the currently logged in user.
@@ -405,6 +405,11 @@ class Forge(object):
         """Delete a project.
         """
         raise NotImplementedError(self.delete_project)
+
+    def create_project(self, name):
+        """Create a project.
+        """
+        raise NotImplementedError(self.create_project)
 
     @classmethod
     def iter_instances(cls):
@@ -503,6 +508,26 @@ def get_proposal_by_url(url):
         except UnsupportedForge:
             pass
     raise UnsupportedForge(url)
+
+
+def create_project(url: str) -> None:
+    """Create a project.
+
+    Args:
+      url: URL of project to create
+    """
+    parsed_url = urlutils.URL.from_string(url)
+    hostname = parsed_url.host
+    for name, forge_cls in forges.items():
+        try:
+            hoster = forge_cls.probe_from_url(url)
+        except UnsupportedForge:
+            pass
+        else:
+            hoster.create_project(parsed_url.path)
+            break
+    else:
+        raise UnsupportedForge(url)
 
 
 forges = registry.Registry()
