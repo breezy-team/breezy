@@ -708,6 +708,26 @@ class GitHub(Forge):
             return json.loads(response.text)
         raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
 
+    def create_project(self, path, *, description=None, homepage=None,
+                       private=False, has_issues=True, has_projects=False,
+                       has_wiki=False):
+        owner, name = path.split('/')
+        path = 'repos'
+        data = {
+            "name": "name",
+            "description": description,
+            "homepage": homepage,
+            "private": private,
+            "has_issues": has_issues,
+            "has_projects": has_projects,
+            "has_wiki": has_wiki,
+        }
+        response = self._api_request(
+            'POST', path, body=json.dumps(data).encode('utf-8'))
+        if response.status != 201:
+            return json.loads(response.text)
+        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
+
     def get_current_user(self):
         if self._token is not None:
             return self.current_user['login']
