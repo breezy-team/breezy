@@ -110,7 +110,7 @@ class LaunchpadMergeProposal(MergeProposal):
         self._mp = mp
 
     def get_web_url(self):
-        return self.web_link
+        return self._mp.web_link
 
     def get_source_branch_url(self):
         if self._mp.source_branch:
@@ -544,6 +544,10 @@ class Launchpad(Forge):
         api_url = str(self.launchpad._root_uri) + path
         mp = self.launchpad.load(api_url)
         return LaunchpadMergeProposal(mp)
+
+    def create_project(self, path):
+        self.launchpad.projects.new_project(
+            display_name=path, name=path, summary=path, title=path)
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):

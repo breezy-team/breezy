@@ -1,13 +1,12 @@
-use pkg_version::*;
 use pyo3::prelude::*;
 use pyo3::types::*;
 use std::path::*;
 
-const MAJOR: u32 = pkg_version_major!();
-const MINOR: u32 = pkg_version_minor!();
-const PATCH: u32 = pkg_version_patch!();
 
 fn check_version(py: Python<'_>) -> PyResult<()> {
+    let MAJOR: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
+    let MINOR: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
+    let PATCH: u32 = env!("CARGO_PKG_VERSION_PATCH").parse::<u32>().unwrap();
     let breezy = PyModule::import(py, "breezy").map_err(|e| {
         eprintln!(
             "brz: ERROR: Couldn't import breezy and dependencies.\n\
