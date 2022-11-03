@@ -16,7 +16,8 @@
 
 
 from ...controldir import ControlDir
-from ...commands import Command, Option
+from ...commands import Command
+from ...option import Option
 from ... import errors, urlutils
 
 

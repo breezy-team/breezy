@@ -29,6 +29,7 @@ it.
 import errno
 from io import BytesIO
 import sys
+from typing import Dict, Any
 
 from stat import S_ISDIR
 
@@ -47,7 +48,7 @@ from .. import (
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.
-_file_streams = {}
+_file_streams: Dict[str, Any] = {}
 
 
 def _get_protocol_handlers():
@@ -91,6 +92,24 @@ class UnusableRedirect(errors.BzrError):
     def __init__(self, source, target, reason):
         super(UnusableRedirect, self).__init__(
             source=source, target=target, reason=reason)
+
+
+class UnsupportedProtocol(errors.PathError):
+
+    _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
+
+    def __init__(self, url, extra=""):
+        errors.PathError.__init__(self, url, extra=extra)
+
+
+class NoSuchFile(errors.PathError):
+
+    _fmt = "No such file: %(path)r%(extra)s"
+
+
+class FileExists(errors.PathError):
+
+    _fmt = "File exists: %(path)r%(extra)s"
 
 
 class TransportListRegistry(registry.Registry):
@@ -182,9 +201,9 @@ class _CoalescedOffset(object):
         self.length = length
         self.ranges = ranges
 
-    def __cmp__(self, other):
-        return cmp((self.start, self.length, self.ranges),
-                   (other.start, other.length, other.ranges))
+    def __lt__(self, other):
+        return ((self.start, self.length, self.ranges) <
+                (other.start, other.length, other.ranges))
 
     def __eq__(self, other):
         return ((self.start, self.length, self.ranges) ==
@@ -350,18 +369,18 @@ class Transport(object):
         """
         if getattr(e, 'errno', None) is not None:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
                 mutter("EINVAL returned on path %s: %r" % (path, e))
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
             # This is the error when doing a listdir on a file:
             # WindowsError: [Errno 267] The directory name is invalid
             if sys.platform == 'win32' and e.errno in (errno.ESRCH, 267):
-                raise errors.NoSuchFile(path, extra=e)
+                raise NoSuchFile(path, extra=e)
             if e.errno == errno.EEXIST:
-                raise errors.FileExists(path, extra=e)
+                raise FileExists(path, extra=e)
             if e.errno == errno.EACCES:
                 raise errors.PermissionDenied(path, extra=e)
             if e.errno == errno.ENOTEMPTY:
@@ -391,10 +410,10 @@ class Transport(object):
                     % cur_transport.base)
             try:
                 new_transport.mkdir('.', mode=mode)
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 needed.append(new_transport)
                 cur_transport = new_transport
-            except errors.FileExists:
+            except FileExists:
                 break
             else:
                 break
@@ -414,7 +433,7 @@ class Transport(object):
         # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
             self.mkdir('.', mode=mode)
-        except (errors.FileExists, errors.PermissionDenied):
+        except (FileExists, errors.PermissionDenied):
             return False
         else:
             return True
@@ -449,8 +468,9 @@ class Transport(object):
     def set_segment_parameter(self, name, value):
         """Set a segment parameter.
 
-        :param name: Segment parameter name (urlencoded string)
-        :param value: Segment parameter value (urlencoded string)
+        Args:
+          name: Segment parameter name (urlencoded string)
+          value: Segment parameter value (urlencoded string)
         """
         if value is None:
             try:
@@ -485,8 +505,9 @@ class Transport(object):
         Be careful that it's not called twice, if one method is implemented on
         top of another.
 
-        :param bytes: Number of bytes read or written.
-        :param direction: 'read' or 'write' or None.
+        Args:
+          bytes: Number of bytes read or written.
+          direction: 'read' or 'write' or None.
         """
         ui.ui_factory.report_transport_activity(self, bytes, direction)
 
@@ -645,20 +666,21 @@ class Transport(object):
               upper_limit=None):
         """Get parts of the file at the given relative path.
 
-        :param relpath: The path to read data from.
-        :param offsets: A list of (offset, size) tuples.
-        :param adjust_for_latency: Adjust the requested offsets to accomodate
+        Args:
+          relpath: The path to read data from.
+          offsets: A list of (offset, size) tuples.
+          adjust_for_latency: Adjust the requested offsets to accomodate
             transport latency. This may re-order the offsets, expand them to
             grab adjacent data when there is likely a high cost to requesting
             data relative to delivering it.
-        :param upper_limit: When adjust_for_latency is True setting upper_limit
+          upper_limit: When adjust_for_latency is True setting upper_limit
             allows the caller to tell the transport about the length of the
             file, so that requests are not issued for ranges beyond the end of
             the file. This matters because some servers and/or transports error
             in such a case rather than just satisfying the available ranges.
             upper_limit should always be provided when adjust_for_latency is
             True, and should be the size of the file in bytes.
-        :return: A list or generator of (offset, data) tuples
+        Returns: A list or generator of (offset, data) tuples
         """
         if adjust_for_latency:
             # Design note: We may wish to have different algorithms for the
@@ -860,7 +882,7 @@ class Transport(object):
             coalesced_offsets.append(cur)
         return coalesced_offsets
 
-    def put_bytes(self, relpath, raw_bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
         :param relpath: The location to put the contents, relative to the
@@ -874,7 +896,7 @@ class Transport(object):
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
         return self.put_file(relpath, BytesIO(raw_bytes), mode=mode)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, raw_bytes: bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         """Copy the string into the target location.
@@ -932,7 +954,7 @@ class Transport(object):
         # Default implementation just does an atomic put.
         try:
             return self.put_file(relpath, f, mode=mode)
-        except errors.NoSuchFile:
+        except NoSuchFile:
             if not create_parent_dir:
                 raise
             parent_dir = osutils.dirname(relpath)
@@ -998,7 +1020,8 @@ class Transport(object):
         Override this for efficiency if a specific transport can do it
         faster than this default implementation.
         """
-        self.put_file(rel_to, self.get(rel_from))
+        with self.get(rel_from) as f:
+            self.put_file(rel_to, f)
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -1344,12 +1367,13 @@ class ConnectedTransport(Transport):
         user, password, host and path will be quoted if they contain reserved
         chars.
 
-        :param scheme: protocol
-        :param user: login
-        :param password: associated password
-        :param host: the server address
-        :param port: the associated port
-        :param path: the absolute path on the server
+        Args:
+          scheme: protocol
+          user: login
+          password: associated password
+          host: the server address
+          port: the associated port
+          path: the absolute path on the server
 
         :return: The corresponding URL.
         """
@@ -1388,7 +1412,8 @@ class ConnectedTransport(Transport):
     def abspath(self, relpath):
         """Return the full url to the given relative path.
 
-        :param relpath: the relative path urlencoded
+        Args:
+          relpath: the relative path urlencoded
 
         :returns: the Unicode version of the absolute path for relpath.
         """
@@ -1401,7 +1426,8 @@ class ConnectedTransport(Transport):
         requests, daughter classes should redefine this method if needed and
         use the result to build their requests.
 
-        :param relpath: the path relative to the transport base urlencoded.
+        Args:
+          relpath: the path relative to the transport base urlencoded.
 
         :return: the absolute Unicode path on the server,
         """
@@ -1425,10 +1451,10 @@ class ConnectedTransport(Transport):
         always call this method to set the connection and do so each time a new
         connection is created.
 
-        :param connection: An opaque object representing the connection used by
+        Args:
+          connection: An opaque object representing the connection used by
             the daughter class.
-
-        :param credentials: An opaque object representing the credentials
+          credentials: An opaque object representing the credentials
             needed to create the connection.
         """
         self._shared_connection.connection = connection
@@ -1520,11 +1546,12 @@ def get_transport_from_path(path, possible_transports=None):
 def get_transport_from_url(url, possible_transports=None):
     """Open a transport to access a URL.
 
-    :param base: a URL
-    :param transports: optional reusable transports list. If not None, created
+    Args:
+      base: a URL
+      transports: optional reusable transports list. If not None, created
         transports will be added to the list.
 
-    :return: A new transport optionally sharing its connection with one of
+    Returns: A new transport optionally sharing its connection with one of
         possible_transports.
     """
     transport = None
@@ -1549,18 +1576,17 @@ def get_transport_from_url(url, possible_transports=None):
                 return transport
     if not urlutils.is_url(url):
         raise urlutils.InvalidURL(path=url)
-    raise errors.UnsupportedProtocol(url, last_err)
+    raise UnsupportedProtocol(url, last_err)
 
 
 def get_transport(base, possible_transports=None, purpose=None):
     """Open a transport to access a URL or directory.
 
-    :param base: either a URL or a directory name.
-
-    :param transports: optional reusable transports list. If not None, created
+    Args:
+      base: either a URL or a directory name.
+      transports: optional reusable transports list. If not None, created
         transports will be added to the list.
-
-    :param purpose: Purpose for which the transport will be used
+      purpose: Purpose for which the transport will be used
         (e.g. 'read', 'write' or None)
 
     :return: A new transport optionally sharing its connection with one of
@@ -1595,10 +1621,11 @@ def do_catching_redirections(action, transport, redirected):
     inform the user about each redirection or only inform the user of a user
     via the exception parameter.
 
-    :param action: A callable, what the caller want to do while catching
+    Args:
+      action: A callable, what the caller want to do while catching
                   redirections.
-    :param transport: The initial transport used.
-    :param redirected: A callable receiving the redirected transport and the
+      transport: The initial transport used.
+      redirected: A callable receiving the redirected transport and the
                   RedirectRequested exception.
 
     :return: Whatever 'action' returns

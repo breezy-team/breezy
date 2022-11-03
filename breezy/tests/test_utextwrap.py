@@ -191,19 +191,20 @@ try:
         def setUp(self):
             setup_both(self, TestIndent, test_textwrap.IndentTestCases)
 
+
 except ImportError:
 
-    class TestWrap(tests.TestCase):
+    class TestWrap(tests.TestCase):  # type: ignore
 
         def test_wrap(self):
             raise tests.TestSkipped("test.test_textwrap is not available.")
 
-    class TestLongWord(tests.TestCase):
+    class TestLongWord(tests.TestCase):  # type: ignore
 
         def test_longword(self):
             raise tests.TestSkipped("test.test_textwrap is not available.")
 
-    class TestIndent(tests.TestCase):
+    class TestIndent(tests.TestCase):  # type: ignore
 
         def test_indent(self):
             raise tests.TestSkipped("test.test_textwrap is not available.")

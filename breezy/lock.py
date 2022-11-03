@@ -37,6 +37,7 @@ import contextlib
 import errno
 import os
 import sys
+from typing import Dict, Set, List, Tuple, Type, Any
 import warnings
 
 from . import (
@@ -138,7 +139,7 @@ def cant_unlock_not_held(locked_object):
 try:
     import fcntl
     have_fcntl = True
-except ImportError:
+except ModuleNotFoundError:
     have_fcntl = False
 
 have_ctypes_win32 = False
@@ -184,7 +185,7 @@ class _OSLock(object):
         raise NotImplementedError()
 
 
-_lock_classes = []
+_lock_classes: List[Tuple[str, Any, Any]] = []
 
 
 if have_fcntl:
@@ -197,7 +198,7 @@ if have_fcntl:
 
     class _fcntl_WriteLock(_fcntl_FileLock):
 
-        _open_locks = set()
+        _open_locks: Set[str] = set()
 
         def __init__(self, filename):
             super(_fcntl_WriteLock, self).__init__()
@@ -237,7 +238,7 @@ if have_fcntl:
 
     class _fcntl_ReadLock(_fcntl_FileLock):
 
-        _open_locks = {}
+        _open_locks: Dict[str, int] = {}
 
         def __init__(self, filename):
             super(_fcntl_ReadLock, self).__init__()
@@ -349,12 +350,13 @@ if have_fcntl:
 
 if have_ctypes_win32:
     from ctypes.wintypes import DWORD, LPWSTR
+    import ctypes
     LPSECURITY_ATTRIBUTES = ctypes.c_void_p  # used as NULL no need to declare
     HANDLE = ctypes.c_int  # rather than unsigned as in ctypes.wintypes
     _function_name = "CreateFileW"
 
     # CreateFile <http://msdn.microsoft.com/en-us/library/aa363858.aspx>
-    _CreateFile = ctypes.WINFUNCTYPE(
+    _CreateFile = ctypes.WINFUNCTYPE(   # type: ignore
         HANDLE,                # return value
         LPWSTR,                # lpFileName
         DWORD,                 # dwDesiredAccess
@@ -363,7 +365,7 @@ if have_ctypes_win32:
         DWORD,                 # dwCreationDisposition
         DWORD,                 # dwFlagsAndAttributes
         HANDLE                 # hTemplateFile
-        )((_function_name, ctypes.windll.kernel32))
+     )((_function_name, ctypes.windll.kernel32))  # type: ignore
 
     INVALID_HANDLE_VALUE = -1
 

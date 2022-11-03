@@ -63,15 +63,14 @@ import gzip
 from breezy import (
     debug,
     diff,
-    static_tuple,
     trace,
     tsort,
-    tuned_gzip,
     ui,
     )
 from breezy.bzr import (
-    index as _mod_index,
     pack,
+    static_tuple,
+    tuned_gzip,
     )
 
 from breezy.bzr import pack_repo
@@ -81,11 +80,11 @@ from .. import (
     annotate,
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from ..errors import (
     InternalBzrError,
     InvalidRevisionId,
-    NoSuchFile,
     RevisionNotPresent,
     )
 from ..osutils import (
@@ -93,6 +92,9 @@ from ..osutils import (
     sha_string,
     sha_strings,
     split_lines,
+    )
+from ..transport import (
+    NoSuchFile,
     )
 from ..bzr.versionedfile import (
     _KeyRefs,
@@ -104,6 +106,9 @@ from ..bzr.versionedfile import (
     sort_groupcompress,
     UnavailableRepresentation,
     VersionedFilesWithFallbacks,
+    )
+from . import (
+    index as _mod_index,
     )
 
 
@@ -414,7 +419,7 @@ class KnitContentFactory(ContentFactory):
             elif storage_kind == 'fulltext':
                 return self._knit.get_text(self.key[0])
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         return iter(self.get_bytes_as(storage_kind))
@@ -462,7 +467,7 @@ class LazyKnitContentFactory(ContentFactory):
             else:
                 return b''.join(chunks)
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind in ('chunked', 'lines'):
@@ -1398,7 +1403,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     (record_details, index_memo, next) = position_map[key]
                     raw_record_map[key] = data, record_details, next
                 return raw_record_map
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     @classmethod
@@ -1507,7 +1512,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _get_remaining_record_stream(self, keys, ordering,
@@ -1891,7 +1896,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     for line in line_iterator:
                         yield line, key
                 done = True
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
         # If there are still keys we've not yet found, we look in the fallback
         # vfs, and hope to find them there.  Note that if the keys are found
@@ -2611,7 +2616,7 @@ class _KndxIndex(object):
         if line == b'':
             # An empty file can actually be treated as though the file doesn't
             # exist yet.
-            raise errors.NoSuchFile(self)
+            raise _mod_transport.NoSuchFile(self)
         if line != self.HEADER:
             raise KnitHeaderError(badline=line, filename=self)
 
@@ -3273,7 +3278,7 @@ class _KnitKeyAccess(object):
         path = self._mapper.map(key)
         try:
             base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self._transport.mkdir(osutils.dirname(path))
             base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
         # if base == 0:
@@ -3464,7 +3469,7 @@ class _KnitAnnotator(annotate.Annotator):
                     num_lines = len(text)  # bad assumption
                     yield sub_key, text, num_lines
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._vf._access.reload_or_raise(e)
                 # The cached build_details are no longer valid
                 self._all_build_details.clear()

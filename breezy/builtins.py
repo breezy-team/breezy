@@ -24,7 +24,9 @@ import breezy.bzr
 import breezy.git
 
 from . import (
+    controldir,
     errors,
+    transport,
     )
 
 from . import lazy_import
@@ -35,8 +37,6 @@ import breezy
 from breezy import (
     branch as _mod_branch,
     bugtracker,
-    cache_utf8,
-    controldir,
     directory_service,
     delta,
     config as _mod_config,
@@ -54,7 +54,6 @@ from breezy import (
     revision as _mod_revision,
     symbol_versioning,
     timestamp,
-    transport,
     tree as _mod_tree,
     ui,
     urlutils,
@@ -163,7 +162,7 @@ def open_sibling_branch(control_dir, location, possible_transports=None):
         # Perhaps it's a colocated branch?
         return control_dir.open_branch(
             location, possible_transports=possible_transports)
-    except (errors.NotBranchError, errors.NoColocatedBranchSupport):
+    except (errors.NotBranchError, controldir.NoColocatedBranchSupport):
         this_url = _get_branch_location(control_dir)
         return Branch.open(
             urlutils.join(
@@ -441,7 +440,7 @@ class cmd_cat_revision(Command):
     def run(self, revision_id=None, revision=None, directory=u'.'):
         if revision_id is not None and revision is not None:
             raise errors.CommandError(gettext('You can only supply one of'
-                                                 ' revision_id or --revision'))
+                                              ' revision_id or --revision'))
         if revision_id is None and revision is None:
             raise errors.CommandError(
                 gettext('You must supply either --revision or a revision_id'))
@@ -457,14 +456,14 @@ class cmd_cat_revision(Command):
         with b.repository.lock_read():
             # TODO: jam 20060112 should cat-revision always output utf-8?
             if revision_id is not None:
-                revision_id = cache_utf8.encode(revision_id)
+                revision_id = revision_id.encode('utf-8')
                 try:
                     self.print_revision(revisions, revision_id)
-                except errors.NoSuchRevision:
+                except errors.NoSuchRevision as exc:
                     msg = gettext(
                         "The repository {0} contains no revision {1}.").format(
                             b.repository.base, revision_id.decode('utf-8'))
-                    raise errors.CommandError(msg)
+                    raise errors.CommandError(msg) from exc
             elif revision is not None:
                 for rev in revision:
                     if rev is None:
@@ -499,13 +498,13 @@ class cmd_remove_tree(Command):
 
             try:
                 working = d.open_workingtree()
-            except errors.NoWorkingTree:
+            except errors.NoWorkingTree as exc:
                 raise errors.CommandError(
-                    gettext("No working tree to remove"))
-            except errors.NotLocalUrl:
+                    gettext("No working tree to remove")) from exc
+            except errors.NotLocalUrl as exc:
                 raise errors.CommandError(
                     gettext("You cannot remove the working tree"
-                            " of a remote path"))
+                            " of a remote path")) from exc
             if not force:
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
@@ -564,14 +563,14 @@ class cmd_repair_workingtree(Command):
             revision_ids = [r.as_revision_id(tree.branch) for r in revision]
         try:
             tree.reset_state(revision_ids)
-        except errors.BzrError:
+        except errors.BzrError as exc:
             if revision_ids is None:
                 extra = gettext(', the header appears corrupt, try passing '
                                 '-r -1 to set the state to the last commit')
             else:
                 extra = ''
             raise errors.CommandError(
-                gettext('failed to reset the tree state{0}').format(extra))
+                gettext('failed to reset the tree state{0}').format(extra)) from exc
 
 
 class cmd_revno(Command):
@@ -597,8 +596,8 @@ class cmd_revno(Command):
             try:
                 wt = WorkingTree.open_containing(location)[0]
                 self.enter_context(wt.lock_read())
-            except (errors.NoWorkingTree, errors.NotLocalUrl):
-                raise errors.NoWorkingTree(location)
+            except (errors.NoWorkingTree, errors.NotLocalUrl) as exc:
+                raise errors.NoWorkingTree(location) from exc
             b = wt.branch
             revid = wt.last_revision()
         else:
@@ -925,7 +924,6 @@ class cmd_cp(Command):
     """
 
     takes_args = ['names*']
-    takes_options = []
     aliases = ['copy']
     encoding_type = 'replace'
 
@@ -945,11 +943,11 @@ class cmd_cp(Command):
         if not into_existing:
             try:
                 (src, dst) = rel_names
-            except IndexError:
+            except IndexError as exc:
                 raise errors.CommandError(
                     gettext('to copy multiple files the'
                             ' destination must be a versioned'
-                            ' directory'))
+                            ' directory')) from exc
             pairs = [(src, dst)]
         else:
             pairs = [
@@ -959,10 +957,10 @@ class cmd_cp(Command):
         for src, dst in pairs:
             try:
                 src_kind = tree.stored_kind(src)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile as exc:
                 raise errors.CommandError(
                     gettext('Could not copy %s => %s: %s is not versioned.')
-                    % (src, dst, src))
+                    % (src, dst, src)) from exc
             if src_kind is None:
                 raise errors.CommandError(
                     gettext('Could not copy %s => %s . %s is not versioned\\.'
@@ -975,10 +973,10 @@ class cmd_cp(Command):
             if dst_parent != '':
                 try:
                     dst_parent_kind = tree.stored_kind(dst_parent)
-                except errors.NoSuchFile:
+                except transport.NoSuchFile as exc:
                     raise errors.CommandError(
                         gettext('Could not copy %s => %s: %s is not versioned.')
-                        % (src, dst, dst_parent))
+                        % (src, dst, dst_parent)) from exc
                 if dst_parent_kind != 'directory':
                     raise errors.CommandError(
                         gettext('Could not copy to %s: %s is not a directory.')
@@ -1079,8 +1077,8 @@ class cmd_mv(Command):
         else:
             if len(names_list) != 2:
                 raise errors.CommandError(gettext('to mv multiple files the'
-                                                     ' destination must be a versioned'
-                                                     ' directory'))
+                                                  ' destination must be a versioned'
+                                                  ' directory'))
 
             # for cicp file-systems: the src references an existing inventory
             # item:
@@ -1222,7 +1220,7 @@ class cmd_pull(Command):
         if location is None:
             if stored_loc is None:
                 raise errors.CommandError(gettext("No pull location known or"
-                                                     " specified."))
+                                                  " specified."))
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                                                             self.outf.encoding)
@@ -1497,14 +1495,15 @@ class cmd_branch(Command):
         to_transport = transport.get_transport(to_location, purpose='write')
         try:
             to_transport.mkdir('.')
-        except errors.FileExists:
+        except transport.FileExists:
             try:
                 to_dir = controldir.ControlDir.open_from_transport(
                     to_transport)
-            except errors.NotBranchError:
+            except errors.NotBranchError as exc:
                 if not use_existing_dir:
-                    raise errors.CommandError(gettext('Target directory "%s" '
-                                                         'already exists.') % to_location)
+                    raise errors.CommandError(
+                        gettext('Target directory "%s" '
+                                'already exists.') % to_location) from exc
                 else:
                     to_dir = None
             else:
@@ -1514,9 +1513,9 @@ class cmd_branch(Command):
                     pass
                 else:
                     raise errors.AlreadyBranchError(to_location)
-        except errors.NoSuchFile:
+        except transport.NoSuchFile as exc:
             raise errors.CommandError(gettext('Parent of "%s" does not exist.')
-                                         % to_location)
+                                      % to_location) from exc
         else:
             to_dir = None
         if to_dir is None:
@@ -1532,11 +1531,11 @@ class cmd_branch(Command):
                 branch = to_dir.open_branch(
                     possible_transports=[
                         br_from.controldir.root_transport, to_transport])
-            except errors.NoSuchRevision:
+            except errors.NoSuchRevision as exc:
                 to_transport.delete_tree('.')
                 msg = gettext("The branch {0} has no revision {1}.").format(
                     from_location, revision)
-                raise errors.CommandError(msg)
+                raise errors.CommandError(msg) from exc
         else:
             try:
                 to_repo = to_dir.open_repository()
@@ -1850,12 +1849,12 @@ class cmd_update(Command):
                 revision=revision_id,
                 old_tip=old_tip,
                 show_base=show_base)
-        except errors.NoSuchRevision as e:
+        except errors.NoSuchRevision as exc:
             raise errors.CommandError(gettext(
                 "branch has no revision %s\n"
                 "brz update --revision only works"
                 " for a revision in the branch history")
-                % (e.revision))
+                % (exc.revision)) from exc
         revno = tree.branch.revision_id_to_dotted_revno(
             _mod_revision.ensure_null(tree.last_revision()))
         note(gettext('Updated to revision {0} of branch {1}').format(
@@ -2085,7 +2084,7 @@ class cmd_init(Command):
                        help='Specify a format for this branch. '
                        'See "help formats" for a full list.',
                        lazy_registry=('breezy.controldir', 'format_registry'),
-                       converter=lambda name: controldir.format_registry.make_controldir(
+                       converter=lambda name: controldir.format_registry.make_controldir(  # type: ignore
                             name),
                        value_switches=True,
                        title="Branch format",
@@ -2113,13 +2112,13 @@ class cmd_init(Command):
         # locations if the user supplies an extended path
         try:
             to_transport.ensure_base()
-        except errors.NoSuchFile:
+        except transport.NoSuchFile as exc:
             if not create_prefix:
                 raise errors.CommandError(gettext("Parent directory of %s"
-                                                     " does not exist."
-                                                     "\nYou may supply --create-prefix to create all"
-                                                     " leading parent directories.")
-                                             % location)
+                                                  " does not exist."
+                                                  "\nYou may supply --create-prefix to create all"
+                                                  " leading parent directories.")
+                                          % location) from exc
             to_transport.create_prefix()
 
         try:
@@ -2149,9 +2148,9 @@ class cmd_init(Command):
         if append_revisions_only:
             try:
                 branch.set_append_revisions_only(True)
-            except errors.UpgradeRequired:
+            except errors.UpgradeRequired as exc:
                 raise errors.CommandError(gettext('This branch format cannot be set'
-                                                     ' to append-revisions-only.  Try --default.'))
+                                                  ' to append-revisions-only.  Try --default.')) from exc
         if not is_quiet():
             from .info import describe_layout, describe_format
             try:
@@ -2208,7 +2207,7 @@ class cmd_init_shared_repository(Command):
                                     ' "brz help formats" for details.',
                                     lazy_registry=(
                                         'breezy.controldir', 'format_registry'),
-                                    converter=lambda name: controldir.format_registry.make_controldir(
+                                    converter=lambda name: controldir.format_registry.make_controldir(  # type: ignore
                                         name),
                                     value_switches=True, title='Repository format'),
                      Option('no-trees',
@@ -2400,7 +2399,7 @@ class cmd_diff(Command):
 
         if revision and len(revision) > 2:
             raise errors.CommandError(gettext('brz diff --revision takes exactly'
-                                                 ' one or two revision specifiers'))
+                                              ' one or two revision specifiers'))
 
         if using is not None and format is not None:
             raise errors.CommandError(gettext(
@@ -2526,17 +2525,17 @@ class cmd_root(Command):
 def _parse_limit(limitstring):
     try:
         return int(limitstring)
-    except ValueError:
+    except ValueError as exc:
         msg = gettext("The limit argument must be an integer.")
-        raise errors.CommandError(msg)
+        raise errors.CommandError(msg) from exc
 
 
 def _parse_levels(s):
     try:
         return int(s)
-    except ValueError:
+    except ValueError as exc:
         msg = gettext("The levels argument must be an integer.")
-        raise errors.CommandError(msg)
+        raise errors.CommandError(msg) from exc
 
 
 class cmd_log(Command):
@@ -2660,10 +2659,10 @@ class cmd_log(Command):
     :Tips & tricks:
 
       GUI tools and IDEs are often better at exploring history than command
-      line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the
-      bzr-explorer shell, or the Loggerhead web interface.  See the Bazaar
-      Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/> and
-      <http://wiki.bazaar.canonical.com/IDEIntegration>.
+      line tools: you may prefer qlog or viz from qbzr or brz-gtk, the
+      bzr-explorer shell, or the Loggerhead web interface.  See the Breezy
+      Plugin Guide <https://www.breezy-vcs.org/doc/plugins/en/> and
+      <http://wiki.breezy-vcs.org/IDEIntegration>.
 
       You may find it useful to add the aliases below to ``breezy.conf``::
 
@@ -3059,7 +3058,7 @@ class cmd_ls(Command):
         else:
             if from_root:
                 raise errors.CommandError(gettext('cannot specify both --from-root'
-                                                     ' and PATH'))
+                                                  ' and PATH'))
             fs_path = path
         tree, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(fs_path, directory)
@@ -3236,7 +3235,7 @@ class cmd_ignore(Command):
             return
         if not name_pattern_list:
             raise errors.CommandError(gettext("ignore requires at least one "
-                                                 "NAME_PATTERN or --default-rules."))
+                                              "NAME_PATTERN or --default-rules."))
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
         bad_patterns = ''
@@ -3314,9 +3313,9 @@ class cmd_lookup_revision(Command):
     def run(self, revno, directory=u'.'):
         try:
             revno = int(revno)
-        except ValueError:
+        except ValueError as exc:
             raise errors.CommandError(gettext("not a valid revision-number: %r")
-                                         % revno)
+                                      % revno) from exc
         revid = WorkingTree.open_containing(
             directory)[0].branch.get_rev_id(revno)
         self.outf.write("%s\n" % revid.decode('utf-8'))
@@ -3369,11 +3368,13 @@ class cmd_export(Command):
                      Option('uncommitted',
                             help='Export the working tree contents rather than that of the '
                             'last revision.'),
+                     Option('recurse-nested',
+                            help='Include contents of nested trees.'),
                      ]
 
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
             root=None, filters=False, per_file_timestamps=False, uncommitted=False,
-            directory=u'.'):
+            directory=u'.', recurse_nested=False):
         from .export import export, guess_format, get_root_name
 
         if branch_or_subdir is None:
@@ -3412,10 +3413,11 @@ class cmd_export(Command):
 
         try:
             export(export_tree, dest, format, root, subdir,
-                   per_file_timestamps=per_file_timestamps)
-        except errors.NoSuchExportFormat as e:
+                   per_file_timestamps=per_file_timestamps,
+                   recurse_nested=recurse_nested)
+        except errors.NoSuchExportFormat as exc:
             raise errors.CommandError(
-                gettext('Unsupported export format: %s') % e.format)
+                gettext('Unsupported export format: %s') % exc.format) from exc
 
 
 class cmd_cat(Command):
@@ -3443,7 +3445,7 @@ class cmd_cat(Command):
             filters=False, directory=None):
         if revision is not None and len(revision) != 1:
             raise errors.CommandError(gettext("brz cat --revision takes exactly"
-                                                 " one revision specifier"))
+                                              " one revision specifier"))
         tree, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
         self.enter_context(branch.lock_read())
@@ -3469,7 +3471,7 @@ class cmd_cat(Command):
             try:
                 rev_tree_path = _mod_tree.find_previous_path(
                     tree, rev_tree, relpath)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 rev_tree_path = None
 
             if rev_tree_path is None:
@@ -3635,12 +3637,12 @@ class cmd_commit(Command):
                 tag, bug_id = tokens
             try:
                 yield bugtracker.get_bug_url(tag, branch, bug_id), status
-            except bugtracker.UnknownBugTrackerAbbreviation:
+            except bugtracker.UnknownBugTrackerAbbreviation as exc:
                 raise errors.CommandError(gettext(
-                    'Unrecognized bug %s. Commit refused.') % bug)
-            except bugtracker.MalformedBugIdentifier as e:
+                    'Unrecognized bug %s. Commit refused.') % bug) from exc
+            except bugtracker.MalformedBugIdentifier as exc:
                 raise errors.CommandError(gettext(
-                    u"%s\nCommit refused.") % (e,))
+                    u"%s\nCommit refused.") % (exc,)) from exc
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None, bugs=None,
@@ -3665,9 +3667,9 @@ class cmd_commit(Command):
         if commit_time is not None:
             try:
                 commit_stamp, offset = timestamp.parse_patch_date(commit_time)
-            except ValueError as e:
+            except ValueError as exc:
                 raise errors.CommandError(gettext(
-                    "Could not parse --commit-time: " + str(e)))
+                    "Could not parse --commit-time: " + str(exc))) from exc
 
         properties = {}
 
@@ -3742,12 +3744,12 @@ class cmd_commit(Command):
                                                              start_message=start_message)
                 if my_message is None:
                     raise errors.CommandError(gettext("please specify a commit"
-                                                         " message with either --message or --file"))
+                                                      " message with either --message or --file"))
                 if my_message == "":
                     raise errors.CommandError(gettext("Empty commit message specified."
-                                                         " Please specify a commit message with either"
-                                                         " --message or --file or leave a blank message"
-                                                         " with --message \"\"."))
+                                                      " Please specify a commit message with either"
+                                                      " --message or --file or leave a blank message"
+                                                      " with --message \"\"."))
             return my_message
 
         # The API permits a commit with a filter of [] to mean 'select nothing'
@@ -3763,22 +3765,22 @@ class cmd_commit(Command):
                         timezone=offset,
                         exclude=tree.safe_relpath_files(exclude),
                         lossy=lossy)
-        except PointlessCommit:
+        except PointlessCommit as exc:
             raise errors.CommandError(gettext("No changes to commit."
-                                                 " Please 'brz add' the files you want to commit, or use"
-                                                 " --unchanged to force an empty commit."))
-        except ConflictsInTree:
+                                              " Please 'brz add' the files you want to commit, or use"
+                                              " --unchanged to force an empty commit.")) from exc
+        except ConflictsInTree as exc:
             raise errors.CommandError(gettext('Conflicts detected in working '
-                                                 'tree.  Use "brz conflicts" to list, "brz resolve FILE" to'
-                                                 ' resolve.'))
-        except StrictCommitFailed:
+                                              'tree.  Use "brz conflicts" to list, "brz resolve FILE" to'
+                                              ' resolve.')) from exc
+        except StrictCommitFailed as exc:
             raise errors.CommandError(gettext("Commit refused because there are"
-                                                 " unknown files in the working tree."))
-        except errors.BoundBranchOutOfDate as e:
-            e.extra_help = (gettext("\n"
-                                    'To commit to master branch, run update and then commit.\n'
-                                    'You can also pass --local to commit to continue working '
-                                    'disconnected.'))
+                                              " unknown files in the working tree.")) from exc
+        except errors.BoundBranchOutOfDate as exc:
+            exc.extra_help = (gettext("\n"
+                                      'To commit to master branch, run update and then commit.\n'
+                                      'You can also pass --local to commit to continue working '
+                                      'disconnected.'))
             raise
 
 
@@ -3892,7 +3894,7 @@ class cmd_upgrade(Command):
                        help='Upgrade to a specific format.  See "brz help'
                        ' formats" for details.',
                        lazy_registry=('breezy.controldir', 'format_registry'),
-                       converter=lambda name: controldir.format_registry.make_controldir(
+                       converter=lambda name: controldir.format_registry.make_controldir(  # type: ignore
                            name),
                        value_switches=True, title='Branch format'),
         Option('clean',
@@ -3955,7 +3957,7 @@ class cmd_whoami(Command):
 
         if email:
             raise errors.CommandError(gettext("--email can only be used to display existing "
-                                                 "identity"))
+                                              "identity"))
 
         # display a warning if an email address isn't included in the given name.
         try:
@@ -4223,9 +4225,9 @@ class cmd_selftest(Command):
 
         try:
             from . import tests
-        except ImportError as e:
+        except ImportError as exc:
             raise errors.CommandError("tests not available. Install the "
-                                         "breezy tests to run the breezy testsuite.")
+                                      "breezy tests to run the breezy testsuite.") from exc
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -4234,10 +4236,10 @@ class cmd_selftest(Command):
         if subunit1:
             try:
                 from .tests import SubUnitBzrRunnerv1
-            except ImportError:
+            except ImportError as exc:
                 raise errors.CommandError(gettext(
                     "subunit not available. subunit needs to be installed "
-                    "to use --subunit."))
+                    "to use --subunit.")) from exc
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunnerv1
             # On Windows, disable automatic conversion of '\n' to '\r\n' in
             # stdout, which would corrupt the subunit stream.
@@ -4251,10 +4253,10 @@ class cmd_selftest(Command):
         if subunit2:
             try:
                 from .tests import SubUnitBzrRunnerv2
-            except ImportError:
+            except ImportError as exc:
                 raise errors.CommandError(gettext(
                     "subunit not available. subunit "
-                    "needs to be installed to use --subunit2."))
+                    "needs to be installed to use --subunit2.")) from exc
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunnerv2
 
         if parallel:
@@ -4490,7 +4492,7 @@ class cmd_merge(Command):
         tree = WorkingTree.open_containing(directory)[0]
         if tree.branch.last_revision() == _mod_revision.NULL_REVISION:
             raise errors.CommandError(gettext('Merging into empty branches not currently supported, '
-                                                 'https://bugs.launchpad.net/bzr/+bug/308562'))
+                                              'https://bugs.launchpad.net/bzr/+bug/308562'))
 
         # die as quickly as possible if there are uncommitted changes
         if not force:
@@ -4512,7 +4514,7 @@ class cmd_merge(Command):
             else:
                 if uncommitted:
                     raise errors.CommandError(gettext('Cannot use --uncommitted'
-                                                         ' with bundles or merge directives.'))
+                                                      ' with bundles or merge directives.'))
 
                 if revision is not None:
                     raise errors.CommandError(gettext(
@@ -4523,7 +4525,7 @@ class cmd_merge(Command):
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
                 raise errors.CommandError(gettext('Cannot use --uncommitted and'
-                                                     ' --revision at the same time.'))
+                                                  ' --revision at the same time.'))
             merger = self.get_merger_from_uncommitted(tree, location, None)
             allow_pending = False
 
@@ -4616,7 +4618,7 @@ class cmd_merge(Command):
         if (merger.show_base and
                 merger.merge_type is not _mod_merge.Merge3Merger):
             raise errors.CommandError(gettext("Show-base is not supported for this"
-                                                 " merge type. %s") % merger.merge_type)
+                                              " merge type. %s") % merger.merge_type)
         if merger.reprocess is None:
             if merger.show_base:
                 merger.reprocess = False
@@ -4625,11 +4627,11 @@ class cmd_merge(Command):
                 merger.reprocess = merger.merge_type.supports_reprocess
         if merger.reprocess and not merger.merge_type.supports_reprocess:
             raise errors.CommandError(gettext("Conflict reduction is not supported"
-                                                 " for merge type %s.") %
-                                         merger.merge_type)
+                                              " for merge type %s.") %
+                                      merger.merge_type)
         if merger.reprocess and merger.show_base:
             raise errors.CommandError(gettext("Cannot do conflict reduction and"
-                                                 " show base."))
+                                              " show base."))
 
         if (merger.merge_type.requires_file_merge_plan and
             (not getattr(merger.this_tree, 'plan_file_merge', None) or
@@ -5070,7 +5072,7 @@ class cmd_missing(Command):
             other_branch = parent
             if other_branch is None:
                 raise errors.CommandError(gettext("No peer location known"
-                                                     " or specified."))
+                                                  " or specified."))
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
             message(gettext("Using saved parent location: {0}\n").format(
@@ -5209,7 +5211,7 @@ class cmd_plugins(Command):
     adding new commands, providing additional network transports and
     customizing log output.
 
-    See the Bazaar Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/>
+    See the Bazaar Plugin Guide <https://www.breezy-vcs.org/doc/plugins/en/>
     for further information on plugins including where to find them and how to
     install them. Instructions are also provided there on how to write new
     plugins using the Python programming language.
@@ -5332,7 +5334,7 @@ class cmd_re_sign(Command):
         if revision_id_list is not None:
             with WriteGroup(b.repository):
                 for revision_id in revision_id_list:
-                    revision_id = cache_utf8.encode(revision_id)
+                    revision_id = revision_id.encode('utf-8')
                     b.repository.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             if len(revision) == 1:
@@ -5380,10 +5382,10 @@ class cmd_bind(Command):
         if location is None:
             try:
                 location = b.get_old_bound_location()
-            except errors.UpgradeRequired:
+            except errors.UpgradeRequired as exc:
                 raise errors.CommandError(
                     gettext('No location supplied.  '
-                            'This format does not remember old locations.'))
+                            'This format does not remember old locations.')) from exc
             else:
                 if location is None:
                     if b.get_bound_location() is not None:
@@ -5396,10 +5398,10 @@ class cmd_bind(Command):
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
-        except errors.DivergedBranches:
+        except errors.DivergedBranches as exc:
             raise errors.CommandError(
                 gettext('These branches have diverged.'
-                        ' Try merging, and then bind again.'))
+                        ' Try merging, and then bind again.')) from exc
         if b.get_config().has_explicit_nickname():
             b.nick = b_other.nick
 
@@ -5412,7 +5414,6 @@ class cmd_unbind(Command):
     """
 
     _see_also = ['checkouts', 'bind']
-    takes_args = []
     takes_options = ['directory']
 
     def run(self, directory=u'.'):
@@ -5453,7 +5454,6 @@ class cmd_uncommit(Command):
                             ),
                      ]
     takes_args = ['location?']
-    aliases = []
     encoding_type = 'replace'
 
     def run(self, location=None, dry_run=False, verbose=False,
@@ -5684,17 +5684,17 @@ class cmd_join(Command):
         if reference:
             try:
                 containing_tree.add_reference(sub_tree)
-            except BadReferenceTarget as e:
+            except BadReferenceTarget as exc:
                 # XXX: Would be better to just raise a nicely printable
                 # exception from the real origin.  Also below.  mbp 20070306
                 raise errors.CommandError(
-                    gettext("Cannot join {0}.  {1}").format(tree, e.reason))
+                    gettext("Cannot join {0}.  {1}").format(tree, exc.reason)) from exc
         else:
             try:
                 containing_tree.subsume(sub_tree)
-            except errors.BadSubsumeSource as e:
+            except errors.BadSubsumeSource as exc:
                 raise errors.CommandError(
-                    gettext("Cannot join {0}.  {1}").format(tree, e.reason))
+                    gettext("Cannot join {0}.  {1}").format(tree, exc.reason)) from exc
 
 
 class cmd_split(Command):
@@ -5718,8 +5718,8 @@ class cmd_split(Command):
             raise errors.NotVersionedError(subdir)
         try:
             containing_tree.extract(subdir)
-        except errors.RootNotRich:
-            raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
+        except errors.RootNotRich as exc:
+            raise errors.RichRootUpgradeRequired(containing_tree.branch.base) from exc
 
 
 class cmd_merge_directive(Command):
@@ -6253,7 +6253,7 @@ class cmd_reconfigure(Command):
                 return
             else:
                 raise errors.CommandError(gettext('No target configuration '
-                                                     'specified'))
+                                                  'specified'))
         reconfiguration = None
         if tree_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
@@ -6332,7 +6332,7 @@ class cmd_switch(Command):
         if to_location is None:
             if revision is None:
                 raise errors.CommandError(gettext('You must supply either a'
-                                                     ' revision or a location'))
+                                                  ' revision or a location'))
             to_location = tree_location
         try:
             branch = control_dir.open_branch(
@@ -6372,11 +6372,11 @@ class cmd_switch(Command):
             switch.switch(control_dir, to_branch, force, revision_id=revision,
                           store_uncommitted=store,
                           possible_transports=possible_transports)
-        except controldir.BranchReferenceLoop:
+        except controldir.BranchReferenceLoop as exc:
             raise errors.CommandError(
                 gettext('switching would create a branch reference loop. '
                         'Use the "bzr up" command to switch to a '
-                        'different revision.'))
+                        'different revision.')) from exc
         if had_explicit_nick:
             branch = control_dir.open_branch()  # get the new branch!
             branch.nick = to_branch.nick
@@ -6453,7 +6453,6 @@ class cmd_view(Command):
         brz view --delete --all
     """
 
-    _see_also = []
     takes_args = ['file*']
     takes_options = [
         Option('all',
@@ -6598,7 +6597,7 @@ class cmd_remove_branch(Command):
         if not force and br.controldir.has_workingtree():
             try:
                 active_branch = br.controldir.open_branch(name="")
-            except errors.NotBranchError:
+            except errors.NotBranchError as exc:
                 active_branch = None
             if (active_branch is not None and
                     br.control_url == active_branch.control_url):
@@ -6989,7 +6988,7 @@ class cmd_grep(Command):
 
         if color not in ['always', 'never', 'auto']:
             raise errors.CommandError('Valid values for --color are '
-                                         '"always", "never" or "auto".')
+                                      '"always", "never" or "auto".')
 
         if levels is None:
             levels = 1

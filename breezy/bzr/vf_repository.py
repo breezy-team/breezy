@@ -31,7 +31,6 @@ from breezy import (
     lru_cache,
     osutils,
     revision as _mod_revision,
-    static_tuple,
     tsort,
     ui,
     )
@@ -41,12 +40,12 @@ from breezy.bzr import (
     generate_ids,
     inventory_delta,
     inventorytree,
+    static_tuple,
     versionedfile,
     vf_search,
     )
 from breezy.bzr.bundle import serializer
 
-from breezy.recordcounter import RecordCounter
 from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """)
@@ -78,7 +77,8 @@ from .repository import (
 
 
 from ..trace import (
-    mutter
+    mutter,
+    note
     )
 from .inventorytree import InventoryTreeChange
 
@@ -184,12 +184,25 @@ class VersionedFileCommitBuilder(CommitBuilder):
             revision_id=self._new_revision_id,
             properties=self._revprops)
         rev.parent_ids = self.parents
-        if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
+        create_signatures = self._config_stack.get('create_signatures')
+        if create_signatures in (
+                _mod_config.SIGN_ALWAYS, _mod_config.SIGN_WHEN_POSSIBLE):
             testament = Testament(rev, self.revision_tree())
             plaintext = testament.as_short_text()
-            self.repository.store_revision_signature(
-                gpg.GPGStrategy(self._config_stack), plaintext,
-                self._new_revision_id)
+            try:
+                self.repository.store_revision_signature(
+                    gpg.GPGStrategy(self._config_stack), plaintext,
+                    self._new_revision_id)
+            except gpg.GpgNotInstalled as e:
+                if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
+                    note('skipping commit signature: %s', e)
+                else:
+                    raise
+            except gpg.SigningFailed as e:
+                if create_signatures == _mod_config.SIGN_WHEN_POSSIBLE:
+                    note('commit signature failed: %s', e)
+                else:
+                    raise
         self.repository._add_revision(rev)
         self._ensure_fallback_inventories()
         if self._owns_transaction:
@@ -1937,6 +1950,7 @@ class StreamSource(object):
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
+        from .recordcounter import RecordCounter
         self._record_counter = RecordCounter()
 
     def delta_on_metadata(self):

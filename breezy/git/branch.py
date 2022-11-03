@@ -21,6 +21,7 @@
 import contextlib
 from io import BytesIO
 from collections import defaultdict
+from typing import Dict
 
 from dulwich.config import (
     ConfigFile as GitConfigFile,
@@ -84,6 +85,19 @@ from .urls import (
     git_url_to_bzr_url,
     bzr_url_to_git_url,
     )
+
+
+
+def _update_tip(source, target, revid, overwrite=False):
+    if not overwrite:
+        last_rev = target.last_revision()
+        graph = target.repository.get_graph(source.repository)
+        if graph.is_ancestor(revid, last_rev):
+            # target is ahead of revid
+            return
+        target.generate_revision_history(revid, last_rev, other_branch=source)
+    else:
+        target.generate_revision_history(revid)
 
 
 def _calculate_revnos(branch):
@@ -438,19 +452,21 @@ class GitBranch(ForeignBranch):
     def user_transport(self):
         return self._user_transport
 
-    def __init__(self, controldir, repository, ref, format):
+    def __init__(self, controldir, repository, ref: bytes, format):
         self.repository = repository
         self._format = format
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
+        if not isinstance(ref, bytes):
+            raise TypeError("ref is invalid: %r" % ref)
         self.ref = ref
         self._head = None
         self._user_transport = controldir.user_transport.clone('.')
         self._control_transport = controldir.control_transport.clone('.')
         self._tag_refs = None
-        params = {}
+        params: Dict[str, str] = {}
         try:
             self.name = ref_to_branch_name(ref)
         except ValueError:
@@ -1027,13 +1043,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     def _update_revisions(self, stop_revision=None, overwrite=False, tag_selector=None):
         head, refs = self.fetch_objects(stop_revision, fetch_tags=None, tag_selector=tag_selector)
-        if overwrite:
-            prev_last_revid = None
-        else:
-            prev_last_revid = self.target.last_revision()
-        self.target.generate_revision_history(
-            self._last_revid, last_rev=prev_last_revid,
-            other_branch=self.source)
+        _update_tip(
+            self.source, self.target,
+            self._last_revid, overwrite)
         return head, refs
 
     def update_references(self, revid=None):
@@ -1047,7 +1059,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     self.target.set_reference_info(
                         tree.path2id(decode_git_path(path)), url.decode('utf-8'),
                         decode_git_path(path))
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             pass
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
@@ -1202,7 +1214,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             result.new_revid = stop_revision
             for name, sha in (
                     self.source.repository._git.refs.as_dict(b"refs/tags").items()):
-                if tag_selector and not tag_selector(name):
+                if tag_selector and not tag_selector(name.decode('utf-8')):
                     continue
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)
@@ -1260,10 +1272,10 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
-        self.target.generate_revision_history(
+        _update_tip(
+            self.source, self.target,
             stop_revision,
-            (result.old_revid if ("history" not in overwrite) else None),
-            other_branch=self.source)
+            "history" in overwrite)
         tags_ret = self.source.tags.merge_to(
             self.target.tags,
             overwrite=("tags" in overwrite),
@@ -1311,10 +1323,10 @@ class InterGitLocalGitBranch(InterGitBranch):
         with self.target.lock_write(), self.source.lock_read():
             result.old_revid = self.target.last_revision()
             refs, stop_revision = self.update_refs(stop_revision)
-            self.target.generate_revision_history(
+            _update_tip(
+                self.source, self.target,
                 stop_revision,
-                (result.old_revid if ("history" not in overwrite) else None),
-                other_branch=self.source)
+                "history" in overwrite)
             tags_ret = self.source.tags.merge_to(
                 self.target.tags, overwrite=("tags" in overwrite),
                 selector=tag_selector)

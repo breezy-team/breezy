@@ -6,12 +6,12 @@ import getopt, re, sys
 try:
     from launchpadlib.launchpad import Launchpad
     from lazr.restfulclient import errors
-except ImportError:
+except ModuleNotFoundError:
     print("Please install launchpadlib from lp:launchpadlib")
     sys.exit(1)
 try:
     import hydrazine
-except ImportError:
+except ModuleNotFoundError:
     print("Please install hydrazine from lp:hydrazine")
     sys.exit(1)
 
@@ -48,8 +48,9 @@ def report_notmarked(bug, task, section):
 def read_news_bugnos(path):
     """Read the bug numbers closed by a particular NEWS file
 
-    :param path: Path to the NEWS file
-    :return: list of bug numbers that were closed.
+    Args:
+      path: Path to the NEWS file
+    Returns: list of bug numbers that were closed.
     """
     # Pattern to find bug numbers
     bug_pattern = re.compile(r"\#([0-9]+)")

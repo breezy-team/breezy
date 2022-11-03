@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Configuration that affects the behaviour of Breezy.
 
 Currently this configuration resides in ~/.config/breezy/breezy.conf
@@ -29,7 +31,7 @@ In breezy.conf the following options may be set:
 editor=name-of-program
 email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
-create_signatures=always|never|when-required(default)
+create_signatures=always|never|when-possible|when-required(default)
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
@@ -80,26 +82,22 @@ import sys
 import configobj
 from io import BytesIO
 
+from typing import Tuple, Iterable, Dict
+
 import breezy
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import base64
 import errno
 import fnmatch
 import re
-import stat
 
 from breezy import (
     cmdline,
     controldir,
     debug,
-    directory_service,
     lock,
     lockdir,
-    mergetools,
     osutils,
-    trace,
-    transport,
     ui,
     urlutils,
     win32utils,
@@ -113,7 +111,10 @@ from . import (
     hooks,
     lazy_regex,
     registry,
+    trace,
+    transport,
     )
+from .option import Option as CommandOption
 
 
 CHECK_IF_POSSIBLE = 0
@@ -124,6 +125,7 @@ CHECK_NEVER = 2
 SIGN_WHEN_REQUIRED = 0
 SIGN_ALWAYS = 1
 SIGN_NEVER = 2
+SIGN_WHEN_POSSIBLE = 3
 
 
 POLICY_NONE = 0
@@ -226,6 +228,14 @@ class NoSuchConfigOption(errors.BzrError):
         errors.BzrError.__init__(self, option_name=option_name)
 
 
+class NoSuchAlias(errors.BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        errors.BzrError.__init__(self, alias_name=alias_name)
+
+
 def signature_policy_from_unicode(signature_string):
     """Convert a string to a signing policy."""
     if signature_string.lower() == 'check-available':
@@ -246,6 +256,8 @@ def signing_policy_from_unicode(signature_string):
         return SIGN_NEVER
     if signature_string.lower() == 'always':
         return SIGN_ALWAYS
+    if signature_string.lower() == 'when-possible':
+        return SIGN_WHEN_POSSIBLE
     raise ValueError("Invalid signing policy '%s'"
                      % signature_string)
 
@@ -321,27 +333,29 @@ class Config(object):
     def expand_options(self, string, env=None):
         """Expand option references in the string in the configuration context.
 
-        :param string: The string containing option to expand.
-
-        :param env: An option dict defining additional configuration options or
+        Args:
+          string: The string containing option to expand.
+          env: An option dict defining additional configuration options or
             overriding existing ones.
 
-        :returns: The expanded string.
+        Returns:
+          The expanded string.
         """
         return self._expand_options_in_string(string, env)
 
     def _expand_options_in_list(self, slist, env=None, _ref_stack=None):
         """Expand options in  a list of strings in the configuration context.
 
-        :param slist: A list of strings.
+        Args:
+          slist: A list of strings.
 
-        :param env: An option dict defining additional configuration options or
+          env: An option dict defining additional configuration options or
             overriding existing ones.
 
-        :param _ref_stack: Private list containing the options being
+          _ref_stack: Private list containing the options being
             expanded to detect loops.
 
-        :returns: The flatten list of expanded strings.
+        Returns: The flatten list of expanded strings.
         """
         # expand options in each value separately flattening lists
         result = []
@@ -356,15 +370,17 @@ class Config(object):
     def _expand_options_in_string(self, string, env=None, _ref_stack=None):
         """Expand options in the string in the configuration context.
 
-        :param string: The string to be expanded.
+        Args:
+          string: The string to be expanded.
 
-        :param env: An option dict defining additional configuration options or
+          env: An option dict defining additional configuration options or
             overriding existing ones.
 
-        :param _ref_stack: Private list containing the options being
+          _ref_stack: Private list containing the options being
             expanded to detect loops.
 
-        :returns: The expanded string.
+        Returns:
+          The expanded string
         """
         if string is None:
             # Not much to expand there
@@ -447,11 +463,12 @@ class Config(object):
     def get_user_option(self, option_name, expand=True):
         """Get a generic option - no special process, no default.
 
-        :param option_name: The queried option.
+        Args:
+          option_name: The queried option.
+          expand: Whether options references should be expanded.
 
-        :param expand: Whether options references should be expanded.
-
-        :returns: The value of the option.
+        Returns:
+          The value of the option.
         """
         value = self._get_user_option(option_name)
         if expand:
@@ -470,9 +487,12 @@ class Config(object):
     def get_user_option_as_bool(self, option_name, expand=None, default=None):
         """Get a generic option as a boolean.
 
-        :param expand: Allow expanding references to other config values.
-        :param default: Default value if nothing is configured
-        :return None if the option doesn't exist or its value can't be
+        Args:
+          expand: Allow expanding references to other config values.
+          default: Default value if nothing is configured
+
+        Returns:
+          None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
         s = self.get_user_option(option_name, expand=expand)
@@ -489,8 +509,9 @@ class Config(object):
     def get_user_option_as_list(self, option_name, expand=None):
         """Get a generic option as a list - no special process, no default.
 
-        :return None if the option doesn't exist. Returns the value as a list
-            otherwise.
+        Returns:
+          None if the option doesn't exist. Returns the value as a list
+          otherwise.
         """
         l = self.get_user_option(option_name, expand=expand)
         if isinstance(l, str):
@@ -566,9 +587,11 @@ class Config(object):
     def suppress_warning(self, warning):
         """Should the warning be suppressed or emitted.
 
-        :param warning: The name of the warning being tested.
+        Args:
+          warning: The name of the warning being tested.
 
-        :returns: True if the warning should be suppressed, False otherwise.
+        Returns:
+          True if the warning should be suppressed, False otherwise.
         """
         warnings = self.get_user_option_as_list('suppress_warnings')
         if warnings is None or warning not in warnings:
@@ -586,13 +609,14 @@ class Config(object):
         return tools
 
     def find_merge_tool(self, name):
+        from .mergetools import known_merge_tools
         # We fake a defaults mechanism here by checking if the given name can
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
         command_line = (self.get_user_option('bzr.mergetool.%s' % name,
                                              expand=False) or
-                        mergetools.known_merge_tools.get(name, None))
+                        known_merge_tools.get(name, None))
         return command_line
 
 
@@ -677,7 +701,8 @@ class IniBasedConfig(Config):
     def __init__(self, file_name=None):
         """Base class for configuration files using an ini-like syntax.
 
-        :param file_name: The configuration file path.
+        Args:
+          file_name: The configuration file path.
         """
         super(IniBasedConfig, self).__init__()
         self.file_name = file_name
@@ -689,12 +714,11 @@ class IniBasedConfig(Config):
     def from_string(cls, str_or_unicode, file_name=None, save=False):
         """Create a config object from a string.
 
-        :param str_or_unicode: A string representing the file content. This
+        Args:
+          str_or_unicode: A string representing the file content. This
             will be utf-8 encoded.
-
-        :param file_name: The configuration file path.
-
-        :param _save: Whether the file should be saved upon creation.
+          file_name: The configuration file path.
+          _save: Whether the file should be saved upon creation.
         """
         conf = cls(file_name=file_name)
         conf._create_from_string(str_or_unicode, save)
@@ -758,12 +782,14 @@ class IniBasedConfig(Config):
     def _get_sections(self, name=None):
         """Returns an iterator of the sections specified by ``name``.
 
-        :param name: The section name. If None is supplied, the default
+        Args:
+          name: The section name. If None is supplied, the default
             configurations are yielded.
 
-        :return: A tuple (name, section, config_id) for all sections that will
-            be walked by user_get_option() in the 'right' order. The first one
-            is where set_user_option() will update the value.
+        Returns:
+          A tuple (name, section, config_id) for all sections that will
+          be walked by user_get_option() in the 'right' order. The first one
+          is where set_user_option() will update the value.
         """
         parser = self._get_parser()
         if name is not None:
@@ -780,10 +806,11 @@ class IniBasedConfig(Config):
         they appeared in. ``config_id`` is a unique identifier for the
         configuration file the option is defined in.
 
-        :param sections: Default to ``_get_matching_sections`` if not
-            specified. This gives a better control to daughter classes about
-            which sections should be searched. This is a list of (name,
-            configobj) tuples.
+        Args:
+          sections: Default to ``_get_matching_sections`` if not
+             specified. This gives a better control to daughter classes about
+             which sections should be searched. This is a list of (name,
+             configobj) tuples.
         """
         if sections is None:
             parser = self._get_parser()
@@ -880,9 +907,9 @@ class IniBasedConfig(Config):
     def remove_user_option(self, option_name, section_name=None):
         """Remove a user option and save the configuration file.
 
-        :param option_name: The option to be removed.
-
-        :param section_name: The section the option is defined in, default to
+        Args:
+          option_name: The option to be removed.
+          section_name: The section the option is defined in, default to
             the default section.
         """
         self.reload()
@@ -1000,10 +1027,10 @@ class GlobalConfig(LockableConfig):
     def from_string(cls, str_or_unicode, save=False):
         """Create a config object from a string.
 
-        :param str_or_unicode: A string representing the file content. This
+        Args:
+          str_or_unicode: A string representing the file content. This
             will be utf-8 encoded.
-
-        :param save: Whether the file should be saved upon creation.
+          save: Whether the file should be saved upon creation.
         """
         conf = cls()
         conf._create_from_string(str_or_unicode, save)
@@ -1032,7 +1059,7 @@ class GlobalConfig(LockableConfig):
             self.reload()
             aliases = self._get_parser().get('ALIASES')
             if not aliases or alias_name not in aliases:
-                raise errors.NoSuchAlias(alias_name)
+                raise NoSuchAlias(alias_name)
             del aliases[alias_name]
             self._write_config_file()
 
@@ -1070,14 +1097,15 @@ class GlobalConfig(LockableConfig):
 def _iter_for_location_by_parts(sections, location):
     """Keep only the sessions matching the specified location.
 
-    :param sections: An iterable of section names.
+    Args:
+      sections: An iterable of section names.
+      location: An url or a local path to match against.
 
-    :param location: An url or a local path to match against.
-
-    :returns: An iterator of (section, extra_path, nb_parts) where nb is the
-        number of path components in the section name, section is the section
-        name and extra_path is the difference between location and the section
-        name.
+    Returns:
+      An iterator of (section, extra_path, nb_parts) where nb is the
+      number of path components in the section name, section is the section
+      name and extra_path is the difference between location and the section
+      name.
 
     ``location`` will always be a local path and never a 'file://' url but the
     section names themselves can be in either form.
@@ -1138,12 +1166,11 @@ class LocationConfig(LockableConfig):
     def from_string(cls, str_or_unicode, location, save=False):
         """Create a config object from a string.
 
-        :param str_or_unicode: A string representing the file content. This will
+        Args:
+          str_or_unicode: A string representing the file content. This will
             be utf-8 encoded.
-
-        :param location: The location url to filter the configuration.
-
-        :param save: Whether the file should be saved upon creation.
+          location: The location url to filter the configuration.
+          save: Whether the file should be saved upon creation.
         """
         conf = cls(location)
         conf._create_from_string(str_or_unicode, save)
@@ -1493,6 +1520,7 @@ class AuthenticationConfig(object):
 
     def _check_permissions(self):
         """Check permission of auth file are user read/write able only."""
+        import stat
         try:
             st = os.stat(self._filename)
         except OSError as e:
@@ -1527,8 +1555,8 @@ class AuthenticationConfig(object):
         conf = self._get_config()
         section = conf.get(section_name)
         if section is None:
-            conf[section] = {}
-            section = conf[section]
+            conf[section_name] = {}
+            section = conf[section_name]
         section[option_name] = value
         self._save()
 
@@ -1536,20 +1564,17 @@ class AuthenticationConfig(object):
                         realm=None):
         """Returns the matching credentials from authentication.conf file.
 
-        :param scheme: protocol
+        Args:
+          scheme: protocol
+          host: the server address
+          port: the associated port (optional)
+          user: login (optional)
+          path: the absolute path on the server (optional)
+          realm: the http authentication realm (optional)
 
-        :param host: the server address
-
-        :param port: the associated port (optional)
-
-        :param user: login (optional)
-
-        :param path: the absolute path on the server (optional)
-
-        :param realm: the http authentication realm (optional)
-
-        :return: A dict containing the matching credentials or None.
-           This includes:
+        Returns:
+          A dict containing the matching credentials or None.
+          This includes:
            - name: the section name of the credentials in the
              authentication.conf file,
            - user: can't be different from the provided user if any,
@@ -1639,18 +1664,16 @@ class AuthenticationConfig(object):
         Any existing credentials with matching scheme, host, port and path
         will be deleted, regardless of name.
 
-        :param name: An arbitrary name to describe this set of credentials.
-        :param host: Name of the host that accepts these credentials.
-        :param user: The username portion of these credentials.
-        :param scheme: The URL scheme (e.g. ssh, http) the credentials apply
-            to.
-        :param password: Password portion of these credentials.
-        :param port: The IP port on the host that these credentials apply to.
-        :param path: A filesystem path on the host that these credentials
-            apply to.
-        :param verify_certificates: On https, verify server certificates if
-            True.
-        :param realm: The http authentication realm (optional).
+        Args:
+          name: An arbitrary name to describe this set of credentials.
+          host: Name of the host that accepts these credentials.
+          user: The username portion of these credentials.
+          scheme: The URL scheme (e.g. ssh, http) the credentials apply to.
+          password: Password portion of these credentials.
+          port: The IP port on the host that these credentials apply to.
+          path: A filesystem path on the host that these credentials apply to.
+          verify_certificates: On https, verify server certificates if True.
+          realm: The http authentication realm (optional).
         """
         values = {'host': host, 'user': user}
         if password is not None:
@@ -1679,22 +1702,18 @@ class AuthenticationConfig(object):
                  prompt=None, ask=False, default=None):
         """Get a user from authentication file.
 
-        :param scheme: protocol
-
-        :param host: the server address
-
-        :param port: the associated port (optional)
-
-        :param realm: the realm sent by the server (optional)
-
-        :param path: the absolute path on the server (optional)
-
-        :param ask: Ask the user if there is no explicitly configured username
+        Args:
+          scheme: protocol
+          host: the server address
+          port: the associated port (optional)
+          realm: the realm sent by the server (optional)
+          path: the absolute path on the server (optional)
+          ask: Ask the user if there is no explicitly configured username
                     (optional)
+          default: The username returned if none is defined (optional).
 
-        :param default: The username returned if none is defined (optional).
-
-        :return: The found user.
+        Returns:
+          The found user.
         """
         credentials = self.get_credentials(scheme, host, port, user=None,
                                            path=path, realm=realm)
@@ -1721,19 +1740,16 @@ class AuthenticationConfig(object):
                      realm=None, path=None, prompt=None):
         """Get a password from authentication file or prompt the user for one.
 
-        :param scheme: protocol
+        Args:
+          scheme: protocol
+          host: the server address
+          port: the associated port (optional)
+          user: login
+          realm: the realm sent by the server (optional)
+          path: the absolute path on the server (optional)
 
-        :param host: the server address
-
-        :param port: the associated port (optional)
-
-        :param user: login
-
-        :param realm: the realm sent by the server (optional)
-
-        :param path: the absolute path on the server (optional)
-
-        :return: The found password or the one entered by the user.
+        Returns:
+          The found password or the one entered by the user.
         """
         credentials = self.get_credentials(scheme, host, port, user, path,
                                            realm)
@@ -1817,16 +1833,17 @@ class CredentialStoreRegistry(registry.Registry):
                  fallback=False):
         """Register a new object to a name.
 
-        :param key: This is the key to use to request the object later.
-        :param obj: The object to register.
-        :param help: Help text for this entry. This may be a string or
+        Args:
+          key: This is the key to use to request the object later.
+          obj: The object to register.
+          help: Help text for this entry. This may be a string or
                 a callable. If it is a callable, it should take two
                 parameters (registry, key): this registry and the key that
                 the help was registered under.
-        :param override_existing: Raise KeyErorr if False and something has
+          override_existing: Raise KeyErorr if False and something has
                 already been registered for that key. If True, ignore if there
                 is an existing key (always register the new value).
-        :param fallback: Whether this credential store should be
+          fallback: Whether this credential store should be
                 used as fallback.
         """
         return super(CredentialStoreRegistry,
@@ -1838,15 +1855,16 @@ class CredentialStoreRegistry(registry.Registry):
                       fallback=False):
         """Register a new credential store to be loaded on request.
 
-        :param module_name: The python path to the module. Such as 'os.path'.
-        :param member_name: The member of the module to return.  If empty or
+        Args:
+          module_name: The python path to the module. Such as 'os.path'.
+          member_name: The member of the module to return.  If empty or
                 None, get() will return the module itself.
-        :param help: Help text for this entry. This may be a string or
+          help: Help text for this entry. This may be a string or
                 a callable.
-        :param override_existing: If True, replace the existing object
+          override_existing: If True, replace the existing object
                 with the new one. If False, if there is already something
                 registered with the same key, raise a KeyError
-        :param fallback: Whether this credential store should be
+          fallback: Whether this credential store should be
                 used as fallback.
         """
         return super(CredentialStoreRegistry, self).register_lazy(
@@ -1893,6 +1911,7 @@ class Base64CredentialStore(CredentialStore):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
         #                should probably propogate as something more useful.
+        import base64
         return base64.standard_b64decode(credentials['password'])
 
 
@@ -1953,10 +1972,11 @@ class TransportConfig(object):
     def get_option(self, name, section=None, default=None):
         """Return the value associated with a named option.
 
-        :param name: The name of the value
-        :param section: The section the option is in (if any)
-        :param default: The value to return if the value is not set
-        :return: The value or default value
+        Args:
+          name: The name of the value
+          section: The section the option is in (if any)
+          default: The value to return if the value is not set
+        Returns: The value or default value
         """
         configobj = self._get_configobj()
         if section is None:
@@ -1974,9 +1994,10 @@ class TransportConfig(object):
     def set_option(self, value, name, section=None):
         """Set the value associated with a named option.
 
-        :param value: The value to set
-        :param name: The name of the value to set
-        :param section: The section the option is in (if any)
+        Args:
+          value: The value to set
+          name: The name of the value to set
+          section: The section the option is in (if any)
         """
         configobj = self._get_configobj()
         if section is None:
@@ -2003,7 +2024,7 @@ class TransportConfig(object):
             for hook in OldConfigHooks['load']:
                 hook(self)
             return f
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             return BytesIO()
         except errors.PermissionDenied:
             trace.warning(
@@ -2054,35 +2075,36 @@ class Option(object):
                  help=None, from_unicode=None, invalid=None, unquote=True):
         """Build an option definition.
 
-        :param name: the name used to refer to the option.
+        Args:
+          name: the name used to refer to the option.
 
-        :param override_from_env: A list of environment variables which can
+          override_from_env: A list of environment variables which can
            provide override any configuration setting.
 
-        :param default: the default value to use when none exist in the config
+          default: the default value to use when none exist in the config
             stores. This is either a string that ``from_unicode`` will convert
             into the proper type, a callable returning a unicode string so that
             ``from_unicode`` can be used on the return value, or a python
             object that can be stringified (so only the empty list is supported
             for example).
 
-        :param default_from_env: A list of environment variables which can
+          default_from_env: A list of environment variables which can
            provide a default value. 'default' will be used only if none of the
            variables specified here are set in the environment.
 
-        :param help: a doc string to explain the option to the user.
+          help: a doc string to explain the option to the user.
 
-        :param from_unicode: a callable to convert the unicode string
+          from_unicode: a callable to convert the unicode string
             representing the option value in a store or its default value.
 
-        :param invalid: the action to be taken when an invalid value is
+          invalid: the action to be taken when an invalid value is
             encountered in a store. This is called only when from_unicode is
             invoked to convert a string and returns None or raise ValueError or
             TypeError. Accepted values are: None (ignore invalid values),
             'warning' (emit a warning), 'error' (emit an error message and
             terminates).
 
-        :param unquote: should the unicode value be unquoted before conversion.
+          unquote: should the unicode value be unquoted before conversion.
            This should be used only when the store providing the values cannot
            safely unquote them (see http://pad.lv/906897). It is provided so
            daughter classes can handle the quoting themselves.
@@ -2208,7 +2230,7 @@ def int_SI_from_store(unicode_str):
     by a trailing b (i.e. Kb, MB). This is intended to be practical and not
     pedantic.
 
-    :return Integer, expanded to its base-10 value if a proper SI unit is
+    Returns: Integer, expanded to its base-10 value if a proper SI unit is
         found, None otherwise.
     """
     regexp = "^(\\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
@@ -2339,7 +2361,8 @@ class OptionRegistry(registry.Registry):
     def _check_option_name(self, option_name):
         """Ensures an option name is valid.
 
-        :param option_name: The name to validate.
+        Args:
+          option_name: The name to validate.
         """
         if _option_ref_re.match('{%s}' % option_name) is None:
             raise IllegalOptionName(option_name)
@@ -2347,7 +2370,8 @@ class OptionRegistry(registry.Registry):
     def register(self, option):
         """Register a new option to its name.
 
-        :param option: The option to register. Its name is used as the key.
+        Args:
+          option: The option to register. Its name is used as the key.
         """
         self._check_option_name(option.name)
         super(OptionRegistry, self).register(option.name, option,
@@ -2356,12 +2380,13 @@ class OptionRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name):
         """Register a new option to be loaded on request.
 
-        :param key: the key to request the option later. Since the registration
+        Args:
+          key: the key to request the option later. Since the registration
             is lazy, it should be provided and match the option name.
 
-        :param module_name: the python path to the module. Such as 'os.path'.
+          module_name: the python path to the module. Such as 'os.path'.
 
-        :param member_name: the member of the module to return.  If empty or
+          member_name: the member of the module to return.  If empty or
                 None, get() will return the module itself.
         """
         self._check_option_name(key)
@@ -2491,7 +2516,7 @@ option_registry.register(
            help='''\
 GPG Signing policy.
 
-Possible values: always, never, when-required (default)
+Possible values: always, never, when-required (default), when-possible
 
 This option controls whether bzr will always create
 gpg signatures or not on commits.
@@ -2734,9 +2759,9 @@ class MutableSection(Section):
         ``self`` has been reloaded from the persistent storage. ``dirty``
         contains the changes made since the previous loading.
 
-        :param dirty: the mutable section containing the changes.
-
-        :param store: the store containing the section
+        Args:
+          dirty: the mutable section containing the changes.
+          store: the store containing the section
         """
         for k, expected in dirty.orig.items():
             actual = dirty.get(k, _DeletedOption)
@@ -2794,7 +2819,8 @@ class Store(object):
     def _load_from_string(self, bytes):
         """Create a store from a string in configobj syntax.
 
-        :param bytes: A string representing the file content.
+        Args:
+          bytes: A string representing the file content.
         """
         raise NotImplementedError(self._load_from_string)
 
@@ -2866,14 +2892,15 @@ class Store(object):
     def get_sections(self):
         """Returns an ordered iterable of existing sections.
 
-        :returns: An iterable of (store, section).
+        Returns: An iterable of (store, section).
         """
         raise NotImplementedError(self.get_sections)
 
     def get_mutable_section(self, section_id=None):
         """Returns the specified mutable section.
 
-        :param section_id: The section identifier
+        Args:
+          section_id: The section identifier
         """
         raise NotImplementedError(self.get_mutable_section)
 
@@ -2943,7 +2970,8 @@ class IniFileStore(Store):
 
         This should be provided by subclasses
 
-        :return: Byte string
+        Returns:
+          Byte string
         """
         raise NotImplementedError(self._load_content)
 
@@ -2952,7 +2980,8 @@ class IniFileStore(Store):
 
         This should be provided by subclasses
 
-        :param content: Config file bytes to write
+        Args:
+          content: Config file bytes to write
         """
         raise NotImplementedError(self._save_content)
 
@@ -2968,7 +2997,8 @@ class IniFileStore(Store):
     def _load_from_string(self, bytes):
         """Create a config store from a string.
 
-        :param bytes: A string representing the file content.
+        Args:
+          bytes: A string representing the file content.
         """
         if self.is_loaded():
             raise AssertionError('Already loaded: %r' % (self._config_obj,))
@@ -3005,15 +3035,15 @@ class IniFileStore(Store):
         for hook in ConfigHooks['save']:
             hook(self)
 
-    def get_sections(self):
+    def get_sections(self) -> Iterable[Tuple[Store, Section]]:
         """Get the configobj section in the file order.
 
-        :returns: An iterable of (store, section).
+        Returns: An iterable of (store, section).
         """
         # We need a loaded store
         try:
             self.load()
-        except (errors.NoSuchFile, errors.PermissionDenied):
+        except (transport.NoSuchFile, errors.PermissionDenied):
             # If the file can't be read, there is no sections
             return
         cobj = self._config_obj
@@ -3028,7 +3058,7 @@ class IniFileStore(Store):
         # We need a loaded store
         try:
             self.load()
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
             self._load_from_string(b'')
         if section_id in self.dirty_sections:
@@ -3077,8 +3107,9 @@ class TransportIniFileStore(IniFileStore):
     def __init__(self, transport, file_name):
         """A Store using a ini file on a Transport
 
-        :param transport: The transport object where the config file is located.
-        :param file_name: The config file basename in the transport directory.
+        Args:
+          transport: The transport object where the config file is located.
+          file_name: The config file basename in the transport directory.
         """
         super(TransportIniFileStore, self).__init__()
         self.transport = transport
@@ -3117,9 +3148,9 @@ class LockableIniFileStore(TransportIniFileStore):
     def __init__(self, transport, file_name, lock_dir_name=None):
         """A config Store using ConfigObj for storage.
 
-        :param transport: The transport object where the config file is located.
-
-        :param file_name: The config file basename in the transport directory.
+        Args:
+          transport: The transport object where the config file is located.
+          file_name: The config file basename in the transport directory.
         """
         if lock_dir_name is None:
             lock_dir_name = 'lock'
@@ -3233,9 +3264,11 @@ class SectionMatcher(object):
     def match(self, section):
         """Does the proposed section match.
 
-        :param section: A Section object.
+        Args:
+          section: A Section object.
 
-        :returns: True if the section matches, False otherwise.
+        Returns:
+          True if the section matches, False otherwise.
         """
         raise NotImplementedError(self.match)
 
@@ -3400,7 +3433,7 @@ class LocationMatcher(SectionMatcher):
 
 # FIXME: _shared_stores should be an attribute of a library state once a
 # library_state object is always available.
-_shared_stores = {}
+_shared_stores: Dict[str, Store] = {}
 _shared_stores_at_exit_installed = False
 
 
@@ -3410,14 +3443,15 @@ class Stack(object):
     def __init__(self, sections_def, store=None, mutable_section_id=None):
         """Creates a stack of sections with an optional store for changes.
 
-        :param sections_def: A list of Section or callables that returns an
+        Args:
+          sections_def: A list of Section or callables that returns an
             iterable of Section. This defines the Sections for the Stack and
             can be called repeatedly if needed.
 
-        :param store: The optional Store where modifications will be
+          store: The optional Store where modifications will be
             recorded. If none is specified, no modifications can be done.
 
-        :param mutable_section_id: The id of the MutableSection where changes
+          mutable_section_id: The id of the MutableSection where changes
             are recorded. This requires the ``store`` parameter to be
             specified.
         """
@@ -3444,14 +3478,14 @@ class Stack(object):
         in which sections it can be defined. Both of these (section and option
         existence) require loading the store (even partially).
 
-        :param name: The queried option.
-
-        :param expand: Whether options references should be expanded.
-
-        :param convert: Whether the option value should be converted from
+        Args:
+          name: The queried option.
+          expand: Whether options references should be expanded.
+          convert: Whether the option value should be converted from
             unicode (do nothing for non-registered options).
 
-        :returns: The value of the option.
+        Returns:
+          The value of the option.
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
         value = None
@@ -3504,27 +3538,27 @@ class Stack(object):
     def expand_options(self, string, env=None):
         """Expand option references in the string in the configuration context.
 
-        :param string: The string containing option(s) to expand.
-
-        :param env: An option dict defining additional configuration options or
+        Args:
+          string: The string containing option(s) to expand.
+          env: An option dict defining additional configuration options or
             overriding existing ones.
 
-        :returns: The expanded string.
+        Returns:
+          The expanded string.
         """
         return self._expand_options_in_string(string, env)
 
     def _expand_options_in_string(self, string, env=None, _refs=None):
         """Expand options in the string in the configuration context.
 
-        :param string: The string to be expanded.
-
-        :param env: An option dict defining additional configuration options or
+        Args:
+          string: The string to be expanded.
+          env: An option dict defining additional configuration options or
             overriding existing ones.
-
-        :param _refs: Private list (FIFO) containing the options being expanded
+          _refs: Private list (FIFO) containing the options being expanded
             to detect loops.
 
-        :returns: The expanded string.
+        Returns: The expanded string.
         """
         if string is None:
             # Not much to expand there
@@ -3608,11 +3642,11 @@ class Stack(object):
         Store urls uniquely identify them and are used to ensure a single copy
         is shared across all users.
 
-        :param store: The store known to the caller.
+        Args:
+          store: The store known to the caller.
+          state: The library state where the known stores are kept.
 
-        :param state: The library state where the known stores are kept.
-
-        :returns: The store received if it's not a known one, an already known
+        Returns: The store received if it's not a known one, an already known
             otherwise.
         """
         if state is None:
@@ -3653,7 +3687,8 @@ class MemoryStack(Stack):
         It uses a single store based on configobj and support reading and
         writing options.
 
-        :param content: The initial content of the store. If None, the store is
+        Args:
+          content: The initial content of the store. If None, the store is
             not loaded and ``_load_from_string`` can and should be used if
             needed.
         """
@@ -3737,7 +3772,8 @@ class LocationStack(Stack):
     def __init__(self, location):
         """Make a new stack for a location and global configuration.
 
-        :param location: A URL prefix to """
+        Args:
+          location: A URL prefix to """
         lstore = self.get_shared_store(LocationStore())
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
@@ -3874,14 +3910,14 @@ class cmd_config(commands.Command):
         # FIXME: This should be a registry option so that plugins can register
         # their own config files (or not) and will also address
         # http://pad.lv/788991 -- vila 20101115
-        commands.Option('scope', help='Reduce the scope to the specified'
-                        ' configuration file.',
-                        type=str),
-        commands.Option('all',
-                        help='Display all the defined values for the matching options.',
-                        ),
-        commands.Option('remove', help='Remove the option from'
-                        ' the configuration file.'),
+        CommandOption('scope', help='Reduce the scope to the specified'
+                      ' configuration file.',
+                      type=str),
+        CommandOption('all',
+                      help='Display all the defined values for the matching options.',
+                      ),
+        CommandOption('remove', help='Remove the option from'
+                      ' the configuration file.'),
         ]
 
     _see_also = ['configuration']
@@ -3889,9 +3925,10 @@ class cmd_config(commands.Command):
     @commands.display_command
     def run(self, name=None, all=False, directory=None, scope=None,
             remove=False):
+        from .directory_service import directories
         if directory is None:
             directory = '.'
-        directory = directory_service.directories.dereference(directory)
+        directory = directories.dereference(directory)
         directory = urlutils.normalize_url(directory)
         if remove and all:
             raise errors.BzrError(
@@ -3921,11 +3958,10 @@ class cmd_config(commands.Command):
     def _get_stack(self, directory, scope=None, write_access=False):
         """Get the configuration stack specified by ``directory`` and ``scope``.
 
-        :param directory: Where the configurations are derived from.
-
-        :param scope: A specific config to start from.
-
-        :param write_access: Whether a write access to the stack will be
+        Args:
+          directory: Where the configurations are derived from.
+          scope: A specific config to start from.
+          write_access: Whether a write access to the stack will be
             attempted.
         """
         # FIXME: scope should allow access to plugin-specific stacks (even

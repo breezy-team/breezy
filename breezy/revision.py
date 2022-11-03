@@ -17,7 +17,9 @@
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
-from typing import List, Optional, Dict
+__docformat__ = "google"
+
+from typing import List, Optional, Dict, Tuple
 
 from . import (
     errors,
@@ -38,12 +40,10 @@ class Revision(object):
     written out.  This is not stored because you cannot write the hash
     into the file it describes.
 
-    After bzr 0.0.5 revisions are allowed to have multiple parents.
+    Attributes:
+      parent_ids: List of parent revision_ids
 
-    parent_ids
-        List of parent revision_ids
-
-    properties
+      properties:
         Dictionary of revision properties.  These are attached to the
         revision as extra metadata.  The name must be a single
         word; the value can be an arbitrary string.
@@ -59,7 +59,7 @@ class Revision(object):
     timestamp: float
     timezone: int
 
-    def __init__(self, revision_id: RevisionID, properties=None, **args):
+    def __init__(self, revision_id: RevisionID, properties=None, **args) -> None:
         self.revision_id = revision_id
         if properties is None:
             self.properties = {}
@@ -69,11 +69,16 @@ class Revision(object):
         self.committer = None
         self.parent_ids = []
         self.parent_sha1s = []
-        """Not used anymore - legacy from for 4."""
+        # Not used anymore - legacy from for 4.
         self.__dict__.update(args)
 
     def __repr__(self):
         return "<Revision id %s>" % self.revision_id
+
+    def datetime(self):
+        import datetime
+        # TODO: Handle timezone.
+        return datetime.datetime.fromtimestamp(self.timestamp)
 
     def __eq__(self, other):
         if not isinstance(other, Revision):
@@ -161,7 +166,7 @@ def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool 
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
-        new_ancestors = []
+        new_ancestors: List[bytes] = []
         for ancestor in ancestors:
             if not only_present:
                 yield ancestor, distance
@@ -179,13 +184,13 @@ def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool 
         distance += 1
 
 
-def find_present_ancestors(revision_id: RevisionID, revision_source) -> List[RevisionID]:
+def find_present_ancestors(revision_id: RevisionID, revision_source) -> Dict[RevisionID, Tuple[int, int]]:
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
     one of its revisions.
     """
-    found_ancestors = {}
+    found_ancestors: Dict[RevisionID, Tuple[int, int]] = {}
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
                                         only_present=True))
     for anc_order, (anc_id, anc_distance) in anc_iter:
@@ -206,7 +211,8 @@ def __get_closest(intersection):
 def is_reserved_id(revision_id: RevisionID) -> bool:
     """Determine whether a revision id is reserved
 
-    Returns: True if the revision is reserved, False otherwise
+    Returns:
+      True if the revision is reserved, False otherwise
     """
     return isinstance(revision_id, bytes) and revision_id.endswith(b':')
 

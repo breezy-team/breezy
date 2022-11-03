@@ -293,7 +293,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         branch2 = self.make_branch('bind-probe')
         try:
             branch2.bind(branch1)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             raise tests.TestNotApplicable(
                 "format %s doesn't support bound branches" % branch2._format)
 

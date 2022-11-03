@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Exceptions for bzr, and reporting of them.
 """
 
@@ -41,13 +43,15 @@ class BzrError(Exception):
     """
     Base class for errors raised by breezy.
 
-    :cvar internal_error: if True this was probably caused by a brz bug and
-        should be displayed with a traceback; if False (or absent) this was
-        probably a user or environment error and they don't need the gory
-        details.  (That can be overridden by -Derror on the command line.)
+    Attributes:
+      internal_error: if True this was probably caused by a brz bug and
+                      should be displayed with a traceback; if False (or
+                      absent) this was probably a user or environment error
+                      and they don't need the gory details.  (That can be
+                      overridden by -Derror on the command line.)
 
-    :cvar _fmt: Format string to display the error; this is expanded
-        by the instance's dict.
+      _fmt: Format string to display the error; this is expanded
+            by the instance's dict.
     """
 
     internal_error = False
@@ -67,9 +71,10 @@ class BzrError(Exception):
         that subclasses override the __init__ method to require specific
         parameters.
 
-        :param msg: If given, this is the literal complete text for the error,
-           not subject to expansion. 'msg' is used instead of 'message' because
-           python evolved and, in 2.6, forbids the use of 'message'.
+        Args:
+          msg: If given, this is the literal complete text for the error, not
+               subject to expansion. 'msg' is used instead of 'message' because
+               python evolved and, in 2.6, forbids the use of 'message'.
         """
         Exception.__init__(self)
         if msg is not None:
@@ -310,16 +315,6 @@ class PathError(BzrError):
             self.extra = ''
 
 
-class NoSuchFile(PathError):
-
-    _fmt = "No such file: %(path)r%(extra)s"
-
-
-class FileExists(PathError):
-
-    _fmt = "File exists: %(path)r%(extra)s"
-
-
 class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 
@@ -375,14 +370,6 @@ class ResourceBusy(PathError):
 class PermissionDenied(PathError):
 
     _fmt = 'Permission denied: "%(path)s"%(extra)s'
-
-
-class UnsupportedProtocol(PathError):
-
-    _fmt = 'Unsupported protocol for url "%(path)s"%(extra)s'
-
-    def __init__(self, url, extra=""):
-        PathError.__init__(self, url, extra=extra)
 
 
 class UnstackableLocationError(BzrError):
@@ -554,6 +541,14 @@ class UnsupportedFormatError(BzrError):
     _fmt = "Unsupported branch format: %(format)s\nPlease run 'brz upgrade'"
 
 
+
+class UnsupportedVcs(UnsupportedFormatError):
+
+    vcs: str
+
+    _fmt = "Unsupported version control system: %(vcs)s"
+
+
 class UnknownFormatError(BzrError):
 
     _fmt = "Unknown %(kind)s format: %(format)r"
@@ -692,17 +687,6 @@ class BadFileKindError(BzrError):
 
     def __init__(self, filename, kind):
         BzrError.__init__(self, filename=filename, kind=kind)
-
-
-class BadFilenameEncoding(BzrError):
-
-    _fmt = ('Filename %(filename)r is not valid in your current filesystem'
-            ' encoding %(fs_encoding)s')
-
-    def __init__(self, filename, fs_encoding):
-        BzrError.__init__(self)
-        self.filename = filename
-        self.fs_encoding = fs_encoding
 
 
 class ForbiddenControlFileError(BzrError):
@@ -899,6 +883,8 @@ class UpToDateFormat(BzrError):
 
 class NoSuchRevision(InternalBzrError):
 
+    revision: bytes
+
     _fmt = "%(branch)s has no revision %(revision)s"
 
     def __init__(self, branch, revision):
@@ -1092,53 +1078,6 @@ class VersionedFileInvalidChecksum(VersionedFileError):
     _fmt = "Text did not match its checksum: %(msg)s"
 
 
-class RetryWithNewPacks(BzrError):
-    """Raised when we realize that the packs on disk have changed.
-
-    This is meant as more of a signaling exception, to trap between where a
-    local error occurred and the code that can actually handle the error and
-    code that can retry appropriately.
-    """
-
-    internal_error = True
-
-    _fmt = ("Pack files have changed, reload and retry. context: %(context)s"
-            " %(orig_error)s")
-
-    def __init__(self, context, reload_occurred, exc_info):
-        """create a new RetryWithNewPacks error.
-
-        :param reload_occurred: Set to True if we know that the packs have
-            already been reloaded, and we are failing because of an in-memory
-            cache miss. If set to True then we will ignore if a reload says
-            nothing has changed, because we assume it has already reloaded. If
-            False, then a reload with nothing changed will force an error.
-        :param exc_info: The original exception traceback, so if there is a
-            problem we can raise the original error (value from sys.exc_info())
-        """
-        BzrError.__init__(self)
-        self.context = context
-        self.reload_occurred = reload_occurred
-        self.exc_info = exc_info
-        self.orig_error = exc_info[1]
-        # TODO: The global error handler should probably treat this by
-        #       raising/printing the original exception with a bit about
-        #       RetryWithNewPacks also not being caught
-
-
-class RetryAutopack(RetryWithNewPacks):
-    """Raised when we are autopacking and we find a missing file.
-
-    Meant as a signaling exception, to tell the autopack code it should try
-    again.
-    """
-
-    internal_error = True
-
-    _fmt = ("Pack files have changed, reload and try autopack again."
-            " context: %(context)s %(orig_error)s")
-
-
 class NoSuchExportFormat(BzrError):
 
     _fmt = "Export format %(format)r not supported"
@@ -1164,16 +1103,6 @@ class TransportError(BzrError):
         BzrError.__init__(self)
 
 
-class TooManyConcurrentRequests(InternalBzrError):
-
-    _fmt = ("The medium '%(medium)s' has reached its concurrent request limit."
-            " Be sure to finish_writing and finish_reading on the"
-            " currently open request.")
-
-    def __init__(self, medium):
-        self.medium = medium
-
-
 class SmartProtocolError(TransportError):
 
     _fmt = "Generic bzr smart protocol error: %(details)s"
@@ -1196,21 +1125,6 @@ class UnknownSmartMethod(InternalBzrError):
 
     def __init__(self, verb):
         self.verb = verb
-
-
-class SmartMessageHandlerError(InternalBzrError):
-
-    _fmt = ("The message handler raised an exception:\n"
-            "%(traceback_text)s")
-
-    def __init__(self, exc_info):
-        import traceback
-        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
-        self.exc_type, self.exc_value, self.exc_tb = exc_info
-        self.exc_info = exc_info
-        traceback_strings = traceback.format_exception(
-            self.exc_type, self.exc_value, self.exc_tb)
-        self.traceback_text = ''.join(traceback_strings)
 
 
 # A set of semi-meaningful errors which can be thrown
@@ -1563,11 +1477,6 @@ class ParamikoNotPresent(DependencyNotPresent):
 
     def __init__(self, error):
         DependencyNotPresent.__init__(self, 'paramiko', error)
-
-
-class PointlessMerge(BzrError):
-
-    _fmt = "Nothing to merge."
 
 
 class UninitializableFormat(BzrError):
@@ -2029,82 +1938,6 @@ class ErrorFromSmartServer(BzrError):
         self.error_args = error_tuple[1:]
 
 
-class UnknownErrorFromSmartServer(BzrError):
-    """An ErrorFromSmartServer could not be translated into a typical breezy
-    error.
-
-    This is distinct from ErrorFromSmartServer so that it is possible to
-    distinguish between the following two cases:
-
-    - ErrorFromSmartServer was uncaught.  This is logic error in the client
-      and so should provoke a traceback to the user.
-    - ErrorFromSmartServer was caught but its error_tuple could not be
-      translated.  This is probably because the server sent us garbage, and
-      should not provoke a traceback.
-    """
-
-    _fmt = "Server sent an unexpected error: %(error_tuple)r"
-
-    internal_error = False
-
-    def __init__(self, error_from_smart_server):
-        """Constructor.
-
-        :param error_from_smart_server: An ErrorFromSmartServer instance.
-        """
-        self.error_from_smart_server = error_from_smart_server
-        self.error_tuple = error_from_smart_server.error_tuple
-
-
-class ContainerError(BzrError):
-    """Base class of container errors."""
-
-
-class UnknownContainerFormatError(ContainerError):
-
-    _fmt = "Unrecognised container format: %(container_format)r"
-
-    def __init__(self, container_format):
-        self.container_format = container_format
-
-
-class UnexpectedEndOfContainerError(ContainerError):
-
-    _fmt = "Unexpected end of container stream"
-
-
-class UnknownRecordTypeError(ContainerError):
-
-    _fmt = "Unknown record type: %(record_type)r"
-
-    def __init__(self, record_type):
-        self.record_type = record_type
-
-
-class InvalidRecordError(ContainerError):
-
-    _fmt = "Invalid record: %(reason)s"
-
-    def __init__(self, reason):
-        self.reason = reason
-
-
-class ContainerHasExcessDataError(ContainerError):
-
-    _fmt = "Container has data after end marker: %(excess)r"
-
-    def __init__(self, excess):
-        self.excess = excess
-
-
-class DuplicateRecordNameError(ContainerError):
-
-    _fmt = "Container has multiple records with the same name: %(name)s"
-
-    def __init__(self, name):
-        self.name = name.decode("utf-8")
-
-
 class RepositoryDataStreamError(BzrError):
 
     _fmt = "Corrupt or incompatible data stream: %(reason)s"
@@ -2163,14 +1996,6 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = get_user_encoding()
-
-
-class NoSuchAlias(BzrError):
-
-    _fmt = ('The alias "%(alias_name)s" does not exist.')
-
-    def __init__(self, alias_name):
-        BzrError.__init__(self, alias_name=alias_name)
 
 
 class CannotBindAddress(BzrError):
@@ -2252,14 +2077,6 @@ class NoRoundtrippingSupport(BzrError):
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch
         self.target_branch = target_branch
-
-
-class NoColocatedBranchSupport(BzrError):
-
-    _fmt = ("%(controldir)r does not support co-located branches.")
-
-    def __init__(self, controldir):
-        self.controldir = controldir
 
 
 class RecursiveBind(BzrError):

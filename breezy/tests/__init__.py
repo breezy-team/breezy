@@ -23,6 +23,7 @@
 
 import atexit
 import codecs
+import contextlib
 import copy
 import difflib
 import doctest
@@ -50,6 +51,7 @@ import tempfile
 import threading
 import time
 import traceback
+from typing import Set
 import unittest
 import warnings
 
@@ -89,7 +91,7 @@ from breezy.bzr import (
     )
 try:
     import breezy.lsprof
-except ImportError:
+except ModuleNotFoundError:
     # lsprof not available
     pass
 from ..bzr.smart import client, request
@@ -175,6 +177,7 @@ isolated_environ = {
     'all_proxy': None,
     'ALL_PROXY': None,
     'BZR_REMOTE_PATH': None,
+    'BRZ_SSH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
@@ -546,10 +549,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def report_tests_starting(self):
         """Display information before the test run begins"""
-        if getattr(sys, 'frozen', None) is None:
-            bzr_path = osutils.realpath(sys.argv[0])
-        else:
-            bzr_path = sys.executable
+        bzr_path = osutils.realpath(sys.argv[0])
         self.stream.write(
             'brz selftest: %s\n' % (bzr_path,))
         self.stream.write(
@@ -837,7 +837,7 @@ def iter_suite_tests(suite):
                         % (type(suite), suite))
 
 
-TestSkipped = testtools.testcase.TestSkipped
+from testtools.testcase import TestSkipped
 
 
 class TestNotApplicable(TestSkipped):
@@ -862,7 +862,7 @@ def _clever_some_str(value):
             return '<unprintable %s object>' % type(value).__name__
 
 
-traceback._some_str = _clever_some_str
+traceback._some_str = _clever_some_str  # type: ignore
 
 
 # deprecated - use self.knownFailure(), or self.expectFailure.
@@ -1695,6 +1695,12 @@ class TestCase(testtools.TestCase):
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
+    @contextlib.contextmanager
+    def text_log_file(self, **kwargs):
+        stream = TextIOWrapper(self._log_file, encoding='utf-8', **kwargs)
+        yield stream
+        stream.detach()
+
     def _finishLogFile(self):
         """Flush and dereference the in-memory log for this testcase"""
         if trace._trace_file:
@@ -2133,7 +2139,7 @@ class TestCase(testtools.TestCase):
         out, err = self.run_bzr(*args, **kwargs)
         return out, err
 
-    def run_bzr_subprocess(self, *args, **kwargs):
+    def run_brz_subprocess(self, *args, **kwargs):
         """Run brz in a subprocess for testing.
 
         This starts a new Python interpreter and runs brz in there.
@@ -2154,7 +2160,7 @@ class TestCase(testtools.TestCase):
             for system-wide plugins to create unexpected output on stderr,
             which can cause unnecessary test failures.
         """
-        env_changes = kwargs.get('env_changes', {})
+        env_changes = kwargs.get('env_changes', None)
         working_dir = kwargs.get('working_dir', None)
         allow_plugins = kwargs.get('allow_plugins', False)
         if len(args) == 1:
@@ -2163,18 +2169,18 @@ class TestCase(testtools.TestCase):
             elif isinstance(args[0], str):
                 args = list(shlex.split(args[0]))
         else:
-            raise ValueError("passing varargs to run_bzr_subprocess")
-        process = self.start_bzr_subprocess(args, env_changes=env_changes,
+            raise ValueError("passing varargs to run_brz_subprocess")
+        process = self.start_brz_subprocess(args, env_changes=env_changes,
                                             working_dir=working_dir,
                                             allow_plugins=allow_plugins)
         # We distinguish between retcode=None and retcode not passed.
         supplied_retcode = kwargs.get('retcode', 0)
-        return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
+        return self.finish_brz_subprocess(process, retcode=supplied_retcode,
                                           universal_newlines=kwargs.get(
                                               'universal_newlines', False),
                                           process_args=args)
 
-    def start_bzr_subprocess(self, process_args, env_changes=None,
+    def start_brz_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
                              allow_plugins=False, stderr=subprocess.PIPE):
@@ -2212,6 +2218,10 @@ class TestCase(testtools.TestCase):
         # gets set to the computed directory of this parent process.
         if site.USER_BASE is not None:
             env_changes["PYTHONUSERBASE"] = site.USER_BASE
+
+        if 'PYTHONPATH' not in env_changes:
+            env_changes['PYTHONPATH'] = ':'.join(sys.path)
+
         old_env = {}
 
         def cleanup_environment():
@@ -2237,10 +2247,7 @@ class TestCase(testtools.TestCase):
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
             self._add_subprocess_log(trace._get_brz_log_filename())
-            command = [sys.executable]
-            # frozen executables don't need the path to bzr
-            if getattr(sys, "frozen", None) is None:
-                command.append(bzr_path)
+            command = [bzr_path]
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
@@ -2279,7 +2286,7 @@ class TestCase(testtools.TestCase):
             detail_content = content.Content(
                 content.ContentType("text", "plain", {"charset": "utf8"}),
                 lambda: [log_file_bytes])
-            self.addDetail("start_bzr_subprocess-log-%d" % (count,),
+            self.addDetail("start_brz_subprocess-log-%d" % (count,),
                            detail_content)
 
     def _popen(self, *args, **kwargs):
@@ -2302,11 +2309,11 @@ class TestCase(testtools.TestCase):
             brz_path = sys.argv[0]
         return brz_path
 
-    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
+    def finish_brz_subprocess(self, process, retcode=0, send_signal=None,
                               universal_newlines=False, process_args=None):
         """Finish the execution of process.
 
-        :param process: the Popen object returned from start_bzr_subprocess.
+        :param process: the Popen object returned from start_brz_subprocess.
         :param retcode: The status code that is expected.  Defaults to 0.  If
             None is supplied, the status code is not checked.
         :param send_signal: an optional signal to send to the process.
@@ -2427,7 +2434,7 @@ class CapturedCall(object):
         # client frames. Beyond this we could get more clever, but this is good
         # enough for now.
         stack = traceback.extract_stack()[prefix_length:-5]
-        self.stack = ''.join(traceback.format_list(stack))
+        self._stack = ''.join(traceback.format_list(stack))
 
     def __str__(self):
         return self.call.method.decode('utf-8')
@@ -2436,7 +2443,7 @@ class CapturedCall(object):
         return self.call.method.decode('utf-8')
 
     def stack(self):
-        return self.stack
+        return self._stack
 
 
 class TestCaseWithMemoryTransport(TestCase):
@@ -2688,8 +2695,8 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-            root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
-                                                    suffix='.tmp'))
+            root = osutils.realpath(tempfile.mkdtemp(prefix='testbzr-',
+                                                     suffix='.tmp'))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
@@ -3053,7 +3060,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         try:
             mode = transport.stat(relpath).st_mode
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.fail("path %s is not a directory; no such file"
                       % (relpath))
         if not stat.S_ISDIR(mode):
@@ -3371,7 +3378,7 @@ parallel_registry = registry.Registry()
 def fork_decorator(suite):
     if getattr(os, "fork", None) is None:
         raise errors.CommandError("platform does not support fork,"
-                                     " try --parallel=subprocess instead.")
+                                  " try --parallel=subprocess instead.")
     concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
@@ -3452,7 +3459,7 @@ class TestDecorator(TestUtil.TestSuite):
             self.addTest(suite)
 
     # Don't need subclass run method with suite emptying
-    run = unittest.TestSuite.run
+    run = unittest.TestSuite.run  # type: ignore
 
 
 class CountingDecorator(TestDecorator):
@@ -3538,7 +3545,7 @@ def workaround_zealous_crypto_random():
     try:
         from Crypto.Random import atfork
         atfork()
-    except ImportError:
+    except ModuleNotFoundError:
         pass
 
 
@@ -3582,7 +3589,7 @@ def fork_for_tests(suite):
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
-                except ImportError:
+                except ModuleNotFoundError:
                     pass
                 else:
                     coverage.process_startup()
@@ -3649,9 +3656,6 @@ def reinvoke_for_tests(suite):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
         bzr_path = [bzr_path]
-        if sys.platform == "win32":
-            # if we're on windows, we can't execute the bzr script directly
-            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
@@ -3724,7 +3728,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags = set()
+selftest_debug_flags: Set[str] = set()
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
@@ -3819,7 +3823,7 @@ def load_test_id_list(file_name):
         if e.errno != errno.ENOENT:
             raise
         else:
-            raise errors.NoSuchFile(file_name)
+            raise _mod_transport.NoSuchFile(file_name)
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())
@@ -3986,8 +3990,6 @@ def _test_suite_testmod_names():
         'breezy.tests.per_workingtree',
         'breezy.tests.test__annotator',
         'breezy.tests.test__known_graph',
-        'breezy.tests.test__simple_set',
-        'breezy.tests.test__static_tuple',
         'breezy.tests.test__walkdirs_win32',
         'breezy.tests.test_ancestry',
         'breezy.tests.test_annotate',
@@ -4033,12 +4035,12 @@ def _test_suite_testmod_names():
         'breezy.tests.test_filters',
         'breezy.tests.test_filter_tree',
         'breezy.tests.test_foreign',
+        'breezy.tests.test_forge',
         'breezy.tests.test_generate_docs',
         'breezy.tests.test_globbing',
         'breezy.tests.test_gpg',
         'breezy.tests.test_graph',
         'breezy.tests.test_grep',
-        'breezy.tests.test_hashcache',
         'breezy.tests.test_help',
         'breezy.tests.test_hooks',
         'breezy.tests.test_http',
@@ -4065,7 +4067,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_memorybranch',
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
-        'breezy.tests.test_merge3',
         'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
@@ -4084,7 +4085,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_permissions',
         'breezy.tests.test_plugins',
         'breezy.tests.test_progress',
-        'breezy.tests.test_propose',
         'breezy.tests.test_pyutils',
         'breezy.tests.test_reconcile',
         'breezy.tests.test_reconfigure',
@@ -4094,8 +4094,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_revision',
         'breezy.tests.test_revisionspec',
         'breezy.tests.test_revisiontree',
-        'breezy.tests.test_rio',
-        'breezy.tests.test__rio',
         'breezy.tests.test_rules',
         'breezy.tests.test_url_policy_open',
         'breezy.tests.test_sampler',
@@ -4130,7 +4128,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_treebuilder',
         'breezy.tests.test_treeshape',
         'breezy.tests.test_tsort',
-        'breezy.tests.test_tuned_gzip',
         'breezy.tests.test_ui',
         'breezy.tests.test_uncommit',
         'breezy.tests.test_upgrade',
@@ -4161,7 +4158,6 @@ def _test_suite_modules_to_doctest():
         'breezy.decorators',
         'breezy.iterablefile',
         'breezy.lockdir',
-        'breezy.merge3',
         'breezy.option',
         'breezy.pyutils',
         'breezy.symbol_versioning',
@@ -4529,7 +4525,7 @@ try:
                 SubUnitBzrProtocolClientv1(self.stream))
             test.run(result)
             return result
-except ImportError:
+except ModuleNotFoundError:
     pass
 
 
@@ -4549,5 +4545,5 @@ try:
                                        stream=stream)
 
         run = SubunitTestRunner.run
-except ImportError:
+except ModuleNotFoundError:
     pass

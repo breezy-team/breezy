@@ -51,7 +51,10 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
 def _get_source_stream(source):
     if source == '-' or source is None:
         import sys
-        stream = helpers.binary_stream(sys.stdin)
+        try:
+            stream = sys.stdin.buffer
+        except AttributeError:
+            stream = helpers.binary_stream(sys.stdin)
     elif source.endswith('.gz'):
         import gzip
         stream = gzip.open(source, "rb")

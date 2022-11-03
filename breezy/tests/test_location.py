@@ -131,3 +131,5 @@ class RCPLocationTests(tests.TestCase):
     def test_invalid(self):
         self.assertRaises(ValueError, rcp_location_to_url, "http://srv/git/bar")
         self.assertRaises(ValueError, rcp_location_to_url, "git/bar")
+        # rcp host names cannot be shorter than two characters
+        self.assertRaises(ValueError, rcp_location_to_url, "c:/git/bar")

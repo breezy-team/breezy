@@ -17,8 +17,6 @@
 
 """The basic test suite for bzr."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import time
@@ -58,6 +56,9 @@ def load_tests(loader, basic_tests, pattern):
         'test__chk_map',
         'test__dirstate_helpers',
         'test__groupcompress',
+        'test__rio',
+        'test__simple_set',
+        'test__static_tuple',
         'test_btree_index',
         'test_bundle',
         'test_bzrdir',
@@ -66,6 +67,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_conflicts',
         'test_generate_ids',
         'test_groupcompress',
+        'test_hashcache',
         'test_index',
         'test_inv',
         'test_inventory_delta',
@@ -75,6 +77,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_read_bundle',
         'test_remote',
         'test_repository',
+        'test_rio',
         'test_smart',
         'test_smart_request',
         'test_smart_signals',
@@ -82,6 +85,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_serializer',
         'test_tag',
         'test_testament',
+        'test_tuned_gzip',
         'test_transform',
         'test_versionedfile',
         'test_vf_search',

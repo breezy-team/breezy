@@ -14,41 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-import bisect
-import datetime
+from typing import List, Type, Optional
 
 from breezy import (
-    branch as _mod_branch,
-    cache_utf8,
     revision,
     workingtree,
     )
 from breezy.i18n import gettext
-""")
 
 from . import (
     errors,
     lazy_regex,
     registry,
+    revision as _mod_revision,
     trace,
     )
-
-
-class InvalidRevisionSpec(errors.BzrError):
-
-    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch_url)s%(extra)s")
-
-    def __init__(self, spec, branch, extra=None):
-        errors.BzrError.__init__(self, branch=branch, spec=spec)
-        self.branch_url = getattr(branch, 'user_url', str(branch))
-        if extra:
-            self.extra = '\n' + str(extra)
-        else:
-            self.extra = ''
 
 
 class InvalidRevisionSpec(errors.BzrError):
@@ -163,8 +143,8 @@ class RevisionSpec(object):
     (Equivalent to the old Branch method get_revision_info())
     """
 
-    prefix = None
-    dwim_catchable_exceptions = (InvalidRevisionSpec,)
+    prefix: Optional[str] = None
+    dwim_catchable_exceptions: List[Type[Exception]] = [InvalidRevisionSpec]
     """Exceptions that RevisionSpec_dwim._match_on will catch.
 
     If the revspec is part of ``dwim_revspecs``, it may be tried with an
@@ -307,12 +287,12 @@ class RevisionSpec_dwim(RevisionSpec):
     is called so the string describing the revision is kept here until needed.
     """
 
-    help_txt = None
+    help_txt: str
 
     _revno_regex = lazy_regex.lazy_compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
 
     # The revspecs to try
-    _possible_revspecs = []
+    _possible_revspecs: List[Type[registry._ObjectGetter]] = []
 
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)
@@ -327,7 +307,7 @@ class RevisionSpec_dwim(RevisionSpec):
         if self._revno_regex.match(self.spec) is not None:
             try:
                 return self._try_spectype(RevisionSpec_revno, branch)
-            except RevisionSpec_revno.dwim_catchable_exceptions:
+            except tuple(RevisionSpec_revno.dwim_catchable_exceptions):
                 pass
 
         # Next see what has been registered
@@ -335,7 +315,7 @@ class RevisionSpec_dwim(RevisionSpec):
             rs_class = objgetter.get_obj()
             try:
                 return self._try_spectype(rs_class, branch)
-            except rs_class.dwim_catchable_exceptions:
+            except tuple(rs_class.dwim_catchable_exceptions):
                 pass
 
         # Well, I dunno what it is. Note that we don't try to keep track of the
@@ -422,8 +402,9 @@ class RevisionSpec_revno(RevisionSpec):
                 dotted = True
 
         if branch_spec:
+            from .branch import Branch
             # the user has overriden the branch to look in.
-            branch = _mod_branch.Branch.open(branch_spec)
+            branch = Branch.open(branch_spec)
 
         if dotted:
             try:
@@ -496,7 +477,7 @@ class RevisionSpec_revid(RevisionIDSpec):
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
         if isinstance(self.spec, str):
-            return cache_utf8.encode(self.spec)
+            return self.spec.encode('utf-8')
         return self.spec
 
 
@@ -627,7 +608,7 @@ class RevisionSpec_tag(RevisionSpec):
     """
 
     prefix = 'tag:'
-    dwim_catchable_exceptions = (errors.NoSuchTag, errors.TagsNotSupported)
+    dwim_catchable_exceptions = [errors.NoSuchTag, errors.TagsNotSupported]
 
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
@@ -649,11 +630,55 @@ class _RevListToTimestamps(object):
     def __getitem__(self, index):
         """Get the date of the index'd item"""
         r = self.branch.repository.get_revision(self.branch.get_rev_id(index))
-        # TODO: Handle timezone.
-        return datetime.datetime.fromtimestamp(r.timestamp)
+        return r.datetime()
 
-    def __len__(self):
-        return self.branch.revno()
+
+_date_regex = lazy_regex.lazy_compile(
+    r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
+    r'(,|T)?\s*'
+    r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
+    )
+
+
+def _parse_datespec(spec):
+    import datetime
+    #  XXX: This doesn't actually work
+    #  So the proper way of saying 'give me all entries for today' is:
+    #      -r date:yesterday..date:today
+    today = datetime.datetime.fromordinal(
+        datetime.date.today().toordinal())
+    if spec.lower() == 'yesterday':
+        return today - datetime.timedelta(days=1)
+    elif spec.lower() == 'today':
+        return today
+    elif spec.lower() == 'tomorrow':
+        return today + datetime.timedelta(days=1)
+    else:
+        m = _date_regex.match(spec)
+        if not m or (not m.group('date') and not m.group('time')):
+            raise ValueError
+
+        if m.group('date'):
+            year = int(m.group('year'))
+            month = int(m.group('month'))
+            day = int(m.group('day'))
+        else:
+            year = today.year
+            month = today.month
+            day = today.day
+
+        if m.group('time'):
+            hour = int(m.group('hour'))
+            minute = int(m.group('minute'))
+            if m.group('second'):
+                second = int(m.group('second'))
+            else:
+                second = 0
+        else:
+            hour, minute, second = 0, 0, 0
+
+        return datetime.datetime(year=year, month=month, day=day,
+                               hour=hour, minute=minute, second=second)
 
 
 class RevisionSpec_date(RevisionSpec):
@@ -677,11 +702,28 @@ class RevisionSpec_date(RevisionSpec):
                                    August 14th, 2006 at 5:10pm.
     """
     prefix = 'date:'
-    _date_regex = lazy_regex.lazy_compile(
-        r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
-        r'(,|T)?\s*'
-        r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
-        )
+
+    def _scan_backwards(self, branch, dt):
+        with branch.lock_read():
+            graph = branch.repository.get_graph()
+            last_match = None
+            for revid in graph.iter_lefthand_ancestry(
+                    branch.last_revision(), (_mod_revision.NULL_REVISION,)):
+                r = branch.repository.get_revision(revid)
+                if r.datetime() < dt:
+                    if last_match is None:
+                        raise InvalidRevisionSpec(self.user_spec, branch)
+                    return RevisionInfo(branch, None, last_match)
+                last_match = revid
+            return RevisionInfo(branch, None, last_match)
+
+    def _bisect_backwards(self, branch, dt, hi):
+        import bisect
+        with branch.lock_read():
+            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1, hi)
+        if rev == branch.revno():
+            raise InvalidRevisionSpec(self.user_spec, branch)
+        return RevisionInfo(branch, rev)
 
     def _match_on(self, branch, revs):
         """Spec for date revisions:
@@ -690,53 +732,16 @@ class RevisionSpec_date(RevisionSpec):
           matches the first entry after a given date (either at midnight or
           at a specified time).
         """
-        #  XXX: This doesn't actually work
-        #  So the proper way of saying 'give me all entries for today' is:
-        #      -r date:yesterday..date:today
-        today = datetime.datetime.fromordinal(
-            datetime.date.today().toordinal())
-        if self.spec.lower() == 'yesterday':
-            dt = today - datetime.timedelta(days=1)
-        elif self.spec.lower() == 'today':
-            dt = today
-        elif self.spec.lower() == 'tomorrow':
-            dt = today + datetime.timedelta(days=1)
+        try:
+            dt = _parse_datespec(self.spec)
+        except ValueError:
+            raise InvalidRevisionSpec(
+                self.user_spec, branch, 'invalid date')
+        revno = branch.revno()
+        if revno is None:
+            return self._scan_backwards(branch, dt)
         else:
-            m = self._date_regex.match(self.spec)
-            if not m or (not m.group('date') and not m.group('time')):
-                raise InvalidRevisionSpec(
-                    self.user_spec, branch, 'invalid date')
-
-            try:
-                if m.group('date'):
-                    year = int(m.group('year'))
-                    month = int(m.group('month'))
-                    day = int(m.group('day'))
-                else:
-                    year = today.year
-                    month = today.month
-                    day = today.day
-
-                if m.group('time'):
-                    hour = int(m.group('hour'))
-                    minute = int(m.group('minute'))
-                    if m.group('second'):
-                        second = int(m.group('second'))
-                    else:
-                        second = 0
-                else:
-                    hour, minute, second = 0, 0, 0
-            except ValueError:
-                raise InvalidRevisionSpec(
-                    self.user_spec, branch, 'invalid date')
-
-            dt = datetime.datetime(year=year, month=month, day=day,
-                                   hour=hour, minute=minute, second=second)
-        with branch.lock_read():
-            rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1)
-        if rev == branch.revno():
-            raise InvalidRevisionSpec(self.user_spec, branch)
-        return RevisionInfo(branch, rev)
+            return self._bisect_backwards(branch, dt, revno)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
@@ -808,7 +813,7 @@ class RevisionSpec_branch(RevisionSpec):
       branch:/path/to/branch
     """
     prefix = 'branch:'
-    dwim_catchable_exceptions = (errors.NotBranchError,)
+    dwim_catchable_exceptions = [errors.NotBranchError]
 
     def _match_on(self, branch, revs):
         from .branch import Branch
@@ -950,7 +955,8 @@ class RevisionSpec_mainline(RevisionIDSpec):
         if revspec.get_branch() is None:
             spec_branch = context_branch
         else:
-            spec_branch = _mod_branch.Branch.open(revspec.get_branch())
+            from .branch import Branch
+            spec_branch = Branch.open(revspec.get_branch())
         revision_id = revspec.as_revision_id(spec_branch)
         graph = context_branch.repository.get_graph()
         result = graph.find_lefthand_merger(revision_id,

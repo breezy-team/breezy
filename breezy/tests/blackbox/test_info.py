@@ -1288,7 +1288,7 @@ Location:
             # This should be removed when the locking errors are fixed.
             self.expectFailure('OS locks are exclusive '
                                'for different processes (Bug #174055)',
-                               self.run_bzr_subprocess,
+                               self.run_brz_subprocess,
                                'info ' + command_string)
         out, err = self.run_bzr('info %s' % command_string)
         description = {

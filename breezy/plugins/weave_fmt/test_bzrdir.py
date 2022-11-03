@@ -558,8 +558,8 @@ class TestBoundBranch(TestCaseWithTransport):
         # TODO: jam 20060427 Probably something like this really should
         #       print out the actual path, rather than the URL
         cwd = urlutils.local_path_to_url(getcwd())
-        self.assertEqual('brz: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % cwd, err)
+        self.assertEqual(
+            'brz: ERROR: Branch at %s/ does not support binding.\n' % cwd, err)
 
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error

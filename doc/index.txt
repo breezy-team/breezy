@@ -45,10 +45,10 @@ Developer Documentation
 Web links
 =========
 
-* `Switching Guides <http://wiki.bazaar.canonical.com/BzrSwitching>`_
+* `Switching Guides <http://wiki.breezy-vcs.org/Switching>`_
   |--| for users moving from another VCS tool
 
-* `Migration Guide <http://wiki.bazaar.canonical.com/BzrMigration>`_
+* `Migration Guide <http://wiki.breezy-vcs.org/Migration>`_
   |--| for teams migrating history from another VCS tool
 
 * `Glossary <en/user-reference/glossary-help.html>`_

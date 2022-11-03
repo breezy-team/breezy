@@ -36,8 +36,8 @@ class TestStores(object):
     """Mixin template class that provides some common tests for stores"""
 
     def check_content(self, store, fileid, value):
-        f = store.get(fileid)
-        self.assertEqual(f.read(), value)
+        with store.get(fileid) as f:
+            self.assertEqual(f.read(), value)
 
     def fill_store(self, store):
         store.add(BytesIO(b'hello'), b'a')
@@ -284,10 +284,10 @@ class TestTransportStore(TestCase):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport())
         my_store.register_suffix('dsc')
-        my_store.add(stream, b"foo", b'dsc')
+        my_store.add(stream, b"foo", 'dsc')
         self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
 
-    def test_add_simple_suffixed(self):
+    def test_add_simple_suffixed_dir(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
         my_store.register_suffix('dsc')

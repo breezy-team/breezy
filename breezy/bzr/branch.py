@@ -25,7 +25,6 @@ from breezy import (
     config as _mod_config,
     lockable_files,
     lockdir,
-    rio,
     shelf,
     )
 from breezy.bzr import (
@@ -33,11 +32,12 @@ from breezy.bzr import (
     )
 """)
 
-from . import bzrdir
+from . import bzrdir, rio
 from .. import (
     controldir,
     errors,
     revision as _mod_revision,
+    transport as _mod_transport,
     urlutils,
     )
 from ..branch import (
@@ -107,7 +107,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """Returns the directory containing the control directory."""
         return self._base
 
-    base = property(_get_base, doc="The URL for the root of this branch.")
+    base = property(_get_base, doc="The URL for the root of this branch.")  # type: ignore
 
     @property
     def user_transport(self):
@@ -165,7 +165,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         branch = self._uncommitted_branch()
         try:
             transform = branch._transport.get('stored-transform')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
         return shelf.Unshelver.from_tree_and_shelf(tree, transform)
 
@@ -260,7 +260,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         for l in _locs:
             try:
                 contents = self._transport.get_bytes(l)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
             else:
                 return contents.strip(b'\n').decode('utf-8')
@@ -318,7 +318,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
     def get_bound_location(self):
         try:
             return self._transport.get_bytes('bound')[:-1].decode('utf-8')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return None
 
     def get_master_branch(self, possible_transports=None):
@@ -339,9 +339,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             return Branch.open(bound_loc,
                                possible_transports=possible_transports)
-        except (errors.NotBranchError, errors.ConnectionError) as e:
+        except (errors.NotBranchError, errors.ConnectionError) as exc:
             raise errors.BoundBranchConnectionFailure(
-                self, bound_loc, e)
+                self, bound_loc, exc) from exc
 
     def set_bound_location(self, location):
         """Set the target where this branch is bound to.
@@ -357,7 +357,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             else:
                 try:
                     self._transport.delete('bound')
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     return False
                 return True
 
@@ -574,7 +574,7 @@ class BzrBranch8(BzrBranch):
                             s['branch_location'],
                             s['tree_path'] if 'tree_path' in s else None)
                         for s in stanzas}
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 info_dict = {}
             self._reference_info = info_dict
             return info_dict
@@ -682,9 +682,9 @@ class BzrBranch8(BzrBranch):
             except ValueError:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
-                except errors.RevisionNotPresent as e:
+                except errors.RevisionNotPresent as exc:
                     raise errors.GhostRevisionsHaveNoRevno(
-                        revision_id, e.revision_id)
+                        revision_id, exc.revision_id) from exc
                 index = len(self._partial_revision_history_cache) - 1
                 if index < 0:
                     raise errors.NoSuchRevision(self, revision_id)
@@ -728,13 +728,13 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
-        except errors.NoSuchFile:
-            raise errors.NotBranchError(path=name, controldir=controldir)
+        except _mod_transport.NoSuchFile as exc:
+            raise errors.NotBranchError(path=name, controldir=controldir) from exc
         try:
             format_string = transport.get_bytes("format")
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=controldir)
+                path=transport.base, controldir=controldir) from exc
         return klass._find_format(format_registry, 'branch', format_string)
 
     def _branch_class(self):
@@ -802,9 +802,9 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
                 a_controldir=a_controldir, _repository=found_repository,
                 ignore_fallbacks=ignore_fallbacks,
                 possible_transports=possible_transports)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=a_controldir)
+                path=transport.base, controldir=a_controldir) from exc
 
     @property
     def _matchingcontroldir(self):
@@ -1102,7 +1102,7 @@ class Converter5to6(object):
         with branch.lock_write():
             try:
                 branch.set_parent(None)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
             branch.set_bound_location(None)
 

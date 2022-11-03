@@ -24,6 +24,8 @@ Specific tests for individual formats are in the tests for the formats
 itself rather than in tests/per_interbranch/*.py.
 """
 
+from typing import List, Any
+
 
 from breezy import (
     branchbuilder,
@@ -165,7 +167,7 @@ class StubMatchingInter(object):
     and added rather than actually trying to do something.
     """
 
-    _uses = []
+    _uses: List[Any] = []
 
     def __init__(self, source, target):
         self.source = source

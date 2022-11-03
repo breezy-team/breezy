@@ -339,7 +339,7 @@ def main():
                          "this library manually and put it to directory\n"
                          "where Brz installed.\n"
                          "For detailed instructions see:\n"
-                         "http://wiki.bazaar.canonical.com/BzrOnPureWindows"
+                         "http://wiki.breezy-vcs.org/OnPureWindows"
                          ),
                         "Warning",
                         MB_OK | MB_ICONEXCLAMATION)

@@ -32,10 +32,7 @@ from . import (
     )
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    multiparent,
-    revision as _mod_revision,
     ui,
-    urlutils,
     )
 from breezy.i18n import gettext
 """)
@@ -50,9 +47,9 @@ from .osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_symlinks,
     )
 from .progress import ProgressPhase
+from .transport import FileExists, NoSuchFile
 from .tree import (
     InterTree,
     find_previous_path,
@@ -776,7 +773,6 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
     for id_num, change in enumerate(change_list):
         target_path, wt_path = change.path
         target_versioned, wt_versioned = change.versioned
-        target_parent = change.parent_id[0]
         target_name, wt_name = change.name
         target_kind, wt_kind = change.kind
         target_executable, wt_executable = change.executable
@@ -865,6 +861,7 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
             if target_path == '':
                 parent_trans = ROOT_PARENT
             else:
+                target_parent = change.parent_id[0]
                 parent_trans = tt.trans_id_file_id(target_parent)
             if wt_path == '' and wt_versioned:
                 tt.adjust_root_path(target_name, parent_trans)
@@ -1062,7 +1059,7 @@ class _FileMover(object):
             os.rename(from_, to)
         except OSError as e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
-                raise errors.FileExists(to, str(e))
+                raise FileExists(to, str(e))
             # normal OSError doesn't include filenames so it's hard to see where
             # the problem is, see https://bugs.launchpad.net/bzr/+bug/491763
             raise TransformRenameFailed(from_, to, str(e), e.errno)
@@ -1131,6 +1128,9 @@ class PreviewTree(object):
 
     def supports_setting_file_ids(self):
         raise NotImplementedError(self.supports_setting_file_ids)
+
+    def supports_symlinks(self):
+        return self._transform._tree.supports_symlinks()
 
     @property
     def _by_parent(self):
@@ -1211,7 +1211,7 @@ class PreviewTree(object):
                 if e.errno == errno.ENOENT:
                     return False
                 raise
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 return False
 
     def has_filename(self, path):
@@ -1226,7 +1226,7 @@ class PreviewTree(object):
     def get_file_sha1(self, path, stat_value=None):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_sha1(path)
@@ -1237,7 +1237,7 @@ class PreviewTree(object):
     def get_file_verifier(self, path, stat_value=None):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_verifier(path)
@@ -1248,13 +1248,13 @@ class PreviewTree(object):
     def kind(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         return self._transform.final_kind(trans_id)
 
     def stored_kind(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         try:
             return self._transform._new_contents[trans_id]
         except KeyError:
@@ -1277,7 +1277,7 @@ class PreviewTree(object):
         """See Tree.get_file_size"""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         kind = self._transform.final_kind(trans_id)
         if kind != 'file':
             return None
@@ -1291,7 +1291,7 @@ class PreviewTree(object):
     def get_reference_revision(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         reference_revision = self._transform._new_reference_revision.get(trans_id)
         if reference_revision is None:
             return self._transform._tree.get_reference_revision(path)

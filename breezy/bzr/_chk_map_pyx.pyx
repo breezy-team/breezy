@@ -60,7 +60,7 @@ from ._str_helpers cimport (
     )
 
 # cimport all of the definitions we will need to access
-from .._static_tuple_c cimport (
+from ._static_tuple_c cimport (
     import_static_tuple_c,
     StaticTuple,
     StaticTuple_New,

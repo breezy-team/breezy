@@ -16,6 +16,7 @@
 
 """Support for GitLab."""
 
+from datetime import datetime
 import json
 import os
 import re
@@ -32,17 +33,17 @@ from ...git.urls import git_url_to_bzr_url
 from ...trace import mutter
 from ...transport import get_transport
 
-from ...propose import (
+from ...forge import (
     determine_title,
-    Hoster,
+    Forge,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
     SourceNotDerivedFromTarget,
-    UnsupportedHoster,
-    HosterLoginRequired,
+    UnsupportedForge,
+    ForgeLoginRequired,
     )
 
 
@@ -56,6 +57,10 @@ def mp_status_to_status(status):
         'open': 'opened',
         'merged': 'merged',
         'closed': 'closed'}[status]
+
+
+def parse_timestring(ts):
+    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 class NotGitLabUrl(errors.BzrError):
@@ -107,9 +112,9 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-class GitLabLoginMissing(HosterLoginRequired):
+class GitLabLoginMissing(ForgeLoginRequired):
 
-    _fmt = ("Please log into GitLab instance at %(hoster)s")
+    _fmt = ("Please log into GitLab instance at %(forge)s")
 
 
 class GitlabLoginError(errors.BzrError):
@@ -154,21 +159,12 @@ class ProjectCreationTimeout(errors.BzrError):
         self.timeout = timeout
 
 
-def default_config_path():
-    return os.path.join(bedding.config_dir(), 'gitlab.conf')
-
-
 def store_gitlab_token(name, url, private_token):
     """Store a GitLab token in a configuration file."""
-    import configparser
-    config = configparser.ConfigParser()
-    path = default_config_path()
-    config.read([path])
-    config.add_section(name)
-    config[name]['url'] = url
-    config[name]['private_token'] = private_token
-    with open(path, 'w') as f:
-        config.write(f)
+    from breezy.config import AuthenticationConfig
+    auth_config = AuthenticationConfig()
+    auth_config._set_option(name, 'url', url)
+    auth_config._set_option(name, 'private_token', private_token)
 
 
 def iter_tokens():
@@ -176,8 +172,14 @@ def iter_tokens():
     config = configparser.ConfigParser()
     config.read(
         [os.path.expanduser(p) for p in _DEFAULT_FILES] +
-        [default_config_path()])
+        # backwards compatibility
+        [os.path.join(bedding.config_dir(), 'gitlab.conf')])
     for name, section in config.items():
+        yield name, section
+
+    from breezy.config import AuthenticationConfig
+    auth_config = AuthenticationConfig()
+    for name, section in auth_config._get_config().iteritems():
         yield name, section
 
 
@@ -258,6 +260,9 @@ class GitLabMergeProposal(MergeProposal):
     def url(self):
         return self._mr['web_url']
 
+    def get_web_url(self):
+        return self._mr['web_url']
+
     def get_description(self):
         return self._mr['description']
 
@@ -269,6 +274,12 @@ class GitLabMergeProposal(MergeProposal):
 
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
+
+    def get_title(self):
+        return self._mr.get('title')
+
+    def set_title(self, title):
+        self._update(title=title)
 
     def _branch_url_from_project(self, project_id, branch_name):
         if project_id is None:
@@ -290,6 +301,9 @@ class GitLabMergeProposal(MergeProposal):
     def get_target_branch_url(self):
         return self._branch_url_from_project(
             self._mr['target_project_id'], self._mr['target_branch'])
+
+    def set_target_branch_name(self, name):
+        self._update(branch=name)
 
     def _get_project_name(self, project_id):
         source_project = self.gl._get_project(project_id)
@@ -315,7 +329,10 @@ class GitLabMergeProposal(MergeProposal):
 
     def merge(self, commit_message=None):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
-        self._mr.merge(merge_commit_message=commit_message)
+        ret = self.gl._merge_mr(
+            self._mr['project_id'], self._mr['iid'],
+            kwargs={"merge_commit_message": commit_message})
+        self._mr.update(ret)
 
     def can_be_merged(self):
         if self._mr['merge_status'] == 'cannot_be_merged':
@@ -332,7 +349,7 @@ class GitLabMergeProposal(MergeProposal):
             raise ValueError(self._mr['merge_status'])
 
     def get_merged_by(self):
-        user = self._mr.get('merged_by')
+        user = self._mr.get('merge_user')
         if user is None:
             return None
         return user['username']
@@ -341,8 +358,7 @@ class GitLabMergeProposal(MergeProposal):
         merged_at = self._mr.get('merged_at')
         if merged_at is None:
             return None
-        import iso8601
-        return iso8601.parse_date(merged_at)
+        return parse_timestring(merged_at)
 
     def post_comment(self, body):
         kwargs = {'body': body}
@@ -354,10 +370,11 @@ def gitlab_url_to_bzr_url(url, name):
     return git_url_to_bzr_url(url, branch=name)
 
 
-class GitLab(Hoster):
-    """GitLab hoster implementation."""
+class GitLab(Forge):
+    """GitLab forge implementation."""
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_title = True
     supports_merge_proposal_commit_message = False
     supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
@@ -392,7 +409,7 @@ class GitLab(Hoster):
     def __init__(self, transport, private_token):
         self.transport = transport
         self.headers = {"Private-Token": private_token}
-        self.check()
+        self._current_user = None
 
     def _get_user(self, username):
         path = 'users/%s' % urlutils.quote(str(username), '')
@@ -491,9 +508,11 @@ class GitLab(Hoster):
             mr = self._get_merge_request(target_project, merge_id)
             raise MergeProposalExists(
                 source_url, GitLabMergeProposal(self, mr))
-        raise MergeRequestConflict(reason)
+        raise MergeRequestConflict(message)
 
     def get_current_user(self):
+        if not self._current_user:
+            self._retrieve_user()
         return self._current_user['username']
 
     def get_user_url(self, username):
@@ -511,7 +530,7 @@ class GitLab(Hoster):
             parameters['page'] = page
             response = self._api_request(
                 'GET', path + '?' +
-                ';'.join(['%s=%s' % item for item in parameters.items()]))
+                '&'.join(['%s=%s' % item for item in parameters.items()]))
             if response.status == 403:
                 raise errors.PermissionDenied(response.text)
             if response.status != 200:
@@ -558,6 +577,16 @@ class GitLab(Hoster):
             raise errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
+    def _merge_mr(self, project_id, iid, kwargs):
+        path = 'projects/%s/merge_requests/%s/merge' % (
+            urlutils.quote(str(project_id), ''), iid)
+        response = self._api_request('PUT', path, fields=kwargs)
+        if response.status == 200:
+            return json.loads(response.data)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        _unexpected_status(path, response)
+
     def _post_merge_request_note(self, project_id, iid, kwargs):
         path = 'projects/%s/merge_requests/%s/notes' % (
             urlutils.quote(str(project_id), ''), iid)
@@ -586,14 +615,15 @@ class GitLab(Hoster):
             fields['labels'] = labels
         response = self._api_request('POST', path, fields=fields)
         if response.status == 400:
-            raise GitLabError(data.get('message'), data)
+            data = json.loads(response.data)
+            raise GitLabError(data.get('message'), response)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
             raise GitLabConflict(json.loads(response.data).get('message'))
         if response.status == 422:
             data = json.loads(response.data)
-            raise GitLabUnprocessable(data.get('error'), data)
+            raise GitLabUnprocessable(data.get('error') or data.get('message'), data)
         if response.status != 201:
             _unexpected_status(path, response)
         return json.loads(response.data)
@@ -604,9 +634,20 @@ class GitLab(Hoster):
         return gitlab_url_to_bzr_url(
             project['ssh_url_to_repo'], branch_name)
 
+    def get_web_url(self, branch):
+        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        project = self._get_project(project_name)
+        if branch_name:
+            # TODO(jelmer): Use API to get this URL
+            return project['web_url'] + '/-/tree/' + branch_name
+        else:
+            return project['web_url']
+
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):
+        if tag_selector is None:
+            tag_selector = lambda t: False
         (host, base_project_name, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = base_branch.get_config_stack().get('fork-namespace')
@@ -689,7 +730,9 @@ class GitLab(Hoster):
             return False
         return self.base_hostname == host
 
-    def check(self):
+    def _retrieve_user(self):
+        if self._current_user:
+            return
         try:
             response = self._api_request('GET', 'user')
         except errors.UnexpectedHttpStatus as e:
@@ -704,30 +747,50 @@ class GitLab(Hoster):
                 raise GitLabLoginMissing(self.base_url)
             else:
                 raise GitlabLoginError(response.text)
-        raise UnsupportedHoster(self.base_url)
+        raise UnsupportedForge(self.base_url)
+
+    @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        base_url = 'https://%s' % hostname
+        credentials = get_credentials_by_url(base_url)
+        if credentials is not None:
+            transport = get_transport(
+                base_url, possible_transports=possible_transports)
+            instance = cls(transport, credentials.get('private_token'))
+            instance._retrieve_user()
+            return instance
+        # We could potentially probe for e.g. /api/v4/metadata here
+        # But none of the non-project APIs appear to be accessible without
+        # authentication :-(
+        raise UnsupportedForge(hostname)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         try:
             (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         transport = get_transport(
             'https://%s' % host, possible_transports=possible_transports)
         credentials = get_credentials_by_url(transport.base)
         if credentials is not None:
-            return cls(transport, credentials.get('private_token'))
+            instance = cls(transport, credentials.get('private_token'))
+            instance._retrieve_user()
+            return instance
         try:
             resp = transport.request(
                 'GET', 'https://%s/api/v4/projects/%s' % (host, urlutils.quote(str(project), '')))
         except errors.UnexpectedHttpStatus as e:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
+        except errors.RedirectRequested:
+            # GitLab doesn't send redirects for these URLs
+            raise UnsupportedForge(url)
         else:
             if not resp.getheader('X-Gitlab-Feature-Category'):
-                raise UnsupportedHoster(url)
+                raise UnsupportedForge(url)
             if resp.status in (200, 401):
                 raise GitLabLoginMissing('https://%s/' % host)
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
 
     @classmethod
     def iter_instances(cls):
@@ -758,14 +821,14 @@ class GitLab(Hoster):
         try:
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         except NotMergeRequestUrl as e:
             if self.base_hostname == e.host:
                 raise
             else:
-                raise UnsupportedHoster(url)
+                raise UnsupportedForge(url)
         if self.base_hostname != host:
-            raise UnsupportedHoster(url)
+            raise UnsupportedForge(url)
         project = self._get_project(project)
         mr = self._get_merge_request(project['path_with_namespace'], merge_id)
         return GitLabMergeProposal(self, mr)
@@ -807,9 +870,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+    def create_proposal(self, description, title=None, reviewers=None,
+                        labels=None, prerequisite_branch=None,
+                        commit_message=None, work_in_progress=False,
+                        allow_collaboration=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -818,7 +882,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
-        title = determine_title(description)
+        if title is None:
+            title = determine_title(description)
         if work_in_progress:
             title = 'WIP: %s' % title
         # TODO(jelmer): Allow setting milestone field

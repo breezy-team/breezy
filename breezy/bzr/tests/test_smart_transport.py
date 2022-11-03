@@ -26,6 +26,7 @@ import subprocess
 import sys
 import threading
 import time
+from typing import Type, Optional
 
 from testtools.matchers import DocTestMatches
 
@@ -42,6 +43,7 @@ from ... import (
 from .. import (
     bzrdir,
     )
+from ..remote import UnknownErrorFromSmartServer
 from ..smart import (
     client,
     medium,
@@ -695,7 +697,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         client_medium = medium.SmartSimplePipesClientMedium(
             None, output, 'base')
         client_medium._current_request = "a"
-        self.assertRaises(errors.TooManyConcurrentRequests,
+        self.assertRaises(medium.TooManyConcurrentRequests,
                           medium.SmartClientStreamMediumRequest, client_medium)
 
     def test_finished_read_clears_current_request(self):
@@ -764,7 +766,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         client_medium._socket = client_sock
         client_medium._connected = True
         req = client_medium.get_request()
-        self.assertRaises(errors.TooManyConcurrentRequests,
+        self.assertRaises(medium.TooManyConcurrentRequests,
                           client_medium.get_request)
         client_medium.reset()
         # The stream should be reset, marked as disconnected, though ready for
@@ -1320,7 +1322,7 @@ class TestSmartTCPServer(tests.TestCase):
         # don't need to try to connect to it. Not being set, though, the server
         # might still close the socket while we try to connect to it. So we
         # still have to catch the exception.
-        if server._stopped.isSet():
+        if server._stopped.is_set():
             return
         try:
             client_sock = self.connect_to_server(server)
@@ -1363,7 +1365,7 @@ class TestSmartTCPServer(tests.TestCase):
         self.addCleanup(smart_server.stop_server)
         t = remote.RemoteTCPTransport(smart_server.get_url())
         self.addCleanup(t.disconnect)
-        err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+        err = self.assertRaises(UnknownErrorFromSmartServer,
                                 t.get, 'something')
         self.assertContainsRe(str(err), 'some random exception')
 
@@ -1470,7 +1472,7 @@ class TestSmartTCPServer(tests.TestCase):
         client_sock.close()
         server_side_thread.join()
         server_thread.join()
-        self.assertTrue(server._fully_stopped.isSet())
+        self.assertTrue(server._fully_stopped.is_set())
         log = self.get_log()
         self.assertThat(log, DocTestMatches("""\
     INFO  Requested to stop gracefully
@@ -1595,7 +1597,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # for users.
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
         err = self.assertRaises(
-            errors.NoSuchFile, self.transport.get, 'not%20a%20file')
+            _mod_transport.NoSuchFile, self.transport.get, 'not%20a%20file')
         self.assertSubset([err.path], ['not%20a%20file', './not%20a%20file'])
 
     def test_simple_clone_conn(self):
@@ -1935,10 +1937,10 @@ class TestSmartProtocol(tests.TestCase):
     Subclasses can override client_protocol_class and server_protocol_class.
     """
 
-    request_encoder = None
-    response_decoder = None
-    server_protocol_class = None
-    client_protocol_class = None
+    request_encoder: object
+    response_decoder: Type[protocol._StatefulDecoder]
+    server_protocol_class: Type[protocol.SmartProtocolBase]
+    client_protocol_class: Optional[Type[protocol.SmartProtocolBase]] = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """
@@ -2784,7 +2786,7 @@ class TestVersionOneFeaturesInProtocolThree(
     # method.  So we make server_protocol_class be a static method, rather than
     # simply doing:
     # "server_protocol_class = protocol.build_server_protocol_three".
-    server_protocol_class = staticmethod(protocol.build_server_protocol_three)
+    server_protocol_class = staticmethod(protocol.build_server_protocol_three)  # type: ignore
 
     def setUp(self):
         super(TestVersionOneFeaturesInProtocolThree, self).setUp()
@@ -2834,7 +2836,7 @@ class TestProtocolThree(TestSmartProtocol):
 
     request_encoder = protocol.ProtocolThreeRequester
     response_decoder = protocol.ProtocolThreeDecoder
-    server_protocol_class = protocol.ProtocolThreeDecoder
+    server_protocol_class = protocol.ProtocolThreeDecoder  # type: ignore
 
     def test_trivial_request(self):
         """Smoke test for the simplest possible v3 request: empty headers, no
@@ -3206,7 +3208,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
 
     request_encoder = protocol.ProtocolThreeRequester
     response_decoder = protocol.ProtocolThreeDecoder
-    server_protocol_class = protocol.ProtocolThreeDecoder
+    server_protocol_class = protocol.ProtocolThreeDecoder  # type: ignore
 
     def make_client_encoder_and_output(self):
         result = self.make_client_protocol_and_output()
@@ -4341,3 +4343,28 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'bzr://www.example.com/foo')
         self.assertNotEqual(type(r), type(t))
+
+
+class TestErrors(tests.TestCase):
+    def test_too_many_concurrent_requests(self):
+        error = medium.TooManyConcurrentRequests("a medium")
+        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
+                             "request limit. Be sure to finish_writing and finish_reading on "
+                             "the currently open request.",
+                             str(error))
+
+    def test_smart_message_handler_error(self):
+        # Make an exc_info tuple.
+        try:
+            raise Exception("example error")
+        except Exception:
+            err = protocol.SmartMessageHandlerError(sys.exc_info())
+        # GZ 2010-11-08: Should not store exc_info in exception instances.
+        try:
+            self.assertStartsWith(
+                str(err), "The message handler raised an exception:\n")
+            self.assertEndsWith(str(err), "Exception: example error\n")
+        finally:
+            del err
+
+

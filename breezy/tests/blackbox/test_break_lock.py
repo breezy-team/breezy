@@ -59,7 +59,11 @@ class TestBreakLock(tests.TestCaseWithTransport):
         controldir.ControlDir.create('repo').create_repository()
         local_branch = controldir.ControlDir.create_branch_convenience(
             'repo/branch')
-        local_branch.bind(self.master_branch)
+        try:
+            local_branch.bind(self.master_branch)
+        except branch.BindingUnsupported:
+            raise tests.TestNotApplicable(
+                'default format does not support bound branches')
         checkoutdir = controldir.ControlDir.create('checkout')
         checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
@@ -123,4 +127,3 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
                      % osutils.dirname(self.config_file_name),
                      stdin="y\n")
         self.assertRaises(errors.LockBroken, self.config.unlock)
-

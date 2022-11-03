@@ -30,7 +30,6 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 from . import (
-    cache_utf8,
     errors,
     commands,
     option,
@@ -312,7 +311,7 @@ class ConflictList(object):
 class Conflict(object):
     """Base class for conflicts."""
 
-    typestring = None
+    typestring: str
 
     def __init__(self, path):
         self.path = path

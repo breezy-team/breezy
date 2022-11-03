@@ -184,10 +184,10 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
 
     def make_changelog_merger(self, base_text, this_text, other_text):
         builder = self.make_builder()
-        builder.add_file(b'clog-id', builder.tree_root, 'ChangeLog',
-                         base_text, True)
-        builder.change_contents(b'clog-id', other=other_text, this=this_text)
-        merger = builder.make_merger(merge.Merge3Merger, [b'clog-id'])
+        clog = builder.add_file(builder.root(), 'ChangeLog',
+                         base_text, True, file_id=b'clog-id')
+        builder.change_contents(clog, other=other_text, this=this_text)
+        merger = builder.make_merger(merge.Merge3Merger, ['ChangeLog'])
         # The following can't use config stacks until the plugin itself does
         # ('this_branch' is already write locked at this point and as such
         # won't write the new value to disk where get_user_option can get it).

@@ -20,10 +20,11 @@
 import re
 import sys
 import time
+from typing import Dict, Tuple, List
 
 
-_parent_stack = []
-_total_stack = {}
+_parent_stack: List[Tuple[int, str]] = []
+_total_stack: Dict[str, str] = {}
 _info = {}
 _cur_id = 0
 _timer = time.time
@@ -158,7 +159,7 @@ def _repr_regexp(pattern, max_len=30):
     return repr(pattern)
 
 
-_real_compile = re._compile
+_real_compile = re._compile  # type: ignore
 
 
 def timed_compile(*args, **kwargs):

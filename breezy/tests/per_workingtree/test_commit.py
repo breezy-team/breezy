@@ -54,11 +54,11 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_a.commit('autoremoved')
 
         with tree_a.lock_read():
-            root_id = tree_a.path2id('')
             paths = [(path, ie.file_id)
                      for path, ie in tree_a.iter_entries_by_dir()]
         # The only paths left should be the root
-        self.assertEqual([('', root_id)], paths)
+        if tree_a.supports_file_ids:
+            self.assertEqual([('', tree_a.path2id(''))], paths)
 
     def test_no_autodelete_renamed_away(self):
         tree_a = self.make_branch_and_tree('a')
@@ -216,7 +216,7 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_aborted_does_not_apply_automatic_changes_bug_282402(self):
         wt = self.make_branch_and_tree('.')
-        wt.add(['a'], None, ['file'])
+        wt.add(['a'], ['file'])
         self.assertTrue(wt.is_versioned('a'))
         if wt.supports_setting_file_ids():
             a_id = wt.path2id('a')
@@ -239,7 +239,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # older format.
             return
         master.controldir.transport.put_bytes('branch-format', b'garbage')
@@ -258,7 +258,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # older format.
             return
         committed_id = tree.commit('foo', local=True)
@@ -304,10 +304,6 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.lock_write()
         self.build_tree(['a', 'b/', 'b/c', 'd'])
         wt.add(['a', 'b', 'b/c', 'd'])
-        a_id = wt.path2id('a')
-        b_id = wt.path2id('b')
-        c_id = wt.path2id('b/c')
-        d_id = wt.path2id('d')
         this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
         this_dir.delete('d')
@@ -333,9 +329,6 @@ class TestCommit(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c', 'd'])
         wt.add(['a', 'b', 'b/c'])
-        a_id = wt.path2id('a')
-        b_id = wt.path2id('b')
-        c_id = wt.path2id('b/c')
         wt.commit('first')
         wt.remove('b/c')
         this_dir = wt.controldir.root_transport
@@ -357,7 +350,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.merge_from_branch(wt2.branch)
         wt.rename_one('name1', 'name2')
         wt.commit('third')
-        wt.path2id('name1')
+        self.assertFalse(wt.is_versioned('name1'))
 
     def test_nested_commit(self):
         """Commit in multiply-nested trees"""

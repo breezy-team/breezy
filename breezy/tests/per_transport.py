@@ -34,8 +34,6 @@ from .. import (
     urlutils,
     )
 from ..errors import (ConnectionError,
-                      FileExists,
-                      NoSuchFile,
                       PathError,
                       TransportNotPossible,
                       )
@@ -49,6 +47,8 @@ from . import test_server
 from .test_transport import TestTransportImplementation
 from ..transport import (
     ConnectedTransport,
+    NoSuchFile,
+    FileExists,
     Transport,
     _get_transport_modules,
     )
@@ -231,14 +231,6 @@ class TransportTests(TestTransportImplementation):
     def test_get_bytes_unknown_file(self):
         t = self.get_transport()
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
-
-    def test_get_with_open_write_stream_sees_all_content(self):
-        t = self.get_transport()
-        if t.is_readonly():
-            return
-        with t.open_write_stream('foo') as handle:
-            handle.write(b'b')
-            self.assertEqual(b'b', t.get_bytes('foo'))
 
     def test_get_bytes_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()

@@ -28,7 +28,7 @@ the path they point to.  Breezy doesn't care whether a versioned
 symlink is absolute or relative; or whether it points inside or outside
 the working tree; or whether its referent exists or not.  In Unix the
 target of a symlink is a byte string; Breezy treats this as a Unicode string
-in the filesystem encoding (`osutils._fs_enc`).
+in the filesystem encoding (`sys.getfilesystemencoding()`).
 
 So when we say ``brz add symlink``, this should always add the symlink to
 its containing working tree, and never dereference the symlink.

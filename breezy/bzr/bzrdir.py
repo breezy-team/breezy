@@ -25,20 +25,18 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
+import contextlib
 import sys
+from typing import Set
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import contextlib
-
 from breezy import (
     branch as _mod_branch,
     lockable_files,
-    lockdir,
     osutils,
     repository,
     revision as _mod_revision,
-    transport as _mod_transport,
     ui,
     urlutils,
     win32utils,
@@ -46,16 +44,12 @@ from breezy import (
 from breezy.bzr import (
     branch as _mod_bzrbranch,
     fetch,
+    fullhistory as fullhistorybranch,
+    knitpack_repo,
     remote,
     vf_search,
     workingtree_3,
     workingtree_4,
-    )
-from breezy.bzr import fullhistory as fullhistorybranch
-from breezy.bzr import knitpack_repo
-from breezy.transport import (
-    do_catching_redirections,
-    local,
     )
 from breezy.i18n import gettext
 """)
@@ -70,13 +64,19 @@ from .. import (
     config,
     controldir,
     errors,
+    lockdir,
+    transport as _mod_transport,
+    )
+from ..transport import (
+    do_catching_redirections,
+    local,
     )
 
 
 class MissingFeature(errors.BzrError):
 
     _fmt = ("Missing feature %(feature)s not provided by this "
-            "version of Bazaar or any plugin.")
+            "version of Breezy or any plugin.")
 
     def __init__(self, feature):
         self.feature = feature
@@ -780,6 +780,8 @@ class BzrDir(controldir.ControlDir):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the "
                                  "default format, not one of %r" % cls)
+        if format is None:
+            format = BzrDirFormat.get_default_format()
         return controldir.ControlDir.create(
             base, format=format, possible_transports=possible_transports)
 
@@ -830,7 +832,7 @@ class BzrDirMeta1(BzrDir):
         """
         try:
             f = self.control_transport.get('branch-list')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return []
 
         ret = []
@@ -887,7 +889,7 @@ class BzrDirMeta1(BzrDir):
                 self.control_files.unlock()
         try:
             self.transport.delete_tree(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(
                 path=urlutils.join(self.transport.base, path), controldir=self)
 
@@ -899,7 +901,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_repository."""
         try:
             self.transport.delete_tree('repository')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NoRepositoryPresent(self)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
@@ -985,7 +987,7 @@ class BzrDirMeta1(BzrDir):
         branch_transport.create_prefix(mode=mode)
         try:
             self.transport.mkdir(path, mode=mode)
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             pass
         return self.transport.clone(path)
 
@@ -999,7 +1001,7 @@ class BzrDirMeta1(BzrDir):
             raise errors.IncompatibleFormat(repository_format, self._format)
         try:
             self.transport.mkdir('repository', mode=self._get_mkdir_mode())
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             pass
         return self.transport.clone('repository')
 
@@ -1013,7 +1015,7 @@ class BzrDirMeta1(BzrDir):
             raise errors.IncompatibleFormat(workingtree_format, self._format)
         try:
             self.transport.mkdir('checkout', mode=self._get_mkdir_mode())
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             pass
         return self.transport.clone('checkout')
 
@@ -1142,7 +1144,7 @@ class BzrFormat(object):
     :ivar features: Dictionary mapping feature names to their necessity
     """
 
-    _present_features = set()
+    _present_features: Set[str] = set()
 
     def __init__(self):
         self.features = {}
@@ -1348,10 +1350,10 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         try:
             transport = do_catching_redirections(make_directory, transport,
                                                  redirected)
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             if not use_existing_dir:
                 raise
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             if not create_prefix:
                 raise
             transport.create_prefix()
@@ -1400,7 +1402,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                                           # FIXME: RBC 20060121 don't peek under
                                           # the covers
                                           mode=temp_control._dir_mode)
-        except errors.FileExists:
+        except _mod_transport.FileExists:
             raise errors.AlreadyControlDirError(transport.base)
         if sys.platform == 'win32' and isinstance(transport, local.LocalTransport):
             win32utils.set_file_attr_hidden(transport._abspath('.bzr'))
@@ -1836,24 +1838,6 @@ class ConvertMetaToColo(controldir.Converter):
 
     def __init__(self, target_format):
         """Create a converter.that upgrades a metadir to the colo format.
-
-        :param target_format: The final metadir format that is desired.
-        """
-        self.target_format = target_format
-
-    def convert(self, to_convert, pb):
-        """See Converter.convert()."""
-        to_convert.transport.put_bytes('branch-format',
-                                       self.target_format.as_string())
-        return BzrDir.open_from_transport(to_convert.root_transport)
-
-
-class ConvertMetaToColo(controldir.Converter):
-    """Convert a 'development-colo' bzrdir to a '2a' bzrdir."""
-
-    def __init__(self, target_format):
-        """Create a converter that converts a 'development-colo' metadir
-        to a '2a' metadir.
 
         :param target_format: The final metadir format that is desired.
         """

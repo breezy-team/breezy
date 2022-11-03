@@ -373,14 +373,11 @@ class InterToRemoteGitRepository(InterToGitRepository):
         with self.source_store.lock_read():
             result = self.target.send_pack(
                 git_update_refs, self.source_store.generate_lossy_pack_data)
-            if result is not None and not isinstance(result, dict):
-                for ref, error in result.ref_status.items():
-                    if error:
-                        raise RemoteGitError(
-                            'unable to update ref %r: %s' % (ref, error))
-                new_refs = result.refs
-            else:  # dulwich < 0.20.3
-                new_refs = result
+            for ref, error in result.ref_status.items():
+                if error:
+                    raise RemoteGitError(
+                        'unable to update ref %r: %s' % (ref, error))
+            new_refs = result.refs
         # FIXME: revidmap?
         return revidmap, self.old_refs, new_refs
 

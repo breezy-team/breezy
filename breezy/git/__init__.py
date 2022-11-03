@@ -61,7 +61,7 @@ if getattr(sys, "frozen", None):
 def import_dulwich():
     try:
         from dulwich import __version__ as dulwich_version
-    except ImportError:
+    except ModuleNotFoundError:
         raise brz_errors.DependencyNotPresent(
             "dulwich",
             "bzr-git: Please install dulwich, https://www.dulwich.io/")
@@ -285,6 +285,20 @@ install_lazy_named_hook(
     "breezy.version_info_formats.format_rio",
     "RioVersionInfoBuilder.hooks", "revision", update_stanza,
     "git commits")
+
+
+def rewrite_instead_of(location, purpose):
+    from dulwich.config import apply_instead_of, StackedConfig
+
+    config = StackedConfig.default()
+
+    return apply_instead_of(config, location, push=(purpose == "push"))
+
+
+from ..location import hooks as location_hooks
+location_hooks.install_named_hook(
+    "rewrite_location", rewrite_instead_of,
+    "apply Git insteadOf / pushInsteadOf")
 
 transport_server_registry.register_lazy(
     'git', __name__ + '.server', 'serve_git',

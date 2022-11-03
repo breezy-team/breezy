@@ -14,10 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from datetime import datetime
+
 from breezy.tests import TestCase
 
-from breezy.plugins.gitlab.hoster import (
+from breezy.plugins.gitlab.forge import (
     parse_gitlab_merge_request_url,
+    parse_timestring,
     NotMergeRequestUrl,
     NotGitLabUrl,
     )
@@ -50,3 +53,11 @@ class ParseGitLabMergeRequestUrlTests(TestCase):
             ('salsa.debian.org', 'jelmer/salsa', 4),
             parse_gitlab_merge_request_url(
                 'https://salsa.debian.org/jelmer/salsa/-/merge_requests/4'))
+
+
+class ParseTimestringTests(TestCase):
+
+    def test_simple(self):
+        self.assertEqual(
+            datetime(2018, 9, 7, 11, 16, 17, 520000),
+            parse_timestring("2018-09-07T11:16:17.520Z"))

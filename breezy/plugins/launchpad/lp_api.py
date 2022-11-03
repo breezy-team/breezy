@@ -21,6 +21,7 @@
 # needed by a command that uses it.
 
 
+import base64
 import re
 from urllib.parse import (
     urlparse,
@@ -49,14 +50,18 @@ class LaunchpadlibMissing(errors.DependencyNotPresent):
 
 try:
     import launchpadlib
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import RequestTokenAuthorizationEngine
+from launchpadlib.credentials import (
+    RequestTokenAuthorizationEngine,
+    CredentialStore,
+    Credentials,
+    AccessToken,
+)
 from launchpadlib.launchpad import (
     Launchpad,
-    )
-from launchpadlib import uris
+)
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
@@ -82,16 +87,6 @@ def check_launchpadlib_compatibility():
             % (MINIMUM_LAUNCHPADLIB_VERSION, installed_version))
 
 
-def lookup_service_root(service_root):
-    try:
-        return uris.lookup_service_root(service_root)
-    except ValueError:
-        if service_root != 'qastaging':
-            raise
-        staging_root = uris.lookup_service_root('staging')
-        return staging_root.replace('staging', 'qastaging')
-
-
 class NoLaunchpadBranch(errors.BzrError):
     _fmt = 'No launchpad branch could be found for branch "%(url)s".'
 
@@ -104,7 +99,44 @@ def get_auth_engine(base_url):
 
 
 def get_credential_store():
-    return Launchpad.credential_store_factory(None)
+    return BreezyCredentialStore()
+    # return Launchpad.credential_store_factory()
+
+
+
+class BreezyCredentialStore(CredentialStore):
+    """Implementation of the launchpadlib CredentialStore API for Breezy.
+    """
+
+    def __init__(self, credential_save_failed=None):
+        super(BreezyCredentialStore, self).__init__(credential_save_failed)
+        from breezy.config import AuthenticationConfig
+        self.auth_config = AuthenticationConfig()
+
+    def do_save(self, credentials, unique_key):
+        """Store newly-authorized credentials in the keyring."""
+        self.auth_config._set_option(
+            unique_key, 'consumer_key', credentials.consumer.key)
+        self.auth_config._set_option(
+            unique_key, 'consumer_secret', credentials.consumer.secret)
+        self.auth_config._set_option(
+            unique_key, 'access_token', credentials.access_token.key)
+        self.auth_config._set_option(
+            unique_key, 'access_secret', credentials.access_token.secret)
+
+    def do_load(self, unique_key):
+        """Retrieve credentials from the keyring."""
+        auth_def = self.auth_config._get_config().get(unique_key)
+        if auth_def and auth_def.get('access_secret'):
+            access_token = AccessToken(
+                auth_def.get('access_token'),
+                auth_def.get('access_secret'))
+            return Credentials(
+                consumer_name=auth_def.get('consumer_key'),
+                consumer_secret=auth_def.get('consumer_secret'),
+                access_token=access_token,
+                application_name='Breezy')
+        return None
 
 
 def connect_launchpad(base_url, timeout=None, proxy_info=None,
@@ -193,49 +225,6 @@ class LaunchpadBranch(object):
             yield url
         yield bzr_branch.base
 
-    @staticmethod
-    def tweak_url(url, launchpad):
-        """Adjust a URL to work with staging, if needed."""
-        if str(launchpad._root_uri) == uris.STAGING_SERVICE_ROOT:
-            return url.replace('bazaar.launchpad.net',
-                               'bazaar.staging.launchpad.net')
-        elif str(launchpad._root_uri) == lookup_service_root('qastaging'):
-            return url.replace('bazaar.launchpad.net',
-                               'bazaar.qastaging.launchpad.net')
-        return url
-
-    @classmethod
-    def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
-        """Find a Launchpad branch from a bzr branch."""
-        check_update = True
-        for url in cls.candidate_urls(bzr_branch):
-            url = cls.tweak_url(url, launchpad)
-            if not cls.plausible_launchpad_url(url):
-                continue
-            lp_branch = launchpad.branches.getByUrl(url=url)
-            if lp_branch is not None:
-                break
-        else:
-            if not create_missing:
-                raise NoLaunchpadBranch(bzr_branch)
-            lp_branch = cls.create_now(launchpad, bzr_branch)
-            check_update = False
-        return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
-
-    @classmethod
-    def create_now(cls, launchpad, bzr_branch):
-        """Create a Bazaar branch on Launchpad for the supplied branch."""
-        url = cls.tweak_url(bzr_branch.get_push_location(), launchpad)
-        if not cls.plausible_launchpad_url(url):
-            raise errors.BzrError(gettext('%s is not registered on Launchpad') %
-                                  bzr_branch.base)
-        bzr_branch.create_clone_on_transport(transport.get_transport(url))
-        lp_branch = launchpad.branches.getByUrl(url=url)
-        if lp_branch is None:
-            raise errors.BzrError(gettext('%s is not registered on Launchpad') %
-                                  url)
-        return lp_branch
-
     def get_target(self):
         """Return the 'LaunchpadBranch' for the target of this one."""
         lp_branch = self.lp
@@ -287,12 +276,3 @@ class LaunchpadBranch(object):
         lca = graph.find_unique_lca(self.bzr.last_revision(),
                                     other.bzr.last_revision())
         return self.bzr.repository.revision_tree(lca)
-
-
-def canonical_url(object):
-    """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse(
-        str(object.self_link))
-    path = '/'.join(path.split('/')[2:])
-    netloc = netloc.replace('api.', 'code.')
-    return urlunparse((scheme, netloc, path, params, query, fragment))

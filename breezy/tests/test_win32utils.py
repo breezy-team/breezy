@@ -17,6 +17,7 @@
 """Tests for win32utils."""
 
 import os
+from typing import List
 
 from .. import (
     osutils,
@@ -40,7 +41,7 @@ Win32RegistryFeature = features.ModuleAvailableFeature('_winreg')
 
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
-    _test_needs_features = []
+    _test_needs_features: List[features.Feature] = []
 
     def test_empty_tree(self):
         self.build_tree([])
@@ -314,4 +315,3 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.assertCommandLine([u"rm", u"x*"], "-m pdb rm x*", ["rm", u"x*"])
         self.assertCommandLine([u"add", u"d/f1", u"d/f2"], "-m pdb add d/*",
                                ["add", u"d/*"])
-

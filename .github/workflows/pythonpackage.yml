@@ -10,8 +10,12 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.7, 3.8, 3.9, "3.10"]
         experimental: [false]
+        include:
+          - os: macos-latest
+            experimental: true
+            python-version: 3.7
 # See https://github.com/actions/toolkit/issues/399
 #        include:
 #          - os: ubuntu-latest
@@ -29,11 +33,19 @@ jobs:
         run: |
           sudo apt install quilt
         if: "matrix.os == 'ubuntu-latest'"
+      - name: Install dependencies (brew)
+        run: |
+          brew install quilt
+        if: "matrix.os == 'macos-latest'"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -U pip setuptools
-          pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils $TEST_REQUIRE sphinx sphinx_epytext launchpadlib patiencediff pyinotify git+https://github.com/dulwich/dulwich
+          pip install -U pip "setuptools>=60" setuptools-gettext
+          pip install -U pip coverage codecov flake8 testtools paramiko fastbencode fastimport configobj cython testscenarios six docutils sphinx sphinx_epytext launchpadlib patiencediff git+https://github.com/dulwich/dulwich setuptools-rust pyyaml merge3 mypy
+      - name: Install dependencies (linux/pip)
+        run: |
+          python -m pip install pyinotify
+        if: "matrix.os == 'ubuntu-latest'"
       - name: Build docs
         run: |
           make docs PYTHON=python
@@ -43,7 +55,12 @@ jobs:
         if: "matrix.python-version != 'pypy3'"
       - name: Test suite run
         run: |
-          python -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -Wignore::ResourceWarning -Wignore::UserWarning ./brz selftest
+          ./brz selftest
         env:
           PYTHONHASHSEED: random
           BRZ_PLUGIN_PATH: -site:-user
+          PYTHONPATH: .
+      - name: Run mypy
+        run: |
+          python -m pip install types-PyYAML types-paramiko types-setuptools
+          python -m mypy breezy

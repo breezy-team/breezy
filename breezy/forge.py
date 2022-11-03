@@ -17,6 +17,7 @@
 """Helper functions for proposing merges."""
 
 import re
+from typing import Optional, Type
 
 from . import (
     errors,
@@ -45,9 +46,9 @@ class MergeProposalExists(errors.BzrError):
         self.existing_proposal = existing_proposal
 
 
-class UnsupportedHoster(errors.BzrError):
+class UnsupportedForge(errors.BzrError):
 
-    _fmt = "No supported hoster for %(branch)s."
+    _fmt = "No supported forge for %(branch)s."
 
     def __init__(self, branch):
         errors.BzrError.__init__(self)
@@ -57,6 +58,11 @@ class UnsupportedHoster(errors.BzrError):
 class ReopenFailed(errors.BzrError):
 
     _fmt = "Reopening the merge proposal failed: %(error)s."
+
+
+class TitleUnsupported(errors.BzrError):
+
+    _fmt = "The merge proposal %(mp)s does not support a title."
 
 
 class ProposeMergeHooks(hooks.Hooks):
@@ -73,31 +79,31 @@ class ProposeMergeHooks(hooks.Hooks):
 
 
 class LabelsUnsupported(errors.BzrError):
-    """Labels not supported by this hoster."""
+    """Labels not supported by this forge."""
 
-    _fmt = "Labels are not supported by %(hoster)r."
+    _fmt = "Labels are not supported by %(forge)r."
 
-    def __init__(self, hoster):
+    def __init__(self, forge):
         errors.BzrError.__init__(self)
-        self.hoster = hoster
+        self.forge = forge
 
 
 class PrerequisiteBranchUnsupported(errors.BzrError):
-    """Prerequisite branch not supported by this hoster."""
+    """Prerequisite branch not supported by this forge."""
 
-    def __init__(self, hoster):
+    def __init__(self, forge):
         errors.BzrError.__init__(self)
-        self.hoster = hoster
+        self.forge = forge
 
 
-class HosterLoginRequired(errors.BzrError):
-    """Action requires hoster login credentials."""
+class ForgeLoginRequired(errors.BzrError):
+    """Action requires forge login credentials."""
 
-    _fmt = "Action requires credentials for hosting site %(hoster)r."""
+    _fmt = "Action requires credentials for hosting site %(forge)r."""
 
-    def __init__(self, hoster):
+    def __init__(self, forge):
         errors.BzrError.__init__(self)
-        self.hoster = hoster
+        self.forge = forge
 
 
 class SourceNotDerivedFromTarget(errors.BzrError):
@@ -121,6 +127,9 @@ class MergeProposal(object):
     def __init__(self, url=None):
         self.url = url
 
+    def get_web_url(self):
+        raise NotImplementedError(self.get_web_url)
+
     def get_description(self):
         """Get the description of the merge proposal."""
         raise NotImplementedError(self.get_description)
@@ -128,6 +137,14 @@ class MergeProposal(object):
     def set_description(self, description):
         """Set the description of the merge proposal."""
         raise NotImplementedError(self.set_description)
+
+    def get_title(self):
+        """Get the title."""
+        raise NotImplementedError(self.get_title)
+
+    def set_title(self, title):
+        """Get the title."""
+        raise NotImplementedError(self.set_title)
 
     def get_commit_message(self):
         """Get the proposed commit message."""
@@ -148,6 +165,10 @@ class MergeProposal(object):
     def get_target_branch_url(self):
         """Return the target branch."""
         raise NotImplementedError(self.get_target_branch_url)
+
+    def set_target_branch_name(self):
+        """Set the target branch name."""
+        raise NotImplementedError(self.set_target_branch_name)
 
     def get_source_project(self):
         raise NotImplementedError(self.get_source_project)
@@ -229,53 +250,57 @@ class MergeProposalBuilder(object):
         """
         raise NotImplementedError(self.get_infotext)
 
-    def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None,
+    def create_proposal(self, description, title=None, reviewers=None,
+                        labels=None, prerequisite_branch=None,
+                        commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Create a proposal to merge a branch for merging.
 
-        :param description: Description for the merge proposal
-        :param reviewers: Optional list of people to ask reviews from
-        :param labels: Labels to attach to the proposal
-        :param prerequisite_branch: Optional prerequisite branch
-        :param commit_message: Optional commit message
-        :param work_in_progress:
+        Args:
+          description: Description for the merge proposal
+          reviewers: Optional list of people to ask reviews from
+          labels: Labels to attach to the proposal
+          prerequisite_branch: Optional prerequisite branch
+          commit_message: Optional commit message
+          work_in_progress:
             Whether this merge proposal is still a work-in-progress
-        :param allow_collaboration:
+          allow_collaboration:
             Whether to allow changes to the branch from the target branch
             maintainer(s)
-        :return: A `MergeProposal` object
+        Returns: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
 
 
-class Hoster(object):
+class Forge(object):
     """A hosting site manager.
     """
 
-    # Does this hoster support arbitrary labels being attached to merge
+    # Does this forge support arbitrary labels being attached to merge
     # proposals?
-    supports_merge_proposal_labels = None
+    supports_merge_proposal_labels: bool
+
+    supports_merge_proposal_title: bool
 
     @property
     def name(self):
         """Name of this instance."""
         return "%s at %s" % (type(self).__name__, self.base_url)
 
-    # Does this hoster support suggesting a commit message in the
+    # Does this forge support suggesting a commit message in the
     # merge proposal?
-    supports_merge_proposal_commit_message = None
+    supports_merge_proposal_commit_message: bool
 
     # The base_url that would be visible to users. I.e. https://github.com/
     # rather than https://api.github.com/
-    base_url = None
+    base_url: str
 
     # The syntax to use for formatting merge proposal descriptions.
     # Common values: 'plain', 'markdown'
-    merge_proposal_description_format = None
+    merge_proposal_description_format: str
 
-    # Does this hoster support the allow_collaboration flag?
-    supports_allow_collaboration = False
+    # Does this forge support the allow_collaboration flag?
+    supports_allow_collaboration: bool = False
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
@@ -285,7 +310,7 @@ class Hoster(object):
         :param base_branch: branch to derive the new branch from
         :param new_branch: branch to publish
         :return: resulting branch, public URL
-        :raise HosterLoginRequired: Action requires a hoster login, but none is
+        :raise ForgeLoginRequired: Action requires a forge login, but none is
             known.
         """
         raise NotImplementedError(self.publish_derived)
@@ -299,10 +324,14 @@ class Hoster(object):
         """Get the push URL for a branch."""
         raise NotImplementedError(self.get_push_url)
 
+    def get_web_url(self, branch):
+        """Get the web viewing URL for a branch."""
+        raise NotImplementedError(self.get_web_url)
+
     def get_proposer(self, source_branch, target_branch):
         """Get a merge proposal creator.
 
-        :note: source_branch does not have to be hosted by the hoster.
+        :note: source_branch does not have to be hosted by the forge.
 
         :param source_branch: Source branch
         :param target_branch: Target branch
@@ -325,25 +354,32 @@ class Hoster(object):
 
         :param url: Merge proposal URL.
         :return: MergeProposal object
-        :raise UnsupportedHoster: Hoster does not support this URL
+        :raise UnsupportedForge: Forge does not support this URL
         """
         raise NotImplementedError(self.get_proposal_by_url)
 
     def hosts(self, branch):
-        """Return true if this hoster hosts given branch."""
+        """Return true if this forge hosts given branch."""
         raise NotImplementedError(self.hosts)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        """Create a Forge object if this forge knows about a hostname.
+        """
+        raise NotImplementedError(cls.probe_from_hostname)
+
+    @classmethod
     def probe_from_branch(cls, branch):
-        """Create a Hoster object if this hoster knows about a branch."""
+        """Create a Forge object if this forge knows about a branch."""
         url = urlutils.strip_segment_parameters(branch.user_url)
         return cls.probe_from_url(
             url, possible_transports=[branch.control_transport])
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
-        """Create a Hoster object if this hoster knows about a URL."""
-        raise NotImplementedError(cls.probe_from_url)
+        """Create a Forge object if this forge knows about a URL."""
+        hostname = urlutils.URL.from_string(url).host
+        return cls.probe_from_hostname(hostname, possible_transports=possible_transports)
 
     def iter_my_proposals(self, status='open', author=None):
         """Iterate over the proposals created by the currently logged in user.
@@ -352,7 +388,7 @@ class Hoster(object):
             (one of: 'open', 'closed', 'merged', 'all')
         :param author: Name of author to query (defaults to current user)
         :return: Iterator over MergeProposal objects
-        :raise HosterLoginRequired: Action requires a hoster login, but none is
+        :raise ForgeLoginRequired: Action requires a forge login, but none is
             known.
         """
         raise NotImplementedError(self.iter_my_proposals)
@@ -370,11 +406,16 @@ class Hoster(object):
         """
         raise NotImplementedError(self.delete_project)
 
+    def create_project(self, name):
+        """Create a project.
+        """
+        raise NotImplementedError(self.create_project)
+
     @classmethod
     def iter_instances(cls):
         """Iterate instances.
 
-        :return: Hoster instances
+        :return: Forge instances
         """
         raise NotImplementedError(cls.iter_instances)
 
@@ -405,41 +446,52 @@ def determine_title(description):
         return firstline[:i]
 
 
-def get_hoster(branch, possible_hosters=None):
-    """Find the hoster for a branch.
+def get_forge(branch, possible_forges=None):
+    """Find the forge for a branch.
 
-    :param branch: Branch to find hoster for
-    :param possible_hosters: Optional list of hosters to reuse
-    :raise UnsupportedHoster: if there is no hoster that supports `branch`
-    :return: A `Hoster` object
+    :param branch: Branch to find forge for
+    :param possible_forges: Optional list of forges to reuse
+    :raise UnsupportedForge: if there is no forge that supports `branch`
+    :return: A `Forge` object
     """
-    if possible_hosters:
-        for hoster in possible_hosters:
-            if hoster.hosts(branch):
-                return hoster
-    for name, hoster_cls in hosters.items():
+    if possible_forges:
+        for forge in possible_forges:
+            if forge.hosts(branch):
+                return forge
+    for name, forge_cls in forges.items():
         try:
-            hoster = hoster_cls.probe_from_branch(branch)
-        except UnsupportedHoster:
+            forge = forge_cls.probe_from_branch(branch)
+        except UnsupportedForge:
             pass
         else:
-            if possible_hosters is not None:
-                possible_hosters.append(hoster)
-            return hoster
-    raise UnsupportedHoster(branch)
+            if possible_forges is not None:
+                possible_forges.append(forge)
+            return forge
+    raise UnsupportedForge(branch)
 
 
-def iter_hoster_instances(hoster=None):
-    """Iterate over all known hoster instances.
-
-    :return: Iterator over Hoster instances
+def get_forge_by_hostname(hostname: str):
+    """Get a forge from a hostname.
     """
-    if hoster is None:
-        hoster_clses = [hoster_cls for name, hoster_cls in hosters.items()]
+    for instance in iter_forge_instances():
+        try:
+            return instance.probe_from_hostname(hostname)
+        except UnsupportedForge:
+            pass
+    raise UnsupportedForge(hostname)
+
+
+def iter_forge_instances(forge: Optional[Type[Forge]] = None):
+    """Iterate over all known forge instances.
+
+    :return: Iterator over Forge instances
+    """
+    if forge is None:
+        forge_clses = [forge_cls for name, forge_cls in forges.items()]
     else:
-        hoster_clses = [hoster]
-    for hoster_cls in hoster_clses:
-        for instance in hoster_cls.iter_instances():
+        forge_clses = [forge]
+    for forge_cls in forge_clses:
+        for instance in forge_cls.iter_instances():
             yield instance
 
 
@@ -447,15 +499,15 @@ def get_proposal_by_url(url):
     """Get the proposal object associated with a URL.
 
     :param url: URL of the proposal
-    :raise UnsupportedHoster: if there is no hoster that supports the URL
+    :raise UnsupportedForge: if there is no forge that supports the URL
     :return: A `MergeProposal` object
     """
-    for instance in iter_hoster_instances():
+    for instance in iter_forge_instances():
         try:
             return instance.get_proposal_by_url(url)
-        except UnsupportedHoster:
+        except UnsupportedForge:
             pass
-    raise UnsupportedHoster(url)
+    raise UnsupportedForge(url)
 
 
 def create_project(url: str) -> None:
@@ -464,16 +516,18 @@ def create_project(url: str) -> None:
     Args:
       url: URL of project to create
     """
-    for hoster_cls in [hoster_cls for name, hoster_cls in hosters.items()]:
+    parsed_url = urlutils.URL.from_string(url)
+    hostname = parsed_url.host
+    for name, forge_cls in forges.items():
         try:
-            hoster = hoster_cls.probe_from_url(url)
-        except UnsupportedHoster:
+            hoster = forge_cls.probe_from_url(url)
+        except UnsupportedForge:
             pass
         else:
-            hoster.create_project(urlutils.URL.from_string(url).path)
+            hoster.create_project(parsed_url.path)
             break
     else:
-        raise UnsupportedHoster(url)
+        raise UnsupportedForge(url)
 
 
-hosters = registry.Registry()
+forges = registry.Registry()

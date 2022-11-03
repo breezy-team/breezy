@@ -20,6 +20,7 @@
 
 import base64
 import stat
+from typing import Optional
 
 import fastbencode as bencode
 
@@ -58,6 +59,12 @@ HG_EXTRA = b"HG:extra"
 
 # This HG extra is used to indicate the commit that this commit was based on.
 HG_EXTRA_AMEND_SOURCE = b"amend_source"
+HG_EXTRA_REBASE_SOURCE = b"rebase_source"
+HG_EXTRA_ABSORB_SOURCE = b"absorb_source"
+HG_EXTRA_SOURCE = b"source"
+HG_EXTRA_INTERMEDIATE_SOURCE = b"intermediate-source"
+HG_EXTRA_TOPIC = b"topic"
+HG_EXTRA_REWRITE_NOISE = b"_rewrite_noise"
 
 FILE_ID_PREFIX = b'git:'
 
@@ -81,6 +88,14 @@ class UnknownMercurialCommitExtra(errors.BzrError):
         errors.BzrError.__init__(self)
         self.object = object
         self.fields = b",".join(fields)
+
+
+class UnknownCommitEncoding(errors.BzrError):
+    _fmt = "Unknown commit encoding: %(encoding)s"
+
+    def __init__(self, encoding):
+        errors.BzrError.__init__(self)
+        self.encoding = encoding
 
 
 def escape_file_id(file_id):
@@ -310,8 +325,11 @@ class BzrGitMapping(foreign.VcsMapping):
             pass
         commit.committer = fix_person_identifier(rev.committer.encode(
             encoding))
+        first_author = rev.get_apparent_authors()[0]
+        if ',' in first_author and first_author.count('>') > 1:
+            first_author = first_author.split(',')[0]
         commit.author = fix_person_identifier(
-            rev.get_apparent_authors()[0].encode(encoding))
+            first_author.encode(encoding))
         # TODO(jelmer): Don't use this hack.
         long = getattr(__builtins__, 'long', int)
         commit.commit_time = long(rev.timestamp)
@@ -360,13 +378,16 @@ class BzrGitMapping(foreign.VcsMapping):
         i = 0
         propname = u'git-mergetag-0'
         while propname in rev.properties:
-            commit.mergetag.append(Tag.from_string(rev.properties[propname]))
+            commit.mergetag.append(
+                Tag.from_string(rev.properties[propname].encode('utf-8', 'surrogateescape')))
             i += 1
             propname = u'git-mergetag-%d' % i
         if u'git-extra' in rev.properties:
-            commit.extra.extend(
-                [l.split(b' ', 1)
-                 for l in rev.properties[u'git-extra'].splitlines()])
+            for l in rev.properties['git-extra'].splitlines():
+                (k, v) = l.split(' ', 1)
+                commit.extra.append(
+                    (k.encode('utf-8', 'surrogateescape'),
+                     v.encode('utf-8', 'surrogateescape')))
         return commit
 
     def get_revision_id(self, commit):
@@ -397,9 +418,15 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.git_metadata = None
 
         def decode_using_encoding(rev, commit, encoding):
-            rev.committer = commit.committer.decode(encoding)
-            if commit.committer != commit.author:
-                rev.properties[u'author'] = commit.author.decode(encoding)
+            try:
+                rev.committer = commit.committer.decode(encoding)
+            except LookupError:
+                raise UnknownCommitEncoding(encoding)
+            try:
+                if commit.committer != commit.author:
+                    rev.properties[u'author'] = commit.author.decode(encoding)
+            except LookupError:
+                raise UnknownCommitEncoding(encoding)
             rev.message, rev.git_metadata = self._decode_commit_message(
                 rev, commit.message, encoding)
 
@@ -431,7 +458,8 @@ class BzrGitMapping(foreign.VcsMapping):
                 'utf-8', 'surrogateescape')
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
-                rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string()
+                rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string().decode(
+                    'utf-8', 'surrogateescape')
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         rev.parent_ids = None
@@ -457,12 +485,19 @@ class BzrGitMapping(foreign.VcsMapping):
         extra_lines = []
         for k, v in commit.extra:
             if k == HG_RENAME_SOURCE:
-                extra_lines.append(k + b' ' + v + b'\n')
+                extra_lines.append(
+                    k.decode('utf-8', 'surrogateescape') + ' ' +
+                    v.decode('utf-8', 'surrogateescape') + '\n')
             elif k == HG_EXTRA:
                 hgk, hgv = v.split(b':', 1)
-                if hgk not in (HG_EXTRA_AMEND_SOURCE, ) and strict:
+                if hgk not in (HG_EXTRA_AMEND_SOURCE, HG_EXTRA_REBASE_SOURCE,
+                               HG_EXTRA_ABSORB_SOURCE, HG_EXTRA_INTERMEDIATE_SOURCE,
+                               HG_EXTRA_SOURCE, HG_EXTRA_TOPIC,
+                               HG_EXTRA_REWRITE_NOISE) and strict:
                     raise UnknownMercurialCommitExtra(commit, [hgk])
-                extra_lines.append(k + b' ' + v + b'\n')
+                extra_lines.append(
+                    k.decode('utf-8', 'surrogateescape') + ' ' +
+                    v.decode('utf-8', 'surrogateescape') + '\n')
             else:
                 unknown_extra_fields.append(k)
         if unknown_extra_fields and strict:
@@ -470,7 +505,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 commit,
                 [f.decode('ascii', 'replace') for f in unknown_extra_fields])
         if extra_lines:
-            rev.properties[u'git-extra'] = b''.join(extra_lines)
+            rev.properties['git-extra'] = ''.join(extra_lines)
         return rev, roundtrip_revid, verifiers
 
 
@@ -479,7 +514,7 @@ class BzrGitMappingv1(BzrGitMapping):
     experimental = False
 
     def __str__(self):
-        return self.revid_prefix
+        return self.revid_prefix.decode('utf-8')
 
 
 class BzrGitMappingExperimental(BzrGitMappingv1):
@@ -495,7 +530,10 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         message = self._extract_hg_metadata(rev, message)
         message = self._extract_git_svn_metadata(rev, message)
         message, metadata = self._extract_bzr_metadata(rev, message)
-        return message.decode(encoding), metadata
+        try:
+            return message.decode(encoding), metadata
+        except LookupError:
+            raise UnknownCommitEncoding(encoding)
 
     def _encode_commit_message(self, rev, message, encoding):
         ret = message.encode(encoding)

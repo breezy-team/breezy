@@ -44,7 +44,7 @@ class TestRemove(TestCaseWithTransport):
             self.build_tree(paths)
             for path in paths:
                 file_id = path.replace('/', '_').encode('utf-8') + _id
-                tree.add(path, file_id)
+                tree.add(path, ids=file_id)
         return tree
 
     def assertFilesDeleted(self, files):
@@ -123,7 +123,7 @@ class TestRemove(TestCaseWithTransport):
         self.assertNotInWorkingTree('bar', tree=tree)
 
     def test_remove_no_files_specified_missing_link(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self._make_tree_and_add(['foo'])
         os.symlink('foo', 'linkname')
         tree.add(['linkname'])

@@ -37,9 +37,6 @@ from dulwich.index import (
     validate_path,
     write_index_dict,
     )
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
 from dulwich.objects import (
     S_ISGITLINK,
     )
@@ -75,6 +72,7 @@ from ..mutabletree import (
 
 from .dir import (
     LocalGitDir,
+    BareLocalGitControlDirFormat,
     )
 from .tree import (
     MutableGitIndexTree,
@@ -134,7 +132,7 @@ class TextConflict(_mod_conflicts.Conflict):
         #                can't be auto resolved does not seem ideal.
         try:
             kind = tree.kind(self.path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return
         if kind != 'file':
             raise NotImplementedError("Conflict is not a file")
@@ -219,10 +217,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             info = self._submodule_info()[relpath]
         except KeyError:
             submodule_transport = self.user_transport.clone(decode_git_path(relpath))
+            submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
         else:
             submodule_transport = self.control_transport.clone(
                 posixpath.join('modules', decode_git_path(info[1])))
-        submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
+            submodule_dir = BareLocalGitControlDirFormat().open(submodule_transport)
         return Index(submodule_dir.control_transport.local_abspath('index'))
 
     def lock_read(self):
@@ -281,7 +280,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def break_lock(self):
         try:
             self.control_transport.delete('index.lock')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             pass
         self.branch.break_lock()
 
@@ -314,7 +313,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _detect_case_handling(self):
         try:
             self._transport.stat(".git/cOnFiG")
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.case_sensitive = True
         else:
             self.case_sensitive = False
@@ -341,7 +340,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         else:
             try:
                 self.control_transport.delete('MERGE_HEAD')
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -384,7 +383,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             parents = [last_rev]
         try:
             merges_bytes = self.control_transport.get_bytes('MERGE_HEAD')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
@@ -483,7 +482,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
                 try:
                     kind = self.kind(f)
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     kind = None
 
                 abs_path = self.abspath(f)
@@ -627,27 +626,21 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             from_dir = u""
         if not isinstance(from_dir, str):
             raise TypeError(from_dir)
-        encoded_from_dir = self.abspath(from_dir).encode(osutils._fs_enc)
+        encoded_from_dir = os.fsencode(self.abspath(from_dir))
         for (dirpath, dirnames, filenames) in os.walk(encoded_from_dir):
             dir_relpath = dirpath[len(self.basedir):].strip(b"/")
-            if self.controldir.is_control_filename(
-                    dir_relpath.decode(osutils._fs_enc)):
+            if self.controldir.is_control_filename(os.fsdecode(dir_relpath)):
                 continue
             for name in list(dirnames):
-                if self.controldir.is_control_filename(
-                        name.decode(osutils._fs_enc)):
+                if self.controldir.is_control_filename(os.fsdecode(name)):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
-                if not recurse_nested and self._directory_is_tree_reference(relpath.decode(osutils._fs_enc)):
+                if not recurse_nested and self._directory_is_tree_reference(os.fsdecode(relpath)):
                     dirnames.remove(name)
                 if include_dirs:
-                    try:
-                        yield relpath.decode(osutils._fs_enc)
-                    except UnicodeDecodeError:
-                        raise errors.BadFilenameEncoding(
-                            relpath, osutils._fs_enc)
-                    if not self.is_versioned(relpath.decode(osutils._fs_enc)):
+                    yield os.fsdecode(relpath)
+                    if not self.is_versioned(os.fsdecode(os.fsdecode(relpath))):
                         try:
                             dirnames.remove(name)
                         except ValueError:
@@ -655,15 +648,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             for name in filenames:
                 if self.mapping.is_special_file(name):
                     continue
-                if self.controldir.is_control_filename(
-                        name.decode(osutils._fs_enc, 'replace')):
+                if self.controldir.is_control_filename(os.fsdecode(name)):
                     continue
                 yp = os.path.join(dir_relpath, name)
-                try:
-                    yield yp.decode(osutils._fs_enc)
-                except UnicodeDecodeError:
-                    raise errors.BadFilenameEncoding(
-                        yp, osutils._fs_enc)
+                yield os.fsdecode(yp)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -684,7 +672,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         kind = osutils.file_kind(fullpath)
                     except OSError as e:
                         if e.errno == errno.ENOENT:
-                            raise errors.NoSuchFile(fullpath)
+                            raise _mod_transport.NoSuchFile(fullpath)
                     if f != '' and self._directory_is_tree_reference(f):
                         kind = 'tree-reference'
                     kinds[pos] = kind
@@ -715,7 +703,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return self._lstat(path).st_mtime
         except OSError as e:
             if e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
             raise
 
     def is_ignored(self, filename):
@@ -737,7 +725,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             if self.kind(filename) == 'directory':
                 filename += '/'
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             pass
         filename = filename.lstrip('/')
         ignore_manager = self._get_ignore_manager()
@@ -781,12 +769,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             except KeyError:
                 if self._has_dir(path):
                     return ("GIT", None)
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
 
     def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():
             if not self.is_versioned(path):
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
             abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
@@ -815,14 +803,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 # Maybe it's a directory?
                 if self._has_dir(encoded_path):
                     return "directory"
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
 
     def _lstat(self, path):
         return os.lstat(self.abspath(path))
 
     def _live_entry(self, path):
-        encoded_path = self.abspath(decode_git_path(path)).encode(
-            osutils._fs_enc)
+        encoded_path = os.fsencode(self.abspath(decode_git_path(path)))
         return index_entry_from_path(encoded_path)
 
     def is_executable(self, path):
@@ -864,21 +851,16 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         from_dir, include_dirs=True,
                         recurse_nested=recurse_nested))
             else:
-                encoded_from_dir = self.abspath(from_dir).encode(
-                    osutils._fs_enc)
+                encoded_from_dir = os.fsencode(self.abspath(from_dir))
                 path_iterator = sorted(
-                    [os.path.join(from_dir, name.decode(osutils._fs_enc))
+                    [os.path.join(from_dir, os.fsdecode(name))
                      for name in os.listdir(encoded_from_dir)
                      if not self.controldir.is_control_filename(
-                         name.decode(osutils._fs_enc)) and
+                         os.fsdecode(name)) and
                      not self.mapping.is_special_file(
-                         name.decode(osutils._fs_enc))])
+                         os.fsdecode(name))])
             for path in path_iterator:
-                try:
-                    encoded_path = encode_git_path(path)
-                except UnicodeEncodeError:
-                    raise errors.BadFilenameEncoding(
-                        path, osutils._fs_enc)
+                encoded_path = encode_git_path(path)
                 (index, index_path) = self._lookup_index(encoded_path)
                 try:
                     value = index[index_path]
@@ -920,9 +902,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     yield (posixpath.relpath(path, from_dir),
                            ("I" if self.is_ignored(path) else "?"), kind, ie)
 
-    def all_file_ids(self):
-        raise errors.UnsupportedOperation(self.all_file_ids, self)
-
     def all_versioned_paths(self):
         with self.lock_read():
             paths = {u""}
@@ -961,7 +940,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         name, decoded_item_path, value, parent_id)
                 yield file_ie
             if not found_any and path != u'':
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
 
     def conflicts(self):
         with self.lock_read():
@@ -1191,7 +1170,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     parent_path = path
                     try:
                         kind = parent_tree.kind(parent_path)
-                    except errors.NoSuchFile:
+                    except _mod_transport.NoSuchFile:
                         continue
                     if kind != 'file':
                         # Note: this is slightly unnecessary, because symlinks
@@ -1278,10 +1257,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             show_base=False):
         basis_tree = self.revision_tree(old_revision)
         if new_revision != old_revision:
-            from .. import merge
+            from ..merge import merge_inner
             with basis_tree.lock_read():
                 new_basis_tree = self.branch.basis_tree()
-                merge.merge_inner(
+                merge_inner(
                     self.branch,
                     new_basis_tree,
                     basis_tree,
@@ -1316,18 +1295,21 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 raise BadReferenceTarget(
                     self, sub_tree, 'Target not inside tree.')
 
-            self._add([sub_tree_path], [None], ['tree-reference'])
+            path, can_access = osutils.normalized_filename(sub_tree_path)
+            if not can_access:
+                raise errors.InvalidNormalization(path)
+            self._index_add_entry(sub_tree_path, 'tree-reference')
 
     def _read_submodule_head(self, path):
         return read_submodule_head(self.abspath(path))
 
-    def get_reference_revision(self, path, branch=None):
+    def get_reference_revision(self, path):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
             (index, subpath) = self._lookup_index(
                 encode_git_path(path))
             if subpath is None:
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
             hexsha = index[subpath].sha
         return self.branch.lookup_foreign_revision_id(hexsha)
 
@@ -1522,7 +1504,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         # local work is unreferenced and will appear to have been lost.
         #
         with self.lock_tree_write():
-            from .. import merge
+            from ..merge import merge_inner
             nb_conflicts = []
             try:
                 last_rev = self.get_parent_ids()[0]
@@ -1538,10 +1520,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 # merge those changes in first
                 base_tree = self.basis_tree()
                 other_tree = self.branch.repository.revision_tree(old_tip)
-                nb_conflicts = merge.merge_inner(self.branch, other_tree,
-                                                 base_tree, this_tree=self,
-                                                 change_reporter=change_reporter,
-                                                 show_base=show_base)
+                nb_conflicts = merge_inner(self.branch, other_tree,
+                                           base_tree, this_tree=self,
+                                           change_reporter=change_reporter,
+                                           show_base=show_base)
                 if nb_conflicts:
                     self.add_parent_tree((old_tip, other_tree))
                     return len(nb_conflicts)
@@ -1555,10 +1537,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                                     last_rev)
                 base_tree = self.branch.repository.revision_tree(base_rev_id)
 
-                nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
-                                                 this_tree=self,
-                                                 change_reporter=change_reporter,
-                                                 show_base=show_base)
+                nb_conflicts = merge_inner(self.branch, to_tree, base_tree,
+                                           this_tree=self,
+                                           change_reporter=change_reporter,
+                                           show_base=show_base)
                 self.set_last_revision(revision)
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the tree we've updated to to set the basis:

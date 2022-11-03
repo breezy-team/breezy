@@ -27,6 +27,7 @@ from ... import (
     osutils,
     tests,
     trace,
+    transport,
     workingtree,
     )
 from .. import (
@@ -65,12 +66,12 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         try:
             self.build_tree(['tree/' + filename])
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             if sys.platform == 'win32':
                 raise tests.TestNotApplicable('Cannot create files named %r on'
                                               ' win32' % (filename,))
         tree.smart_add(['tree'])
-        self.assertEqual(None, tree.path2id(filename))
+        self.assertFalse(tree.is_versioned(filename))
 
     def test_path_containing_newline_skips(self):
         self.assertFilenameSkipped('a\nb')
@@ -85,7 +86,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
             self.build_tree(['file'])
             wt.smart_add(['file'], save=False)
             # the file should not be added - no id.
-            self.assertEqual(wt.path2id('file'), None)
+            self.assertFalse(wt.is_versioned('file'))
         # and the disk state should be the same - reopen to check.
         wt = wt.controldir.open_workingtree()
         self.assertFalse(wt.is_versioned('file'))
@@ -194,7 +195,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
         wt = self.make_branch_and_tree('.')
-        self.assertRaises(errors.NoSuchFile, wt.smart_add,
+        self.assertRaises(transport.NoSuchFile, wt.smart_add,
                           ['non-existant-file'])
 
     def test_returns_and_ignores(self):
@@ -358,7 +359,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         if (self.workingtree_format.requires_normalized_unicode_filenames
                 and sys.platform != 'darwin'):
             self.assertRaises(
-                errors.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
+                transport.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
         else:
             self.wt.smart_add([u'a\u030a'])
 

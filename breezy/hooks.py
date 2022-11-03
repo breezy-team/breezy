@@ -14,7 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Support for plugin hooking logic."""
+
+from typing import Dict, Tuple, List
 
 from . import (
     errors,
@@ -22,8 +26,6 @@ from . import (
     )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import textwrap
-
 from breezy import (
     _format_version_tuple,
     pyutils,
@@ -274,14 +276,16 @@ class Hooks(dict):
 class HookPoint(object):
     """A single hook that clients can register to be called back when it fires.
 
-    :ivar name: The name of the hook.
-    :ivar doc: The docs for using the hook.
-    :ivar introduced: A version tuple specifying what version the hook was
-        introduced in. None indicates an unknown version.
-    :ivar deprecated: A version tuple specifying what version the hook was
-        deprecated or superseded in. None indicates that the hook is not
-        superseded or deprecated. If the hook is superseded then the doc
-        should describe the recommended replacement hook to register for.
+    Attributes:
+      name: The name of the hook.
+      doc: The docs for using the hook.
+      introduced: A version tuple specifying what version the hook was
+                      introduced in. None indicates an unknown version.
+      deprecated: A version tuple specifying what version the hook was
+                      deprecated or superseded in. None indicates that the hook
+                      is not superseded or deprecated. If the hook is
+                      superseded then the doc should describe the recommended
+                      replacement hook to register for.
     """
 
     def __init__(self, name, doc, introduced, deprecated=None, callbacks=None):
@@ -307,6 +311,7 @@ class HookPoint(object):
 
         :return: A string terminated in \n.
         """
+        import textwrap
         strings = []
         strings.append(self.name)
         strings.append('~' * len(self.name))
@@ -433,7 +438,7 @@ def hooks_help_text(topic):
 
 # Lazily registered hooks. Maps (module, name, hook_name) tuples
 # to lists of tuples with objectgetters and names
-_lazy_hooks = {}
+_lazy_hooks: Dict[Tuple[str, str, str], List[Tuple[registry._ObjectGetter, str]]] = {}
 
 
 def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,

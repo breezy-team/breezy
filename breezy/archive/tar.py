@@ -41,7 +41,6 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
 
     Returns a (tarinfo, fileobj) tuple
     """
-    file_id = getattr(entry, 'file_id', None)
     filename = osutils.pathjoin(root, final_path)
     item = tarfile.TarInfo(filename)
     if force_mtime is not None:
@@ -75,25 +74,24 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         fileobj = None
     else:
         raise errors.BzrError("don't know how to export {%s} of kind %r"
-                              % (file_id, entry.kind))
+                              % (final_path, entry.kind))
     return (item, fileobj)
 
 
-def tarball_generator(tree, root, subdir=None, force_mtime=None, format=''):
+def tarball_generator(tree, root, subdir=None, force_mtime=None, format='', recurse_nested=False):
     """Export tree contents to a tarball.
 
-    :returns: A generator that will produce file content chunks.
-
-    :param tree: Tree to export
-
-    :param subdir: Sub directory to export
-
-    :param force_mtime: Option mtime to force, instead of using tree
+    Args:
+      tree: Tree to export
+      subdir: Sub directory to export
+      force_mtime: Option mtime to force, instead of using tree
         timestamps.
+    Returns: A generator that will produce file content chunks.
     """
     buf = BytesIO()
     with closing(tarfile.open(None, "w:%s" % format, buf)) as ball, tree.lock_read():
-        for final_path, tree_path, entry in _export_iter_entries(tree, subdir):
+        for final_path, tree_path, entry in _export_iter_entries(
+                tree, subdir, recurse_nested=recurse_nested):
             (item, fileobj) = prepare_tarball_item(
                 tree, root, final_path, tree_path, entry, force_mtime)
             ball.addfile(item, fileobj)
@@ -104,7 +102,7 @@ def tarball_generator(tree, root, subdir=None, force_mtime=None, format=''):
     yield buf.getvalue()
 
 
-def tgz_generator(tree, dest, root, subdir, force_mtime=None):
+def tgz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=False):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -133,7 +131,9 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
         buf = BytesIO()
         zipstream = gzip.GzipFile(basename, 'w', fileobj=buf,
                                   mtime=root_mtime)
-        for chunk in tarball_generator(tree, root, subdir, force_mtime):
+        for chunk in tarball_generator(
+                tree, root, subdir, force_mtime,
+                recurse_nested=recurse_nested):
             zipstream.write(chunk)
             # Yield the data that was written so far, rinse, repeat.
             yield buf.getvalue()
@@ -144,33 +144,37 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
         yield buf.getvalue()
 
 
-def tbz_generator(tree, dest, root, subdir, force_mtime=None):
+def tbz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=False):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
     return tarball_generator(
-        tree, root, subdir, force_mtime, format='bz2')
+        tree, root, subdir, force_mtime, format='bz2',
+        recurse_nested=recurse_nested)
 
 
 def plain_tar_generator(tree, dest, root, subdir,
-                        force_mtime=None):
+                        force_mtime=None, recurse_nested=False):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
     return tarball_generator(
-        tree, root, subdir, force_mtime, format='')
+        tree, root, subdir, force_mtime, format='',
+        recurse_nested=recurse_nested)
 
 
-def tar_xz_generator(tree, dest, root, subdir, force_mtime=None):
-    return tar_lzma_generator(tree, dest, root, subdir, force_mtime, "xz")
+def tar_xz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=False):
+    return tar_lzma_generator(
+        tree, dest, root, subdir, force_mtime, "xz",
+        recurse_nested=recurse_nested)
 
 
 def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
-                       compression_format="alone"):
+                       compression_format="alone", recurse_nested=False):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -178,8 +182,8 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
     """
     try:
         import lzma
-    except ImportError as e:
-        raise errors.DependencyNotPresent('lzma', e)
+    except ModuleNotFoundError as exc:
+        raise errors.DependencyNotPresent('lzma', e) from exc
 
     compressor = lzma.LZMACompressor(
         format={
@@ -189,7 +193,8 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
             }[compression_format])
 
     for chunk in tarball_generator(
-            tree, root, subdir, force_mtime=force_mtime):
+            tree, root, subdir, force_mtime=force_mtime,
+            recurse_nested=recurse_nested):
         yield compressor.compress(chunk)
 
     yield compressor.flush()

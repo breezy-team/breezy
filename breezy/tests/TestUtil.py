@@ -18,6 +18,7 @@
 
 import logging
 import unittest
+from typing import List, Dict
 import weakref
 
 from .. import pyutils
@@ -133,7 +134,7 @@ class TestLoader(unittest.TestLoader):
 
     suiteClass = TestSuite
     # Memoize test names by test class dict
-    test_func_names = {}
+    test_func_names: Dict[str, List[str]] = {}
 
     def loadTestsFromModuleNames(self, names):
         """use a custom means to load tests from modules.

@@ -21,10 +21,10 @@ https://www.breezy-vcs.org/developers/.
 
 Some particularly interesting things in breezy are:
 
- * breezy.initialize -- setup the library for use
- * breezy.plugin.load_plugins -- load all installed plugins
- * breezy.branch.Branch.open -- open a branch
- * breezy.workingtree.WorkingTree.open -- open a working tree
+* breezy.initialize -- setup the library for use
+* breezy.plugin.load_plugins -- load all installed plugins
+* breezy.branch.Branch.open -- open a branch
+* breezy.workingtree.WorkingTree.open -- open a working tree
 
 We hope you enjoy this library.
 """
@@ -41,7 +41,7 @@ import sys
 
 __copyright__ = (
     "Copyright 2005-2012 Canonical Ltd.\n"
-    "Copyright 2017-2020 Breezy developers"
+    "Copyright 2017-2022 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of
@@ -51,7 +51,7 @@ __copyright__ = (
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 2, 1, 'final', 0)
+version_info = (3, 3, 1, 'dev', 0)
 
 
 def _format_version_tuple(version_info):
@@ -66,13 +66,13 @@ def _format_version_tuple(version_info):
     >>> print(_format_version_tuple((1, 0, 0, 'final', 0)))
     1.0.0
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 0)))
-    1.2.0dev
+    1.2.0.dev
     >>> print(_format_version_tuple((1, 2, 0, 'dev', 1)))
-    1.2.0dev1
+    1.2.0.dev1
     >>> print(_format_version_tuple((1, 1, 1, 'candidate', 2)))
-    1.1.1rc2
+    1.1.1.rc2
     >>> print(_format_version_tuple((2, 1, 0, 'beta', 1)))
-    2.1b1
+    2.1.b1
     >>> print(_format_version_tuple((1, 4, 0)))
     1.4.0
     >>> print(_format_version_tuple((1, 4)))
@@ -97,15 +97,15 @@ def _format_version_tuple(version_info):
     elif release_type == 'final':
         sub_string = '.' + str(sub)
     elif release_type == 'dev' and sub == 0:
-        sub_string = 'dev'
+        sub_string = '.dev'
     elif release_type == 'dev':
-        sub_string = 'dev' + str(sub)
+        sub_string = '.dev' + str(sub)
     elif release_type in ('alpha', 'beta'):
         if version_info[2] == 0:
             main_version = '%d.%d' % version_info[:2]
-        sub_string = release_type[0] + str(sub)
+        sub_string = '.' + release_type[0] + str(sub)
     elif release_type == 'candidate':
-        sub_string = 'rc' + str(sub)
+        sub_string = '.rc' + str(sub)
     else:
         return '.'.join(map(str, version_info))
 
@@ -114,6 +114,7 @@ def _format_version_tuple(version_info):
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
+_core_version_string = '.'.join(map(str, version_info[:3]))
 
 
 def _patch_filesystem_default_encoding(new_enc):
@@ -155,7 +156,7 @@ def _patch_filesystem_default_encoding(new_enc):
 _fs_enc = sys.getfilesystemencoding()
 if getattr(sys, "_brz_default_fs_enc", None) is not None:
     if (_fs_enc is None or codecs.lookup(_fs_enc).name == "ascii"):
-        _fs_enc = _patch_filesystem_default_encoding(sys._brz_default_fs_enc)
+        _fs_enc = _patch_filesystem_default_encoding(sys._brz_default_fs_enc)  # type: ignore
 if _fs_enc is None:
     _fs_enc = "ascii"
 else:

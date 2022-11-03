@@ -37,6 +37,7 @@ from .. import (
     registry,
     repository as _mod_repository,
     revision as _mod_revision,
+    transport as _mod_transport,
     urlutils,
     )
 from . import (
@@ -68,6 +69,33 @@ from .versionedfile import FulltextContentFactory
 
 
 _DEFAULT_SEARCH_DEPTH = 100
+
+
+class UnknownErrorFromSmartServer(errors.BzrError):
+    """An ErrorFromSmartServer could not be translated into a typical breezy
+    error.
+
+    This is distinct from ErrorFromSmartServer so that it is possible to
+    distinguish between the following two cases:
+
+     - ErrorFromSmartServer was uncaught.  This is logic error in the client
+       and so should provoke a traceback to the user.
+     - ErrorFromSmartServer was caught but its error_tuple could not be
+       translated.  This is probably because the server sent us garbage, and
+       should not provoke a traceback.
+    """
+
+    _fmt = "Server sent an unexpected error: %(error_tuple)r"
+
+    internal_error = False
+
+    def __init__(self, error_from_smart_server):
+        """Constructor.
+
+        :param error_from_smart_server: An ErrorFromSmartServer instance.
+        """
+        self.error_from_smart_server = error_from_smart_server
+        self.error_tuple = error_from_smart_server.error_tuple
 
 
 class _RpcHelper(object):
@@ -567,7 +595,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 13))
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
-        except errors.UnknownErrorFromSmartServer as err:
+        except UnknownErrorFromSmartServer as err:
             if err.error_tuple != (b'BranchReference',):
                 raise
             # We need to resolve the branch reference to determine the
@@ -641,7 +669,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
@@ -669,7 +697,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         path = self._path_for_remote_call(self._client)
         try:
             if name != "":
@@ -741,7 +769,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         self._ensure_real()
         return self._real_bzrdir.set_branch_reference(target_branch, name=name)
 
@@ -750,7 +778,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':
             return response[1].decode('utf-8')
@@ -820,7 +848,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         if unsupported:
             raise NotImplementedError(
                 'unsupported flag support not implemented yet.')
@@ -962,13 +990,19 @@ class RemoteInventoryTree(InventoryRevisionTree):
     def __init__(self, repository, inv, revision_id):
         super(RemoteInventoryTree, self).__init__(repository, inv, revision_id)
 
-    def archive(self, format, name, root=None, subdir=None, force_mtime=None):
+    def archive(self, format, name, root=None, subdir=None, force_mtime=None, recurse_nested=False):
+        if recurse_nested:
+            # For now, just fall back to non-HPSS mode if nested trees are involved.
+            return super(RemoteInventoryTree, self).archive(
+                format, name, root, subdir, force_mtime=force_mtime,
+                recurse_nested=recurse_nested)
         ret = self._repository._revision_archive(
             self.get_revision_id(), format, name, root, subdir,
             force_mtime=force_mtime)
         if ret is None:
             return super(RemoteInventoryTree, self).archive(
-                format, name, root, subdir, force_mtime=force_mtime)
+                format, name, root, subdir, force_mtime=force_mtime,
+                recurse_nested=recurse_nested)
         return ret
 
     def annotate_iter(self, path,
@@ -1015,6 +1049,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     supports_full_versioned_files = True
     supports_leaving_lock = True
     supports_overriding_transport = False
+    supports_ghosts = False
 
     def __init__(self):
         _mod_repository.RepositoryFormat.__init__(self)
@@ -1169,9 +1204,9 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             try:
                 self._custom_format = _mod_repository.network_format_registry.get(
                     self._network_name)
-            except KeyError:
-                raise errors.UnknownFormatError(kind='repository',
-                                                format=self._network_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(
+                    kind='repository', format=self._network_name) from e
 
     @property
     def _fetch_order(self):
@@ -1389,7 +1424,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         except errors.UnknownSmartMethod:
             self._client._medium._remember_remote_is_before((1, 17))
             return self._get_rev_id_for_revno_vfs(revno, known_pair)
-        except errors.UnknownErrorFromSmartServer as e:
+        except UnknownErrorFromSmartServer as e:
             # Older versions of Bazaar/Breezy (<< 3.0.0) would raise a
             # ValueError instead of returning revno-outofbounds
             if len(e.error_tuple) < 3:
@@ -2599,19 +2634,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if tar_file is None:
             return None
         destination = to_bzrdir.create_repository()
-        try:
-            tar = tarfile.open('repository', fileobj=tar_file,
-                               mode='r|bz2')
-            tmpdir = osutils.mkdtemp()
-            try:
-                tar.extractall(tmpdir)
-                tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
-                tmp_repo = tmp_bzrdir.open_repository()
-                tmp_repo.copy_content_into(destination, revision_id)
-            finally:
-                osutils.rmtree(tmpdir)
-        finally:
-            tar_file.close()
+        with tarfile.open('repository', fileobj=tar_file,
+                          mode='r|bz2') as tar, \
+             osutils.TemporaryDirectory() as tmpdir:
+            tar.extractall(tmpdir)
+            tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
+            tmp_repo = tmp_bzrdir.open_repository()
+            tmp_repo.copy_content_into(destination, revision_id)
         return destination
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
@@ -3139,7 +3168,7 @@ class RemoteStreamSource(vf_repository.StreamSource):
                     verb, args, search_bytes)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before(version)
-            except errors.UnknownErrorFromSmartServer as e:
+            except UnknownErrorFromSmartServer as e:
                 if isinstance(search, vf_search.EverythingResult):
                     error_verb = e.error_from_smart_server.error_verb
                     if error_verb == b'BadSearch':
@@ -3307,7 +3336,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         path = a_controldir._path_for_remote_call(a_controldir._client)
         if name != "":
             # XXX JRV20100304: Support creating colocated branches
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         verb = b'BzrDir.create_branch'
         try:
             response = a_controldir._call(verb, path, network_name)
@@ -4027,7 +4056,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             except errors.UnknownSmartMethod:
                 self._ensure_real()
                 return self._real_branch.revision_id_to_dotted_revno(revision_id)
-            except errors.UnknownErrorFromSmartServer as e:
+            except UnknownErrorFromSmartServer as e:
                 # Deal with older versions of bzr/brz that didn't explicitly
                 # wrap GhostRevisionsHaveNoRevno.
                 if e.error_tuple[1] == b'GhostRevisionsHaveNoRevno':
@@ -4420,7 +4449,7 @@ def _translate_error(err, **context):
     try:
         translator = no_context_error_translators.get(err.error_verb)
     except KeyError:
-        raise errors.UnknownErrorFromSmartServer(err)
+        raise UnknownErrorFromSmartServer(err)
     else:
         raise translator(err)
 
@@ -4476,7 +4505,7 @@ error_translators.register(b'PermissionDenied', _translate_PermissionDenied)
 error_translators.register(b'ReadError',
                            lambda err, find, get_path: errors.ReadError(get_path()))
 error_translators.register(b'NoSuchFile',
-                           lambda err, find, get_path: errors.NoSuchFile(get_path()))
+                           lambda err, find, get_path: _mod_transport.NoSuchFile(get_path()))
 error_translators.register(b'TokenLockingNotSupported',
                            lambda err, find, get_path: errors.TokenLockingNotSupported(
                                find('repository')))
@@ -4506,7 +4535,7 @@ no_context_error_translators.register(b'UnstackableBranchFormat',
 no_context_error_translators.register(b'UnstackableRepositoryFormat',
                                       lambda err: errors.UnstackableRepositoryFormat(*err.error_args))
 no_context_error_translators.register(b'FileExists',
-                                      lambda err: errors.FileExists(err.error_args[0].decode('utf-8')))
+                                      lambda err: _mod_transport.FileExists(err.error_args[0].decode('utf-8')))
 no_context_error_translators.register(b'DirectoryNotEmpty',
                                       lambda err: errors.DirectoryNotEmpty(err.error_args[0].decode('utf-8')))
 no_context_error_translators.register(b'UnknownFormat',

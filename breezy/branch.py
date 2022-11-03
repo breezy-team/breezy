@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import Optional, Tuple
+__docformat__ = "google"
+
+from typing import Optional, Tuple, List, Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -61,13 +63,34 @@ class UnstackableBranchFormat(errors.BzrError):
         self.url = url
 
 
+class BindingUnsupported(errors.UnsupportedOperation):
+
+    _fmt = "Branch at %(url)s does not support binding."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self)
+        self.branch = branch
+        self.url = branch.user_url
+
+
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
-    :ivar hooks: An instance of BranchHooks.
-    :ivar _master_branch_cache: cached result of get_master_branch, see
+    Attributes:
+      hooks: An instance of BranchHooks.
+      _master_branch_cache: cached result of get_master_branch, see
         _clear_cached_state.
     """
+
+    controldir: controldir.ControlDir
+
+    name: Optional[str]
+
+    base: str
+
+    _format: "BranchFormat"
+
+    _last_revision_info_cache: Optional[Tuple[int, RevisionID]]
 
     @property
     def control_transport(self):
@@ -135,9 +158,10 @@ class Branch(controldir.ControlComponent):
         encountered.  Otherwise, stop when the beginning of history is
         reached.
 
-        :param stop_index: The index which should be present.  When it is
+        Args:
+          stop_index: The index which should be present.  When it is
             present, history extension will stop.
-        :param stop_revision: The revision id which should be present.  When
+          stop_revision: The revision id which should be present.  When
             it is encountered, history extension will stop.
         """
         if len(self._partial_revision_history_cache) == 0:
@@ -213,7 +237,7 @@ class Branch(controldir.ControlComponent):
         This can then be used to get and set configuration options for the
         branch.
 
-        :return: A breezy.config.BranchConfig.
+        Returns: A breezy.config.BranchConfig.
         """
         return _mod_config.BranchConfig(self)
 
@@ -223,14 +247,15 @@ class Branch(controldir.ControlComponent):
         This can then be used to get and set configuration options for the
         branch.
 
-        :return: A breezy.config.BranchStack.
+        Returns: A breezy.config.BranchStack.
         """
         return _mod_config.BranchStack(self)
 
     def store_uncommitted(self, creator):
         """Store uncommitted changes from a ShelfCreator.
 
-        :param creator: The ShelfCreator containing uncommitted changes, or
+        Args:
+          creator: The ShelfCreator containing uncommitted changes, or
             None to delete any stored changes.
         :raises: ChangesAlreadyStored if the branch already has changes.
         """
@@ -239,8 +264,9 @@ class Branch(controldir.ControlComponent):
     def get_unshelver(self, tree):
         """Return a shelf.Unshelver for this branch and tree.
 
-        :param tree: The tree to use to construct the Unshelver.
-        :return: an Unshelver or None if no changes are stored.
+        Args:
+          tree: The tree to use to construct the Unshelver.
+        Returns: an Unshelver or None if no changes are stored.
         """
         raise NotImplementedError(self.get_unshelver)
 
@@ -308,16 +334,16 @@ class Branch(controldir.ControlComponent):
     def lock_write(self, token=None):
         """Lock the branch for write operations.
 
-        :param token: A token to permit reacquiring a previously held and
+          token: A token to permit reacquiring a previously held and
             preserved lock.
-        :return: A BranchWriteLockResult.
+        Returns: A BranchWriteLockResult.
         """
         raise NotImplementedError(self.lock_write)
 
     def lock_read(self):
         """Lock the branch for read operations.
 
-        :return: A breezy.lock.LogicalLockResult.
+        Returns: A breezy.lock.LogicalLockResult.
         """
         raise NotImplementedError(self.lock_read)
 
@@ -334,12 +360,13 @@ class Branch(controldir.ControlComponent):
     def dotted_revno_to_revision_id(self, revno, _cache_reverse=False):
         """Return the revision_id for a dotted revno.
 
-        :param revno: a tuple like (1,) or (1,1,2)
-        :param _cache_reverse: a private parameter enabling storage
+        Args:
+          revno: a tuple like (1,) or (1,1,2)
+          _cache_reverse: a private parameter enabling storage
            of the reverse mapping in a top level cache. (This should
            only be done in selective circumstances as we want to
            avoid having the mapping cached multiple times.)
-        :return: the revision_id
+        Returns: the revision_id
         :raises errors.NoSuchRevision: if the revno doesn't exist
         """
         with self.lock_read():
@@ -357,8 +384,8 @@ class Branch(controldir.ControlComponent):
         if len(revno) == 1:
             try:
                 return self.get_rev_id(revno[0])
-            except errors.RevisionNotPresent as e:
-                raise errors.GhostRevisionsHaveNoRevno(revno[0], e.revision_id)
+            except errors.RevisionNotPresent as exc:
+                raise errors.GhostRevisionsHaveNoRevno(revno[0], exc.revision_id) from exc
         revision_id_to_revno = self.get_revision_id_to_revno_map()
         revision_ids = [revision_id for revision_id, this_revno
                         in revision_id_to_revno.items()
@@ -372,7 +399,7 @@ class Branch(controldir.ControlComponent):
     def revision_id_to_dotted_revno(self, revision_id):
         """Given a revision id, return its dotted revno.
 
-        :return: a tuple like (1,) or (400,1,3).
+        Returns: a tuple like (1,) or (400,1,3).
         """
         with self.lock_read():
             return self._do_revision_id_to_dotted_revno(revision_id)
@@ -391,11 +418,11 @@ class Branch(controldir.ControlComponent):
         try:
             revno = self.revision_id_to_revno(revision_id)
             return (revno,)
-        except errors.NoSuchRevision:
+        except errors.NoSuchRevision as exc:
             # We need to load and use the full revno map after all
             result = self.get_revision_id_to_revno_map().get(revision_id)
             if result is None:
-                raise errors.NoSuchRevision(self, revision_id)
+                raise errors.NoSuchRevision(self, revision_id) from exc
         return result
 
     def get_revision_id_to_revno_map(self):
@@ -403,7 +430,7 @@ class Branch(controldir.ControlComponent):
 
         This will be regenerated on demand, but will be cached.
 
-        :return: A dictionary mapping revision_id => dotted revno.
+        Returns: A dictionary mapping revision_id => dotted revno.
             This dictionary should not be modified by the caller.
         """
         if 'evil' in debug.debug_flags:
@@ -429,7 +456,7 @@ class Branch(controldir.ControlComponent):
         This is the worker function for get_revision_id_to_revno_map, which
         just caches the return value.
 
-        :return: A dictionary mapping revision_id => dotted revno.
+        Returns: A dictionary mapping revision_id => dotted revno.
         """
         revision_id_to_revno = {
             rev_id: revno for rev_id, depth, revno, end_of_merge
@@ -445,11 +472,12 @@ class Branch(controldir.ControlComponent):
         topological sort, i.e. all parents come before their
         children going forward; the opposite for reverse.
 
-        :param start_revision_id: the revision_id to begin walking from.
+        Args:
+          start_revision_id: the revision_id to begin walking from.
             If None, the branch tip is used.
-        :param stop_revision_id: the revision_id to terminate the walk
+          stop_revision_id: the revision_id to terminate the walk
             after. If None, the rest of history is included.
-        :param stop_rule: if stop_revision_id is not None, the precise rule
+          stop_rule: if stop_revision_id is not None, the precise rule
             to use for termination:
 
             * 'exclude' - leave the stop revision out of the result (default)
@@ -458,7 +486,7 @@ class Branch(controldir.ControlComponent):
               merged revisions in the result
             * 'with-merges-without-common-ancestry' - filter out revisions
               that are in both ancestries
-        :param direction: either 'reverse' or 'forward':
+          direction: either 'reverse' or 'forward':
 
             * reverse means return the start_revision_id first, i.e.
               start at the most recent revision and go backwards in history
@@ -467,7 +495,7 @@ class Branch(controldir.ControlComponent):
               ordering w.r.t. depth as some clients of this API may like.
               (If required, that ought to be done at higher layers.)
 
-        :return: an iterator over (revision_id, depth, revno, end_of_merge)
+        Returns: an iterator over (revision_id, depth, revno, end_of_merge)
             tuples where:
 
             * revision_id: the unique id of the revision
@@ -649,10 +677,10 @@ class Branch(controldir.ControlComponent):
     def bind(self, other):
         """Bind the local branch the other branch.
 
-        :param other: The branch to bind to
-        :type other: Branch
+        Args:
+          other: The branch to bind to
         """
-        raise errors.UpgradeRequired(self.user_url)
+        raise BindingUnsupported(self)
 
     def get_append_revisions_only(self):
         """Whether it is only possible to append revisions to the history.
@@ -669,11 +697,12 @@ class Branch(controldir.ControlComponent):
     def fetch(self, from_branch, stop_revision=None, limit=None, lossy=False):
         """Copy revisions from from_branch into this branch.
 
-        :param from_branch: Where to copy from.
-        :param stop_revision: What revision to stop at (None for at the end
+        Args:
+          from_branch: Where to copy from.
+          stop_revision: What revision to stop at (None for at the end
                               of the branch.
-        :param limit: Optional rough limit of revisions to fetch
-        :return: None
+          limit: Optional rough limit of revisions to fetch
+        Returns: None
         """
         with self.lock_write():
             return InterBranch.get(from_branch, self).fetch(
@@ -697,14 +726,15 @@ class Branch(controldir.ControlComponent):
                            revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this branch.
 
-        :param parents: Revision ids of the parents of the new revision.
-        :param config: Optional configuration to use.
-        :param timestamp: Optional timestamp recorded for commit.
-        :param timezone: Optional timezone for timestamp.
-        :param committer: Optional committer to set for commit.
-        :param revprops: Optional dictionary of revision properties.
-        :param revision_id: Optional revision id.
-        :param lossy: Whether to discard data that can not be natively
+        Args:
+          parents: Revision ids of the parents of the new revision.
+          config: Optional configuration to use.
+          timestamp: Optional timestamp recorded for commit.
+          timezone: Optional timezone for timestamp.
+          committer: Optional committer to set for commit.
+          revprops: Optional dictionary of revision properties.
+          revision_id: Optional revision id.
+          lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
 
@@ -718,7 +748,7 @@ class Branch(controldir.ControlComponent):
     def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.
 
-        :return: Either a Branch, or None
+        Returns: Either a Branch, or None
         """
         return None
 
@@ -776,10 +806,10 @@ class Branch(controldir.ControlComponent):
             if isinstance(url, str):
                 try:
                     url.encode('ascii')
-                except UnicodeEncodeError:
+                except UnicodeEncodeError as exc:
                     raise urlutils.InvalidURL(
                         url, "Urls must be 7-bit ascii, "
-                        "use breezy.urlutils.escape")
+                        "use breezy.urlutils.escape") from exc
             url = urlutils.relative_url(self.base, url)
         with self.lock_write():
             self._set_parent_location(url)
@@ -975,7 +1005,7 @@ class Branch(controldir.ControlComponent):
     def last_revision_info(self) -> Tuple[int, RevisionID]:
         """Return information about the last revision.
 
-        :return: A tuple (revno, revision_id).
+        Returns: A tuple (revno, revision_id).
         """
         with self.lock_read():
             if self._last_revision_info_cache is None:
@@ -994,12 +1024,13 @@ class Branch(controldir.ControlComponent):
         the master branch first before updating the tip of the local branch.
         Revisions referenced by source's tags are also transferred.
 
-        :param source: Source branch to optionally fetch from
-        :param revno: Revision number of the new tip
-        :param revid: Revision id of the new tip
-        :param lossy: Whether to discard metadata that can not be
+        Args:
+          source: Source branch to optionally fetch from
+          revno: Revision number of the new tip
+          revid: Revision id of the new tip
+          lossy: Whether to discard metadata that can not be
             natively represented
-        :return: Tuple with the new revision number and revision id
+        Returns: Tuple with the new revision number and revision id
             (should only be different from the arguments when lossy=True)
         """
         if not self.repository.has_same_location(source.repository):
@@ -1014,8 +1045,8 @@ class Branch(controldir.ControlComponent):
         history = self._revision_history()
         try:
             return history.index(revision_id) + 1
-        except ValueError:
-            raise errors.NoSuchRevision(self, revision_id)
+        except ValueError as exc:
+            raise errors.NoSuchRevision(self, revision_id) from exc
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -1038,7 +1069,7 @@ class Branch(controldir.ControlComponent):
 
         This branch is considered to be 'local', having low latency.
 
-        :returns: PullResult instance
+        Returns: PullResult instance
         """
         return InterBranch.get(source, self).pull(
             overwrite=overwrite, stop_revision=stop_revision,
@@ -1073,8 +1104,8 @@ class Branch(controldir.ControlComponent):
             parent = urlutils.local_path_to_url(parent)
         try:
             return urlutils.join(self.base[:-1], parent)
-        except urlutils.InvalidURLJoin:
-            raise errors.InaccessibleParent(parent, self.user_url)
+        except urlutils.InvalidURLJoin as exc:
+            raise errors.InaccessibleParent(parent, self.user_url) from exc
 
     def _get_parent_location(self):
         raise NotImplementedError(self._get_parent_location)
@@ -1168,7 +1199,7 @@ class Branch(controldir.ControlComponent):
     def update(self):
         """Synchronise this branch with the master branch if any.
 
-        :return: None or the last_revision pivoted out during the update.
+        Returns: None or the last_revision pivoted out during the update.
         """
         return None
 
@@ -1207,7 +1238,8 @@ class Branch(controldir.ControlComponent):
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-               repository=None, lossy=False, tag_selector=None):
+               repository=None, lossy=False, tag_selector=None,
+               name=None):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1218,7 +1250,7 @@ class Branch(controldir.ControlComponent):
         if (repository_policy is not None
                 and repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
-        result = to_controldir.create_branch(repository=repository)
+        result = to_controldir.create_branch(repository=repository, name=name)
         if lossy:
             raise errors.LossyPushToSameVCS(self, result)
         with self.lock_read(), result.lock_write():
@@ -1241,9 +1273,10 @@ class Branch(controldir.ControlComponent):
         repository contains all the lefthand ancestors of the intended
         last_revision.  If not, set_last_revision_info will fail.
 
-        :param destination: The branch to copy the history into
-        :param revision_id: The revision-id to truncate history at.  May
-          be None to copy complete history.
+        Args:
+          destination: The branch to copy the history into
+          revision_id: The revision-id to truncate history at.  May
+             be None to copy complete history.
         """
         source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
@@ -1283,9 +1316,10 @@ class Branch(controldir.ControlComponent):
 
         Callers will typically also want to check the repository.
 
-        :param refs: Calculated refs for this branch as specified by
+        Args:
+          refs: Calculated refs for this branch as specified by
             branch._get_check_refs()
-        :return: A BranchCheckResult.
+        Returns: A BranchCheckResult.
         """
         with self.lock_read():
             result = BranchCheckResult(self)
@@ -1316,13 +1350,14 @@ class Branch(controldir.ControlComponent):
                                   tag_selector=None):
         """Create a clone of this branch and its bzrdir.
 
-        :param to_transport: The transport to clone onto.
-        :param revision_id: The revision id to use as tip in the new branch.
+        Args:
+          to_transport: The transport to clone onto.
+          revision_id: The revision id to use as tip in the new branch.
             If None the tip is obtained from this branch.
-        :param stacked_on: An optional URL to stack the clone on.
-        :param create_prefix: Create any missing directories leading up to
+          stacked_on: An optional URL to stack the clone on.
+          create_prefix: Create any missing directories leading up to
             to_transport.
-        :param use_existing_dir: Use an existing directory if one exists.
+          use_existing_dir: Use an existing directory if one exists.
         """
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
@@ -1341,25 +1376,26 @@ class Branch(controldir.ControlComponent):
                         hardlink=False, recurse_nested=True):
         """Create a checkout of a branch.
 
-        :param to_location: The url to produce the checkout at
-        :param revision_id: The revision to check out
-        :param lightweight: If True, produce a lightweight checkout, otherwise,
+        Args:
+          to_location: The url to produce the checkout at
+          revision_id: The revision to check out
+          lightweight: If True, produce a lightweight checkout, otherwise,
             produce a bound branch (heavyweight checkout)
-        :param accelerator_tree: A tree which can be used for retrieving file
+          accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
-        :param hardlink: If true, hard-link files from accelerator_tree,
+          hardlink: If true, hard-link files from accelerator_tree,
             where possible.
-        :param recurse_nested: Whether to recurse into nested trees
-        :return: The tree of the created checkout
+          recurse_nested: Whether to recurse into nested trees
+        Returns: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
         t.ensure_base()
         format = self._get_checkout_format(lightweight=lightweight)
         try:
             checkout = format.initialize_on_transport(t)
-        except errors.AlreadyControlDirError:
+        except errors.AlreadyControlDirError as exc:
             # It's fine if the control directory already exists,
             # as long as there is no existing branch and working tree.
             checkout = controldir.ControlDir.open_from_transport(t)
@@ -1368,7 +1404,7 @@ class Branch(controldir.ControlComponent):
             except errors.NotBranchError:
                 pass
             else:
-                raise errors.AlreadyControlDirError(t.base)
+                raise errors.AlreadyControlDirError(t.base) from exc
             if (checkout.control_transport.base
                     == self.controldir.control_transport.base):
                 # When checking out to the same control directory,
@@ -1405,7 +1441,7 @@ class Branch(controldir.ControlComponent):
     def reconcile(self, thorough=True):
         """Make sure the data stored in this branch is consistent.
 
-        :return: A `ReconcileResult` object.
+        Returns: A `ReconcileResult` object.
         """
         raise NotImplementedError(self.reconcile)
 
@@ -1415,8 +1451,9 @@ class Branch(controldir.ControlComponent):
     def automatic_tag_name(self, revision_id):
         """Try to automatically find the tag name for a revision.
 
-        :param revision_id: Revision id of the revision.
-        :return: A tag name or None if no tag name could be determined.
+        Args:
+          revision_id: Revision id of the revision.
+        Returns: A tag name or None if no tag name could be determined.
         """
         for hook in Branch.hooks['automatic_tag_name']:
             ret = hook(self, revision_id)
@@ -1431,7 +1468,7 @@ class Branch(controldir.ControlComponent):
         This is a helper function for update_revisions.
 
         :raises: DivergedBranches if revision_b has diverged from revision_a.
-        :returns: True if revision_b is a descendant of revision_a.
+        Returns: True if revision_b is a descendant of revision_a.
         """
         relation = self._revision_relations(revision_a, revision_b, graph)
         if relation == 'b_descends_from_a':
@@ -1446,7 +1483,7 @@ class Branch(controldir.ControlComponent):
     def _revision_relations(self, revision_a, revision_b, graph):
         """Determine the relationship between two revisions.
 
-        :returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
+        Returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
         """
         heads = graph.heads([revision_a, revision_b])
         if heads == {revision_b}:
@@ -1463,7 +1500,7 @@ class Branch(controldir.ControlComponent):
         """Return the heads that must and that should be fetched to copy this
         branch into another repo.
 
-        :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
+        Returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
             set of heads that must be fetched.  if_present_fetch is a set of
             heads that must be fetched if present, but no error is necessary if
             they are not present.
@@ -1484,7 +1521,7 @@ class Branch(controldir.ControlComponent):
     def create_memorytree(self):
         """Create a memory tree for this branch.
 
-        :return: An in-memory MutableTree instance
+        Returns: An in-memory MutableTree instance
         """
         from . import memorytree
         return memorytree.MemoryTree.create_on_branch(self)
@@ -1521,9 +1558,10 @@ class BranchFormat(controldir.ControlComponentFormat):
         this method - it is assumed that the format of the branch
         in controldir is correct.
 
-        :param controldir: The controldir to get the branch data from.
-        :param name: Name of the colocated branch to fetch
-        :return: None if the branch is not a reference branch.
+        Args:
+          controldir: The controldir to get the branch data from.
+          name: Name of the colocated branch to fetch
+        Returns: None if the branch is not a reference branch.
         """
         return None
 
@@ -1535,9 +1573,10 @@ class BranchFormat(controldir.ControlComponentFormat):
         this method - it is assumed that the format of the branch
         in controldir is correct.
 
-        :param controldir: The controldir to set the branch reference for.
-        :param name: Name of colocated branch to set, None for default
-        :param to_branch: branch that the checkout is to reference
+        Args:
+          controldir: The controldir to set the branch reference for.
+          name: Name of colocated branch to set, None for default
+          to_branch: branch that the checkout is to reference
         """
         raise NotImplementedError(self.set_reference)
 
@@ -1557,7 +1596,8 @@ class BranchFormat(controldir.ControlComponentFormat):
                    append_revisions_only=None):
         """Create a branch of this format in controldir.
 
-        :param name: Name of the colocated branch to create.
+        Args:
+          name: Name of the colocated branch to create.
         """
         raise NotImplementedError(self.initialize)
 
@@ -1599,11 +1639,12 @@ class BranchFormat(controldir.ControlComponentFormat):
              found_repository=None, possible_transports=None):
         """Return the branch object for controldir.
 
-        :param controldir: A ControlDir that contains a branch.
-        :param name: Name of colocated branch to open
-        :param _found: a private parameter, do not use it. It is used to
+        Args:
+          controldir: A ControlDir that contains a branch.
+          name: Name of colocated branch to open
+          _found: a private parameter, do not use it. It is used to
             indicate if format probing has already be done.
-        :param ignore_fallbacks: when set, no fallback branches will be opened
+          ignore_fallbacks: when set, no fallback branches will be opened
             (if there are any).  Default is to open fallbacks.
         """
         raise NotImplementedError(self.open)
@@ -1743,7 +1784,7 @@ class BranchHooks(Hooks):
 
 
 # install the default hooks into the Branch class.
-Branch.hooks = BranchHooks()
+Branch.hooks = BranchHooks()  # type: ignore
 
 
 class ChangeBranchTipParams(object):
@@ -1751,11 +1792,12 @@ class ChangeBranchTipParams(object):
 
     There are 5 fields that hooks may wish to access:
 
-    :ivar branch: the branch being changed
-    :ivar old_revno: revision number before the change
-    :ivar new_revno: revision number after the change
-    :ivar old_revid: revision id before the change
-    :ivar new_revid: revision id after the change
+    Attributes:
+      branch: the branch being changed
+      old_revno: revision number before the change
+      new_revno: revision number after the change
+      old_revid: revision id before the change
+      new_revid: revision id after the change
 
     The revid fields are strings. The revno fields are integers.
     """
@@ -1763,11 +1805,12 @@ class ChangeBranchTipParams(object):
     def __init__(self, branch, old_revno, new_revno, old_revid, new_revid):
         """Create a group of ChangeBranchTip parameters.
 
-        :param branch: The branch being changed.
-        :param old_revno: Revision number before the change.
-        :param new_revno: Revision number after the change.
-        :param old_revid: Tip revision id before the change.
-        :param new_revid: Tip revision id after the change.
+        Args:
+          branch: The branch being changed.
+          old_revno: Revision number before the change.
+          new_revno: Revision number after the change.
+          old_revid: Tip revision id before the change.
+          new_revid: Tip revision id after the change.
         """
         self.branch = branch
         self.old_revno = old_revno
@@ -1789,10 +1832,11 @@ class BranchInitHookParams(object):
 
     There are 4 fields that hooks may wish to access:
 
-    :ivar format: the branch format
-    :ivar bzrdir: the ControlDir where the branch will be/has been initialized
-    :ivar name: name of colocated branch, if any (or None)
-    :ivar branch: the branch created
+    Attributes:
+      format: the branch format
+      bzrdir: the ControlDir where the branch will be/has been initialized
+      name: name of colocated branch, if any (or None)
+      branch: the branch created
 
     Note that for lightweight checkouts, the bzrdir and format fields refer to
     the checkout, hence they are different from the corresponding fields in
@@ -1802,11 +1846,12 @@ class BranchInitHookParams(object):
     def __init__(self, format, controldir, name, branch):
         """Create a group of BranchInitHook parameters.
 
-        :param format: the branch format
-        :param controldir: the ControlDir where the branch will be/has been
+        Args:
+          format: the branch format
+          controldir: the ControlDir where the branch will be/has been
             initialized
-        :param name: name of colocated branch, if any (or None)
-        :param branch: the branch created
+          name: name of colocated branch, if any (or None)
+          branch: the branch created
 
         Note that for lightweight checkouts, the bzrdir and format fields refer
         to the checkout, hence they are different from the corresponding fields
@@ -1829,19 +1874,21 @@ class SwitchHookParams(object):
 
     There are 4 fields that hooks may wish to access:
 
-    :ivar control_dir: ControlDir of the checkout to change
-    :ivar to_branch: branch that the checkout is to reference
-    :ivar force: skip the check for local commits in a heavy checkout
-    :ivar revision_id: revision ID to switch to (or None)
+    Attributes:
+      control_dir: ControlDir of the checkout to change
+      to_branch: branch that the checkout is to reference
+      force: skip the check for local commits in a heavy checkout
+      revision_id: revision ID to switch to (or None)
     """
 
     def __init__(self, control_dir, to_branch, force, revision_id):
         """Create a group of SwitchHook parameters.
 
-        :param control_dir: ControlDir of the checkout to change
-        :param to_branch: branch that the checkout is to reference
-        :param force: skip the check for local commits in a heavy checkout
-        :param revision_id: revision ID to switch to (or None)
+        Args:
+          control_dir: ControlDir of the checkout to change
+          to_branch: branch that the checkout is to reference
+          force: skip the check for local commits in a heavy checkout
+          revision_id: revision ID to switch to (or None)
         """
         self.control_dir = control_dir
         self.to_branch = to_branch
@@ -1918,9 +1965,10 @@ format_registry.set_default_key(b"Bazaar Branch Format 7 (needs bzr 1.6)\n")
 class BranchWriteLockResult(LogicalLockResult):
     """The result of write locking a branch.
 
-    :ivar token: The token obtained from the underlying branch lock, or
+    Attributes:
+      token: The token obtained from the underlying branch lock, or
         None.
-    :ivar unlock: A callable which will unlock the lock.
+      unlock: A callable which will unlock the lock.
     """
 
     def __repr__(self):
@@ -1944,17 +1992,18 @@ class _Result(object):
 class PullResult(_Result):
     """Result of a Branch.pull operation.
 
-    :ivar old_revno: Revision number before pull.
-    :ivar new_revno: Revision number after pull.
-    :ivar old_revid: Tip revision id before pull.
-    :ivar new_revid: Tip revision id after pull.
-    :ivar source_branch: Source (local) branch object. (read locked)
-    :ivar master_branch: Master branch of the target, or the target if no
+    Attributes:
+      old_revno: Revision number before pull.
+      new_revno: Revision number after pull.
+      old_revid: Tip revision id before pull.
+      new_revid: Tip revision id after pull.
+      source_branch: Source (local) branch object. (read locked)
+      master_branch: Master branch of the target, or the target if no
         Master
-    :ivar local_branch: target branch if there is a Master, else None
-    :ivar target_branch: Target/destination branch object. (write locked)
-    :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
-    :ivar tag_updates: A dict with new tags, see BasicTags.merge_to
+      local_branch: target branch if there is a Master, else None
+      target_branch: Target/destination branch object. (write locked)
+      tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
+      tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
     def report(self, to_file):
@@ -1976,19 +2025,20 @@ class PullResult(_Result):
 class BranchPushResult(_Result):
     """Result of a Branch.push operation.
 
-    :ivar old_revno: Revision number (eg 10) of the target before push.
-    :ivar new_revno: Revision number (eg 12) of the target after push.
-    :ivar old_revid: Tip revision id (eg joe@foo.com-1234234-aoeua34) of target
+    Attributes:
+      old_revno: Revision number (eg 10) of the target before push.
+      new_revno: Revision number (eg 12) of the target after push.
+      old_revid: Tip revision id (eg joe@foo.com-1234234-aoeua34) of target
         before the push.
-    :ivar new_revid: Tip revision id (eg joe@foo.com-5676566-boa234a) of target
+      new_revid: Tip revision id (eg joe@foo.com-5676566-boa234a) of target
         after the push.
-    :ivar source_branch: Source branch object that the push was from. This is
+      source_branch: Source branch object that the push was from. This is
         read locked, and generally is a local (and thus low latency) branch.
-    :ivar master_branch: If target is a bound branch, the master branch of
+      master_branch: If target is a bound branch, the master branch of
         target, or target itself. Always write locked.
-    :ivar target_branch: The direct Branch where data is being sent (write
+      target_branch: The direct Branch where data is being sent (write
         locked).
-    :ivar local_branch: If the target is a bound branch this will be the
+      local_branch: If the target is a bound branch this will be the
         target, otherwise it will be None.
     """
 
@@ -2021,7 +2071,7 @@ class BranchPushResult(_Result):
 class BranchCheckResult(object):
     """Results of checking branch consistency.
 
-    :see: Branch.check
+    See `Branch.check`
     """
 
     def __init__(self, branch):
@@ -2031,7 +2081,8 @@ class BranchCheckResult(object):
     def report_results(self, verbose):
         """Report the check results via trace.note.
 
-        :param verbose: Requests more detailed display of what was checked,
+        Args:
+          verbose: Requests more detailed display of what was checked,
             if any.
         """
         note(gettext('checked branch {0} format {1}').format(
@@ -2048,14 +2099,14 @@ class InterBranch(InterObject):
     can be carried out on.
     """
 
-    _optimisers = []
+    _optimisers: List[Type["InterBranch"]] = []
     """The available optimised InterBranch types."""
 
     @classmethod
     def _get_branch_formats_to_test(klass):
         """Return an iterable of format tuples for testing.
 
-        :return: An iterable of (from_format, to_format) to use when testing
+        Returns: An iterable of (from_format, to_format) to use when testing
             this InterBranch class. Each InterBranch class should define this
             method itself.
         """
@@ -2067,7 +2118,7 @@ class InterBranch(InterObject):
 
         The target branch is considered to be 'local', having low latency.
 
-        :returns: PullResult instance
+        Returns: PullResult instance
         """
         raise NotImplementedError(self.pull)
 
@@ -2082,10 +2133,11 @@ class InterBranch(InterObject):
     def copy_content_into(self, revision_id=None, tag_selector=None):
         """Copy the content of source into target
 
-        :param revision_id:
+        Args:
+          revision_id:
             if not None, the revision history in the new branch will
             be truncated to end with revision_id.
-        :param tag_selector: Optional callback that can decide
+          tag_selector: Optional callback that can decide
             to copy or not copy tags.
         """
         raise NotImplementedError(self.copy_content_into)
@@ -2093,9 +2145,10 @@ class InterBranch(InterObject):
     def fetch(self, stop_revision=None, limit=None, lossy=False):
         """Fetch revisions.
 
-        :param stop_revision: Last revision to fetch
-        :param limit: Optional rough limit of revisions to fetch
-        :return: FetchResult object
+        Args:
+          stop_revision: Last revision to fetch
+          limit: Optional rough limit of revisions to fetch
+        Returns: FetchResult object
         """
         raise NotImplementedError(self.fetch)
 
@@ -2215,7 +2268,8 @@ class GenericInterBranch(InterBranch):
              tag_selector=None):
         """Pull from source into self, updating my master if any.
 
-        :param run_hooks: Private parameter - if false, this branch
+        Args:
+          run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         """
@@ -2258,7 +2312,8 @@ class GenericInterBranch(InterBranch):
 
         This is the basic concrete implementation of push()
 
-        :param _override_hook_source_branch: If specified, run the hooks
+        Args:
+          _override_hook_source_branch: If specified, run the hooks
             passing this Branch as the source, rather than self.  This is for
             use of RemoteBranch, where push is delegated to the underlying
             vfs-based Branch.
@@ -2341,16 +2396,17 @@ class GenericInterBranch(InterBranch):
         This function is the core worker, used by GenericInterBranch.pull to
         avoid duplication when pulling source->master and source->local.
 
-        :param _hook_master: Private parameter - set the branch to
+        Args:
+          _hook_master: Private parameter - set the branch to
             be supplied as the master to pull hooks.
-        :param run_hooks: Private parameter - if false, this branch
+          run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
-        :param _override_hook_target: Private parameter - set the branch to be
+          _override_hook_target: Private parameter - set the branch to be
             supplied as the target_branch to pull hooks.
-        :param local: Only update the local branch, and not the bound branch.
+          local: Only update the local branch, and not the bound branch.
         """
         # This type of branch can't be bound.
         if local:

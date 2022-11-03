@@ -27,7 +27,9 @@ from ... import (
     )
 
 
-class MonotoneUnsupportedError(errors.UnsupportedFormatError):
+class MonotoneUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "mtn"
 
     _fmt = ('Monotone branches are not yet supported. '
             'To interoperate with Monotone branches, '
@@ -54,7 +56,7 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise MonotoneUnsupportedError(self)
+        raise MonotoneUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there

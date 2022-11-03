@@ -16,7 +16,7 @@
 
 """Handling and reporting crashes.
 
-A crash is an exception propagated up almost to the top level of Bazaar.
+A crash is an exception propagated up almost to the top level of Breezy.
 
 If we have apport <https://launchpad.net/apport/>, we store a report of the
 crash using apport into its /var/crash spool directory, from where the user
@@ -103,8 +103,8 @@ def report_bug_legacy(exc_info, err_file):
     # We used to show all the plugins here, but it's too verbose.
     err_file.write(
         "\n"
-        "*** Bazaar has encountered an internal error.  This probably indicates a\n"
-        "    bug in Bazaar.  You can help us fix it by filing a bug report at\n"
+        "*** Breezy has encountered an internal error.  This probably indicates a\n"
+        "    bug in Breezy.  You can help us fix it by filing a bug report at\n"
         "        https://bugs.launchpad.net/brz/+filebug\n"
         "    including this traceback and a description of the problem.\n"
         )
@@ -132,7 +132,7 @@ def report_bug_to_apport(exc_info, stderr):
     else:
         trace.print_exception(exc_info, stderr)
         stderr.write("\n"
-                     "You can report this problem to Bazaar's developers by running\n"
+                     "You can report this problem to Breezy's developers by running\n"
                      "    apport-bug %s\n"
                      "if a bug-reporting window does not automatically appear.\n"
                      % (crash_filename))

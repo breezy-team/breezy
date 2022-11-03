@@ -60,6 +60,7 @@ from ... import (
     osutils,
     progress,
     trace,
+    transport as _mod_transport,
     )
 
 from . import (
@@ -322,7 +323,7 @@ class BzrFastExporter(object):
         try:
             if tree.kind(path) != 'directory':
                 return False
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
                          (path,))
             return False
@@ -504,7 +505,7 @@ class BzrFastExporter(object):
         # Map kind changes to a delete followed by an add
         for change in changes.kind_changed:
             path = self._adjust_path_for_renames(
-                path, renamed, tree_new.get_revision_id())
+                change.path[0], renamed, tree_new.get_revision_id())
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
