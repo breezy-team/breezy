@@ -110,7 +110,7 @@ class LaunchpadMergeProposal(MergeProposal):
         self._mp = mp
 
     def get_web_url(self):
-        return self.web_link
+        return self._mp.web_link
 
     def get_source_branch_url(self):
         if self._mp.source_branch:

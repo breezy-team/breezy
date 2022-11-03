@@ -162,6 +162,7 @@ class cmd_propose_merge(Command):
         Option('allow-empty',
                help='Do not prevent empty merge proposals.'),
         Option('overwrite', help="Overwrite existing commits."),
+        Option('open', help='Open merge proposal in web browser'),
         ]
     takes_args = ['submit_branch?']
 
@@ -170,7 +171,8 @@ class cmd_propose_merge(Command):
     def run(self, submit_branch=None, directory='.', forge=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
-            allow_collaboration=False, allow_empty=False, overwrite=False):
+            allow_collaboration=False, allow_empty=False, overwrite=False,
+            open=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -194,7 +196,8 @@ class cmd_propose_merge(Command):
             overwrite=overwrite)
         branch.set_push_location(remote_branch.user_url)
         branch.set_submit_branch(target.user_url)
-        note(gettext('Published branch to %s') % public_branch_url)
+        note(gettext('Published branch to %s'),
+             forge.get_web_url(remote_branch) or public_branch_url)
         if prerequisite is not None:
             prerequisite_branch = _mod_branch.Branch.open(prerequisite)
         else:
@@ -217,6 +220,11 @@ class cmd_propose_merge(Command):
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:
             note(gettext('Merge proposal created: %s') % proposal.url)
+            if open:
+                web_url = proposal.get_web_url()
+            note(gettext('Opening %s in web browser'), web_url)
+            import webbrowser
+            webbrowser.open(web_url)
 
 
 class cmd_find_merge_proposal(Command):
