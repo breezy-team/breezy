@@ -494,7 +494,7 @@ class TransportRefsContainer(RefsContainer):
             # This is racy, but what can we do?
             if transport.has(lockname):
                 raise LockContention(name) from err
-            transport.put_bytes(lockname, b"Locked by brz-git")
+            transport.put_bytes(lockname, b"Locked by Breezy")
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
