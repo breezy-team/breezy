@@ -44,9 +44,10 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_ARCHS_LINUX: x86_64
+          CIBW_ARCHS_MACOS: x86_64 universal2
           # ARM builds fail at the moment:
           # CIBW_ARCHS_LINUX: x86_64 aarch64
-          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          # CIBW_ARCHS_MACOS: x86_64 arm64 universal2
           CIBW_SKIP: '*-win32'
           CIBW_ENVIRONMENT: 'PATH="$HOME/.cargo/bin:$PATH"'
           CIBW_BEFORE_BUILD: >
