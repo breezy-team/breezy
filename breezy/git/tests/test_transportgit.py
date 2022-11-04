@@ -63,7 +63,9 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         self.assertEqual(2, len(restore.packs))
 
 
-# FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
+# TODO: The dulwich RefsContainerTests base class used to provide a shared set
+# of symref tests, but it was dropped from dulwich. Reinstate the symref
+# coverage (e.g. by vendoring those tests) once an equivalent is available.
 
 
 class TransportRefContainerTests(TestCaseWithTransport):
