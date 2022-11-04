@@ -53,10 +53,12 @@ jobs:
           CIBW_BEFORE_BUILD: >
             pip install -U setuptools-rust &&
             rustup default nightly &&
+            rustup target add all &&
             rustup show
           CIBW_BEFORE_BUILD_LINUX: >
             pip install -U setuptools-rust &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y &&
+            rustup target add all &&
             rustup show
       - name: Upload wheels
         uses: actions/upload-artifact@v3
