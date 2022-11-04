@@ -69,7 +69,18 @@ def check_up_to_date(tree, subpath, apt):
     for block in tree_cl:
         if distribution_is_unreleased(block.distributions):
             continue
-        released_tree_versions.append(block.version)
+        try:
+            released_tree_versions.append(block.version)
+        except ValueError:
+            # If the version is invalid, then hopefully it's safe
+            # to assume it's not in the archive
+            with apt:
+                last_archive_version = max(
+                    entry['Version']
+                    for entry in apt.iter_source_by_name(package))
+
+            raise TreeVersionNotInArchive(block._raw_version, archive_versions)
+
     package = tree_cl.package
 
     released_tree_versions.sort()
