@@ -1052,10 +1052,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         then testing whether it exists with an uppercase name.
         """
         self.build_tree(['filename'])
-        if os.path.exists('FILENAME'):
-            case_sensitive = False
-        else:
-            case_sensitive = True
+        case_sensitive = features.CaseInsensitiveFilesystemFeature().available()
         tree = self.make_branch_and_tree('test')
         self.assertEqual(case_sensitive, tree.case_sensitive)
         if not isinstance(tree, InventoryWorkingTree):
