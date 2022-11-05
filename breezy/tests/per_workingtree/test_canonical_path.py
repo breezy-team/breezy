@@ -46,7 +46,7 @@ class TestCanonicalPaths(TestCaseWithWorkingTree):
         if features.CaseInsensitiveFilesystemFeature.available():
             self.assertEqual('dir/file',
                              work_tree.get_canonical_path('Dir/File'))
-        elif features.CaseInsCasePresFilenameFeature().available():
+        elif features.CaseInsCasePresFilenameFeature.available():
             self.assertEqual('dir/file', work_tree.get_canonical_path('Dir/File'))
         else:
             self.assertEqual('Dir/File',
@@ -57,7 +57,7 @@ class TestCanonicalPaths(TestCaseWithWorkingTree):
         if features.CaseInsensitiveFilesystemFeature.available():
             self.assertEqual('dir/file',
                              work_tree.get_canonical_path('Dir/File'))
-        elif features.CaseInsCasePresFilenameFeature().available():
+        elif features.CaseInsCasePresFilenameFeature.available():
             self.assertEqual('dir/file',
                              work_tree.get_canonical_path('Dir/File'))
         else:
@@ -69,7 +69,7 @@ class TestCanonicalPaths(TestCaseWithWorkingTree):
         work_tree = self._make_canonical_test_tree()
         if features.CaseInsensitiveFilesystemFeature.available():
             self.assertEqual('dir', work_tree.get_canonical_path('Dir'))
-        elif features.CaseInsCasePresFilenameFeature().available():
+        elif features.CaseInsCasePresFilenameFeature.available():
             self.assertEqual('dir', work_tree.get_canonical_path('Dir'))
         else:
             self.assertEqual('Dir', work_tree.get_canonical_path('Dir'))
@@ -89,7 +89,7 @@ class TestCanonicalPaths(TestCaseWithWorkingTree):
         if features.CaseInsensitiveFilesystemFeature.available():
             self.assertEqual('dir/None',
                              work_tree.get_canonical_path('Dir/None'))
-        elif features.CaseInsCasePresFilenameFeature().available():
+        elif features.CaseInsCasePresFilenameFeature.available():
             self.assertEqual('dir/None', work_tree.get_canonical_path('Dir/None'))
         else:
             self.assertEqual('Dir/None',
