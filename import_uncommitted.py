@@ -338,7 +338,7 @@ def set_vcs_git_url(control, vcs_git_base: Optional[str],
     return (old_vcs_url, new_vcs_url)
 
 
-async def main():
+def main(argv=None):
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -369,7 +369,7 @@ async def main():
     parser.add_argument(
         '--package', type=str, help='Package to import',
         default=os.environ.get('PACKAGE'))
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -511,4 +511,4 @@ async def main():
 if __name__ == "__main__":
     import sys
 
-    sys.exit(asyncio.run(main()))
+    sys.exit(asyncio.run(main(sys.argv[1:])))
