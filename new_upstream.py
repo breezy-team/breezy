@@ -1090,7 +1090,7 @@ def report_fatal(
         logging.info('%s', hint)
 
 
-async def main():
+def main(argv=None):
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -1169,13 +1169,16 @@ async def main():
     parser.add_argument(
         "--skip-empty", action="store_true",
         help="Skip releases without changes")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.verbose:
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
     logging.basicConfig(level=loglevel, format='%(message)s')
+
+    from breezy.plugin import load_plugins
+    load_plugins()
 
     local_tree, subpath = WorkingTree.open_containing('.')
 
@@ -1623,11 +1626,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
     import sys
 
-    from breezy.plugin import load_plugins
-    load_plugins()
     from breezy.commands import exception_to_return_code
 
-    sys.exit(exception_to_return_code(asyncio.run, main()))
+    sys.exit(exception_to_return_code(main(sys.argv[1:])))
