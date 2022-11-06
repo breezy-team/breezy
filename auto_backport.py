@@ -175,7 +175,7 @@ def report_fatal(
         logging.info('%s', hint)
 
 
-async def main():
+def main(argv=None):
     import argparse
 
     import breezy.bzr  # noqa: F401
@@ -201,7 +201,7 @@ async def main():
         ),
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     committer = os.environ.get('COMMITTER')
 
@@ -250,7 +250,6 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
     import sys
 
-    sys.exit(asyncio.run(main()))
+    sys.exit(main(sys.argv[1:]))
