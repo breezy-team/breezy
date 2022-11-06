@@ -287,7 +287,7 @@ def report_fatal(code, description):
     logging.info('%s', description)
 
 
-def main():
+def main(argv=None):
     import argparse
 
     parser = argparse.ArgumentParser(prog="deb-move-orphaned")
@@ -333,7 +333,7 @@ def main():
     parser.add_argument(
         "--no-check-wnpp", action="store_true",
         help="Do not check for WNPP bug.")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     logging.basicConfig(format='%(message)s', level=logging.INFO)
 
@@ -409,4 +409,4 @@ def main():
 
 if __name__ == '__main__':
     import sys
-    sys.exit(main())
+    sys.exit(main(argv[1:]))
