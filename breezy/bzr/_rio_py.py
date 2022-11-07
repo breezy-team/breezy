@@ -17,6 +17,7 @@
 """Python implementation of _read_stanza_*."""
 
 import re
+from typing import Iterator, Optional
 
 from .rio import (
     Stanza,
@@ -25,13 +26,13 @@ from .rio import (
 _tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
 
 
-def _valid_tag(tag):
+def _valid_tag(tag: str) -> bool:
     if not isinstance(tag, str):
         raise TypeError(tag)
     return bool(_tag_re.match(tag))
 
 
-def _read_stanza_utf8(line_iter):
+def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
     stanza = Stanza()
     tag = None
     accum_value = None
