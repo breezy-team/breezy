@@ -68,7 +68,7 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
             accum_value = [line[colon_index + 2:-1]]
 
     if tag is not None:  # add last tag-value
-        stanza.add(tag, u''.join(accum_value))
+        stanza.add(tag, u''.join(accum_value))  # type: ignore
         return stanza
     else:     # didn't see any content
         return None
