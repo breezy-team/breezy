@@ -39,6 +39,7 @@ Densely packed upper nodes.
 
 import heapq
 import threading
+from typing import Callable
 
 from .. import (
     errors,
@@ -91,7 +92,7 @@ def _search_key_plain(key):
     return b'\x00'.join(key)
 
 
-search_key_registry = registry.Registry()
+search_key_registry = registry.Registry[bytes, Callable[[bytes], bytes]]()
 search_key_registry.register(b'plain', _search_key_plain)
 
 

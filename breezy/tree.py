@@ -19,7 +19,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Type, TYPE_CHECKING, Optional, Iterator, Dict, Union
+from typing import List, Type, TYPE_CHECKING, Optional, Iterator, Dict, Union, cast
 
 from . import (
     errors,
@@ -782,7 +782,7 @@ class Tree(object):
         raise NotImplementedError(self.preview_transform)
 
 
-class InterTree(InterObject):
+class InterTree(InterObject[Tree]):
     """This class represents operations taking place between two Trees.
 
     Its instances have methods like 'compare' and contain references to the
@@ -801,13 +801,17 @@ class InterTree(InterObject):
     _matching_from_tree_format: Optional["WorkingTreeFormat"] = None
     _matching_to_tree_format: Optional["WorkingTreeFormat"] = None
 
-    _optimisers: List[Type["InterTree"]] = []
+    _optimisers = []
 
     @classmethod
     def is_compatible(kls, source, target):
         # The default implementation is naive and uses the public API, so
         # it works for all trees.
         return True
+
+    @classmethod
+    def get(cls, source: Tree, target: Tree) -> InterTree:
+        return cast(InterTree, super(InterTree, cls).get(source, target))
 
     def compare(self, want_unchanged: bool = False,
                 specific_files: Optional[List[str]] = None,
@@ -833,9 +837,9 @@ class InterTree(InterObject):
           want_unversioned: Scan for unversioned paths.
         """
         from . import delta
-        trees = (self.source,)
+        trees = [self.source]
         if extra_trees is not None:
-            trees = trees + tuple(extra_trees)
+            trees = trees + extra_trees
         with self.lock_read():
             return delta._compare_trees(self.source, self.target, want_unchanged,
                                         specific_files, include_root, extra_trees=extra_trees,

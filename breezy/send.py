@@ -16,6 +16,7 @@
 
 import os
 import time
+from typing import Callable
 
 from . import (
     controldir,
@@ -33,7 +34,7 @@ from .revision import (
     )
 
 
-format_registry = registry.Registry()
+format_registry = registry.Registry[str, Callable]()
 
 
 def send(target_branch, revision, public_branch, remember,

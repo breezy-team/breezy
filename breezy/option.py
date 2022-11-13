@@ -21,7 +21,7 @@ __docformat__ = "google"
 
 import optparse
 import re
-from typing import Dict
+from typing import Dict, Callable
 
 from . import (
     errors,
@@ -590,6 +590,6 @@ _global_option('timezone',
                type=str,
                help='Display timezone as local, original, or utc.')
 
-diff_writer_registry = _mod_registry.Registry()
+diff_writer_registry = _mod_registry.Registry[str, Callable]()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
 diff_writer_registry.default_key = 'plain'

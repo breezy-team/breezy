@@ -45,7 +45,7 @@ from io import (
     BytesIO,
     )
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Callable
 
 from .. import (
     errors,
@@ -178,7 +178,7 @@ class FilteredStat(object):
 
 
 # The registry of filter stacks indexed by name.
-filter_stacks_registry = registry.Registry()
+filter_stacks_registry = registry.Registry[str, Callable[[str], List[ContentFilter]]]()
 
 
 # Cache of preferences -> stack

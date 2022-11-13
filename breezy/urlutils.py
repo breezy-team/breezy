@@ -142,7 +142,7 @@ def is_url(url):
     return _url_scheme_re.match(url) is not None
 
 
-def join(base, *args):
+def join(base: str, *args) -> str:
     """Create a URL by joining sections.
 
     This will normalize '..', assuming that paths are absolute
