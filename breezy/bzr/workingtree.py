@@ -78,6 +78,7 @@ from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..trace import mutter, note
 from ..tree import (
     get_canonical_path,
+    MissingNestedTree,
     TreeDirectory,
     TreeEntry,
     TreeFile,
@@ -507,7 +508,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.apply_inventory_delta(inv_delta)
 
     def get_nested_tree(self, path):
-        return WorkingTree.open(self.abspath(path))
+        try:
+            return WorkingTree.open(self.abspath(path))
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(path) from e
 
     def _get_nested_tree(self, path, file_id, reference_revision):
         return self.get_nested_tree(path)

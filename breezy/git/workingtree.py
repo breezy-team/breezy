@@ -217,11 +217,17 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             info = self._submodule_info()[relpath]
         except KeyError:
             submodule_transport = self.user_transport.clone(decode_git_path(relpath))
-            submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
+            try:
+                submodule_dir = self._format._matchingcontroldir.open(submodule_transport)
+            except errors.NotBranchError as e:
+                raise tree.MissingNestedTree(relpath) from e
         else:
             submodule_transport = self.control_transport.clone(
                 posixpath.join('modules', decode_git_path(info[1])))
-            submodule_dir = BareLocalGitControlDirFormat().open(submodule_transport)
+            try:
+                submodule_dir = BareLocalGitControlDirFormat().open(submodule_transport)
+            except errors.NotBranchError as e:
+                raise tree.MissingNestedTree(relpath) from e
         return Index(submodule_dir.control_transport.local_abspath('index'))
 
     def lock_read(self):
@@ -1314,7 +1320,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return self.branch.lookup_foreign_revision_id(hexsha)
 
     def get_nested_tree(self, path):
-        return workingtree.WorkingTree.open(self.abspath(path))
+        try:
+            return workingtree.WorkingTree.open(self.abspath(path))
+        except errors.NotBranchError as e:
+            raise tree.MissingNestedTree(path) from e
 
     def _directory_is_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then
