@@ -21,7 +21,7 @@ from io import BytesIO
 import itertools
 import os
 import struct
-from typing import Tuple
+from typing import Tuple, Any
 from zlib import adler32
 
 
@@ -49,14 +49,12 @@ from .. import (
 from ..registry import Registry
 from ..textmerge import TextMerge
 
-from . import knit
-
 from . import (
     index,
     )
 
 
-adapter_registry = Registry[Tuple[str, str], knit.KnitAdapter]()
+adapter_registry = Registry[Tuple[str, str], Any]()
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
                                'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
