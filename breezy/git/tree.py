@@ -614,9 +614,13 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 child_path = posixpath.join(path, name)
                 child_path_decoded = decode_git_path(child_path)
                 if recurse_nested and S_ISGITLINK(mode):
-                    mode = stat.S_IFDIR
-                    substore = self._get_submodule_store(child_path)
-                    hexsha = substore[hexsha].tree
+                    try:
+                        substore = self._get_submodule_store(child_path)
+                    except errors.NotBranchError:
+                        substore = store
+                    else:
+                        mode = stat.S_IFDIR
+                        hexsha = substore[hexsha].tree
                 else:
                     substore = store
                 if stat.S_ISDIR(mode):

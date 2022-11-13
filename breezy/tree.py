@@ -19,7 +19,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Type, TYPE_CHECKING, Optional
+from typing import List, Type, TYPE_CHECKING, Optional, Iterator, Dict, Union
 
 from . import (
     errors,
@@ -302,11 +302,12 @@ class Tree(object):
         """
         return False
 
-    def all_versioned_paths(self):
+    def all_versioned_paths(self) -> Iterator[str]:
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
 
-    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+    def iter_entries_by_dir(self, specific_files: Optional[List[str]] = None,
+                            recurse_nested: bool = False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -634,7 +635,7 @@ class Tree(object):
         """
         raise errors.NoSuchRevisionInTree(self, revision_id)
 
-    def unknowns(self):
+    def unknowns(self) -> Iterator[str]:
         """What files are present in this tree and unknown.
 
         Returns: an iterator over the unknown files.
@@ -752,8 +753,10 @@ class Tree(object):
         searcher = default_searcher
         return searcher
 
-    def archive(self, format, name, root='', subdir=None,
-                force_mtime=None, recurse_nested=False):
+    def archive(self, format: str, name: str, root: str = '',
+                subdir: Optional[str] = None,
+                force_mtime: Optional[Union[int, float]] = None,
+                recurse_nested: bool = False) -> Iterator[bytes]:
         """Create an archive of this tree.
 
         Args:
@@ -806,9 +809,12 @@ class InterTree(InterObject):
         # it works for all trees.
         return True
 
-    def compare(self, want_unchanged=False, specific_files=None,
-                extra_trees=None, require_versioned=False, include_root=False,
-                want_unversioned=False):
+    def compare(self, want_unchanged: bool = False,
+                specific_files: Optional[List[str]] = None,
+                extra_trees: Optional[List[Tree]] = None,
+                require_versioned: bool = False,
+                include_root: bool = False,
+                want_unversioned: bool = False):
         """Return the changes from source to target.
 
         Returns: A TreeDelta.
@@ -836,9 +842,11 @@ class InterTree(InterObject):
                                         require_versioned=require_versioned,
                                         want_unversioned=want_unversioned)
 
-    def iter_changes(self, include_unchanged=False,
-                     specific_files=None, pb=None, extra_trees=[],
-                     require_versioned=True, want_unversioned=False):
+    def iter_changes(self, include_unchanged: bool = False,
+                     specific_files: Optional[List[str]] = None,
+                     pb=None, extra_trees: List[Tree] = [],
+                     require_versioned: bool = True,
+                     want_unversioned: bool = False):
         """Generate an iterator of changes between trees.
 
         A TreeChange object is returned.
@@ -874,7 +882,7 @@ class InterTree(InterObject):
         raise NotImplementedError(self.iter_changes)
 
     def file_content_matches(
-            self, source_path, target_path,
+            self, source_path: str, target_path: str,
             source_stat=None, target_stat=None):
         """Check if two files are the same in the source and target trees.
 
@@ -909,7 +917,8 @@ class InterTree(InterObject):
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)
 
-    def find_target_path(self, path, recurse='none'):
+    def find_target_path(self, path: str,
+                         recurse: str = 'none') -> Optional[str]:
         """Find target tree path.
 
         Args:
@@ -920,7 +929,8 @@ class InterTree(InterObject):
         """
         raise NotImplementedError(self.find_target_path)
 
-    def find_source_path(self, path, recurse='none'):
+    def find_source_path(self, path: str,
+                         recurse: str = 'none') -> Optional[str]:
         """Find the source tree path.
 
         Args:
@@ -931,7 +941,8 @@ class InterTree(InterObject):
         """
         raise NotImplementedError(self.find_source_path)
 
-    def find_target_paths(self, paths, recurse='none'):
+    def find_target_paths(self, paths: List[str],
+                          recurse='none') -> Dict[str, Optional[str]]:
         """Find target tree paths.
 
         Args:
@@ -944,7 +955,8 @@ class InterTree(InterObject):
             ret[path] = self.find_target_path(path, recurse=recurse)
         return ret
 
-    def find_source_paths(self, paths, recurse='none'):
+    def find_source_paths(self, paths: List[str],
+                          recurse: str = 'none') -> Dict[str, Optional[str]]:
         """Find source tree paths.
 
         Args:
@@ -958,7 +970,9 @@ class InterTree(InterObject):
         return ret
 
 
-def find_previous_paths(from_tree, to_tree, paths, recurse='none'):
+def find_previous_paths(from_tree: Tree, to_tree: Tree,
+                        paths: List[str],
+                        recurse: str = 'none') -> Dict[str, Optional[str]]:
     """Find previous tree paths.
 
     Args:
