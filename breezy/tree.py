@@ -810,7 +810,7 @@ class InterTree(InterObject[Tree]):
         return True
 
     @classmethod
-    def get(cls, source: Tree, target: Tree) -> InterTree:
+    def get(cls, source: Tree, target: Tree) -> "InterTree":
         return cast(InterTree, super(InterTree, cls).get(source, target))
 
     def compare(self, want_unchanged: bool = False,
