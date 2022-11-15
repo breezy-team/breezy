@@ -382,7 +382,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         This implementation reads the pending merges list and last_revision
         value and uses that to decide what the parents list should be.
         """
-        last_rev = _mod_revision.ensure_null(self._last_revision())
+        last_rev = self._last_revision()
         if _mod_revision.NULL_REVISION == last_rev:
             parents = []
         else:
@@ -1537,7 +1537,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     self.add_parent_tree((old_tip, other_tree))
                     return len(nb_conflicts)
 
-            if last_rev != _mod_revision.ensure_null(revision):
+            if last_rev != revision:
                 to_tree = self.branch.repository.revision_tree(revision)
 
                 # determine the branch point

@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import TYPE_CHECKING
+
 from .. import (
     config,
     errors,
@@ -22,6 +24,10 @@ from .. import (
     registry,
     transport as _mod_transport,
     )
+
+
+if TYPE_CHECKING:
+    from .bzrdir import BzrDirFormat
 
 
 class LineEndingError(errors.BzrError):
@@ -36,7 +42,7 @@ class LineEndingError(errors.BzrError):
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
-    formats = registry.FormatRegistry(controldir.network_format_registry)
+    formats = registry.FormatRegistry["BzrDirFormat"](controldir.network_format_registry)
     """The known .bzr formats."""
 
     @classmethod

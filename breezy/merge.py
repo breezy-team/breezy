@@ -273,8 +273,7 @@ class Merger(object):
                  recurse='down', revision_graph=None):
         object.__init__(self)
         self.this_branch = this_branch
-        self.this_basis = _mod_revision.ensure_null(
-            this_branch.last_revision())
+        self.this_basis = this_branch.last_revision()
         self.this_rev_id = None
         self.this_tree = this_tree
         self.this_revision_tree = None
@@ -436,7 +435,6 @@ class Merger(object):
             revision_id = branch.last_revision()
         else:
             revision_id = branch.get_rev_id(revno)
-        revision_id = _mod_revision.ensure_null(revision_id)
         return branch, self.revision_tree(revision_id, branch)
 
     def set_interesting_files(self, file_list):
@@ -472,8 +470,7 @@ class Merger(object):
         self.other_branch, self.other_tree = self._get_tree(other_revision,
                                                             possible_transports)
         if other_revision[1] == -1:
-            self.other_rev_id = _mod_revision.ensure_null(
-                self.other_branch.last_revision())
+            self.other_rev_id = self.other_branch.last_revision()
             if _mod_revision.is_null(self.other_rev_id):
                 raise errors.NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id
@@ -518,8 +515,7 @@ class Merger(object):
             target.fetch(source, revision_id)
 
     def find_base(self):
-        revisions = [_mod_revision.ensure_null(self.this_basis),
-                     _mod_revision.ensure_null(self.other_basis)]
+        revisions = [self.this_basis, self.other_basis]
         if _mod_revision.NULL_REVISION in revisions:
             self.base_rev_id = _mod_revision.NULL_REVISION
             self.base_tree = self.revision_tree(self.base_rev_id)
@@ -591,8 +587,7 @@ class Merger(object):
             elif base_revision[1] is None:
                 self.base_rev_id = _mod_revision.NULL_REVISION
             else:
-                self.base_rev_id = _mod_revision.ensure_null(
-                    base_branch.get_rev_id(base_revision[1]))
+                self.base_rev_id = base_branch.get_rev_id(base_revision[1])
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
 
     def make_merger(self):

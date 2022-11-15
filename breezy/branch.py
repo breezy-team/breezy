@@ -1930,7 +1930,7 @@ class BranchFormatRegistry(controldir.ControlComponentFormatRegistry):
         self._default_format = None
 
 
-network_format_registry = registry.FormatRegistry()
+network_format_registry = registry.FormatRegistry[BranchFormat]()
 """Registry of formats indexed by their network name.
 
 The network name for a branch format is an identifier that can be used when
@@ -2237,7 +2237,7 @@ class GenericInterBranch(InterBranch):
 
             # what's the current last revision, before we fetch [and change it
             # possibly]
-            last_rev = _mod_revision.ensure_null(self.target.last_revision())
+            last_rev = self.target.last_revision()
             # we fetch here so that we don't process data twice in the common
             # case of having something to pull, and so that the check for
             # already merged can operate on the just fetched graph, which will

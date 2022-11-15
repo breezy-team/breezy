@@ -1833,7 +1833,7 @@ class cmd_update(Command):
             revision_id = revision[0].as_revision_id(branch)
         else:
             revision_id = branch.last_revision()
-        if revision_id == _mod_revision.ensure_null(tree.last_revision()):
+        if revision_id == tree.last_revision():
             revno = branch.revision_id_to_dotted_revno(revision_id)
             note(gettext("Tree is up to date at revision {0} of branch {1}"
                          ).format('.'.join(map(str, revno)), branch_location))
@@ -1855,8 +1855,7 @@ class cmd_update(Command):
                 "brz update --revision only works"
                 " for a revision in the branch history")
                 % (exc.revision)) from exc
-        revno = tree.branch.revision_id_to_dotted_revno(
-            _mod_revision.ensure_null(tree.last_revision()))
+        revno = tree.branch.revision_id_to_dotted_revno(tree.last_revision())
         note(gettext('Updated to revision {0} of branch {1}').format(
              '.'.join(map(str, revno)), branch_location))
         parent_ids = tree.get_parent_ids()
@@ -4346,14 +4345,12 @@ class cmd_find_merge_base(Command):
 
     @display_command
     def run(self, branch, other):
-        from .revision import ensure_null
-
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
         self.enter_context(branch1.lock_read())
         self.enter_context(branch2.lock_read())
-        last1 = ensure_null(branch1.last_revision())
-        last2 = ensure_null(branch2.last_revision())
+        last1 = branch1.last_revision()
+        last2 = branch2.last_revision()
 
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
@@ -4670,8 +4667,7 @@ class cmd_merge(Command):
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(base_branch)
         if other_revision_id is None:
-            other_revision_id = _mod_revision.ensure_null(
-                other_branch.last_revision())
+            other_revision_id = other_branch.last_revision()
         # Remember where we merge from. We need to remember if:
         # - user specify a location (and we don't merge from the parent
         #   branch)
@@ -5769,7 +5765,7 @@ class cmd_merge_directive(Command):
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None,
             directory=u'.'):
-        from .revision import ensure_null, NULL_REVISION
+        from .revision import NULL_REVISION
         include_patch, include_bundle = {
             'plain': (False, False),
             'diff': (True, False),
@@ -5808,7 +5804,6 @@ class cmd_merge_directive(Command):
                 base_revision_id = revision[0].as_revision_id(branch)
         else:
             revision_id = branch.last_revision()
-        revision_id = ensure_null(revision_id)
         if revision_id == NULL_REVISION:
             raise errors.CommandError(gettext('No revisions to bundle.'))
         directive = merge_directive.MergeDirective2.from_objects(

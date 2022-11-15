@@ -157,7 +157,7 @@ class TestBzrServe(TestBzrServeBase):
         with branch.lock_read():
             branch.repository.all_revision_ids()
             self.assertEqual(_mod_revision.NULL_REVISION,
-                             _mod_revision.ensure_null(branch.last_revision()))
+                             branch.last_revision())
 
     def start_server_inet(self, extra_options=()):
         """Start a brz server subprocess using the --inet option.
