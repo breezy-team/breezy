@@ -40,6 +40,7 @@ from breezy import (
     )
 from breezy.bzr import (
     groupcompress,
+    knit,
     )
 """)
 from .. import (

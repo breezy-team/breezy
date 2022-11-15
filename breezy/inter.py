@@ -111,7 +111,7 @@ class InterObject(Generic[T]):
 
     @classmethod
     def is_compatible(cls, source, target):
-        raise NotImplemented(cls.is_compatible)
+        raise NotImplementedError(cls.is_compatible)
 
     @classmethod
     def iter_optimisers(klass):
