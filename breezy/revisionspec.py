@@ -784,14 +784,14 @@ class RevisionSpec_ancestor(RevisionSpec):
         from .branch import Branch
 
         with branch.lock_read():
-            revision_a = revision.ensure_null(branch.last_revision())
+            revision_a = branch.last_revision()
             if revision_a == revision.NULL_REVISION:
                 raise errors.NoCommits(branch)
             if other_location == '':
                 other_location = branch.get_parent()
             other_branch = Branch.open(other_location)
             with other_branch.lock_read():
-                revision_b = revision.ensure_null(other_branch.last_revision())
+                revision_b = other_branch.last_revision()
                 if revision_b == revision.NULL_REVISION:
                     raise errors.NoCommits(other_branch)
                 graph = branch.repository.get_graph(other_branch.repository)
@@ -835,7 +835,6 @@ class RevisionSpec_branch(RevisionSpec):
         from .branch import Branch
         other_branch = Branch.open(self.spec)
         last_revision = other_branch.last_revision()
-        last_revision = revision.ensure_null(last_revision)
         context_branch.fetch(other_branch, last_revision)
         if last_revision == revision.NULL_REVISION:
             raise errors.NoCommits(other_branch)
@@ -845,7 +844,6 @@ class RevisionSpec_branch(RevisionSpec):
         from .branch import Branch
         other_branch = Branch.open(self.spec)
         last_revision = other_branch.last_revision()
-        last_revision = revision.ensure_null(last_revision)
         if last_revision == revision.NULL_REVISION:
             raise errors.NoCommits(other_branch)
         return other_branch.repository.revision_tree(last_revision)

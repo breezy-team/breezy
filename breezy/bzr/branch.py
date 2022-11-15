@@ -240,7 +240,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(
                 revision_id=revision_id, branch=self)
-        revision_id = _mod_revision.ensure_null(revision_id)
         with self.lock_write():
             old_revno, old_revid = self.last_revision_info()
             if self.get_append_revisions_only():
@@ -370,11 +369,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             master = self.get_master_branch(possible_transports)
             if master is not None:
-                old_tip = _mod_revision.ensure_null(self.last_revision())
+                old_tip = self.last_revision()
                 self.pull(master, overwrite=True)
                 if self.repository.get_graph().is_ancestor(
-                        old_tip, _mod_revision.ensure_null(
-                            self.last_revision())):
+                        old_tip, self.last_revision()):
                     return None
                 return old_tip
             return None
@@ -393,7 +391,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
         Does not update the revision_history cache.
         """
-        revision_id = _mod_revision.ensure_null(revision_id)
         out_string = b'%d %s\n' % (revno, revision_id)
         self._transport.put_bytes('last-revision', out_string,
                                   mode=self.controldir._get_file_mode())
@@ -513,13 +510,12 @@ class BzrBranch8(BzrBranch):
         self._reference_info = None
 
     def _check_history_violation(self, revision_id):
-        current_revid = self.last_revision()
-        last_revision = _mod_revision.ensure_null(current_revid)
+        last_revision = self.last_revision()
         if _mod_revision.is_null(last_revision):
             return
         graph = self.repository.get_graph()
         for lh_ancestor in graph.iter_lefthand_ancestry(revision_id):
-            if lh_ancestor == current_revid:
+            if lh_ancestor == last_revision:
                 return
         raise errors.AppendRevisionsOnlyViolation(self.user_url)
 

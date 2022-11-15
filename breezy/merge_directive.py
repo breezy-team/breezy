@@ -208,7 +208,6 @@ class BaseMergeDirective(object):
             patch = None
         else:
             submit_revision_id = submit_branch.last_revision()
-            submit_revision_id = _mod_revision.ensure_null(submit_revision_id)
             repository.fetch(submit_branch.repository, submit_revision_id)
             graph = repository.get_graph()
             ancestor_id = graph.find_unique_lca(revision_id,
@@ -620,7 +619,6 @@ class MergeDirective2(BaseMergeDirective):
             if submit_branch.get_public_branch() is not None:
                 target_branch = submit_branch.get_public_branch()
             submit_revision_id = submit_branch.last_revision()
-            submit_revision_id = _mod_revision.ensure_null(submit_revision_id)
             graph = repository.get_graph(submit_branch.repository)
             ancestor_id = graph.find_unique_lca(revision_id,
                                                 submit_revision_id)

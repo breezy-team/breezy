@@ -94,7 +94,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         else:
             branch = a_controldir.open_branch()
         if revision_id is None:
-            revision_id = _mod_revision.ensure_null(branch.last_revision())
+            revision_id = branch.last_revision()
         with branch.lock_write():
             branch.generate_revision_history(revision_id)
         inv = inventory.Inventory()

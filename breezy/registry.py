@@ -27,6 +27,7 @@ from typing import (
     Dict,
     Iterator,
     Tuple,
+    Callable,
 )
 
 from .pyutils import get_named_object
@@ -293,7 +294,8 @@ class Registry(Generic[K, V]):
                            " Can be set to any existing key.")
 
 
-class FormatRegistry(Registry):
+Format = TypeVar('Format')
+class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):
