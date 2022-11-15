@@ -16,6 +16,19 @@
 
 """Classes to provide name-to-object registry-like support."""
 
+from typing import (
+    TypeVar,
+    Generic,
+    Optional,
+    Any,
+    cast,
+    Union,
+    Callable,
+    Dict,
+    Iterator,
+    Tuple,
+)
+
 from .pyutils import get_named_object
 
 
@@ -79,7 +92,11 @@ class _LazyObjectGetter(_ObjectGetter):
             self._module_name, self._member_name, self._imported)
 
 
-class Registry(object):
+K = TypeVar('K')
+V = TypeVar('V')
+
+
+class Registry(Generic[K, V]):
     """A class that registers objects to a name.
 
     There are many places that want to collect related objects and access them
@@ -101,7 +118,7 @@ class Registry(object):
         # Map from key => (is_lazy, info)
         self._dict = {}
         self._aliases = {}
-        self._help_dict = {}
+        self._help_dict: Dict[str, Union[Callable[[Registry[K, V], Optional[K]], str], str]] = {}
         self._info_dict = {}
 
     def aliases(self):
@@ -114,8 +131,9 @@ class Registry(object):
             ret.setdefault(target, []).append(alias)
         return ret
 
-    def register(self, key, obj, help=None, info=None,
-                 override_existing=False):
+    def register(self, key: K, obj: V, help: Optional[str] = None,
+                 info: Optional[Any] = None,
+                 override_existing: bool = False):
         """Register a new object to a name.
 
         :param key: This is the key to use to request the object later.
@@ -137,9 +155,9 @@ class Registry(object):
         self._dict[key] = _ObjectGetter(obj)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_lazy(self, key, module_name, member_name,
-                      help=None, info=None,
-                      override_existing=False):
+    def register_lazy(self, key: K, module_name: str, member_name: str,
+                      help: Optional[str] = None, info: Optional[Any] = None,
+                      override_existing: bool = False) -> None:
         """Register a new object to be loaded on request.
 
         :param key: This is the key to use to request the object later.
@@ -161,7 +179,7 @@ class Registry(object):
         self._dict[key] = _LazyObjectGetter(module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_alias(self, key, target, info=None):
+    def register_alias(self, key: str, target: str, info: Optional[Any] = None):
         """Register an alias.
 
         :param key: Alias name
@@ -180,7 +198,7 @@ class Registry(object):
         self._help_dict[key] = help
         self._info_dict[key] = info
 
-    def get(self, key=None):
+    def get(self, key: Optional[K] = None) -> V:
         """Return the object register()'ed to the given key.
 
         May raise ImportError if the object was registered lazily and
@@ -197,7 +215,7 @@ class Registry(object):
         :raises AttributeError: If registered lazily, and the module does not
             contain the registered member.
         """
-        return self._dict[self._get_key_or_default(key)].get_obj()
+        return cast(V, self._dict[self._get_key_or_default(key)].get_obj())
 
     def _get_module(self, key):
         """Return the module the object will be or was loaded from.
@@ -227,7 +245,7 @@ class Registry(object):
         else:
             return self.default_key
 
-    def get_help(self, key=None):
+    def get_help(self, key: Optional[K] = None) -> Optional[str]:
         """Get the help text associated with the given key"""
         the_help = self._help_dict[self._get_key_or_default(key)]
         if callable(the_help):
@@ -252,7 +270,7 @@ class Registry(object):
         """Get a list of registered entries"""
         return sorted(self._dict)
 
-    def iteritems(self):
+    def iteritems(self) -> Iterator[Tuple[K, V]]:
         for key in self._dict:
             yield key, self._dict[key].get_obj()
 

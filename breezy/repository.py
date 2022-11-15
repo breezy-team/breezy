@@ -1541,7 +1541,7 @@ format_registry.register_lazy(
     )
 
 
-class InterRepository(InterObject):
+class InterRepository(InterObject[Repository]):
     """This class represents operations taking place between two repositories.
 
     Its instances have methods like copy_content and fetch, and contain
@@ -1553,7 +1553,7 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
-    _optimisers: List[Type["InterRepository"]] = []
+    _optimisers = []
     """The available optimised InterRepository types."""
 
     def copy_content(self, revision_id=None):

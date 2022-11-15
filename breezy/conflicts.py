@@ -71,7 +71,7 @@ class cmd_conflicts(commands.Command):
                 self.outf.write(str(conflict) + '\n')
 
 
-resolve_action_registry = registry.Registry()
+resolve_action_registry = registry.Registry[str, str]()
 
 
 resolve_action_registry.register(

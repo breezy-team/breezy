@@ -304,11 +304,15 @@ class InventoryTree(Tree):
             def iter_entries(inv):
                 for p, e in inv.iter_entries_by_dir(specific_file_ids=inventory_file_ids):
                     if e.kind == 'tree-reference' and recurse_nested:
-                        subtree = self._get_nested_tree(p, e.file_id, e.reference_revision)
-                        with subtree.lock_read():
-                            subinv = subtree.root_inventory
-                            for subp, e in iter_entries(subinv):
-                                yield (osutils.pathjoin(p, subp) if subp else p), e
+                        try:
+                            subtree = self._get_nested_tree(p, e.file_id, e.reference_revision)
+                        except errors.NotBranchError:
+                            yield p, e
+                        else:
+                            with subtree.lock_read():
+                                subinv = subtree.root_inventory
+                                for subp, e in iter_entries(subinv):
+                                    yield (osutils.pathjoin(p, subp) if subp else p), e
                     else:
                         yield p, e
             return iter_entries(self.root_inventory)
@@ -1043,8 +1047,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def _get_nested_tree(self, path, file_id, reference_revision):
         # Just a guess..
-        subdir = ControlDir.open_from_transport(
-            self._repository.user_transport.clone(path))
+        try:
+            subdir = ControlDir.open_from_transport(
+                self._repository.user_transport.clone(path))
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(path) from e
         subrepo = subdir.find_repository()
         try:
             revtree = subrepo.revision_tree(reference_revision)

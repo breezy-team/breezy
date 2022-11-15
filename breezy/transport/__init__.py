@@ -29,7 +29,7 @@ it.
 import errno
 from io import BytesIO
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 
 from stat import S_ISDIR
 
@@ -1777,7 +1777,7 @@ register_lazy_transport('ssh:', 'breezy.transport.remote',
                         'HintingSSHTransport')
 
 
-transport_server_registry = registry.Registry()
+transport_server_registry = registry.Registry[str, Callable]()
 transport_server_registry.register_lazy('bzr', 'breezy.bzr.smart.server',
                                         'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
 transport_server_registry.default_key = 'bzr'

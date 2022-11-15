@@ -389,8 +389,11 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             if not nested_repo_transport.has('.'):
                 nested_repo_transport = self._repository.controldir.user_transport.clone(
                     posixpath.join(decode_git_path(section), '.git'))
-        nested_controldir = _mod_controldir.ControlDir.open_from_transport(
-            nested_repo_transport)
+        try:
+            nested_controldir = _mod_controldir.ControlDir.open_from_transport(
+                nested_repo_transport)
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(decode_git_path(relpath)) from e
         return nested_controldir.find_repository()
 
     def _get_submodule_store(self, relpath):
@@ -614,9 +617,13 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 child_path = posixpath.join(path, name)
                 child_path_decoded = decode_git_path(child_path)
                 if recurse_nested and S_ISGITLINK(mode):
-                    mode = stat.S_IFDIR
-                    substore = self._get_submodule_store(child_path)
-                    hexsha = substore[hexsha].tree
+                    try:
+                        substore = self._get_submodule_store(child_path)
+                    except errors.NotBranchError:
+                        substore = store
+                    else:
+                        mode = stat.S_IFDIR
+                        hexsha = substore[hexsha].tree
                 else:
                     substore = store
                 if stat.S_ISDIR(mode):
@@ -683,7 +690,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if S_ISGITLINK(mode):
             try:
                 nested_repo = self._get_submodule_repository(encode_git_path(path))
-            except errors.NotBranchError:
+            except MissingNestedTree:
                 return self.mapping.revision_id_foreign_to_bzr(hexsha)
             else:
                 try:
@@ -1429,7 +1436,8 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     key = (posixpath.dirname(path), path)
                     if key not in ret and self.is_versioned(path):
                         ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
-            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
+            for ((_, path), ie) in sorted(ret.items()):
+                yield path, ie
 
     def iter_references(self):
         if self.supports_tree_reference():

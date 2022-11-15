@@ -18,6 +18,7 @@ import bz2
 import os
 import re
 import sys
+from typing import Callable
 import zlib
 
 import fastbencode as bencode
@@ -4401,8 +4402,8 @@ class RemoteBzrDirConfig(RemoteConfig):
         return self._bzrdir._real_bzrdir
 
 
-error_translators = registry.Registry()
-no_context_error_translators = registry.Registry()
+error_translators = registry.Registry[bytes, Callable]()
+no_context_error_translators = registry.Registry[bytes, Callable]()
 
 
 def _translate_error(err, **context):

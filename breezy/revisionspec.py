@@ -974,7 +974,7 @@ RevisionSpec_dwim.append_possible_revspec(RevisionSpec_revid)
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_date)
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_branch)
 
-revspec_registry = registry.Registry()
+revspec_registry = registry.Registry[str, RevisionSpec]()
 
 
 def _register_revspec(revspec):
