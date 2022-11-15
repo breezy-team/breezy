@@ -515,7 +515,7 @@ class BzrBranch8(BzrBranch):
             return
         graph = self.repository.get_graph()
         for lh_ancestor in graph.iter_lefthand_ancestry(revision_id):
-            if lh_ancestor == current_revid:
+            if lh_ancestor == last_revision:
                 return
         raise errors.AppendRevisionsOnlyViolation(self.user_url)
 
