@@ -48,6 +48,7 @@ from ..errors import (
     NotLocalUrl,
     PermissionDenied,
     TransportError,
+    UnexpectedHttpStatus,
     UninitializableFormat,
     )
 from ..revision import NULL_REVISION
@@ -229,6 +230,10 @@ def parse_git_error(url, message):
         return ConnectionReset(message)
     if message == 'The remote server unexpectedly closed the connection.':
         return TransportError(message)
+    m = re.match(r'unexpected http resp ([0-9]+) for (.*)', message)
+    if m:
+        # TODO(jelmer): Have dulwich raise an exception and look at that instead?
+        return UnexpectedHttpStatus(path=m.group(2), code=int(m.group(1)), extra=message)
     if message == 'protected branch hook declined':
         return ProtectedBranchHookDeclined(msg=message)
     # Don't know, just return it to the user as-is
