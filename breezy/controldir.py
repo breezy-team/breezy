@@ -1185,14 +1185,14 @@ class ControlDirFormat(object):
                 target_format.rich_root_data)
 
     @classmethod
-    def register_prober(klass, prober: Type[Prober]):
+    def register_prober(klass, prober: Type["Prober"]):
         """Register a prober that can look for a control dir.
 
         """
         klass._probers.append(prober)
 
     @classmethod
-    def unregister_prober(klass, prober: Type[Prober]):
+    def unregister_prober(klass, prober: Type["Prober"]):
         """Unregister a prober.
 
         """
@@ -1203,7 +1203,7 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def all_probers(klass) -> List[Type[Prober]]:
+    def all_probers(klass) -> List[Type["Prober"]]:
         return klass._probers
 
     @classmethod
