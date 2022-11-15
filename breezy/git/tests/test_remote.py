@@ -53,6 +53,7 @@ from ..remote import (
     RemoteGitBranchFormat,
     _git_url_and_path_from_transport,
     )
+from ..tree import MissingNestedTree
 
 from dulwich import porcelain
 from dulwich.errors import HangupException
@@ -354,7 +355,7 @@ class FetchFromRemoteTestBase(object):
                 self.remote_real.head()),
             local.open_branch().last_revision())
         self.assertRaises(
-            NotBranchError,
+            MissingNestedTree,
             local.open_workingtree().get_nested_tree, 'nested')
 
     def test_sprout_submodule_relative(self):

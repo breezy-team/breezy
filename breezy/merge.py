@@ -16,6 +16,7 @@
 
 import contextlib
 import tempfile
+from typing import Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1867,7 +1868,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     return merger.do_merge()
 
 
-merge_type_registry = registry.Registry()
+merge_type_registry = registry.Registry[str, Type[Merge3Merger]]()
 merge_type_registry.register('diff3', Diff3Merger,
                              "Merge using external diff3.")
 merge_type_registry.register('lca', LCAMerger,

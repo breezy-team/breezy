@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import Optional, Tuple, List, Type
+from typing import Optional, Tuple, List, Type, cast
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -708,7 +708,7 @@ class Branch(controldir.ControlComponent):
             return InterBranch.get(from_branch, self).fetch(
                 stop_revision, limit=limit, lossy=lossy)
 
-    def get_bound_location(self):
+    def get_bound_location(self) -> Optional[str]:
         """Return the URL of the branch we are bound to.
 
         Older format branches cannot bind, please be sure to use a metadir
@@ -1088,7 +1088,7 @@ class Branch(controldir.ControlComponent):
         """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
 
-    def get_parent(self):
+    def get_parent(self) -> Optional[str]:
         """Return the parent location of the branch.
 
         This is the default location for pull/missing.  The usual
@@ -1120,26 +1120,26 @@ class Branch(controldir.ControlComponent):
             url = urlutils.relative_url(self.base, url)
         config.set(name, url)
 
-    def _get_config_location(self, name, config=None):
+    def _get_config_location(self, name: str, config=None) -> Optional[str]:
         if config is None:
             config = self.get_config_stack()
         location = config.get(name)
         if location == '':
             location = None
-        return location
+        return cast(Optional[str], location)
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
         return self.get_config_stack().get('child_submit_format')
 
-    def get_submit_branch(self):
+    def get_submit_branch(self) -> Optional[str]:
         """Return the submit location of the branch.
 
         This is the default location for bundle.  The usual
         pattern is that the user can override it by specifying a
         location.
         """
-        return self.get_config_stack().get('submit_branch')
+        return cast(Optional[str], self.get_config_stack().get('submit_branch'))
 
     def set_submit_branch(self, location):
         """Return the submit location of the branch.
@@ -1150,7 +1150,7 @@ class Branch(controldir.ControlComponent):
         """
         self.get_config_stack().set('submit_branch', location)
 
-    def get_public_branch(self):
+    def get_public_branch(self) -> Optional[str]:
         """Return the public location of the branch.
 
         This is used by merge directives.
@@ -1166,9 +1166,9 @@ class Branch(controldir.ControlComponent):
         """
         self._set_config_location('public_branch', location)
 
-    def get_push_location(self):
+    def get_push_location(self) -> Optional[str]:
         """Return None or the location to push this branch to."""
-        return self.get_config_stack().get('push_location')
+        return cast(str, self.get_config_stack().get('push_location'))
 
     def set_push_location(self, location):
         """Set a new push location for this branch."""
@@ -2091,7 +2091,7 @@ class BranchCheckResult(object):
             note(gettext('found error:%s'), error)
 
 
-class InterBranch(InterObject):
+class InterBranch(InterObject[Branch]):
     """This class represents operations taking place between two branches.
 
     Its instances have methods like pull() and push() and contain
@@ -2099,7 +2099,7 @@ class InterBranch(InterObject):
     can be carried out on.
     """
 
-    _optimisers: List[Type["InterBranch"]] = []
+    _optimisers = []
     """The available optimised InterBranch types."""
 
     @classmethod

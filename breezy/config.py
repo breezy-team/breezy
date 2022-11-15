@@ -82,7 +82,7 @@ import sys
 import configobj
 from io import BytesIO
 
-from typing import Tuple, Iterable, Dict
+from typing import Tuple, Iterable, Dict, Callable, cast
 
 import breezy
 from .lazy_import import lazy_import
@@ -286,8 +286,8 @@ class ConfigObj(configobj.ConfigObj):
                 return configobj.tsquot
             return configobj.tdquot
 
-    def get_bool(self, section, key):
-        return self[section].as_bool(key)
+    def get_bool(self, section, key) -> bool:
+        return cast(bool, self[section].as_bool(key))
 
     def get_value(self, section, name):
         # Try [] for the old DEFAULT section.
@@ -4065,9 +4065,9 @@ class cmd_config(commands.Command):
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
 # object.
-test_store_builder_registry = registry.Registry()
+test_store_builder_registry = registry.Registry[str, Callable]()
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
 # object.
-test_stack_builder_registry = registry.Registry()
+test_stack_builder_registry = registry.Registry[str, Callable]()

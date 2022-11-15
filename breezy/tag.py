@@ -27,7 +27,7 @@ import contextlib
 import itertools
 import re
 import sys
-from typing import List, Type
+from typing import List, Type, Callable
 
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
@@ -36,6 +36,7 @@ from .inter import InterObject
 from .registry import Registry
 
 from . import (
+    branch as _mod_branch,
     errors,
     )
 
@@ -183,11 +184,11 @@ class DisabledTags(Tags):
         return {}
 
 
-class InterTags(InterObject):
+class InterTags(InterObject[Tags]):
     """Operations between sets of tags.
     """
 
-    _optimisers: List[Type["InterTags"]] = []
+    _optimisers = []
     """The available optimised InterTags types."""
 
     @classmethod
@@ -353,7 +354,7 @@ def sort_time(branch, tags):
     tags.sort(key=lambda x: timestamps[x[1]])
 
 
-tag_sort_methods = Registry()
+tag_sort_methods = Registry[str, Callable[[_mod_branch.Branch, List[str]], List[str]]]()
 tag_sort_methods.register("natural", sort_natural,
                           'Sort numeric substrings as numbers. (default)')
 tag_sort_methods.register("alpha", sort_alpha, 'Sort tags lexicographically.')

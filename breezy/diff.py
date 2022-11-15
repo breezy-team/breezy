@@ -19,7 +19,7 @@ import difflib
 import os
 import re
 import sys
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1126,5 +1126,5 @@ class DiffTree(object):
             raise errors.NoDiffFound(error_path)
 
 
-format_registry = Registry()
+format_registry = Registry[str, Type[DiffTree]]()
 format_registry.register('default', DiffTree)

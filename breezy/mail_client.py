@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from typing import Type
 
 import breezy
 from . import (
@@ -30,9 +31,6 @@ from . import (
     urlutils,
     registry,
     )
-
-mail_client_registry = registry.Registry()
-
 
 class MailClientNotFound(errors.BzrError):
 
@@ -108,6 +106,9 @@ class MailClient(object):
         :param attachment: The attachment that will be used
         """
         return ''
+
+
+mail_client_registry = registry.Registry[str, Type[MailClient]]()
 
 
 class Editor(MailClient):

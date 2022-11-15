@@ -51,7 +51,7 @@ import tempfile
 import threading
 import time
 import traceback
-from typing import Set
+from typing import Set, Callable
 import unittest
 import warnings
 
@@ -3372,7 +3372,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 
 # A registry where get() returns a suite decorator.
-parallel_registry = registry.Registry()
+parallel_registry = registry.Registry[str, Callable]()
 
 
 def fork_decorator(suite):
