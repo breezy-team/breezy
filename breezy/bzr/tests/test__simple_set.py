@@ -104,10 +104,14 @@ class TestSimpleSet(tests.TestCase):
         assertRefcount actually creates a new pointer, as does calling
         sys.getrefcount. So pass the expected value *before* the call.
         """
-        # I'm not sure why the offset is 3, but I've check that in the caller,
-        # an offset of 1 works, which is expected. Not sure why assertRefcount
-        # is incrementing/decrementing 2 times
-        self.assertEqual(count, sys.getrefcount(obj) - 3)
+        if sys.version_info < (3, 11):
+            # I'm not sure why the offset is 3, but I've check that in the caller,
+            # an offset of 1 works, which is expected. Not sure why assertRefcount
+            # is incrementing/decrementing 2 times
+            self.assertEqual(count, sys.getrefcount(obj) - 3)
+        else:
+            # On 3.11, the offset is 2
+            self.assertEqual(count, sys.getrefcount(obj) - 2)
 
     def test_initial(self):
         obj = self.module.SimpleSet()
