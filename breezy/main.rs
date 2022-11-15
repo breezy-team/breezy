@@ -4,9 +4,9 @@ use std::path::*;
 
 
 fn check_version(py: Python<'_>) -> PyResult<()> {
-    let MAJOR: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
-    let MINOR: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
-    let PATCH: u32 = env!("CARGO_PKG_VERSION_PATCH").parse::<u32>().unwrap();
+    let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
+    let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
+    let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse::<u32>().unwrap();
     let breezy = PyModule::import(py, "breezy").map_err(|e| {
         eprintln!(
             "brz: ERROR: Couldn't import breezy and dependencies.\n\
@@ -19,7 +19,7 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
         .getattr("version_info")?
         .extract::<(u32, u32, u32, String, u32)>()?;
 
-    if ver.0 != MAJOR || ver.1 != MINOR || ver.2 != PATCH {
+    if ver.0 != major || ver.1 != minor || ver.2 != patch {
         eprintln!(
             "\
             brz: WARNING: breezy version doesn't match the brz program.\n  \
@@ -27,9 +27,9 @@ fn check_version(py: Python<'_>) -> PyResult<()> {
             breezy version is {}\n  \
             brz version is {}.{}.{}\n",
             breezy.getattr("_format_version_tuple")?.call1((ver,))?,
-            MAJOR,
-            MINOR,
-            PATCH
+            major,
+            minor,
+            patch
         );
     }
     Ok(())
