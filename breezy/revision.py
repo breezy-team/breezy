@@ -223,15 +223,6 @@ def check_not_reserved_id(revision_id: RevisionID) -> None:
         raise errors.ReservedId(revision_id)
 
 
-def ensure_null(revision_id: RevisionID) -> RevisionID:
-    """Ensure only NULL_REVISION is used to represent the null revision"""
-    if revision_id is None:
-        raise ValueError(
-            'NULL_REVISION should be used for the null'
-            ' revision instead of None.')
-    return revision_id
-
-
 def is_null(revision_id: RevisionID) -> bool:
     if revision_id is None:
         raise ValueError('NULL_REVISION should be used for the null'

@@ -403,7 +403,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         This implementation reads the pending merges list and last_revision
         value and uses that to decide what the parents list should be.
         """
-        last_rev = _mod_revision.ensure_null(self._last_revision())
+        last_rev = self._last_revision()
         if _mod_revision.NULL_REVISION == last_rev:
             parents = []
         else:
@@ -646,7 +646,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             if not force and self.has_changes():
                 raise errors.UncommittedChanges(self)
             if to_revision is None:
-                to_revision = _mod_revision.ensure_null(branch.last_revision())
+                to_revision = branch.last_revision()
             merger.other_rev_id = to_revision
             if _mod_revision.is_null(merger.other_rev_id):
                 raise errors.NoCommits(branch)
@@ -928,7 +928,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def _last_revision(self):
         """helper for get_parent_ids."""
         with self.lock_read():
-            return _mod_revision.ensure_null(self.branch.last_revision())
+            return self.branch.last_revision()
 
     def is_locked(self):
         """Check if this tree is locked."""

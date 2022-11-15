@@ -1259,7 +1259,7 @@ class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
         return controldir.format_registry.make_controldir('default').repository_format
 
 
-network_format_registry = registry.FormatRegistry()
+network_format_registry = registry.FormatRegistry["RepositoryFormat"]()
 """Registry of formats indexed by their network name.
 
 The network name for a repository format is an identifier that can be used when

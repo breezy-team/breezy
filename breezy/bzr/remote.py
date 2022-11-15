@@ -1933,7 +1933,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def revision_tree(self, revision_id):
         with self.lock_read():
-            revision_id = _mod_revision.ensure_null(revision_id)
             if revision_id == _mod_revision.NULL_REVISION:
                 return InventoryRevisionTree(self,
                                              Inventory(root_id=None), _mod_revision.NULL_REVISION)

@@ -1997,7 +1997,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     self.add_parent_tree((old_tip, other_tree))
                     return len(nb_conflicts)
 
-            if last_rev != _mod_revision.ensure_null(revision):
+            if last_rev != revision:
                 # the working tree is up to date with the branch
                 # we can merge the specified revision from master
                 to_tree = self.branch.repository.revision_tree(revision)

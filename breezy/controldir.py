@@ -32,7 +32,6 @@ import textwrap
 
 from breezy import (
     branch as _mod_branch,
-    revision as _mod_revision,
     ui,
     urlutils,
     )
@@ -45,6 +44,7 @@ from . import (
     errors,
     hooks,
     registry,
+    revision as _mod_revision,
     trace,
     transport as _mod_transport,
     )
@@ -998,7 +998,7 @@ class ControlComponentFormat(object):
         raise NotImplementedError(cls.get_format_string)
 
 
-class ControlComponentFormatRegistry(registry.FormatRegistry):
+class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFormat]):
     """A registry for control components (branch, workingtree, repository)."""
 
     def __init__(self, other_registry=None):
@@ -1185,14 +1185,14 @@ class ControlDirFormat(object):
                 target_format.rich_root_data)
 
     @classmethod
-    def register_prober(klass, prober):
+    def register_prober(klass, prober: Type["Prober"]):
         """Register a prober that can look for a control dir.
 
         """
         klass._probers.append(prober)
 
     @classmethod
-    def unregister_prober(klass, prober):
+    def unregister_prober(klass, prober: Type["Prober"]):
         """Unregister a prober.
 
         """
@@ -1203,7 +1203,7 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def all_probers(klass):
+    def all_probers(klass) -> List[Type["Prober"]]:
         return klass._probers
 
     @classmethod
@@ -1329,7 +1329,7 @@ class ControlDirFormat(object):
         this in the future - for instance to make bzr talk with svn working
         trees.
         """
-        raise NotImplementedError(self.is_control_filename)
+        raise NotImplementedError(cls.is_control_filename)
 
 
 class Prober(object):
@@ -1394,7 +1394,7 @@ class ControlDirFormatInfo(object):
         self.experimental = experimental
 
 
-class ControlDirFormatRegistry(registry.Registry):
+class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
     """Registry of user-selectable ControlDir subformats.
 
     Differs from ControlDirFormat._formats in that it provides sub-formats,
@@ -1677,7 +1677,7 @@ class RepositoryAcquisitionPolicy(object):
 # on previous ones.
 format_registry = ControlDirFormatRegistry()
 
-network_format_registry = registry.FormatRegistry()
+network_format_registry = registry.FormatRegistry[ControlDirFormat]()
 """Registry of formats indexed by their network name.
 
 The network name for a ControlDirFormat is an identifier that can be used when
