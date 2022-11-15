@@ -1627,6 +1627,11 @@ class InterRepository(InterObject[Repository]):
         if source.supports_rich_root() != target.supports_rich_root():
             raise errors.IncompatibleRepositories(source, target,
                                                   "different rich-root support")
+        if not hasattr(source, '_serializer') or not hasattr(target, '_serializer'):
+            if source != target:
+                raise errors.IncompatibleRepositories(source, target, "different formats")
+            return
+
         if source._serializer != target._serializer:
             raise errors.IncompatibleRepositories(source, target,
                                                   "different serializers")

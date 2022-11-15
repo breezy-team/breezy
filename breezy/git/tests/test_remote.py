@@ -31,6 +31,7 @@ from ...errors import (
     NoSuchTag,
     PermissionDenied,
     TransportError,
+    UnexpectedHttpStatus,
     )
 
 from ...tests import (
@@ -201,6 +202,18 @@ Email support@github.com for help
                 'url',
                 RemoteGitError(
                     '[Errno 104] Connection reset by peer')))
+
+    def test_http_unexpected(self):
+        self.assertEqual(
+            UnexpectedHttpStatus(
+                    'https://example.com/bigint.git/git-upload-pack',
+                    403, extra=('unexpected http resp 403 for '
+                                'https://example.com/bigint.git/git-upload-pack')),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'unexpected http resp 403 for '
+                    'https://example.com/bigint.git/git-upload-pack')))
 
 
 class ParseHangupTests(TestCase):
