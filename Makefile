@@ -32,6 +32,9 @@ check:: flake8
 flake8:
 	flake8 . scripts/deb-*
 
+mypy:
+	BRZ_PLUGINS_AT=debian@$(shell pwd) mypy -p breezy.plugins.debian
+
 docker:
 	buildah build -t ghcr.io/breezy-team/deb-new-upstream:latest -f Dockerfile.deb-new-upstream .
 	buildah push ghcr.io/breezy-team/deb-new-upstream:latest
