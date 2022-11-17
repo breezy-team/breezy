@@ -132,7 +132,7 @@ from debmutate.versions import (
 from debmutate.vcs import split_vcs_url
 from debmutate.watch import WatchSyntaxError
 
-from breezy.tree import Tree
+from breezy.tree import Tree, MissingNestedTree
 
 from breezy.plugins.debian.merge_upstream import get_upstream_branch_location
 
@@ -143,6 +143,13 @@ class BigVersionJump(Exception):
     def __init__(self, old_upstream_version, new_upstream_version):
         self.old_upstream_version = old_upstream_version
         self.new_upstream_version = new_upstream_version
+
+
+class DistMissingNestedTree(Exception):
+    """Dist failed to find a nested tree."""
+
+    def __init__(self, path):
+        self.path = path
 
 
 class UpstreamMergeConflicted(Exception):
@@ -1197,8 +1204,11 @@ def main(argv=None):
         if args.dist_command:
 
             def create_dist(tree, package, version, target_dir):
-                return run_dist_command(
-                    tree, package, version, target_dir, args.dist_command)
+                try:
+                    return run_dist_command(
+                        tree, package, version, target_dir, args.dist_command)
+                except MissingNestedTree as e:
+                    raise DistMissingNestedTree(e.path) from e
         else:
             create_dist = None
 
@@ -1500,6 +1510,12 @@ def main(argv=None):
                 "There was a big jump in upstream versions: %s ⇒ %s" % (
                     e.old_upstream_version, e.new_upstream_version),
                 upstream_version=e.new_upstream_version, transient=False)
+            return 1
+        except DistMissingNestedTree as e:
+            report_fatal(
+                "requires-nested-tree-support",
+                "Unable to find nested tree at %s" % e.path,
+                transient=False, stage=("dist", ))
             return 1
         except OSError as e:
             if e.errno == errno.ENOSPC:
