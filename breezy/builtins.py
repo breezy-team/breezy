@@ -2658,8 +2658,8 @@ class cmd_log(Command):
     :Tips & tricks:
 
       GUI tools and IDEs are often better at exploring history than command
-      line tools: you may prefer qlog or viz from qbzr or brz-gtk, the
-      bzr-explorer shell, or the Loggerhead web interface.  See the Breezy
+      line tools: you may prefer qlog from qbzr, or the Loggerhead web
+      interface.  See the Breezy
       Plugin Guide <https://www.breezy-vcs.org/doc/plugins/en/> and
       <http://wiki.breezy-vcs.org/IDEIntegration>.
 

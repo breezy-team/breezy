@@ -23,11 +23,11 @@ GUI tools
 ---------
 
 The various GUI plugins for Breezy provide graphical tools for
-viewing annotation information. For example, the brz-gtk plugin
+viewing annotation information. For example, the qbrz plugin
 provides a GUI tool for this that can be launched using the
-``gannotate`` command::
+``qannotate`` command::
 
-  brz gannotate readme.txt
+  brz qannotate readme.txt
 
 The GUI tools typically provide a much richer display of
 interesting information (e.g. all the changes in each commit)
