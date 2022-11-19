@@ -189,16 +189,16 @@ Creating your own copy of another branch
 To work with someone else's code, you can make your own copy of their
 branch. Let's take a real-world example, Breezy's GTK interface::
 
-  $ brz init-shared-repo ~/brz-gtk
-  $ brz branch lp:~brz/brz-gtk/trunk ~/brz-gtk/john
+  $ brz init-shared-repo ~/bzr-gtk
+  $ brz branch lp:~brz/bzr-gtk/trunk ~/bzr-gtk/john
   Branched 292 revision(s).
 
 Breezy will download all the files and complete revision history from the
-brz-gtk project's trunk branch and create a copy called ``john``.
+bzr-gtk project's trunk branch and create a copy called ``john``.
 
 Now, you have your own copy of the branch and can commit changes with
 or without a net connection. You can share your branch at any time by
-publishing it and, if the  brz-gtk team want to use your work, Breezy
+publishing it and, if the  bzr-gtk team want to use your work, Breezy
 makes it easy for them to merge your branch back into their trunk branch.
 
 
@@ -212,7 +212,7 @@ To make sure your branch stays up to date, you should merge changes from
 the parent into your personal branch::
 
   $ brz merge
-  Merging from saved parent location: http://bazaar.launchpad.net/~brz/brz-gtk/trunk
+  Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
   All changes applied successfully.
 
 Check what has changed::
