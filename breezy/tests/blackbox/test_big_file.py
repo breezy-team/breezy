@@ -21,6 +21,7 @@ These are meant to ensure that Breezy never keeps full copies of files in
 memory.
 """
 
+import contextlib
 import errno
 import os
 import resource
@@ -52,6 +53,16 @@ def make_big_file(path):
         os.close(fd)
 
 
+@contextlib.contextmanager
+def limit_memory(size):
+    if sys.platform in ('win32', 'darwin'):
+        raise NotImplementedError
+    previous = resource.getrlimit(RESOURCE)
+    resource.setrlimit(RESOURCE, (LIMIT, -1))
+    yield
+    resource.setrlimit(RESOURCE, previous)
+
+
 class TestAdd(tests.TestCaseWithTransport):
 
     def writeBigFile(self, path):
@@ -64,9 +75,12 @@ class TestAdd(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestAdd, self).setUp()
-        previous = resource.getrlimit(RESOURCE)
-        self.addCleanup(resource.setrlimit, RESOURCE, previous)
-        resource.setrlimit(RESOURCE, (LIMIT, -1))
+        cm = limit_memory(LIMIT)
+        try:
+            cm.__enter__()
+        except NotImplementedError:
+            self.skipTest('memory limits not supported on this platform')
+        self.addCleanup(cm.__exit__, None, None, None)
 
     def test_allocate(self):
         def allocate():

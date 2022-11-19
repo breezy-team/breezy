@@ -198,6 +198,7 @@ if len(sys.argv) == 2:
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
             os.chmod('fed.py', 0o755)
+            mutter('Setting BRZ_EDITOR to %r', '%s ./fed.py' % sys.executable)
             self.overrideEnv('BRZ_EDITOR', '%s ./fed.py' % sys.executable)
 
     def test_edit_commit_message_without_infotext(self):
