@@ -952,7 +952,7 @@ class TestCase(testtools.TestCase):
         # set by the user running selftest).
         timeout = config.GlobalStack().get('selftest.timeout')
         if timeout:
-            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture = fixtures.TimeoutFixture(timeout, gentle=True)
             timeout_fixture.setUp()
             self.addCleanup(timeout_fixture.cleanUp)
 
