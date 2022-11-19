@@ -29,6 +29,7 @@ from typing import List, Optional, Callable, Union
 
 from breezy.bzr import LineEndingError
 from breezy.git.remote import RemoteGitError
+import breezy.plugins.launchpad
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Version, ChangelogParseError
@@ -396,6 +397,9 @@ def open_branch(
     name: str = None,
 ) -> Branch:
     """Open a branch by URL."""
+    from breezy.directory_service import directories
+    url = directories.dereference(url, purpose='read')
+
     url, params = urlutils.split_segment_parameters(url)
     if name is None:
         try:
