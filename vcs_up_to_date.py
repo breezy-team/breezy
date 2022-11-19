@@ -77,9 +77,9 @@ def check_up_to_date(tree, subpath, apt):
             with apt:
                 last_archive_version = max(
                     entry['Version']
-                    for entry in apt.iter_source_by_name(package))
+                    for entry in apt.iter_source_by_name(tree_cl.package))
 
-            raise TreeVersionNotInArchive(block._raw_version, archive_versions)
+            raise TreeVersionNotInArchive(block._raw_version, None)
 
     package = tree_cl.package
 
@@ -113,7 +113,7 @@ def check_up_to_date(tree, subpath, apt):
             last_archive_version, last_released_tree_version)
 
 
-async def main():
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -146,9 +146,7 @@ async def main():
     tree, subpath = WorkingTree.open_containing(args.directory)
 
     try:
-        check_up_to_date(
-            tree, subpath, apt,
-            ignore_missing_changelog=args.ignore_missing_changelog)
+        check_up_to_date(tree, subpath, apt)
     except TreeVersionNotInArchive as exc:
         logging.fatal(
             'Last released tree version %s not in archive',
