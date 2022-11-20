@@ -2644,7 +2644,7 @@ option_registry.register_lazy('smtp_username',
                               'breezy.smtp_connection', 'smtp_username')
 option_registry.register(
     Option('selftest.timeout',
-           default='600',
+           default='1200',
            from_unicode=int_from_store,
            help='Abort selftest if one test takes longer than this many seconds',
            ))
