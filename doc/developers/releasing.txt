@@ -56,34 +56,22 @@ mentioned when needed.
 When do we release ?
 ====================
 
-As of May 2020, we maintain a two series: 3.1 and trunk (3.2).
+As of 2022, we maintain a two series: 3.3 and trunk (4.0).
 
 #. as much as possible releases should not disturb development, and
    ongoing development should not disturb releases,
 
-#. the most recent development series should release once a month during
-   the beta period (see `Development cycles <cycle.html>`_ for more
+#. the most recent development series should ideally release once a month
+   during the beta period (see `Development cycles <cycle.html>`_ for more
    details),
 
-#. the most recent stable series should release every other month (based
-   on the amount of bug fixes, this can be shorter or longer depending on
-   the bugs importance),
+#. as capacity allows, the most recent stable series should release every
+   other month (based on the amount of bug fixes, this can be shorter or
+   longer depending on the bugs importance),
 
 #. previous series should release on a regular basis without interfering
    with the most recent series with a decreasing order of priority (again
    this should be based on bugs importance and user feedback),
-
-#. the death of a series should be planned ahead of time. 6 months should
-   give enough time to our users to migrate to a more recent series. This
-   doesn't mean we will make a release at the end of the series, just that
-   before the end date we *could* possibly put out another release if
-   there was a sufficiently important fix.  Beyond that date, we won't
-   even land changes on that branch (unless something causes a miraculous
-   resurrection.)
-
-#. there should not be more than 2 releases in the same week (but the
-   Release Manager is free to ignore this (get in touch with packagers
-   though),
 
 At the start of a series cycle
 ==============================
@@ -140,9 +128,9 @@ To start a new release cycle:
 
 #. Update the version number in the ``brz`` script, and the
    ``breezy/__init__.py`` file::
-   
+
        version_info = (x, y, z, 'dev', 0)
-   
+
 #. Add a new section at the top of the current release notes (in
    ``doc/en/release-notes``) about the new release, including its version
    number and the headings from ``release-template.txt``.
@@ -289,20 +277,20 @@ Update the source code
       @@ -52,7 +52,7 @@
        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
        # releaselevel of 'dev' for unreleased under-development code.
-       
+
       -version_info = (2, 3, 1, 'dev', 0)
       +version_info = (2, 3, 1, 'final', 0)
-       
+
        # API compatibility version
        api_minimum_version = (2, 3, 0)
-      
+
       === modified file 'doc/en/release-notes/brz-2.3.txt'
       --- doc/en/release-notes/brz-2.3.txt	2011-03-09 08:30:16 +0000
       +++ doc/en/release-notes/brz-2.3.txt	2011-03-10 10:40:47 +0000
       @@ -8,23 +8,10 @@
        brz 2.3.1
        #########
-       
+
       -:2.3.1: NOT RELEASED YET
       -
       -External Compatibility Breaks
