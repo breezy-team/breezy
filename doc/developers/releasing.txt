@@ -394,6 +394,10 @@ Publishing the source tarball
    installers won't be made and the download list will stay very small!
    <https://bugs.launchpad.net/launchpad/+bug/586445>
 
+#. Run twine to upload to pip::
+
+     twine upload breezy-*.tar.gz breezy-*.tar.gz.asc
+
 
 Kick off the next cycle
 -----------------------
