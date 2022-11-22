@@ -8,17 +8,27 @@ Breezy Release Notes
 brz 3.3.1
 #########
 
-:3.3.1: NOT RELEASED YET
+:3.3.1: 2022-11-22
 
 External Compatibility Breaks
 *****************************
 
 .. These may require users to change the way they use Breezy.
 
+* Drop support for Python < 3.7. (Jelmer Vernooĳ)
+
+* Factored gettext support out into setuptools-gettext. (Jelmer Vernooĳ)
+
 New Features
 ************
 
 .. New commands, options, etc that users may wish to try out.
+
+* Add ``--open`` argument to ``brz propose``. (Jelmer Vernooĳ)
+
+* New ``brz web-open`` command, which opens a branch or
+  merge proposal in a web browser. Deprecates ``brz lp-open``.
+  (Jelmer Vernooĳ)
 
 Improvements
 ************
@@ -26,16 +36,50 @@ Improvements
 .. Improvements to existing commands, especially improved performance
    or memory usage, or better results.
 
+* Various portability fixes for Mac OS X and Windows. (Jelmer Vernooĳ)
+
+* Ship typing hints. (Jelmer Vernooĳ)
+
+* Build binary on GitHub for most Python platforms.
+  (Jelmer Vernooĳ)
+
+* Drop trivial pkg-version dependency. (Ondřej Pohořelský)
+
+* Drop use of unnecessary ``iso8061`` module for Forge interactions.
+  (Jelmer Vernooĳ)
+
+* Support finding GitHub PRs by URL. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+* Fix compatibility with Python 3.11. (Jelmer Vernooĳ, #1995814)
+  + Remove use of PyUnicode_FromUnicode, gone in Python 3.11.
+  + Fix reference counter tests for Python 3.11.
+
+* Handle unexpected HTTP Status errors from Dulwich, converting them
+  to the appropriate Breezy exceptions. (Jelmer Vernooĳ)
+
+* Handle out of file descriptor errors in ``breezy.dirty_tracker``.
+  (Jelmer Vernooĳ)
+
+* git: Properly decode remote tag names rather than leaving them as bytes.
+  (Jelmer Vernooĳ)
+
+* Fix compatibility with Dulwich >= 0.20.50. (Jelmer Vernooĳ)
+
+* Fix ``Tree.get_file_mtime`` in shallow git trees. (Jelmer Vernooĳ)
+
 Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Remove various references to brz-gtk and breezy.
+  (Jelmer Vernooĳ, #1926890, #1837056, #1837053)
 
 API Changes
 ***********
@@ -43,11 +87,37 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    breezy.
 
+* Removed ``breezy.revision.ensure_null``, originally added for
+  the migation from ``None`` to ``NULL_REVISION``. (Jelmer Vernooĳ)
+
+* New ``Forge.create_project`` method. (Jelmer Vernooĳ)
+
+* New ``breezy.forge.get_forge_by_hostname`` function.
+  (Jelmer Vernooĳ)
+
+* New ``Tree.is_special_filename`` to match on e.g.
+  ``.gitattributes`` and ``.bzrignore``. (Jelmer Vernooĳ)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin
    developers, but interesting for brz developers.
+
+* Switch to using Launchpad REST API for lp: URL lookups,
+  rather than XML/RPC. (Jelmer Vernooĳ)
+
+* Migrate from pkg_resources to importlib for entrypoints.
+  (Jelmer Vernooĳ)
+
+* New exception ``UnsupportedVcs``. (Jelmer Vernooĳ)
+
+* Support titles for merge proposals. (Jelmer Vernooĳ)
+
+* Use standard python infrastructure to mark extensions as
+  optional. (Jelmer Vernooĳ)
+
+* Add pyproject.toml. (Jelmer Vernooĳ)
 
 Testing
 *******
@@ -55,6 +125,16 @@ Testing
 .. Fixes and changes that are only relevant to brz's test framework and
    suite.  This can include new facilities for writing tests, fixes to
    spurious test failures and changes to the way things should be tested.
+
+* Increased timeouts since e.g. the setup test takes longer to run
+  now we're compiling rust files. (Jelmer Vernooĳ)
+
+* Raise exception for timed out test rather than killing entire process
+  when hitting timeouts. (Jelmer Vernooĳ)
+
+* Add xfail lists for Mac OS X and Windows. (Jelmer Vernooĳ)
+
+* Properly clear BRZ_SSH in tests. (Jelmer Vernooĳ)
 
 brz 3.3.0
 #########

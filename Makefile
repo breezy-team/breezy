@@ -277,7 +277,7 @@ TRANSLATABLE_PYFILES:=$(shell find breezy -name '*.py' \
 		)
 
 po/brz.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) ./brz export-pot --include-duplicates > po/brz.pot
+	./brz export-pot --include-duplicates > po/brz.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "brz" \
 	  --msgid-bugs-address "<breezy-vcs@groups.google.com>" \

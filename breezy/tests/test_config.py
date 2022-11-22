@@ -1527,6 +1527,8 @@ class TestMailAddressExtraction(tests.TestCase):
                          config.parse_username('John Doe'))
         self.assertEqual(('John Doe', 'jdoe@example.com'),
                          config.parse_username('John Doe jdoe@example.com'))
+        self.assertEqual(('John Doe', 'jdoe[bot]@example.com'),
+                         config.parse_username('John Doe <jdoe[bot]@example.com>'))
 
 
 class TestTreeConfig(tests.TestCaseWithTransport):

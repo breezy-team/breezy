@@ -222,7 +222,8 @@ rust_extensions = [
 entry_points = {}
 
 if (os.environ.get('CIBUILDWHEEL', '0') == '0'
-        and '__pypy__' not in sys.builtin_module_names):
+        and '__pypy__' not in sys.builtin_module_names
+        and sys.platform != 'win32'):
     rust_extensions.append(
         RustExtension("brz", binding=Binding.Exec, strip=Strip.All))
 else:

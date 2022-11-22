@@ -1424,9 +1424,12 @@ class BranchConfig(Config):
         return self._get_best_value('_acceptable_keys')
 
 
+_username_re = lazy_regex.lazy_compile(r'(.*?)\s*<?([\[\]\w+.-]+@[\w+.-]+)>?')
+
+
 def parse_username(username):
     """Parse e-mail username and return a (name, address) tuple."""
-    match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
+    match = _username_re.match(username)
     if match is None:
         return (username, '')
     return (match.group(1), match.group(2))
@@ -2644,7 +2647,7 @@ option_registry.register_lazy('smtp_username',
                               'breezy.smtp_connection', 'smtp_username')
 option_registry.register(
     Option('selftest.timeout',
-           default='600',
+           default='1200',
            from_unicode=int_from_store,
            help='Abort selftest if one test takes longer than this many seconds',
            ))
