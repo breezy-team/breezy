@@ -8,7 +8,7 @@ Breezy Release Notes
 brz 3.3.1
 #########
 
-:3.3.1: NOT RELEASED YET
+:3.3.1: 2022-11-22
 
 External Compatibility Breaks
 *****************************
