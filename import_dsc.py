@@ -134,17 +134,6 @@ class DscComp(object):
         dsc = self.cache.get_dsc(dscname)
         return Version(dsc['Version'])
 
-    def cmp(self, dscname1, dscname2):
-        dsc1 = self.cache.get_dsc(dscname1)
-        dsc2 = self.cache.get_dsc(dscname2)
-        v1 = Version(dsc1['Version'])
-        v2 = Version(dsc2['Version'])
-        if v1 == v2:
-            return 0
-        if v1 > v2:
-            return 1
-        return -1
-
 
 class DistributionBranchSet(object):
     """A collection of DistributionBranches with an ordering.
