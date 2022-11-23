@@ -263,7 +263,7 @@ def main(argv=None):
 
     if Version(version) < cl.version:
         report_fatal(
-            'tree-is-newer',
+            'nothing-to-do',
             f'Local tree contains newer version ({version}) '
             f'than apt repo ({cl.version})')
         return 1
