@@ -1,10 +1,10 @@
-breezy-debian (2.8.75) UNRELEASED; urgency=medium
+breezy-debian (2.8.75) unstable; urgency=medium
 
   * deb-import-uncommitted: Handle presence of unuploaded changes.
   * deb-new-upstream: Support --skip-empty setting.
   * Add deb-merge command.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 30 Oct 2022 12:53:01 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 23 Nov 2022 21:54:57 +0000
 
 breezy-debian (2.8.74) unstable; urgency=medium
 
