@@ -25,6 +25,7 @@ import tempfile
 
 from debian.changelog import Version
 
+from .changelog import debcommit
 from .errors import (
     BzrError,
     MultipleUpstreamTarballsNotSupported,
@@ -178,3 +179,93 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                             'Merging shared upstream rev into target branch.')
 
     return (upstreams_diverged, t_upstream_reverted)
+
+
+def main(argv=None):
+    import argparse
+    from breezy.errors import NoSuchTag
+    import breezy.bzr  # noqa: F401
+    import breezy.git  # noqa: F401
+    from breezy.workingtree import WorkingTree
+    from breezy.branch import Branch
+    import logging
+
+    from .apt_repo import RemoteApt, LocalApt
+    from .directory import source_package_vcs_url
+    from .import_dsc import DistributionBranch
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--directory', '-d', type=str, help="Working directory")
+    parser.add_argument('--apt-repository', type=str,
+                        help='APT Repository to fetch from')
+    parser.add_argument('--apt-repository-key', type=str,
+                        help='Repository key to use for verification')
+    parser.add_argument('--version', type=str,
+                        help='Version to use')
+    parser.add_argument("--vendor", type=str,
+                        help="Name of vendor to merge from")
+    args = parser.parse_args()
+
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
+
+    wt, subpath = WorkingTree.open_containing(args.directory)
+
+    vendor = args.vendor
+
+    if args.apt_repository is not None:
+        apt = RemoteApt.from_string(
+            args.apt_repository, args.apt_repository_key)
+    else:
+        apt = LocalApt()
+
+    logging.info('Using apt repository %r', apt)
+
+    cl, _ignore = find_changelog(wt, subpath)
+
+    with apt:
+        versions = []
+        for source in apt.iter_source_by_name(cl.package):
+            versions.append((source['Version'], source))
+
+    versions.sort()
+    version, source = versions[-1]
+    if args.version:
+        version = args.version
+
+    logging.info('Importing version: %s', version)
+
+    vcs_type, vcs_url = source_package_vcs_url(source)
+
+    logging.info('Found vcs %s %s', vcs_type, vcs_url)
+
+    source_branch = Branch.open(vcs_url)
+
+    db = DistributionBranch(source_branch, None)
+
+    # Find the appropriate tag
+    for tag_name in db.possible_tags(version, vendor=vendor):
+        try:
+            to_merge = db.branch.tags.lookup_tag(tag_name)
+        except NoSuchTag:
+            pass
+        else:
+            break
+    else:
+        logging.fatal('Unable to find tag for version %s in branch %s',
+                      version, db.branch)
+        return 1
+
+    logging.info('Merging tag %s', tag_name)
+    wt.merge_from_branch(source_branch, to_revision=to_merge)
+    if vendor is not None:
+        message = f"Sync with {vendor}."
+    else:
+        revtree = wt.revision_tree(to_merge)
+        mcl, _ignore = find_changelog(revtree)
+        message = f"Sync with {mcl.distributions}."
+    debcommit(wt, subpath=subpath, message=message)
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(sys.argv[1:]))
