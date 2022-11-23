@@ -1,5 +1,6 @@
 #    merge_package.py -- The plugin for bzr
 #    Copyright (C) 2009 Canonical Ltd.
+#    Copyright (C) 2022 Jelmer Vernooĳ
 #
 #    :Author: Muharem Hrnjadovic <muharem@ubuntu.com>
 #
@@ -20,16 +21,23 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import json
+import logging
 import os
 import tempfile
 
 from debian.changelog import Version
 
+from breezy.errors import (
+    BzrError,
+    ConflictsInTree,
+    NoSuchTag,
+    )
+
 from .changelog import debcommit
 from .errors import (
-    BzrError,
     MultipleUpstreamTarballsNotSupported,
-    )
+)
 from .import_dsc import DistributionBranch
 from .util import find_changelog
 
@@ -181,14 +189,23 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
     return (upstreams_diverged, t_upstream_reverted)
 
 
+def report_fatal(code, description, *, hint=None):
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump({
+                'result_code': code,
+                'description': description}, f)
+    logging.fatal('%s', description)
+    if hint:
+        logging.info('%s', hint)
+
+
 def main(argv=None):
     import argparse
-    from breezy.errors import NoSuchTag
     import breezy.bzr  # noqa: F401
     import breezy.git  # noqa: F401
     from breezy.workingtree import WorkingTree
     from breezy.branch import Branch
-    import logging
 
     from .apt_repo import RemoteApt, LocalApt
     from .directory import source_package_vcs_url
@@ -232,7 +249,20 @@ def main(argv=None):
     if args.version:
         version = args.version
 
-    logging.info('Importing version: %s', version)
+    if Version(version) == cl.version:
+        report_fatal(
+            'nothing-to-do',
+            f'Local tree already contains remote version {cl.version}')
+        return 1
+
+    if Version(version) < cl.version:
+        report_fatal(
+            'tree-is-newer',
+            f'Local tree contains newer version ({version}) '
+            f'than apt repo ({cl.version})')
+        return 1
+
+    logging.info('Importing version: %s (current: %s)', version, cl.version)
 
     vcs_type, vcs_url = source_package_vcs_url(source)
 
@@ -251,12 +281,18 @@ def main(argv=None):
         else:
             break
     else:
-        logging.fatal('Unable to find tag for version %s in branch %s',
-                      version, db.branch)
+        report_fatal(
+            'missing-remote-tag',
+            'Unable to find tag for version %s in branch %s' % (
+                version, db.branch))
         return 1
 
     logging.info('Merging tag %s', tag_name)
-    wt.merge_from_branch(source_branch, to_revision=to_merge)
+    try:
+        wt.merge_from_branch(source_branch, to_revision=to_merge)
+    except ConflictsInTree as e:
+        report_fatal('merged-conflicted', str(e))
+        return 1
     if vendor is not None:
         message = f"Sync with {vendor}."
     else:
@@ -264,6 +300,21 @@ def main(argv=None):
         mcl, _ignore = find_changelog(revtree)
         message = f"Sync with {mcl.distributions}."
     debcommit(wt, subpath=subpath, message=message)
+
+    if os.environ.get('SVP_API') == '1':
+        with open(os.environ['SVP_RESULT'], 'w') as f:
+            json.dump({
+                'description': f"Merged from {vendor or mcl.distributions}",
+                'value': 80,
+                'commit-message': message,
+                'context': {
+                    'vendor': vendor,
+                    'package': cl.package,
+                    'distributions': mcl.distributions,
+                    'version': version,
+                    'tag': tag_name,
+                },
+            }, f)
 
 
 if __name__ == '__main__':
