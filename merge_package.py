@@ -245,7 +245,13 @@ def main(argv=None):
             versions.append((source['Version'], source))
 
     versions.sort()
-    version, source = versions[-1]
+    try:
+        version, source = versions[-1]
+    except IndexError:
+        report_fatal(
+            'not-present-in-apt',
+            'The APT repository {apt} does not contain {cl.package}')
+        return 1
     if args.version:
         version = args.version
 
