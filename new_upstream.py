@@ -29,7 +29,7 @@ from typing import List, Optional, Callable, Union
 
 from breezy.bzr import LineEndingError
 from breezy.git.remote import RemoteGitError
-import breezy.plugins.launchpad
+import breezy.plugins.launchpad  # noqa: F401
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import Version, ChangelogParseError
