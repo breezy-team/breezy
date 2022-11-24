@@ -250,14 +250,14 @@ def main(argv=None):
     except IndexError:
         report_fatal(
             'not-present-in-apt',
-            'The APT repository {apt} does not contain {cl.package}')
+            f'The APT repository {apt} does not contain {cl.package}')
         return 1
     if args.version:
         version = args.version
 
     if Version(version) == cl.version:
         report_fatal(
-            'nothing-to-do',
+            'tree-version-is-newer',
             f'Local tree already contains remote version {cl.version}')
         return 1
 
