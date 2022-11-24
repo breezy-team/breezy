@@ -292,8 +292,8 @@ def main(argv=None):
     if version is not None and Version(version) < cl.version:
         report_fatal(
             'nothing-to-do',
-            f'Local tree contains newer version ({version}) '
-            f'than apt repo ({cl.version})')
+            f'Local tree contains newer version ({cl.version}) '
+            f'than apt repo ({version})')
         return 1
 
     logging.info('Importing version: %s (current: %s)', version, cl.version)
