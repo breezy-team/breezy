@@ -65,6 +65,7 @@ from breezy.plugins.debian.util import (
 from breezy.plugins.debian.import_dsc import (
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
+    CorruptUpstreamSourceFile,
 )
 from breezy.plugins.debian.changelog import debcommit
 
@@ -1255,6 +1256,10 @@ def main(argv=None):
                     report_fatal(
                         error_code, error_description, transient=False)
                     return 1
+                except CorruptUpstreamSourceFile as e:
+                    report_fatal(
+                        'corrupt-upstream-file',
+                        str(e), transient=False)
                 except UncommittedChanges as e:
                     report_fatal(
                         'uncommitted-changes', str(e), transient=False)

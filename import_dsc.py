@@ -1375,7 +1375,8 @@ def _extract_tarballs_to_tempdir(tarballs):
             try:
                 extract_orig_tarball(tarball_filename, component, tempdir)
             except tarfile.ReadError as e:
-                raise CorruptUpstreamSourceFile(tarball_filename, str(e)) from e
+                raise CorruptUpstreamSourceFile(
+                    tarball_filename, str(e)) from e
         yield tempdir
 
 
