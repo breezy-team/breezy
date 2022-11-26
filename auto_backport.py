@@ -208,9 +208,9 @@ def main(argv=None):
     local_tree, subpath = WorkingTree.open_containing('.')
 
     try:
-        result = backport_package(
-            local_tree, subpath, args.target_release, author=committer
-        )
+        with local_tree.lock_write():
+            result = backport_package(
+                local_tree, subpath, args.target_release, author=committer)
     except MissingChangelogFile:
         report_fatal("missing-changelog", "Missing changelog file")
         return 1
