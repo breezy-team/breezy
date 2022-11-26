@@ -124,24 +124,6 @@ DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 
-def safe_decode(s):
-    """Decode a string into a Unicode value."""
-    if isinstance(s, str):  # Already unicode
-        mutter('safe_decode() called on an already-decoded string: %r' % (s,))
-        return s
-    try:
-        return s.decode('utf-8')
-    except UnicodeDecodeError as e:
-        mutter('safe_decode(%r) falling back to iso-8859-1: %s' % (s, e))
-        # TODO: Looking at BeautifulSoup it seems to use 'chardet' to try to
-        #       guess the encoding of a given text stream. We might want to
-        #       take a closer look at that.
-        # TODO: Another possibility would be to make the fallback encoding
-        #       configurable, possibly exposed as a command-line flag, for now,
-        #       this seems 'good enough'.
-        return s.decode('iso-8859-1')
-
-
 def recursive_copy(fromdir, todir):
     """Copy the contents of fromdir to todir.
 
@@ -489,12 +471,12 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
     bugs = []
     if changelog._blocks:
         block = changelog._blocks[0]
-        authors = [safe_decode(block.author)]
+        authors = [block.author]
         authors += find_extra_authors(block.changes())
         changes = strip_changelog_message(block.changes())
         bugs = find_bugs_fixed(block.changes(), branch, _lplib=_lplib)
         thanks = find_thanks(block.changes())
-        message = safe_decode("\n".join(changes).replace("\r", ""))
+        message = "\n".join(changes).replace("\r", "")
     return (message, authors, thanks, bugs)
 
 

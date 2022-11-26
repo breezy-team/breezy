@@ -69,7 +69,6 @@ from .util import (
     md5sum_filename,
     open_file_via_transport,
     open_transport,
-    safe_decode,
     )
 from .upstream import (
     PackageVersionNotPresent,
@@ -1190,7 +1189,7 @@ class DistributionBranch(object):
                     timestamp = (calendar.timegm(
                                  time_tuple[:9]) - time_tuple[9],
                                  time_tuple[9])
-                author = safe_decode(cl.author)
+                author = cl.author
             versions = _get_safe_versions_from_changelog(cl)
             if self.has_version(version):
                 raise VersionAlreadyImported(
@@ -1387,12 +1386,7 @@ def get_changelog_from_source(dir, max_blocks=None):
     cl_filename = os.path.join(dir, "debian", "changelog")
     with open(cl_filename, 'rb') as f:
         content = f.read()
-    # Older versions of python-debian were accepting various encodings in
-    # the changelog. This is not true with 0.1.20ubuntu2 at least which
-    # force an 'utf-8' encoding. This leads to failures when trying to
-    # parse old changelogs. Using safe_decode() below will fallback to
-    # iso-8859-1 (latin_1) in this case.
-    content = safe_decode(content)
+    content = content.decode('utf-8', 'surrogateescape')
     cl = Changelog()
     cl.parse_changelog(content, strict=False, max_blocks=max_blocks)
     return cl

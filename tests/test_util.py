@@ -60,7 +60,6 @@ from ..util import (
     move_file_if_different,
     get_parent_dir,
     recursive_copy,
-    safe_decode,
     suite_to_distribution,
     tarball_name,
     tree_contains_upstream_source,
@@ -110,19 +109,6 @@ class RecursiveCopyTests(TestCaseInTempDir):
         self.assertPathExists('b')
         self.assertPathExists('b/link')
         self.assertEqual('c', os.readlink('b/link'))
-
-
-class SafeDecodeTests(TestCase):
-
-    def assertSafeDecode(self, expected, val):
-        self.assertEqual(expected, safe_decode(val))
-
-    def test_utf8(self):
-        self.assertSafeDecode(u'ascii', 'ascii')
-        self.assertSafeDecode(u'\xe7', b'\xc3\xa7')
-
-    def test_iso_8859_1(self):
-        self.assertSafeDecode(u'\xe7', b'\xe7')
 
 
 cl_block1 = """\
