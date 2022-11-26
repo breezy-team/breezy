@@ -30,6 +30,7 @@ from contextlib import contextmanager, ExitStack
 import os
 import stat
 import tempfile
+import tarfile
 from typing import Optional, List, Tuple
 
 from debian import deb822
@@ -64,7 +65,7 @@ from .errors import (
 from .extract import extract
 from .util import (
     export_with_nested,
-    extract_orig_tarballs,
+    extract_orig_tarball,
     get_commit_info_from_changelog,
     md5sum_filename,
     open_file_via_transport,
@@ -79,6 +80,10 @@ from .upstream.branch import (
 from .upstream.pristinetar import (
     get_pristine_tar_source,
     )
+
+
+class CorruptUpstreamSourceFile(BzrError):
+    _fmt = 'Corrupt upstream source file %(filename)s: %(reason)s'
 
 
 class UpstreamBranchAlreadyMerged(BzrError):
@@ -1366,9 +1371,11 @@ class DistributionBranch(object):
 @contextmanager
 def _extract_tarballs_to_tempdir(tarballs):
     with tempfile.TemporaryDirectory() as tempdir:
-        extract_orig_tarballs(
-            [(fn, component) for (fn, component, md5) in tarballs],
-            tempdir)
+        for tarball_filename, component, md5 in tarballs:
+            try:
+                extract_orig_tarball(tarball_filename, component, tempdir)
+            except tarfile.ReadError as e:
+                raise CorruptUpstreamSourceFile(tarball_filename, str(e)) from e
         yield tempdir
 
 
