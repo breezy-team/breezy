@@ -173,7 +173,7 @@ class Workspace(object):
     :param use_inotify: whether to use inotify (default: yes, if available)
     """
 
-    def __init__(self, tree, subpath='', use_inotify=None):
+    def __init__(self, tree, *, subpath='', use_inotify=None):
         self.tree = tree
         self.subpath = subpath
         self.use_inotify = use_inotify
@@ -183,7 +183,7 @@ class Workspace(object):
     @classmethod
     def from_path(cls, path, use_inotify=None):
         tree, subpath = WorkingTree.open_containing(path)
-        return cls(tree, subpath, use_inotify=use_inotify)
+        return cls(tree, subpath=subpath, use_inotify=use_inotify)
 
     def __enter__(self):
         check_clean_tree(self.tree)
@@ -216,12 +216,13 @@ class Workspace(object):
         """
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
-        reset_tree(self.tree, subpath=self.subpath)
+        with self.tree.lock_write():
+            reset_tree(self.tree, subpath=self.subpath)
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> Optional[List[str]]:
-        changed: Optional[List[str]]
+    def stage(self) -> List[str]:
+        changed: List[str]
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they
@@ -246,7 +247,7 @@ class Workspace(object):
 
     def iter_changes(self):
         with self.tree.lock_write():
-            specific_files = self._stage()
+            specific_files = self.stage()
             basis_tree = self.tree.basis_tree()
             for change in self.tree.iter_changes(
                     basis_tree, specific_files=specific_files,
@@ -267,7 +268,7 @@ class Workspace(object):
             raise NotImplementedError(self.commit)
 
         with self.tree.lock_write():
-            specific_files = self._stage()
+            specific_files = self.stage()
 
             kwargs['specific_files'] = specific_files
             revid = self.tree.commit(**kwargs)
