@@ -235,7 +235,7 @@ def orphan(
     if update_changelog in (True, None):
         cl_path = osutils.pathjoin(subpath, "debian/changelog")
         with ChangelogEditor(path=local_tree.abspath(cl_path)) as ce:
-            ce.add_entry(["QA Upload."] + changelog_entries)
+            ce.add_entry(changelog_entries)
 
     local_tree.commit(
         "Move package to QA team.", committer=committer, allow_pointless=False
