@@ -20,7 +20,7 @@ If possible, uses inotify to track changes in the tree - providing
 high performance in large trees with a small number of changes.
 """
 
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 import errno
 import os
 import shutil
@@ -173,9 +173,10 @@ class Workspace(object):
     :param use_inotify: whether to use inotify (default: yes, if available)
     """
 
-    def __init__(self, tree, *, subpath='', use_inotify=None):
+    def __init__(self, tree, *, basis_tree=None, subpath='', use_inotify=None):
         self.tree = tree
         self.subpath = subpath
+        self._basis_tree = basis_tree
         self.use_inotify = use_inotify
         self._dirty_tracker = None
         self._es = ExitStack()
@@ -198,6 +199,13 @@ class Workspace(object):
                 warning('Too many files open; not using inotify')
                 self._dirty_tracker = None
         return self
+
+    @contextmanager
+    def basis_tree(self):
+        if self._basis_tree:
+            yield self._basis_tree
+            return
+        yield self.tree.basis_tree()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self._es.__exit__(exc_type, exc_val, exc_tb)
@@ -240,15 +248,14 @@ class Workspace(object):
 
         if self.tree.supports_setting_file_ids():
             from .rename_map import RenameMap
-            basis_tree = self.tree.basis_tree()
-            RenameMap.guess_renames(
-                basis_tree, self.tree, dry_run=False)
+            with self.basis_tree() as basis_tree:
+                RenameMap.guess_renames(
+                    basis_tree, self.tree, dry_run=False)
         return changed
 
     def iter_changes(self):
-        with self.tree.lock_write():
+        with self.tree.lock_write(), self.basis_tree() as basis_tree:
             specific_files = self.stage()
-            basis_tree = self.tree.basis_tree()
             for change in self.tree.iter_changes(
                     basis_tree, specific_files=specific_files,
                     want_unversioned=False, require_versioned=True):
