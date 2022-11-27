@@ -27,7 +27,7 @@ objects returned.
 
 import contextlib
 import sys
-from typing import Set
+from typing import Set, TYPE_CHECKING, cast
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -71,6 +71,9 @@ from ..transport import (
     do_catching_redirections,
     local,
     )
+
+if TYPE_CHECKING:
+    from .branch import BzrBranch
 
 
 class MissingFeature(errors.BzrError):
@@ -320,6 +323,29 @@ class BzrDir(controldir.ControlDir):
         """Create a new repository if needed, returning the repository."""
         policy = self.determine_repository_policy(force_new_repo)
         return policy.acquire_repository()[0]
+
+    @classmethod
+    def create_branch_and_repo(
+            klass, base, force_new_repo=False, format=None) -> "BzrBranch":
+        """Create a new ControlDir, Branch and Repository at the url 'base'.
+
+        This will use the current default ControlDirFormat unless one is
+        specified, and use whatever
+        repository format that that uses via controldir.create_branch and
+        create_repository. If a shared repository is available that is used
+        preferentially.
+
+        The created Branch object is returned.
+
+        Args:
+          base: The URL to create the branch at.
+          force_new_repo: If True a new repository is always created.
+          format: If supplied, the format of branch to create.  If not
+            supplied, the default is used.
+        """
+        controldir = klass.create(base, format)
+        controldir._find_or_create_repository(force_new_repo)
+        return cast("BzrBranch", controldir.create_branch())
 
     def _find_source_repo(self, exit_stack, source_branch):
         """Find the source branch and repo for a sprout operation.
@@ -769,7 +795,7 @@ class BzrDir(controldir.ControlDir):
         raise NotImplementedError(self.get_workingtree_transport)
 
     @classmethod
-    def create(cls, base, format=None, possible_transports=None):
+    def create(cls, base, format=None, possible_transports=None) -> "BzrDir":
         """Create a new BzrDir at the url 'base'.
 
         :param format: If supplied, the format of branch to create.  If not
@@ -782,8 +808,8 @@ class BzrDir(controldir.ControlDir):
                                  "default format, not one of %r" % cls)
         if format is None:
             format = BzrDirFormat.get_default_format()
-        return controldir.ControlDir.create(
-            base, format=format, possible_transports=possible_transports)
+        return cast("BzrDir", controldir.ControlDir.create(
+            base, format=format, possible_transports=possible_transports))
 
     def __repr__(self):
         return "<%s at %r>" % (self.__class__.__name__, self.user_url)
