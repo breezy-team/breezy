@@ -186,7 +186,7 @@ class Workspace:
     :param use_inotify: whether to use inotify (default: yes, if available)
     """
 
-    def __init__(self, tree, subpath="", use_inotify=None):
+    def __init__(self, tree, *, subpath="", use_inotify=None):
         """Initialize a Workspace.
 
         Args:
@@ -212,7 +212,7 @@ class Workspace:
             New Workspace instance.
         """
         tree, subpath = WorkingTree.open_containing(path)
-        return cls(tree, subpath, use_inotify=use_inotify)
+        return cls(tree, subpath=subpath, use_inotify=use_inotify)
 
     def __enter__(self):
         """Enter the workspace context.
@@ -263,11 +263,17 @@ class Workspace:
         """Reset - revert local changes, revive deleted files, remove added."""
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
-        reset_tree(self.tree, subpath=self.subpath)
+        with self.tree.lock_write():
+            reset_tree(self.tree, subpath=self.subpath)
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> list[str] | None:
+    def stage(self) -> list[str] | None:
+        """Stage pending changes and return the affected paths.
+
+        Returns:
+            The list of changed paths to commit, or None to commit everything.
+        """
         changed: list[str] | None
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
@@ -299,7 +305,7 @@ class Workspace:
             Changes between the basis tree and working tree.
         """
         with self.tree.lock_write():
-            specific_files = self._stage()
+            specific_files = self.stage()
             basis_tree = self.tree.basis_tree()
             for change in self.tree.iter_changes(
                 basis_tree,
@@ -323,7 +329,7 @@ class Workspace:
             raise NotImplementedError(self.commit)
 
         with self.tree.lock_write():
-            specific_files = self._stage()
+            specific_files = self.stage()
 
             kwargs["specific_files"] = specific_files
             revid = self.tree.commit(**kwargs)
