@@ -693,7 +693,9 @@ class ControlDir(ControlComponent):
           format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
         """
-        raise NotImplementedError(klass.create_branch_and_repo)
+        controldir = klass.create(base, format)
+        controldir._find_or_create_repository(force_new_repo)
+        return cast("Branch", controldir.create_branch())
 
     @classmethod
     def create_branch_convenience(klass, base, force_new_repo=False,

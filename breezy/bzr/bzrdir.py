@@ -324,29 +324,6 @@ class BzrDir(controldir.ControlDir):
         policy = self.determine_repository_policy(force_new_repo)
         return policy.acquire_repository()[0]
 
-    @classmethod
-    def create_branch_and_repo(
-            klass, base, force_new_repo=False, format=None) -> "BzrBranch":
-        """Create a new ControlDir, Branch and Repository at the url 'base'.
-
-        This will use the current default ControlDirFormat unless one is
-        specified, and use whatever
-        repository format that that uses via controldir.create_branch and
-        create_repository. If a shared repository is available that is used
-        preferentially.
-
-        The created Branch object is returned.
-
-        Args:
-          base: The URL to create the branch at.
-          force_new_repo: If True a new repository is always created.
-          format: If supplied, the format of branch to create.  If not
-            supplied, the default is used.
-        """
-        controldir = klass.create(base, format)
-        controldir._find_or_create_repository(force_new_repo)
-        return cast("BzrBranch", controldir.create_branch())
-
     def _find_source_repo(self, exit_stack, source_branch):
         """Find the source branch and repo for a sprout operation.
 
