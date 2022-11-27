@@ -24,7 +24,7 @@ see breezy.bzrdir.BzrDir.
 
 """
 
-from typing import List, Type, Optional
+from typing import List, Type, Optional, TYPE_CHECKING, Dict, Set, Tuple, cast
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -35,7 +35,6 @@ from breezy import (
     ui,
     urlutils,
     )
-from breezy.transport import local
 
 from breezy.i18n import gettext
 """)
@@ -48,6 +47,11 @@ from . import (
     trace,
     transport as _mod_transport,
     )
+
+if TYPE_CHECKING:
+    from .branch import Branch
+    from .repository import Repository
+    from .workingtree import WorkingTree
 
 
 class MustHaveWorkingTree(errors.BzrError):
@@ -134,13 +138,13 @@ class ControlDir(ControlComponent):
         from."""
         return True
 
-    def list_branches(self):
+    def list_branches(self) -> List["Branch"]:
         """Return a sequence of all branches local to this control directory.
 
         """
         return list(self.get_branches().values())
 
-    def branch_names(self):
+    def branch_names(self) -> List[str]:
         """List all branch names in this control directory.
 
         Returns: List of branch names
@@ -152,7 +156,7 @@ class ControlDir(ControlComponent):
         else:
             return [""]
 
-    def get_branches(self):
+    def get_branches(self) -> Dict[str, "Branch"]:
         """Get all branches in this control directory, as a dictionary.
 
         Returns: Dictionary mapping branch names to instances.
@@ -190,7 +194,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.needs_format_conversion)
 
-    def create_repository(self, shared=False):
+    def create_repository(self, shared=False) -> "Repository":
         """Create a new repository in this control directory.
 
         Args:
@@ -205,7 +209,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.destroy_repository)
 
     def create_branch(self, name=None, repository=None,
-                      append_revisions_only=None):
+                      append_revisions_only=None) -> "Branch":
         """Create a branch in this ControlDir.
 
         Args:
@@ -232,7 +236,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.destroy_branch)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-                           accelerator_tree=None, hardlink=False):
+                           accelerator_tree=None, hardlink=False) -> "WorkingTree":
         """Create a working tree at this ControlDir.
 
         Args:
@@ -304,7 +308,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.set_branch_reference)
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False, possible_transports=None):
+                    ignore_fallbacks=False, possible_transports=None) -> "Branch":
         """Open the branch object at this ControlDir if one is present.
 
         Args:
@@ -316,7 +320,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.open_branch)
 
-    def open_repository(self, _unsupported=False):
+    def open_repository(self, _unsupported=False) -> "Repository":
         """Open the repository object at this ControlDir if one is present.
 
         This will not follow the Branch object pointer - it's strictly a direct
@@ -328,7 +332,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.open_repository)
 
-    def find_repository(self):
+    def find_repository(self) -> "Repository":
         """Find the repository that should be used.
 
         This does not require a branch as we use it to find the repo for
@@ -338,7 +342,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.find_repository)
 
     def open_workingtree(self, unsupported=False,
-                         recommend_upgrade=True, from_branch=None):
+                         recommend_upgrade=True, from_branch=None) -> "WorkingTree":
         """Open the workingtree object at this ControlDir if one is present.
 
         Args:
@@ -671,7 +675,8 @@ class ControlDir(ControlComponent):
         return ret
 
     @classmethod
-    def create_branch_and_repo(klass, base, force_new_repo=False, format=None):
+    def create_branch_and_repo(
+            klass, base, force_new_repo=False, format=None) -> "Branch":
         """Create a new ControlDir, Branch and Repository at the url 'base'.
 
         This will use the current default ControlDirFormat unless one is
@@ -690,7 +695,7 @@ class ControlDir(ControlComponent):
         """
         controldir = klass.create(base, format)
         controldir._find_or_create_repository(force_new_repo)
-        return controldir.create_branch()
+        return cast("Branch", controldir.create_branch())
 
     @classmethod
     def create_branch_convenience(klass, base, force_new_repo=False,
@@ -723,6 +728,7 @@ class ControlDir(ControlComponent):
           possible_transports: An optional reusable transports list.
         """
         if force_new_tree:
+            from breezy.transport import local
             # check for non local urls
             t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):
@@ -739,7 +745,7 @@ class ControlDir(ControlComponent):
         return result
 
     @classmethod
-    def create_standalone_workingtree(klass, base, format=None):
+    def create_standalone_workingtree(klass, base, format=None) -> "WorkingTree":
         """Create a new ControlDir, WorkingTree, Branch and Repository at 'base'.
 
         'base' must be a local path or a file:// url.
@@ -755,6 +761,7 @@ class ControlDir(ControlComponent):
         Returns: The WorkingTree object.
         """
         t = _mod_transport.get_transport(base)
+        from breezy.transport import local
         if not isinstance(t, local.LocalTransport):
             raise errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(base,
@@ -769,7 +776,7 @@ class ControlDir(ControlComponent):
 
     @classmethod
     def open(klass, base, possible_transports=None, probers=None,
-             _unsupported=False):
+             _unsupported=False) -> "ControlDir":
         """Open an existing controldir, rooted at 'base' (url).
 
         Args:
@@ -780,8 +787,8 @@ class ControlDir(ControlComponent):
                                          _unsupported=_unsupported)
 
     @classmethod
-    def open_from_transport(klass, transport, _unsupported=False,
-                            probers=None):
+    def open_from_transport(klass, transport: _mod_transport.Transport,
+                            _unsupported=False, probers=None) -> "ControlDir":
         """Open a controldir within a particular directory.
 
         Args:
@@ -813,7 +820,7 @@ class ControlDir(ControlComponent):
             raise errors.NotBranchError(base)
 
         format.check_support_status(_unsupported)
-        return format.open(transport, _found=True)
+        return cast("ControlDir", format.open(transport, _found=True))
 
     @classmethod
     def open_containing(klass, url, possible_transports=None):
@@ -1216,7 +1223,9 @@ class ControlDirFormat(object):
         return result
 
     @classmethod
-    def find_format(klass, transport, probers=None):
+    def find_format(klass, transport: _mod_transport.Transport,
+                    probers: Optional[List[Type["Prober"]]] = None
+                    ) -> "ControlDirFormat":
         """Return the format present at transport."""
         if probers is None:
             probers = sorted(
@@ -1294,7 +1303,7 @@ class ControlDirFormat(object):
         """
         raise NotImplementedError(self.network_name)
 
-    def open(self, transport, _found=False):
+    def open(self, transport: _mod_transport.Transport, _found=False) -> "ControlDir":
         """Return an instance of this format for the dir transport points at.
         """
         raise NotImplementedError(self.open)
@@ -1348,7 +1357,7 @@ class Prober(object):
     ControlDirFormat.
     """
 
-    def probe_transport(self, transport):
+    def probe_transport(self, transport) -> "ControlDirFormat":
         """Return the controldir style format present in a directory.
 
         :raise UnknownFormatError: If a control dir was found but is
@@ -1359,7 +1368,7 @@ class Prober(object):
         raise NotImplementedError(self.probe_transport)
 
     @classmethod
-    def known_formats(klass):
+    def known_formats(klass) -> Set["ControlDirFormat"]:
         """Return the control dir formats known by this prober.
 
         Multiple probers can return the same formats, so this should
@@ -1370,7 +1379,7 @@ class Prober(object):
         raise NotImplementedError(klass.known_formats)
 
     @classmethod
-    def priority(klass, transport):
+    def priority(klass, transport: _mod_transport.Transport) -> int:
         """Priority of this prober.
 
         A lower value means the prober gets checked first.

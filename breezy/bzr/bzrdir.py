@@ -27,7 +27,7 @@ objects returned.
 
 import contextlib
 import sys
-from typing import Set
+from typing import Set, TYPE_CHECKING, cast
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -71,6 +71,9 @@ from ..transport import (
     do_catching_redirections,
     local,
     )
+
+if TYPE_CHECKING:
+    from .branch import BzrBranch
 
 
 class MissingFeature(errors.BzrError):
@@ -769,7 +772,7 @@ class BzrDir(controldir.ControlDir):
         raise NotImplementedError(self.get_workingtree_transport)
 
     @classmethod
-    def create(cls, base, format=None, possible_transports=None):
+    def create(cls, base, format=None, possible_transports=None) -> "BzrDir":
         """Create a new BzrDir at the url 'base'.
 
         :param format: If supplied, the format of branch to create.  If not
@@ -782,8 +785,8 @@ class BzrDir(controldir.ControlDir):
                                  "default format, not one of %r" % cls)
         if format is None:
             format = BzrDirFormat.get_default_format()
-        return controldir.ControlDir.create(
-            base, format=format, possible_transports=possible_transports)
+        return cast("BzrDir", controldir.ControlDir.create(
+            base, format=format, possible_transports=possible_transports))
 
     def __repr__(self):
         return "<%s at %r>" % (self.__class__.__name__, self.user_url)

@@ -33,7 +33,11 @@ import contextlib
 import errno
 import os
 import sys
-from typing import Optional
+from typing import Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .branch import Branch
+    from .revisiontree import RevisionTree
 
 import breezy
 
@@ -90,6 +94,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         (as opposed to a URL).
     """
 
+    branch: "Branch"
+
     # override this to set the strategy for storing views
     def _make_views(self):
         return views.DisabledViews(self)
@@ -145,7 +151,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         return self.controldir.is_control_filename(filename)
 
-    branch = property(
+    branch = property(  # type: ignore
         fget=lambda self: self._branch,
         doc="""The branch this WorkingTree is connected to.
 
@@ -200,7 +206,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return self.branch.get_config_stack()
 
     @staticmethod
-    def open(path=None, _unsupported=False):
+    def open(path=None, _unsupported=False) -> "WorkingTree":
         """Open an existing working tree at path.
 
         """
@@ -210,7 +216,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
-    def open_containing(path=None):
+    def open_containing(path: Optional[str] = None) -> Tuple["WorkingTree", str]:
         """Open an existing working tree which has its root about path.
 
         This probes for a working tree at path and searches upwards from there.
@@ -301,7 +307,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return new_list
 
     @staticmethod
-    def open_downlevel(path=None):
+    def open_downlevel(path=None) -> "WorkingTree":
         """Open an unsupported working tree.
 
         Only intended for advanced situations like upgrading part of a controldir.
@@ -315,7 +321,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def abspath(self, filename):
         return osutils.pathjoin(self.basedir, filename)
 
-    def basis_tree(self):
+    def basis_tree(self) -> "RevisionTree":
         """Return RevisionTree for the current last revision.
 
         If the left most parent is a ghost then the returned tree will be an
@@ -1028,7 +1034,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """Restore uncommitted changes from the branch into the tree."""
         raise NotImplementedError(self.restore_uncommitted)
 
-    def revision_tree(self, revision_id):
+    def revision_tree(self, revision_id) -> "RevisionTree":
         """See Tree.revision_tree.
 
         For trees that can be obtained from the working tree, this
