@@ -25,6 +25,7 @@ from typing import (
     Union,
     Callable,
     Dict,
+    List,
     Iterator,
     Tuple,
     Callable,
@@ -127,7 +128,7 @@ class Registry(Generic[K, V]):
         return dict(self._aliases.items())
 
     def alias_map(self):
-        ret = {}
+        ret: Dict[str, List[str]] = {}
         for alias, target in self._aliases.items():
             ret.setdefault(target, []).append(alias)
         return ret
@@ -299,7 +300,7 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):
-        Registry.__init__(self)
+        super(FormatRegistry, self).__init__()
         self._other_registry = other_registry
 
     def register(self, key, obj, help=None, info=None,

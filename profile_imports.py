@@ -24,7 +24,7 @@ from typing import Dict, Tuple, List
 
 
 _parent_stack: List[Tuple[int, str]] = []
-_total_stack: Dict[str, str] = {}
+_total_stack: Dict[Tuple[int, str], List[Tuple[int, str]]] = {}
 _info = {}
 _cur_id = 0
 _timer = time.time
@@ -192,10 +192,10 @@ def timed_compile(*args, **kwargs):
 def install():
     """Install the hooks for measuring import and regex compile time."""
     __builtins__['__import__'] = timed_import
-    re._compile = timed_compile
+    re._compile = timed_compile  # type: ignore
 
 
 def uninstall():
     """Remove the import and regex compile timing hooks."""
     __builtins__['__import__'] = _real_import
-    re._compile = _real_compile
+    re._compile = _real_compile  # type: ignore

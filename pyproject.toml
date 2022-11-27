@@ -16,4 +16,5 @@ python_version = "3.7"
 ignore_missing_imports = true
 warn_return_any = true
 warn_unused_configs = true
+#check_untyped_defs = true
 exclude = ['^breezy/util/simplemapi\.py$']
