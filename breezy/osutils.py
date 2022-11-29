@@ -25,7 +25,6 @@ from typing import Dict, List
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-from datetime import datetime
 import getpass
 import locale
 import ntpath
@@ -766,6 +765,7 @@ def compare_files(a, b):
 
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
+    from datetime import datetime
     if t is None:
         t = time.time()
     offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)

@@ -22,7 +22,6 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     debug,
-    repository,
     transport,
     ui,
     )
@@ -42,6 +41,7 @@ from . import (
     controldir,
     errors,
     revision as _mod_revision,
+    repository,
     registry,
     urlutils,
     )
@@ -91,6 +91,8 @@ class Branch(controldir.ControlComponent):
     _format: "BranchFormat"
 
     _last_revision_info_cache: Optional[Tuple[int, RevisionID]]
+
+    repository: repository.Repository
 
     @property
     def control_transport(self):

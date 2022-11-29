@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Type
+from typing import List, Type, TYPE_CHECKING
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -43,6 +43,7 @@ from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
+from .revisiontree import RevisionTree
 
 
 # Old formats display a warning, but only once
@@ -173,7 +174,7 @@ class CommitBuilder(object):
         """
         raise NotImplementedError(self.abort)
 
-    def revision_tree(self):
+    def revision_tree(self) -> "RevisionTree":
         """Return the tree that was just committed.
 
         After calling commit() this can be called to get a
@@ -1041,7 +1042,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         repository.
         """
 
-    def revision_tree(self, revision_id):
+    def revision_tree(self, revision_id) -> "RevisionTree":
         """Return Tree for a revision on this branch.
 
         `revision_id` may be NULL_REVISION for the empty tree revision.

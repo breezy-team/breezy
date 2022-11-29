@@ -220,10 +220,10 @@ class cmd_propose_merge(Command):
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:
             note(gettext('Merge proposal created: %s') % proposal.url)
-            web_url = proposal.get_web_url()
-            note(gettext('Opening %s in web browser'), web_url)
             if open:
+                web_url = proposal.get_web_url()
                 import webbrowser
+                note(gettext('Opening %s in web browser'), web_url)
                 webbrowser.open(web_url)
 
 

@@ -46,17 +46,19 @@ class build_mo(Command):
                     ]
 
     boolean_options = ['force']
+    source_dir: str
+    build_dir: str
 
     def initialize_options(self):
         self.build_dir = None
         self.output_base = None
-        self.source_dir = None
+        self.source_dir = None  # type: ignore
         self.force = None
         self.lang = None
 
     def finalize_options(self):
         self.set_undefined_options('build', ('force', 'force'))
-        self.prj_name = self.distribution.get_name()
+        self.prj_name = self.distribution.get_name()  # type: ignore
         if self.build_dir is None:
             self.build_dir = 'breezy/locale'
         if not self.output_base:

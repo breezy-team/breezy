@@ -29,7 +29,7 @@ it.
 import errno
 from io import BytesIO
 import sys
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, TypeVar
 
 from stat import S_ISDIR
 
@@ -1613,7 +1613,14 @@ def _try_transport_factories(base, factory_list):
     return None, last_err
 
 
-def do_catching_redirections(action, transport, redirected):
+T = TypeVar('T')
+
+
+def do_catching_redirections(
+        action: Callable[[Transport], T],
+        transport: Transport,
+        redirected: Callable[
+            [Transport, errors.RedirectRequested, str], Transport]) -> T:
     """Execute an action with given transport catching redirections.
 
     This is a facility provided for callers needing to follow redirections
