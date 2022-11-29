@@ -236,5 +236,5 @@ class RemoteApt(LocalApt):
 
     @classmethod
     def from_string(cls, text, key_path=None):
-        (mirror_uri, distribution, rest) = text.split(' ', 3)
+        (mirror_uri, distribution, rest) = text.split(' ', 2)
         return cls(mirror_uri, distribution, rest.split(), key_path=key_path)
