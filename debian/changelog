@@ -1,6 +1,7 @@
 breezy-debian (2.8.76) UNRELEASED; urgency=medium
 
   * Export package.json and META.json.
+  * deb-merge: Fall back to importing .dsc.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Nov 2022 01:36:24 +0000
 

@@ -66,7 +66,7 @@ class Apt:
 
     def retrieve_orig(self, source_name, target_directory,
                       orig_version=None):
-        raise NotImplementedError(self.retrieve_source)
+        raise NotImplementedError(self.retrieve_orig)
 
     def retrieve_source(self, source_name, target_directory,
                         source_version=None):

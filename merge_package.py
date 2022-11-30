@@ -32,6 +32,7 @@ from breezy.errors import (
     BzrError,
     ConflictsInTree,
     NoSuchTag,
+    UnrelatedBranches,
     )
 
 from .changelog import debcommit
@@ -299,6 +300,27 @@ def main(argv=None):
     except ConflictsInTree as e:
         report_fatal('merged-conflicted', str(e))
         return 1
+    except UnrelatedBranches:
+        # Just import the dsc file?
+        logging.info('Upstream branch %r does not share history with this one.'
+                     'Falling back to importing dsc.')
+        with tempfile.TemporaryDirectory() as td:
+            apt.retrieve_source(
+                cl.package, td, source_version=cl.version, tar_only=False)
+            for entry in os.scandir(td):
+                if entry.name.endswith('.dsc'):
+                    dsc_path = entry.path
+                    break
+            else:
+                raise AssertionError(f'{apt} did not actually download dsc file')
+            tag_name = db.import_package()
+            to_merge = wt.branch.tags.lookup_tag(tag_name)
+            try:
+                wt.merge_from_branch(source_branch, to_revision=to_merge)
+            except ConflictsInTree as e:
+                report_fatal('merged-conflicted', str(e))
+                return 1
+
     if vendor is not None:
         message = f"Sync with {vendor}."
     else:
