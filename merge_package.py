@@ -214,7 +214,7 @@ def main(argv=None):
     from breezy.workingtree import WorkingTree
     from breezy.branch import Branch
 
-    from .apt_repo import RemoteApt, LocalApt
+    from .apt_repo import RemoteApt
     from .directory import source_package_vcs_url
     from .import_dsc import DistributionBranch
     parser = argparse.ArgumentParser()
@@ -269,7 +269,8 @@ def main(argv=None):
                 if not m:
                     continue
                 vcs_type = m.group(2)
-                vcs_url = dict(vcs_field_to_bzr_url_converters)[vcs_type](value)
+                vcs_url = dict(
+                    vcs_field_to_bzr_url_converters)[vcs_type](value)
                 origin = m.group(1)
                 break
             else:
@@ -336,8 +337,9 @@ def main(argv=None):
         return 1
     except UnrelatedBranches:
         if apt:
-            logging.info('Upstream branch %r does not share history with this one.',
-                         source_branch)
+            logging.info(
+                'Upstream branch %r does not share history with this one.',
+                source_branch)
             logging.info('Falling back to importing dsc.')
             with tempfile.TemporaryDirectory() as td:
                 apt.retrieve_source(
@@ -347,8 +349,9 @@ def main(argv=None):
                         dsc_path = entry.path
                         break
                 else:
-                    raise AssertionError(f'{apt} did not actually download dsc file')
-                tag_name = db.import_package()
+                    raise AssertionError(
+                        f'{apt} did not actually download dsc file')
+                tag_name = db.import_package(dsc_path)
                 to_merge = wt.branch.tags.lookup_tag(tag_name)
                 try:
                     wt.merge_from_branch(source_branch, to_revision=to_merge)
@@ -374,7 +377,7 @@ def main(argv=None):
             json.dump({
                 'description': f"Merged from {origin}",
                 'value': 80,
-                'commit-message': message,
+                'commit-message': f"Sync with {origin}",
                 'context': {
                     'vendor': vendor,
                     'origin': origin,
