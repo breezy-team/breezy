@@ -1080,14 +1080,12 @@ def merge_upstream(  # noqa: C901
 
 def report_fatal(
         code: str, description: str, *, upstream_version: Optional[str] = None,
-        conflicts=None, hint: Optional[str] = None,
+        details=None, hint: Optional[str] = None,
         transient: Optional[bool] = None, stage=None):
     if os.environ.get('SVP_API') == '1':
         context = {}
         if upstream_version is not None:
             context['upstream_version'] = str(upstream_version)
-        if conflicts is not None:
-            context['conflicts'] = conflicts
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'result_code': code,
@@ -1096,6 +1094,7 @@ def report_fatal(
                 'stage': stage,
                 'description': description,
                 'versions': versions_dict(),
+                'details': details,
                 'context': context}, f)
     logging.fatal('%s', description)
     if hint:
@@ -1406,7 +1405,7 @@ def main(argv=None):
                 "upstream-merged-conflicts",
                 "Merging upstream version %s resulted in conflicts."
                 % e.version,
-                upstream_version=e.version, conflicts=conflicts,
+                upstream_version=e.version, details={'conflicts': conflicts},
                 transient=False)
             return 1
         except PackageIsNative as e:
