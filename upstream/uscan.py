@@ -189,6 +189,8 @@ class UScanSource(UpstreamSource):
                 try:
                     text = self.tree.get_file_text(name)
                 except NoSuchFile:
+                    pass
+                else:
                     with open(os.path.join(container, name), 'wb') as f:
                         f.write(text)
             if self.auto_fix:
