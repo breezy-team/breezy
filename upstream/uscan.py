@@ -184,6 +184,13 @@ class UScanSource(UpstreamSource):
             export_with_nested(
                 self.tree, os.path.join(container, 'debian'), format='dir',
                 subdir=subdir)
+            # Files used for ctype=node and ctype=perl
+            for name in ['package.json', 'META.json']:
+                try:
+                    text = self.tree.get_file_text(name)
+                except NoSuchFile:
+                    with open(os.path.join(container, name), 'wb') as f:
+                        f.write(text)
             if self.auto_fix:
                 self._do_auto_fix(os.path.join(container, 'debian', 'watch'))
             args = ["--force-download", "--rename",
