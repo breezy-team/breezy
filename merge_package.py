@@ -235,6 +235,7 @@ def main(argv=None):
     wt, subpath = WorkingTree.open_containing(args.directory)
 
     vendor = args.vendor
+    origin = vendor
 
     if args.apt_repository is not None:
         apt = RemoteApt.from_string(
@@ -269,6 +270,7 @@ def main(argv=None):
                     continue
                 vcs_type = m.group(2)
                 vcs_url = dict(vcs_field_to_bzr_url_converters)[vcs_type](value)
+                origin = m.group(1)
                 break
             else:
                 report_fatal(
@@ -320,6 +322,7 @@ def main(argv=None):
             return 1
         logging.info('Merging tag %s', tag_name)
     else:
+        # TODO(jelmer): merge latest tag rather than latest revision?
         to_merge = None
         logging.info('Merging latest revision from %s', source_branch.user_url)
 
@@ -359,22 +362,24 @@ def main(argv=None):
                 'and no apt repository specified.' % source_branch)
             return 1
 
-    if vendor is not None:
-        message = f"Sync with {vendor}."
-    else:
+    if vendor is None:
         revtree = wt.revision_tree(to_merge)
         mcl, _ignore = find_changelog(revtree)
-        message = f"Sync with {mcl.distributions}."
-    debcommit(wt, subpath=subpath, message=message)
+        if origin is None:
+            origin = mcl.distributions
+    debcommit(wt, subpath=subpath, message=f"Sync with {origin}.")
 
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
-                'description': f"Merged from {vendor or mcl.distributions}",
+                'description': f"Merged from {origin}",
                 'value': 80,
                 'commit-message': message,
                 'context': {
                     'vendor': vendor,
+                    'origin': origin,
+                    'vcs_type': vcs_type,
+                    'vcs_url': vcs_url,
                     'package': cl.package,
                     'distributions': mcl.distributions,
                     'version': version,
