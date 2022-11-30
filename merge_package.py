@@ -24,9 +24,11 @@
 import json
 import logging
 import os
+import re
 import tempfile
 
 from debian.changelog import Version
+from debian.deb822 import Deb822
 
 from breezy.errors import (
     BzrError,
@@ -34,8 +36,12 @@ from breezy.errors import (
     NoSuchTag,
     UnrelatedBranches,
     )
+from breezy.workingtree import (
+    PointlessMerge,
+    )
 
 from .changelog import debcommit
+from .directory import vcs_field_to_bzr_url_converters
 from .errors import (
     MultipleUpstreamTarballsNotSupported,
 )
@@ -234,35 +240,53 @@ def main(argv=None):
         apt = RemoteApt.from_string(
             args.apt_repository, args.apt_repository_key)
     else:
-        apt = LocalApt()
-
-    logging.info('Using apt repository %r', apt)
+        apt = None
 
     cl, _ignore = find_changelog(wt, subpath)
 
-    with apt:
-        versions = []
-        for source in apt.iter_source_by_name(cl.package):
-            versions.append((source['Version'], source))
+    if apt:
+        logging.info('Using apt repository %r', apt)
 
-    versions.sort()
-    try:
-        version, source = versions[-1]
-    except IndexError:
-        report_fatal(
-            'not-present-in-apt',
-            f'The APT repository {apt} does not contain {cl.package}')
-        return 1
+        with apt:
+            versions = []
+            for source in apt.iter_source_by_name(cl.package):
+                versions.append((source['Version'], source))
+
+        versions.sort()
+        try:
+            version, source = versions[-1]
+        except IndexError:
+            report_fatal(
+                'not-present-in-apt',
+                f'The APT repository {apt} does not contain {cl.package}')
+            return 1
+    else:
+        with wt.get_file(os.path.join(subpath, 'debian/control')) as f:
+            source = Deb822(f)
+            for field, value in source.items():
+                m = re.match(r'XS\-(.*)\-Vcs\-(.*)', field, re.I)
+                if not m:
+                    continue
+                vcs_type = m.group(2)
+                vcs_url = dict(vcs_field_to_bzr_url_converters)[vcs_type](value)
+                break
+            else:
+                report_fatal(
+                    'no-upstream-vcs-url',
+                    'Source package not have any Xs-*-Vcs-* fields')
+                return 1
+        version = None
+
     if args.version:
         version = args.version
 
-    if Version(version) == cl.version:
+    if version is not None and Version(version) == cl.version:
         report_fatal(
             'tree-version-is-newer',
             f'Local tree already contains remote version {cl.version}')
         return 1
 
-    if Version(version) < cl.version:
+    if version is not None and Version(version) < cl.version:
         report_fatal(
             'nothing-to-do',
             f'Local tree contains newer version ({version}) '
@@ -279,47 +303,61 @@ def main(argv=None):
 
     db = DistributionBranch(source_branch, None)
 
-    # Find the appropriate tag
-    for tag_name in db.possible_tags(version, vendor=vendor):
-        try:
-            to_merge = db.branch.tags.lookup_tag(tag_name)
-        except NoSuchTag:
-            pass
+    if version is not None:
+        # Find the appropriate tag
+        for tag_name in db.possible_tags(version, vendor=vendor):
+            try:
+                to_merge = db.branch.tags.lookup_tag(tag_name)
+            except NoSuchTag:
+                pass
+            else:
+                break
         else:
-            break
+            report_fatal(
+                'missing-remote-tag',
+                'Unable to find tag for version %s in branch %s' % (
+                    version, db.branch))
+            return 1
+        logging.info('Merging tag %s', tag_name)
     else:
-        report_fatal(
-            'missing-remote-tag',
-            'Unable to find tag for version %s in branch %s' % (
-                version, db.branch))
-        return 1
+        to_merge = None
+        logging.info('Merging latest revision from %s', source_branch.user_url)
 
-    logging.info('Merging tag %s', tag_name)
     try:
         wt.merge_from_branch(source_branch, to_revision=to_merge)
     except ConflictsInTree as e:
         report_fatal('merged-conflicted', str(e))
         return 1
+    except PointlessMerge as e:
+        report_fatal('nothing-to-do', str(e))
+        return 1
     except UnrelatedBranches:
-        # Just import the dsc file?
-        logging.info('Upstream branch %r does not share history with this one.'
-                     'Falling back to importing dsc.')
-        with tempfile.TemporaryDirectory() as td:
-            apt.retrieve_source(
-                cl.package, td, source_version=cl.version, tar_only=False)
-            for entry in os.scandir(td):
-                if entry.name.endswith('.dsc'):
-                    dsc_path = entry.path
-                    break
-            else:
-                raise AssertionError(f'{apt} did not actually download dsc file')
-            tag_name = db.import_package()
-            to_merge = wt.branch.tags.lookup_tag(tag_name)
-            try:
-                wt.merge_from_branch(source_branch, to_revision=to_merge)
-            except ConflictsInTree as e:
-                report_fatal('merged-conflicted', str(e))
-                return 1
+        if apt:
+            logging.info('Upstream branch %r does not share history with this one.',
+                         source_branch)
+            logging.info('Falling back to importing dsc.')
+            with tempfile.TemporaryDirectory() as td:
+                apt.retrieve_source(
+                    cl.package, td, source_version=cl.version, tar_only=False)
+                for entry in os.scandir(td):
+                    if entry.name.endswith('.dsc'):
+                        dsc_path = entry.path
+                        break
+                else:
+                    raise AssertionError(f'{apt} did not actually download dsc file')
+                tag_name = db.import_package()
+                to_merge = wt.branch.tags.lookup_tag(tag_name)
+                try:
+                    wt.merge_from_branch(source_branch, to_revision=to_merge)
+                except ConflictsInTree as e:
+                    report_fatal('merged-conflicted', str(e))
+                    return 1
+        else:
+            report_fatal(
+                'unrelated-branches',
+                'Upstream branch %r does not share history with this one, '
+                'and no apt repository specified.' % source_branch)
+            return 1
 
     if vendor is not None:
         message = f"Sync with {vendor}."
