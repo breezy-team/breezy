@@ -207,8 +207,13 @@ class DebBuildConfig(object):
             except NoSuchFile:
                 pass
             else:
-                self._config_files.append(
-                    (UpstreamMetadataConfig(upstream_metadata_text), False))
+                try:
+                    self._config_files.append(
+                        (UpstreamMetadataConfig(upstream_metadata_text),
+                         False))
+                except UpstreamMetadataSyntaxError as e:
+                    warning(
+                        'Ignoring upstream metadata due to %s', e)
         self.user_config = None
 
     def set_user_config(self, user_conf):
