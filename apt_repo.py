@@ -64,6 +64,11 @@ class Apt:
     def iter_binaries(self):
         raise NotImplementedError(self.iter_binaries)
 
+    def iter_binary_by_name(self, binary_name):
+        for binary in self.iter_binaries():
+            if binary['Package'] == binary_name:
+                yield binary
+
     def retrieve_orig(self, source_name, target_directory,
                       orig_version=None):
         raise NotImplementedError(self.retrieve_orig)
@@ -123,6 +128,15 @@ class LocalApt(Apt):
 
     def iter_binaries(self):
         for pkg in self.cache:
+            for version in pkg.versions:
+                yield Deb822(version._records.record)
+
+    def iter_binary_by_name(self, binary_name):
+        try:
+            pkg = self.cache[binary_name]
+        except KeyError:
+            pass
+        else:
             for version in pkg.versions:
                 yield Deb822(version._records.record)
 
