@@ -35,6 +35,7 @@ from breezy.plugins.debian.info import (
 from breezy.plugins.debian.util import (
     dput_changes,
 )
+from breezy.workspace import check_clean_tree
 from breezy.workingtree import WorkingTree
 
 from debian.changelog import format_date, get_maintainer
@@ -191,6 +192,7 @@ def main(argv=None):
     )
     parser.add_argument("--dry-run", action="store_true", help="Do a dry run.")
     parser.add_argument('--build', action='store_true')
+    parser.add_argument('--version', type=str, help='Version to backport')
     parser.add_argument(
         "--builder",
         type=str,
@@ -206,6 +208,14 @@ def main(argv=None):
     committer = os.environ.get('COMMITTER')
 
     local_tree, subpath = WorkingTree.open_containing('.')
+
+    check_clean_tree(local_tree, subpath=subpath)
+
+    if args.version:
+        from .import_dsc import DistributionBranch
+        db = DistributionBranch(local_tree.branch)
+        revid = db.revid_of_version(args.version)
+        local_tree.pull(local_tree.branch, stop_revision=revid, overwrite=True)
 
     try:
         with local_tree.lock_write():
