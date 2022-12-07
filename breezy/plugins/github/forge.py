@@ -201,18 +201,30 @@ class GitHubMergeProposal(MergeProposal):
     def can_be_merged(self):
         return self._pr['mergeable']
 
-    def merge(self, commit_message=None):
-        # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
-        data = {}
-        if commit_message:
-            data['commit_message'] = commit_message
-        response = self._gh._api_request(
-            'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
-        if response.status == 422:
-            raise ValidationFailed(json.loads(response.text))
-        if response.status != 200:
-            raise UnexpectedHttpStatus(
-                self._pr['url'], response.status, headers=response.getheaders())
+    def merge(self, commit_message=None, auto=False):
+        if auto:
+            graphql_query = """\
+mutation MyMutation {
+    enablePullRequestAutoMerge(input: {
+        pullRequestId: "$pullRequestID", mergeMethod: MERGE}) {
+        clientMutationId
+    }
+}
+""".replace("$pullRequestID", self._pr['number'])
+            self._gh._graphql_request(graphql_query)
+            # TODO(jelmer): Check response
+        else:
+            # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
+            data = {}
+            if commit_message:
+                data['commit_message'] = commit_message
+            response = self._gh._api_request(
+                'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
+            if response.status == 422:
+                raise ValidationFailed(json.loads(response.text))
+            if response.status != 200:
+                raise UnexpectedHttpStatus(
+                    self._pr['url'], response.status, headers=response.getheaders())
 
     def get_merged_by(self):
         merged_by = self._pr.get('merged_by')
@@ -353,6 +365,13 @@ class GitHub(Forge):
 
     def __repr__(self):
         return "GitHub()"
+
+    def _graphql_request(self, body):
+        if self._token:
+            headers['Authorization'] = 'token %s' % self._token
+        return self.transport.request(
+            'POST', urlutils.join(self.transport.base, 'graphql'),
+            headers=headers, body=body)
 
     def _api_request(self, method, path, body=None):
         headers = {

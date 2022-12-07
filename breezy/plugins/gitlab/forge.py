@@ -327,11 +327,12 @@ class GitLabMergeProposal(MergeProposal):
     def close(self):
         self._update(state_event='close')
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
         ret = self.gl._merge_mr(
             self._mr['project_id'], self._mr['iid'],
-            kwargs={"merge_commit_message": commit_message})
+            kwargs={"merge_commit_message": commit_message,
+                    "merge_when_pipeline_succeeds": auto})
         self._mr.update(ret)
 
     def can_be_merged(self):

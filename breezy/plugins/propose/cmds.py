@@ -150,6 +150,7 @@ class cmd_propose_merge(Command):
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
         Option('wip', help='Mark merge request as work-in-progress'),
+        Option('auto', help='Automatically merge when the CI passes'),
         Option(
             'commit-message',
             help='Set commit message for merge, if supported', type=str),
@@ -172,7 +173,7 @@ class cmd_propose_merge(Command):
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
             allow_collaboration=False, allow_empty=False, overwrite=False,
-            open=False):
+            open=False, auto=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -225,6 +226,8 @@ class cmd_propose_merge(Command):
                 import webbrowser
                 note(gettext('Opening %s in web browser'), web_url)
                 webbrowser.open(web_url)
+            if auto:
+                proposal.merge(auto=True)
 
 
 class cmd_find_merge_proposal(Command):

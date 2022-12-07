@@ -200,7 +200,10 @@ class LaunchpadMergeProposal(MergeProposal):
     def get_merged_at(self):
         return self._mp.date_merged
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
+        if auto:
+            raise errors.UnsupportedOperation(
+                self, "automerge not supported for Launchpad")
         target_branch = _mod_branch.Branch.open(
             self.get_target_branch_url())
         source_branch = _mod_branch.Branch.open(

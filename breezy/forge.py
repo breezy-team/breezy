@@ -191,7 +191,7 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.is_closed)
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
         """Merge this merge proposal."""
         raise NotImplementedError(self.merge)
 
