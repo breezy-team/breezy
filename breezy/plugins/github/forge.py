@@ -210,7 +210,7 @@ mutation MyMutation {
         clientMutationId
     }
 }
-""".replace("$pullRequestID", self._pr['number'])
+""".replace("$pullRequestID", str(self._pr['number']))
             self._gh._graphql_request(graphql_query)
             # TODO(jelmer): Check response
         else:
