@@ -29,6 +29,7 @@ from ...forge import (
     MergeProposalExists,
     UnsupportedForge,
     TitleUnsupported,
+    AutoMergeUnsupported,
     )
 
 from ... import (
@@ -202,8 +203,7 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def merge(self, commit_message=None, auto=False):
         if auto:
-            raise errors.UnsupportedOperation(
-                self, "automerge not supported for Launchpad")
+            raise AutoMergeUnsupported(self)
         target_branch = _mod_branch.Branch.open(
             self.get_target_branch_url())
         source_branch = _mod_branch.Branch.open(
