@@ -367,6 +367,7 @@ class GitHub(Forge):
         return "GitHub()"
 
     def _graphql_request(self, body):
+        headers = {}
         if self._token:
             headers['Authorization'] = 'token %s' % self._token
         return self.transport.request(
