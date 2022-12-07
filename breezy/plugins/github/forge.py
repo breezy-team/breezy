@@ -203,16 +203,25 @@ class GitHubMergeProposal(MergeProposal):
 
     def merge(self, commit_message=None, auto=False):
         if auto:
-            graphql_query = """\
-mutation MyMutation {
-    enablePullRequestAutoMerge(input: {
-        pullRequestId: "$pullRequestID", mergeMethod: MERGE}) {
-        clientMutationId
+            graphql_query = """
+mutation ($pullRequestId: ID!) {
+  enablePullRequestAutoMerge(input: {
+    pullRequestId: $pullRequestId,
+    mergeMethod: MERGE
+  }) {
+    pullRequest {
+      autoMergeRequest {
+        enabledAt
+        enabledBy {
+          login
+        }
+      }
     }
+  }
 }
-""".replace("$pullRequestID", str(self._pr['number']))
-            self._gh._graphql_request(graphql_query)
-            # TODO(jelmer): Check response
+"""
+            self._gh._graphql_request(
+                graphql_query, pullRequestId=self._pr["node_id"])
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
             data = {}
@@ -353,6 +362,12 @@ class _LazyDict(dict):
         raise NotImplementedError
 
 
+class GraphqlErrors(Exception):
+
+    def __init__(self, errors):
+        self.errors = errors
+
+
 class GitHub(Forge):
 
     name = 'github'
@@ -366,13 +381,24 @@ class GitHub(Forge):
     def __repr__(self):
         return "GitHub()"
 
-    def _graphql_request(self, body):
+    def _graphql_request(self, body, **kwargs):
         headers = {}
         if self._token:
             headers['Authorization'] = 'token %s' % self._token
-        return self.transport.request(
-            'POST', urlutils.join(self.transport.base, 'graphql'),
-            headers=headers, body=body)
+        url = urlutils.join(self.transport.base, 'graphql')
+        response = self.transport.request(
+            'POST', url,
+            headers=headers, body=json.dumps({
+                "query": body,
+                "variables": kwargs,
+            }).encode('utf-8'))
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                url, response.status, headers=response.getheaders())
+        data = json.loads(response.text)
+        if data.get('errors'):
+            raise GraphqlErrors(data.get('errors'))
+        return data['data']
 
     def _api_request(self, method, path, body=None):
         headers = {
