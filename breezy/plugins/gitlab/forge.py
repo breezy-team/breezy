@@ -267,7 +267,7 @@ class GitLabMergeProposal(MergeProposal):
         return self._mr['description']
 
     def set_description(self, description):
-        self._update(description=description, title=determine_title(description))
+        self._update(description=description)
 
     def get_commit_message(self):
         return self._mr.get('merge_commit_message')
@@ -882,7 +882,6 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         # Note that commit_message is ignored, since Gitlab doesn't support it.
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
-        # TODO(jelmer): Allow setting title explicitly
         if title is None:
             title = determine_title(description)
         if work_in_progress:
