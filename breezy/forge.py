@@ -65,6 +65,11 @@ class TitleUnsupported(errors.BzrError):
     _fmt = "The merge proposal %(mp)s does not support a title."
 
 
+class AutoMergeUnsupported(errors.BzrError):
+
+    _fmt = "The merge proposal %(mp)s does not support automerge."
+
+
 class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
@@ -191,7 +196,7 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.is_closed)
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
         """Merge this merge proposal."""
         raise NotImplementedError(self.merge)
 
