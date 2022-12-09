@@ -267,7 +267,7 @@ class GitLabMergeProposal(MergeProposal):
         return self._mr['description']
 
     def set_description(self, description):
-        self._update(description=description, title=determine_title(description))
+        self._update(description=description)
 
     def get_commit_message(self):
         return self._mr.get('merge_commit_message')
@@ -327,11 +327,12 @@ class GitLabMergeProposal(MergeProposal):
     def close(self):
         self._update(state_event='close')
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
         ret = self.gl._merge_mr(
             self._mr['project_id'], self._mr['iid'],
-            kwargs={"merge_commit_message": commit_message})
+            kwargs={"merge_commit_message": commit_message,
+                    "merge_when_pipeline_succeeds": auto})
         self._mr.update(ret)
 
     def can_be_merged(self):
@@ -881,7 +882,6 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         # Note that commit_message is ignored, since Gitlab doesn't support it.
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
-        # TODO(jelmer): Allow setting title explicitly
         if title is None:
             title = determine_title(description)
         if work_in_progress:

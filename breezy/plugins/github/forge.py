@@ -201,18 +201,39 @@ class GitHubMergeProposal(MergeProposal):
     def can_be_merged(self):
         return self._pr['mergeable']
 
-    def merge(self, commit_message=None):
-        # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
-        data = {}
-        if commit_message:
-            data['commit_message'] = commit_message
-        response = self._gh._api_request(
-            'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
-        if response.status == 422:
-            raise ValidationFailed(json.loads(response.text))
-        if response.status != 200:
-            raise UnexpectedHttpStatus(
-                self._pr['url'], response.status, headers=response.getheaders())
+    def merge(self, commit_message=None, auto=False):
+        if auto:
+            graphql_query = """
+mutation ($pullRequestId: ID!) {
+  enablePullRequestAutoMerge(input: {
+    pullRequestId: $pullRequestId,
+    mergeMethod: MERGE
+  }) {
+    pullRequest {
+      autoMergeRequest {
+        enabledAt
+        enabledBy {
+          login
+        }
+      }
+    }
+  }
+}
+"""
+            self._gh._graphql_request(
+                graphql_query, pullRequestId=self._pr["node_id"])
+        else:
+            # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
+            data = {}
+            if commit_message:
+                data['commit_message'] = commit_message
+            response = self._gh._api_request(
+                'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
+            if response.status == 422:
+                raise ValidationFailed(json.loads(response.text))
+            if response.status != 200:
+                raise UnexpectedHttpStatus(
+                    self._pr['url'], response.status, headers=response.getheaders())
 
     def get_merged_by(self):
         merged_by = self._pr.get('merged_by')
@@ -341,6 +362,12 @@ class _LazyDict(dict):
         raise NotImplementedError
 
 
+class GraphqlErrors(Exception):
+
+    def __init__(self, errors):
+        self.errors = errors
+
+
 class GitHub(Forge):
 
     name = 'github'
@@ -353,6 +380,25 @@ class GitHub(Forge):
 
     def __repr__(self):
         return "GitHub()"
+
+    def _graphql_request(self, body, **kwargs):
+        headers = {}
+        if self._token:
+            headers['Authorization'] = 'token %s' % self._token
+        url = urlutils.join(self.transport.base, 'graphql')
+        response = self.transport.request(
+            'POST', url,
+            headers=headers, body=json.dumps({
+                "query": body,
+                "variables": kwargs,
+            }).encode('utf-8'))
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                url, response.status, headers=response.getheaders())
+        data = json.loads(response.text)
+        if data.get('errors'):
+            raise GraphqlErrors(data.get('errors'))
+        return data['data']
 
     def _api_request(self, method, path, body=None):
         headers = {
