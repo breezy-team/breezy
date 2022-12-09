@@ -213,7 +213,7 @@ def main(argv=None):
 
     if args.version:
         from .import_dsc import DistributionBranch
-        db = DistributionBranch(local_tree.branch)
+        db = DistributionBranch(local_tree.branch, None)
         revid = db.revid_of_version(args.version)
         local_tree.pull(local_tree.branch, stop_revision=revid, overwrite=True)
 
