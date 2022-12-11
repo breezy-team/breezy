@@ -107,6 +107,8 @@ def _call_webservice(call, *args, **kwargs):
 
 class LaunchpadMergeProposal(MergeProposal):
 
+    supports_auto_merge = False
+
     def __init__(self, mp):
         self._mp = mp
 

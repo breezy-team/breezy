@@ -129,6 +129,8 @@ class MergeProposal(object):
     :ivar url: URL for the merge proposal
     """
 
+    supports_auto_merge: bool
+
     def __init__(self, url=None):
         self.url = url
 

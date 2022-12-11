@@ -111,6 +111,8 @@ class GitHubLoginRequired(ForgeLoginRequired):
 
 class GitHubMergeProposal(MergeProposal):
 
+    supports_auto_merge = True
+
     def __init__(self, gh, pr):
         self._gh = gh
         self._pr = pr
