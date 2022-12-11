@@ -3,6 +3,7 @@ breezy-debian (2.8.76) UNRELEASED; urgency=medium
   * Export package.json and META.json.
   * deb-merge: Fall back to importing .dsc.
   * deb-auto-backport: add --version option.
+  * deb-auto-backport: Add --apt-repository argument.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Nov 2022 01:36:24 +0000
 

@@ -25,15 +25,21 @@ import subprocess
 import tempfile
 from typing import Optional
 
+from breezy.branch import Branch
+from breezy.plugins.debian.apt_repo import RemoteApt
 from breezy.plugins.debian.cmds import _build_helper
 from breezy.plugins.debian.changelog import (
     debcommit,
-    )
+)
+from breezy.plugins.debian.directory import (
+    source_package_vcs_url,
+)
 from breezy.plugins.debian.info import (
     versions_dict,
-    )
+)
 from breezy.plugins.debian.util import (
     dput_changes,
+    find_changelog,
 )
 from breezy.workspace import check_clean_tree
 from breezy.workingtree import WorkingTree
@@ -193,6 +199,8 @@ def main(argv=None):
     parser.add_argument("--dry-run", action="store_true", help="Do a dry run.")
     parser.add_argument('--build', action='store_true')
     parser.add_argument('--version', type=str, help='Version to backport')
+    parser.add_argument('--package', type=str, help='Package name')
+    parser.add_argument('--apt-repository', type=str, help='Apt repository')
     parser.add_argument(
         "--builder",
         type=str,
@@ -205,17 +213,39 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
+
     committer = os.environ.get('COMMITTER')
 
     local_tree, subpath = WorkingTree.open_containing('.')
 
     check_clean_tree(local_tree, subpath=subpath)
 
+    if args.package:
+        package = args.package
+    else:
+        cl, _larstiq = find_changelog(local_tree, subpath=subpath)
+        package = cl.package
+
+    if args.apt_repository:
+        apt = RemoteApt.from_string(args.apt_repository)
+        logging.info('Reading from APT repository %s', args.apt_repository)
+        with apt:
+            source = next(apt.iter_source_by_name(package))
+            vcs_type, branch_url = source_package_vcs_url(source)
+            logging.info('Resolved apt repository to %s', branch_url)
+            if not args.version:
+                logging.info('Backporting version %s', source['Version'])
+                args.version = source['Version']
+            branch = Branch.open(branch_url)
+    else:
+        branch = local_tree.branch
+
     if args.version:
         from .import_dsc import DistributionBranch
-        db = DistributionBranch(local_tree.branch, None)
+        db = DistributionBranch(branch, None)
         revid = db.revid_of_version(args.version)
-        local_tree.pull(local_tree.branch, stop_revision=revid, overwrite=True)
+        local_tree.pull(branch, stop_revision=revid, overwrite=True)
 
     try:
         with local_tree.lock_write():
