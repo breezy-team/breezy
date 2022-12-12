@@ -240,6 +240,8 @@ def _unexpected_status(path, response):
 
 class GitLabMergeProposal(MergeProposal):
 
+    supports_auto_merge = True
+
     def __init__(self, gl, mr):
         self.gl = gl
         self._mr = mr
