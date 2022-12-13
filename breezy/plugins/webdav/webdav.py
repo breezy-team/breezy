@@ -234,6 +234,7 @@ def _extract_stat_info(url, infile):
     handler = DavStatHandler()
     handler.set_url(url)
     parser.setContentHandler(handler)
+    infile.close = lambda: None
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
@@ -289,6 +290,7 @@ def _extract_dir_content(url, infile):
     handler = DavListDirHandler()
     handler.set_url(url)
     parser.setContentHandler(handler)
+    infile.close = lambda: None
     try:
         parser.parse(infile)
     except xml.sax.SAXParseException as e:
@@ -401,7 +403,7 @@ class HttpDavTransport(urllib.HttpTransport):
         """See Transport.open_write_stream."""
         # FIXME: this implementation sucks, we should really use chunk encoding
         # and buffers.
-        self.put_bytes(relpath, "", mode)
+        self.put_bytes(relpath, b"", mode)
         result = transport.AppendBasedFileStream(self, relpath)
         transport._file_streams[self.abspath(relpath)] = result
         return result
@@ -471,7 +473,7 @@ class HttpDavTransport(urllib.HttpTransport):
                                   create_parent_dir=create_parent_dir,
                                   dir_mode=dir_mode)
 
-    def put_bytes_non_atomic(self, relpath, bytes,
+    def put_bytes_non_atomic(self, relpath, bytes: bytes,
                             mode=None,
                             create_parent_dir=False,
                             dir_mode=False):
@@ -499,13 +501,13 @@ class HttpDavTransport(urllib.HttpTransport):
 
             if code in (403, 404, 409):
                 # Intermediate directories missing
-                raise errors.NoSuchFile(abspath)
+                raise transport.NoSuchFile(abspath)
             elif code not in (200, 201, 204):
-                raise errors.UnexpectedHttpStatus(relpath, code, headers=response.headers)
+                raise self._raise_http_error(abspath, response, 'put file failed')
 
         try:
             bare_put_file_non_atomic()
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             if not create_parent_dir:
                 raise
             parent_dir = osutils.dirname(relpath)
@@ -558,10 +560,10 @@ class HttpDavTransport(urllib.HttpTransport):
         code = response.status
 
         if code in (403, 404, 409):
-            raise errors.NoSuchFile(abspath) # Intermediate directories missing
+            raise transport.NoSuchFile(abspath) # Intermediate directories missing
 
         if code not in (200, 201, 204):
-            raise errors.UnexpectedHttpStatus(relpath, code, headers=response.headers)
+            raise self._raise_http_error(abspath, response, 'put file failed')
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir"""
@@ -581,14 +583,12 @@ class HttpDavTransport(urllib.HttpTransport):
             raise self._raise_http_error(abspath, response, 'mkdir failed')
         elif code == 405:
             # Not allowed (generally already exists)
-            raise errors.FileExists(abspath)
+            raise transport.FileExists(abspath)
         elif code in (404, 409):
             # Conflict (intermediate directories do not exist)
-            raise errors.NoSuchFile(abspath)
+            raise transport.NoSuchFile(abspath)
         elif code != 201: # Created
             raise self._raise_http_error(abspath, response, 'mkdir failed')
-        else:
-            raise errors.UnexpectedHttpStatus(relpath, code, headers=response.headers)
 
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
@@ -600,12 +600,12 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise errors.NoSuchFile(abs_from)
+            raise transport.NoSuchFile(abs_from)
         if code == 412:
-            raise errors.FileExists(abs_to)
+            raise transport.FileExists(abs_to)
         if code == 409:
             # More precisely some intermediate directories are missing
-            raise errors.NoSuchFile(abs_to)
+            raise transport.NoSuchFile(abs_to)
         if code != 201:
             # As we don't want  to accept overwriting abs_to, 204
             # (meaning  abs_to  was   existing  (but  empty,  the
@@ -626,7 +626,7 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise errors.NoSuchFile(abs_from)
+            raise transport.NoSuchFile(abs_from)
         if code == 409:
             raise errors.DirectoryNotEmpty(abs_to)
         # Overwriting  allowed, 201 means  abs_to did  not exist,
@@ -649,7 +649,7 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise errors.NoSuchFile(abs_path)
+            raise transport.NoSuchFile(abs_path)
         if code not in (200, 204):
             self._raise_http_error(abs_path, response, 'unable to delete')
 
@@ -663,7 +663,7 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code in (404, 409):
-            raise errors.NoSuchFile(abs_from)
+            raise transport.NoSuchFile(abs_from)
         # XXX: our test server returns 201 but apache2 returns 204, needs
         # investivation.
         if code not in (201, 204):
@@ -696,7 +696,7 @@ class HttpDavTransport(urllib.HttpTransport):
 
     def _list_tree(self, relpath, depth):
         abspath = self._remote_path(relpath)
-        propfind = """<?xml version="1.0" encoding="utf-8" ?>
+        propfind = b"""<?xml version="1.0" encoding="utf-8" ?>
    <D:propfind xmlns:D="DAV:">
      <D:allprop/>
    </D:propfind>
@@ -708,10 +708,10 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise errors.NoSuchFile(abspath)
+            raise transport.NoSuchFile(abspath)
         if code == 409:
             # More precisely some intermediate directories are missing
-            raise errors.NoSuchFile(abspath)
+            raise transport.NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(abspath, response,
                                    'unable to list  %r directory' % (abspath))
@@ -743,7 +743,7 @@ class HttpDavTransport(urllib.HttpTransport):
         We provide a limited implementation for bzr needs.
         """
         abspath = self._remote_path(relpath)
-        propfind = """<?xml version="1.0" encoding="utf-8" ?>
+        propfind = b"""<?xml version="1.0" encoding="utf-8" ?>
    <D:propfind xmlns:D="DAV:">
      <D:allprop/>
    </D:propfind>
@@ -754,11 +754,11 @@ class HttpDavTransport(urllib.HttpTransport):
 
         code = response.status
         if code == 404:
-            raise errors.NoSuchFile(abspath)
+            raise transport.NoSuchFile(abspath)
         if code == 409:
             # FIXME: Could this really occur ?
             # More precisely some intermediate directories are missing
-            raise errors.NoSuchFile(abspath)
+            raise transport.NoSuchFile(abspath)
         if code != 207:
             self._raise_http_error(abspath, response,
                                    'unable to list  %r directory' % (abspath))
@@ -810,7 +810,7 @@ class HttpDavTransport(urllib.HttpTransport):
             # do not exist we get a 404, if the file does exist,
             # is not empty and we get no Content-Length header,
             # then the server is buggy :-/ )
-            relpath_size = int(response.headers.get('Content-Length', 0))
+            relpath_size = int(response.getheader('Content-Length', 0))
             if relpath_size == 0:
                 trace.mutter('if %s is not empty, the server is buggy'
                              % relpath)
@@ -828,7 +828,7 @@ class HttpDavTransport(urllib.HttpTransport):
         try:
             data = self.get(relpath)
             full_data.write(data.read())
-        except errors.NoSuchFile:
+        except transport.NoSuchFile:
             # Good, just do the put then
             pass
 
@@ -850,5 +850,5 @@ class HttpDavTransport(urllib.HttpTransport):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from .tests import dav_server
-    return [(HttpDavTransport, tests.dav_server.DAVServer),
-            (HttpDavTransport, tests.dav_server.QuirkyDAVServer)]
+    return [(HttpDavTransport, dav_server.DAVServer),
+            (HttpDavTransport, dav_server.QuirkyDAVServer)]

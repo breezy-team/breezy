@@ -384,8 +384,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             response, st = self._generate_response(entry_path)
             yield response
             if depth == 'Infinity' and stat.S_ISDIR(st.st_mode):
-                for sub_resp in self._generate_dir_responses(entry_path, depth):
-                    yield sub_resp
+                yield from self._generate_dir_responses(entry_path, depth)
 
     def do_PROPFIND(self):
         """Serve a PROPFIND request."""
@@ -416,10 +415,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         # Generate the response, we don't care about performance, so we just
         # expand everything into a big string.
-        response = """<?xml version="1.0" encoding="utf-8"?>
+        response = ("""<?xml version="1.0" encoding="utf-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:ns0="DAV:">
 %s%s
-</D:multistatus>""" % (response, ''.join(list(dir_responses)))
+</D:multistatus>""" % (response, ''.join(dir_responses))).encode('utf-8')
 
         self.send_response(207)
         self.send_header('Content-length', len(response))
