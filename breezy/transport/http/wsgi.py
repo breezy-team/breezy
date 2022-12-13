@@ -135,9 +135,9 @@ class SmartWSGIApp(object):
         if relpath.startswith(self.root_client_path):
             # The relpath traverses all of the mandatory root client path.
             # Remove the root_client_path from the relpath, and set
-            # adjusted_tcp to None to tell the request handler that no further
+            # adjusted_rcp to None to tell the request handler that no further
             # path translation is required.
-            adjusted_rcp = '.'
+            adjusted_rcp = None
             adjusted_relpath = relpath[len(self.root_client_path):]
         elif self.root_client_path.startswith(relpath):
             # The relpath traverses some of the mandatory root client path.
