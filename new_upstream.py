@@ -57,39 +57,37 @@ from breezy.transport import (
     UnusableRedirect,
     get_transport,
     )
-from breezy.plugins.debian.config import UpstreamMetadataSyntaxError
-from breezy.plugins.debian.info import versions_dict
-from breezy.plugins.debian.util import (
+from .config import UpstreamMetadataSyntaxError
+from .info import versions_dict
+from .util import (
     InconsistentSourceFormatError,
 )
-from breezy.plugins.debian.import_dsc import (
+from .import_dsc import (
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
     CorruptUpstreamSourceFile,
 )
-from breezy.plugins.debian.changelog import debcommit
+from .changelog import debcommit
 
 from breezy.transform import MalformedTransform
 
-from breezy.plugins.debian.merge_upstream import (
+from .merge_upstream import (
+    get_upstream_branch_location,
     do_import,
     do_merge,
     get_existing_imported_upstream_revids,
     get_tarballs,
 )
-from breezy.plugins.debian.repack_tarball import (
+from .repack_tarball import (
     UnsupportedRepackFormat,
 )
 
-from breezy.plugins.debian.upstream.branch import (
-    PreviousVersionTagMissing,
-)
-from breezy.plugins.debian.upstream.pristinetar import (
+from .upstream.pristinetar import (
     PristineTarError,
     get_pristine_tar_source,
 )
 
-from breezy.plugins.debian.util import (
+from .util import (
     debuild_config,
     guess_build_type,
     get_files_excluded,
@@ -102,22 +100,23 @@ from breezy.plugins.debian.util import (
     full_branch_url,
 )
 
-from breezy.plugins.debian.upstream import (
+from .upstream import (
     TarfileSource,
     MissingUpstreamTarball,
     PackageVersionNotPresent,
 )
-from breezy.plugins.debian.upstream.uscan import (
+from .upstream.uscan import (
     UScanSource,
     UScanError,
     NoWatchFile,
     WatchLineWithoutMatches,
     WatchLineWithoutMatchingHrefs,
 )
-from breezy.plugins.debian.upstream.branch import (
+from .upstream.branch import (
     UpstreamBranchSource,
     DistCommandFailed,
     run_dist_command,
+    PreviousVersionTagMissing,
 )
 
 from debmutate.changelog import ChangelogEditor, upstream_merge_changelog_line
@@ -136,7 +135,6 @@ from debmutate.watch import WatchSyntaxError
 
 from breezy.tree import Tree, MissingNestedTree
 
-from breezy.plugins.debian.merge_upstream import get_upstream_branch_location
 
 
 class BigVersionJump(Exception):
@@ -1106,6 +1104,18 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '--apt-repository', type=str,
+        help='APT repository to use. Defaults to locally configured.',
+        default=(
+            os.environ.get('APT_REPOSITORY')
+            or os.environ.get('REPOSITORIES')))
+    parser.add_argument(
+        '--apt-repository-key', type=str,
+        help=('APT repository key to use for validation, '
+              'if --apt-repository is set.'),
+        default=os.environ.get('APT_REPOSITORY_KEY'))
+
+    parser.add_argument(
         "--trust-package",
         action="store_true",
         default=False,
@@ -1572,7 +1582,7 @@ def main(argv=None):
             )
 
             if args.update_packaging:
-                from breezy.plugins.debian.update_packaging import (
+                from .update_packaging import (
                     update_packaging,
                 )
                 old_tree = local_tree.branch.repository.revision_tree(
@@ -1587,7 +1597,7 @@ def main(argv=None):
             patch_series_path = os.path.join(subpath, "debian/patches/series")
             if args.refresh_patches and local_tree.has_filename(
                     patch_series_path):
-                from breezy.plugins.debian.quilt_refresh import (
+                from .quilt_refresh import (
                     QuiltError,
                     QuiltPatchPushFailure,
                     QuiltPatchDoesNotApply,
