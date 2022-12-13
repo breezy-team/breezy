@@ -269,7 +269,17 @@ class GitLabMergeProposal(MergeProposal):
         return self._mr['description']
 
     def set_description(self, description):
-        self._update(description=description)
+        try:
+            self._update(description=description)
+        except errors.UnexpectedHttpStatus as e:
+            # HACK: Some versions of GitLab apply the changes but fail with a 500
+            # This appears to happen at least with version 15.5.6
+            if e.status != 500:
+                raise
+            self._mr = self.gl._get_merge_request(
+                self._mr['project_id'], self._mr['iid'])
+            if self._mr['description'] != description:
+                raise
 
     def get_commit_message(self):
         return self._mr.get('merge_commit_message')
