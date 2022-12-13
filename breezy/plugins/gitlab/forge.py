@@ -274,7 +274,7 @@ class GitLabMergeProposal(MergeProposal):
         except errors.UnexpectedHttpStatus as e:
             # HACK: Some versions of GitLab apply the changes but fail with a 500
             # This appears to happen at least with version 15.5.6
-            if e.status != 500:
+            if e.code != 500:
                 raise
             self._mr = self.gl._get_merge_request(
                 self._mr['project_id'], self._mr['iid'])
