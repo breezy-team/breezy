@@ -102,7 +102,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         An empty chunk specifies a length of zero
         """
-        length = int(self._readline(),16)
+        length = int(self._readline(), 16)
         data = None
         if length != 0:
             data = self._read(length)
@@ -175,18 +175,18 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         if self.headers.get('Expect') == '100-continue':
             # Tell the client to go ahead, we're ready to get the content
-            self.send_response(100,"Continue")
+            self.send_response(100, "Continue")
             self.end_headers()
 
         try:
             trace.mutter("do_PUT will try to open: [%s]" % path)
             # Always write in binary mode.
             if do_append:
-                f = open(path,'ab')
+                f = open(path, 'ab')
                 f.seek(begin)
             else:
                 f = open(path, 'wb')
-        except (IOError, OSError) as e :
+        except (IOError, OSError) as e:
             trace.mutter("do_PUT got: [%r] while opening/seeking on [%s]"
                          % (e, self.path))
             self.send_error(409, 'Conflict')
@@ -212,7 +212,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         MKCOL is an mkdir in DAV terminology for our part.
         """
         path = self.translate_path(self.path)
-        trace.mutter("do_MKCOL rel: [%s], abs: [%s]" % (self.path,path))
+        trace.mutter("do_MKCOL rel: [%s], abs: [%s]" % (self.path, path))
         try:
             os.mkdir(path)
         except (IOError, OSError) as e:
@@ -232,7 +232,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         url_to = self.headers.get('Destination')
         if url_to is None:
-            self.send_error(400,"Destination header missing")
+            self.send_error(400, "Destination header missing")
             return
         (scheme, netloc, rel_to,
          params, query, fragment) = urllib.parse.urlparse(url_to)
@@ -245,12 +245,12 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             # TODO:  Check that rel_from  exists and  rel_to does
             # not.  In the  mean  time, just  go  along and  trap
             # exceptions
-            shutil.copyfile(abs_from,abs_to)
+            shutil.copyfile(abs_from, abs_to)
         except (IOError, OSError) as e:
             if e.errno == errno.ENOENT:
-                self.send_error(404,"File not found") ;
+                self.send_error(404, "File not found")
             else:
-                self.send_error(409,"Conflict") ;
+                self.send_error(409, "Conflict")
         else:
             # TODO: We may be able  to return 204 "No content" if
             # rel_to was existing (even  if the "No content" part
@@ -312,9 +312,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             os.rename(abs_from, abs_to)
         except (IOError, OSError) as e:
             if e.errno == errno.ENOENT:
-                self.send_error(404, "File not found") ;
+                self.send_error(404, "File not found")
             else:
-                self.send_error(409, "Conflict") ;
+                self.send_error(409, "Conflict")
         else:
             # TODO: We may be able  to return 204 "No content" if
             # rel_to was existing (even  if the "No content" part
@@ -339,7 +339,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         if stat.S_ISDIR(st.st_mode):
             dpath = path
             if not dpath.endswith('/'):
-                dpath +=  '/'
+                dpath += '/'
             prop['href'] = _prop('D', 'href', dpath)
             prop['type'] = _prop('liveprop', 'resourcetype', '<D:collection/>')
             prop['length'] = ''
@@ -437,7 +437,7 @@ class DAVServer(http_server.HttpServer):
     def __init__(self):
         # We    have   special    requests    to   handle    that
         # HttpServer_urllib doesn't know about
-        super(DAVServer,self).__init__(TestingDAVRequestHandler)
+        super(DAVServer, self).__init__(TestingDAVRequestHandler)
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
@@ -462,7 +462,7 @@ class QuirkyDAVServer(http_server.HttpServer):
     def __init__(self):
         # We    have   special    requests    to   handle    that
         # HttpServer_urllib doesn't know about
-        super(QuirkyDAVServer,self).__init__(QuirkyTestingDAVRequestHandler)
+        super(QuirkyDAVServer, self).__init__(QuirkyTestingDAVRequestHandler)
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'

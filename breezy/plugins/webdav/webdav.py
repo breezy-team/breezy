@@ -98,7 +98,7 @@ class DavResponseHandler(xml.sax.handler.ContentHandler):
         if where == -1:
             return name
         else:
-            return name[where +1:]
+            return name[where + 1:]
 
 
 class DavStatHandler(DavResponseHandler):
@@ -437,7 +437,7 @@ class HttpDavTransport(urllib.HttpTransport):
         # handle it).
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
-                                     random.randint(0,0x7FFFFFFF))
+                                     random.randint(0, 0x7FFFFFFF))
         # A temporary file to hold  all the data to guard against
         # client death
         tmp_relpath = relpath + stamp
@@ -559,7 +559,7 @@ class HttpDavTransport(urllib.HttpTransport):
 
         if code in (403, 404, 409):
             raise errors.NoSuchFile(abspath) # Intermediate directories missing
-        
+
         if code not in (200, 201, 204):
             raise errors.UnexpectedHttpStatus(relpath, code, headers=response.headers)
 
@@ -723,7 +723,7 @@ class HttpDavTransport(urllib.HttpTransport):
         """
         # We follow the same path as FTP, which just returns a BogusLock
         # object. We don't explicitly support locking a specific file.
-        # TODO: jam 2006-09-08 SFTP implements this by opening exclusive 
+        # TODO: jam 2006-09-08 SFTP implements this by opening exclusive
         #       "relpath + '.lock_write'". Does DAV implement anything like
         #       O_EXCL?
         #       Alternatively, LocalTransport uses an OS lock to lock the file
