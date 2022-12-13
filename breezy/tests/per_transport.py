@@ -106,6 +106,7 @@ class TransportTests(TestTransportImplementation):
         """.ensure_base() should create the directory if it doesn't exist"""
         t = self.get_transport()
         t_a = t.clone('a')
+        self.assertFalse(t.ensure_base())
         if t_a.is_readonly():
             self.assertRaises(TransportNotPossible,
                               t_a.ensure_base)

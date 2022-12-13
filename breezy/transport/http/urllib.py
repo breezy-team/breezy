@@ -1664,12 +1664,14 @@ class HTTPErrorProcessor(urllib.request.HTTPErrorProcessor):
                        202,
                        204,
                        206,  # Partial content
+                       207,  # Multi-Status Response (for webdav)
                        400,
                        403,
                        404,  # Not found
                        405,  # Method not allowed
                        406,  # Not Acceptable
                        409,  # Conflict
+                       412,  # Precondition failed (for webdav)
                        416,  # Range not satisfiable
                        422,  # Unprocessible entity
                        501,  # Not implemented
@@ -2186,8 +2188,6 @@ class HttpTransport(ConnectedTransport):
         response = self.request(
             'POST', abspath, body=body_bytes,
             headers={'Content-Type': 'application/octet-stream'})
-        if response.status not in (200, 403):
-            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)

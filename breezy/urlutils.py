@@ -906,7 +906,7 @@ class URL(object):
             (self.scheme, netloc, self.quoted_path, None, None, None))
 
     @staticmethod
-    def _combine_paths(base_path, relpath):
+    def _combine_paths(base_path: str, relpath: str) -> str:
         """Transform a Transport-relative path to a remote absolute path.
 
         This does not handle substitution of ~ but does handle '..' and '.'
@@ -926,16 +926,7 @@ class URL(object):
           relpath: relative url string for relative part of remote path.
         Returns: urlencoded string for final path.
         """
-        # pad.lv/1696545: For the moment, accept both native strings and
-        # unicode.
-        if isinstance(relpath, str):
-            pass
-        elif isinstance(relpath, str):
-            try:
-                relpath = relpath.encode()
-            except UnicodeEncodeError:
-                raise InvalidURL(relpath)
-        else:
+        if not isinstance(relpath, str):
             raise InvalidURL(relpath)
         relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):
