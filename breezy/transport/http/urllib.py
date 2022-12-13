@@ -2186,8 +2186,6 @@ class HttpTransport(ConnectedTransport):
         response = self.request(
             'POST', abspath, body=body_bytes,
             headers={'Content-Type': 'application/octet-stream'})
-        if response.status not in (200, 403):
-            raise errors.UnexpectedHttpStatus(abspath, response.status, headers=response.getheaders())
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)
