@@ -435,6 +435,10 @@ class Transport(object):
             self.mkdir('.', mode=mode)
         except (FileExists, errors.PermissionDenied):
             return False
+        except errors.TransportNotPossible:
+            if self.has('.'):
+                return False
+            raise
         else:
             return True
 
