@@ -58,7 +58,7 @@ from ...transport.http import default_user_agent
 GITHUB_HOST = 'github.com'
 WEB_GITHUB_URL = 'https://github.com'
 API_GITHUB_URL = 'https://api.github.com'
-DEFAULT_PER_PAGE = 50
+DEFAULT_PER_PAGE = 100
 
 
 def parse_timestring(ts):
@@ -514,7 +514,6 @@ class GitHub(Forge):
         if per_page:
             parameters['per_page'] = str(per_page)
         page = 1
-        i = 0
         while path:
             parameters['page'] = str(page)
             response = self._api_request(
@@ -524,16 +523,17 @@ class GitHub(Forge):
             if response.status != 200:
                 raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
             data = json.loads(response.text)
-            for entry in data['items']:
-                i += 1
-                yield entry
-            if i >= data['total_count']:
+            if not data:
                 break
+            yield data
             page += 1
 
     def _search_issues(self, query):
         path = 'search/issues'
-        return self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE)
+        for page in self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE):
+            if not page['items']:
+                break
+            yield from page['items']
 
     def _create_fork(self, path, owner=None):
         if owner and owner != self.current_user['login']:
@@ -740,14 +740,11 @@ class GitHub(Forge):
             path = '/users/%s/repos' % owner
         else:
             path = '/user/repos'
-        response = self._api_request('GET', path)
-        if response.status != 200:
-            raise UnexpectedHttpStatus(
-                self.transport.user_url, response.status, headers=response.getheaders())
-        for project in json.loads(response.text):
-            if not project['fork']:
-                continue
-            yield project['full_name']
+        for page in self._list_paged(path, per_page=DEFAULT_PER_PAGE):
+            for project in page:
+                if not project['fork']:
+                    continue
+                yield project['full_name']
 
     def delete_project(self, path):
         path = 'repos/' + path
