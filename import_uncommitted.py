@@ -44,16 +44,16 @@ from breezy.workingtree import WorkingTree
 
 from debian.changelog import Changelog, Version
 
-from breezy.plugins.debian.changelog import debcommit
-from breezy.plugins.debian.directory import vcs_git_url_to_bzr_url
-from breezy.plugins.debian.info import versions_dict
-from breezy.plugins.debian.upstream import PackageVersionNotPresent
-from breezy.plugins.debian.import_dsc import (
+from .changelog import debcommit
+from .directory import vcs_git_url_to_bzr_url
+from .info import versions_dict
+from .upstream import PackageVersionNotPresent
+from .import_dsc import (
     DistributionBranch,
     DistributionBranchSet,
     VersionAlreadyImported,
 )
-from breezy.plugins.debian.apt_repo import (
+from .apt_repo import (
     Apt,
     LocalApt,
     RemoteApt,
