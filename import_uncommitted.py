@@ -211,12 +211,49 @@ def find_missing_versions(archive_cl, tree_version):
     return missing_versions
 
 
+def is_noop_upload(tree, basis_tree=None, subpath=''):
+    if basis_tree is None:
+        basis_tree = tree.basis_tree()
+    changes = tree.iter_changes(basis_tree)
+    try:
+        while True:
+            change = next(changes)
+            if change.path[1] != "":
+                break
+    except StopIteration:
+        return True
+    cl_path = os.path.join(subpath, 'debian', 'changelog')
+    if change.path != (cl_path, cl_path):
+        return False
+    # if there are any other changes, then this is not trivial:
+    try:
+        next(changes)
+    except StopIteration:
+        pass
+    else:
+        return False
+    try:
+        new_cl = Changelog(tree.get_file_text(cl_path))
+    except NoSuchFile:
+        return False
+    try:
+        old_cl = Changelog(basis_tree.get_file_text(cl_path))
+    except NoSuchFile:
+        return False
+
+    del new_cl._blocks[0]
+    # TODO(jelmer): Check for uploads that aren't just meant to trigger a
+    # build.  i.e. closing bugs.
+    return str(new_cl) == str(old_cl)
+
+
 def import_uncommitted(
         tree: Tree, subpath: str, apt: Apt,
         source_name: str,
         archive_version: Optional[Version] = None,
         tree_version: Optional[Version] = None,
         merge_unreleased: bool = True,
+        skip_noop: bool = True,
         ) -> List[Tuple[str, Version, RevisionID]]:
     with contextlib.ExitStack() as es:
         es.enter_context(apt)
@@ -277,6 +314,7 @@ def import_uncommitted(
             upstream_dir = es.enter_context(tempfile.TemporaryDirectory())
             db.create_empty_upstream_tree(upstream_dir)
         output_dir = es.enter_context(tempfile.TemporaryDirectory())
+        last_revid = db.tree.last_revision()
         for version in reversed(missing_versions):
             try:
                 dsc_path = download_snapshot(source_name, version, output_dir)
@@ -295,7 +333,15 @@ def import_uncommitted(
                 tag_name = e.tag_name
                 db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
             revid = db.branch.tags.lookup_tag(tag_name)
+            if skip_noop:
+                last_tree = db.tree.revision_tree(last_revid)
+                if is_noop_upload(tree, last_tree, subpath):
+                    note('Skipping version %s without effective changes',
+                         version)
+                    tree.update(revision=last_revid)
+                    continue
             ret.append((tag_name, version, revid))
+            last_revid = revid
 
     if merge_into:
         to_merge = tree.last_revision()
@@ -374,6 +420,10 @@ def main(argv=None):
         help=('Error rather than merge when there are '
               'unreleased changes'))
     parser.add_argument(
+        '--no-skip-noop',
+        action='store_true',
+        help='Do not skip uploads without effective changes')
+    parser.add_argument(
         '--package', type=str, help='Package to import',
         default=os.environ.get('PACKAGE'))
     parser.add_argument(
@@ -441,7 +491,8 @@ def main(argv=None):
             local_tree, subpath, apt, source_name=source_name,
             archive_version=Version(args.version) if args.version else None,
             tree_version=tree_version,
-            merge_unreleased=not args.no_merge_unreleased)
+            merge_unreleased=not args.no_merge_unreleased,
+            skip_noop=not args.no_skip_noop)
     except AptSourceError as e:
         if isinstance(e.reason, list):
             reason = e.reason[-1]

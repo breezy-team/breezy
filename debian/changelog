@@ -5,6 +5,7 @@ breezy-debian (2.8.76) UNRELEASED; urgency=medium
   * deb-import-uncommitted: fail when there are git attributes in the
     tree, which might impact what files were originally exported.
   * deb-auto-backport: add --version option.
+  * deb-import-uncommitted: Skip noop uploads.
   * deb-auto-backport: Add --apt-repository argument.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Dec 2022 16:51:51 +0000
