@@ -343,7 +343,7 @@ def import_uncommitted(
             ret.append((tag_name, version, revid))
             last_revid = revid
 
-    if merge_into:
+    if merge_into and ret:
         to_merge = tree.last_revision()
         tree.update(revision=merge_into)
         tree.merge_from_branch(tree.branch, to_revision=to_merge)
