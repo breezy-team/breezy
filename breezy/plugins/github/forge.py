@@ -736,11 +736,7 @@ class GitHub(Forge):
             path = '/users/%s/repos' % owner
         else:
             path = '/user/repos'
-        response = self._api_request('GET', path)
-        if response.status != 200:
-            raise UnexpectedHttpStatus(
-                self.transport.user_url, response.status, headers=response.getheaders())
-        for project in json.loads(response.text):
+        for project in self._list_paged(path, per_page=DEFAULT_PER_PAGE):
             if not project['fork']:
                 continue
             yield project['full_name']
