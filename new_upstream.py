@@ -1104,18 +1104,6 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--apt-repository', type=str,
-        help='APT repository to use. Defaults to locally configured.',
-        default=(
-            os.environ.get('APT_REPOSITORY')
-            or os.environ.get('REPOSITORIES')))
-    parser.add_argument(
-        '--apt-repository-key', type=str,
-        help=('APT repository key to use for validation, '
-              'if --apt-repository is set.'),
-        default=os.environ.get('APT_REPOSITORY_KEY'))
-
-    parser.add_argument(
         "--trust-package",
         action="store_true",
         default=False,
