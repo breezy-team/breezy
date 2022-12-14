@@ -140,10 +140,9 @@ class SmartHgProber(controldir.Prober):
         :param externa_url: External URL for transport
         :return: Boolean indicating whether transport is backed onto hg
         """
-        from breezy.urlutils import urlparse
-        parsed_url = urlparse.urlparse(external_url)
-        parsed_url = parsed_url._replace(query='cmd=capabilities')
-        url = urlparse.urlunparse(parsed_url)
+        parsed_url = URL(external_url)
+        parsed_url = parsed_url.with_query('cmd=capabilities')
+        url = str(parsed_url)
         resp = transport.request(
             'GET', url, headers={'Accept': 'application/mercurial-0.1'})
         if resp.status == 404:

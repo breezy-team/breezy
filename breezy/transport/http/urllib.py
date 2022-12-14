@@ -32,12 +32,15 @@ import sys
 import time
 import urllib
 import weakref
+from yarl import URL
 
 import http.client
 
 import urllib.request
 
-from urllib.parse import urljoin, urlencode, urlparse
+from urllib.parse import urljoin, urlencode
+
+from yarl import URL
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -1038,9 +1041,6 @@ class ProxyHandler(urllib.request.ProxyHandler):
         proxy = self.get_proxy_env_var(type)
         if self._debuglevel >= 3:
             print('set_proxy %s_request for %r' % (type, proxy))
-        # FIXME: python 2.5 urlparse provides a better _parse_proxy which can
-        # grok user:password@host:port as well as
-        # http://user:password@host:port
 
         parsed_url = transport.ConnectedTransport._split_url(proxy)
         if not parsed_url.host:
@@ -1177,7 +1177,7 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         auth['modified'] = False
         # Put some common info in auth if the caller didn't
         if auth.get('path', None) is None:
-            parsed_url = urlutils.URL.from_string(request.get_full_url())
+            parsed_url = URL(request.get_full_url())
             self.update_auth(auth, 'protocol', parsed_url.scheme)
             self.update_auth(auth, 'host', parsed_url.host)
             self.update_auth(auth, 'port', parsed_url.port)
@@ -1525,7 +1525,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
-        uri = urlparse(request.selector).path
+        uri = URL(request.selector).path
 
         A1 = ('%s:%s:%s' %
               (auth['user'], auth['realm'], auth['password'])).encode('utf-8')
@@ -1969,10 +1969,7 @@ class HttpTransport(ConnectedTransport):
 
         user and passwords are not embedded in the path provided to the server.
         """
-        url = self._parsed_url.clone(relpath)
-        url.user = url.quoted_user = None
-        url.password = url.quoted_password = None
-        url.scheme = self._unqualified_scheme
+        url = self._parsed_url.joinpath(relpath).with_user(None).with_password(None).with_scheme(self._unqualified_scheme)
         return str(url)
 
     def _create_auth(self):
@@ -2263,8 +2260,7 @@ class HttpTransport(ConnectedTransport):
         """See breezy.transport.Transport.external_url."""
         # HTTP URL's are externally usable as long as they don't mention their
         # implementation qualifier
-        url = self._parsed_url.clone()
-        url.scheme = self._unqualified_scheme
+        url = self._parsed_url.with_scheme(self._unqualified_scheme)
         return str(url)
 
     def is_readonly(self):

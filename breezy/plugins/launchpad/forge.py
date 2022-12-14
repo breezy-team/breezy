@@ -286,11 +286,11 @@ class Launchpad(Forge):
         raise UnsupportedForge(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
+        from yarl import URL
         url, params = urlutils.split_segment_parameters(branch.user_url)
-        (scheme, user, password, host, port, path) = urlutils.parse_url(
-            url)
+        parsed_url = URL(url)
         repo_lp = self.launchpad.git_repositories.getByPath(
-            path=path.strip('/'))
+            path=parsed_url.path.strip('/'))
         try:
             ref_path = params['ref']
         except KeyError:
@@ -307,9 +307,10 @@ class Launchpad(Forge):
             url=urlutils.unescape(branch.user_url))
 
     def _get_derived_git_path(self, base_path, owner, project):
+        from yarl import URL
         base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
-            project = urlutils.parse_url(base_repo.git_ssh_url)[-1].strip('/')
+            project = URL(base_repo.git_ssh_url).path.strip('/')
         if project.startswith('~'):
             project = '/'.join(base_path.split('/')[1:])
         # TODO(jelmer): Surely there is a better way of creating one of these
@@ -393,16 +394,17 @@ class Launchpad(Forge):
         return br_to, ("https://code.launchpad.net/" + to_path)
 
     def _split_url(self, url):
+        from yarl import URL
         url, params = urlutils.split_segment_parameters(url)
-        (scheme, user, password, host, port, path) = urlutils.parse_url(url)
-        path = path.strip('/')
+        parsed_url = URL(url)
+        path = parsed_url.path.strip('/')
         if host.startswith('bazaar.'):
             vcs = 'bzr'
         elif host.startswith('git.'):
             vcs = 'git'
         else:
             raise ValueError("unknown host %s" % host)
-        return (vcs, user, password, path, params)
+        return (vcs, parsed_url.user, parsed_url.password, path, params)
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
@@ -535,11 +537,11 @@ class Launchpad(Forge):
 
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.
-        (scheme, user, password, host, port, path) = urlutils.parse_url(
-            url)
+        from yarl import URL
+        parsed_url = URL(url)
         LAUNCHPAD_CODE_DOMAINS = [
             ('code.%s' % domain) for domain in lp_uris.LAUNCHPAD_DOMAINS.values()]
-        if host not in LAUNCHPAD_CODE_DOMAINS:
+        if parsed_url.host not in LAUNCHPAD_CODE_DOMAINS:
             raise UnsupportedForge(url)
         # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
         # UnsupportedForge

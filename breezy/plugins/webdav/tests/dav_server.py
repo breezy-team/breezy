@@ -27,7 +27,8 @@ import re
 import shutil # FIXME: Can't we use breezy.osutils ?
 import stat
 import time
-import urllib.parse # FIXME: Can't we use breezy.urlutils ?
+
+from yarl import URL
 
 
 from breezy import (
@@ -234,8 +235,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         if url_to is None:
             self.send_error(400, "Destination header missing")
             return
-        (scheme, netloc, rel_to,
-         params, query, fragment) = urllib.parse.urlparse(url_to)
+        rel_to = URL(url_to).path
         trace.mutter("urlparse: (%s) [%s]" % (url_to, rel_to))
         trace.mutter("do_COPY rel_from: [%s], rel_to: [%s]" % (self.path,
                                                                rel_to))
@@ -298,8 +298,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             should_overwrite = False
         elif overwrite_header == 'T':
             should_overwrite = True
-        (scheme, netloc, rel_to,
-         params, query, fragment) = urllib.parse.urlparse(url_to)
+        rel_to = URL(url_to).path
         trace.mutter("urlparse: (%s) [%s]" % (url_to, rel_to))
         trace.mutter("do_MOVE rel_from: [%s], rel_to: [%s]" % (self.path,
                                                                rel_to))

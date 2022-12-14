@@ -194,13 +194,13 @@ def get_credentials_by_url(url):
 
 
 def parse_gitlab_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(
-        url)
-    if scheme not in ('git+ssh', 'https', 'http'):
+    from yarl import URL
+    parsed_url = URL(url)
+    if parsed_url.scheme not in ('git+ssh', 'https', 'http'):
         raise NotGitLabUrl(url)
-    if not host:
+    if not parsed_url.host:
         raise NotGitLabUrl(url)
-    path = path.strip('/')
+    path = parsed_url.path.strip('/')
     if path.endswith('.git'):
         path = path[:-4]
     return host, path
@@ -213,13 +213,13 @@ def parse_gitlab_branch_url(branch):
 
 
 def parse_gitlab_merge_request_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(
-        url)
-    if scheme not in ('git+ssh', 'https', 'http'):
+    from yarl import URL
+    parsed_url = URL(url)
+    if parsed_url.scheme not in ('git+ssh', 'https', 'http'):
         raise NotGitLabUrl(url)
-    if not host:
+    if not parsed_url.host:
         raise NotGitLabUrl(url)
-    path = path.strip('/')
+    path = parsed_url.path.strip('/')
     parts = path.split('/')
     if len(parts) < 2:
         raise NotMergeRequestUrl(host, url)
@@ -401,15 +401,17 @@ class GitLab(Forge):
 
     @property
     def base_hostname(self):
-        return urlutils.parse_url(self.base_url)[3]
+        from yarl import URL
+        return URL(self.base_url).host
 
     def _find_correct_project_name(self, path):
+        from yarl import URL
         try:
             resp = self.transport.request(
                 'GET', urlutils.join(self.base_url, path),
                 headers=self.headers)
         except errors.RedirectRequested as e:
-            return urlutils.parse_url(e.target)[-1].strip('/')
+            return URL(e.target).path.strip('/')
         if resp.status != 200:
             _unexpected_status(path, resp)
         return None

@@ -16,7 +16,7 @@
 
 """Launchpad URIs."""
 
-from urllib.parse import urlparse, urlunparse
+from yarl import URL
 
 
 # We use production as the default because edge has been deprecated circa
@@ -64,8 +64,8 @@ def lookup_service_root(root):
         return service_roots[root]
 
     # It's not an alias. Is it a valid URL?
-    (scheme, netloc, path, parameters, query, fragment) = urlparse(root)
-    if scheme != "" and netloc != "":
+    parsed_url = URL(root)
+    if parsed_url.scheme != "" and parsed_url.host != "":
         return root
 
     # It's not an alias or a valid URL.
@@ -80,17 +80,15 @@ def web_root_for_service_root(service_root):
     This is done heuristically, not with a lookup.
     """
     service_root = lookup_service_root(service_root)
-    web_root_uri = urlparse(service_root)
-    web_root_uri = web_root_uri._replace(path="")
-    web_root_uri = web_root_uri._replace(
-        netloc=web_root_uri.netloc.replace("api.", "", 1))
+    web_root_uri = URL(service_root)
+    web_root_uri = web_root_uri.with_path("")
+    web_root_uri = web_root_uri.with_host(web_root_uri.host.replace("api.", "", 1))
     return str(web_root_uri)
 
 
 def canonical_url(object):
     """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse(
-        str(object.self_link))
-    path = '/'.join(path.split('/')[2:])
-    netloc = netloc.replace('api.', 'code.')
-    return urlunparse((scheme, netloc, path, params, query, fragment))
+    parsed_url = URL(str(object.self_link))
+    parsed_url = parsed_url.with_path('/'.join(parsed_url.parts[2:]))
+    parsed_url = parsed_url.with_host(parsed_url.host.replace('api.', 'code.'))
+    return str(parsed_url)

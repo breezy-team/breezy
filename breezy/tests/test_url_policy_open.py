@@ -17,6 +17,7 @@
 """Tests for the branch open with specific URL policy code."""
 
 from typing import List
+from yarl import URL
 
 from .. import urlutils
 from ..branch import (
@@ -389,7 +390,7 @@ class TestOpenOnlyScheme(TestCaseWithTransport):
         def get_url(relpath):
             return chroot_server.get_url() + relpath
 
-        return (urlutils.URL.from_string(chroot_server.get_url()).scheme,
+        return (URL(chroot_server.get_url()).scheme,
                 get_url)
 
     def test_stacked_within_scheme(self):

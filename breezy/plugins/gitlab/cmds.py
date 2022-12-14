@@ -58,8 +58,9 @@ class cmd_gitlab_login(Command):
         from breezy import ui
         from .forge import store_gitlab_token
         if name is None:
+            from yarl import URL
             try:
-                name = urlutils.parse_url(url)[3].split('.')[-2]
+                name = URL(url).host.split('.')[-2]
             except (ValueError, IndexError):
                 raise errors.CommandError(
                     'please specify a site name with --name')

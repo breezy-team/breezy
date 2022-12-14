@@ -24,6 +24,7 @@
 
 import os
 import sys
+from yarl import URL
 
 dulwich_minimum_version = (0, 19, 11)
 
@@ -145,9 +146,8 @@ def user_agent_for_github():
 
 
 def is_github_url(url):
-    (scheme, user, password, host, port,
-     path) = urlutils.parse_url(url)
-    return host in ("github.com", "gopkg.in")
+    parsed_url = URL(url)
+    return parsed_url.host in ("github.com", "gopkg.in")
 
 
 class RemoteGitProber(Prober):
@@ -166,9 +166,8 @@ class RemoteGitProber(Prober):
         # accessed over HTTP, whether it's Git, Bzr or something else.
         # Importing Dulwich and the other support code adds unnecessray slowdowns.
         base_url = urlutils.strip_segment_parameters(transport.external_url())
-        url = urlutils.URL.from_string(base_url)
-        url.user = url.quoted_user = None
-        url.password = url.quoted_password = None
+        url = URL(base_url)
+        url = url.with_user(None).with_password(None)
         host = url.host
         url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
         headers = {"Content-Type": "application/x-git-upload-pack-request",

@@ -23,8 +23,9 @@ from breezy.urlutils import InvalidURL
 import json
 
 from urllib.request import urlopen
-from urllib.parse import urlparse
 from urllib.error import HTTPError
+
+from yarl import URL
 
 
 class PypiProjectWithoutRepositoryURL(InvalidURL):
@@ -49,8 +50,8 @@ def find_repo_url(data):
             note('Found repository URL %s for pypi project %s',
                  value, name)
             return value
-        parsed_url = urlparse(value)
-        if (parsed_url.hostname == 'github.com' and
+        parsed_url = URL(value)
+        if (parsed_url.host == 'github.com' and
                 parsed_url.path.strip('/').count('/') == 1):
             return value
 

@@ -29,10 +29,8 @@ import os
 import random
 import stat
 import time
-from urllib.parse import (
-    urlparse,
-    urlunparse,
-    )
+
+from yarl import URL
 
 from .. import (
     config,
@@ -122,10 +120,7 @@ class GioTransport(ConnectedTransport):
         if not base.startswith('gio+'):
             raise ValueError(base)
 
-        (scheme, netloc, path, params, query, fragment) = \
-            urlparse(base[len('gio+'):], allow_fragments=False)
-        if '@' in netloc:
-            user, netloc = netloc.rsplit('@', 1)
+        parsed_url = URL(base[len('gio+'):])
         # Seems it is not possible to list supported backends for GIO
         # so a hardcoded list it is then.
         gio_backends = ['dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb']
@@ -136,8 +131,7 @@ class GioTransport(ConnectedTransport):
 
         # Remove the username and password from the url we send to GIO
         # by rebuilding the url again.
-        u = (scheme, netloc, path, '', '', '')
-        self.url = urlunparse(u)
+        self.url = str(parsed_url.with_user(None).with_password(None))
 
         # And finally initialize super
         super(GioTransport, self).__init__(base,
@@ -165,7 +159,7 @@ class GioTransport(ConnectedTransport):
         # really use breezy.auth get_password for this
         # or possibly better gnome-keyring?
         auth = config.AuthenticationConfig()
-        parsed_url = urlutils.URL.from_string(self.url)
+        parsed_url = URL(self.url)
         user = None
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):
@@ -251,7 +245,7 @@ class GioTransport(ConnectedTransport):
         self._set_connection(connection, credentials)
 
     def _remote_path(self, relpath):
-        return self._parsed_url.clone(relpath).path
+        return self._parsed_url.joinpath(relpath).path
 
     def has(self, relpath):
         """Does the target location exist?"""

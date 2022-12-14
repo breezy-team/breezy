@@ -18,6 +18,7 @@
 
 import gzip
 import re
+from yarl import URL
 
 from dulwich.refs import SymrefLoop
 
@@ -122,8 +123,6 @@ from dulwich.repo import (
 import os
 import select
 
-import urllib.parse as urlparse
-
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
 register_urlparse_netloc_protocol('git+ssh')
@@ -161,9 +160,8 @@ def split_git_url(url):
     :param url: Git URL
     :return: Tuple with host, port, username, path.
     """
-    parsed_url = urlparse.urlparse(url)
-    path = urlparse.unquote(parsed_url.path)
-    if path.startswith("/~"):
+    parsed_url = URL(url)
+    if parsed_url.path.startswith("/~"):
         path = path[1:]
     return ((parsed_url.hostname or '', parsed_url.port, parsed_url.username, path))
 
@@ -805,9 +803,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
     def __init__(self, transport, *args, **kwargs):
         self.transport = transport
-        url = urlutils.URL.from_string(transport.external_url())
-        url.user = url.quoted_user = None
-        url.password = url.quoted_password = None
+        url = URL(transport.external_url())
+        url = url.with_user(None).with_password(None)
         url = urlutils.strip_segment_parameters(str(url))
         super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
 
@@ -873,7 +870,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
 def _git_url_and_path_from_transport(external_url):
     url = urlutils.strip_segment_parameters(external_url)
-    return urlparse.urlsplit(url)
+    return URL(url)
 
 
 class RemoteGitControlDirFormat(GitControlDirFormat):

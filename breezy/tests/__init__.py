@@ -1157,7 +1157,7 @@ class TestCase(testtools.TestCase):
         self.permit_url(name)
         self.permit_url(name_transport.base)
 
-    def permit_url(self, url):
+    def permit_url(self, url: str):
         """Declare that url is an ok url to use in this test.
 
         Do this for memory transports, temporary test directory etc.

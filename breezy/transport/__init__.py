@@ -28,10 +28,10 @@ it.
 
 import errno
 from io import BytesIO
+from stat import S_ISDIR
 import sys
 from typing import Dict, Any, Callable, TypeVar
-
-from stat import S_ISDIR
+from yarl import URL
 
 from ..trace import (
     mutter,
@@ -1308,14 +1308,13 @@ class ConnectedTransport(Transport):
         if not base.endswith('/'):
             base += '/'
         self._parsed_url = self._split_url(base)
-        if _from_transport is not None:
+        if _from_transport is not None and _from_transport._parsed_url.password:
             # Copy the password as it does not appear in base and will be lost
             # otherwise. It can appear in the _split_url above if the user
             # provided it on the command line. Otherwise, daughter classes will
             # prompt the user for one when appropriate.
-            self._parsed_url.password = _from_transport._parsed_url.password
-            self._parsed_url.quoted_password = (
-                _from_transport._parsed_url.quoted_password)
+            self._parsed_url = self._parsed_url.with_password(
+                _from_transport._parsed_url.password)
 
         base = str(self._parsed_url)
 
@@ -1362,7 +1361,7 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        return urlutils.URL.from_string(url)
+        return URL(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):
@@ -1381,16 +1380,8 @@ class ConnectedTransport(Transport):
 
         :return: The corresponding URL.
         """
-        netloc = urlutils.quote(host)
-        if user is not None:
-            # Note that we don't put the password back even if we
-            # have one so that it doesn't get accidentally
-            # exposed.
-            netloc = '%s@%s' % (urlutils.quote(user), netloc)
-        if port is not None:
-            netloc = '%s:%d' % (netloc, port)
-        path = urlutils.escape(path)
-        return urlutils.urlparse.urlunparse((scheme, netloc, path, None, None, None))
+        return str(URL.build(
+            scheme=scheme, host=host, user=user, password=password, port=port).with_path(path, encoded=True))
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path"""
@@ -1421,7 +1412,7 @@ class ConnectedTransport(Transport):
 
         :returns: the Unicode version of the absolute path for relpath.
         """
-        return str(self._parsed_url.clone(relpath))
+        return str(self._parsed_url.joinpath(relpath))
 
     def _remote_path(self, relpath):
         """Return the absolute path part of the url to the given relative path.
@@ -1435,7 +1426,7 @@ class ConnectedTransport(Transport):
 
         :return: the absolute Unicode path on the server,
         """
-        return self._parsed_url.clone(relpath).path
+        return self._parsed_url.joinpath(relpath).path
 
     def _get_shared_connection(self):
         """Get the object shared amongst cloned transports.

@@ -23,7 +23,8 @@ import random
 import re
 import socket
 import sys
-from urllib.parse import urlparse
+
+from yarl import URL
 
 from .. import (
     osutils,
@@ -297,7 +298,7 @@ Message: %(message)s.
             # do beginning with python 2.4.3: abandon query
             # parameters, scheme, host port, etc (which ensure we
             # provide the right behaviour on all python versions).
-            path = urlparse(path)[2]
+            path = URL(path).path
             # And now, we can apply *our* trick to proxy files
             path += '-proxied'
 
@@ -315,7 +316,7 @@ Message: %(message)s.
         Override from python standard library to stop it calling os.getcwd()
         """
         # abandon query parameters
-        path = urlparse(path)[2]
+        path = URL(path).path
         path = posixpath.normpath(urlutils.unquote(path))
         words = path.split('/')
         path = self._cwd

@@ -16,6 +16,7 @@
 
 """URL Conversion."""
 
+from yarl import URL
 
 from .. import urlutils
 from .refs import (
@@ -34,7 +35,7 @@ SCHEME_REPLACEMENT = {
 def git_url_to_bzr_url(location, branch=None, ref=None):
     if branch is not None and ref is not None:
         raise ValueError('only specify one of branch or ref')
-    url = urlutils.URL.from_string(location)
+    url = URL(location)
     if (url.scheme not in KNOWN_GIT_SCHEMES and
             not url.scheme.startswith('chroot-')):
         try:
@@ -42,16 +43,16 @@ def git_url_to_bzr_url(location, branch=None, ref=None):
         except ValueError:
             return location
         else:
-            url = urlutils.URL(
+            url = URL.build(
                 scheme='git+ssh',
-                quoted_user=(urlutils.quote(username) if username else None),
-                quoted_password=None,
-                quoted_host=urlutils.quote(host),
+                user=username,
+                password=None,
+                host=host,
                 port=None,
-                quoted_path=urlutils.quote(path, safe="/~"))
+                path=path)
         location = str(url)
     elif url.scheme in SCHEME_REPLACEMENT:
-        url.scheme = SCHEME_REPLACEMENT[url.scheme]
+        url = url.with_scheme(SCHEME_REPLACEMENT[url.scheme])
         location = str(url)
     if ref == b'HEAD':
         ref = branch = None

@@ -18,6 +18,7 @@
 
 import re
 from typing import Optional, Type
+from yarl import URL
 
 from . import (
     errors,
@@ -385,7 +386,7 @@ class Forge(object):
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         """Create a Forge object if this forge knows about a URL."""
-        hostname = urlutils.URL.from_string(url).host
+        hostname = URL(url).host
         return cls.probe_from_hostname(hostname, possible_transports=possible_transports)
 
     def iter_my_proposals(self, status='open', author=None):
@@ -523,7 +524,7 @@ def create_project(url: str) -> None:
     Args:
       url: URL of project to create
     """
-    parsed_url = urlutils.URL.from_string(url)
+    parsed_url = URL(url)
     hostname = parsed_url.host
     for name, forge_cls in forges.items():
         try:

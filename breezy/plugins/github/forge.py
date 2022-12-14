@@ -262,11 +262,11 @@ mutation ($pullRequestId: ID!) {
 
 
 def parse_github_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(
-        url)
-    if host != GITHUB_HOST:
+    from yarl import URL
+    parsed_url = URL(url)
+    if parsed_url.host != GITHUB_HOST:
         raise NotGitHubUrl(url)
-    (owner, repo_name) = path.strip('/').split('/')
+    (owner, repo_name) = parsed_url.path.strip('/').split('/')
     if repo_name.endswith('.git'):
         repo_name = repo_name[:-4]
     return owner, repo_name
@@ -279,12 +279,12 @@ def parse_github_branch_url(branch):
 
 
 def parse_github_pr_url(url):
-    (scheme, user, password, host, port, path) = urlutils.parse_url(
-        url)
-    if host != GITHUB_HOST:
+    from yarl import URL
+    parsed_url = URL(url)
+    if parsed_url.host != GITHUB_HOST:
         raise NotGitHubUrl(url)
     try:
-        (owner, repo_name, pull, pr_id) = path.strip('/').split('/')
+        (owner, repo_name, pull, pr_id) = parsed_url.path.strip('/').split('/')
     except IndexError as e:
         raise ValueError('Not a PR URL') from e
 

@@ -23,10 +23,6 @@
 
 import base64
 import re
-from urllib.parse import (
-    urlparse,
-    urlunparse,
-    )
 
 from ... import (
     branch,
