@@ -337,6 +337,14 @@ def set_vcs_git_url(control, vcs_git_base: Optional[str],
     return (old_vcs_url, new_vcs_url)
 
 
+def contains_git_attributes(tree):
+    for path, versioned, kind, ie in tree.list_files(
+            recursive=True, recurse_nested=True):
+        if os.path.basename(path) == '.gitattributes':
+            return True
+    return False
+
+
 def main(argv=None):
     import argparse
     parser = argparse.ArgumentParser()
@@ -412,6 +420,17 @@ def main(argv=None):
                 'inconsistent-package',
                 'Inconsistent package name: %s specified, %s found' % (
                     args.package, tree_cl.package))
+            return 1
+
+    if not args.force_git_attributes and hasattr(
+            local_tree.branch.repository, '_git'):
+        # See https://salsa.debian.org/jelmer/janitor.debian.net/-/issues/74
+        if contains_git_attributes(local_tree):
+            report_fatal(
+                'unsupported-git-attributes',
+                'Tree contains .gitattributes which may import imports and '
+                'are unsupported',
+                'Run with --force-git-attributes to ignore')
             return 1
 
     try:
