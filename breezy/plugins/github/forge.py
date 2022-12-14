@@ -150,9 +150,13 @@ class GitHubMergeProposal(MergeProposal):
         self._patch(base=name)
 
     def get_source_project(self):
+        if self._pr['head']['repo'] is None:
+            return None
         return self._pr['head']['repo']['full_name']
 
     def get_target_project(self):
+        if self._pr['base']['repo'] is None:
+            return None
         return self._pr['base']['repo']['full_name']
 
     def get_description(self):
