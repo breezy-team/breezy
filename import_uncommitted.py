@@ -337,9 +337,9 @@ def set_vcs_git_url(control, vcs_git_base: Optional[str],
     return (old_vcs_url, new_vcs_url)
 
 
-def contains_git_attributes(tree):
+def contains_git_attributes(tree, subpath):
     for path, versioned, kind, ie in tree.list_files(
-            recursive=True, recurse_nested=True):
+            recursive=True, recurse_nested=True, from_dir=subpath):
         if os.path.basename(path) == '.gitattributes':
             return True
     return False
@@ -376,6 +376,9 @@ def main(argv=None):
     parser.add_argument(
         '--package', type=str, help='Package to import',
         default=os.environ.get('PACKAGE'))
+    parser.add_argument(
+        '--force-git-attributes', action='store_true',
+        help='Force importing even if the tree contains git attributes')
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -425,7 +428,7 @@ def main(argv=None):
     if not args.force_git_attributes and hasattr(
             local_tree.branch.repository, '_git'):
         # See https://salsa.debian.org/jelmer/janitor.debian.net/-/issues/74
-        if contains_git_attributes(local_tree):
+        if contains_git_attributes(local_tree, subpath):
             report_fatal(
                 'unsupported-git-attributes',
                 'Tree contains .gitattributes which may import imports and '

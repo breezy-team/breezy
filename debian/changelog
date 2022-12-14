@@ -2,10 +2,12 @@ breezy-debian (2.8.76) UNRELEASED; urgency=medium
 
   * Export package.json and META.json.
   * deb-merge: Fall back to importing .dsc.
+  * deb-import-uncommitted: fail when there are git attributes in the
+    tree, which might impact what files were originally exported.
   * deb-auto-backport: add --version option.
   * deb-auto-backport: Add --apt-repository argument.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 30 Nov 2022 01:36:24 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Dec 2022 16:51:51 +0000
 
 breezy-debian (2.8.75) unstable; urgency=medium
 
