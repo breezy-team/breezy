@@ -60,6 +60,15 @@ WEB_GITHUB_URL = 'https://github.com'
 API_GITHUB_URL = 'https://api.github.com'
 DEFAULT_PER_PAGE = 100
 
+SCHEME_FIELD_MAP = {
+    'ssh': 'ssh_url',
+    'git+ssh': 'ssh_url',
+    'http': 'clone_url',
+    'https': 'clone_url',
+    'git': 'git_url',
+}
+DEFAULT_PREFERRED_SCHEMES = ['ssh', 'http']
+
 
 def parse_timestring(ts):
     return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
@@ -129,13 +138,18 @@ class GitHubMergeProposal(MergeProposal):
     def url(self):
         return self._pr['html_url']
 
-    def _branch_from_part(self, part):
+    def _branch_from_part(self, part, preferred_schemes=None):
         if part['repo'] is None:
             return None
-        return github_url_to_bzr_url(part['repo']['clone_url'], part['ref'])
+        if preferred_schemes is None:
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
+        for scheme in preferred_schemes:
+            if scheme in SCHEME_FIELD_MAP:
+                return github_url_to_bzr_url(part['repo'][SCHEME_FIELD_MAP[scheme]], part['ref'])
+        raise AssertionError
 
-    def get_source_branch_url(self):
-        return self._branch_from_part(self._pr['head'])
+    def get_source_branch_url(self, *, preferred_schemes=None):
+        return self._branch_from_part(self._pr['head'], preferred_schemes=preferred_schemes)
 
     def get_source_revision(self):
         """Return the latest revision for the source branch."""
@@ -143,8 +157,8 @@ class GitHubMergeProposal(MergeProposal):
         return default_mapping.revision_id_foreign_to_bzr(
             self._pr['head']['sha'].encode('ascii'))
 
-    def get_target_branch_url(self):
-        return self._branch_from_part(self._pr['base'])
+    def get_target_branch_url(self, *, preferred_schemes=None):
+        return self._branch_from_part(self._pr['base'], preferred_schemes=preferred_schemes)
 
     def set_target_branch_name(self, name):
         self._patch(base=name)
@@ -563,7 +577,7 @@ class GitHub(Forge):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True, tag_selector=None):
+                        allow_lossy=True, tag_selector=None,):
         if tag_selector is None:
             tag_selector = lambda t: False
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
@@ -622,16 +636,10 @@ class GitHub(Forge):
         except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (WEB_GITHUB_URL, owner, project))
         if preferred_schemes is None:
-            preferred_schemes = ['git+ssh']
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         for scheme in preferred_schemes:
-            if scheme == 'git+ssh':
-                github_url = remote_repo['ssh_url']
-                break
-            if scheme == 'https':
-                github_url = remote_repo['clone_url']
-                break
-            if scheme == 'git':
-                github_url = remote_repo['git_url']
+            if scheme in SCHEME_FIELD_MAP:
+                github_url = remote_repo[SCHEME_FIELD_MAP[scheme]]
                 break
         else:
             raise AssertionError
