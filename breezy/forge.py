@@ -161,7 +161,7 @@ class MergeProposal(object):
         """Set the propose commit message."""
         raise NotImplementedError(self.set_commit_message)
 
-    def get_source_branch_url(self):
+    def get_source_branch_url(self, *, preferred_schemes=None):
         """Return the source branch."""
         raise NotImplementedError(self.get_source_branch_url)
 
@@ -169,7 +169,7 @@ class MergeProposal(object):
         """Return the latest revision for the source branch."""
         raise NotImplementedError(self.get_source_revision)
 
-    def get_target_branch_url(self):
+    def get_target_branch_url(self, *, preferred_schemes=None):
         """Return the target branch."""
         raise NotImplementedError(self.get_target_branch_url)
 

@@ -51,6 +51,19 @@ from breezy.plugins.launchpad import (
 from ...transport import get_transport
 
 
+DEFAULT_PREFERRED_SCHEMES = ['ssh', 'http']
+
+BZR_SCHEME_MAP = {
+    'ssh': 'bzr+ssh://bazaar.launchpad.net/',
+    'http': 'https://bazaar.launchpad.net/',
+}
+
+GIT_SCHEME_MAP = {
+    'ssh': 'git+ssh://git.launchpad.net/',
+    'http': 'https://git.launchpad.net/'
+}
+
+
 # TODO(jelmer): Make selection of launchpad staging a configuration option.
 
 def status_to_lp_mp_statuses(status):
@@ -115,7 +128,8 @@ class LaunchpadMergeProposal(MergeProposal):
     def get_web_url(self):
         return self._mp.web_link
 
-    def get_source_branch_url(self):
+    def get_source_branch_url(self, *, preferred_schemes=None):
+        # TODO(jelmer): Honor preferred_schemes
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity
         else:
@@ -140,7 +154,8 @@ class LaunchpadMergeProposal(MergeProposal):
             return default_mapping.revision_id_foreign_to_bzr(
                 sha.encode('ascii'))
 
-    def get_target_branch_url(self):
+    def get_target_branch_url(self, *, preferred_schemes=None):
+        # TODO(jelmer): Honor preferred_schemes
         if self._mp.target_branch:
             return self._mp.target_branch.bzr_identity
         else:
@@ -322,7 +337,7 @@ class Launchpad(Forge):
         if tag_selector is None:
             tag_selector = lambda t: False
         to_path = self._get_derived_git_path(base_path, owner, project)
-        to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
+        to_transport = get_transport(GIT_SCHEME_MAP['ssh'] + to_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -368,7 +383,7 @@ class Launchpad(Forge):
             return branch_lp.bzr_identity
         elif vcs == 'git':
             return urlutils.join_segment_parameters(
-                "git+ssh://git.launchpad.net/" + path, params)
+                GIT_SCHEME_MAP['ssh'] + path, params)
         else:
             raise AssertionError
 
@@ -376,7 +391,7 @@ class Launchpad(Forge):
                      project=None, revision_id=None, overwrite=False,
                      allow_lossy=True, tag_selector=None):
         to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
-        to_transport = get_transport("lp:" + to_path)
+        to_transport = get_transport(BZR_SCHEME_MAP['ssh'] + to_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -435,7 +450,8 @@ class Launchpad(Forge):
             raise AssertionError('not a valid Launchpad URL')
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
-        # TODO(jelmer): honor preferred_schemes
+        if preferred_schemes is None:
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         if owner is None:
             owner = self.launchpad.me.name
         (base_vcs, base_user, base_password, base_path,
@@ -443,14 +459,16 @@ class Launchpad(Forge):
         if base_vcs == 'bzr':
             to_path = self._get_derived_bzr_path(
                 base_branch, name, owner, project)
-            return _mod_branch.Branch.open("lp:" + to_path)
+            for scheme in preferred_schemes:
+                return _mod_branch.Branch.open(BZR_SCHEME_MAP[scheme] + to_path)
         elif base_vcs == 'git':
             to_path = self._get_derived_git_path(
                 base_path.strip('/'), owner, project)
-            to_url = urlutils.join_segment_parameters(
-                "git+ssh://git.launchpad.net/" + to_path,
-                {'branch': name})
-            return _mod_branch.Branch.open(to_url)
+            for scheme in preferred_schemes:
+                to_url = urlutils.join_segment_parameters(
+                    GIT_SCHEME_MAP[scheme] + to_path,
+                    {'branch': name})
+                return _mod_branch.Branch.open(to_url)
         else:
             raise AssertionError('not a valid Launchpad URL')
 

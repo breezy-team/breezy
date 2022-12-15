@@ -49,6 +49,7 @@ from ...forge import (
 
 _DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
 DEFAULT_PAGE_SIZE = 50
+DEFAULT_PREFERRED_SCHEMES = ["ssh", "http"]
 
 
 def mp_status_to_status(status):
@@ -293,15 +294,25 @@ class GitLabMergeProposal(MergeProposal):
     def set_title(self, title):
         self._update(title=title)
 
-    def _branch_url_from_project(self, project_id, branch_name):
+    def _branch_url_from_project(self, project_id, branch_name, *, preferred_schemes=None):
         if project_id is None:
             return None
         project = self.gl._get_project(project_id)
-        return gitlab_url_to_bzr_url(project['http_url_to_repo'], branch_name)
+        if preferred_schemes is None:
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
+        for scheme in preferred_schemes:
+            try:
+                url = project[scheme + '_url_to_repo']
+            except KeyError:
+                pass
+            else:
+                return gitlab_url_to_bzr_url(url, branch_name)
+        raise KeyError
 
-    def get_source_branch_url(self):
+    def get_source_branch_url(self, *, preferred_schemes=None):
         return self._branch_url_from_project(
-            self._mr['source_project_id'], self._mr['source_branch'])
+            self._mr['source_project_id'], self._mr['source_branch'],
+            preferred_schemes=preferred_schemes)
 
     def get_source_revision(self):
         from breezy.git.mapping import default_mapping
@@ -310,9 +321,10 @@ class GitLabMergeProposal(MergeProposal):
             return None
         return default_mapping.revision_id_foreign_to_bzr(sha.encode('ascii'))
 
-    def get_target_branch_url(self):
+    def get_target_branch_url(self, *, preferred_schemes=None):
         return self._branch_url_from_project(
-            self._mr['target_project_id'], self._mr['target_branch'])
+            self._mr['target_project_id'], self._mr['target_branch'],
+            preferred_schemes=preferred_schemes)
 
     def set_target_branch_name(self, name):
         self._update(branch=name)
