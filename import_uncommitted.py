@@ -158,6 +158,16 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     return os.path.join(output_dir, dsc_filename)
 
 
+class NoopChangesOnly(Exception):
+    def __init__(self, vcs_version, archive_version):
+        self.vcs_version = vcs_version
+        self.archive_version = archive_version
+        super(NoMissingVersions, self).__init__(
+            "No missing versions with effective changes. Archive has %s, VCS has %s"
+            % (archive_version, vcs_version)
+        )
+
+
 class NoMissingVersions(Exception):
     def __init__(self, vcs_version, archive_version):
         self.vcs_version = vcs_version
@@ -343,7 +353,10 @@ def import_uncommitted(
             ret.append((tag_name, version, revid))
             last_revid = revid
 
-    if merge_into and ret:
+    if not ret:
+        raise NoopChangesOnly(tree_version, archive_cl.version)
+
+    if merge_into:
         to_merge = tree.last_revision()
         tree.update(revision=merge_into)
         tree.merge_from_branch(tree.branch, to_revision=to_merge)
@@ -517,9 +530,14 @@ def main(argv=None):
     except TreeVersionNotInArchiveChangelog as e:
         report_fatal("tree-version-not-in-archive-changelog", str(e))
         return 1
+    except NoopChangesOnly as e:
+        report_fatal(
+            "nothing-to-do", str(e),
+            hint='Run with --no-skip-noop to include trivial uploads.')
+        return 1
     except NoMissingVersions as e:
         report_fatal("nothing-to-do", str(e))
-        return 0
+        return 1
     except SnapshotDownloadError as e:
         report_fatal(
             'snapshot-download-failed',
