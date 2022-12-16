@@ -95,9 +95,10 @@ def select_vcswatch_packages():
 
 class SnapshotDownloadError(Exception):
 
-    def __init__(self, url, inner):
+    def __init__(self, url, inner, transient):
         self.url = url
         self.inner = inner
+        self.transient = transient
 
 
 class SnapshotMissing(Exception):
@@ -127,9 +128,13 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
     except HTTPError as e:
         if e.status == 404:
             raise SnapshotMissing(package, version) from e
-        raise SnapshotDownloadError(srcfiles_url, e) from e
+        if e.status // 100 == 5:
+            transient = True
+        else:
+            transient = None
+        raise SnapshotDownloadError(srcfiles_url, e, transient=transient) from e
     except URLError as e:
-        raise SnapshotDownloadError(srcfiles_url, e) from e
+        raise SnapshotDownloadError(srcfiles_url, e, transient=None) from e
 
     for hsh, entries in srcfiles["fileinfo"].items():
         for entry in entries:
@@ -149,9 +154,13 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                     with urlopen(url) as g:
                         f.write(g.read())
                 except HTTPError as e:
-                    raise SnapshotDownloadError(url, e) from e
+                    if e.status // 100 == 5:
+                        transient = True
+                    else:
+                        transient = None
+                    raise SnapshotDownloadError(url, e, transient=transient) from e
                 except URLError as e:
-                    raise SnapshotDownloadError(url, e) from e
+                    raise SnapshotDownloadError(url, e, transient=None) from e
     file_version = Version(version)
     file_version.epoch = None
     dsc_filename = "%s_%s.dsc" % (package, file_version)
@@ -371,11 +380,12 @@ def import_uncommitted(
     return ret
 
 
-def report_fatal(code, description, *, hint=None):
+def report_fatal(code, description, *, hint=None, transient=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
                 'versions': versions_dict(),
+                'transient': transient,
                 'result_code': code,
                 'description': description}, f)
     logging.fatal('%s', description)
@@ -541,7 +551,8 @@ def main(argv=None):
     except SnapshotDownloadError as e:
         report_fatal(
             'snapshot-download-failed',
-            'Downloading %s failed: %s' % (e.url, e.inner))
+            'Downloading %s failed: %s' % (e.url, e.inner),
+            transient=e.transient)
         return 1
     except SnapshotHashMismatch as e:
         report_fatal(
