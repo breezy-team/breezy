@@ -28,7 +28,7 @@ from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 
 from debmutate.control import ControlEditor
-from debmutate.changelog import ChangelogEditor
+from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
@@ -218,7 +218,7 @@ class UnreleasedChangesSinceTreeVersion(Exception):
             "there are unreleased changes since %s" % tree_version)
 
 
-def find_missing_versions(archive_cl, tree_version):
+def find_missing_versions(archive_cl: Version, tree_version: Version) -> List[Version]:
     missing_versions: List[Version] = []
     for block in archive_cl:
         if tree_version is not None and block.version == tree_version:
@@ -474,7 +474,13 @@ def main(argv=None):
         with local_tree.get_file(cl_path) as f:
             tree_cl = Changelog(f)
             source_name = tree_cl.package
-            tree_version = tree_cl.version
+            for block in tree_cl:
+                if distribution_is_unreleased(block.distributions):
+                    continue
+                tree_version = block.version
+                break
+            else:
+                tree_version = None
     except NoSuchFile as e:
         if local_tree.last_revision() == NULL_REVISION and args.package:
             source_name = args.package
