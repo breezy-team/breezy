@@ -510,7 +510,7 @@ def main(argv=None):
         if contains_git_attributes(local_tree, subpath):
             report_fatal(
                 'unsupported-git-attributes',
-                'Tree contains .gitattributes which may import imports and '
+                'Tree contains .gitattributes which may impact imports and '
                 'are unsupported',
                 hint='Run with --force-git-attributes to ignore')
             return 1
