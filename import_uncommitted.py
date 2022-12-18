@@ -512,7 +512,7 @@ def main(argv=None):
                 'unsupported-git-attributes',
                 'Tree contains .gitattributes which may import imports and '
                 'are unsupported',
-                'Run with --force-git-attributes to ignore')
+                hint='Run with --force-git-attributes to ignore')
             return 1
 
     try:
