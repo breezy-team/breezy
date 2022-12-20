@@ -352,7 +352,7 @@ def import_uncommitted(
                 tag_name = e.tag_name
                 db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
             revid = db.branch.tags.lookup_tag(tag_name)
-            if skip_noop:
+            if skip_noop and last_revid != NULL_REVISION:
                 last_tree = db.tree.revision_tree(last_revid)
                 if is_noop_upload(tree, last_tree, subpath):
                     note('Skipping version %s without effective changes',
