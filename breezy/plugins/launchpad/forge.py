@@ -56,11 +56,13 @@ DEFAULT_PREFERRED_SCHEMES = ['ssh', 'http']
 BZR_SCHEME_MAP = {
     'ssh': 'bzr+ssh://bazaar.launchpad.net/',
     'http': 'https://bazaar.launchpad.net/',
+    'https': 'https://bazaar.launchpad.net/',
 }
 
 GIT_SCHEME_MAP = {
     'ssh': 'git+ssh://git.launchpad.net/',
-    'http': 'https://git.launchpad.net/'
+    'http': 'https://git.launchpad.net/',
+    'https': 'https://git.launchpad.net/',
 }
 
 
@@ -460,15 +462,24 @@ class Launchpad(Forge):
             to_path = self._get_derived_bzr_path(
                 base_branch, name, owner, project)
             for scheme in preferred_schemes:
-                return _mod_branch.Branch.open(BZR_SCHEME_MAP[scheme] + to_path)
+                try:
+                    prefix = BZR_SCHEME_MAP[scheme]
+                except KeyError:
+                    continue
+                return _mod_branch.Branch.open(prefix + to_path)
+            raise AssertionError('no supported schemes: %r' % preferred_schemes)
         elif base_vcs == 'git':
             to_path = self._get_derived_git_path(
                 base_path.strip('/'), owner, project)
             for scheme in preferred_schemes:
+                try:
+                    prefix = GIT_SCHEME_MAP[scheme]
+                except KeyError:
+                    continue
                 to_url = urlutils.join_segment_parameters(
-                    GIT_SCHEME_MAP[scheme] + to_path,
-                    {'branch': name})
+                    prefix + to_path, {'branch': name})
                 return _mod_branch.Branch.open(to_url)
+            raise AssertionError('no supported schemes: %r' % preferred_schemes)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
