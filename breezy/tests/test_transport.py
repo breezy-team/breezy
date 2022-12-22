@@ -41,7 +41,6 @@ from ..transport import (
     NoSuchFile,
     UnsupportedProtocol,
     )
-from ..transport.http import urllib
 import breezy.transport.trace
 from . import (
     features,
@@ -1096,14 +1095,3 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
-
-
-class TestUnhtml(tests.TestCase):
-
-    """Tests for unhtml_roughly"""
-
-    def test_truncation(self):
-        fake_html = "<p>something!\n" * 1000
-        result = urllib.unhtml_roughly(fake_html)
-        self.assertEqual(len(result), 1000)
-        self.assertStartsWith(result, " something!")

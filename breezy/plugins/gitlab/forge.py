@@ -50,6 +50,12 @@ from ...forge import (
 _DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
 DEFAULT_PAGE_SIZE = 50
 DEFAULT_PREFERRED_SCHEMES = ["ssh", "http"]
+SCHEME_MAP = {
+    'git+ssh': 'ssh_url_to_repo',
+    'ssh': 'ssh_url_to_repo',
+    'http': 'http_url_to_repo',
+    'https': 'http_url_to_repo',
+}
 
 
 def mp_status_to_status(status):
@@ -301,12 +307,8 @@ class GitLabMergeProposal(MergeProposal):
         if preferred_schemes is None:
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         for scheme in preferred_schemes:
-            try:
-                url = project[scheme + '_url_to_repo']
-            except KeyError:
-                pass
-            else:
-                return gitlab_url_to_bzr_url(url, branch_name)
+            if scheme in SCHEME_MAP:
+                return gitlab_url_to_bzr_url(project[SCHEME_MAP[scheme]], branch_name)
         raise KeyError
 
     def get_source_branch_url(self, *, preferred_schemes=None):
@@ -724,7 +726,8 @@ class GitLab(Forge):
         else:
             raise AssertionError
         return _mod_branch.Branch.open(
-            gitlab_url_to_bzr_url(gitlab_url, name))
+            gitlab_url_to_bzr_url(gitlab_url, name),
+            possible_transports=[base_branch.user_transport])
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self, source_branch, target_branch)
