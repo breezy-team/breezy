@@ -18,7 +18,6 @@
 """Support for Launchpad."""
 
 import re
-import shutil
 import tempfile
 
 from ... import branch as _mod_branch
@@ -225,13 +224,11 @@ class LaunchpadMergeProposal(MergeProposal):
         # TODO(jelmer): Ideally this would use a memorytree, but merge doesn't
         # support that yet.
         # tree = target_branch.create_memorytree()
-        tmpdir = tempfile.mkdtemp()
-        try:
-            tree = target_branch.create_checkout(to_location=tmpdir, lightweight=True)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tree = target_branch.create_checkout(
+                to_location=tmpdir, lightweight=True)
             tree.merge_from_branch(source_branch)
             tree.commit(commit_message or self._mp.commit_message)
-        finally:
-            shutil.rmtree(tmpdir)
 
     def post_comment(self, body):
         self._mp.createComment(content=body)
