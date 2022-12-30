@@ -230,14 +230,11 @@ class LaunchpadMergeProposal(MergeProposal):
         # TODO(jelmer): Ideally this would use a memorytree, but merge doesn't
         # support that yet.
         # tree = target_branch.create_memorytree()
-        tmpdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             tree = target_branch.create_checkout(
                 to_location=tmpdir, lightweight=True)
             tree.merge_from_branch(source_branch)
             tree.commit(commit_message or self._mp.commit_message)
-        finally:
-            shutil.rmtree(tmpdir)
 
     def post_comment(self, body):
         self._mp.createComment(content=body)
