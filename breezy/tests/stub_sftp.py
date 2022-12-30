@@ -551,7 +551,7 @@ class SFTPServerWithoutSSH(SFTPServer):
         self._vendor = ssh.LoopbackVendor()
         self.request_handler_class = TestingSFTPWithoutSSHConnectionHandler
 
-    def get_host_key():
+    def get_host_key(self):
         return None
 
 

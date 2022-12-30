@@ -18,6 +18,8 @@ __docformat__ = "google"
 
 """Support for plugin hooking logic."""
 
+from typing import Dict, Tuple, List
+
 from . import (
     errors,
     registry,
@@ -42,7 +44,7 @@ class UnknownHook(errors.BzrError):
         self.hook = hook_name
 
 
-class KnownHooksRegistry(registry.Registry):
+class KnownHooksRegistry(registry.Registry[str, "Hooks"]):
     # known_hooks registry contains
     # tuple of (module, member name) which is the hook point
     # module where the specific hooks are defined
@@ -436,7 +438,7 @@ def hooks_help_text(topic):
 
 # Lazily registered hooks. Maps (module, name, hook_name) tuples
 # to lists of tuples with objectgetters and names
-_lazy_hooks = {}
+_lazy_hooks: Dict[Tuple[str, str, str], List[Tuple[registry._ObjectGetter, str]]] = {}
 
 
 def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,

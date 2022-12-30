@@ -33,6 +33,11 @@ import contextlib
 import errno
 import os
 import sys
+from typing import Optional, Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .branch import Branch
+    from .revisiontree import RevisionTree
 
 import breezy
 
@@ -41,13 +46,13 @@ lazy_import(globals(), """
 import stat
 
 from breezy import (
-    revision as _mod_revision,
     views,
     )
 """)
 
 from . import (
     errors,
+    revision as _mod_revision,
     )
 from .controldir import (
     ControlComponent,
@@ -88,6 +93,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
       basedir: The root of the tree on disk. This is a unicode path object
         (as opposed to a URL).
     """
+
+    branch: "Branch"
 
     # override this to set the strategy for storing views
     def _make_views(self):
@@ -144,7 +151,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         return self.controldir.is_control_filename(filename)
 
-    branch = property(
+    branch = property(  # type: ignore
         fget=lambda self: self._branch,
         doc="""The branch this WorkingTree is connected to.
 
@@ -199,7 +206,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return self.branch.get_config_stack()
 
     @staticmethod
-    def open(path=None, _unsupported=False):
+    def open(path=None, _unsupported=False) -> "WorkingTree":
         """Open an existing working tree at path.
 
         """
@@ -209,7 +216,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
-    def open_containing(path=None):
+    def open_containing(path: Optional[str] = None) -> Tuple["WorkingTree", str]:
         """Open an existing working tree which has its root about path.
 
         This probes for a working tree at path and searches upwards from there.
@@ -300,7 +307,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return new_list
 
     @staticmethod
-    def open_downlevel(path=None):
+    def open_downlevel(path=None) -> "WorkingTree":
         """Open an unsupported working tree.
 
         Only intended for advanced situations like upgrading part of a controldir.
@@ -314,7 +321,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def abspath(self, filename):
         return osutils.pathjoin(self.basedir, filename)
 
-    def basis_tree(self):
+    def basis_tree(self) -> "RevisionTree":
         """Return RevisionTree for the current last revision.
 
         If the left most parent is a ghost then the returned tree will be an
@@ -402,7 +409,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         This implementation reads the pending merges list and last_revision
         value and uses that to decide what the parents list should be.
         """
-        last_rev = _mod_revision.ensure_null(self._last_revision())
+        last_rev = self._last_revision()
         if _mod_revision.NULL_REVISION == last_rev:
             parents = []
         else:
@@ -537,39 +544,9 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             if updated:
                 self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
-    def path_content_summary(self, path, _lstat=os.lstat,
-                             _mapper=osutils.file_kind_from_stat_mode):
+    def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        abspath = self.abspath(path)
-        try:
-            stat_result = _lstat(abspath)
-        except OSError as e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                # no file.
-                return ('missing', None, None, None)
-            # propagate other errors
-            raise
-        kind = _mapper(stat_result.st_mode)
-        if kind == 'file':
-            return self._file_content_summary(path, stat_result)
-        elif kind == 'directory':
-            # perhaps it looks like a plain directory, but it's really a
-            # reference.
-            if self._directory_is_tree_reference(path):
-                kind = 'tree-reference'
-            return kind, None, None, None
-        elif kind == 'symlink':
-            target = osutils.readlink(abspath)
-            return ('symlink', None, None, target)
-        else:
-            return (kind, None, None, None)
-
-    def _file_content_summary(self, path, stat_result):
-        size = stat_result.st_size
-        executable = self._is_executable_from_path_and_stat(path, stat_result)
-        # try for a stat cache lookup
-        return ('file', size, executable, self._sha_from_stat(
-            path, stat_result))
+        raise NotImplementedError(self.path_content_summary)
 
     def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
         """Common ghost checking functionality from set_parent_*.
@@ -675,7 +652,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             if not force and self.has_changes():
                 raise errors.UncommittedChanges(self)
             if to_revision is None:
-                to_revision = _mod_revision.ensure_null(branch.last_revision())
+                to_revision = branch.last_revision()
             merger.other_rev_id = to_revision
             if _mod_revision.is_null(merger.other_rev_id):
                 raise errors.NoCommits(branch)
@@ -957,7 +934,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def _last_revision(self):
         """helper for get_parent_ids."""
         with self.lock_read():
-            return _mod_revision.ensure_null(self.branch.last_revision())
+            return self.branch.last_revision()
 
     def is_locked(self):
         """Check if this tree is locked."""
@@ -1057,7 +1034,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """Restore uncommitted changes from the branch into the tree."""
         raise NotImplementedError(self.restore_uncommitted)
 
-    def revision_tree(self, revision_id):
+    def revision_tree(self, revision_id) -> "RevisionTree":
         """See Tree.revision_tree.
 
         For trees that can be obtained from the working tree, this
@@ -1326,7 +1303,7 @@ class WorkingTreeFormat(ControlComponentFormat):
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
 
-    supports_versioned_directories = None
+    supports_versioned_directories: bool
 
     supports_merge_modified = True
     """If this format supports storing merge modified hashes."""
@@ -1341,7 +1318,7 @@ class WorkingTreeFormat(ControlComponentFormat):
 
     supports_righthand_parent_id_as_ghost = True
 
-    ignore_filename = None
+    ignore_filename: Optional[str] = None
     """Name of file with ignore patterns, if any. """
 
     def initialize(self, controldir, revision_id=None, from_branch=None,

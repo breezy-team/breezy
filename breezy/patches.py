@@ -21,6 +21,7 @@ from .errors import (
 
 import os
 import re
+from typing import List, Optional
 
 
 binary_files_re = b'Binary files (.*) and (.*) differ\n'
@@ -119,11 +120,11 @@ def parse_range(textrange):
     tmp = textrange.split(b',')
     if len(tmp) == 1:
         pos = tmp[0]
-        range = b"1"
+        brange = b"1"
     else:
-        (pos, range) = tmp
+        (pos, brange) = tmp
     pos = int(pos)
-    range = int(range)
+    range = int(brange)
     return (pos, range)
 
 
@@ -432,8 +433,8 @@ def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
     # allow_dirty or restrict those to only being before the patch is found
     # (as allow_dirty does).
     regex = re.compile(binary_files_re)
-    saved_lines = []
-    dirty_head = []
+    saved_lines: List[bytes] = []
+    dirty_head: List[bytes] = []
     orig_range = 0
     beginning = True
 
@@ -494,7 +495,7 @@ def iter_lines_handle_nl(iter_lines):
     applied at any point up until hunk line parsing, and is safe to apply
     repeatedly.
     """
-    last_line = None
+    last_line: Optional[bytes] = None
     for line in iter_lines:
         if line == NO_NL:
             if not last_line.endswith(b'\n'):

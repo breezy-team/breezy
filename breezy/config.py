@@ -82,7 +82,7 @@ import sys
 import configobj
 from io import BytesIO
 
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Dict, Callable, cast
 
 import breezy
 from .lazy_import import lazy_import
@@ -286,8 +286,8 @@ class ConfigObj(configobj.ConfigObj):
                 return configobj.tsquot
             return configobj.tdquot
 
-    def get_bool(self, section, key):
-        return self[section].as_bool(key)
+    def get_bool(self, section, key) -> bool:
+        return cast(bool, self[section].as_bool(key))
 
     def get_value(self, section, name):
         # Try [] for the old DEFAULT section.
@@ -1424,9 +1424,12 @@ class BranchConfig(Config):
         return self._get_best_value('_acceptable_keys')
 
 
+_username_re = lazy_regex.lazy_compile(r'(.*?)\s*<?([\[\]\w+.-]+@[\w+.-]+)>?')
+
+
 def parse_username(username):
     """Parse e-mail username and return a (name, address) tuple."""
-    match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
+    match = _username_re.match(username)
     if match is None:
         return (username, '')
     return (match.group(1), match.group(2))
@@ -2644,7 +2647,7 @@ option_registry.register_lazy('smtp_username',
                               'breezy.smtp_connection', 'smtp_username')
 option_registry.register(
     Option('selftest.timeout',
-           default='600',
+           default='1200',
            from_unicode=int_from_store,
            help='Abort selftest if one test takes longer than this many seconds',
            ))
@@ -3035,7 +3038,7 @@ class IniFileStore(Store):
         for hook in ConfigHooks['save']:
             hook(self)
 
-    def get_sections(self) -> Iterable[Tuple[Store, str]]:
+    def get_sections(self) -> Iterable[Tuple[Store, Section]]:
         """Get the configobj section in the file order.
 
         Returns: An iterable of (store, section).
@@ -3433,7 +3436,7 @@ class LocationMatcher(SectionMatcher):
 
 # FIXME: _shared_stores should be an attribute of a library state once a
 # library_state object is always available.
-_shared_stores = {}
+_shared_stores: Dict[str, Store] = {}
 _shared_stores_at_exit_installed = False
 
 
@@ -4065,9 +4068,9 @@ class cmd_config(commands.Command):
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
 # object.
-test_store_builder_registry = registry.Registry()
+test_store_builder_registry = registry.Registry[str, Callable]()
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
 # object.
-test_stack_builder_registry = registry.Registry()
+test_stack_builder_registry = registry.Registry[str, Callable]()

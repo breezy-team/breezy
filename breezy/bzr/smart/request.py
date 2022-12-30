@@ -542,7 +542,7 @@ class SmartServerIsReadonly(SmartServerRequest):
 #   mutate  State is updated in a way that replaying that request results in a
 #           different state. For example 'append' writes more bytes to a given
 #           file. If append succeeds, it moves the file pointer.
-request_handlers = registry.Registry()
+request_handlers = registry.Registry[bytes, SmartServerRequest]()
 request_handlers.register_lazy(
     b'append', 'breezy.bzr.smart.vfs', 'AppendRequest', info='mutate')
 request_handlers.register_lazy(

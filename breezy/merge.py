@@ -15,6 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import contextlib
+import tempfile
+from typing import Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -166,7 +168,7 @@ class ConfigurableFileMerger(PerFileMerger):
         is present.
     """
 
-    name_prefix = None
+    name_prefix: str
     default_files = None
 
     def __init__(self, merger):
@@ -271,8 +273,7 @@ class Merger(object):
                  recurse='down', revision_graph=None):
         object.__init__(self)
         self.this_branch = this_branch
-        self.this_basis = _mod_revision.ensure_null(
-            this_branch.last_revision())
+        self.this_basis = this_branch.last_revision()
         self.this_rev_id = None
         self.this_tree = this_tree
         self.this_revision_tree = None
@@ -434,7 +435,6 @@ class Merger(object):
             revision_id = branch.last_revision()
         else:
             revision_id = branch.get_rev_id(revno)
-        revision_id = _mod_revision.ensure_null(revision_id)
         return branch, self.revision_tree(revision_id, branch)
 
     def set_interesting_files(self, file_list):
@@ -470,8 +470,7 @@ class Merger(object):
         self.other_branch, self.other_tree = self._get_tree(other_revision,
                                                             possible_transports)
         if other_revision[1] == -1:
-            self.other_rev_id = _mod_revision.ensure_null(
-                self.other_branch.last_revision())
+            self.other_rev_id = self.other_branch.last_revision()
             if _mod_revision.is_null(self.other_rev_id):
                 raise errors.NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id
@@ -516,8 +515,7 @@ class Merger(object):
             target.fetch(source, revision_id)
 
     def find_base(self):
-        revisions = [_mod_revision.ensure_null(self.this_basis),
-                     _mod_revision.ensure_null(self.other_basis)]
+        revisions = [self.this_basis, self.other_basis]
         if _mod_revision.NULL_REVISION in revisions:
             self.base_rev_id = _mod_revision.NULL_REVISION
             self.base_tree = self.revision_tree(self.base_rev_id)
@@ -589,8 +587,7 @@ class Merger(object):
             elif base_revision[1] is None:
                 self.base_rev_id = _mod_revision.NULL_REVISION
             else:
-                self.base_rev_id = _mod_revision.ensure_null(
-                    base_branch.get_rev_id(base_revision[1]))
+                self.base_rev_id = base_branch.get_rev_id(base_revision[1])
             self._maybe_fetch(base_branch, self.this_branch, self.base_rev_id)
 
     def make_merger(self):
@@ -1644,8 +1641,7 @@ class Diff3Merger(Merge3Merger):
         """
         import breezy.patch
         base_path, other_path, this_path = paths
-        temp_dir = osutils.mkdtemp(prefix="bzr-")
-        try:
+        with tempfile.TemporaryDirectory(prefix="bzr-") as temp_dir:
             new_file = osutils.pathjoin(temp_dir, "new")
             this = self.dump_file(
                 temp_dir, "this", self.this_tree, this_path)
@@ -1663,8 +1659,6 @@ class Diff3Merger(Merge3Merger):
                 parent_id = self.tt.final_parent(trans_id)
                 self._dump_conflicts(name, paths, parent_id)
                 self._raw_conflicts.append(('text conflict', trans_id))
-        finally:
-            osutils.rmtree(temp_dir)
 
 
 class PathNotInTree(errors.BzrError):
@@ -1869,7 +1863,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     return merger.do_merge()
 
 
-merge_type_registry = registry.Registry()
+merge_type_registry = registry.Registry[str, Type[Merge3Merger]]()
 merge_type_registry.register('diff3', Diff3Merger,
                              "Merge using external diff3.")
 merge_type_registry.register('lca', LCAMerger,

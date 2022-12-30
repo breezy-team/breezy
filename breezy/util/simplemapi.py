@@ -129,7 +129,7 @@ class MapiMessage(Structure):
 
 lpMapiMessage = POINTER(MapiMessage)
 
-MAPI = windll.mapi32
+MAPI = windll.mapi32  # type: ignore
 MAPISendMail = MAPI.MAPISendMail
 MAPISendMail.restype = c_ulong
 MAPISendMail.argtypes = (LHANDLE, c_ulong, lpMapiMessage, FLAGS, c_ulong)
@@ -152,10 +152,10 @@ MAPILogoff.restype = c_ulong
 MAPILogoff.argtypes = (LHANDLE, c_ulong, FLAGS, c_ulong)
 
 
-class MAPIError(WindowsError):
+class MAPIError(WindowsError):  # type: ignore
 
     def __init__(self, code):
-        WindowsError.__init__(self)
+        WindowsError.__init__(self)  # type: ignore
         self.code = code
 
     def __str__(self):
@@ -214,7 +214,7 @@ def _sendMail(session, recipient, subject, body, attach):
         rd.ulRecipClass = MAPI_TO
         try:
             rd.lpszName, rd.lpszAddress = _resolveName(session, ra)
-        except WindowsError:
+        except WindowsError:  # type: ignore
             # work-round for Mozilla Thunderbird
             rd.lpszName, rd.lpszAddress = None, ra
         rd.ulEIDSize = 0

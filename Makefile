@@ -69,7 +69,10 @@ check-ci: docs extensions
 # Note that at present this gives many false warnings, because it doesn't
 # know about identifiers loaded through lazy_import.
 flake8:
-	flake8
+	flake8 breezy
+
+mypy:
+	mypy breezy
 
 clean:
 	$(PYTHON) setup.py clean
@@ -274,7 +277,7 @@ TRANSLATABLE_PYFILES:=$(shell find breezy -name '*.py' \
 		)
 
 po/brz.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) ./brz export-pot --include-duplicates > po/brz.pot
+	./brz export-pot --include-duplicates > po/brz.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
 	  xgettext --package-name "brz" \
 	  --msgid-bugs-address "<breezy-vcs@groups.google.com>" \
@@ -288,7 +291,7 @@ po/brz.pot: $(PYFILES) $(DOCFILES)
 .PHONY: dist check-dist-tarball
 
 # build a distribution source tarball
-dist: 
+dist:
 	version=`./brz version --short` && \
 	echo Building distribution of brz $$version && \
 	expbasedir=`mktemp -t -d tmp_brz_dist.XXXXXXXXXX` && \

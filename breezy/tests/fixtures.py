@@ -24,7 +24,7 @@ should live only for the duration of a single test, and its tearDown method
 should be passed to `addCleanup` on the test.
 """
 
-
+from contextlib import ExitStack
 import itertools
 
 
@@ -140,21 +140,41 @@ def make_branch_and_populated_tree(testcase):
     return tree
 
 
+class TimeoutException(Exception):
+    """Timeout expired"""
+
+
 class TimeoutFixture(object):
     """Kill a test with sigalarm if it runs too long.
 
     Only works on Unix at present.
     """
 
-    def __init__(self, timeout_secs):
+    def __init__(self, timeout_secs, gentle=True):
         import signal
         self.timeout_secs = timeout_secs
         self.alarm_fn = getattr(signal, 'alarm', None)
+        self.gentle = gentle
+        self._es = ExitStack()
+
+    def signal_handler(self, signum, frame):
+        raise TimeoutException(self.timeout_secs)
 
     def setUp(self):
-        if self.alarm_fn is not None:
-            self.alarm_fn(self.timeout_secs)
+        import signal
+        if self.alarm_fn is None:
+            return
+        if self.gentle:
+            # Install a handler for SIGARLM so we can raise an exception rather
+            # than the default handler executing, which kills the process.
+            old_handler = signal.signal(signal.SIGALRM, self.signal_handler)
+        # We add the alarm cleanup before the cleanup for the signal handler,
+        # otherwise there is a race condition where the signal handler is
+        # cleaned up but the alarm still fires.
+        self._es.callback(self.alarm_fn, 0)
+        self.alarm_fn(self.timeout_secs)
+        if self.gentle:
+            self._es.callback(signal.signal, signal.SIGALRM, old_handler)
 
     def cleanUp(self):
-        if self.alarm_fn is not None:
-            self.alarm_fn(0)
+        self._es.close()

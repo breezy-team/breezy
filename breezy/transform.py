@@ -19,6 +19,7 @@ import os
 import errno
 from stat import S_ISREG, S_IEXEC
 import time
+from typing import Callable
 
 from . import (
     config as _mod_config,
@@ -583,7 +584,7 @@ def refuse_orphan(tt, orphan_id, parent_id):
     raise OrphaningForbidden('never')
 
 
-orphaning_registry = registry.Registry()
+orphaning_registry = registry.Registry[str, Callable[[TreeTransform, bytes, bytes], None]]()
 orphaning_registry.register(
     u'conflict', refuse_orphan,
     'Leave orphans in place and create a conflict on the directory.')

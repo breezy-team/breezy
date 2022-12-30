@@ -240,7 +240,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
         r = dulwich.repo.Repo('.')
         self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
 
-    def test_authors(self):
+    def test_authors_single_author(self):
         wt = self.make_branch_and_tree('.', format='git')
         revid = wt.commit(
             "base", allow_pointless=True,
@@ -266,8 +266,25 @@ class RevpropsRepository(tests.TestCaseWithTransport):
         rev = wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo('.')
         self.assertEqual(
-            b'base\n'
+            b'base\n\n'
             b'Fixes: https://github.com/jelmer/dulwich/issues/123\n',
+            r[r.head()].message)
+
+    def test_authors(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={
+                'authors': (
+                    'Jelmer Vernooij <jelmer@example.com>\n'
+                    'Martin Packman <bz2@example.com>\n'),
+                })
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(
+            r[r.head()].author, b'Jelmer Vernooij <jelmer@example.com>')
+        self.assertEqual(
+            b'base\n\nCo-authored-by: Martin Packman <bz2@example.com>\n',
             r[r.head()].message)
 
 

@@ -18,7 +18,7 @@ import codecs
 import os
 import time
 
-from ...tests import features
+from ...tests import features, UnavailableFeature
 from ... import errors, filters, osutils, rules
 from ...controldir import ControlDir
 from ..conflicts import DuplicateEntry
@@ -414,7 +414,7 @@ class TestBuildTree(TestCaseWithTransport):
     def test_case_insensitive_build_tree_inventory(self):
         if (features.CaseInsensitiveFilesystemFeature.available()
                 or features.CaseInsCasePresFilenameFeature.available()):
-            raise tests.UnavailableFeature('Fully case sensitive filesystem')
+            raise UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
         source.add(['file', 'FILE'], ids=[b'lower-id', b'upper-id'])

@@ -15,12 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import contextlib
 import errno
 import os
 from stat import S_IEXEC, S_ISREG
+import tempfile
 import time
 
 from .. import (
@@ -1853,7 +1852,7 @@ class TransformPreview(InventoryTreeTransform):
 
     def __init__(self, tree, pb=None, case_sensitive=True):
         tree.lock_read()
-        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
+        limbodir = tempfile.mkdtemp(prefix='bzr-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):

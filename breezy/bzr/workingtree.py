@@ -32,10 +32,7 @@ WorkingTree.open(dir).
 
 from bisect import bisect_left
 import breezy
-try:
-    from collections.abc import deque
-except ImportError:  # python < 3.7
-    from collections import deque
+from collections import deque
 import errno
 from io import BytesIO
 import itertools
@@ -57,7 +54,6 @@ from breezy import (
     globbing,
     ignores,
     merge,
-    revision as _mod_revision,
     )
 from breezy.bzr import (
     conflicts as _mod_bzr_conflicts,
@@ -73,6 +69,7 @@ from breezy.bzr import (
 from .. import (
     errors,
     osutils,
+    revision as _mod_revision,
     transport as _mod_transport,
     )
 from ..controldir import ControlDir
@@ -81,6 +78,7 @@ from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..trace import mutter, note
 from ..tree import (
     get_canonical_path,
+    MissingNestedTree,
     TreeDirectory,
     TreeEntry,
     TreeFile,
@@ -510,7 +508,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.apply_inventory_delta(inv_delta)
 
     def get_nested_tree(self, path):
-        return WorkingTree.open(self.abspath(path))
+        try:
+            return WorkingTree.open(self.abspath(path))
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(path) from e
 
     def _get_nested_tree(self, path, file_id, reference_revision):
         return self.get_nested_tree(path)
@@ -766,6 +767,40 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             if e.errno == errno.ENOENT:
                 raise _mod_transport.NoSuchFile(path)
             raise
+
+    def path_content_summary(self, path, _lstat=os.lstat,
+                             _mapper=osutils.file_kind_from_stat_mode):
+        """See Tree.path_content_summary."""
+        abspath = self.abspath(path)
+        try:
+            stat_result = _lstat(abspath)
+        except OSError as e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                # no file.
+                return ('missing', None, None, None)
+            # propagate other errors
+            raise
+        kind = _mapper(stat_result.st_mode)
+        if kind == 'file':
+            return self._file_content_summary(path, stat_result)
+        elif kind == 'directory':
+            # perhaps it looks like a plain directory, but it's really a
+            # reference.
+            if self._directory_is_tree_reference(path):
+                kind = 'tree-reference'
+            return kind, None, None, None
+        elif kind == 'symlink':
+            target = osutils.readlink(abspath)
+            return ('symlink', None, None, target)
+        else:
+            return (kind, None, None, None)
+
+    def _file_content_summary(self, path, stat_result):
+        size = stat_result.st_size
+        executable = self._is_executable_from_path_and_stat(path, stat_result)
+        # try for a stat cache lookup
+        return ('file', size, executable, self._sha_from_stat(
+            path, stat_result))
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         try:
@@ -1962,7 +1997,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     self.add_parent_tree((old_tip, other_tree))
                     return len(nb_conflicts)
 
-            if last_rev != _mod_revision.ensure_null(revision):
+            if last_rev != revision:
                 # the working tree is up to date with the branch
                 # we can merge the specified revision from master
                 to_tree = self.branch.repository.revision_tree(revision)

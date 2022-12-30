@@ -356,7 +356,7 @@ class MutableTreeHooks(hooks.Hooks):
 
 
 # install the default hooks into the MutableTree class.
-MutableTree.hooks = MutableTreeHooks()
+MutableTree.hooks = MutableTreeHooks()  # type: ignore
 
 
 class PostCommitHookParams(object):

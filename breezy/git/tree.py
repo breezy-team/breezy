@@ -19,6 +19,7 @@
 
 from collections import deque
 import errno
+from functools import partial
 from io import BytesIO
 import os
 
@@ -59,12 +60,15 @@ from .. import (
     trace,
     transport as _mod_transport,
     tree as _mod_tree,
+    urlutils,
     workingtree,
     )
 from ..revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
+from ..transport import get_transport
+from ..tree import MissingNestedTree
 
 from .mapping import (
     encode_git_path,
@@ -257,6 +261,10 @@ class GitTree(_mod_tree.Tree):
 
     supports_file_ids = False
 
+    @classmethod
+    def is_special_path(cls, path):
+        return path.startswith('.git')
+
     def supports_symlinks(self):
         return True
 
@@ -282,18 +290,31 @@ class GitTree(_mod_tree.Tree):
                                         require_versioned=True):
         if paths is None:
             return None
+
+        def include(t, p):
+            if t.is_versioned(p):
+                return True
+            # Include directories, since they may exist but just be
+            # empty
+            try:
+                if t.kind(p) == 'directory':
+                    return True
+            except _mod_transport.NoSuchFile:
+                return False
+            return False
+
         if require_versioned:
             trees = [self] + (trees if trees is not None else [])
             unversioned = set()
             for p in paths:
                 for t in trees:
-                    if t.is_versioned(p):
+                    if include(t, p):
                         break
                 else:
                     unversioned.add(p)
             if unversioned:
                 raise errors.PathsNotVersionedError(unversioned)
-        return filter(self.is_versioned, paths)
+        return filter(partial(include, self), paths)
 
     def _submodule_config(self):
         if self._submodules is None:
@@ -313,6 +334,11 @@ class GitTree(_mod_tree.Tree):
         from ..branch import Branch
         (url, section) = self._submodule_info()[encode_git_path(path)]
         return Branch.open(url.decode('utf-8'))
+
+
+class RemoteNestedTree(MissingNestedTree):
+
+    _fmt = "Unable to access remote nested tree at %(path)s"
 
 
 class GitRevisionTree(revisiontree.RevisionTree, GitTree):
@@ -344,22 +370,37 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if not isinstance(relpath, bytes):
             raise TypeError(relpath)
         try:
-            info = self._submodule_info()[relpath]
+            url, section = self._submodule_info()[relpath]
         except KeyError:
+            nested_repo_transport = None
+        else:
+            nested_repo_transport = self._repository.controldir.control_transport.clone(
+                posixpath.join('modules', decode_git_path(section)))
+            if not nested_repo_transport.has('.'):
+                nested_url = urlutils.join(
+                    self._repository.controldir.user_url, decode_git_path(url))
+                nested_repo_transport = get_transport(nested_url)
+        if nested_repo_transport is None:
             nested_repo_transport = self._repository.controldir.user_transport.clone(
                 decode_git_path(relpath))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
-                posixpath.join('modules', decode_git_path(info[1])))
+                posixpath.join('modules', decode_git_path(section)))
             if not nested_repo_transport.has('.'):
                 nested_repo_transport = self._repository.controldir.user_transport.clone(
-                    posixpath.join(decode_git_path(info[1]), '.git'))
-        nested_controldir = _mod_controldir.ControlDir.open_from_transport(
-            nested_repo_transport)
+                    posixpath.join(decode_git_path(section), '.git'))
+        try:
+            nested_controldir = _mod_controldir.ControlDir.open_from_transport(
+                nested_repo_transport)
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(decode_git_path(relpath)) from e
         return nested_controldir.find_repository()
 
     def _get_submodule_store(self, relpath):
-        return self._get_submodule_repository(relpath)._git.object_store
+        repo = self._get_submodule_repository(relpath)
+        if not hasattr(repo, '_git'):
+            raise RemoteNestedTree(relpath)
+        return repo._git.object_store
 
     def get_nested_tree(self, path):
         encoded_path = encode_git_path(path)
@@ -576,9 +617,13 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
                 child_path = posixpath.join(path, name)
                 child_path_decoded = decode_git_path(child_path)
                 if recurse_nested and S_ISGITLINK(mode):
-                    mode = stat.S_IFDIR
-                    substore = self._get_submodule_store(child_path)
-                    hexsha = substore[hexsha].tree
+                    try:
+                        substore = self._get_submodule_store(child_path)
+                    except errors.NotBranchError:
+                        substore = store
+                    else:
+                        mode = stat.S_IFDIR
+                        hexsha = substore[hexsha].tree
                 else:
                     substore = store
                 if stat.S_ISDIR(mode):
@@ -645,7 +690,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         if S_ISGITLINK(mode):
             try:
                 nested_repo = self._get_submodule_repository(encode_git_path(path))
-            except errors.NotBranchError:
+            except MissingNestedTree:
                 return self.mapping.revision_id_foreign_to_bzr(hexsha)
             else:
                 try:
@@ -982,8 +1027,6 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
 class InterGitTrees(_mod_tree.InterTree):
     """InterTree that works between two git trees."""
 
-    _matching_from_tree_format = None
-    _matching_to_tree_format = None
     _test_mutable_trees_to_test_trees = None
 
     def __init__(self, source, target):
@@ -1393,7 +1436,8 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     key = (posixpath.dirname(path), path)
                     if key not in ret and self.is_versioned(path):
                         ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
-            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
+            for ((_, path), ie) in sorted(ret.items()):
+                yield path, ie
 
     def iter_references(self):
         if self.supports_tree_reference():
@@ -1604,7 +1648,11 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             raise
         kind = mode_kind(stat_result.st_mode)
         if kind == 'file':
-            return self._file_content_summary(path, stat_result)
+            size = stat_result.st_size
+            executable = self._is_executable_from_path_and_stat(path, stat_result)
+            # try for a stat cache lookup
+            return ('file', size, executable, self._sha_from_stat(
+                path, stat_result))
         elif kind == 'directory':
             # perhaps it looks like a plain directory, but it's really a
             # reference.

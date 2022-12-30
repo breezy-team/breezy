@@ -19,7 +19,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 
 from . import (
     errors,
@@ -59,7 +59,7 @@ class Revision(object):
     timestamp: float
     timezone: int
 
-    def __init__(self, revision_id: RevisionID, properties=None, **args):
+    def __init__(self, revision_id: RevisionID, properties=None, **args) -> None:
         self.revision_id = revision_id
         if properties is None:
             self.properties = {}
@@ -69,7 +69,7 @@ class Revision(object):
         self.committer = None
         self.parent_ids = []
         self.parent_sha1s = []
-        """Not used anymore - legacy from for 4."""
+        # Not used anymore - legacy from for 4.
         self.__dict__.update(args)
 
     def __repr__(self):
@@ -166,7 +166,7 @@ def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool 
     ancestors = [revision_id]
     distance = 0
     while len(ancestors) > 0:
-        new_ancestors = []
+        new_ancestors: List[bytes] = []
         for ancestor in ancestors:
             if not only_present:
                 yield ancestor, distance
@@ -184,13 +184,13 @@ def iter_ancestors(revision_id: RevisionID, revision_source, only_present: bool 
         distance += 1
 
 
-def find_present_ancestors(revision_id: RevisionID, revision_source) -> List[RevisionID]:
+def find_present_ancestors(revision_id: RevisionID, revision_source) -> Dict[RevisionID, Tuple[int, int]]:
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
     one of its revisions.
     """
-    found_ancestors = {}
+    found_ancestors: Dict[RevisionID, Tuple[int, int]] = {}
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
                                         only_present=True))
     for anc_order, (anc_id, anc_distance) in anc_iter:
@@ -221,15 +221,6 @@ def check_not_reserved_id(revision_id: RevisionID) -> None:
     """Raise ReservedId if the supplied revision_id is reserved"""
     if is_reserved_id(revision_id):
         raise errors.ReservedId(revision_id)
-
-
-def ensure_null(revision_id: RevisionID) -> RevisionID:
-    """Ensure only NULL_REVISION is used to represent the null revision"""
-    if revision_id is None:
-        raise ValueError(
-            'NULL_REVISION should be used for the null'
-            ' revision instead of None.')
-    return revision_id
 
 
 def is_null(revision_id: RevisionID) -> bool:

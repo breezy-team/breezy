@@ -16,6 +16,7 @@
 
 """Support for GitHub."""
 
+from datetime import datetime
 import json
 import os
 
@@ -57,7 +58,20 @@ from ...transport.http import default_user_agent
 GITHUB_HOST = 'github.com'
 WEB_GITHUB_URL = 'https://github.com'
 API_GITHUB_URL = 'https://api.github.com'
-DEFAULT_PER_PAGE = 50
+DEFAULT_PER_PAGE = 100
+
+SCHEME_FIELD_MAP = {
+    'ssh': 'ssh_url',
+    'git+ssh': 'ssh_url',
+    'http': 'clone_url',
+    'https': 'clone_url',
+    'git': 'git_url',
+}
+DEFAULT_PREFERRED_SCHEMES = ['ssh', 'http']
+
+
+def parse_timestring(ts):
+    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
 
 
 def store_github_token(token):
@@ -104,26 +118,9 @@ class GitHubLoginRequired(ForgeLoginRequired):
     _fmt = "Action requires GitHub login."
 
 
-def connect_github():
-    """Connect to GitHub.
-    """
-    user_agent = default_user_agent()
-    auth = AuthenticationConfig()
-
-    credentials = auth.get_credentials('https', GITHUB_HOST)
-    if credentials is not None:
-        return Github(credentials['user'], credentials['password'],
-                      user_agent=user_agent)
-
-    # TODO(jelmer): token = auth.get_token('https', GITHUB_HOST)
-    if token is not None:
-        return Github(token, user_agent=user_agent)
-    else:
-        note('Accessing GitHub anonymously. To log in, run \'brz gh-login\'.')
-        return Github(user_agent=user_agent)
-
-
 class GitHubMergeProposal(MergeProposal):
+
+    supports_auto_merge = True
 
     def __init__(self, gh, pr):
         self._gh = gh
@@ -134,17 +131,25 @@ class GitHubMergeProposal(MergeProposal):
 
     name = 'GitHub'
 
+    def get_web_url(self):
+        return self._pr['html_url']
+
     @property
     def url(self):
         return self._pr['html_url']
 
-    def _branch_from_part(self, part):
+    def _branch_from_part(self, part, preferred_schemes=None):
         if part['repo'] is None:
             return None
-        return github_url_to_bzr_url(part['repo']['html_url'], part['ref'])
+        if preferred_schemes is None:
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
+        for scheme in preferred_schemes:
+            if scheme in SCHEME_FIELD_MAP:
+                return github_url_to_bzr_url(part['repo'][SCHEME_FIELD_MAP[scheme]], part['ref'])
+        raise AssertionError
 
-    def get_source_branch_url(self):
-        return self._branch_from_part(self._pr['head'])
+    def get_source_branch_url(self, *, preferred_schemes=None):
+        return self._branch_from_part(self._pr['head'], preferred_schemes=preferred_schemes)
 
     def get_source_revision(self):
         """Return the latest revision for the source branch."""
@@ -152,16 +157,20 @@ class GitHubMergeProposal(MergeProposal):
         return default_mapping.revision_id_foreign_to_bzr(
             self._pr['head']['sha'].encode('ascii'))
 
-    def get_target_branch_url(self):
-        return self._branch_from_part(self._pr['base'])
+    def get_target_branch_url(self, *, preferred_schemes=None):
+        return self._branch_from_part(self._pr['base'], preferred_schemes=preferred_schemes)
 
     def set_target_branch_name(self, name):
         self._patch(base=name)
 
     def get_source_project(self):
+        if self._pr['head']['repo'] is None:
+            return None
         return self._pr['head']['repo']['full_name']
 
     def get_target_project(self):
+        if self._pr['base']['repo'] is None:
+            return None
         return self._pr['base']['repo']['full_name']
 
     def get_description(self):
@@ -169,6 +178,12 @@ class GitHubMergeProposal(MergeProposal):
 
     def get_commit_message(self):
         return None
+
+    def get_title(self):
+        return self._pr.get('title')
+
+    def set_title(self, title):
+        self._patch(title=title)
 
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
@@ -206,18 +221,39 @@ class GitHubMergeProposal(MergeProposal):
     def can_be_merged(self):
         return self._pr['mergeable']
 
-    def merge(self, commit_message=None):
-        # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
-        data = {}
-        if commit_message:
-            data['commit_message'] = commit_messae
-        response = self._gh._api_request(
-            'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
-        if response.status == 422:
-            raise ValidationFailed(json.loads(response.text))
-        if response.status != 200:
-            raise UnexpectedHttpStatus(
-                self._pr['url'], response.status, headers=response.getheaders())
+    def merge(self, commit_message=None, auto=False):
+        if auto:
+            graphql_query = """
+mutation ($pullRequestId: ID!) {
+  enablePullRequestAutoMerge(input: {
+    pullRequestId: $pullRequestId,
+    mergeMethod: MERGE
+  }) {
+    pullRequest {
+      autoMergeRequest {
+        enabledAt
+        enabledBy {
+          login
+        }
+      }
+    }
+  }
+}
+"""
+            self._gh._graphql_request(
+                graphql_query, pullRequestId=self._pr["node_id"])
+        else:
+            # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
+            data = {}
+            if commit_message:
+                data['commit_message'] = commit_message
+            response = self._gh._api_request(
+                'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
+            if response.status == 422:
+                raise ValidationFailed(json.loads(response.text))
+            if response.status != 200:
+                raise UnexpectedHttpStatus(
+                    self._pr['url'], response.status, headers=response.getheaders())
 
     def get_merged_by(self):
         merged_by = self._pr.get('merged_by')
@@ -229,8 +265,7 @@ class GitHubMergeProposal(MergeProposal):
         merged_at = self._pr.get('merged_at')
         if merged_at is None:
             return None
-        import iso8601
-        return iso8601.parse_date(merged_at)
+        return parse_timestring(merged_at)
 
     def post_comment(self, body):
         data = {'body': body}
@@ -261,6 +296,22 @@ def parse_github_branch_url(branch):
     return owner, repo_name, branch.name
 
 
+def parse_github_pr_url(url):
+    (scheme, user, password, host, port, path) = urlutils.parse_url(
+        url)
+    if host != GITHUB_HOST:
+        raise NotGitHubUrl(url)
+    try:
+        (owner, repo_name, pull, pr_id) = path.strip('/').split('/')
+    except IndexError as e:
+        raise ValueError('Not a PR URL') from e
+
+    if pull != 'pull':
+        raise ValueError('Not a PR URL')
+
+    return (owner, repo_name, pr_id)
+
+
 def github_url_to_bzr_url(url, branch_name):
     return git_url_to_bzr_url(url, branch_name)
 
@@ -269,17 +320,105 @@ def strip_optional(url):
     return url.split('{')[0]
 
 
+class _LazyDict(dict):
+
+    def __init__(self, base, load_fn):
+        self._load_fn = load_fn
+        super(_LazyDict, self).update(base)
+
+    def _load_full(self):
+        super(_LazyDict, self).update(self._load_fn())
+        self._load_fn = None
+
+    def __getitem__(self, key):
+        if self._load_fn is not None:
+            try:
+                return super(_LazyDict, self).__getitem__(key)
+            except KeyError:
+                self._load_full()
+        return super(_LazyDict, self).__getitem__(key)
+
+    def items(self):
+        self._load_full()
+        return super(_LazyDict, self).items()
+
+    def keys(self):
+        self._load_full()
+        return super(_LazyDict, self).keys()
+
+    def values(self):
+        self._load_full()
+        return super(_LazyDict, self).values()
+
+    def __contains__(self, key):
+        if super(_LazyDict, self).__contains__(key):
+            return True
+        if self._load_fn is not None:
+            self._load_full()
+            return super(_LazyDict, self).__contains__(key)
+        return False
+
+    def __delitem__(self, name):
+        raise NotImplementedError
+
+    def __setitem__(self, name, value):
+        raise NotImplementedError
+
+    def get(self, name, default=None):
+        if self._load_fn is not None:
+            try:
+                return super(_LazyDict, self).get(name, default)
+            except KeyError:
+                self._load_full()
+        return super(_LazyDict, self).get(name, default)
+
+    def pop(self):
+        raise NotImplementedError
+
+    def popitem(self):
+        raise NotImplementedError
+
+    def clear(self):
+        raise NotImplementedError
+
+
+class GraphqlErrors(Exception):
+
+    def __init__(self, errors):
+        self.errors = errors
+
+
 class GitHub(Forge):
 
     name = 'github'
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    supports_merge_proposal_title = True
     supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
         return "GitHub()"
+
+    def _graphql_request(self, body, **kwargs):
+        headers = {}
+        if self._token:
+            headers['Authorization'] = 'token %s' % self._token
+        url = urlutils.join(self.transport.base, 'graphql')
+        response = self.transport.request(
+            'POST', url,
+            headers=headers, body=json.dumps({
+                "query": body,
+                "variables": kwargs,
+            }).encode('utf-8'))
+        if response.status != 200:
+            raise UnexpectedHttpStatus(
+                url, response.status, headers=response.getheaders())
+        data = json.loads(response.text)
+        if data.get('errors'):
+            raise GraphqlErrors(data.get('errors'))
+        return data['data']
 
     def _api_request(self, method, path, body=None):
         headers = {
@@ -389,7 +528,6 @@ class GitHub(Forge):
         if per_page:
             parameters['per_page'] = str(per_page)
         page = 1
-        i = 0
         while path:
             parameters['page'] = str(page)
             response = self._api_request(
@@ -399,16 +537,17 @@ class GitHub(Forge):
             if response.status != 200:
                 raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
             data = json.loads(response.text)
-            for entry in data['items']:
-                i += 1
-                yield entry
-            if i >= data['total_count']:
+            if not data:
                 break
+            yield data
             page += 1
 
     def _search_issues(self, query):
         path = 'search/issues'
-        return self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE)
+        for page in self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE):
+            if not page['items']:
+                break
+            yield from page['items']
 
     def _create_fork(self, path, owner=None):
         if owner and owner != self.current_user['login']:
@@ -424,6 +563,9 @@ class GitHub(Forge):
 
     def __init__(self, transport):
         self._token = retrieve_github_token()
+        if self._token is None:
+            note('Accessing GitHub anonymously. '
+                 'To log in, run \'brz gh-login\'.')
         self.transport = transport
         self._current_user = None
 
@@ -435,7 +577,7 @@ class GitHub(Forge):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True, tag_selector=None):
+                        allow_lossy=True, tag_selector=None,):
         if tag_selector is None:
             tag_selector = lambda t: False
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
@@ -466,12 +608,21 @@ class GitHub(Forge):
                 overwrite=overwrite, name=name, lossy=True,
                 tag_selector=tag_selector)
         return push_result.target_branch, github_url_to_bzr_url(
-            remote_repo['html_url'], name)
+            remote_repo['clone_url'], name)
 
     def get_push_url(self, branch):
         owner, project, branch_name = parse_github_branch_url(branch)
         repo = self._get_repo(owner, project)
         return github_url_to_bzr_url(repo['ssh_url'], branch_name)
+
+    def get_web_url(self, branch):
+        owner, project, branch_name = parse_github_branch_url(branch)
+        repo = self._get_repo(owner, project)
+        if branch_name:
+            # TODO(jelmer): Don't hardcode this
+            return repo['html_url'] + '/tree/' + branch_name
+        else:
+            return repo['html_url']
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
@@ -485,16 +636,10 @@ class GitHub(Forge):
         except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (WEB_GITHUB_URL, owner, project))
         if preferred_schemes is None:
-            preferred_schemes = ['git+ssh']
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         for scheme in preferred_schemes:
-            if scheme == 'git+ssh':
-                github_url = remote_repo['ssh_url']
-                break
-            if scheme == 'https':
-                github_url = remote_repo['clone_url']
-                break
-            if scheme == 'git':
-                github_url = remote_repo['git_url']
+            if scheme in SCHEME_FIELD_MAP:
+                github_url = remote_repo[SCHEME_FIELD_MAP[scheme]]
                 break
         else:
             raise AssertionError
@@ -542,6 +687,14 @@ class GitHub(Forge):
             return True
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        if hostname == GITHUB_HOST:
+            transport = get_transport(
+                API_GITHUB_URL, possible_transports=possible_transports)
+            return cls(transport)
+        raise UnsupportedForge(hostname)
+
+    @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         try:
             parse_github_url(url)
@@ -570,28 +723,36 @@ class GitHub(Forge):
             author = self.current_user['login']
         query.append('author:%s' % author)
         for issue in self._search_issues(query=' '.join(query)):
-            url = issue['pull_request']['url']
-            response = self._api_request('GET', url)
-            if response.status != 200:
-                raise UnexpectedHttpStatus(url, response.status, headers=response.getheaders())
-            yield GitHubMergeProposal(self, json.loads(response.text))
+            def retrieve_full():
+                response = self._api_request('GET', issue['pull_request']['url'])
+                if response.status != 200:
+                    raise UnexpectedHttpStatus(issue['pull_request']['url'], response.status, headers=response.getheaders())
+                return json.loads(response.text)
+            yield GitHubMergeProposal(self, _LazyDict(issue['pull_request'], retrieve_full))
 
     def get_proposal_by_url(self, url):
-        raise UnsupportedForge(url)
+        try:
+            (owner, repo, pr_id) = parse_github_pr_url(url)
+        except NotGitHubUrl as e:
+            raise UnsupportedForge(url) from e
+        api_url = 'https://api.github.com/repos/%s/%s/pulls/%s' % (
+            owner, repo, pr_id)
+        response = self._api_request('GET', api_url)
+        if response.status != 200:
+            raise UnexpectedHttpStatus(api_url, response.status, headers=response.getheaders())
+        data = json.loads(response.text)
+        return GitHubMergeProposal(self, data)
 
     def iter_my_forks(self, owner=None):
         if owner:
             path = '/users/%s/repos' % owner
         else:
             path = '/user/repos'
-        response = self._api_request('GET', path)
-        if response.status != 200:
-            raise UnexpectedHttpStatus(
-                self.transport.user_url, response.status, headers=response.getheaders())
-        for project in json.loads(response.text):
-            if not project['fork']:
-                continue
-            yield project['full_name']
+        for page in self._list_paged(path, per_page=DEFAULT_PER_PAGE):
+            for project in page:
+                if not project['fork']:
+                    continue
+                yield project['full_name']
 
     def delete_project(self, path):
         path = 'repos/' + path
@@ -601,6 +762,26 @@ class GitHub(Forge):
         if response.status == 204:
             return
         if response.status == 200:
+            return json.loads(response.text)
+        raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
+
+    def create_project(self, path, *, description=None, homepage=None,
+                       private=False, has_issues=True, has_projects=False,
+                       has_wiki=False):
+        owner, name = path.split('/')
+        path = 'repos'
+        data = {
+            "name": "name",
+            "description": description,
+            "homepage": homepage,
+            "private": private,
+            "has_issues": has_issues,
+            "has_projects": has_projects,
+            "has_wiki": has_wiki,
+        }
+        response = self._api_request(
+            'POST', path, body=json.dumps(data).encode('utf-8'))
+        if response.status != 201:
             return json.loads(response.text)
         raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
 
@@ -641,7 +822,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None,
+    def create_proposal(self, description, title=None, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
@@ -651,8 +832,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):
             self.target_repo_name = self.target_repo_name[:-4]
-        # TODO(jelmer): Allow setting title explicitly?
-        title = determine_title(description)
+        if title is None:
+            title = determine_title(description)
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
         assignees = []

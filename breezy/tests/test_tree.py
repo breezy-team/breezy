@@ -16,10 +16,11 @@
 
 """Tests for Tree and InterTree."""
 
+from typing import List, Tuple
+
 from breezy import (
     errors,
     revision,
-    tree as _mod_tree,
     )
 from breezy.tests import (
     TestCase,
@@ -80,7 +81,7 @@ class TestInterTree(TestCaseWithTransport):
 
 class RecordingOptimiser(InterTree):
 
-    calls = []
+    calls: List[Tuple[str, ...]] = []
 
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,

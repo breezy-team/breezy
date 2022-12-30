@@ -21,6 +21,7 @@ configuring_bazaar.txt.
 """
 
 import re
+from typing import List
 
 
 _whitespace_match = re.compile(u'\\s', re.UNICODE).match
@@ -150,13 +151,13 @@ class Splitter(object):
 
     def _get_token(self):
         self.quoted = False
-        self.token = []
+        self.token: List[str] = []
         state = _Whitespace()
         for next_char in self.seq:
             state = state.process(next_char, self)
             if state is None:
                 break
-        if state is not None and not getattr(state, 'finish', None) is None:
+        if state is not None and hasattr(state, 'finish'):
             state.finish(self)
         result = u''.join(self.token)
         if not self.quoted and result == '':

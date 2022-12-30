@@ -16,8 +16,6 @@
 
 """Directory lookup that uses pypi."""
 
-from __future__ import absolute_import
-
 from breezy.errors import BzrError
 from breezy.trace import note
 from breezy.urlutils import InvalidURL

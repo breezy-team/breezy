@@ -31,6 +31,7 @@ from ...errors import (
     NoSuchTag,
     PermissionDenied,
     TransportError,
+    UnexpectedHttpStatus,
     )
 
 from ...tests import (
@@ -53,6 +54,7 @@ from ..remote import (
     RemoteGitBranchFormat,
     _git_url_and_path_from_transport,
     )
+from ..tree import MissingNestedTree
 
 from dulwich import porcelain
 from dulwich.errors import HangupException
@@ -201,6 +203,18 @@ Email support@github.com for help
                 RemoteGitError(
                     '[Errno 104] Connection reset by peer')))
 
+    def test_http_unexpected(self):
+        self.assertEqual(
+            UnexpectedHttpStatus(
+                    'https://example.com/bigint.git/git-upload-pack',
+                    403, extra=('unexpected http resp 403 for '
+                                'https://example.com/bigint.git/git-upload-pack')),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'unexpected http resp 403 for '
+                    'https://example.com/bigint.git/git-upload-pack')))
+
 
 class ParseHangupTests(TestCase):
 
@@ -308,7 +322,7 @@ class FetchFromRemoteTestBase(object):
 
     _test_needs_features = [ExecutableFeature('git')]
 
-    _to_format = None
+    _to_format: str
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
@@ -354,7 +368,7 @@ class FetchFromRemoteTestBase(object):
                 self.remote_real.head()),
             local.open_branch().last_revision())
         self.assertRaises(
-            NotBranchError,
+            MissingNestedTree,
             local.open_workingtree().get_nested_tree, 'nested')
 
     def test_sprout_submodule_relative(self):
@@ -495,7 +509,7 @@ class PushToRemoteBase(object):
 
     _test_needs_features = [ExecutableFeature('git')]
 
-    _from_format = None
+    _from_format: str
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)

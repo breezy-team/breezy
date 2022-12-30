@@ -15,24 +15,20 @@
 
 """Sending emails for commits and branch changes.
 
-To have bzr send an email you need to configure an address to send mail
+To have Breezy send an email you need to configure an address to send mail
 to for that branch. To do this set the configuration option ``post_commit_to``
 and the address to send the mail from is read from the configuration option
 ``post_commit_sender`` (if not supplied defaults to the email address reported
-by ``bzr whoami``).
+by ``brz whoami``).
 
 By default, the diff for the commit will be included in the email if the
 length is less than 1000 lines. This limit can be changed by setting the
 configuration option 'post_commit_difflimit' to the number of lines you wish
 it to be limited to. Set it to 0 to unconditionally disable sending of diffs.
 
-By default bzr-email only emails when a commit occurs, not when a push or
+By default emails are sent only when a commit occurs, not when a push or
 pull operation occurs. To email on push or pull set post_commit_push_pull=True
 in the configuration.
-
-If you are using a bzr release from before 0.15, you need to manually tell
-bzr about the commit action, by setting
-post_commit=breezy.plugins.email.post_commit in breezy.conf or locations.conf.
 
 The URL of the branch is determined from the following checks (in order):
  - If the configuration value 'post_commit_url' is set, it is used.
@@ -62,6 +58,10 @@ mail by setting the 'revision_mail_headers' configuration option - something
 like::
 
   revision_mail_headers=X-Cheese: to the rescue!
+
+Other supported options (use ``brz help <option>`` for more information)
+are: post_commit_body, post_commit_subject, post_commit_log_format,
+post_commit_diffoptions, post_commit_sender, post_commit_to.
 """
 
 from ... import version_info  # noqa: F401
@@ -121,6 +121,6 @@ option_registry.register_lazy("revision_mail_headers",
 
 from ...hooks import install_lazy_named_hook
 install_lazy_named_hook("breezy.branch", "Branch.hooks", 'post_commit',
-                        branch_commit_hook, 'bzr-email')
+                        branch_commit_hook, 'email')
 install_lazy_named_hook("breezy.branch", "Branch.hooks",
-                        'post_change_branch_tip', branch_post_change_hook, 'bzr-email')
+                        'post_change_branch_tip', branch_post_change_hook, 'email')

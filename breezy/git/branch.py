@@ -21,6 +21,7 @@
 import contextlib
 from io import BytesIO
 from collections import defaultdict
+from typing import Dict
 
 from dulwich.config import (
     ConfigFile as GitConfigFile,
@@ -465,7 +466,7 @@ class GitBranch(ForeignBranch):
         self._user_transport = controldir.user_transport.clone('.')
         self._control_transport = controldir.control_transport.clone('.')
         self._tag_refs = None
-        params = {}
+        params: Dict[str, str] = {}
         try:
             self.name = ref_to_branch_name(ref)
         except ValueError:
@@ -1213,7 +1214,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             result.new_revid = stop_revision
             for name, sha in (
                     self.source.repository._git.refs.as_dict(b"refs/tags").items()):
-                if tag_selector and not tag_selector(name):
+                if tag_selector and not tag_selector(name.decode('utf-8')):
                     continue
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)

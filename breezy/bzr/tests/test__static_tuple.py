@@ -16,10 +16,7 @@
 
 """Tests for the StaticTuple type."""
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 import operator
 import sys
 
@@ -55,12 +52,15 @@ class TestStaticTuple(tests.TestCase):
         assertRefcount actually creates a new pointer, as does calling
         sys.getrefcount. So pass the expected value *before* the call.
         """
-        # I don't understand why it is getrefcount()-3 here, but it seems to be
-        # correct. If I check in the calling function, with:
-        # self.assertEqual(count, sys.getrefcount(obj)-1)
-        # Then it works fine. Something about passing it to assertRefcount is
-        # actually double-incrementing (and decrementing) the refcount
-        self.assertEqual(count, sys.getrefcount(obj) - 3)
+        if sys.version_info < (3, 11):
+            # I don't understand why it is getrefcount()-3 here, but it seems to be
+            # correct. If I check in the calling function, with:
+            # self.assertEqual(count, sys.getrefcount(obj)-1)
+            # Then it works fine. Something about passing it to assertRefcount is
+            # actually double-incrementing (and decrementing) the refcount
+            self.assertEqual(count, sys.getrefcount(obj) - 3)
+        else:
+            self.assertEqual(count, sys.getrefcount(obj) - 2)
 
     def test_create(self):
         k = self.module.StaticTuple('foo')

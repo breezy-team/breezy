@@ -1277,7 +1277,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
     def test__get_option_policy_normal(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
-            self.my_location_config._get_config_policy(
+            self.my_location_config._get_option_policy(
                 'http://www.example.com', 'normal_option'),
             config.POLICY_NONE)
 
@@ -1293,7 +1293,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
                 'http://www.example.com/norecurse', 'normal_option'),
             config.POLICY_NORECURSE)
 
-    def test__get_option_policy_normal(self):
+    def test__get_option_policy_normal_appendpath(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
             self.my_location_config._get_option_policy(
@@ -1482,13 +1482,6 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
 
-    def test_BRZ_EMAIL_OVERRIDES(self):
-        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        self.assertEqual("Robert Collins <robertc@example.org>",
-                         my_config.username())
-
     def test_get_user_option_global(self):
         my_config = self.get_branch_config(global_config=sample_config_text)
         self.assertEqual('something',
@@ -1534,6 +1527,8 @@ class TestMailAddressExtraction(tests.TestCase):
                          config.parse_username('John Doe'))
         self.assertEqual(('John Doe', 'jdoe@example.com'),
                          config.parse_username('John Doe jdoe@example.com'))
+        self.assertEqual(('John Doe', 'jdoe[bot]@example.com'),
+                         config.parse_username('John Doe <jdoe[bot]@example.com>'))
 
 
 class TestTreeConfig(tests.TestCaseWithTransport):

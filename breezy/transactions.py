@@ -98,8 +98,12 @@ class ReadOnlyTransaction(object):
             # the map backwards
             # _clean_objects
             # _clean_queue
-            # 1 missing ?
-            if (sys.getrefcount(self._clean_queue[offset]) <= 7
+            if sys.version_info >= (3, 11):
+                ref_threshold = 6
+            else:
+                # 1 missing on Python < 3.11
+                ref_threshold = 7
+            if (sys.getrefcount(self._clean_queue[offset]) <= ref_threshold
                     and not self._clean_queue[offset] in self._precious_objects):
                 removed = self._clean_queue[offset]
                 self._clean_objects.remove(removed)

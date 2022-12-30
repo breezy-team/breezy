@@ -16,7 +16,10 @@
 
 """Tests for the test trees used by the per_tree tests."""
 
+import shutil
+
 from breezy import errors
+from breezy.tree import MissingNestedTree
 from breezy.tests import per_tree
 from breezy.tests import (
     TestNotApplicable,
@@ -489,3 +492,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             actual = [(path, ie.kind)
                       for path, ie in path_entries]
         self.assertEqual(expected, actual)
+
+    def test_iter_entries_with_missing_reference(self):
+        tree, subtree = self.create_nested()
+        shutil.rmtree('wt/subtree')
+        expected = [
+            ('', 'directory'),
+            ('subtree', 'tree-reference')]
+        with tree.lock_read():
+            self.assertRaises(
+                MissingNestedTree, list, tree.iter_entries_by_dir(recurse_nested=True))

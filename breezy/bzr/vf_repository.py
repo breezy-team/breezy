@@ -1554,7 +1554,6 @@ class VersionedFileRepository(Repository):
 
         `revision_id` may be NULL_REVISION for the empty tree revision.
         """
-        revision_id = _mod_revision.ensure_null(revision_id)
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == _mod_revision.NULL_REVISION:

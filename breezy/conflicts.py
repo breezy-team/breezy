@@ -71,7 +71,7 @@ class cmd_conflicts(commands.Command):
                 self.outf.write(str(conflict) + '\n')
 
 
-resolve_action_registry = registry.Registry()
+resolve_action_registry = registry.Registry[str, str]()
 
 
 resolve_action_registry.register(
@@ -311,7 +311,7 @@ class ConflictList(object):
 class Conflict(object):
     """Base class for conflicts."""
 
-    typestring = None
+    typestring: str
 
     def __init__(self, path):
         self.path = path

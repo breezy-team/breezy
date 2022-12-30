@@ -39,7 +39,7 @@ class VcsMapping(object):
 
     # Prefix used when importing revisions native to the foreign VCS (as
     # opposed to roundtripping bzr-native revisions) using this mapping.
-    revid_prefix = None
+    revid_prefix: bytes
 
     def __init__(self, vcs):
         """Create a new VcsMapping.
@@ -191,7 +191,7 @@ class ForeignRepository(Repository):
     """
 
     # This repository's native version control system
-    vcs = None
+    vcs: ForeignVcs
 
     def has_foreign_revision(self, foreign_revid):
         """Check whether the specified foreign revision is present.

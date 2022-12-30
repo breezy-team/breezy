@@ -17,6 +17,7 @@
 
 """ChunkWriter: write compressed data out with a fixed upper bound."""
 
+from typing import Optional, List
 import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
@@ -104,7 +105,7 @@ class ChunkWriter(object):
         """
         self.chunk_size = chunk_size
         self.compressor = zlib.compressobj()
-        self.bytes_in = []
+        self.bytes_in: Optional[List[bytes]] = []
         self.bytes_list = []
         self.bytes_out_len = 0
         # bytes that have been seen, but not included in a flush to out yet
@@ -172,7 +173,7 @@ class ChunkWriter(object):
               Z_SYNC_FLUSH called.
         """
         compressor = zlib.compressobj()
-        bytes_out = []
+        bytes_out: List[bytes] = []
         append = bytes_out.append
         compress = compressor.compress
         for accepted_bytes in self.bytes_in:

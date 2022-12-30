@@ -169,7 +169,7 @@ def _set_branch_location(control, to_branch, current_branch, force=False):
 
 def _any_local_commits(this_branch, possible_transports):
     """Does this branch have any commits not in the master branch?"""
-    last_rev = revision.ensure_null(this_branch.last_revision())
+    last_rev = this_branch.last_revision()
     if last_rev != revision.NULL_REVISION:
         other_branch = this_branch.get_master_branch(possible_transports)
         with this_branch.lock_read(), other_branch.lock_read():

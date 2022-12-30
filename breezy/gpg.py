@@ -18,12 +18,11 @@
 """GPG signing and checking logic."""
 
 import os
+from typing import Optional, Dict, List
 
 from breezy.lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    config,
-    trace,
     ui,
     )
 from breezy.i18n import (
@@ -33,7 +32,9 @@ from breezy.i18n import (
 """)
 
 from . import (
+    config,
     errors,
+    trace,
     )
 
 # verification results
@@ -180,7 +181,7 @@ def _set_gpg_tty():
 class GPGStrategy(object):
     """GPG Signing and checking facilities."""
 
-    acceptable_keys = None
+    acceptable_keys: Optional[List[str]] = None
 
     def __init__(self, config_stack):
         self._config_stack = config_stack
@@ -410,7 +411,7 @@ def expired_commit_message(count):
 
 def verbose_expired_key_message(result, repo):
     """takes a verify result and returns list of expired key info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     fingerprint_to_authors = {}
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_EXPIRED:
@@ -431,7 +432,7 @@ def verbose_expired_key_message(result, repo):
 
 def verbose_valid_message(result):
     """takes a verify result and returns list of signed commits strings"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, uid in result:
         if validity == SIGNATURE_VALID:
             signers.setdefault(uid, 0)
@@ -446,7 +447,7 @@ def verbose_valid_message(result):
 
 def verbose_not_valid_message(result, repo):
     """takes a verify result and returns list of not valid commit info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_VALID:
             revision = repo.get_revision(rev_id)
@@ -463,7 +464,7 @@ def verbose_not_valid_message(result, repo):
 
 def verbose_not_signed_message(result, repo):
     """takes a verify result and returns list of not signed commit info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_SIGNED:
             revision = repo.get_revision(rev_id)
@@ -480,7 +481,7 @@ def verbose_not_signed_message(result, repo):
 
 def verbose_missing_key_message(result):
     """takes a verify result and returns list of missing key info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_KEY_MISSING:
             signers.setdefault(fingerprint, 0)
