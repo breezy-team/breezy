@@ -133,6 +133,9 @@ class ControlDir(ControlComponent):
 
     hooks: hooks.Hooks
 
+    root_transport: _mod_transport.Transport
+    user_transport: _mod_transport.Transport
+
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
         from."""
@@ -194,7 +197,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.needs_format_conversion)
 
-    def create_repository(self, shared=False) -> "Repository":
+    def create_repository(self, shared: bool = False) -> "Repository":
         """Create a new repository in this control directory.
 
         Args:
@@ -204,12 +207,13 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.create_repository)
 
-    def destroy_repository(self):
+    def destroy_repository(self) -> None:
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self, name=None, repository=None,
-                      append_revisions_only=None) -> "Branch":
+    def create_branch(self, name: Optional[str] = None,
+                      repository: Optional["Repository"] = None,
+                      append_revisions_only: Optional[bool] = None) -> "Branch":
         """Create a branch in this ControlDir.
 
         Args:
@@ -223,7 +227,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self, name=None):
+    def destroy_branch(self, name: Optional[str] = None) -> None:
         """Destroy a branch in this ControlDir.
 
         Args:

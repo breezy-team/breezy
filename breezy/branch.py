@@ -16,13 +16,11 @@
 
 __docformat__ = "google"
 
-from typing import Optional, Tuple, List, Type, cast
+from typing import Optional, Tuple, List, cast, Dict
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    debug,
-    transport,
     ui,
     )
 from breezy.bzr import (
@@ -38,13 +36,20 @@ import itertools
 
 from . import (
     config as _mod_config,
-    controldir,
+    debug,
     errors,
     revision as _mod_revision,
     repository,
     registry,
+    transport,
     urlutils,
     )
+from .controldir import (
+    ControlDir,
+    ControlComponent,
+    ControlComponentFormat,
+    ControlComponentFormatRegistry,
+)
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
@@ -73,7 +78,7 @@ class BindingUnsupported(errors.UnsupportedOperation):
         self.url = branch.user_url
 
 
-class Branch(controldir.ControlComponent):
+class Branch(ControlComponent):
     """Branch holding a history of revisions.
 
     Attributes:
@@ -82,7 +87,7 @@ class Branch(controldir.ControlComponent):
         _clear_cached_state.
     """
 
-    controldir: controldir.ControlDir
+    controldir: ControlDir
 
     name: Optional[str]
 
@@ -106,8 +111,8 @@ class Branch(controldir.ControlComponent):
         self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
-        self._partial_revision_id_to_revno_cache = {}
-        self._partial_revision_history_cache = []
+        self._partial_revision_id_to_revno_cache: Dict[RevisionID, int] = {}
+        self._partial_revision_history_cache: List[RevisionID] = []
         self._last_revision_info_cache = None
         self._master_branch_cache = None
         self._merge_sorted_revisions_cache = None
@@ -152,7 +157,9 @@ class Branch(controldir.ControlComponent):
             raise errors.UnstackableRepositoryFormat(
                 self.repository._format, self.repository.base)
 
-    def _extend_partial_history(self, stop_index=None, stop_revision=None):
+    def _extend_partial_history(
+            self, stop_index: Optional[int] = None,
+            stop_revision: Optional[RevisionID] = None) -> None:
         """Extend the partial history to include a given index
 
         If a stop_index is supplied, stop when that index has been reached.
@@ -190,7 +197,7 @@ class Branch(controldir.ControlComponent):
         For instance, if the branch is at URL/.bzr/branch,
         Branch.open(URL) -> a Branch instance.
         """
-        control = controldir.ControlDir.open(
+        control = ControlDir.open(
             base, possible_transports=possible_transports,
             _unsupported=_unsupported)
         return control.open_branch(
@@ -201,7 +208,7 @@ class Branch(controldir.ControlComponent):
     def open_from_transport(transport, name=None, _unsupported=False,
                             possible_transports=None):
         """Open the branch rooted at transport"""
-        control = controldir.ControlDir.open_from_transport(
+        control = ControlDir.open_from_transport(
             transport, _unsupported)
         return control.open_branch(
             name=name, unsupported=_unsupported,
@@ -220,7 +227,7 @@ class Branch(controldir.ControlComponent):
         raised.  If there is one, it is returned, along with the unused portion
         of url.
         """
-        control, relpath = controldir.ControlDir.open_containing(
+        control, relpath = ControlDir.open_containing(
             url, possible_transports)
         branch = control.open_branch(possible_transports=possible_transports)
         return (branch, relpath)
@@ -243,7 +250,7 @@ class Branch(controldir.ControlComponent):
         """
         return _mod_config.BranchConfig(self)
 
-    def get_config_stack(self):
+    def get_config_stack(self) -> _mod_config.Stack:
         """Get a breezy.config.BranchStack for this Branch.
 
         This can then be used to get and set configuration options for the
@@ -253,7 +260,7 @@ class Branch(controldir.ControlComponent):
         """
         return _mod_config.BranchStack(self)
 
-    def store_uncommitted(self, creator):
+    def store_uncommitted(self, creator) -> None:
         """Store uncommitted changes from a ShelfCreator.
 
         Args:
@@ -747,7 +754,9 @@ class Branch(controldir.ControlComponent):
             self, parents, config_stack, timestamp, timezone, committer,
             revprops, revision_id, lossy)
 
-    def get_master_branch(self, possible_transports=None):
+    def get_master_branch(
+            self, possible_transports: Optional[List[transport.Transport]] = None
+            ) -> Optional["Branch"]:
         """Return the branch we are bound to.
 
         Returns: Either a Branch, or None
@@ -764,7 +773,8 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self.get_stacked_on_url)
 
-    def set_last_revision_info(self, revno, revision_id):
+    def set_last_revision_info(
+            self, revno: Optional[int], revision_id: RevisionID) -> None:
         """Set the last revision of this branch.
 
         The caller is responsible for checking that the revno is correct
@@ -777,8 +787,9 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self.set_last_revision_info)
 
-    def generate_revision_history(self, revision_id, last_rev=None,
-                                  other_branch=None):
+    def generate_revision_history(self, revision_id: RevisionID,
+                                  last_rev: Optional[RevisionID] = None,
+                                  other_branch: Optional[Branch] = None) -> None:
         """See Branch.generate_revision_history"""
         with self.lock_write():
             graph = self.repository.get_graph()
@@ -816,7 +827,7 @@ class Branch(controldir.ControlComponent):
         with self.lock_write():
             self._set_parent_location(url)
 
-    def set_stacked_on_url(self, url):
+    def set_stacked_on_url(self, url: str) -> None:
         """Set the URL this branch is stacked against.
 
         :raises UnstackableBranchFormat: If the branch does not support
@@ -872,7 +883,7 @@ class Branch(controldir.ControlComponent):
             # stream from one of them to the other.  This does mean doing
             # separate SSH connection setup, but unstacking is not a
             # common operation so it's tolerable.
-            new_bzrdir = controldir.ControlDir.open(
+            new_bzrdir = ControlDir.open(
                 self.controldir.root_transport.base)
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
@@ -946,7 +957,7 @@ class Branch(controldir.ControlComponent):
         """
         self._revision_id_to_revno_cache = revision_id_to_revno
 
-    def _clear_cached_state(self):
+    def _clear_cached_state(self) -> None:
         """Clear any cached data on this branch, e.g. cached revision history.
 
         This means the next call to revision_history will need to call
@@ -978,7 +989,7 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self._gen_revision_history)
 
-    def _revision_history(self):
+    def _revision_history(self) -> List[RevisionID]:
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "revision_history scales with history.")
         if self._revision_history_cache is not None:
@@ -1019,7 +1030,7 @@ class Branch(controldir.ControlComponent):
         raise NotImplementedError(self._read_last_revision_info)
 
     def import_last_revision_info_and_tags(self, source, revno, revid,
-                                           lossy=False):
+                                           *, lossy=False):
         """Set the last revision info, importing from another repo if necessary.
 
         This is used by the bound branch code to upload a revision to
@@ -1040,7 +1051,7 @@ class Branch(controldir.ControlComponent):
         self.set_last_revision_info(revno, revid)
         return (revno, revid)
 
-    def revision_id_to_revno(self, revision_id):
+    def revision_id_to_revno(self, revision_id: RevisionID) -> int:
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
             return 0
@@ -1050,7 +1061,7 @@ class Branch(controldir.ControlComponent):
         except ValueError as exc:
             raise errors.NoSuchRevision(self, revision_id) from exc
 
-    def get_rev_id(self, revno, history=None):
+    def get_rev_id(self, revno: int, history: Optional[List[RevisionID]] = None) -> RevisionID:
         """Find the revision id of the specified revno."""
         with self.lock_read():
             if revno == 0:
@@ -1065,8 +1076,10 @@ class Branch(controldir.ControlComponent):
                 self._extend_partial_history(distance_from_last)
             return self._partial_revision_history_cache[distance_from_last]
 
-    def pull(self, source, overwrite=False, stop_revision=None,
-             possible_transports=None, *args, **kwargs):
+    def pull(self, source: "Branch", *, overwrite: bool = False,
+             stop_revision: Optional[RevisionID] = None,
+             possible_transports: Optional[List[transport.Transport]] = None,
+             **kwargs) -> "PullResult":
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
@@ -1075,16 +1088,17 @@ class Branch(controldir.ControlComponent):
         """
         return InterBranch.get(source, self).pull(
             overwrite=overwrite, stop_revision=stop_revision,
-            possible_transports=possible_transports, *args, **kwargs)
+            possible_transports=possible_transports, **kwargs)
 
-    def push(self, target, overwrite=False, stop_revision=None, lossy=False,
-             *args, **kwargs):
+    def push(self, target: "Branch", *, overwrite: bool = False,
+             stop_revision: Optional[RevisionID] = None, lossy: bool = False,
+             **kwargs):
         """Mirror this branch into target.
 
         This branch is considered to be 'local', having low latency.
         """
         return InterBranch.get(self, target).push(
-            overwrite, stop_revision, lossy, *args, **kwargs)
+            overwrite, stop_revision, lossy, **kwargs)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -1112,7 +1126,7 @@ class Branch(controldir.ControlComponent):
     def _get_parent_location(self):
         raise NotImplementedError(self._get_parent_location)
 
-    def _set_config_location(self, name, url, config=None,
+    def _set_config_location(self, name, url, *, config=None,
                              make_relative=False):
         if config is None:
             config = self.get_config_stack()
@@ -1122,7 +1136,7 @@ class Branch(controldir.ControlComponent):
             url = urlutils.relative_url(self.base, url)
         config.set(name, url)
 
-    def _get_config_location(self, name: str, config=None) -> Optional[str]:
+    def _get_config_location(self, name: str, *, config=None) -> Optional[str]:
         if config is None:
             config = self.get_config_stack()
         location = config.get(name)
@@ -1130,9 +1144,9 @@ class Branch(controldir.ControlComponent):
             location = None
         return cast(Optional[str], location)
 
-    def get_child_submit_format(self):
+    def get_child_submit_format(self) -> Optional[str]:
         """Return the preferred format of submissions to this branch."""
-        return self.get_config_stack().get('child_submit_format')
+        return cast(Optional[str], self.get_config_stack().get('child_submit_format'))
 
     def get_submit_branch(self) -> Optional[str]:
         """Return the submit location of the branch.
@@ -1143,7 +1157,7 @@ class Branch(controldir.ControlComponent):
         """
         return cast(Optional[str], self.get_config_stack().get('submit_branch'))
 
-    def set_submit_branch(self, location):
+    def set_submit_branch(self, location: str) -> None:
         """Return the submit location of the branch.
 
         This is the default location for bundle.  The usual
@@ -1159,7 +1173,7 @@ class Branch(controldir.ControlComponent):
         """
         return self._get_config_location('public_branch')
 
-    def set_public_branch(self, location):
+    def set_public_branch(self, location: str) -> None:
         """Return the submit location of the branch.
 
         This is the default location for bundle.  The usual
@@ -1172,7 +1186,7 @@ class Branch(controldir.ControlComponent):
         """Return None or the location to push this branch to."""
         return cast(str, self.get_config_stack().get('push_location'))
 
-    def set_push_location(self, location):
+    def set_push_location(self, location: str) -> None:
         """Set a new push location for this branch."""
         raise NotImplementedError(self.set_push_location)
 
@@ -1198,14 +1212,14 @@ class Branch(controldir.ControlComponent):
         for hook in hooks:
             hook(params)
 
-    def update(self):
+    def update(self) -> None:
         """Synchronise this branch with the master branch if any.
 
         Returns: None or the last_revision pivoted out during the update.
         """
         return None
 
-    def check_revno(self, revno):
+    def check_revno(self, revno: int) -> None:
         """\
         Check whether a revno corresponds to any revision.
         Zero (the NULL revision) is considered valid.
@@ -1213,7 +1227,7 @@ class Branch(controldir.ControlComponent):
         if revno != 0:
             self.check_real_revno(revno)
 
-    def check_real_revno(self, revno):
+    def check_real_revno(self, revno: int) -> None:
         """\
         Check whether a revno corresponds to a real revision.
         Zero (the NULL revision) is considered invalid
@@ -1221,8 +1235,9 @@ class Branch(controldir.ControlComponent):
         if revno < 1 or revno > self.revno():
             raise errors.InvalidRevisionNumber(revno)
 
-    def clone(self, to_controldir, revision_id=None, name=None,
-              repository_policy=None, tag_selector=None):
+    def clone(self, to_controldir: ControlDir, *,
+              revision_id: Optional[RevisionID] = None, name: Optional[str] = None,
+              repository_policy=None, tag_selector=None) -> "Branch":
         """Clone this branch into to_controldir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -1239,7 +1254,7 @@ class Branch(controldir.ControlComponent):
                 result, revision_id=revision_id, tag_selector=tag_selector)
         return result
 
-    def sprout(self, to_controldir, revision_id=None, repository_policy=None,
+    def sprout(self, to_controldir, *, revision_id=None, repository_policy=None,
                repository=None, lossy=False, tag_selector=None,
                name=None):
         """Create a new line of development from the branch, into to_controldir.
@@ -1293,7 +1308,7 @@ class Branch(controldir.ControlComponent):
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
-    def copy_content_into(self, destination, revision_id=None, tag_selector=None):
+    def copy_content_into(self, destination, *, revision_id=None, tag_selector=None):
         """Copy the content of self into destination.
 
         revision_id: if not None, the revision history in the new branch will
@@ -1346,7 +1361,7 @@ class Branch(controldir.ControlComponent):
         format.set_branch_format(self._format)
         return format
 
-    def create_clone_on_transport(self, to_transport, revision_id=None,
+    def create_clone_on_transport(self, to_transport, *, revision_id=None,
                                   stacked_on=None, create_prefix=False,
                                   use_existing_dir=False, no_tree=None,
                                   tag_selector=None):
@@ -1373,7 +1388,7 @@ class Branch(controldir.ControlComponent):
             no_tree=no_tree, tag_selector=tag_selector)
         return dir_to.open_branch()
 
-    def create_checkout(self, to_location, revision_id=None,
+    def create_checkout(self, to_location, *, revision_id=None,
                         lightweight=False, accelerator_tree=None,
                         hardlink=False, recurse_nested=True):
         """Create a checkout of a branch.
@@ -1400,7 +1415,7 @@ class Branch(controldir.ControlComponent):
         except errors.AlreadyControlDirError as exc:
             # It's fine if the control directory already exists,
             # as long as there is no existing branch and working tree.
-            checkout = controldir.ControlDir.open_from_transport(t)
+            checkout = ControlDir.open_from_transport(t)
             try:
                 checkout.open_branch()
             except errors.NotBranchError:
@@ -1529,7 +1544,7 @@ class Branch(controldir.ControlComponent):
         return memorytree.MemoryTree.create_on_branch(self)
 
 
-class BranchFormat(controldir.ControlComponentFormat):
+class BranchFormat(ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -1906,7 +1921,7 @@ class SwitchHookParams(object):
             self.revision_id)
 
 
-class BranchFormatRegistry(controldir.ControlComponentFormatRegistry):
+class BranchFormatRegistry(ControlComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):
@@ -2114,8 +2129,10 @@ class InterBranch(InterObject[Branch]):
         """
         raise NotImplementedError(klass._get_branch_formats_to_test)
 
-    def pull(self, overwrite=False, stop_revision=None,
-             possible_transports=None, local=False, tag_selector=None):
+    def pull(self, overwrite: bool = False,
+             stop_revision: Optional[RevisionID] = None,
+             possible_transports: Optional[List[transport.Transport]] = None,
+             local: bool = False, tag_selector=None) -> PullResult:
         """Mirror source into target branch.
 
         The target branch is considered to be 'local', having low latency.
@@ -2124,8 +2141,9 @@ class InterBranch(InterObject[Branch]):
         """
         raise NotImplementedError(self.pull)
 
-    def push(self, overwrite=False, stop_revision=None, lossy=False,
-             _override_hook_source_branch=None, tag_selector=None):
+    def push(self, overwrite: bool = False, stop_revision: Optional[RevisionID] = None,
+             lossy: bool = False, _override_hook_source_branch: Optional[Branch] = None,
+             tag_selector=None):
         """Mirror the source branch into the target branch.
 
         The source branch is considered to be 'local', having low latency.
@@ -2144,7 +2162,9 @@ class InterBranch(InterObject[Branch]):
         """
         raise NotImplementedError(self.copy_content_into)
 
-    def fetch(self, stop_revision=None, limit=None, lossy=False):
+    def fetch(self, stop_revision: Optional[RevisionID] = None,
+              limit: Optional[int] = None,
+              lossy: bool = False) -> repository.FetchResult:
         """Fetch revisions.
 
         Args:
@@ -2154,10 +2174,14 @@ class InterBranch(InterObject[Branch]):
         """
         raise NotImplementedError(self.fetch)
 
-    def update_references(self):
+    def update_references(self) -> None:
         """Import reference information from source to target.
         """
         raise NotImplementedError(self.update_references)
+
+    @classmethod
+    def get(self, source: Branch, target: Branch) -> "InterBranch":
+        return cast(InterBranch, super(InterBranch, self).get(source, target))
 
 
 def _fix_overwrite_type(overwrite):
