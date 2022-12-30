@@ -27,13 +27,14 @@ import contextlib
 import itertools
 import re
 import sys
-from typing import List, Type, Callable
+from typing import Dict, List, Callable, Set, Tuple, Optional
 
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
 from .inter import InterObject
 from .registry import Registry
+from .revision import RevisionID
 
 from . import (
     branch as _mod_branch,
@@ -41,7 +42,16 @@ from . import (
     )
 
 
-def _reconcile_tags(source_dict, dest_dict, overwrite, selector):
+TagSelector = Callable[[str], bool]
+TagUpdates = Dict[str, RevisionID]
+TagConflict = Tuple[str, bytes, bytes]
+
+
+def _reconcile_tags(
+        source_dict: Dict[str, bytes], dest_dict: Dict[str, bytes],
+        overwrite: bool, selector: TagSelector) -> Tuple[
+            Dict[str, RevisionID], TagUpdates,
+            List[TagConflict]]:
     """Do a two-way merge of two tag dictionaries.
 
     * only in source => source value
@@ -74,12 +84,12 @@ class Tags(object):
     def __init__(self, branch):
         self.branch = branch
 
-    def get_tag_dict(self):
+    def get_tag_dict(self) -> Dict[str, RevisionID]:
         """Return a dictionary mapping tags to revision ids.
         """
         raise NotImplementedError(self.get_tag_dict)
 
-    def get_reverse_tag_dict(self):
+    def get_reverse_tag_dict(self) -> Dict[RevisionID, Set[str]]:
         """Returns a dict with revisions as keys
            and a list of tags for that revision as value"""
         d = self.get_tag_dict()
@@ -88,7 +98,9 @@ class Tags(object):
             rev[d[key]].add(key)
         return rev
 
-    def merge_to(self, to_tags, overwrite=False, ignore_master=False, selector=None):
+    def merge_to(self, to_tags: "Tags", overwrite: bool = False,
+                 ignore_master: bool = False,
+                 selector: Optional[TagSelector] = None) -> None:
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -114,7 +126,7 @@ class Tags(object):
             overwrite=overwrite, ignore_master=ignore_master,
             selector=selector)
 
-    def set_tag(self, tag_name, revision):
+    def set_tag(self, tag_name: str, revision: RevisionID) -> None:
         """Set a tag.
 
         :param tag_name: Tag name
@@ -124,7 +136,7 @@ class Tags(object):
         """
         raise NotImplementedError(self.set_tag)
 
-    def lookup_tag(self, tag_name):
+    def lookup_tag(self, tag_name: str) -> RevisionID:
         """Look up a tag.
 
         :param tag_name: Tag to look up
@@ -133,7 +145,7 @@ class Tags(object):
         """
         raise NotImplementedError(self.lookup_tag)
 
-    def delete_tag(self, tag_name):
+    def delete_tag(self, tag_name: str) -> None:
         """Delete a tag.
 
         :param tag_name: Tag to delete
@@ -141,7 +153,8 @@ class Tags(object):
         """
         raise NotImplementedError(self.delete_tag)
 
-    def rename_revisions(self, rename_map):
+    def rename_revisions(
+            self, rename_map: Dict[RevisionID, RevisionID]) -> None:
         """Rename revisions in this tags dictionary.
 
         :param rename_map: Dictionary mapping old revids to new revids
@@ -152,7 +165,7 @@ class Tags(object):
                 for name in names:
                     self.set_tag(name, rename_map[revid])
 
-    def has_tag(self, tag_name):
+    def has_tag(self, tag_name: str) -> bool:
         return tag_name in self.get_tag_dict()
 
 
@@ -192,11 +205,13 @@ class InterTags(InterObject[Tags]):
     """The available optimised InterTags types."""
 
     @classmethod
-    def is_compatible(klass, source, target):
+    def is_compatible(klass, source: Tags, target: Tags) -> bool:
         # This is the default implementation
         return True
 
-    def merge(self, overwrite=False, ignore_master=False, selector=None):
+    def merge(self, overwrite: bool = False, ignore_master: bool = False,
+              selector: Optional[TagSelector] = None
+              ) -> Tuple[TagUpdates, Set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling

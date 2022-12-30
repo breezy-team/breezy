@@ -15,9 +15,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""An adapter between a Git Repository and a Bazaar Branch"""
+"""An adapter between a Git Repository and a Breezy one."""
 
 from io import BytesIO
+
+from dulwich.errors import (
+    NotCommitError,
+    )
+from dulwich.objects import (
+    Commit,
+    ZERO_SHA,
+    )
+from dulwich.object_store import (
+    tree_lookup_path,
+    )
+
 
 from .. import (
     check,
@@ -47,18 +59,6 @@ from .mapping import (
     )
 from .tree import (
     GitRevisionTree,
-    )
-
-
-from dulwich.errors import (
-    NotCommitError,
-    )
-from dulwich.objects import (
-    Commit,
-    ZERO_SHA,
-    )
-from dulwich.object_store import (
-    tree_lookup_path,
     )
 
 

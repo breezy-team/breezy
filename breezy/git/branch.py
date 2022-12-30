@@ -242,7 +242,7 @@ class InterTagsFromGitToLocalGit(InterTags):
 class InterTagsFromGitToNonGit(InterTags):
 
     @classmethod
-    def is_compatible(klass, source, target):
+    def is_compatible(klass, source: Tags, target: Tags):
         if not isinstance(source, GitTags):
             return False
         if isinstance(target, GitTags):
