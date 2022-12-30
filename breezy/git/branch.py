@@ -21,7 +21,7 @@
 import contextlib
 from io import BytesIO
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Optional, Set, Tuple
 
 from dulwich.config import (
     ConfigFile as GitConfigFile,
@@ -53,6 +53,9 @@ from ..revision import (
 from ..tag import (
     Tags,
     InterTags,
+    TagSelector,
+    TagConflict,
+    TagUpdates,
     )
 from ..trace import (
     is_quiet,
@@ -140,9 +143,11 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return False
         return True
 
-    def merge(self, overwrite=False, ignore_master=False, selector=None):
+    def merge(self, overwrite: bool = False, ignore_master: bool = False,
+              selector: Optional[TagSelector] = None) -> Tuple[
+                    TagUpdates, Set[TagConflict]]:
         if self.source.branch.repository.has_same_location(self.target.branch.repository):
-            return {}, []
+            return {}, set()
         updates = {}
         conflicts = []
         source_tag_refs = self.source.branch.get_tag_refs()
@@ -474,7 +479,7 @@ class GitBranch(ForeignBranch):
             if self.ref is not None:
                 params = {"ref": urlutils.escape(self.ref, safe='')}
         else:
-            if self.name != "":
+            if self.name:
                 params = {"branch": urlutils.escape(self.name, safe='')}
         for k, v in params.items():
             self._user_transport.set_segment_parameter(k, v)

@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import Optional, Tuple, List, cast, Dict
+from typing import Optional, Tuple, List, cast, Dict, TextIO, TYPE_CHECKING, Union
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -28,7 +28,6 @@ from breezy.bzr import (
     remote,
     vf_search,
     )
-from breezy.i18n import gettext, ngettext
 """)
 
 import contextlib
@@ -41,7 +40,6 @@ from . import (
     revision as _mod_revision,
     repository,
     registry,
-    transport,
     urlutils,
     )
 from .controldir import (
@@ -55,6 +53,11 @@ from .inter import InterObject
 from .lock import LogicalLockResult
 from .revision import RevisionID
 from .trace import mutter, mutter_callsite, note, is_quiet, warning
+from .transport import get_transport, Transport
+
+
+if TYPE_CHECKING:
+    from .tag import TagConflict, TagUpdates
 
 
 class UnstackableBranchFormat(errors.BzrError):
@@ -99,15 +102,13 @@ class Branch(ControlComponent):
 
     repository: repository.Repository
 
-    @property
-    def control_transport(self):
-        return self._transport
+    hooks: BranchHooks
 
     @property
-    def user_transport(self):
+    def user_transport(self) -> Transport:
         return self.controldir.user_transport
 
-    def __init__(self, possible_transports=None):
+    def __init__(self, possible_transports: Optional[List[Transport]] = None) -> None:
         self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
@@ -138,7 +139,7 @@ class Branch(ControlComponent):
             raise errors.UnstackableLocationError(self.user_url, url)
         self.repository.add_fallback_repository(repo)
 
-    def break_lock(self):
+    def break_lock(self) -> None:
         """Break a lock if one is present from another instance.
 
         Uses the ui factory to ask for confirmation if the lock may be from
@@ -146,16 +147,7 @@ class Branch(ControlComponent):
 
         This will probe the repository for its lock as well.
         """
-        self.control_files.break_lock()
-        self.repository.break_lock()
-        master = self.get_master_branch()
-        if master is not None:
-            master.break_lock()
-
-    def _check_stackable_repo(self):
-        if not self.repository._format.supports_external_lookups:
-            raise errors.UnstackableRepositoryFormat(
-                self.repository._format, self.repository.base)
+        raise NotImplementedError(self.break_lock)
 
     def _extend_partial_history(
             self, stop_index: Optional[int] = None,
@@ -205,7 +197,8 @@ class Branch(ControlComponent):
             possible_transports=possible_transports)
 
     @staticmethod
-    def open_from_transport(transport, name=None, _unsupported=False,
+    def open_from_transport(transport: Transport, name: Optional[str] = None,
+                            _unsupported: bool = False,
                             possible_transports=None):
         """Open the branch rooted at transport"""
         control = ControlDir.open_from_transport(
@@ -755,7 +748,7 @@ class Branch(ControlComponent):
             revprops, revision_id, lossy)
 
     def get_master_branch(
-            self, possible_transports: Optional[List[transport.Transport]] = None
+            self, possible_transports: Optional[List[Transport]] = None
             ) -> Optional["Branch"]:
         """Return the branch we are bound to.
 
@@ -835,108 +828,7 @@ class Branch(ControlComponent):
         :raises UnstackableRepositoryFormat: If the repository does not support
             stacking.
         """
-        if not self._format.supports_stacking():
-            raise UnstackableBranchFormat(self._format, self.user_url)
-        with self.lock_write():
-            # XXX: Changing from one fallback repository to another does not
-            # check that all the data you need is present in the new fallback.
-            # Possibly it should.
-            self._check_stackable_repo()
-            if not url:
-                try:
-                    self.get_stacked_on_url()
-                except (errors.NotStacked, UnstackableBranchFormat,
-                        errors.UnstackableRepositoryFormat):
-                    return
-                self._unstack()
-            else:
-                self._activate_fallback_location(
-                    url, possible_transports=[self.controldir.root_transport])
-            # write this out after the repository is stacked to avoid setting a
-            # stacked config that doesn't work.
-            self._set_config_location('stacked_on_location', url)
-
-    def _unstack(self):
-        """Change a branch to be unstacked, copying data as needed.
-
-        Don't call this directly, use set_stacked_on_url(None).
-        """
-        with ui.ui_factory.nested_progress_bar() as pb:
-            pb.update(gettext("Unstacking"))
-            # The basic approach here is to fetch the tip of the branch,
-            # including all available ghosts, from the existing stacked
-            # repository into a new repository object without the fallbacks.
-            #
-            # XXX: See <https://launchpad.net/bugs/397286> - this may not be
-            # correct for CHKMap repostiories
-            old_repository = self.repository
-            if len(old_repository._fallback_repositories) != 1:
-                raise AssertionError(
-                    "can't cope with fallback repositories "
-                    "of %r (fallbacks: %r)" % (
-                        old_repository, old_repository._fallback_repositories))
-            # Open the new repository object.
-            # Repositories don't offer an interface to remove fallback
-            # repositories today; take the conceptually simpler option and just
-            # reopen it.  We reopen it starting from the URL so that we
-            # get a separate connection for RemoteRepositories and can
-            # stream from one of them to the other.  This does mean doing
-            # separate SSH connection setup, but unstacking is not a
-            # common operation so it's tolerable.
-            new_bzrdir = ControlDir.open(
-                self.controldir.root_transport.base)
-            new_repository = new_bzrdir.find_repository()
-            if new_repository._fallback_repositories:
-                raise AssertionError(
-                    "didn't expect %r to have fallback_repositories"
-                    % (self.repository,))
-            # Replace self.repository with the new repository.
-            # Do our best to transfer the lock state (i.e. lock-tokens and
-            # lock count) of self.repository to the new repository.
-            lock_token = old_repository.lock_write().repository_token
-            self.repository = new_repository
-            if isinstance(self, remote.RemoteBranch):
-                # Remote branches can have a second reference to the old
-                # repository that need to be replaced.
-                if self._real_branch is not None:
-                    self._real_branch.repository = new_repository
-            self.repository.lock_write(token=lock_token)
-            if lock_token is not None:
-                old_repository.leave_lock_in_place()
-            old_repository.unlock()
-            if lock_token is not None:
-                # XXX: self.repository.leave_lock_in_place() before this
-                # function will not be preserved.  Fortunately that doesn't
-                # affect the current default format (2a), and would be a
-                # corner-case anyway.
-                #  - Andrew Bennetts, 2010/06/30
-                self.repository.dont_leave_lock_in_place()
-            old_lock_count = 0
-            while True:
-                try:
-                    old_repository.unlock()
-                except errors.LockNotHeld:
-                    break
-                old_lock_count += 1
-            if old_lock_count == 0:
-                raise AssertionError(
-                    'old_repository should have been locked at least once.')
-            for i in range(old_lock_count - 1):
-                self.repository.lock_write()
-            # Fetch from the old repository into the new.
-            with old_repository.lock_read():
-                # XXX: If you unstack a branch while it has a working tree
-                # with a pending merge, the pending-merged revisions will no
-                # longer be present.  You can (probably) revert and remerge.
-                try:
-                    tags_to_fetch = set(self.tags.get_reverse_tag_dict())
-                except errors.TagsNotSupported:
-                    tags_to_fetch = set()
-                fetch_spec = vf_search.NotInOtherForRevs(
-                    self.repository, old_repository,
-                    required_ids=[self.last_revision()],
-                    if_present_ids=tags_to_fetch, find_ghosts=True).execute()
-                self.repository.fetch(old_repository, fetch_spec=fetch_spec)
+        raise NotImplementedError(self.set_stacked_on_url)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -1078,7 +970,7 @@ class Branch(ControlComponent):
 
     def pull(self, source: "Branch", *, overwrite: bool = False,
              stop_revision: Optional[RevisionID] = None,
-             possible_transports: Optional[List[transport.Transport]] = None,
+             possible_transports: Optional[List[Transport]] = None,
              **kwargs) -> "PullResult":
         """Mirror source into this branch.
 
@@ -1407,7 +1299,7 @@ class Branch(ControlComponent):
           recurse_nested: Whether to recurse into nested trees
         Returns: The tree of the created checkout
         """
-        t = transport.get_transport(to_location)
+        t = get_transport(to_location)
         t.ensure_base()
         format = self._get_checkout_format(lightweight=lightweight)
         try:
@@ -2023,7 +1915,18 @@ class PullResult(_Result):
       tag_updates: A dict with new tags, see BasicTags.merge_to
     """
 
-    def report(self, to_file):
+    old_revno: Union[int, property]
+    new_revno: Union[int, property]
+    old_revid: RevisionID
+    new_revid: RevisionID
+    source_branch: Branch
+    master_branch: Branch
+    local_branch: Optional[Branch]
+    target_branch: Branch
+    tag_conflicts: List[TagConflict]
+    tag_updates: TagUpdates
+
+    def report(self, to_file: TextIO) -> None:
         tag_conflicts = getattr(self, "tag_conflicts", None)
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
@@ -2059,7 +1962,17 @@ class BranchPushResult(_Result):
         target, otherwise it will be None.
     """
 
-    def report(self, to_file):
+    old_revno: int
+    new_revno: int
+    old_revid: RevisionID
+    new_revid: RevisionID
+    source_branch: Branch
+    master_branch: Branch
+    target_branch: Branch
+    local_branch: Optional[Branch]
+
+    def report(self, to_file: TextIO) -> None:
+        from breezy.i18n import gettext, ngettext
         # TODO: This function gets passed a to_file, but then
         # ignores it and calls note() instead. This is also
         # inconsistent with PullResult(), which writes to stdout.
@@ -2095,13 +2008,14 @@ class BranchCheckResult(object):
         self.branch = branch
         self.errors = []
 
-    def report_results(self, verbose):
+    def report_results(self, verbose: bool) -> None:
         """Report the check results via trace.note.
 
         Args:
           verbose: Requests more detailed display of what was checked,
             if any.
         """
+        from breezy.i18n import gettext, ngettext
         note(gettext('checked branch {0} format {1}').format(
             self.branch.user_url, self.branch._format))
         for error in self.errors:
@@ -2131,7 +2045,7 @@ class InterBranch(InterObject[Branch]):
 
     def pull(self, overwrite: bool = False,
              stop_revision: Optional[RevisionID] = None,
-             possible_transports: Optional[List[transport.Transport]] = None,
+             possible_transports: Optional[List[Transport]] = None,
              local: bool = False, tag_selector=None) -> PullResult:
         """Mirror source into target branch.
 

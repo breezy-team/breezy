@@ -43,7 +43,14 @@ from .identitymap import IdentityMap, NullIdentityMap
 from .trace import mutter
 
 
-class ReadOnlyTransaction(object):
+class Transaction(object):
+    """Base class for transactions."""
+
+    def writeable(self) -> bool:
+        raise NotImplementedError(self.writeable)
+
+
+class ReadOnlyTransaction(Transaction):
     """A read only unit of work for data objects."""
 
     def finish(self):
@@ -116,6 +123,7 @@ class ReadOnlyTransaction(object):
 
     def writeable(self):
         """Read only transactions do not allow writes."""
+        return False
 
 
 class WriteTransaction(ReadOnlyTransaction):
@@ -159,7 +167,7 @@ class WriteTransaction(ReadOnlyTransaction):
         return True
 
 
-class PassThroughTransaction(object):
+class PassThroughTransaction(Transaction):
     """A pass through transaction
 
     - nothing is cached.

@@ -95,19 +95,19 @@ class ControlComponent(object):
     """
 
     @property
-    def control_transport(self):
+    def control_transport(self) -> _mod_transport.Transport:
         raise NotImplementedError
 
     @property
-    def control_url(self):
+    def control_url(self) -> str:
         return self.control_transport.base
 
     @property
-    def user_transport(self):
+    def user_transport(self) -> _mod_transport.Transport:
         raise NotImplementedError
 
     @property
-    def user_url(self):
+    def user_url(self) -> str:
         return self.user_transport.base
 
     _format: "ControlComponentFormat"

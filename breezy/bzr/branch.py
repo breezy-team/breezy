@@ -16,14 +16,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from io import BytesIO
-import sys
+from typing import Optional
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     cache_utf8,
     config as _mod_config,
-    lockable_files,
     lockdir,
     shelf,
     )
@@ -33,9 +32,10 @@ from breezy.bzr import (
 """)
 
 from . import bzrdir, rio
+from .repository import MetaDirRepository
 from .. import (
-    controldir,
     errors,
+    lockable_files,
     revision as _mod_revision,
     transport as _mod_transport,
     urlutils,
@@ -47,6 +47,7 @@ from ..branch import (
     format_registry,
     UnstackableBranchFormat,
     )
+from ..controldir import ControlDir
 from ..decorators import (
     only_raises,
     )
@@ -72,15 +73,20 @@ class BzrBranch(Branch, _RelockDebugMixin):
         directory.
     """
 
-    def __init__(self, _format=None,
-                 _control_files=None, a_controldir=None, name=None,
-                 _repository=None, ignore_fallbacks=False,
+    repository: MetaDirRepository
+    controldir: bzrdir.BzrDir
+
+    @property
+    def control_transport(self) -> _mod_transport.Transport:
+        return self._transport
+
+    def __init__(self, *, a_controldir: bzrdir.BzrDir, name: str,
+                 _repository: MetaDirRepository,
+                 _control_files: lockable_files.LockableFiles,
+                 _format=None,
+                  ignore_fallbacks=False,
                  possible_transports=None):
         """Create new branch object at a particular location."""
-        if a_controldir is None:
-            raise ValueError('a_controldir must be supplied')
-        if name is None:
-            raise ValueError('name must be supplied')
         self.controldir = a_controldir
         self._user_transport = self.controldir.transport.clone('..')
         if name != u"":
@@ -89,8 +95,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._base = self._user_transport.base
         self.name = name
         self._format = _format
-        if _control_files is None:
-            raise ValueError('BzrBranch _control_files is None')
         self.control_files = _control_files
         self._transport = _control_files._transport
         self.repository = _repository
@@ -169,7 +173,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             return None
         return shelf.Unshelver.from_tree_and_shelf(tree, transform)
 
-    def is_locked(self):
+    def is_locked(self) -> bool:
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
@@ -472,6 +476,135 @@ class BzrBranch(Branch, _RelockDebugMixin):
             urlutils.join(
                 urlutils.strip_segment_parameters(self.user_url), branch_location),
             possible_transports=possible_transports)
+
+    def set_stacked_on_url(self, url: str) -> None:
+        """Set the URL this branch is stacked against.
+
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        if not self._format.supports_stacking():
+            raise UnstackableBranchFormat(self._format, self.user_url)
+        with self.lock_write():
+            # XXX: Changing from one fallback repository to another does not
+            # check that all the data you need is present in the new fallback.
+            # Possibly it should.
+            self._check_stackable_repo()
+            if not url:
+                try:
+                    self.get_stacked_on_url()
+                except (errors.NotStacked, UnstackableBranchFormat,
+                        errors.UnstackableRepositoryFormat):
+                    return
+                self._unstack()
+            else:
+                self._activate_fallback_location(
+                    url, possible_transports=[self.controldir.root_transport])
+            # write this out after the repository is stacked to avoid setting a
+            # stacked config that doesn't work.
+            self._set_config_location('stacked_on_location', url)
+
+    def _check_stackable_repo(self) -> None:
+        if not self.repository._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(
+                self.repository._format, self.repository.user_url)
+
+    def _unstack(self):
+        """Change a branch to be unstacked, copying data as needed.
+
+        Don't call this directly, use set_stacked_on_url(None).
+        """
+        with ui.ui_factory.nested_progress_bar() as pb:
+            # The basic approach here is to fetch the tip of the branch,
+            # including all available ghosts, from the existing stacked
+            # repository into a new repository object without the fallbacks.
+            #
+            # XXX: See <https://launchpad.net/bugs/397286> - this may not be
+            # correct for CHKMap repostiories
+            old_repository = self.repository
+            if len(old_repository._fallback_repositories) != 1:
+                raise AssertionError(
+                    "can't cope with fallback repositories "
+                    "of %r (fallbacks: %r)" % (
+                        old_repository, old_repository._fallback_repositories))
+            # Open the new repository object.
+            # Repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.  We reopen it starting from the URL so that we
+            # get a separate connection for RemoteRepositories and can
+            # stream from one of them to the other.  This does mean doing
+            # separate SSH connection setup, but unstacking is not a
+            # common operation so it's tolerable.
+            new_bzrdir = ControlDir.open(
+                self.controldir.root_transport.base)
+            new_repository = new_bzrdir.find_repository()
+            if new_repository._fallback_repositories:
+                raise AssertionError(
+                    "didn't expect %r to have fallback_repositories"
+                    % (self.repository,))
+            # Replace self.repository with the new repository.
+            # Do our best to transfer the lock state (i.e. lock-tokens and
+            # lock count) of self.repository to the new repository.
+            lock_token = old_repository.lock_write().repository_token
+            self.repository = new_repository
+            if isinstance(self, remote.RemoteBranch):
+                # Remote branches can have a second reference to the old
+                # repository that need to be replaced.
+                if self._real_branch is not None:
+                    self._real_branch.repository = new_repository
+            self.repository.lock_write(token=lock_token)
+            if lock_token is not None:
+                old_repository.leave_lock_in_place()
+            old_repository.unlock()
+            if lock_token is not None:
+                # XXX: self.repository.leave_lock_in_place() before this
+                # function will not be preserved.  Fortunately that doesn't
+                # affect the current default format (2a), and would be a
+                # corner-case anyway.
+                #  - Andrew Bennetts, 2010/06/30
+                self.repository.dont_leave_lock_in_place()
+            old_lock_count = 0
+            while True:
+                try:
+                    old_repository.unlock()
+                except errors.LockNotHeld:
+                    break
+                old_lock_count += 1
+            if old_lock_count == 0:
+                raise AssertionError(
+                    'old_repository should have been locked at least once.')
+            for i in range(old_lock_count - 1):
+                self.repository.lock_write()
+            # Fetch from the old repository into the new.
+            with old_repository.lock_read():
+                # XXX: If you unstack a branch while it has a working tree
+                # with a pending merge, the pending-merged revisions will no
+                # longer be present.  You can (probably) revert and remerge.
+                try:
+                    tags_to_fetch = set(self.tags.get_reverse_tag_dict())
+                except errors.TagsNotSupported:
+                    tags_to_fetch = set()
+                fetch_spec = vf_search.NotInOtherForRevs(
+                    self.repository, old_repository,
+                    required_ids=[self.last_revision()],
+                    if_present_ids=tags_to_fetch, find_ghosts=True).execute()
+                self.repository.fetch(old_repository, fetch_spec=fetch_spec)
+
+    def break_lock(self) -> None:
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self.control_files.break_lock()
+        self.repository.break_lock()
+        master = self.get_master_branch()
+        if master is not None:
+            master.break_lock()
 
 
 class BzrBranch8(BzrBranch):
@@ -1053,7 +1186,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
                                      (format, self))
         if location is None:
             location = self.get_reference(a_controldir, name)
-        real_bzrdir = controldir.ControlDir.open(
+        real_bzrdir = ControlDir.open(
             location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch(
             ignore_fallbacks=ignore_fallbacks,
