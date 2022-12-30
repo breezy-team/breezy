@@ -49,7 +49,7 @@ TagConflict = Tuple[str, bytes, bytes]
 
 def _reconcile_tags(
         source_dict: Dict[str, bytes], dest_dict: Dict[str, bytes],
-        overwrite: bool, selector: TagSelector) -> Tuple[
+        overwrite: bool, selector: Optional[TagSelector]) -> Tuple[
             Dict[str, RevisionID], TagUpdates,
             List[TagConflict]]:
     """Do a two-way merge of two tag dictionaries.
@@ -100,7 +100,7 @@ class Tags(object):
 
     def merge_to(self, to_tags: "Tags", overwrite: bool = False,
                  ignore_master: bool = False,
-                 selector: Optional[TagSelector] = None) -> None:
+                 selector: Optional[TagSelector] = None) -> Tuple[TagUpdates, Set[TagConflict]]:
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -121,7 +121,7 @@ class Tags(object):
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
-        intertags = InterTags.get(self, to_tags)
+        intertags: InterTags = InterTags.get(self, to_tags)
         return intertags.merge(
             overwrite=overwrite, ignore_master=ignore_master,
             selector=selector)
@@ -237,15 +237,15 @@ class InterTags(InterObject[Tags]):
         """
         with contextlib.ExitStack() as stack:
             if self.source.branch == self.target.branch:
-                return {}, []
+                return {}, set()
             if not self.source.branch.supports_tags():
                 # obviously nothing to copy
-                return {}, []
+                return {}, set()
             source_dict = self.source.get_tag_dict()
             if not source_dict:
                 # no tags in the source, and we don't want to clobber anything
                 # that's in the destination
-                return {}, []
+                return {}, set()
             # We merge_to both master and child individually.
             #
             # It's possible for master and child to have differing sets of
@@ -272,9 +272,9 @@ class InterTags(InterObject[Tags]):
                     master.tags, source_dict, overwrite, selector=selector)
                 updates.update(extra_updates)
                 conflicts += extra_conflicts
-            # We use set() to remove any duplicate conflicts from the master
-            # branch.
-            return updates, set(conflicts)
+        # We use set() to remove any duplicate conflicts from the master
+        # branch.
+        return updates, set(conflicts)
 
     @classmethod
     def _merge_to(cls, to_tags, source_dict, overwrite, selector):
