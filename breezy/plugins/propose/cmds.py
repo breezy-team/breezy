@@ -150,6 +150,7 @@ class cmd_propose_merge(Command):
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
         Option('wip', help='Mark merge request as work-in-progress'),
+        Option('auto', help='Automatically merge when the CI passes'),
         Option(
             'commit-message',
             help='Set commit message for merge, if supported', type=str),
@@ -162,6 +163,7 @@ class cmd_propose_merge(Command):
         Option('allow-empty',
                help='Do not prevent empty merge proposals.'),
         Option('overwrite', help="Overwrite existing commits."),
+        Option('open', help='Open merge proposal in web browser'),
         ]
     takes_args = ['submit_branch?']
 
@@ -170,7 +172,8 @@ class cmd_propose_merge(Command):
     def run(self, submit_branch=None, directory='.', forge=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
-            allow_collaboration=False, allow_empty=False, overwrite=False):
+            allow_collaboration=False, allow_empty=False, overwrite=False,
+            open=False, auto=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -194,7 +197,8 @@ class cmd_propose_merge(Command):
             overwrite=overwrite)
         branch.set_push_location(remote_branch.user_url)
         branch.set_submit_branch(target.user_url)
-        note(gettext('Published branch to %s') % public_branch_url)
+        note(gettext('Published branch to %s'),
+             forge.get_web_url(remote_branch) or public_branch_url)
         if prerequisite is not None:
             prerequisite_branch = _mod_branch.Branch.open(prerequisite)
         else:
@@ -217,6 +221,13 @@ class cmd_propose_merge(Command):
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:
             note(gettext('Merge proposal created: %s') % proposal.url)
+            if open:
+                web_url = proposal.get_web_url()
+                import webbrowser
+                note(gettext('Opening %s in web browser'), web_url)
+                webbrowser.open(web_url)
+            if auto:
+                proposal.merge(auto=True)
 
 
 class cmd_find_merge_proposal(Command):
@@ -313,6 +324,59 @@ class cmd_land_merge_proposal(Command):
     def run(self, url, message=None):
         proposal = _mod_forge.get_proposal_by_url(url)
         proposal.merge(commit_message=message)
+
+
+class cmd_web_open(Command):
+    __doc__ = """Open a branch page in your web browser."""
+
+    takes_options = [
+        Option('dry-run',
+               'Do not actually open the browser. Just say the URL we would '
+               'use.'),
+        ]
+    takes_args = ['location?']
+
+    def _possible_locations(self, location):
+        """Yield possible external locations for the branch at 'location'."""
+        yield location
+        try:
+            branch = _mod_branch.Branch.open_containing(location)[0]
+        except errors.NotBranchError:
+            return
+        branch_url = branch.get_public_branch()
+        if branch_url is not None:
+            yield branch_url
+        branch_url = branch.get_push_location()
+        if branch_url is not None:
+            yield branch_url
+
+    def _get_web_url(self, location):
+        for branch_url in self._possible_locations(location):
+            try:
+                branch = _mod_branch.Branch.open_containing(branch_url)[0]
+            except errors.NotBranchError as e:
+                mutter('Unable to open branch %s: %s',
+                       branch_url, e)
+                continue
+
+            try:
+                forge = _mod_forge.get_forge(branch)
+            except _mod_forge.UnsupportedForge:
+                continue
+
+            return forge.get_web_url(branch)
+        raise errors.CommandError(
+            'Unable to get web URL for %s' % location)
+
+    def run(self, location=None, dry_run=False):
+        if location is None:
+            location = u'.'
+        web_url = self._get_web_url(location)
+        note(gettext('Opening %s in web browser') % web_url)
+        if not dry_run:
+            import webbrowser
+            # otherwise brz.exe lacks this module
+            webbrowser.open(web_url)
 
 
 class cmd_forges(Command):

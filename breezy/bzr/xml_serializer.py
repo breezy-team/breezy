@@ -23,24 +23,12 @@
 # ElementTree bits
 
 import re
+from typing import Dict, Union
 
-try:
-    import xml.etree.cElementTree as elementtree
-    from xml.etree.ElementTree import ParseError
-except ImportError:
-    # Fall back to pure python implementation if C extension is unavailable
-    import xml.etree.ElementTree as elementtree
-    try:
-        from xml.etree.ElementTree import ParseError
-    except ImportError:
-        from xml.parsers.expat import ExpatError as ParseError
-
-(ElementTree, SubElement, Element, fromstringlist, tostringlist, tostring,
- fromstring) = (
-    elementtree.ElementTree, elementtree.SubElement, elementtree.Element,
-    elementtree.fromstringlist, elementtree.tostringlist, elementtree.tostring,
-    elementtree.fromstring)
-
+from xml.etree.ElementTree import (
+    ElementTree, SubElement, Element,
+    fromstringlist, tostringlist, tostring,
+    fromstring, ParseError)
 
 from .. import (
     errors,
@@ -193,7 +181,7 @@ def _utf8_escape_replace(match, _map=_xml_escape_map):
                         for uni_chr in match.group().decode('utf8'))
 
 
-_to_escaped_map = {}
+_to_escaped_map: Dict[Union[bytes, str], str] = {}
 
 
 def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):

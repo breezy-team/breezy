@@ -107,7 +107,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """Returns the directory containing the control directory."""
         return self._base
 
-    base = property(_get_base, doc="The URL for the root of this branch.")
+    base = property(_get_base, doc="The URL for the root of this branch.")  # type: ignore
 
     @property
     def user_transport(self):
@@ -240,7 +240,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(
                 revision_id=revision_id, branch=self)
-        revision_id = _mod_revision.ensure_null(revision_id)
         with self.lock_write():
             old_revno, old_revid = self.last_revision_info()
             if self.get_append_revisions_only():
@@ -339,9 +338,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
         try:
             return Branch.open(bound_loc,
                                possible_transports=possible_transports)
-        except (errors.NotBranchError, errors.ConnectionError) as e:
+        except (errors.NotBranchError, errors.ConnectionError) as exc:
             raise errors.BoundBranchConnectionFailure(
-                self, bound_loc, e)
+                self, bound_loc, exc) from exc
 
     def set_bound_location(self, location):
         """Set the target where this branch is bound to.
@@ -370,11 +369,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
         with self.lock_write():
             master = self.get_master_branch(possible_transports)
             if master is not None:
-                old_tip = _mod_revision.ensure_null(self.last_revision())
+                old_tip = self.last_revision()
                 self.pull(master, overwrite=True)
                 if self.repository.get_graph().is_ancestor(
-                        old_tip, _mod_revision.ensure_null(
-                            self.last_revision())):
+                        old_tip, self.last_revision()):
                     return None
                 return old_tip
             return None
@@ -393,7 +391,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
         Does not update the revision_history cache.
         """
-        revision_id = _mod_revision.ensure_null(revision_id)
         out_string = b'%d %s\n' % (revno, revision_id)
         self._transport.put_bytes('last-revision', out_string,
                                   mode=self.controldir._get_file_mode())
@@ -513,13 +510,12 @@ class BzrBranch8(BzrBranch):
         self._reference_info = None
 
     def _check_history_violation(self, revision_id):
-        current_revid = self.last_revision()
-        last_revision = _mod_revision.ensure_null(current_revid)
+        last_revision = self.last_revision()
         if _mod_revision.is_null(last_revision):
             return
         graph = self.repository.get_graph()
         for lh_ancestor in graph.iter_lefthand_ancestry(revision_id):
-            if lh_ancestor == current_revid:
+            if lh_ancestor == last_revision:
                 return
         raise errors.AppendRevisionsOnlyViolation(self.user_url)
 
@@ -682,9 +678,9 @@ class BzrBranch8(BzrBranch):
             except ValueError:
                 try:
                     self._extend_partial_history(stop_revision=revision_id)
-                except errors.RevisionNotPresent as e:
+                except errors.RevisionNotPresent as exc:
                     raise errors.GhostRevisionsHaveNoRevno(
-                        revision_id, e.revision_id)
+                        revision_id, exc.revision_id) from exc
                 index = len(self._partial_revision_history_cache) - 1
                 if index < 0:
                     raise errors.NoSuchRevision(self, revision_id)
@@ -728,13 +724,13 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
         """Return the format for the branch object in controldir."""
         try:
             transport = controldir.get_branch_transport(None, name=name)
-        except _mod_transport.NoSuchFile:
-            raise errors.NotBranchError(path=name, controldir=controldir)
+        except _mod_transport.NoSuchFile as exc:
+            raise errors.NotBranchError(path=name, controldir=controldir) from exc
         try:
             format_string = transport.get_bytes("format")
-        except _mod_transport.NoSuchFile:
+        except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=controldir)
+                path=transport.base, controldir=controldir) from exc
         return klass._find_format(format_registry, 'branch', format_string)
 
     def _branch_class(self):
@@ -802,9 +798,9 @@ class BranchFormatMetadir(bzrdir.BzrFormat, BranchFormat):
                 a_controldir=a_controldir, _repository=found_repository,
                 ignore_fallbacks=ignore_fallbacks,
                 possible_transports=possible_transports)
-        except _mod_transport.NoSuchFile:
+        except _mod_transport.NoSuchFile as exc:
             raise errors.NotBranchError(
-                path=transport.base, controldir=a_controldir)
+                path=transport.base, controldir=a_controldir) from exc
 
     @property
     def _matchingcontroldir(self):

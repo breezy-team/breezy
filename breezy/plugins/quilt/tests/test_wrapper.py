@@ -30,9 +30,8 @@ from ..wrapper import (
     )
 
 from ....tests import TestCaseWithTransport
-from ....tests.features import ExecutableFeature
 
-quilt_feature = ExecutableFeature('quilt')
+from . import quilt_feature
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 +++ base/a	2012-01-02 20:03:59.710666215 +0100

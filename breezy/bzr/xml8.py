@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from io import BytesIO
+from typing import List, Optional
 
 from .. import (
     lazy_regex,
@@ -69,16 +69,16 @@ class Serializer_v8(XMLSerializer):
     Its revision format number matches its inventory number.
     """
 
-    __slots__ = []
+    __slots__: List[str] = []
 
-    root_id = None
+    root_id: Optional[bytes] = None
     support_altered_by_hack = True
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
     supported_kinds = {'file', 'directory', 'symlink'}
     format_num = b'8'
-    revision_format_num = None
+    revision_format_num: Optional[bytes] = None
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.

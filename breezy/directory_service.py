@@ -20,14 +20,16 @@ Directory services are utilities that provide a mapping from URL-like strings
 to true URLs.  Examples include lp:urls and per-user location aliases.
 """
 
+from typing import Callable, Optional
+
 from . import (
+    branch as _mod_branch,
     errors,
     registry,
     )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    branch as _mod_branch,
     controldir as _mod_controldir,
     urlutils,
     )
@@ -114,7 +116,7 @@ class AliasDirectory(Directory):
     supported.  On error, a subclass of DirectoryLookupFailure will be raised.
     """
 
-    branch_aliases = registry.Registry()
+    branch_aliases = registry.Registry[str, Callable[[_mod_branch.Branch], Optional[str]]]()
     branch_aliases.register('parent', lambda b: b.get_parent(),
                             help="The parent of this branch.")
     branch_aliases.register('submit', lambda b: b.get_submit_branch(),

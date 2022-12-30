@@ -51,6 +51,7 @@ import tempfile
 import threading
 import time
 import traceback
+from typing import Set, Callable
 import unittest
 import warnings
 
@@ -176,6 +177,7 @@ isolated_environ = {
     'all_proxy': None,
     'ALL_PROXY': None,
     'BZR_REMOTE_PATH': None,
+    'BRZ_SSH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
@@ -835,7 +837,7 @@ def iter_suite_tests(suite):
                         % (type(suite), suite))
 
 
-TestSkipped = testtools.testcase.TestSkipped
+from testtools.testcase import TestSkipped
 
 
 class TestNotApplicable(TestSkipped):
@@ -860,7 +862,7 @@ def _clever_some_str(value):
             return '<unprintable %s object>' % type(value).__name__
 
 
-traceback._some_str = _clever_some_str
+traceback._some_str = _clever_some_str  # type: ignore
 
 
 # deprecated - use self.knownFailure(), or self.expectFailure.
@@ -950,7 +952,7 @@ class TestCase(testtools.TestCase):
         # set by the user running selftest).
         timeout = config.GlobalStack().get('selftest.timeout')
         if timeout:
-            timeout_fixture = fixtures.TimeoutFixture(timeout)
+            timeout_fixture = fixtures.TimeoutFixture(timeout, gentle=True)
             timeout_fixture.setUp()
             self.addCleanup(timeout_fixture.cleanUp)
 
@@ -2432,7 +2434,7 @@ class CapturedCall(object):
         # client frames. Beyond this we could get more clever, but this is good
         # enough for now.
         stack = traceback.extract_stack()[prefix_length:-5]
-        self.stack = ''.join(traceback.format_list(stack))
+        self._stack = ''.join(traceback.format_list(stack))
 
     def __str__(self):
         return self.call.method.decode('utf-8')
@@ -2441,7 +2443,7 @@ class CapturedCall(object):
         return self.call.method.decode('utf-8')
 
     def stack(self):
-        return self.stack
+        return self._stack
 
 
 class TestCaseWithMemoryTransport(TestCase):
@@ -2693,8 +2695,8 @@ class TestCaseWithMemoryTransport(TestCase):
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-            root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
-                                                    suffix='.tmp'))
+            root = osutils.realpath(tempfile.mkdtemp(prefix='testbzr-',
+                                                     suffix='.tmp'))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
@@ -3370,7 +3372,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 
 # A registry where get() returns a suite decorator.
-parallel_registry = registry.Registry()
+parallel_registry = registry.Registry[str, Callable]()
 
 
 def fork_decorator(suite):
@@ -3457,7 +3459,7 @@ class TestDecorator(TestUtil.TestSuite):
             self.addTest(suite)
 
     # Don't need subclass run method with suite emptying
-    run = unittest.TestSuite.run
+    run = unittest.TestSuite.run  # type: ignore
 
 
 class CountingDecorator(TestDecorator):
@@ -3726,7 +3728,7 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #   -Euncollected_cases     Display the identity of any test cases that weren't
 #                           deallocated after being completed.
 #   -Econfig_stats          Will collect statistics using addDetail
-selftest_debug_flags = set()
+selftest_debug_flags: Set[str] = set()
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
@@ -4162,7 +4164,6 @@ def _test_suite_modules_to_doctest():
         'breezy.tests',
         'breezy.tests.fixtures',
         'breezy.timestamp',
-        'breezy.transport.http.urllib',
         'breezy.version_info_formats.format_custom',
         ]
 

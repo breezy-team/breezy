@@ -192,7 +192,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           (self.fc_key, b'content\n'),
                           ], self.ann.annotate_flat(self.fd_key))
 
-    def test_annotate_common_merge_text(self):
+    def test_annotate_common_merge_text_more(self):
         self.make_common_merge_text()
         # there is no common point, so we just pick the lexicographical lowest
         # and b'b-id' comes before b'c-id'
@@ -200,7 +200,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           (self.fb_key, b'new content\n'),
                           ], self.ann.annotate_flat(self.fd_key))
 
-    def test_annotate_many_way_common_merge_text(self):
+    def test_annotate_many_way_common_merge_text_more(self):
         self.make_many_way_common_merge_text()
         self.assertEqual([(self.fa_key, b'simple\n'),
                           (self.fb_key, b'new content\n')],

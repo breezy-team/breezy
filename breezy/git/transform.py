@@ -15,12 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
 import os
 import posixpath
 from stat import S_IEXEC, S_ISREG
+import tempfile
 import time
 
 from .mapping import encode_git_path, mode_kind, mode_is_executable, object_mode
@@ -1528,7 +1527,7 @@ class GitTransformPreview(GitTreeTransform):
 
     def __init__(self, tree, pb=None, case_sensitive=True):
         tree.lock_read()
-        limbodir = osutils.mkdtemp(prefix='git-limbo-')
+        limbodir = tempfile.mkdtemp(prefix='git-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
 
     def canonical_path(self, path):

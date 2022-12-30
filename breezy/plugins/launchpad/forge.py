@@ -28,6 +28,8 @@ from ...forge import (
     MergeProposalBuilder,
     MergeProposalExists,
     UnsupportedForge,
+    TitleUnsupported,
+    AutoMergeUnsupported,
     )
 
 from ... import (
@@ -45,9 +47,23 @@ from breezy.plugins.launchpad import (
     uris as lp_uris,
     )
 
-from launchpadlib import uris
 """)
 from ...transport import get_transport
+
+
+DEFAULT_PREFERRED_SCHEMES = ['ssh', 'http']
+
+BZR_SCHEME_MAP = {
+    'ssh': 'bzr+ssh://bazaar.launchpad.net/',
+    'http': 'https://bazaar.launchpad.net/',
+    'https': 'https://bazaar.launchpad.net/',
+}
+
+GIT_SCHEME_MAP = {
+    'ssh': 'git+ssh://git.launchpad.net/',
+    'http': 'https://git.launchpad.net/',
+    'https': 'https://git.launchpad.net/',
+}
 
 
 # TODO(jelmer): Make selection of launchpad staging a configuration option.
@@ -106,10 +122,16 @@ def _call_webservice(call, *args, **kwargs):
 
 class LaunchpadMergeProposal(MergeProposal):
 
+    supports_auto_merge = False
+
     def __init__(self, mp):
         self._mp = mp
 
-    def get_source_branch_url(self):
+    def get_web_url(self):
+        return self._mp.web_link
+
+    def get_source_branch_url(self, *, preferred_schemes=None):
+        # TODO(jelmer): Honor preferred_schemes
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity
         else:
@@ -134,7 +156,8 @@ class LaunchpadMergeProposal(MergeProposal):
             return default_mapping.revision_id_foreign_to_bzr(
                 sha.encode('ascii'))
 
-    def get_target_branch_url(self):
+    def get_target_branch_url(self, *, preferred_schemes=None):
+        # TODO(jelmer): Honor preferred_schemes
         if self._mp.target_branch:
             return self._mp.target_branch.bzr_identity
         else:
@@ -148,7 +171,7 @@ class LaunchpadMergeProposal(MergeProposal):
 
     @property
     def url(self):
-        return lp_api.canonical_url(self._mp)
+        return lp_uris.canonical_url(self._mp)
 
     def is_merged(self):
         return (self._mp.queue_status == 'Merged')
@@ -168,6 +191,12 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def get_commit_message(self):
         return self._mp.commit_message
+
+    def get_title(self):
+        raise TitleUnsupported(self)
+
+    def set_title(self):
+        raise TitleUnsupported(self)
 
     def set_commit_message(self, commit_message):
         self._mp.commit_message = commit_message
@@ -191,7 +220,9 @@ class LaunchpadMergeProposal(MergeProposal):
     def get_merged_at(self):
         return self._mp.date_merged
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
+        if auto:
+            raise AutoMergeUnsupported(self)
         target_branch = _mod_branch.Branch.open(
             self.get_target_branch_url())
         source_branch = _mod_branch.Branch.open(
@@ -215,10 +246,10 @@ class LaunchpadMergeProposal(MergeProposal):
 class Launchpad(Forge):
     """The Launchpad hosting service."""
 
-    name = 'launchpad'
-
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
+
+    supports_merge_proposal_title = False
 
     supports_merge_proposal_commit_message = True
 
@@ -232,7 +263,7 @@ class Launchpad(Forge):
 
     @property
     def name(self):
-        if self._api_base_url == uris.LPNET_SERVICE_ROOT:
+        if self._api_base_url == lp_uris.LPNET_SERVICE_ROOT:
             return 'Launchpad'
         return 'Launchpad at %s' % self.base_url
 
@@ -244,7 +275,7 @@ class Launchpad(Forge):
 
     @property
     def base_url(self):
-        return lp_api.uris.web_root_for_service_root(self._api_base_url)
+        return lp_uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
         return "Launchpad(service_root=%s)" % self._api_base_url
@@ -260,9 +291,15 @@ class Launchpad(Forge):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        if re.match(hostname, '(bazaar|git).*\.launchpad\.net'):
+            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
+        raise UnsupportedForge(hostname)
+
+    @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
-            return Launchpad(uris.LPNET_SERVICE_ROOT)
+            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
@@ -302,7 +339,7 @@ class Launchpad(Forge):
         if tag_selector is None:
             tag_selector = lambda t: False
         to_path = self._get_derived_git_path(base_path, owner, project)
-        to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
+        to_transport = get_transport(GIT_SCHEME_MAP['ssh'] + to_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -348,7 +385,7 @@ class Launchpad(Forge):
             return branch_lp.bzr_identity
         elif vcs == 'git':
             return urlutils.join_segment_parameters(
-                "git+ssh://git.launchpad.net/" + path, params)
+                GIT_SCHEME_MAP['ssh'] + path, params)
         else:
             raise AssertionError
 
@@ -356,7 +393,7 @@ class Launchpad(Forge):
                      project=None, revision_id=None, overwrite=False,
                      allow_lossy=True, tag_selector=None):
         to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
-        to_transport = get_transport("lp:" + to_path)
+        to_transport = get_transport(BZR_SCHEME_MAP['ssh'] + to_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -415,7 +452,8 @@ class Launchpad(Forge):
             raise AssertionError('not a valid Launchpad URL')
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None, preferred_schemes=None):
-        # TODO(jelmer): honor preferred_schemes
+        if preferred_schemes is None:
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         if owner is None:
             owner = self.launchpad.me.name
         (base_vcs, base_user, base_password, base_path,
@@ -423,14 +461,25 @@ class Launchpad(Forge):
         if base_vcs == 'bzr':
             to_path = self._get_derived_bzr_path(
                 base_branch, name, owner, project)
-            return _mod_branch.Branch.open("lp:" + to_path)
+            for scheme in preferred_schemes:
+                try:
+                    prefix = BZR_SCHEME_MAP[scheme]
+                except KeyError:
+                    continue
+                return _mod_branch.Branch.open(prefix + to_path)
+            raise AssertionError('no supported schemes: %r' % preferred_schemes)
         elif base_vcs == 'git':
             to_path = self._get_derived_git_path(
                 base_path.strip('/'), owner, project)
-            to_url = urlutils.join_segment_parameters(
-                "git+ssh://git.launchpad.net/" + to_path,
-                {'branch': name})
-            return _mod_branch.Branch.open(to_url)
+            for scheme in preferred_schemes:
+                try:
+                    prefix = GIT_SCHEME_MAP[scheme]
+                except KeyError:
+                    continue
+                to_url = urlutils.join_segment_parameters(
+                    prefix + to_path, {'branch': name})
+                return _mod_branch.Branch.open(to_url)
+            raise AssertionError('no supported schemes: %r' % preferred_schemes)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -476,8 +525,8 @@ class Launchpad(Forge):
 
     @classmethod
     def iter_instances(cls):
-        credential_store = lp_api.BreezyCredentialStore()
-        for service_root in set(uris.service_roots.values()):
+        credential_store = lp_api.get_credential_store()
+        for service_root in set(lp_uris.service_roots.values()):
             auth_engine = lp_api.get_auth_engine(service_root)
             creds = credential_store.load(auth_engine.unique_consumer_id)
             if creds is not None:
@@ -502,6 +551,17 @@ class Launchpad(Forge):
         else:
             return self.launchpad.people[person]
 
+    def get_web_url(self, branch):
+        (vcs, user, password, path, params) = self._split_url(branch.user_url)
+        if vcs == 'bzr':
+            branch_lp = self._get_lp_bzr_branch_from_branch(branch)
+            return branch_lp.web_link
+        elif vcs == 'git':
+            (repo_lp, ref_lp) = self._get_lp_git_ref_from_branch(branch)
+            return ref_lp.web_link
+        else:
+            raise AssertionError
+
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.
         (scheme, user, password, host, port, path) = urlutils.parse_url(
@@ -518,6 +578,10 @@ class Launchpad(Forge):
         api_url = str(self.launchpad._root_uri) + path
         mp = self.launchpad.load(api_url)
         return LaunchpadMergeProposal(mp)
+
+    def create_project(self, path):
+        self.launchpad.projects.new_project(
+            display_name=path, name=path, summary=path, title=path)
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
@@ -591,7 +655,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
-                raise MergeProposalExists(lp_api.canonical_url(mp))
+                raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
@@ -603,12 +667,15 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             _call_webservice(mp.setStatus, status=u'Approved',
                              revid=self.source_branch.last_revision())
 
-    def create_proposal(self, description, reviewers=None, labels=None,
+    def create_proposal(self, description, title=None,
+                        reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
+        if title:
+            raise TitleUnsupported(self)
         if prerequisite_branch is not None:
             prereq = self.launchpad.branches.getByUrl(
                 url=prerequisite_branch.user_url)
@@ -720,7 +787,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
-                raise MergeProposalExists(lp_api.canonical_url(mp))
+                raise MergeProposalExists(lp_uris.canonical_url(mp))
 
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():

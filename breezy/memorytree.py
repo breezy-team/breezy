@@ -89,8 +89,7 @@ class MemoryTree(MutableInventoryTree):
     @staticmethod
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
-        revision_id = _mod_revision.ensure_null(branch.last_revision())
-        return MemoryTree(branch, revision_id)
+        return MemoryTree(branch, branch.last_revision())
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds.

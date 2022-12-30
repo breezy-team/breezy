@@ -31,7 +31,9 @@ from ...revisionspec import (
     )
 
 
-class SubversionUnsupportedError(errors.UnsupportedFormatError):
+class SubversionUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "svn"
 
     _fmt = ('Subversion branches are not yet supported. '
             'To interoperate with Subversion branches, use fastimport.')
@@ -47,7 +49,7 @@ class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
         return "Subversion working directory"
 
     def initialize_on_transport(self, transport):
-        raise errors.UninitializableFormat(self)
+        raise errors.UninitializableFormat(format=self)
 
     def is_supported(self):
         return False
@@ -57,7 +59,7 @@ class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise SubversionUnsupportedError()
+        raise SubversionUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there

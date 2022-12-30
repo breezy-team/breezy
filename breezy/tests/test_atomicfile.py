@@ -101,9 +101,6 @@ class TestAtomicFile(TestCaseInTempDir):
     def test_mode_0660(self):
         self._test_mode(0o660)
 
-    def test_mode_0660(self):
-        self._test_mode(0o660)
-
     def test_mode_0640(self):
         self._test_mode(0o640)
 

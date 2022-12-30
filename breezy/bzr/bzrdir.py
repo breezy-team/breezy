@@ -25,16 +25,15 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
+import contextlib
 import sys
+from typing import Set, TYPE_CHECKING, cast
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import contextlib
-
 from breezy import (
     branch as _mod_branch,
     lockable_files,
-    lockdir,
     osutils,
     repository,
     revision as _mod_revision,
@@ -45,13 +44,13 @@ from breezy import (
 from breezy.bzr import (
     branch as _mod_bzrbranch,
     fetch,
+    fullhistory as fullhistorybranch,
+    knitpack_repo,
     remote,
     vf_search,
     workingtree_3,
     workingtree_4,
     )
-from breezy.bzr import fullhistory as fullhistorybranch
-from breezy.bzr import knitpack_repo
 from breezy.i18n import gettext
 """)
 
@@ -65,12 +64,16 @@ from .. import (
     config,
     controldir,
     errors,
+    lockdir,
     transport as _mod_transport,
     )
 from ..transport import (
     do_catching_redirections,
     local,
     )
+
+if TYPE_CHECKING:
+    from .branch import BzrBranch
 
 
 class MissingFeature(errors.BzrError):
@@ -769,7 +772,7 @@ class BzrDir(controldir.ControlDir):
         raise NotImplementedError(self.get_workingtree_transport)
 
     @classmethod
-    def create(cls, base, format=None, possible_transports=None):
+    def create(cls, base, format=None, possible_transports=None) -> "BzrDir":
         """Create a new BzrDir at the url 'base'.
 
         :param format: If supplied, the format of branch to create.  If not
@@ -782,8 +785,8 @@ class BzrDir(controldir.ControlDir):
                                  "default format, not one of %r" % cls)
         if format is None:
             format = BzrDirFormat.get_default_format()
-        return controldir.ControlDir.create(
-            base, format=format, possible_transports=possible_transports)
+        return cast("BzrDir", controldir.ControlDir.create(
+            base, format=format, possible_transports=possible_transports))
 
     def __repr__(self):
         return "<%s at %r>" % (self.__class__.__name__, self.user_url)
@@ -1144,7 +1147,7 @@ class BzrFormat(object):
     :ivar features: Dictionary mapping feature names to their necessity
     """
 
-    _present_features = set()
+    _present_features: Set[str] = set()
 
     def __init__(self):
         self.features = {}
@@ -1838,24 +1841,6 @@ class ConvertMetaToColo(controldir.Converter):
 
     def __init__(self, target_format):
         """Create a converter.that upgrades a metadir to the colo format.
-
-        :param target_format: The final metadir format that is desired.
-        """
-        self.target_format = target_format
-
-    def convert(self, to_convert, pb):
-        """See Converter.convert()."""
-        to_convert.transport.put_bytes('branch-format',
-                                       self.target_format.as_string())
-        return BzrDir.open_from_transport(to_convert.root_transport)
-
-
-class ConvertMetaToColo(controldir.Converter):
-    """Convert a 'development-colo' bzrdir to a '2a' bzrdir."""
-
-    def __init__(self, target_format):
-        """Create a converter that converts a 'development-colo' metadir
-        to a '2a' metadir.
 
         :param target_format: The final metadir format that is desired.
         """

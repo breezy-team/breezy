@@ -52,6 +52,7 @@ from io import BytesIO
 import itertools
 import re
 import sys
+from typing import Callable, List, Dict
 from warnings import (
     warn,
     )
@@ -65,7 +66,6 @@ from breezy import (
     diff,
     foreign,
     lazy_regex,
-    revision as _mod_revision,
     )
 from breezy.i18n import gettext, ngettext
 """)
@@ -73,6 +73,7 @@ from breezy.i18n import gettext, ngettext
 from . import (
     errors,
     registry,
+    revision as _mod_revision,
     revisionspec,
     trace,
     transport as _mod_transport,
@@ -1934,7 +1935,7 @@ def author_list_committer(rev):
     return [rev.committer]
 
 
-author_list_registry = registry.Registry()
+author_list_registry = registry.Registry[str, Callable[[_mod_revision.Revision], List[str]]]()
 
 author_list_registry.register('all', author_list_all,
                               'All authors')
@@ -2191,7 +2192,7 @@ def _get_kind_for_file(tree, path):
             return None
 
 
-properties_handler_registry = registry.Registry()
+properties_handler_registry = registry.Registry[str, Callable[[Dict[str, str]], Dict[str, str]]]()
 
 # Use the properties handlers to print out bug information if available
 

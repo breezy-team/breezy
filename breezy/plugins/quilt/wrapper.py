@@ -83,7 +83,10 @@ def run_quilt(
         stderr = subprocess.STDOUT
     else:
         stderr = subprocess.PIPE
-    command = ["quilt"] + args
+    quilt_path = osutils.find_executable_on_path("quilt")
+    if quilt_path is None:
+        raise QuiltNotInstalled()
+    command = [quilt_path] + args
     trace.mutter("running: %r", command)
     if not os.path.isdir(working_dir):
         raise AssertionError("%s is not a valid directory" % working_dir)
@@ -92,10 +95,8 @@ def run_quilt(
             command, cwd=working_dir, env=env,
             stdin=subprocess.PIPE, preexec_fn=subprocess_setup,
             stdout=subprocess.PIPE, stderr=stderr)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
-        raise QuiltNotInstalled()
+    except FileNotFoundError as e:
+        raise QuiltNotInstalled() from e
     (stdout, stderr) = proc.communicate()
     if proc.returncode not in (0, 2):
         if stdout is not None:

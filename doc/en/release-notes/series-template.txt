@@ -9,7 +9,7 @@ brz ?.?.?
 #########
 
 :Codename: Nirvana
-:2.x.y: NOT RELEASED YET
+:3.x.y: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -24,7 +24,7 @@ New Features
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance 
+.. Improvements to existing commands, especially improved performance
    or memory usage, or better results.
 
 Bug Fixes
@@ -47,14 +47,14 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
+.. Major internal changes, unlikely to be visible to users or plugin
    developers, but interesting for brz developers.
 
 Testing
 *******
 
-.. Fixes and changes that are only relevant to brz's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
+.. Fixes and changes that are only relevant to brz's test framework and
+   suite.  This can include new facilities for writing tests, fixes to
    spurious test failures and changes to the way things should be tested.
 
 

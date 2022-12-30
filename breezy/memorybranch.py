@@ -17,8 +17,6 @@
 """MemoryBranch object.
 """
 
-from __future__ import absolute_import
-
 from . import config as _mod_config, errors, osutils
 from .branch import Branch, BranchWriteLockResult
 from .lock import LogicalLockResult, _RelockDebugMixin

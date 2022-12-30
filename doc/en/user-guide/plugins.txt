@@ -84,8 +84,6 @@ Here is a sample of some of the more popular plugins.
   Category         Name              Description
   ================ ================= ==================================
   GUI              QBzr              Qt-based GUI tools
-  GUI              brz-gtk           GTK-based GUI tools
-  GUI              brz-eclipse       Eclipse integration
   General          brztools          misc. enhancements including shelf
   General          difftools         external diff tool helper
   General          extmerge          external merge tool helper
@@ -93,6 +91,9 @@ Here is a sample of some of the more popular plugins.
   Migration        cvsps             migrate CVS patch-sets
   ================ ================= ==================================
 
+Note that there are also a number of plugins for Bazaar that have
+not yet been ported to Python 3 and Breezy.
+
 If you wish to write your own plugins, it is not difficult to do.
 See `Writing a plugin <writing a plugin.html>`_ in the appendices to get
-started.
+started. See http://doc.bazaar.canonical.com/plugins/en/ for details.

@@ -26,7 +26,9 @@ from breezy import (
     )
 
 
-class DarcsUnsupportedError(errors.UnsupportedFormatError):
+class DarcsUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "darcs"
 
     _fmt = ('Darcs branches are not yet supported. '
             'To interoperate with darcs branches, use fastimport.')
@@ -53,10 +55,6 @@ class DarcsDirFormat(controldir.ControlDirFormat):
     @classmethod
     def _known_formats(self):
         return set([DarcsDirFormat()])
-
-    def open(self, transport, _found=False):
-        """Open this directory."""
-        raise DarcsUnsupportedError()
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):

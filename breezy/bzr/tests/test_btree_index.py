@@ -1273,26 +1273,6 @@ class TestBTreeNodes(BTreeTestCase):
             ], node.keys)
         self.assertEqual(1, node.offset)
 
-    def test_LeafNode_2_2(self):
-        node_bytes = (b"type=leaf\n"
-                      b"00\x0000\x00\t00\x00ref00\x00value:0\n"
-                      b"00\x0011\x0000\x00ref00\t00\x00ref00\r01\x00ref01\x00value:1\n"
-                      b"11\x0033\x0011\x00ref22\t11\x00ref22\r11\x00ref22\x00value:3\n"
-                      b"11\x0044\x00\t11\x00ref00\x00value:4\n"
-                      b""
-                      )
-        node = btree_index._LeafNode(node_bytes, 2, 2)
-        # We do direct access, or don't care about order, to leaf nodes most of
-        # the time, so a dict is useful:
-        self.assertEqual({
-            (b'00', b'00'): (b'value:0', ((), ((b'00', b'ref00'),))),
-            (b'00', b'11'): (b'value:1', (((b'00', b'ref00'),),
-                                          ((b'00', b'ref00'), (b'01', b'ref01')))),
-            (b'11', b'33'): (b'value:3', (((b'11', b'ref22'),),
-                                          ((b'11', b'ref22'), (b'11', b'ref22')))),
-            (b'11', b'44'): (b'value:4', ((), ((b'11', b'ref00'),)))
-            }, dict(node.all_items()))
-
     def assertFlattened(self, expected, key, value, refs):
         flat_key, flat_line = self.parse_btree._flatten_node(
             (None, key, value, refs), bool(refs))

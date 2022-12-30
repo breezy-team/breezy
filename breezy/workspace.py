@@ -20,8 +20,6 @@ If possible, uses inotify to track changes in the tree - providing
 high performance in large trees with a small number of changes.
 """
 
-from __future__ import absolute_import
-
 from contextlib import ExitStack
 import errno
 import os
@@ -52,7 +50,7 @@ def reset_tree(
     local_tree: WorkingTree,
     basis_tree: Optional[Tree] = None,
     subpath: str = "",
-    dirty_tracker: "DirtyTracker" = None,
+    dirty_tracker=None,
 ) -> None:
     """Reset a tree back to its basis tree.
 
@@ -180,6 +178,7 @@ class Workspace(object):
         self.subpath = subpath
         self.use_inotify = use_inotify
         self._dirty_tracker = None
+        self._es = ExitStack()
 
     @classmethod
     def from_path(cls, path, use_inotify=None):
@@ -188,15 +187,20 @@ class Workspace(object):
 
     def __enter__(self):
         check_clean_tree(self.tree)
+        self._es.__enter__()
         self._dirty_tracker = get_dirty_tracker(
             self.tree, subpath=self.subpath, use_inotify=self.use_inotify)
+        if self._dirty_tracker:
+            from .dirty_tracker import TooManyOpenFiles
+            try:
+                self._es.enter_context(self._dirty_tracker)
+            except TooManyOpenFiles:
+                warning('Too many files open; not using inotify')
+                self._dirty_tracker = None
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._dirty_tracker:
-            del self._dirty_tracker
-            self._dirty_tracker = None
-        return False
+        return self._es.__exit__(exc_type, exc_val, exc_tb)
 
     def tree_path(self, path=''):
         """Return a path relative to the tree subpath used by this workspace.
@@ -216,7 +220,8 @@ class Workspace(object):
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def _stage(self) -> List[str]:
+    def _stage(self) -> Optional[List[str]]:
+        changed: Optional[List[str]]
         if self._dirty_tracker:
             relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they

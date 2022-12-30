@@ -19,6 +19,7 @@
 
 import os
 import time
+from typing import Iterator, cast
 import warnings
 
 from .. import (
@@ -77,14 +78,16 @@ class ArchiveFormatRegistry(registry.Registry):
 
 
 def create_archive(format, tree, name, root=None, subdir=None,
-                   force_mtime=None, recurse_nested=False):
+                   force_mtime=None, recurse_nested=False) -> Iterator[bytes]:
     try:
         archive_fn = format_registry.get(format)
-    except KeyError:
-        raise errors.NoSuchExportFormat(format)
-    return archive_fn(tree, name, root=root, subdir=subdir,
-                      force_mtime=force_mtime,
-                      recurse_nested=recurse_nested)
+    except KeyError as exc:
+        raise errors.NoSuchExportFormat(format) from exc
+    return cast(Iterator[bytes],
+                archive_fn(
+                    tree, name, root=root, subdir=subdir,
+                    force_mtime=force_mtime,
+                    recurse_nested=recurse_nested))
 
 
 format_registry = ArchiveFormatRegistry()

@@ -19,14 +19,13 @@ import difflib
 import os
 import re
 import sys
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 import patiencediff
 import subprocess
-import tempfile
 
 from breezy import (
     controldir,
@@ -255,6 +254,7 @@ def default_style_unified(diff_opts):
 def external_diff(old_label, oldlines, new_label, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
+    import tempfile
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
@@ -775,9 +775,11 @@ class DiffFromTool(DiffPath):
     def __init__(self, command_template: Union[str, List[str]],
             old_tree: Tree, new_tree: Tree, to_file,
                  path_encoding='utf-8'):
+        import tempfile
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        self._root = osutils.mkdtemp(prefix='brz-diff-')
+        import tempfile
+        self._root = tempfile.mkdtemp(prefix='brz-diff-')
 
     @classmethod
     def from_string(klass,
@@ -1124,5 +1126,5 @@ class DiffTree(object):
             raise errors.NoDiffFound(error_path)
 
 
-format_registry = Registry()
+format_registry = Registry[str, Type[DiffTree]]()
 format_registry.register('default', DiffTree)

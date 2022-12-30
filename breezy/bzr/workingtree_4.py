@@ -38,13 +38,11 @@ from breezy import (
     debug,
     filters as _mod_filters,
     osutils,
-    revision as _mod_revision,
     revisiontree,
     trace,
     views,
     )
 from breezy.bzr import (
-    dirstate,
     generate_ids,
     transform as bzr_transform,
     )
@@ -52,8 +50,8 @@ from breezy.bzr import (
 
 from .. import (
     errors,
+    revision as _mod_revision,
     )
-from .inventory import Inventory, ROOT_ID, entry_factory
 from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
@@ -83,10 +81,12 @@ from ..tree import (
 from ..workingtree import (
     WorkingTree,
     )
+from .inventory import Inventory, ROOT_ID, entry_factory
 from .workingtree import (
     InventoryWorkingTree,
     WorkingTreeFormatMetaDir,
     )
+from . import dirstate
 
 
 class DirStateWorkingTree(InventoryWorkingTree):
@@ -453,7 +453,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
-                              "Root inventory of this tree")
+                              doc="Root inventory of this tree")
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -467,14 +467,17 @@ class DirStateWorkingTree(InventoryWorkingTree):
         # referenced tree's revision is whatever's currently there
         try:
             return self.get_nested_tree(path).last_revision()
-        except errors.NotBranchError:
+        except MissingNestedTree:
             entry = self._get_entry(path=path)
             if entry == (None, None):
-                return False
+                raise NoSuchFile(self, path)
             return entry[1][0][1]
 
     def get_nested_tree(self, path):
-        return WorkingTree.open(self.abspath(path))
+        try:
+            return WorkingTree.open(self.abspath(path))
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(path)
 
     def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
@@ -1793,12 +1796,15 @@ class DirStateRevisionTree(InventoryTree):
             return self._get_nested_tree(path, None, nested_revid)
 
     def _get_nested_tree(self, path, file_id, reference_revision):
-        branch = _mod_branch.Branch.open_from_transport(
-            self._nested_tree_transport.clone(path))
+        try:
+            branch = _mod_branch.Branch.open_from_transport(
+                self._nested_tree_transport.clone(path))
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(path) from e
         try:
             revtree = branch.repository.revision_tree(reference_revision)
-        except errors.NoSuchRevision:
-            raise MissingNestedTree(path)
+        except errors.NoSuchRevision as e:
+            raise MissingNestedTree(path) from e
         if file_id is not None and revtree.path2id('') != file_id:
             raise AssertionError('mismatching file id: %r != %r' % (
                 revtree.path2id(''), file_id))

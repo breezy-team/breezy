@@ -17,8 +17,6 @@
 
 """The basic test suite for bzr."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import time

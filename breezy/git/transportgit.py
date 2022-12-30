@@ -51,7 +51,10 @@ from dulwich.pack import (
     write_pack_header,
     compute_file_sha,
     write_pack_object,
-    )
+    _PackTupleIterable,
+    PackInflater,
+)
+from dulwich.refs import SymrefLoop
 from dulwich.repo import (
     BaseRepo,
     InfoRefsContainer,
@@ -275,7 +278,7 @@ class TransportRefsContainer(RefsContainer):
         try:
             realnames, _ = self.follow(name)
             realname = realnames[-1]
-        except (KeyError, IndexError):
+        except (KeyError, IndexError, SymrefLoop):
             realname = name
         if realname == b'HEAD':
             transport = self.worktree_transport
@@ -636,6 +639,8 @@ class TransportObjectStore(PackBasedObjectStore):
                         warning('Unable to read pack file %s',
                                 self.pack_transport.abspath(pack_name))
                         continue
+                    from tempfile import SpooledTemporaryFile
+                    f = SpooledTemporaryFile(f.read())
                     pd = PackData(pack_name, f)
                 else:
                     pd = PackData(
@@ -769,13 +774,13 @@ class TransportObjectStore(PackBasedObjectStore):
         tp = Pack('', resolve_ext_ref=self.get_raw)
         tp._data = PackData.from_file(f)
         tp._idx_load = lambda: MemoryPackIndex(
-            tp.data.sorted_entries(), tp.data.get_stored_checksum())
+            tp.data.sorted_entries(resolve_ext_ref=self.get_raw), tp.data.get_stored_checksum())
 
         pack_sha = tp.index.objects_sha1()
 
         with self.pack_transport.open_write_stream(
                 "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
-            entries, data_sum = write_pack_objects(datafile, tp.pack_tuples())
+            entries, data_sum = write_pack_objects(datafile.write, tp.pack_tuples())
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         with self.pack_transport.open_write_stream(
                 "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:

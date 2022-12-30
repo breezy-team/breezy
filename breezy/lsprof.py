@@ -4,15 +4,13 @@
 # instead of just the Stats object
 
 import codecs
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 import operator
 import os
 import sys
 import _thread
 import threading
+from typing import Dict
 from _lsprof import Profiler, profiler_entry
 
 from . import errors
@@ -291,7 +289,7 @@ class _CallTreeFilter(object):
         out_file.write('%d %d\n' % (lineno, totaltime))
 
 
-_fn2mod = {}
+_fn2mod: Dict[str, object] = {}
 
 
 def label(code, calltree=False):

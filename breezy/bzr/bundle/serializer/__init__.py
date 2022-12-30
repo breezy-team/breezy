@@ -39,9 +39,6 @@ CHANGESET_OLD_HEADER_RE = re.compile(
     br'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 
 
-serializer_registry = registry.Registry()
-
-
 def _get_bundle_header(version):
     return b''.join([BUNDLE_HEADER, version.encode('ascii'), b'\n'])
 
@@ -156,6 +153,8 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     base64.encode(temp, to_file)
     to_file.write(b'\n')
 
+
+serializer_registry = registry.Registry[str, BundleSerializer]()
 
 serializer_registry.register_lazy(
     '0.8', __name__ + '.v08', 'BundleSerializerV08')

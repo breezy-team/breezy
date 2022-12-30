@@ -21,6 +21,7 @@ from io import BytesIO
 import itertools
 import os
 import struct
+from typing import Tuple, Any
 from zlib import adler32
 
 
@@ -39,7 +40,6 @@ from breezy import (
     )
 from breezy.bzr import (
     groupcompress,
-    index,
     knit,
     )
 """)
@@ -50,8 +50,12 @@ from .. import (
 from ..registry import Registry
 from ..textmerge import TextMerge
 
+from . import (
+    index,
+    )
 
-adapter_registry = Registry()
+
+adapter_registry = Registry[Tuple[str, str], Any]()
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
                                'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
@@ -1702,11 +1706,11 @@ class PlanWeaveMerge(TextMerge):
                 return
             elif ch_a and not ch_b:
                 # one-sided change:
-                yield(lines_a,)
+                yield (lines_a,)
             elif ch_b and not ch_a:
                 yield (lines_b,)
             elif lines_a == lines_b:
-                yield(lines_a,)
+                yield (lines_a,)
             else:
                 yield (lines_a, lines_b)
 

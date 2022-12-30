@@ -17,6 +17,7 @@
 """Helper functions for proposing merges."""
 
 import re
+from typing import Optional, Type
 
 from . import (
     errors,
@@ -57,6 +58,16 @@ class UnsupportedForge(errors.BzrError):
 class ReopenFailed(errors.BzrError):
 
     _fmt = "Reopening the merge proposal failed: %(error)s."
+
+
+class TitleUnsupported(errors.BzrError):
+
+    _fmt = "The merge proposal %(mp)s does not support a title."
+
+
+class AutoMergeUnsupported(errors.BzrError):
+
+    _fmt = "The merge proposal %(mp)s does not support automerge."
 
 
 class ProposeMergeHooks(hooks.Hooks):
@@ -118,8 +129,13 @@ class MergeProposal(object):
     :ivar url: URL for the merge proposal
     """
 
+    supports_auto_merge: bool
+
     def __init__(self, url=None):
         self.url = url
+
+    def get_web_url(self):
+        raise NotImplementedError(self.get_web_url)
 
     def get_description(self):
         """Get the description of the merge proposal."""
@@ -129,6 +145,14 @@ class MergeProposal(object):
         """Set the description of the merge proposal."""
         raise NotImplementedError(self.set_description)
 
+    def get_title(self):
+        """Get the title."""
+        raise NotImplementedError(self.get_title)
+
+    def set_title(self, title):
+        """Get the title."""
+        raise NotImplementedError(self.set_title)
+
     def get_commit_message(self):
         """Get the proposed commit message."""
         raise NotImplementedError(self.get_commit_message)
@@ -137,7 +161,7 @@ class MergeProposal(object):
         """Set the propose commit message."""
         raise NotImplementedError(self.set_commit_message)
 
-    def get_source_branch_url(self):
+    def get_source_branch_url(self, *, preferred_schemes=None):
         """Return the source branch."""
         raise NotImplementedError(self.get_source_branch_url)
 
@@ -145,7 +169,7 @@ class MergeProposal(object):
         """Return the latest revision for the source branch."""
         raise NotImplementedError(self.get_source_revision)
 
-    def get_target_branch_url(self):
+    def get_target_branch_url(self, *, preferred_schemes=None):
         """Return the target branch."""
         raise NotImplementedError(self.get_target_branch_url)
 
@@ -174,7 +198,7 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.is_closed)
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
         """Merge this merge proposal."""
         raise NotImplementedError(self.merge)
 
@@ -204,7 +228,7 @@ class MergeProposal(object):
         raise NotImplementedError(self.post_comment)
 
     def reopen(self):
-        """Reopen the merge proposal if it is closed."""
+        """Reopen this merge proposal."""
         raise NotImplementedError(self.reopen)
 
 
@@ -233,22 +257,24 @@ class MergeProposalBuilder(object):
         """
         raise NotImplementedError(self.get_infotext)
 
-    def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None,
+    def create_proposal(self, description, title=None, reviewers=None,
+                        labels=None, prerequisite_branch=None,
+                        commit_message=None,
                         work_in_progress=False, allow_collaboration=False):
         """Create a proposal to merge a branch for merging.
 
-        :param description: Description for the merge proposal
-        :param reviewers: Optional list of people to ask reviews from
-        :param labels: Labels to attach to the proposal
-        :param prerequisite_branch: Optional prerequisite branch
-        :param commit_message: Optional commit message
-        :param work_in_progress:
+        Args:
+          description: Description for the merge proposal
+          reviewers: Optional list of people to ask reviews from
+          labels: Labels to attach to the proposal
+          prerequisite_branch: Optional prerequisite branch
+          commit_message: Optional commit message
+          work_in_progress:
             Whether this merge proposal is still a work-in-progress
-        :param allow_collaboration:
+          allow_collaboration:
             Whether to allow changes to the branch from the target branch
             maintainer(s)
-        :return: A `MergeProposal` object
+        Returns: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
 
@@ -259,7 +285,9 @@ class Forge(object):
 
     # Does this forge support arbitrary labels being attached to merge
     # proposals?
-    supports_merge_proposal_labels = None
+    supports_merge_proposal_labels: bool
+
+    supports_merge_proposal_title: bool
 
     @property
     def name(self):
@@ -268,18 +296,18 @@ class Forge(object):
 
     # Does this forge support suggesting a commit message in the
     # merge proposal?
-    supports_merge_proposal_commit_message = None
+    supports_merge_proposal_commit_message: bool
 
     # The base_url that would be visible to users. I.e. https://github.com/
     # rather than https://api.github.com/
-    base_url = None
+    base_url: str
 
     # The syntax to use for formatting merge proposal descriptions.
     # Common values: 'plain', 'markdown'
-    merge_proposal_description_format = None
+    merge_proposal_description_format: str
 
     # Does this forge support the allow_collaboration flag?
-    supports_allow_collaboration = False
+    supports_allow_collaboration: bool = False
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
@@ -302,6 +330,10 @@ class Forge(object):
     def get_push_url(self, branch):
         """Get the push URL for a branch."""
         raise NotImplementedError(self.get_push_url)
+
+    def get_web_url(self, branch):
+        """Get the web viewing URL for a branch."""
+        raise NotImplementedError(self.get_web_url)
 
     def get_proposer(self, source_branch, target_branch):
         """Get a merge proposal creator.
@@ -338,6 +370,12 @@ class Forge(object):
         raise NotImplementedError(self.hosts)
 
     @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        """Create a Forge object if this forge knows about a hostname.
+        """
+        raise NotImplementedError(cls.probe_from_hostname)
+
+    @classmethod
     def probe_from_branch(cls, branch):
         """Create a Forge object if this forge knows about a branch."""
         url = urlutils.strip_segment_parameters(branch.user_url)
@@ -345,9 +383,10 @@ class Forge(object):
             url, possible_transports=[branch.control_transport])
 
     @classmethod
-    def probe_from_url(cls, url, possible_forges=None):
+    def probe_from_url(cls, url, possible_transports=None):
         """Create a Forge object if this forge knows about a URL."""
-        raise NotImplementedError(cls.probe_from_url)
+        hostname = urlutils.URL.from_string(url).host
+        return cls.probe_from_hostname(hostname, possible_transports=possible_transports)
 
     def iter_my_proposals(self, status='open', author=None):
         """Iterate over the proposals created by the currently logged in user.
@@ -373,6 +412,11 @@ class Forge(object):
         """Delete a project.
         """
         raise NotImplementedError(self.delete_project)
+
+    def create_project(self, name):
+        """Create a project.
+        """
+        raise NotImplementedError(self.create_project)
 
     @classmethod
     def iter_instances(cls):
@@ -433,7 +477,18 @@ def get_forge(branch, possible_forges=None):
     raise UnsupportedForge(branch)
 
 
-def iter_forge_instances(forge=None):
+def get_forge_by_hostname(hostname: str):
+    """Get a forge from a hostname.
+    """
+    for instance in iter_forge_instances():
+        try:
+            return instance.probe_from_hostname(hostname)
+        except UnsupportedForge:
+            pass
+    raise UnsupportedForge(hostname)
+
+
+def iter_forge_instances(forge: Optional[Type[Forge]] = None):
     """Iterate over all known forge instances.
 
     :return: Iterator over Forge instances
@@ -462,4 +517,24 @@ def get_proposal_by_url(url):
     raise UnsupportedForge(url)
 
 
-forges = registry.Registry()
+def create_project(url: str) -> None:
+    """Create a project.
+
+    Args:
+      url: URL of project to create
+    """
+    parsed_url = urlutils.URL.from_string(url)
+    hostname = parsed_url.host
+    for name, forge_cls in forges.items():
+        try:
+            hoster = forge_cls.probe_from_url(url)
+        except UnsupportedForge:
+            pass
+        else:
+            hoster.create_project(parsed_url.path)
+            break
+    else:
+        raise UnsupportedForge(url)
+
+
+forges = registry.Registry[str, Type[Forge]]()

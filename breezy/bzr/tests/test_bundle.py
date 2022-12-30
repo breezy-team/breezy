@@ -18,6 +18,7 @@ import bz2
 from io import BytesIO
 import os
 import sys
+import tempfile
 
 from ... import (
     diff,
@@ -392,10 +393,10 @@ class BundleTester(object):
         return tests.TestCaseWithTransport.make_branch_and_tree(
             self, path, format)
 
-    def make_branch(self, path, format=None):
+    def make_branch(self, path, format=None, name=None):
         if format is None:
             format = self.bzrdir_format()
-        return tests.TestCaseWithTransport.make_branch(self, path, format)
+        return tests.TestCaseWithTransport.make_branch(self, path, format, name=name)
 
     def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = BytesIO()
@@ -479,7 +480,7 @@ class BundleTester(object):
         """
 
         if checkout_dir is None:
-            checkout_dir = osutils.mkdtemp(prefix='test-branch-', dir='.')
+            checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)

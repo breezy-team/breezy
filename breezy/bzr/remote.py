@@ -18,6 +18,7 @@ import bz2
 import os
 import re
 import sys
+from typing import Callable
 import zlib
 
 import fastbencode as bencode
@@ -1049,6 +1050,7 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     supports_full_versioned_files = True
     supports_leaving_lock = True
     supports_overriding_transport = False
+    supports_ghosts = False
 
     def __init__(self):
         _mod_repository.RepositoryFormat.__init__(self)
@@ -1203,9 +1205,9 @@ class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
             try:
                 self._custom_format = _mod_repository.network_format_registry.get(
                     self._network_name)
-            except KeyError:
-                raise errors.UnknownFormatError(kind='repository',
-                                                format=self._network_name)
+            except KeyError as e:
+                raise errors.UnknownFormatError(
+                    kind='repository', format=self._network_name) from e
 
     @property
     def _fetch_order(self):
@@ -1931,7 +1933,6 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
 
     def revision_tree(self, revision_id):
         with self.lock_read():
-            revision_id = _mod_revision.ensure_null(revision_id)
             if revision_id == _mod_revision.NULL_REVISION:
                 return InventoryRevisionTree(self,
                                              Inventory(root_id=None), _mod_revision.NULL_REVISION)
@@ -2633,19 +2634,13 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if tar_file is None:
             return None
         destination = to_bzrdir.create_repository()
-        try:
-            tar = tarfile.open('repository', fileobj=tar_file,
-                               mode='r|bz2')
-            tmpdir = osutils.mkdtemp()
-            try:
-                tar.extractall(tmpdir)
-                tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
-                tmp_repo = tmp_bzrdir.open_repository()
-                tmp_repo.copy_content_into(destination, revision_id)
-            finally:
-                osutils.rmtree(tmpdir)
-        finally:
-            tar_file.close()
+        with tarfile.open('repository', fileobj=tar_file,
+                          mode='r|bz2') as tar, \
+             osutils.TemporaryDirectory() as tmpdir:
+            tar.extractall(tmpdir)
+            tmp_bzrdir = _mod_bzrdir.BzrDir.open(tmpdir)
+            tmp_repo = tmp_bzrdir.open_repository()
+            tmp_repo.copy_content_into(destination, revision_id)
         return destination
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
@@ -4406,8 +4401,8 @@ class RemoteBzrDirConfig(RemoteConfig):
         return self._bzrdir._real_bzrdir
 
 
-error_translators = registry.Registry()
-no_context_error_translators = registry.Registry()
+error_translators = registry.Registry[bytes, Callable]()
+no_context_error_translators = registry.Registry[bytes, Callable]()
 
 
 def _translate_error(err, **context):

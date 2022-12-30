@@ -103,4 +103,4 @@ class YamlVersionInfoBuilderHooks(hooks.Hooks):
                       " revision object and a YAML stanza.", (3, 3))
 
 
-YamlVersionInfoBuilder.hooks = YamlVersionInfoBuilderHooks()
+YamlVersionInfoBuilder.hooks = YamlVersionInfoBuilderHooks()  # type: ignore

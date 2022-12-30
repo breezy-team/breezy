@@ -373,3 +373,11 @@ class TestSupportsVersionableKind(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('tree')
         tree = self._convert_tree(work_tree)
         self.assertFalse(tree.versionable_kind('unknown'))
+
+
+class TestSpecialFilename(TestCaseWithTree):
+
+    def test_is_special_path(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertFalse(tree.is_special_path('foo'))

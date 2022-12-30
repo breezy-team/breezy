@@ -19,6 +19,7 @@
 import errno
 from io import BytesIO
 import os
+from typing import Set
 
 import breezy
 from .lazy_import import lazy_import
@@ -154,7 +155,7 @@ def add_unique_user_ignores(new_ignores):
     return to_add
 
 
-_runtime_ignores = set()
+_runtime_ignores: Set[str] = set()
 
 
 def add_runtime_ignores(ignores):

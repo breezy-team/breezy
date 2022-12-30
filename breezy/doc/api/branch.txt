@@ -4,8 +4,8 @@ A Branch represents a series of commits and merges carried out by a user.
 
 Make a temporary directory for these tests:
 
-   >>> from breezy import osutils
-   >>> test_dir = osutils.mkdtemp(prefix='breezy_doc_api_branch_txt_')
+   >>> import tempfile
+   >>> test_dir = tempfile.mkdtemp(prefix='breezy_doc_api_branch_txt_')
 
 Branches are created by ControlDir's:
 

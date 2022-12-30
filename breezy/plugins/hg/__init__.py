@@ -28,10 +28,13 @@ from ... import (
 from ... import version_info  # noqa: F401
 
 
-class MercurialUnsupportedError(errors.UnsupportedFormatError):
+class MercurialUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "hg"
 
     _fmt = ('Mercurial branches are not yet supported. '
             'To interoperate with Mercurial, use the fastimport format.')
+
 
 
 class LocalHgDirFormat(controldir.ControlDirFormat):
@@ -54,7 +57,7 @@ class LocalHgDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise MercurialUnsupportedError()
+        raise MercurialUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there

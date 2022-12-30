@@ -115,7 +115,6 @@ for optimiser in ['InterRemoteGitNonGitRepository',
 class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
-    _serializer = None
     vcs = foreign_vcs_git
     chk_bytes = None
 
@@ -583,6 +582,8 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_custom_revision_properties = False
     records_per_file_revision = False
     supports_multiple_authors = False
+    supports_ghosts = False
+    supports_chks = False
 
     @property
     def _matchingcontroldir(self):

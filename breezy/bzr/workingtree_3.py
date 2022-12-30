@@ -205,7 +205,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         else:
             branch = a_controldir.open_branch()
         if revision_id is None:
-            revision_id = _mod_revision.ensure_null(branch.last_revision())
+            revision_id = branch.last_revision()
         # WorkingTree3 can handle an inventory which has a unique root id.
         # as of bzr 0.12. However, bzr 0.11 and earlier fail to handle
         # those trees. And because there isn't a format bump inbetween, we

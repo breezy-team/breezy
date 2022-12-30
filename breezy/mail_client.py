@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from typing import Type
 
 import breezy
 from . import (
@@ -30,9 +31,6 @@ from . import (
     urlutils,
     registry,
     )
-
-mail_client_registry = registry.Registry()
-
 
 class MailClientNotFound(errors.BzrError):
 
@@ -110,6 +108,9 @@ class MailClient(object):
         return ''
 
 
+mail_client_registry = registry.Registry[str, Type[MailClient]]()
+
+
 class Editor(MailClient):
     __doc__ = """DIY mail client that uses commit message editor"""
 
@@ -164,7 +165,7 @@ class BodyExternalMailClient(MailClient):
         """
         if basename is None:
             basename = 'attachment'
-        pathname = osutils.mkdtemp(prefix='bzr-mail-')
+        pathname = tempfile.mkdtemp(prefix='bzr-mail-')
         attach_path = osutils.pathjoin(pathname, basename + extension)
         with open(attach_path, 'wb') as outfile:
             outfile.write(attachment)

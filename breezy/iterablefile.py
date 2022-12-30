@@ -16,6 +16,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from typing import List
+
+
 class IterableFileBase(object):
     """Create a file-like object from any iterable"""
 
@@ -251,7 +254,7 @@ class IterableFile(object):
         Traceback (most recent call last):
         ValueError: File is closed.
         """
-        lines = []
+        lines: List[bytes] = []
         while True:
             line = self.readline()
             if line == b"":

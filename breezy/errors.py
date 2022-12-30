@@ -541,6 +541,14 @@ class UnsupportedFormatError(BzrError):
     _fmt = "Unsupported branch format: %(format)s\nPlease run 'brz upgrade'"
 
 
+
+class UnsupportedVcs(UnsupportedFormatError):
+
+    vcs: str
+
+    _fmt = "Unsupported version control system: %(vcs)s"
+
+
 class UnknownFormatError(BzrError):
 
     _fmt = "Unknown %(kind)s format: %(format)r"
@@ -874,6 +882,8 @@ class UpToDateFormat(BzrError):
 
 
 class NoSuchRevision(InternalBzrError):
+
+    revision: bytes
 
     _fmt = "%(branch)s has no revision %(revision)s"
 

@@ -64,12 +64,14 @@ class InvalidRebaseURLs(errors.PathError):
 def basename(url, exclude_trailing_slash=True):
     """Return the last component of a URL.
 
-    :param url: The URL in question
-    :param exclude_trailing_slash: If the url looks like "path/to/foo/"
+    Args:
+      url: The URL in question
+      exclude_trailing_slash: If the url looks like "path/to/foo/"
         ignore the final slash and return 'foo' rather than ''
-    :return: Just the final component of the URL. This can return ''
-        if you don't exclude_trailing_slash, or if you are at the
-        root of the URL.
+    Returns:
+      Just the final component of the URL. This can return ''
+      if you don't exclude_trailing_slash, or if you are at the
+      root of the URL.
     """
     return split(url, exclude_trailing_slash=exclude_trailing_slash)[1]
 
@@ -77,11 +79,12 @@ def basename(url, exclude_trailing_slash=True):
 def dirname(url, exclude_trailing_slash=True):
     """Return the parent directory of the given path.
 
-    :param url: Relative or absolute URL
-    :param exclude_trailing_slash: Remove a final slash
+    Args:
+      url: Relative or absolute URL
+      exclude_trailing_slash: Remove a final slash
         (treat http://host/foo/ as http://host/foo, but
         http://host/ stays http://host/)
-    :return: Everything in the URL except the last path chunk
+    Returns: Everything in the URL except the last path chunk
     """
     # TODO: jam 20060502 This was named dirname to be consistent
     #       with the os functions, but maybe "parent" would be better
@@ -139,7 +142,7 @@ def is_url(url):
     return _url_scheme_re.match(url) is not None
 
 
-def join(base, *args):
+def join(base: str, *args) -> str:
     """Create a URL by joining sections.
 
     This will normalize '..', assuming that paths are absolute
@@ -332,8 +335,9 @@ def normalize_url(url):
     escaped (like +?&# etc), but may have unicode characters, etc
     which would not be valid in a real URL.
 
-    :param url: Either a hybrid URL or a local path
-    :return: A normalized URL which only includes 7-bit ASCII characters.
+    Args:
+      url: Either a hybrid URL or a local path
+    Returns: A normalized URL which only includes 7-bit ASCII characters.
     """
     scheme_end, path_start = _find_scheme_and_separator(url)
     if scheme_end is None:
@@ -427,11 +431,12 @@ def _win32_extract_drive_letter(url_base, path):
 def split(url, exclude_trailing_slash=True):
     """Split a URL into its parent directory and a child directory.
 
-    :param url: A relative or absolute URL
-    :param exclude_trailing_slash: Strip off a final '/' if it is part
+    Args:
+      url: A relative or absolute URL
+      exclude_trailing_slash: Strip off a final '/' if it is part
         of the path (but not if it is part of the protocol specification)
 
-    :return: (parent_url, child_dir).  child_dir may be the empty string if
+    Returns: (parent_url, child_dir).  child_dir may be the empty string if
         we're at the root.
     """
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
@@ -467,8 +472,9 @@ def split(url, exclude_trailing_slash=True):
 def split_segment_parameters_raw(url):
     """Split the subsegment of the last segment of a URL.
 
-    :param url: A relative or absolute URL
-    :return: (url, subsegments)
+    Args:
+      url: A relative or absolute URL
+    Returns: (url, subsegments)
     """
     # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
     #                operates on urls not url+segments, and Transport classes
@@ -485,8 +491,9 @@ def split_segment_parameters_raw(url):
 def split_segment_parameters(url):
     """Split the segment parameters of the last segment of a URL.
 
-    :param url: A relative or absolute URL
-    :return: (url, segment_parameters)
+    Args:
+      url: A relative or absolute URL
+    Returns: (url, segment_parameters)
     """
     (base_url, subsegments) = split_segment_parameters_raw(url)
     parameters = {}
@@ -506,8 +513,9 @@ def split_segment_parameters(url):
 def strip_segment_parameters(url):
     """Strip the segment parameters from a URL.
 
-    :param url: A relative or absolute URL
-    :return: url
+    Args:
+      url: A relative or absolute URL
+    Returns: url
     """
     base_url, subsegments = split_segment_parameters_raw(url)
     return base_url
@@ -538,8 +546,9 @@ def join_segment_parameters(url, parameters):
     The parameters of the last segment in the URL will be updated; if a
     parameter with the same key already exists it will be overwritten.
 
-    :param url: A URL, as string
-    :param parameters: Dictionary of parameters, keys and values as bytestrings
+    Args:
+      url: A URL, as string
+      parameters: Dictionary of parameters, keys and values as bytestrings
     """
     (base, existing_parameters) = split_segment_parameters(url)
     new_parameters = {}
@@ -665,10 +674,11 @@ def _unescape_segment_for_display(segment, encoding):
 
     Helper for unescape_for_display
 
-    :param url: A 7-bit ASCII URL
-    :param encoding: The final output encoding
+    Args:
+      url: A 7-bit ASCII URL
+      encoding: The final output encoding
 
-    :return: A unicode string which can be safely encoded into the
+    Returns: A unicode string which can be safely encoded into the
          specified encoding.
     """
     escaped_chunks = segment.split('%')
@@ -711,10 +721,11 @@ def unescape_for_display(url, encoding):
     Any sections of the URL which can't be represented in the encoding or
     need to stay as escapes are left alone.
 
-    :param url: A 7-bit ASCII URL
-    :param encoding: The final output encoding
+    Args:
+      url: A 7-bit ASCII URL
+      encoding: The final output encoding
 
-    :return: A unicode string which can be safely encoded into the
+    Returns: A unicode string which can be safely encoded into the
          specified encoding.
     """
     if encoding is None:
@@ -839,7 +850,8 @@ class URL(object):
     def from_string(cls, url):
         """Create a URL object from a string.
 
-        :param url: URL as bytestring
+        Args:
+          url: URL as bytestring
         """
         # GZ 2017-06-09: Actually validate ascii-ness
         # pad.lv/1696545: For the moment, accept both native strings and
@@ -894,7 +906,7 @@ class URL(object):
             (self.scheme, netloc, self.quoted_path, None, None, None))
 
     @staticmethod
-    def _combine_paths(base_path, relpath):
+    def _combine_paths(base_path: str, relpath: str) -> str:
         """Transform a Transport-relative path to a remote absolute path.
 
         This does not handle substitution of ~ but does handle '..' and '.'
@@ -909,20 +921,12 @@ class URL(object):
             t._combine_paths('/home/sarah', '/etc')
                 => '/etc'
 
-        :param base_path: base path
-        :param relpath: relative url string for relative part of remote path.
-        :return: urlencoded string for final path.
+        Args:
+          base_path: base path
+          relpath: relative url string for relative part of remote path.
+        Returns: urlencoded string for final path.
         """
-        # pad.lv/1696545: For the moment, accept both native strings and
-        # unicode.
-        if isinstance(relpath, str):
-            pass
-        elif isinstance(relpath, str):
-            try:
-                relpath = relpath.encode()
-            except UnicodeEncodeError:
-                raise InvalidURL(relpath)
-        else:
+        if not isinstance(relpath, str):
             raise InvalidURL(relpath)
         relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
         if relpath.startswith('/'):
@@ -950,8 +954,9 @@ class URL(object):
     def clone(self, offset=None):
         """Return a new URL for a path relative to this URL.
 
-        :param offset: A relative path, already urlencoded
-        :return: `URL` instance
+        Args:
+          offset: A relative path, already urlencoded
+        Returns: `URL` instance
         """
         if offset is not None:
             relative = unescape(offset)
@@ -970,8 +975,9 @@ def parse_url(url):
     user, password, host and path should be quoted if they contain reserved
     chars.
 
-    :param url: an quoted url
-    :return: (scheme, user, password, host, port, path) tuple, all fields
+    Args:
+      url: an quoted url
+    Returns: (scheme, user, password, host, port, path) tuple, all fields
         are unquoted.
     """
     parsed_url = URL.from_string(url)

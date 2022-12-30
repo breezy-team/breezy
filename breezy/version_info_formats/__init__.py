@@ -17,6 +17,7 @@
 """Routines for extracting all version information from a bzr branch."""
 
 import time
+from typing import Type
 
 from breezy.osutils import local_time_offset, format_date
 from breezy import (
@@ -186,7 +187,7 @@ class VersionInfoBuilder(object):
         raise NotImplementedError(VersionInfoBuilder.generate)
 
 
-format_registry = registry.Registry()
+format_registry = registry.Registry[str, Type[VersionInfoBuilder]]()
 
 
 format_registry.register_lazy(

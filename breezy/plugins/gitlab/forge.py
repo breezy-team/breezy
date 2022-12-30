@@ -16,6 +16,7 @@
 
 """Support for GitLab."""
 
+from datetime import datetime
 import json
 import os
 import re
@@ -48,6 +49,13 @@ from ...forge import (
 
 _DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
 DEFAULT_PAGE_SIZE = 50
+DEFAULT_PREFERRED_SCHEMES = ["ssh", "http"]
+SCHEME_MAP = {
+    'git+ssh': 'ssh_url_to_repo',
+    'ssh': 'ssh_url_to_repo',
+    'http': 'http_url_to_repo',
+    'https': 'http_url_to_repo',
+}
 
 
 def mp_status_to_status(status):
@@ -56,6 +64,10 @@ def mp_status_to_status(status):
         'open': 'opened',
         'merged': 'merged',
         'closed': 'closed'}[status]
+
+
+def parse_timestring(ts):
+    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 class NotGitLabUrl(errors.BzrError):
@@ -235,6 +247,8 @@ def _unexpected_status(path, response):
 
 class GitLabMergeProposal(MergeProposal):
 
+    supports_auto_merge = True
+
     def __init__(self, gl, mr):
         self.gl = gl
         self._mr = mr
@@ -255,11 +269,24 @@ class GitLabMergeProposal(MergeProposal):
     def url(self):
         return self._mr['web_url']
 
+    def get_web_url(self):
+        return self._mr['web_url']
+
     def get_description(self):
         return self._mr['description']
 
     def set_description(self, description):
-        self._update(description=description, title=determine_title(description))
+        try:
+            self._update(description=description)
+        except errors.UnexpectedHttpStatus as e:
+            # HACK: Some versions of GitLab apply the changes but fail with a 500
+            # This appears to happen at least with version 15.5.6
+            if e.code != 500:
+                raise
+            self._mr = self.gl._get_merge_request(
+                self._mr['project_id'], self._mr['iid'])
+            if self._mr['description'] != description:
+                raise
 
     def get_commit_message(self):
         return self._mr.get('merge_commit_message')
@@ -267,15 +294,27 @@ class GitLabMergeProposal(MergeProposal):
     def set_commit_message(self, message):
         raise errors.UnsupportedOperation(self.set_commit_message, self)
 
-    def _branch_url_from_project(self, project_id, branch_name):
+    def get_title(self):
+        return self._mr.get('title')
+
+    def set_title(self, title):
+        self._update(title=title)
+
+    def _branch_url_from_project(self, project_id, branch_name, *, preferred_schemes=None):
         if project_id is None:
             return None
         project = self.gl._get_project(project_id)
-        return gitlab_url_to_bzr_url(project['http_url_to_repo'], branch_name)
+        if preferred_schemes is None:
+            preferred_schemes = DEFAULT_PREFERRED_SCHEMES
+        for scheme in preferred_schemes:
+            if scheme in SCHEME_MAP:
+                return gitlab_url_to_bzr_url(project[SCHEME_MAP[scheme]], branch_name)
+        raise KeyError
 
-    def get_source_branch_url(self):
+    def get_source_branch_url(self, *, preferred_schemes=None):
         return self._branch_url_from_project(
-            self._mr['source_project_id'], self._mr['source_branch'])
+            self._mr['source_project_id'], self._mr['source_branch'],
+            preferred_schemes=preferred_schemes)
 
     def get_source_revision(self):
         from breezy.git.mapping import default_mapping
@@ -284,9 +323,10 @@ class GitLabMergeProposal(MergeProposal):
             return None
         return default_mapping.revision_id_foreign_to_bzr(sha.encode('ascii'))
 
-    def get_target_branch_url(self):
+    def get_target_branch_url(self, *, preferred_schemes=None):
         return self._branch_url_from_project(
-            self._mr['target_project_id'], self._mr['target_branch'])
+            self._mr['target_project_id'], self._mr['target_branch'],
+            preferred_schemes=preferred_schemes)
 
     def set_target_branch_name(self, name):
         self._update(branch=name)
@@ -313,9 +353,13 @@ class GitLabMergeProposal(MergeProposal):
     def close(self):
         self._update(state_event='close')
 
-    def merge(self, commit_message=None):
+    def merge(self, commit_message=None, auto=False):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
-        self._mr.merge(merge_commit_message=commit_message)
+        ret = self.gl._merge_mr(
+            self._mr['project_id'], self._mr['iid'],
+            kwargs={"merge_commit_message": commit_message,
+                    "merge_when_pipeline_succeeds": auto})
+        self._mr.update(ret)
 
     def can_be_merged(self):
         if self._mr['merge_status'] == 'cannot_be_merged':
@@ -332,7 +376,7 @@ class GitLabMergeProposal(MergeProposal):
             raise ValueError(self._mr['merge_status'])
 
     def get_merged_by(self):
-        user = self._mr.get('merged_by')
+        user = self._mr.get('merge_user')
         if user is None:
             return None
         return user['username']
@@ -341,8 +385,7 @@ class GitLabMergeProposal(MergeProposal):
         merged_at = self._mr.get('merged_at')
         if merged_at is None:
             return None
-        import iso8601
-        return iso8601.parse_date(merged_at)
+        return parse_timestring(merged_at)
 
     def post_comment(self, body):
         kwargs = {'body': body}
@@ -358,6 +401,7 @@ class GitLab(Forge):
     """GitLab forge implementation."""
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_title = True
     supports_merge_proposal_commit_message = False
     supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
@@ -491,7 +535,7 @@ class GitLab(Forge):
             mr = self._get_merge_request(target_project, merge_id)
             raise MergeProposalExists(
                 source_url, GitLabMergeProposal(self, mr))
-        raise MergeRequestConflict(reason)
+        raise MergeRequestConflict(message)
 
     def get_current_user(self):
         if not self._current_user:
@@ -560,6 +604,16 @@ class GitLab(Forge):
             raise errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
+    def _merge_mr(self, project_id, iid, kwargs):
+        path = 'projects/%s/merge_requests/%s/merge' % (
+            urlutils.quote(str(project_id), ''), iid)
+        response = self._api_request('PUT', path, fields=kwargs)
+        if response.status == 200:
+            return json.loads(response.data)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        _unexpected_status(path, response)
+
     def _post_merge_request_note(self, project_id, iid, kwargs):
         path = 'projects/%s/merge_requests/%s/notes' % (
             urlutils.quote(str(project_id), ''), iid)
@@ -588,7 +642,8 @@ class GitLab(Forge):
             fields['labels'] = labels
         response = self._api_request('POST', path, fields=fields)
         if response.status == 400:
-            raise GitLabError(data.get('message'), data)
+            data = json.loads(response.data)
+            raise GitLabError(data.get('message'), response)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
@@ -605,6 +660,15 @@ class GitLab(Forge):
         project = self._get_project(project_name)
         return gitlab_url_to_bzr_url(
             project['ssh_url_to_repo'], branch_name)
+
+    def get_web_url(self, branch):
+        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
+        project = self._get_project(project_name)
+        if branch_name:
+            # TODO(jelmer): Use API to get this URL
+            return project['web_url'] + '/-/tree/' + branch_name
+        else:
+            return project['web_url']
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
@@ -662,7 +726,8 @@ class GitLab(Forge):
         else:
             raise AssertionError
         return _mod_branch.Branch.open(
-            gitlab_url_to_bzr_url(gitlab_url, name))
+            gitlab_url_to_bzr_url(gitlab_url, name),
+            possible_transports=[base_branch.user_transport])
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self, source_branch, target_branch)
@@ -711,6 +776,21 @@ class GitLab(Forge):
             else:
                 raise GitlabLoginError(response.text)
         raise UnsupportedForge(self.base_url)
+
+    @classmethod
+    def probe_from_hostname(cls, hostname, possible_transports=None):
+        base_url = 'https://%s' % hostname
+        credentials = get_credentials_by_url(base_url)
+        if credentials is not None:
+            transport = get_transport(
+                base_url, possible_transports=possible_transports)
+            instance = cls(transport, credentials.get('private_token'))
+            instance._retrieve_user()
+            return instance
+        # We could potentially probe for e.g. /api/v4/metadata here
+        # But none of the non-project APIs appear to be accessible without
+        # authentication :-(
+        raise UnsupportedForge(hostname)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
@@ -818,9 +898,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+    def create_proposal(self, description, title=None, reviewers=None,
+                        labels=None, prerequisite_branch=None,
+                        commit_message=None, work_in_progress=False,
+                        allow_collaboration=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -828,8 +909,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         # Note that commit_message is ignored, since Gitlab doesn't support it.
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
-        # TODO(jelmer): Allow setting title explicitly
-        title = determine_title(description)
+        if title is None:
+            title = determine_title(description)
         if work_in_progress:
             title = 'WIP: %s' % title
         # TODO(jelmer): Allow setting milestone field

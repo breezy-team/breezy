@@ -437,8 +437,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(repo.has_revision(b'1'))
         try:
             self.assertTrue(
-                _mod_revision.is_null(_mod_revision.ensure_null(
-                    dir.open_branch().last_revision())))
+                _mod_revision.is_null(dir.open_branch().last_revision()))
         except errors.NotBranchError:
             pass
         target = dir.sprout(self.get_url('target'))

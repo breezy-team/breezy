@@ -21,4 +21,9 @@ def test_suite():
     result = TestSuite()
 
     loader = TestLoader()
+    from . import test_forge
+
+    loader = TestLoader()
+    result.addTests(loader.loadTestsFromModule(test_forge))
+
     return result
