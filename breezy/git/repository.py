@@ -215,7 +215,7 @@ class GitRepository(ForeignRepository):
         return default_mapping
 
     def make_working_trees(self):
-        return not self._git.get_config().get_boolean(("core", ), "bare")
+        raise NotImplementedError(self.make_working_trees)
 
     def revision_graph_can_have_wrong_parents(self):
         return False
@@ -555,10 +555,8 @@ class LocalGitRepository(GitRepository):
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
-    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
-                      progress=None, limit=None):
-        return self._git.fetch_objects(determine_wants, graph_walker, progress,
-                                       limit=limit)
+    def make_working_trees(self):
+        return not self._git.get_config().get_boolean(("core", ), "bare")
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):
