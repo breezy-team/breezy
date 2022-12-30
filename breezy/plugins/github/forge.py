@@ -31,6 +31,9 @@ from ...forge import (
     PrerequisiteBranchUnsupported,
     ReopenFailed,
     UnsupportedForge,
+    MERGE_METHOD_MERGE,
+    MERGE_METHOD_REBASE,
+    MERGE_METHOD_SQUASH,
     )
 
 from ... import (
@@ -221,13 +224,34 @@ class GitHubMergeProposal(MergeProposal):
     def can_be_merged(self):
         return self._pr['mergeable']
 
-    def merge(self, commit_message=None, auto=False):
+    def merge(self, commit_message=None, auto=False, method=MERGE_METHOD_MERGE,
+              remove_source_branch=False):
+        if self._pr['delete_branch_on_merge'] != remove_source_branch:
+            self._patch(delete_branch_on_merge=remove_source_branch)
         if auto:
+            if commit_message:
+                lines = commit_message.splitlines(True)
+                commit_headline = lines[0]
+                commit_body = ''.join(lines[1:])
+            else:
+                commit_headline = None
+                commit_body = None
+            if method == MERGE_METHOD_MERGE:
+                merge_method = 'MERGE'
+            elif method == MERGE_METHOD_REBASE:
+                merge_method = 'REBASE'
+            elif method == MERGE_METHOD_SQUASH:
+                merge_method = 'SQUASH'
+            else:
+                raise NotImplementedError
+
             graphql_query = """
 mutation ($pullRequestId: ID!) {
   enablePullRequestAutoMerge(input: {
     pullRequestId: $pullRequestId,
-    mergeMethod: MERGE
+    mergeMethod: $mergeMethod
+    commitHeadline: $commitHeadline
+    commitBody: $commitBody
   }) {
     pullRequest {
       autoMergeRequest {
@@ -241,12 +265,22 @@ mutation ($pullRequestId: ID!) {
 }
 """
             self._gh._graphql_request(
-                graphql_query, pullRequestId=self._pr["node_id"])
+                graphql_query, pullRequestId=self._pr["node_id"],
+                mergeMethod=merge_method, commitHeadline=commit_headline,
+                commitBody=commit_body)
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
             data = {}
             if commit_message:
                 data['commit_message'] = commit_message
+            if method == MERGE_METHOD_MERGE:
+                data['merge_method'] = 'merge'
+            elif method == MERGE_METHOD_REBASE:
+                data['merge_method'] = 'rebase'
+            elif method == MERGE_METHOD_SQUASH:
+                data['merge_method'] = 'squash'
+            else:
+                raise NotImplementedError
             response = self._gh._api_request(
                 'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
             if response.status == 422:
