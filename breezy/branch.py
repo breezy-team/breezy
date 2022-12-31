@@ -102,7 +102,7 @@ class Branch(ControlComponent):
 
     repository: repository.Repository
 
-    hooks: BranchHooks
+    hooks: "BranchHooks"
 
     @property
     def user_transport(self) -> Transport:

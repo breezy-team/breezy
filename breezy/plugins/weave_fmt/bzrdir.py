@@ -34,6 +34,7 @@ from ... import (
     errors,
     lockable_files,
     )
+from ...i18n import gettext
 from ...transport import (
     get_transport,
     local,
@@ -42,7 +43,6 @@ from ...transport import (
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import os
-import warnings
 
 from breezy import (
     branch as _mod_branch,,
@@ -59,7 +59,6 @@ from breezy.bzr import (
     weave,
     xml5,
     )
-from breezy.i18n import gettext
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
 from breezy.plugins.weave_fmt import xml4
@@ -238,11 +237,9 @@ class ConvertBzrDir4To5(Converter):
         self.text_count = 0
         self.revisions = {}
 
-    def convert(self, to_convert, pb):
+    def convert(self, to_convert):
         """See Converter.convert()."""
         self.controldir = to_convert
-        if pb is not None:
-            warnings.warn(gettext("pb parameter to convert() is deprecated"))
         with ui.ui_factory.nested_progress_bar() as self.pb:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
