@@ -55,9 +55,9 @@ from .revision import RevisionID
 from .trace import mutter, mutter_callsite, note, is_quiet, warning
 from .transport import get_transport, Transport
 
-
 if TYPE_CHECKING:
     from .tag import TagConflict, TagUpdates
+
 
 
 class UnstackableBranchFormat(errors.BzrError):
@@ -782,7 +782,7 @@ class Branch(ControlComponent):
 
     def generate_revision_history(self, revision_id: RevisionID,
                                   last_rev: Optional[RevisionID] = None,
-                                  other_branch: Optional[Branch] = None) -> None:
+                                  other_branch: Optional["Branch"] = None) -> None:
         """See Branch.generate_revision_history"""
         with self.lock_write():
             graph = self.repository.get_graph()
@@ -1923,8 +1923,8 @@ class PullResult(_Result):
     master_branch: Branch
     local_branch: Optional[Branch]
     target_branch: Branch
-    tag_conflicts: List[TagConflict]
-    tag_updates: TagUpdates
+    tag_conflicts: List["TagConflict"]
+    tag_updates: "TagUpdates"
 
     def report(self, to_file: TextIO) -> None:
         tag_conflicts = getattr(self, "tag_conflicts", None)
