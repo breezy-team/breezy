@@ -18,7 +18,7 @@ import bz2
 import os
 import re
 import sys
-from typing import Callable
+from typing import Callable, Optional, List
 import zlib
 
 import fastbencode as bencode
@@ -1256,7 +1256,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     Repository objects.
     """
 
-    def __init__(self, remote_bzrdir, format, real_repository=None, _client=None):
+    _format: RemoteRepositoryFormat
+    _real_repository: Optional[_mod_repository.Repository]
+
+    def __init__(self, remote_bzrdir: RemoteBzrDir,
+                 format: RemoteRepositoryFormat,
+                 real_repository: Optional[_mod_repository.Repository] = None, _client=None):
         """Create a RemoteRepository instance.
 
         :param remote_bzrdir: The bzrdir hosting this repository.
@@ -1749,7 +1754,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
-    def _set_real_repository(self, repository):
+    def _set_real_repository(self, repository: _mod_repository.Repository):
         """Set the _real_repository for this repository.
 
         :param repository: The repository to fallback to for non-hpss
@@ -3475,9 +3480,15 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     At the moment most operations are mapped down to simple file operations.
     """
 
-    def __init__(self, remote_bzrdir, remote_repository, real_branch=None,
-                 _client=None, format=None, setup_stacking=True, name=None,
-                 possible_transports=None):
+    _real_branch: Optional[RemoteBranch]
+    _format: RemoteBranchFormat
+    repository: RemoteRepository
+
+    def __init__(self, remote_bzrdir: RemoteBzrDir, remote_repository: RemoteRepository,
+                 real_branch: Optional[RemoteBranch] = None,
+                 _client=None, format=None, setup_stacking: bool = True,
+                 name: Optional[str] = None,
+                 possible_transports: Optional[List[_mod_transport.Transport]] = None):
         """Create a RemoteBranch instance.
 
         :param real_branch: An optional local implementation of the branch
@@ -3504,10 +3515,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if real_branch is not None:
             self._real_branch = real_branch
             # Give the remote repository the matching real repo.
-            real_repo = self._real_branch.repository
+            real_repo: _mod_repository.Repository = self._real_branch.repository
             if isinstance(real_repo, RemoteRepository):
                 real_repo._ensure_real()
-                real_repo = real_repo._real_repository
+                real_repo = real_repo._real_repository  # type: ignore
             self.repository._set_real_repository(real_repo)
             # Give the branch the remote repository to let fast-pathing happen.
             self._real_branch.repository = self.repository
@@ -3530,7 +3541,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # function.
         if format is None:
             self._format = RemoteBranchFormat()
-            if real_branch is not None:
+            if self._real_branch is not None:
                 self._format._network_name = \
                     self._real_branch._format.network_name()
         else:
@@ -3541,6 +3552,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if not self._format._network_name:
             # Did not get from open_branchV2 - old server.
             self._ensure_real()
+            assert self._real_branch
             self._format._network_name = \
                 self._real_branch._format.network_name()
         self.tags = self._format.make_tags(self)
