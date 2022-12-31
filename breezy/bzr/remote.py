@@ -3480,7 +3480,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     At the moment most operations are mapped down to simple file operations.
     """
 
-    _real_branch: Optional[RemoteBranch]
+    _real_branch: Optional["RemoteBranch"]
     _format: RemoteBranchFormat
     repository: RemoteRepository
 
