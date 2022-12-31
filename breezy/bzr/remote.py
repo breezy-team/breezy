@@ -3695,8 +3695,32 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
         return response[1].decode('utf-8')
 
+    def _check_stackable_repo(self) -> None:
+        if not self.repository._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(
+                self.repository._format, self.repository.user_url)
+
     def set_stacked_on_url(self, url):
-        branch.Branch.set_stacked_on_url(self, url)
+        if not self._format.supports_stacking():
+            raise UnstackableBranchFormat(self._format, self.user_url)
+        with self.lock_write():
+            # XXX: Changing from one fallback repository to another does not
+            # check that all the data you need is present in the new fallback.
+            # Possibly it should.
+            self._check_stackable_repo()
+            if not url:
+                try:
+                    self.get_stacked_on_url()
+                except (errors.NotStacked, UnstackableBranchFormat,
+                        errors.UnstackableRepositoryFormat):
+                    return
+                self._unstack()
+            else:
+                self._activate_fallback_location(
+                    url, possible_transports=[self.controldir.root_transport])
+            # write this out after the repository is stacked to avoid setting a
+            # stacked config that doesn't work.
+            self._set_config_location('stacked_on_location', url)
         # We need the stacked_on_url to be visible both locally (to not query
         # it repeatedly) and remotely (so smart verbs can get it server side)
         # Without the following line,
