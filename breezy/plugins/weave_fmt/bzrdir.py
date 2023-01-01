@@ -237,7 +237,7 @@ class ConvertBzrDir4To5(Converter):
         self.text_count = 0
         self.revisions = {}
 
-    def convert(self, to_convert):
+    def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
         with ui.ui_factory.nested_progress_bar() as self.pb:

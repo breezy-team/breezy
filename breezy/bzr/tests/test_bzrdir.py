@@ -1307,6 +1307,10 @@ class _TestBranchFormat(breezy.branch.BranchFormat):
 class _TestBranch(breezy.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
+    @property
+    def control_transport(self):
+        return self._transport
+
     def __init__(self, transport, *args, **kwargs):
         self._format = _TestBranchFormat()
         self._transport = transport

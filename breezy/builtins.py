@@ -1258,11 +1258,13 @@ class cmd_pull(Command):
                 unversioned_filter=tree_to.is_ignored,
                 view_info=view_info)
             result = tree_to.pull(
-                branch_from, overwrite, revision_id, change_reporter,
+                branch_from, overwrite=overwrite, stop_revision=revision_id,
+                change_reporter=change_reporter,
                 local=local, show_base=show_base)
         else:
             result = branch_to.pull(
-                branch_from, overwrite, revision_id, local=local)
+                branch_from, overwrite=overwrite, stop_revision=revision_id,
+                local=local)
 
         result.report(self.outf)
         if verbose and result.old_revid != result.new_revid:
@@ -1692,8 +1694,10 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.controldir.create_workingtree(revision_id)
                 return
-        source.create_checkout(to_location, revision_id, lightweight,
-                               accelerator_tree, hardlink)
+        source.create_checkout(to_location, revision_id=revision_id,
+                               lightweight=lightweight,
+                               accelerator_tree=accelerator_tree,
+                               hardlink=hardlink)
 
 
 class cmd_clone(Command):

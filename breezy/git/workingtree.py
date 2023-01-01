@@ -1279,7 +1279,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
              show_base=False, tag_selector=None):
         with self.lock_write(), source.lock_read():
             old_revision = self.branch.last_revision()
-            count = self.branch.pull(source, overwrite, stop_revision,
+            count = self.branch.pull(source, overwrite=overwrite,
+                                     stop_revision=stop_revision,
                                      possible_transports=possible_transports,
                                      local=local, tag_selector=tag_selector)
             self._update_git_tree(

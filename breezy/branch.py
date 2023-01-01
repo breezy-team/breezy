@@ -1344,7 +1344,8 @@ class Branch(ControlComponent):
                     continue
                 reference_parent.create_checkout(
                     tree.abspath(path),
-                    basis_tree.get_reference_revision(path), lightweight)
+                    revision_id=basis_tree.get_reference_revision(path),
+                    lightweight=lightweight)
         return tree
 
     def reconcile(self, thorough=True):
@@ -2237,7 +2238,8 @@ class GenericInterBranch(InterBranch):
             if master_branch:
                 # pull from source into master.
                 master_branch.pull(
-                    self.source, overwrite, stop_revision, run_hooks=False,
+                    self.source, overwrite=overwrite, stop_revision=stop_revision,
+                    run_hooks=False,
                     tag_selector=tag_selector)
             return self._pull(
                 overwrite, stop_revision, _hook_master=master_branch,

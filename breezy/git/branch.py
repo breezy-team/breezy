@@ -495,6 +495,9 @@ class GitBranch(ForeignBranch):
         else:
             return controldir.format_registry.make_controldir("default")
 
+    def set_stacked_on_url(self, url):
+        raise branch.UnstackableBranchFormat(self._format, self.base)
+
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
         ret = self.get_config_stack().get("child_submit_format")
@@ -1141,8 +1144,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 master_branch = self.target.get_master_branch(possible_transports)
                 es.enter_context(master_branch.lock_write())
                 # pull from source into master.
-                master_branch.pull(self.source, overwrite, stop_revision,
-                                   run_hooks=False)
+                master_branch.pull(
+                    self.source, overwrite=overwrite,
+                    stop_revision=stop_revision, run_hooks=False)
             else:
                 master_branch = None
             return self._basic_pull(stop_revision, overwrite, run_hooks,

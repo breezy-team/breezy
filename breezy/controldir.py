@@ -502,25 +502,26 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
+                    br_to, overwrite=overwrite, stop_revision=revision_id, lossy=lossy,
                     tag_selector=tag_selector)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
-                    tag_selector=tag_selector)
+                    br_to, overwrite=overwrite, stop_revision=revision_id,
+                    lossy=lossy, tag_selector=tag_selector)
                 push_result.workingtree_updated = None  # Not applicable
             else:
                 if br_to.name == tree_to.branch.name:
                     with tree_to.lock_write():
                         push_result.branch_push_result = source.push(
-                            tree_to.branch, overwrite, stop_revision=revision_id,
+                            tree_to.branch, overwrite=overwrite,
+                            stop_revision=revision_id,
                             lossy=lossy, tag_selector=tag_selector)
                         tree_to.update()
                     push_result.workingtree_updated = True
                 else:
                     push_result.branch_push_result = source.push(
-                        br_to, overwrite, stop_revision=revision_id,
+                        br_to, overwrite=overwrite, stop_revision=revision_id,
                         lossy=lossy, tag_selector=tag_selector)
                     push_result.workingtree_updated = None  # Not applicable
             push_result.old_revno = push_result.branch_push_result.old_revno

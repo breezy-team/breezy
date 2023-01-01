@@ -25,9 +25,11 @@ from breezy import (
     config as _mod_config,
     lockdir,
     shelf,
+    ui,
     )
 from breezy.bzr import (
     tag as _mod_tag,
+    vf_search,
     )
 """)
 
@@ -549,11 +551,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
             # lock count) of self.repository to the new repository.
             lock_token = old_repository.lock_write().repository_token
             self.repository = new_repository
-            if isinstance(self, remote.RemoteBranch):
-                # Remote branches can have a second reference to the old
-                # repository that need to be replaced.
-                if self._real_branch is not None:
-                    self._real_branch.repository = new_repository
             self.repository.lock_write(token=lock_token)
             if lock_token is not None:
                 old_repository.leave_lock_in_place()

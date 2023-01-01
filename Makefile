@@ -42,7 +42,7 @@ extensions:
 
 check: docs check-nodocs
 
-check-nodocs:
+check-nodocs: brz
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
 	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) \
@@ -56,13 +56,16 @@ check-nodocs:
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
 
-check-ci: docs extensions
+check-ci: docs extensions brz
 	# FIXME: Remove -Wignore::FutureWarning once
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
 	set -o pipefail; \
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2
+
+brz:
+	$(PYTHON) setup.py build_rust -i $(PYTHON_BUILDFLAGS)
 
 # Run Python style checker (apt-get install flake8)
 #
