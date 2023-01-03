@@ -30,11 +30,7 @@ lazy_import(globals(), """
 import fastbencode as bencode
 
 from breezy import (
-    annotate,
-    graph as _mod_graph,
-    osutils,
     multiparent,
-    tsort,
     revision,
     urlutils,
     )
@@ -45,6 +41,8 @@ from breezy.bzr import (
 """)
 from .. import (
     errors,
+    graph as _mod_graph,
+    osutils,
     transport as _mod_transport,
     )
 from ..registry import Registry
@@ -1292,7 +1290,8 @@ class VersionedFiles(object):
         return generator.compute_diffs()
 
     def get_annotator(self):
-        return annotate.Annotator(self)
+        from ..annotate import Annotator
+        return Annotator(self)
 
     missing_keys = index._missing_keys_from_parent_map
 
@@ -2011,6 +2010,7 @@ def sort_groupcompress(parent_map):
 
     :return: A sorted-list of keys
     """
+    from ..tsort import topo_sort
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
@@ -2027,7 +2027,7 @@ def sort_groupcompress(parent_map):
 
     present_keys = []
     for prefix in sorted(per_prefix_map):
-        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
+        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
     return present_keys
 
 

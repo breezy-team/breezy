@@ -16,10 +16,11 @@
 
 import os
 import signal
+from typing import Optional
 
 
-_breakin_signal_number = None
-_breakin_signal_name = None
+_breakin_signal_number: Optional[int] = None
+_breakin_signal_name: Optional[str] = None
 
 
 def _debug(signal_number, interrupted_frame):
@@ -34,6 +35,7 @@ def _debug(signal_number, interrupted_frame):
     sys.stderr.flush()
     # restore default meaning so that you can kill the process by hitting it
     # twice
+    assert _breakin_signal_number is not None
     signal.signal(_breakin_signal_number, signal.SIG_DFL)
     try:
         pdb.set_trace()
