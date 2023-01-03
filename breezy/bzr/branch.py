@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from io import BytesIO
-from typing import Optional
+from typing import Optional, Union, TYPE_CHECKING
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -58,6 +58,9 @@ from ..trace import (
     mutter,
     )
 
+if TYPE_CHECKING:
+    from .remote import RemoteRepository
+
 
 class BzrBranch(Branch, _RelockDebugMixin):
     """A branch stored in the actual filesystem.
@@ -75,7 +78,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         directory.
     """
 
-    repository: MetaDirRepository
+    repository: Union[MetaDirRepository, "RemoteRepository"]
     controldir: bzrdir.BzrDir
 
     @property

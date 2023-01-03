@@ -46,6 +46,7 @@ from . import (
     branch as bzrbranch,
     bzrdir as _mod_bzrdir,
     inventory_delta,
+    repository as bzrrepository,
     testament as _mod_testament,
     vf_repository,
     vf_search,
@@ -3495,10 +3496,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     @property
     def control_transport(self) -> _mod_transport.Transport:
-        return self._transport
+        return self._transport  # type: ignore
 
     def __init__(self, remote_bzrdir: RemoteBzrDir, remote_repository: RemoteRepository,
-                 real_branch: Optional["RemoteBranch"] = None,
+                 real_branch: Optional["bzrbranch.BzrBranch"] = None,
                  _client=None, format=None, setup_stacking: bool = True,
                  name: Optional[str] = None,
                  possible_transports: Optional[List[_mod_transport.Transport]] = None):
@@ -3528,13 +3529,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if real_branch is not None:
             self._real_branch = real_branch
             # Give the remote repository the matching real repo.
-            real_repo: _mod_repository.Repository = self._real_branch.repository
+            real_repo: _mod_repository.Repository = real_branch.repository
             if isinstance(real_repo, RemoteRepository):
                 real_repo._ensure_real()
                 real_repo = real_repo._real_repository  # type: ignore
             self.repository._set_real_repository(real_repo)
             # Give the branch the remote repository to let fast-pathing happen.
-            self._real_branch.repository = self.repository
+            real_branch.repository = self.repository
         else:
             self._real_branch = None
         # Fill out expected attributes of branch for breezy API users.
@@ -3605,15 +3606,21 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def store_uncommitted(self, creator):
         self._ensure_real()
+        if self._real_branch is None:
+            raise AssertionError
         return self._real_branch.store_uncommitted(creator)
 
     def get_unshelver(self, tree):
         self._ensure_real()
+        if self._real_branch is None:
+            raise AssertionError
         return self._real_branch.get_unshelver(tree)
 
-    def _get_real_transport(self):
+    def _get_real_transport(self) -> _mod_transport.Transport:
         # if we try vfs access, return the real branch's vfs transport
         self._ensure_real()
+        if self._real_branch is None:
+            raise AssertionError
         return self._real_branch._transport
 
     _transport = property(_get_real_transport)
