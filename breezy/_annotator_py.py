@@ -285,7 +285,7 @@ class Annotator(object):
             A list of tuples with a single annotation key for each line.
         """
         from .annotate import _break_annotation_tie
-        custom_tiebreaker = annotate._break_annotation_tie
+        custom_tiebreaker = _break_annotation_tie
         annotations, lines = self.annotate(key)
         out = []
         heads = self._get_heads_provider().heads
