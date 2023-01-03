@@ -107,8 +107,9 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
         self.controldir = a_controldir
         foreign.ForeignBranch.__init__(self,
                                        DummyForeignVcsMapping(DummyForeignVcs()))
-        bzrbranch.BzrBranch6.__init__(self, _format, _control_files, a_controldir,
-                                      *args, **kwargs)
+        bzrbranch.BzrBranch6.__init__(self, _format=_format,
+                                      _control_files=_control_files, a_controldir=a_controldir,
+                                      **kwargs)
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.

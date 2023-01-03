@@ -21,7 +21,7 @@
 import contextlib
 from io import BytesIO
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Optional, Set, Tuple
 
 from dulwich.config import (
     ConfigFile as GitConfigFile,
@@ -53,6 +53,9 @@ from ..revision import (
 from ..tag import (
     Tags,
     InterTags,
+    TagSelector,
+    TagConflict,
+    TagUpdates,
     )
 from ..trace import (
     is_quiet,
@@ -140,9 +143,11 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return False
         return True
 
-    def merge(self, overwrite=False, ignore_master=False, selector=None):
+    def merge(self, overwrite: bool = False, ignore_master: bool = False,
+              selector: Optional[TagSelector] = None) -> Tuple[
+                    TagUpdates, Set[TagConflict]]:
         if self.source.branch.repository.has_same_location(self.target.branch.repository):
-            return {}, []
+            return {}, set()
         updates = {}
         conflicts = []
         source_tag_refs = self.source.branch.get_tag_refs()
@@ -242,7 +247,7 @@ class InterTagsFromGitToLocalGit(InterTags):
 class InterTagsFromGitToNonGit(InterTags):
 
     @classmethod
-    def is_compatible(klass, source, target):
+    def is_compatible(klass, source: Tags, target: Tags):
         if not isinstance(source, GitTags):
             return False
         if isinstance(target, GitTags):
@@ -474,7 +479,7 @@ class GitBranch(ForeignBranch):
             if self.ref is not None:
                 params = {"ref": urlutils.escape(self.ref, safe='')}
         else:
-            if self.name != "":
+            if self.name:
                 params = {"branch": urlutils.escape(self.name, safe='')}
         for k, v in params.items():
             self._user_transport.set_segment_parameter(k, v)
@@ -489,6 +494,9 @@ class GitBranch(ForeignBranch):
             return controldir.format_registry.make_controldir("git")
         else:
             return controldir.format_registry.make_controldir("default")
+
+    def set_stacked_on_url(self, url):
+        raise branch.UnstackableBranchFormat(self._format, self.base)
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
@@ -1136,8 +1144,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 master_branch = self.target.get_master_branch(possible_transports)
                 es.enter_context(master_branch.lock_write())
                 # pull from source into master.
-                master_branch.pull(self.source, overwrite, stop_revision,
-                                   run_hooks=False)
+                master_branch.pull(
+                    self.source, overwrite=overwrite,
+                    stop_revision=stop_revision, run_hooks=False)
             else:
                 master_branch = None
             return self._basic_pull(stop_revision, overwrite, run_hooks,
@@ -1250,6 +1259,9 @@ class InterGitLocalGitBranch(InterGitBranch):
                 isinstance(target, LocalGitBranch))
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        if lossy:
+            raise errors.LossyPushToSameVCS(
+                source_branch=self.source, target_branch=self.target)
         interrepo = _mod_repository.InterRepository.get(
             self.source.repository, self.target.repository)
         if stop_revision is None:
@@ -1259,7 +1271,7 @@ class InterGitLocalGitBranch(InterGitBranch):
             fetch_tags = c.get('branch.fetch_tags')
         determine_wants = interrepo.get_determine_wants_revids(
             [stop_revision], include_tags=fetch_tags)
-        interrepo.fetch_objects(determine_wants, limit=limit, lossy=lossy)
+        interrepo.fetch_objects(determine_wants, limit=limit)
         return _mod_repository.FetchResult()
 
     def _basic_push(self, overwrite=False, stop_revision=None, tag_selector=None):

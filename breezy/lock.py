@@ -37,7 +37,7 @@ import contextlib
 import errno
 import os
 import sys
-from typing import Dict, Set, List, Tuple, Type, Any
+from typing import Dict, Set, List, Tuple, Optional, Any
 import warnings
 
 from . import (
@@ -48,6 +48,10 @@ from . import (
     )
 from .hooks import Hooks
 from .i18n import gettext
+from .transport import Transport
+
+
+LockToken = bytes
 
 
 class LockHooks(Hooks):
@@ -75,6 +79,28 @@ class Lock(object):
     """
 
     hooks = LockHooks()
+
+    def __init__(self, transport: Transport, path: str, file_modebits: int,
+                 dir_modebits: int) -> None: ...
+
+    def create(self, mode: int): ...
+
+    def break_lock(self) -> None: ...
+
+    def leave_in_place(self) -> None: ...
+
+    def dont_leave_in_place(self) -> None: ...
+
+    def validate_token(self, token: Optional[LockToken]) -> None: ...
+
+    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]: ...
+
+    def lock_read(self) -> None: ...
+
+    def unlock(self) -> None: ...
+
+    def peek(self) -> LockToken:
+        raise NotImplementedError(self.peek)
 
 
 class LockResult(object):

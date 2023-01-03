@@ -824,7 +824,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         with self.lock_write(), source.lock_read():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
-            count = self.branch.pull(source, overwrite, stop_revision,
+            count = self.branch.pull(source, overwrite=overwrite, stop_revision=stop_revision,
                                      possible_transports=possible_transports,
                                      local=local, tag_selector=tag_selector)
             new_revision_info = self.branch.last_revision_info()

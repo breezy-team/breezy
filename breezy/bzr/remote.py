@@ -18,7 +18,7 @@ import bz2
 import os
 import re
 import sys
-from typing import Callable
+from typing import Callable, Optional, List
 import zlib
 
 import fastbencode as bencode
@@ -39,12 +39,14 @@ from .. import (
     repository as _mod_repository,
     revision as _mod_revision,
     transport as _mod_transport,
+    ui,
     urlutils,
     )
 from . import (
     branch as bzrbranch,
     bzrdir as _mod_bzrdir,
     inventory_delta,
+    repository as bzrrepository,
     testament as _mod_testament,
     vf_repository,
     vf_search,
@@ -447,6 +449,14 @@ class RemoteControlStore(_mod_config.IniFileStore):
 
 class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     """Control directory on a remote server, accessed via bzr:// or similar."""
+
+    @property
+    def user_transport(self):
+        return self.root_transport
+
+    @property
+    def control_transport(self):
+        return self.transport
 
     def __init__(self, transport, format, _client=None, _force_probe=False):
         """Construct a RemoteBzrDir.
@@ -1256,7 +1266,12 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     Repository objects.
     """
 
-    def __init__(self, remote_bzrdir, format, real_repository=None, _client=None):
+    _format: RemoteRepositoryFormat
+    _real_repository: Optional[_mod_repository.Repository]
+
+    def __init__(self, remote_bzrdir: RemoteBzrDir,
+                 format: RemoteRepositoryFormat,
+                 real_repository: Optional[_mod_repository.Repository] = None, _client=None):
         """Create a RemoteRepository instance.
 
         :param remote_bzrdir: The bzrdir hosting this repository.
@@ -1749,7 +1764,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
-    def _set_real_repository(self, repository):
+    def _set_real_repository(self, repository: _mod_repository.Repository):
         """Set the _real_repository for this repository.
 
         :param repository: The repository to fallback to for non-hpss
@@ -3475,9 +3490,19 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     At the moment most operations are mapped down to simple file operations.
     """
 
-    def __init__(self, remote_bzrdir, remote_repository, real_branch=None,
-                 _client=None, format=None, setup_stacking=True, name=None,
-                 possible_transports=None):
+    _real_branch: Optional["bzrbranch.BzrBranch"]
+    _format: RemoteBranchFormat
+    repository: RemoteRepository
+
+    @property
+    def control_transport(self) -> _mod_transport.Transport:
+        return self._transport  # type: ignore
+
+    def __init__(self, remote_bzrdir: RemoteBzrDir, remote_repository: RemoteRepository,
+                 real_branch: Optional["bzrbranch.BzrBranch"] = None,
+                 _client=None, format=None, setup_stacking: bool = True,
+                 name: Optional[str] = None,
+                 possible_transports: Optional[List[_mod_transport.Transport]] = None):
         """Create a RemoteBranch instance.
 
         :param real_branch: An optional local implementation of the branch
@@ -3504,13 +3529,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if real_branch is not None:
             self._real_branch = real_branch
             # Give the remote repository the matching real repo.
-            real_repo = self._real_branch.repository
+            real_repo: _mod_repository.Repository = real_branch.repository
             if isinstance(real_repo, RemoteRepository):
                 real_repo._ensure_real()
-                real_repo = real_repo._real_repository
+                real_repo = real_repo._real_repository  # type: ignore
             self.repository._set_real_repository(real_repo)
             # Give the branch the remote repository to let fast-pathing happen.
-            self._real_branch.repository = self.repository
+            real_branch.repository = self.repository
         else:
             self._real_branch = None
         # Fill out expected attributes of branch for breezy API users.
@@ -3530,7 +3555,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # function.
         if format is None:
             self._format = RemoteBranchFormat()
-            if real_branch is not None:
+            if self._real_branch is not None:
                 self._format._network_name = \
                     self._real_branch._format.network_name()
         else:
@@ -3541,6 +3566,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if not self._format._network_name:
             # Did not get from open_branchV2 - old server.
             self._ensure_real()
+            if not self._real_branch:
+                raise AssertionError
             self._format._network_name = \
                 self._real_branch._format.network_name()
         self.tags = self._format.make_tags(self)
@@ -3579,15 +3606,21 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def store_uncommitted(self, creator):
         self._ensure_real()
+        if self._real_branch is None:
+            raise AssertionError
         return self._real_branch.store_uncommitted(creator)
 
     def get_unshelver(self, tree):
         self._ensure_real()
+        if self._real_branch is None:
+            raise AssertionError
         return self._real_branch.get_unshelver(tree)
 
-    def _get_real_transport(self):
+    def _get_real_transport(self) -> _mod_transport.Transport:
         # if we try vfs access, return the real branch's vfs transport
         self._ensure_real()
+        if self._real_branch is None:
+            raise AssertionError
         return self._real_branch._transport
 
     _transport = property(_get_real_transport)
@@ -3695,8 +3728,112 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
         return response[1].decode('utf-8')
 
+    def _check_stackable_repo(self) -> None:
+        if not self.repository._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(
+                self.repository._format, self.repository.user_url)
+
+    def _unstack(self):
+        """Change a branch to be unstacked, copying data as needed.
+
+        Don't call this directly, use set_stacked_on_url(None).
+        """
+        with ui.ui_factory.nested_progress_bar() as pb:
+            # The basic approach here is to fetch the tip of the branch,
+            # including all available ghosts, from the existing stacked
+            # repository into a new repository object without the fallbacks.
+            #
+            # XXX: See <https://launchpad.net/bugs/397286> - this may not be
+            # correct for CHKMap repostiories
+            old_repository = self.repository
+            if len(old_repository._fallback_repositories) != 1:
+                raise AssertionError(
+                    "can't cope with fallback repositories "
+                    "of %r (fallbacks: %r)" % (
+                        old_repository, old_repository._fallback_repositories))
+            # Open the new repository object.
+            # Repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.  We reopen it starting from the URL so that we
+            # get a separate connection for RemoteRepositories and can
+            # stream from one of them to the other.  This does mean doing
+            # separate SSH connection setup, but unstacking is not a
+            # common operation so it's tolerable.
+            new_bzrdir = controldir.ControlDir.open(
+                self.controldir.root_transport.base)
+            new_repository = new_bzrdir.find_repository()
+            if new_repository._fallback_repositories:
+                raise AssertionError(
+                    "didn't expect %r to have fallback_repositories"
+                    % (self.repository,))
+            # Replace self.repository with the new repository.
+            # Do our best to transfer the lock state (i.e. lock-tokens and
+            # lock count) of self.repository to the new repository.
+            lock_token = old_repository.lock_write().repository_token
+            self.repository = new_repository
+            # Remote branches can have a second reference to the old
+            # repository that need to be replaced.
+            if self._real_branch is not None:
+                self._real_branch.repository = new_repository
+            self.repository.lock_write(token=lock_token)
+            if lock_token is not None:
+                old_repository.leave_lock_in_place()
+            old_repository.unlock()
+            if lock_token is not None:
+                # XXX: self.repository.leave_lock_in_place() before this
+                # function will not be preserved.  Fortunately that doesn't
+                # affect the current default format (2a), and would be a
+                # corner-case anyway.
+                #  - Andrew Bennetts, 2010/06/30
+                self.repository.dont_leave_lock_in_place()
+            old_lock_count = 0
+            while True:
+                try:
+                    old_repository.unlock()
+                except errors.LockNotHeld:
+                    break
+                old_lock_count += 1
+            if old_lock_count == 0:
+                raise AssertionError(
+                    'old_repository should have been locked at least once.')
+            for i in range(old_lock_count - 1):
+                self.repository.lock_write()
+            # Fetch from the old repository into the new.
+            with old_repository.lock_read():
+                # XXX: If you unstack a branch while it has a working tree
+                # with a pending merge, the pending-merged revisions will no
+                # longer be present.  You can (probably) revert and remerge.
+                try:
+                    tags_to_fetch = set(self.tags.get_reverse_tag_dict())
+                except errors.TagsNotSupported:
+                    tags_to_fetch = set()
+                fetch_spec = vf_search.NotInOtherForRevs(
+                    self.repository, old_repository,
+                    required_ids=[self.last_revision()],
+                    if_present_ids=tags_to_fetch, find_ghosts=True).execute()
+                self.repository.fetch(old_repository, fetch_spec=fetch_spec)
+
     def set_stacked_on_url(self, url):
-        branch.Branch.set_stacked_on_url(self, url)
+        if not self._format.supports_stacking():
+            raise UnstackableBranchFormat(self._format, self.user_url)
+        with self.lock_write():
+            # XXX: Changing from one fallback repository to another does not
+            # check that all the data you need is present in the new fallback.
+            # Possibly it should.
+            self._check_stackable_repo()
+            if not url:
+                try:
+                    self.get_stacked_on_url()
+                except (errors.NotStacked, UnstackableBranchFormat,
+                        errors.UnstackableRepositoryFormat):
+                    return
+                self._unstack()
+            else:
+                self._activate_fallback_location(
+                    url, possible_transports=[self.controldir.root_transport])
+            # write this out after the repository is stacked to avoid setting a
+            # stacked config that doesn't work.
+            self._set_config_location('stacked_on_location', url)
         # We need the stacked_on_url to be visible both locally (to not query
         # it repeatedly) and remotely (so smart verbs can get it server side)
         # Without the following line,

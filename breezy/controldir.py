@@ -95,19 +95,19 @@ class ControlComponent(object):
     """
 
     @property
-    def control_transport(self):
+    def control_transport(self) -> _mod_transport.Transport:
         raise NotImplementedError
 
     @property
-    def control_url(self):
+    def control_url(self) -> str:
         return self.control_transport.base
 
     @property
-    def user_transport(self):
+    def user_transport(self) -> _mod_transport.Transport:
         raise NotImplementedError
 
     @property
-    def user_url(self):
+    def user_url(self) -> str:
         return self.user_transport.base
 
     _format: "ControlComponentFormat"
@@ -132,6 +132,9 @@ class ControlDir(ControlComponent):
     """
 
     hooks: hooks.Hooks
+
+    root_transport: _mod_transport.Transport
+    user_transport: _mod_transport.Transport
 
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
@@ -194,7 +197,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.needs_format_conversion)
 
-    def create_repository(self, shared=False) -> "Repository":
+    def create_repository(self, shared: bool = False) -> "Repository":
         """Create a new repository in this control directory.
 
         Args:
@@ -204,12 +207,13 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.create_repository)
 
-    def destroy_repository(self):
+    def destroy_repository(self) -> None:
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self, name=None, repository=None,
-                      append_revisions_only=None) -> "Branch":
+    def create_branch(self, name: Optional[str] = None,
+                      repository: Optional["Repository"] = None,
+                      append_revisions_only: Optional[bool] = None) -> "Branch":
         """Create a branch in this ControlDir.
 
         Args:
@@ -223,7 +227,7 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self, name=None):
+    def destroy_branch(self, name: Optional[str] = None) -> None:
         """Destroy a branch in this ControlDir.
 
         Args:
@@ -498,25 +502,26 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
+                    br_to, overwrite=overwrite, stop_revision=revision_id, lossy=lossy,
                     tag_selector=tag_selector)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
-                    tag_selector=tag_selector)
+                    br_to, overwrite=overwrite, stop_revision=revision_id,
+                    lossy=lossy, tag_selector=tag_selector)
                 push_result.workingtree_updated = None  # Not applicable
             else:
                 if br_to.name == tree_to.branch.name:
                     with tree_to.lock_write():
                         push_result.branch_push_result = source.push(
-                            tree_to.branch, overwrite, stop_revision=revision_id,
+                            tree_to.branch, overwrite=overwrite,
+                            stop_revision=revision_id,
                             lossy=lossy, tag_selector=tag_selector)
                         tree_to.update()
                     push_result.workingtree_updated = True
                 else:
                     push_result.branch_push_result = source.push(
-                        br_to, overwrite, stop_revision=revision_id,
+                        br_to, overwrite=overwrite, stop_revision=revision_id,
                         lossy=lossy, tag_selector=tag_selector)
                     push_result.workingtree_updated = None  # Not applicable
             push_result.old_revno = push_result.branch_push_result.old_revno
