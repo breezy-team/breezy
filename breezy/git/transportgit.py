@@ -21,7 +21,6 @@ from io import BytesIO
 import os
 import sys
 import posixpath
-from tempfile import SpooledTemporaryFile
 
 from dulwich.errors import (
     NoIndexPresent,
@@ -792,6 +791,7 @@ class TransportObjectStore(PackBasedObjectStore):
         :return: Fileobject to write to and a commit function to
             call when the pack is finished.
         """
+        from tempfile import SpooledTemporaryFile
         f = SpooledTemporaryFile()
 
         def commit():

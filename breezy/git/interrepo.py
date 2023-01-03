@@ -18,7 +18,6 @@
 
 from io import BytesIO
 import itertools
-from tempfile import SpooledTemporaryFile
 
 from dulwich.errors import (
     NotCommitError,
@@ -752,6 +751,7 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
 
     def fetch_objects(self, determine_wants, mapping=None, limit=None,
                       lossy=False):
+        from tempfile import SpooledTemporaryFile
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
