@@ -160,7 +160,7 @@ class ChunkWriter(object):
             opts = ChunkWriter._repack_opts_for_speed
         self._max_repack, self._max_zsync = opts
 
-    def _recompress_all_bytes_in(self, extra_bytes: Optional[bytes] = None) -> Tuple[List[bytes], int, zlib._Compress]:
+    def _recompress_all_bytes_in(self, extra_bytes: Optional[bytes] = None) -> Tuple[List[bytes], int, "zlib._Compress"]:
         """Recompress the current bytes_in, and optionally more.
 
         :param extra_bytes: Optional, if supplied we will add it with
