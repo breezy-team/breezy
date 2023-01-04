@@ -84,17 +84,17 @@ def unpack_highres_date(date: str) -> Tuple[float, int]:
         raise ValueError(
             'Date string does not contain high-precision seconds: %r' % date)
     base_time = time.strptime(date[space_loc:dot_loc], " %Y-%m-%d %H:%M:%S")
-    fract_seconds, offset = date[dot_loc:].split()
-    fract_seconds = float(fract_seconds)
+    fract_seconds_str, offset_str = date[dot_loc:].split()
+    fract_seconds = float(fract_seconds_str)
 
-    offset = int(offset)
+    offset = int(offset_str)
 
     hours = int(offset / 100)
     minutes = (offset % 100)
     seconds_offset = (hours * 3600) + (minutes * 60)
 
     # time.mktime returns localtime, but calendar.timegm returns UTC time
-    timestamp = calendar.timegm(base_time)
+    timestamp = 1.0 * calendar.timegm(base_time)
     timestamp -= seconds_offset
     # Add back in the fractional seconds
     timestamp += fract_seconds
