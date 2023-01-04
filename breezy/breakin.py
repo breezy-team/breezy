@@ -35,7 +35,8 @@ def _debug(signal_number, interrupted_frame):
     sys.stderr.flush()
     # restore default meaning so that you can kill the process by hitting it
     # twice
-    assert _breakin_signal_number is not None
+    if _breakin_signal_number is None:
+        raise AssertionError
     signal.signal(_breakin_signal_number, signal.SIG_DFL)
     try:
         pdb.set_trace()
