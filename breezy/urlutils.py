@@ -28,7 +28,7 @@ from . import (
     osutils,
     )
 
-from posixpath import split as _posix_split
+import posixpath
 
 
 
@@ -232,7 +232,7 @@ def _posix_local_path_to_url(path):
     """
     # importing directly from posixpath allows us to test this
     # on non-posix platforms
-    return 'file://' + escape(osutils._posix_abspath(path))
+    return 'file://' + escape(posixpath.abspath(path))
 
 
 def _win32_local_path_from_url(url):
@@ -445,7 +445,7 @@ def split(url: str, exclude_trailing_slash: bool = True) -> Tuple[str, str]:
             # Relative path
             if exclude_trailing_slash and url.endswith('/'):
                 url = url[:-1]
-            return _posix_split(url)
+            return posixpath.split(url)
         else:
             # Scheme with no path
             return url, ''
@@ -463,7 +463,7 @@ def split(url: str, exclude_trailing_slash: bool = True) -> Tuple[str, str]:
 
     if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
         path = path[:-1]
-    head, tail = _posix_split(path)
+    head, tail = posixpath.split(path)
     return url_base + head, tail
 
 

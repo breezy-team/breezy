@@ -168,17 +168,7 @@ class Hooks(dict):
         hook_docs.append("")
         for hook_name in hook_names:
             hook = self[hook_name]
-            try:
-                hook_docs.append(hook.docs())
-            except AttributeError:
-                # legacy hook
-                strings = []
-                strings.append(hook_name)
-                strings.append("~" * len(hook_name))
-                strings.append("")
-                strings.append("An old-style hook. For documentation see the __init__ "
-                               "method of '%s'\n" % (name,))
-                hook_docs.extend(strings)
+            hook_docs.append(hook.docs())
         return "\n".join(hook_docs)
 
     def get_hook_name(self, a_callable):

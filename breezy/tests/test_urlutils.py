@@ -1001,7 +1001,7 @@ class TestFileRelpath(TestCase):
                           urlutils._posix_local_path_from_url)
         self.overrideAttr(urlutils, "MIN_ABS_FILEURL_LENGTH", len("file:///"))
         self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
-        self.overrideAttr(osutils, "abspath", osutils._posix_abspath)
+        self.overrideAttr(osutils, "abspath", osutils.posixpath.abspath)
         self.overrideAttr(osutils, "normpath", osutils._posix_normpath)
         self.overrideAttr(osutils, "pathjoin", osutils.posixpath.join)
         self.overrideAttr(osutils, "split", osutils.posixpath.split)

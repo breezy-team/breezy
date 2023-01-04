@@ -55,19 +55,6 @@ from ..transport import (
     ConnectedTransport,
     )
 
-# Disable one particular warning that comes from paramiko in Python2.5; if
-# this is emitted at the wrong time it tends to cause spurious test failures
-# or at least noise in the test case::
-#
-# [1770/7639 in 86s, 1 known failures, 50 skipped, 2 missing features]
-# test_permissions.TestSftpPermissions.test_new_files
-# /var/lib/python-support/python2.5/paramiko/message.py:226: DeprecationWarning: integer argument expected, got float
-#  self.packet.write(struct.pack('>I', n))
-warnings.filterwarnings('ignore',
-                        'integer argument expected, got float',
-                        category=DeprecationWarning,
-                        module='paramiko.message')
-
 try:
     import paramiko
 except ModuleNotFoundError as e:
