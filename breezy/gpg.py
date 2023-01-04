@@ -20,21 +20,15 @@
 import os
 from typing import Optional, Dict, List
 
-from breezy.lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
-    ui,
-    )
-from breezy.i18n import (
-    gettext,
-    ngettext,
-    )
-""")
-
 from . import (
     config,
     errors,
     trace,
+    ui,
+    )
+from .i18n import (
+    gettext,
+    ngettext,
     )
 
 # verification results
@@ -409,7 +403,7 @@ def expired_commit_message(count):
         count[SIGNATURE_EXPIRED])
 
 
-def verbose_expired_key_message(result, repo):
+def verbose_expired_key_message(result, repo) -> List[str]:
     """takes a verify result and returns list of expired key info"""
     signers: Dict[str, int] = {}
     fingerprint_to_authors = {}
@@ -420,32 +414,32 @@ def verbose_expired_key_message(result, repo):
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
             fingerprint_to_authors[fingerprint] = authors
-    result = []
+    ret: List[str] = []
     for fingerprint, number in signers.items():
-        result.append(
+        ret.append(
             ngettext(u"{0} commit by author {1} with key {2} now expired",
                      u"{0} commits by author {1} with key {2} now expired",
                      number).format(
                 number, fingerprint_to_authors[fingerprint], fingerprint))
-    return result
+    return ret
 
 
-def verbose_valid_message(result):
+def verbose_valid_message(result) -> List[str]:
     """takes a verify result and returns list of signed commits strings"""
     signers: Dict[str, int] = {}
     for rev_id, validity, uid in result:
         if validity == SIGNATURE_VALID:
             signers.setdefault(uid, 0)
             signers[uid] += 1
-    result = []
+    ret: List[str] = []
     for uid, number in signers.items():
-        result.append(ngettext(u"{0} signed {1} commit",
-                               u"{0} signed {1} commits",
-                               number).format(uid, number))
-    return result
+        ret.append(ngettext(u"{0} signed {1} commit",
+                            u"{0} signed {1} commits",
+                            number).format(uid, number))
+    return ret
 
 
-def verbose_not_valid_message(result, repo):
+def verbose_not_valid_message(result, repo) -> List[str]:
     """takes a verify result and returns list of not valid commit info"""
     signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
@@ -454,15 +448,15 @@ def verbose_not_valid_message(result, repo):
             authors = ', '.join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
-    result = []
+    ret: List[str] = []
     for authors, number in signers.items():
-        result.append(ngettext(u"{0} commit by author {1}",
-                               u"{0} commits by author {1}",
-                               number).format(number, authors))
-    return result
+        ret.append(ngettext(u"{0} commit by author {1}",
+                            u"{0} commits by author {1}",
+                            number).format(number, authors))
+    return ret
 
 
-def verbose_not_signed_message(result, repo):
+def verbose_not_signed_message(result, repo) -> List[str]:
     """takes a verify result and returns list of not signed commit info"""
     signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
@@ -471,24 +465,24 @@ def verbose_not_signed_message(result, repo):
             authors = ', '.join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
-    result = []
+    ret: List[str] = []
     for authors, number in signers.items():
-        result.append(ngettext(u"{0} commit by author {1}",
-                               u"{0} commits by author {1}",
-                               number).format(number, authors))
-    return result
+        ret.append(ngettext(u"{0} commit by author {1}",
+                            u"{0} commits by author {1}",
+                            number).format(number, authors))
+    return ret
 
 
-def verbose_missing_key_message(result):
+def verbose_missing_key_message(result) -> List[str]:
     """takes a verify result and returns list of missing key info"""
     signers: Dict[str, int] = {}
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_KEY_MISSING:
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
-    result = []
+    ret: List[str] = []
     for fingerprint, number in list(signers.items()):
-        result.append(ngettext(u"Unknown key {0} signed {1} commit",
-                               u"Unknown key {0} signed {1} commits",
-                               number).format(fingerprint, number))
-    return result
+        ret.append(ngettext(u"Unknown key {0} signed {1} commit",
+                            u"Unknown key {0} signed {1} commits",
+                            number).format(fingerprint, number))
+    return ret

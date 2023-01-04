@@ -26,6 +26,7 @@ from distutils.dep_util import newer
 from distutils.spawn import find_executable
 import os
 import re
+from typing import Optional, List
 
 
 class build_mo(Command):
@@ -46,10 +47,12 @@ class build_mo(Command):
                     ]
 
     boolean_options = ['force']
-    source_dir: str
-    build_dir: str
+    source_dir: Optional[str]
+    build_dir: Optional[str]
+    output_base: Optional[str]
+    lang: Optional[List[str]]
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         self.build_dir = None
         self.output_base = None
         self.source_dir = None  # type: ignore

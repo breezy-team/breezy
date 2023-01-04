@@ -21,7 +21,7 @@ configuring_bazaar.txt.
 """
 
 import re
-from typing import List
+from typing import List, Optional, Tuple
 
 
 _whitespace_match = re.compile(u'\\s', re.UNICODE).match
@@ -149,7 +149,7 @@ class Splitter(object):
 
     next = __next__
 
-    def _get_token(self):
+    def _get_token(self) -> Tuple[bool, Optional[str]]:
         self.quoted = False
         self.token: List[str] = []
         state = _Whitespace()
@@ -159,7 +159,7 @@ class Splitter(object):
                 break
         if state is not None and hasattr(state, 'finish'):
             state.finish(self)
-        result = u''.join(self.token)
+        result: Optional[str] = u''.join(self.token)
         if not self.quoted and result == '':
             result = None
         return self.quoted, result

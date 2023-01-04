@@ -21,7 +21,7 @@ from .errors import (
 
 import os
 import re
-from typing import List, Optional
+from typing import List, Optional, Iterator
 
 
 binary_files_re = b'Binary files (.*) and (.*) differ\n'
@@ -418,7 +418,7 @@ def parse_patch(iter_lines, allow_dirty=False):
         return patch
 
 
-def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
+def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep_dirty: bool = False):
     '''
     :arg iter_lines: iterable of lines to parse for patches
     :kwarg allow_dirty: If True, allow comments and other non-patch text
@@ -488,7 +488,7 @@ def iter_file_patch(iter_lines, allow_dirty=False, keep_dirty=False):
             yield saved_lines
 
 
-def iter_lines_handle_nl(iter_lines):
+def iter_lines_handle_nl(iter_lines: Iterator[bytes]) -> Iterator[bytes]:
     """
     Iterates through lines, ensuring that lines that originally had no
     terminating \n are produced without one.  This transformation may be
@@ -496,9 +496,10 @@ def iter_lines_handle_nl(iter_lines):
     repeatedly.
     """
     last_line: Optional[bytes] = None
+    line: Optional[bytes]
     for line in iter_lines:
         if line == NO_NL:
-            if not last_line.endswith(b'\n'):
+            if last_line is None or not last_line.endswith(b'\n'):
                 raise AssertionError()
             last_line = last_line[:-1]
             line = None

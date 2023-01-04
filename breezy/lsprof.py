@@ -10,7 +10,7 @@ import os
 import sys
 import _thread
 import threading
-from typing import Dict
+from typing import Dict, TextIO
 from _lsprof import Profiler, profiler_entry
 
 from . import errors
@@ -229,9 +229,10 @@ class _CallTreeFilter(object):
     a Python built-in.
     """
 
+    out_file: TextIO
+
     def __init__(self, data):
         self.data = data
-        self.out_file = None
 
     def output(self, out_file):
         self.out_file = out_file
