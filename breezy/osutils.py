@@ -377,7 +377,7 @@ rename = _rename_wrap_exception(os.rename)
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
 abspath = os.path.abspath
-realpath = os.path.realpath 
+realpath = os.path.realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
 _get_home_dir = partial(os.path.expanduser, '~')
