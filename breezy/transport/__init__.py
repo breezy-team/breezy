@@ -356,6 +356,8 @@ class Transport(object):
 
     hooks = TransportHooks()
 
+    base: str
+
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base

@@ -19,6 +19,7 @@
 import os
 import re
 import sys
+from typing import Tuple, Union
 
 from urllib import parse as urlparse
 
@@ -27,10 +28,7 @@ from . import (
     osutils,
     )
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
 from posixpath import split as _posix_split
-""")
 
 
 
@@ -76,7 +74,7 @@ def basename(url, exclude_trailing_slash=True):
     return split(url, exclude_trailing_slash=exclude_trailing_slash)[1]
 
 
-def dirname(url, exclude_trailing_slash=True):
+def dirname(url: str, exclude_trailing_slash: bool = True) -> str:
     """Return the parent directory of the given path.
 
     Args:
@@ -97,12 +95,12 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-def escape(relpath, safe='/~'):
+def escape(relpath: Union[bytes, str], safe: str = '/~') -> str:
     """Escape relpath to be a valid url."""
     return quote(relpath, safe=safe)
 
 
-def file_relpath(base, path):
+def file_relpath(base: str, path: str) -> str:
     """Compute just the relative sub-portion of a url
 
     This assumes that both paths are already fully specified file:// URLs.
@@ -428,7 +426,7 @@ def _win32_extract_drive_letter(url_base, path):
     return url_base, path
 
 
-def split(url, exclude_trailing_slash=True):
+def split(url: str, exclude_trailing_slash: bool = True) -> Tuple[str, str]:
     """Split a URL into its parent directory and a child directory.
 
     Args:

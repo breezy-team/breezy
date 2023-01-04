@@ -40,6 +40,8 @@ class MetaDirRepository(Repository):
         typically pointing to .bzr/repository.
     """
 
+    _format: "RepositoryFormatMetaDir"
+
     def __init__(self, _format, a_bzrdir, control_files):
         super(MetaDirRepository, self).__init__(
             _format, a_bzrdir, control_files)

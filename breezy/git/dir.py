@@ -109,6 +109,10 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 class GitDir(ControlDir):
     """An adapter to the '.git' dir used by git."""
 
+    @property
+    def control_transport(self):
+        return self.transport
+
     def is_supported(self):
         return True
 

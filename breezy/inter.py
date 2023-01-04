@@ -89,6 +89,7 @@ class InterObject(Generic[T]):
             self.source.unlock()
             raise
 
+    # TODO(jelmer): Post Python 3.11, return Self here
     @classmethod
     def get(klass, source: T, target: T):
         """Retrieve a Inter worker object for these objects.
