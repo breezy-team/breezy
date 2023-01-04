@@ -3094,7 +3094,7 @@ class TestTestSuite(tests.TestCase):
             self.assertEqual([], test_list)
             return
         self.assertSubset([
-            'breezy.timestamp',
+            'breezy.bzr.timestamp',
             ],
             test_list)
 
@@ -3119,7 +3119,7 @@ class TestTestSuite(tests.TestCase):
             calls.append("modules_to_doctest")
             if __doc__ is None:
                 return []
-            return ['breezy.timestamp']
+            return ['breezy.bzr.timestamp']
         self.overrideAttr(tests, '_test_suite_modules_to_doctest', doctests)
         expected_test_list = [
             # testmod_names

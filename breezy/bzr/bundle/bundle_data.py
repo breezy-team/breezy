@@ -148,7 +148,7 @@ class BundleInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from breezy.timestamp import unpack_highres_date
+        from breezy.bzr.timestamp import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
