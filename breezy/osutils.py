@@ -26,7 +26,6 @@ from typing import Dict, List
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
 import locale
 import ntpath
 import posixpath
@@ -382,7 +381,11 @@ realpath = os.path.realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
 _get_home_dir = partial(os.path.expanduser, '~')
-getuser_unicode = getpass.getuser
+
+def getuser_unicode():
+    import getpass
+    return getpass.getuser()
+
 getcwd = os.getcwd
 dirname = os.path.dirname
 basename = os.path.basename
