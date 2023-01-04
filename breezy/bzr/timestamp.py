@@ -17,18 +17,18 @@
 import calendar
 import time
 import re
+from typing import Tuple
 
-from . import osutils
+from .. import osutils
 
 
-def format_highres_date(t, offset=0):
+def format_highres_date(t: float, offset: int = 0) -> str:
     """Format a date, such that it includes higher precision in the
     seconds field.
 
-    :param t:   The local time in fractional seconds since the epoch
-    :type t: float
-    :param offset:  The timezone offset in integer seconds
-    :type offset: int
+    Args:
+      t:   The local time in fractional seconds since the epoch
+      offset:  The timezone offset in integer seconds
 
     Example: format_highres_date(time.time(), -time.timezone)
     this will return a date stamp for right now,
@@ -63,15 +63,13 @@ def format_highres_date(t, offset=0):
             ' %+03d%02d' % (offset / 3600, (offset / 60) % 60))
 
 
-def unpack_highres_date(date):
+def unpack_highres_date(date: str) -> Tuple[float, int]:
     """This takes the high-resolution date stamp, and
     converts it back into the tuple (timestamp, timezone)
     Where timestamp is in real UTC since epoch seconds, and timezone is an
     integer number of seconds offset.
 
     :param date: A date formated by format_highres_date
-    :type date: string
-
     """
     # Weekday parsing is locale sensitive, so drop the weekday
     space_loc = date.find(' ')

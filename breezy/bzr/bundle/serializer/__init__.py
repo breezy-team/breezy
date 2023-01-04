@@ -27,8 +27,6 @@ from .... import (
     )
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
-# For backwards-compatibility
-from ....timestamp import unpack_highres_date, format_highres_date
 
 
 # New bundles should try to use this header format

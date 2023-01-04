@@ -27,6 +27,9 @@ from . import (
     _get_bundle_header,
     binary_diff,
     )
+from ..timestamp import (
+    format_highres_date,
+    )
 from ..bundle_data import (
     RevisionInfo,
     BundleInfo,
@@ -34,9 +37,6 @@ from ..bundle_data import (
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
 from ...testament import StrictTestament
-from ....timestamp import (
-    format_highres_date,
-    )
 from ....textfile import text_file
 from ....trace import mutter
 

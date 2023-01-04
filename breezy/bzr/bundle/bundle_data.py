@@ -24,7 +24,6 @@ import pprint
 from ... import (
     cache_utf8,
     osutils,
-    timestamp,
     )
 from . import apply_bundle
 from ...errors import (
@@ -37,6 +36,9 @@ from ..inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
+    )
+from .. import (
+    timestamp,
     )
 from ..inventorytree import InventoryTree
 from ...osutils import sha_string, sha_strings, pathjoin

@@ -20,8 +20,8 @@ import time
 
 from breezy import (
     tests,
-    timestamp,
     )
+from breezy.bzr import timestamp
 from breezy.osutils import local_time_offset
 
 
