@@ -50,7 +50,9 @@ from dulwich.pack import (
     write_pack_header,
     compute_file_sha,
     write_pack_object,
-    )
+    _PackTupleIterable,
+    PackInflater,
+)
 from dulwich.refs import SymrefLoop
 from dulwich.repo import (
     BaseRepo,
@@ -651,8 +653,8 @@ class TransportObjectStore(PackBasedObjectStore):
                 self._pack_cache[basename] = pack
                 new_packs.append(pack)
         # Remove disappeared pack files
-        for f in set(self._pack_cache) - pack_files:
-            self._pack_cache.pop(f).close()
+        for n in set(self._pack_cache) - pack_files:
+            self._pack_cache.pop(n).close()
         return new_packs
 
     def _pack_names(self):
@@ -742,18 +744,19 @@ class TransportObjectStore(PackBasedObjectStore):
         :param path: Path to the pack file.
         """
         f.seek(0)
-        p = PackData("", f, len(f.getvalue()))
+        p = PackData(b"", f)
         entries = p.sorted_entries()
         basename = "pack-%s" % iter_sha1(entry[0]
                                          for entry in entries).decode('ascii')
-        p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
         with self.pack_transport.open_write_stream(basename + ".idx") as idxfile:
             write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
+        packfile = self.pack_transport.get(basename + ".pack")
+        data = PackData(basename + ".pack", packfile)
         idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename + ".idx", idxfile)
-        final_pack = Pack.from_objects(p, idx)
+        final_pack = Pack.from_objects(data, idx)
         final_pack._basename = basename
         self._add_cached_pack(basename, final_pack)
         return final_pack
@@ -767,31 +770,16 @@ class TransportObjectStore(PackBasedObjectStore):
         :param path: Path to the pack file.
         """
         f.seek(0)
-        data = PackData.from_file(f, len(f.getvalue()))
-        if hasattr(Pack, 'sorted_entries'):
-            from dulwich.pack import _PackTupleIterable, PackInflater
-            sorted_entries = list(
-                data.sorted_entries(resolve_ext_ref=self.get_raw))
-            pack_sha = iter_sha1(entry[0] for entry in sorted_entries)
-            inflater = PackInflater.for_pack_data(
-                data, resolve_ext_ref=self.get_raw)
-            pack_tuples = _PackTupleIterable(lambda: iter(inflater), len(data))
-        else:  # dulwich < 0.20.47
-            p = Pack('', resolve_ext_ref=self.get_raw)
-            p._data = data
-            p._data.pack = p
-            sorted_entries = p.data.sorted_entries()
+        tp = Pack('', resolve_ext_ref=self.get_raw)
+        tp._data = PackData.from_file(f)
+        tp._idx_load = lambda: MemoryPackIndex(
+            tp.data.sorted_entries(resolve_ext_ref=self.get_raw), tp.data.get_stored_checksum())
 
-            p._idx_load = lambda: MemoryPackIndex(
-                sorted_entries,
-                p.data.get_stored_checksum())
-
-            pack_sha = p.index.objects_sha1()
-            pack_tuples = p.pack_tuples()
+        pack_sha = tp.index.objects_sha1()
 
         with self.pack_transport.open_write_stream(
                 "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
-            entries, data_sum = write_pack_objects(datafile.write, pack_tuples)
+            entries, data_sum = write_pack_objects(datafile.write, tp.pack_tuples())
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         with self.pack_transport.open_write_stream(
                 "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
@@ -803,16 +791,19 @@ class TransportObjectStore(PackBasedObjectStore):
         :return: Fileobject to write to and a commit function to
             call when the pack is finished.
         """
-        f = BytesIO()
+        from tempfile import SpooledTemporaryFile
+        f = SpooledTemporaryFile()
 
         def commit():
-            if len(f.getvalue()) > 0:
-                return self.move_in_pack(f)
-            else:
-                return None
+            try:
+                if f.tell() > 0:
+                    return self.move_in_pack(f)
+                else:
+                    return None
+            finally:
+                f.close()
 
-        def abort():
-            return None
+        abort = f.close
         return f, commit, abort
 
     @classmethod

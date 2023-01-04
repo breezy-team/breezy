@@ -744,6 +744,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
 class InterRemoteGitLocalGitRepository(InterGitGitRepository):
 
     def fetch_objects(self, determine_wants, limit=None, mapping=None):
+        from tempfile import SpooledTemporaryFile
         if limit is not None:
             raise FetchLimitUnsupported(self)
         graphwalker = self.target._git.get_graph_walker()
@@ -751,15 +752,15 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
                 self.source.controldir._client._fetch_capabilities):
             # TODO(jelmer): Avoid reading entire file into memory and
             # only processing it after the whole file has been fetched.
-            f = BytesIO()
+            f = SpooledTemporaryFile()
 
             def commit():
                 if f.tell():
                     f.seek(0)
                     self.target._git.object_store.move_in_thin_pack(f)
+                f.close()
 
-            def abort():
-                pass
+            abort = f.close
         else:
             f, commit, abort = self.target._git.object_store.add_pack()
         try:
