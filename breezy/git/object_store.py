@@ -89,11 +89,7 @@ class LRUTreeCache(object):
     def __init__(self, repository):
         def approx_tree_size(tree):
             # Very rough estimate, 250 per inventory entry
-            try:
-                inv = tree.root_inventory
-            except AttributeError:
-                inv = tree.inventory
-            return len(inv) * 250
+            return len(tree.root_inventory) * 250
         self.repository = repository
         self._cache = lru_cache.LRUSizeCache(
             max_size=MAX_TREE_CACHE_SIZE, after_cleanup_size=None,

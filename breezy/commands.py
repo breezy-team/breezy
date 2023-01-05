@@ -991,10 +991,7 @@ def _match_argform(cmd, takes_args, args):
 def apply_coveraged(the_callable, *args, **kwargs):
     import coverage
     cov = coverage.Coverage()
-    try:
-        config_file = cov.config.config_file
-    except AttributeError:  # older versions of coverage
-        config_file = cov.config_file
+    config_file = cov.config.config_file
     os.environ['COVERAGE_PROCESS_START'] = config_file
     cov.start()
     try:

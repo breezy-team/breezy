@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
+from functools import partial
 import os
 import re
 import stat
@@ -25,7 +26,6 @@ from typing import Dict, List
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
 import locale
 import ntpath
 import posixpath
@@ -272,22 +272,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 rename_func(tmp_name, new)
 
 
-# In Python 2.4.2 and older, os.path.abspath and os.path.realpath
-# choke on a Unicode string containing a relative path if
-# os.getcwd() returns a non-sys.getdefaultencoding()-encoded
-# string.
-def _posix_abspath(path):
-    # jam 20060426 rather than encoding to fsencoding
-    # copy posixpath.abspath, but use os.getcwdu instead
-    if not posixpath.isabs(path):
-        path = posixpath.join(getcwd(), path)
-    return _posix_normpath(path)
-
-
-def _posix_realpath(path):
-    return os.fsdecode(posixpath.realpath(os.fsencode(path)))
-
-
 def _posix_normpath(path):
     path = posixpath.normpath(path)
     # Bug 861008: posixpath.normpath() returns a path normalized according to
@@ -301,17 +285,6 @@ def _posix_normpath(path):
     if path.startswith('//'):
         path = path[1:]
     return path
-
-
-def _posix_get_home_dir(fsdecode=os.fsdecode):
-    """Get the home directory of the current user as a unicode path"""
-    path = posixpath.expanduser("~")
-    return os.fsdecode(path)
-
-
-def _posix_getuser_unicode():
-    """Get username from environment or password database as unicode"""
-    return getpass.getuser()
 
 
 def _win32_fixdrive(path):
@@ -352,7 +325,7 @@ def _win32_normpath(path):
 
 
 def _win32_getcwd():
-    return _win32_fixdrive(_win32_fix_separators(_getcwd()))
+    return _win32_fixdrive(_win32_fix_separators(os.getcwd()))
 
 
 def _win32_rename(old, new):
@@ -374,7 +347,7 @@ def _win32_rename(old, new):
 
 
 def _mac_getcwd():
-    return unicodedata.normalize('NFC', _getcwd())
+    return unicodedata.normalize('NFC', os.getcwd())
 
 
 def _rename_wrap_exception(rename_func):
@@ -398,21 +371,22 @@ def _rename_wrap_exception(rename_func):
     return _rename_wrapper
 
 
-_getcwd = os.getcwd
-
-
 # Default rename wraps os.rename()
 rename = _rename_wrap_exception(os.rename)
 
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
-abspath = _posix_abspath
-realpath = _posix_realpath
+abspath = os.path.abspath
+realpath = os.path.realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
-_get_home_dir = _posix_get_home_dir
-getuser_unicode = _posix_getuser_unicode
-getcwd = _getcwd
+_get_home_dir = partial(os.path.expanduser, '~')
+
+def getuser_unicode():
+    import getpass
+    return getpass.getuser()
+
+getcwd = os.getcwd
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
@@ -1263,7 +1237,7 @@ def _cicp_canonical_relpath(base, path):
     for bit in bit_iter:
         lbit = bit.lower()
         try:
-            next_entries = scandir(current)
+            next_entries = os.scandir(current)
         except OSError:  # enoent, eperm, etc
             # We can't find this in the filesystem, so just append the
             # remaining bits.
@@ -1642,40 +1616,6 @@ def check_legal_path(path):
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
 
 
-try:
-    scandir = os.scandir
-except AttributeError:  # Python < 3
-    lazy_import(globals(), """\
-from scandir import scandir
-""")
-
-
-def _is_error_enotdir(e):
-    """Check if this exception represents ENOTDIR.
-
-    Unfortunately, python is very inconsistent about the exception
-    here. The cases are:
-      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
-      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
-         which is the windows error code.
-      3) Windows, Python2.5 uses errno == EINVAL and
-         winerror == ERROR_DIRECTORY
-
-    :param e: An Exception object (expected to be OSError with an errno
-        attribute, but we should be able to cope with anything)
-    :return: True if this represents an ENOTDIR error. False otherwise.
-    """
-    en = getattr(e, 'errno', None)
-    if (en == errno.ENOTDIR or
-        (sys.platform == 'win32' and
-            (en == _WIN32_ERROR_DIRECTORY or
-             (en == errno.EINVAL
-              and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
-             ))):
-        return True
-    return False
-
-
 def walkdirs(top, prefix="", fsdecode=os.fsdecode):
     """Yield data about all the directories in a tree.
 
@@ -1722,14 +1662,13 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
 
         dirblock = []
         try:
-            for entry in scandir(top):
+            for entry in os.scandir(top):
                 name = fsdecode(entry.name)
                 statvalue = entry.stat(follow_symlinks=False)
                 kind = file_kind_from_stat_mode(statvalue.st_mode)
                 dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
-        except OSError as e:
-            if not _is_error_enotdir(e):
-                raise
+        except NotADirectoryError as e:
+            pass
         dirblock.sort()
         yield (relroot, top), dirblock
 
@@ -1853,7 +1792,7 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for entry in scandir(safe_utf8(top)):
+        for entry in os.scandir(safe_utf8(top)):
             name = os.fsdecode(entry.name)
             abspath = top_slash + name
             name_utf8 = _utf8_encode(name, 'surrogateescape')[0]

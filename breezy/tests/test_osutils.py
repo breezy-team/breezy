@@ -908,7 +908,7 @@ class TestWin32Funcs(tests.TestCase):
 
     def test_getcwd(self):
         cwd = osutils._win32_getcwd()
-        os_cwd = osutils._getcwd()
+        os_cwd = os.getcwd()
         self.assertEqual(os_cwd[1:].replace('\\', '/'), cwd[1:])
         # win32 is inconsistent whether it returns lower or upper case
         # and even if it was consistent the user might type the other
@@ -2079,30 +2079,6 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEqual(self.path, 'test_file')
         self.assertEqual(self.uid, s.st_uid)
         self.assertEqual(self.gid, s.st_gid)
-
-
-class TestGetHomeDir(tests.TestCase):
-
-    def test_is_unicode(self):
-        home = osutils._get_home_dir()
-        self.assertIsInstance(home, str)
-
-    def test_posix_homeless(self):
-        self.overrideEnv('HOME', None)
-        home = osutils._get_home_dir()
-        self.assertIsInstance(home, str)
-
-    def test_posix_home_ascii(self):
-        self.overrideEnv('HOME', '/home/test')
-        home = osutils._posix_get_home_dir()
-        self.assertIsInstance(home, str)
-        self.assertEqual(u'/home/test', home)
-
-    def test_posix_home_unicode(self):
-        self.requireFeature(features.ByteStringNamedFilesystem)
-        self.overrideEnv('HOME', '/home/\xa7test')
-        fsdecode = lambda x: x.decode('iso8859-1', 'surrogateescape')
-        self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir(fsdecode))
 
 
 class TestGetuserUnicode(tests.TestCase):
