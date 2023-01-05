@@ -1496,10 +1496,7 @@ class InventoryTreeTransform(DiskTreeTransform):
             return
         try:
             children = os.listdir(self._tree.abspath(path))
-        except OSError as e:
-            if not (osutils._is_error_enotdir(e) or
-                    e.errno in (errno.ENOENT, errno.ESRCH)):
-                raise
+        except (NotADirectoryError, FileNotFoundError):
             return
 
         for child in children:
