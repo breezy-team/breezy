@@ -3669,7 +3669,7 @@ class cmd_commit(Command):
         commit_stamp = offset = None
         if commit_time is not None:
             try:
-                commit_stamp, offset = timestamp.parse_patch_date(commit_time)
+                commit_stamp, offset = patches.parse_patch_date(commit_time)
             except ValueError as exc:
                 raise errors.CommandError(gettext(
                     "Could not parse --commit-time: " + str(exc))) from exc

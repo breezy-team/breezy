@@ -32,6 +32,8 @@ from breezy.patches import (
     InsertLine,
     RemoveLine,
     difference_index,
+    format_patch_date,
+    parse_patch_date,
     get_patch_names,
     hunk_from_header,
     iter_patched,
@@ -381,3 +383,87 @@ class AppliedPatchesTests(TestCaseWithTransport):
 """.splitlines(True))
         with AppliedPatches(tree, [patch]) as newtree:
             self.assertEqual(b'b\n', newtree.get_file_text('b'))
+
+
+class TestPatchHeader(TestCase):
+
+    def test_format_patch_date(self):
+        # epoch is always in utc
+        self.assertEqual('1970-01-01 00:00:00 +0000',
+                         format_patch_date(0))
+        self.assertEqual('1970-01-01 00:00:00 +0000',
+                         format_patch_date(0, 5 * 3600))
+        self.assertEqual('1970-01-01 00:00:00 +0000',
+                         format_patch_date(0, -5 * 3600))
+        # regular timestamp with typical timezone
+        self.assertEqual('2007-03-06 10:04:19 -0500',
+                         format_patch_date(1173193459, -5 * 3600))
+        # the timezone part is HHMM
+        self.assertEqual('2007-03-06 09:34:19 -0530',
+                         format_patch_date(1173193459, -5.5 * 3600))
+        # timezones can be offset by single minutes (but no less)
+        self.assertEqual('2007-03-06 15:05:19 +0001',
+                         format_patch_date(1173193459, +1 * 60))
+
+    def test_parse_patch_date(self):
+        self.assertEqual(
+            (0, 0),
+            parse_patch_date('1970-01-01 00:00:00 +0000'))
+        # even though we don't emit pre-epoch dates, we can parse them
+        self.assertEqual(
+            (0, -5 * 3600),
+            parse_patch_date('1969-12-31 19:00:00 -0500'))
+        self.assertEqual(
+            (0, +5 * 3600),
+            parse_patch_date('1970-01-01 05:00:00 +0500'))
+        self.assertEqual(
+            (1173193459, -5 * 3600),
+            parse_patch_date('2007-03-06 10:04:19 -0500'))
+        # offset of three minutes
+        self.assertEqual(
+            (1173193459, +3 * 60),
+            parse_patch_date('2007-03-06 15:07:19 +0003'))
+        # No space between time and offset
+        self.assertEqual(
+            (1173193459, -5 * 3600),
+            parse_patch_date('2007-03-06 10:04:19-0500'))
+        # Extra spacing
+        self.assertEqual(
+            (1173193459, -5 * 3600),
+            parse_patch_date('2007-03-06     10:04:19     -0500'))
+
+    def test_parse_patch_date_bad(self):
+        self.assertRaises(ValueError, parse_patch_date,
+                          'NOT A TIME')
+        # Extra data at end
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19 -0500x')
+        # Missing day
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03 10:04:19 -0500')
+        # Missing seconds
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04 -0500')
+        # Missing offset
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19')
+        # Missing plus or minus in offset
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19 0500')
+        # Invalid hour in offset
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19 +2400')
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19 -2400')
+        # Invalid minute in offset
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19 -0560')
+        # Too many digits in offset
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19 79500')
+        # Minus sign in middle of offset
+        self.assertRaises(ValueError, parse_patch_date,
+                          '2007-03-06 10:04:19 +05-5')
+
+
+

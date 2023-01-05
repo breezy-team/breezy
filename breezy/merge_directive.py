@@ -26,6 +26,7 @@ from breezy import (
     diff,
     email_message,
     gpg,
+    patches,
     revision as _mod_revision,
     timestamp,
     trace,
@@ -148,7 +149,7 @@ class BaseMergeDirective(object):
 
         :return: a list of lines
         """
-        time_str = timestamp.format_patch_date(self.time, self.timezone)
+        time_str = patches.format_patch_date(self.time, self.timezone)
         stanza = rio.Stanza(revision_id=self.revision_id, timestamp=time_str,
                             target_branch=self.target_branch,
                             testament_sha1=self.testament_sha1)
@@ -458,7 +459,7 @@ class MergeDirective(BaseMergeDirective):
                 patch_type = 'diff'
             else:
                 patch_type = 'bundle'
-        time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))
+        time, timezone = patches.parse_patch_date(stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',
                     'source_branch', 'message'):
@@ -552,7 +553,7 @@ class MergeDirective2(BaseMergeDirective):
                     bundle = b''.join(line_iter)
                 else:
                     raise IllegalMergeDirectivePayload(start)
-        time, timezone = timestamp.parse_patch_date(stanza.get('timestamp'))
+        time, timezone = patches.parse_patch_date(stanza.get('timestamp'))
         kwargs = {}
         for key in ('revision_id', 'testament_sha1', 'target_branch',
                     'source_branch', 'message', 'base_revision_id'):
