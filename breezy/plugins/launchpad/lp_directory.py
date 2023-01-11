@@ -109,7 +109,7 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
     lp_branch = lp.branches.getByPath(path=path)
     if not lp_branch:
         raise InvalidURL("Unknown Launchpad path: %s" % path)
-    return {'urls': [lp_branch.composePublicURL(scheme='ssh')]}
+    return {'urls': [lp_branch.composePublicURL(scheme='bzr+ssh'), lp_branch.composePublicURL(scheme='http')]}
 
 
 class LaunchpadDirectory(object):
