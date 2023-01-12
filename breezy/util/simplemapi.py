@@ -214,7 +214,7 @@ def _sendMail(session, recipient, subject, body, attach):
         rd.ulRecipClass = MAPI_TO
         try:
             rd.lpszName, rd.lpszAddress = _resolveName(session, ra)
-        except WindowsError:  # type: ignore
+        except OSError:  # type: ignore
             # work-round for Mozilla Thunderbird
             rd.lpszName, rd.lpszAddress = None, ra
         rd.ulEIDSize = 0

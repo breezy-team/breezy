@@ -82,7 +82,7 @@ class TestGetTo(TestCaseInTempDir):
     def test_body(self):
         sender, revid = self.get_sender()
         self.assertEqual(
-            'At %s\n\n%s' % (sender.url(), sample_log % revid.decode('utf-8')),
+            'At {}\n\n{}'.format(sender.url(), sample_log % revid.decode('utf-8')),
             sender.body())
 
     def test_custom_body(self):
@@ -128,9 +128,9 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_send_to_multiple(self):
         sender, revid = self.get_sender(multiple_to_configured_config)
-        self.assertEqual([u'Sample <foo@example.com>', u'Other <baz@bar.com>'],
+        self.assertEqual(['Sample <foo@example.com>', 'Other <baz@bar.com>'],
                          sender.to())
-        self.assertEqual([u'Sample <foo@example.com>', u'Other <baz@bar.com>'],
+        self.assertEqual(['Sample <foo@example.com>', 'Other <baz@bar.com>'],
                          sender._command_line()[-2:])
 
     def test_url_set(self):

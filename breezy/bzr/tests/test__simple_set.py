@@ -31,7 +31,7 @@ except ImportError:
     _simple_set_pyx = None
 
 
-class _Hashable(object):
+class _Hashable:
     """A simple object which has a fixed hash value.
 
     We could have used an 'int', but it turns out that Int objects don't

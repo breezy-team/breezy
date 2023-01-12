@@ -184,7 +184,7 @@ class HeadUpdateFailed(BzrError):
             "branch, specify the URL %(base_url)s,branch=master.")
 
     def __init__(self, base_url):
-        super(HeadUpdateFailed, self).__init__()
+        super().__init__()
         self.base_url = base_url
 
 
@@ -319,7 +319,7 @@ class TCPGitSmartTransport(GitSmartTransport):
             self._host, self._port, report_activity=self._report_activity)
 
 
-class SSHSocketWrapper(object):
+class SSHSocketWrapper:
 
     def __init__(self, sock):
         self.sock = sock
@@ -397,7 +397,7 @@ class RemoteGitBranchFormat(GitBranchFormat):
         raise UninitializableFormat(self)
 
 
-class DefaultProgressReporter(object):
+class DefaultProgressReporter:
 
     _GIT_PROGRESS_PARTIAL_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
     _GIT_PROGRESS_TOTAL_RE = re.compile(r"(.*?): (\d+)")
@@ -780,7 +780,7 @@ class EmptyObjectStoreIterator(dict):
 class TemporaryPackIterator(Pack):
 
     def __init__(self, path, resolve_ext_ref):
-        super(TemporaryPackIterator, self).__init__(
+        super().__init__(
             path, resolve_ext_ref=resolve_ext_ref)
         self._idx_load = lambda: self._idx_load_or_generate(self._idx_path)
 
@@ -809,7 +809,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
         url = urlutils.strip_segment_parameters(str(url))
-        super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
+        super().__init__(url, *args, **kwargs)
 
     def archive(
         self,
@@ -854,7 +854,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
         read = response.read
 
-        class WrapResponse(object):
+        class WrapResponse:
 
             def __init__(self, response):
                 self._response = response
@@ -883,7 +883,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
     @classmethod
     def _known_formats(self):
-        return set([RemoteGitControlDirFormat()])
+        return {RemoteGitControlDirFormat()}
 
     def get_branch_format(self):
         return RemoteGitBranchFormat()
@@ -1075,7 +1075,7 @@ class RemoteGitBranch(GitBranch):
 
     def __init__(self, controldir, repository, ref, sha):
         self._sha = sha
-        super(RemoteGitBranch, self).__init__(controldir, repository, ref,
+        super().__init__(controldir, repository, ref,
                                               RemoteGitBranchFormat())
 
     def last_revision_info(self):

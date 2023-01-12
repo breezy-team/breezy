@@ -53,7 +53,7 @@ class TransportDecorator(Transport):
             self._decorated = get_transport(not_decorated_url)
         else:
             self._decorated = _decorated
-        super(TransportDecorator, self).__init__(prefix + self._decorated.base)
+        super().__init__(prefix + self._decorated.base)
 
     def abspath(self, relpath):
         """See Transport.abspath()."""

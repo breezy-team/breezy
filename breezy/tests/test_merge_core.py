@@ -44,7 +44,7 @@ from . import TestCaseWithTransport, TestSkipped, features
 from ..workingtree import WorkingTree
 
 
-class MergeBuilder(object):
+class MergeBuilder:
 
     def __init__(self, dir=None):
         self.dir = tempfile.mkdtemp(prefix="merge-test", dir=dir)
@@ -483,22 +483,22 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree(("mary/",))
         branch.controldir.clone("mary")
         # Now John commits a change
-        with open("original/file1", "wt") as f:
+        with open("original/file1", "w") as f:
             f.write("John\n")
         tree.commit("change file1")
         # Mary does too
         mary_tree = WorkingTree.open('mary')
         mary_branch = mary_tree.branch
-        with open("mary/file2", "wt") as f:
+        with open("mary/file2", "w") as f:
             f.write("Mary\n")
         mary_tree.commit("change file2")
         # john should be able to merge with no conflicts.
         base = [None, None]
         other = ("mary", -1)
         tree.merge_from_branch(mary_tree.branch)
-        with open("original/file1", "rt") as f:
+        with open("original/file1") as f:
             self.assertEqual("John\n", f.read())
-        with open("original/file2", "rt") as f:
+        with open("original/file2") as f:
             self.assertEqual("Mary\n", f.read())
 
     def test_conflicts(self):
@@ -650,9 +650,9 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertPathExists('a/un')
         self.assertTrue('a/deux')
         self.assertFalse(os.path.exists('a/tmp'))
-        with open('a/un', 'r') as f:
+        with open('a/un') as f:
             self.assertEqual(f.read(), 'DEUX')
-        with open('a/deux', 'r') as f:
+        with open('a/deux') as f:
             self.assertEqual(f.read(), 'UN')
 
     def test_merge_delete_and_add_same(self):
@@ -672,7 +672,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         a_wt.merge_from_branch(b_wt.branch, b_wt.branch.last_revision(),
                                b_wt.branch.get_rev_id(1))
         self.assertTrue(os.path.exists('a/file'))
-        with open('a/file', 'r') as f:
+        with open('a/file') as f:
             self.assertEqual(f.read(), 'THAT')
 
     def test_merge_rename_before_create(self):

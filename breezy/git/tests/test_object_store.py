@@ -61,7 +61,7 @@ from ..object_store import (
 class ExpectedShaTests(TestCase):
 
     def setUp(self):
-        super(ExpectedShaTests, self).setUp()
+        super().setUp()
         self.obj = Blob()
         self.obj.data = b"foo"
 
@@ -95,15 +95,15 @@ class FindMissingBzrRevidsTests(TestCase):
                          self._find_missing({"a": ["b"]}, ["a"], ["a"]))
 
     def test_one_missing(self):
-        self.assertEqual(set(["a"]),
+        self.assertEqual({"a"},
                          self._find_missing({"a": ["b"]}, ["a"], ["b"]))
 
     def test_two_missing(self):
-        self.assertEqual(set(["a", "b"]),
+        self.assertEqual({"a", "b"},
                          self._find_missing({"a": ["b"], "b": ["c"]}, ["a"], ["c"]))
 
     def test_two_missing_history(self):
-        self.assertEqual(set(["a", "b"]),
+        self.assertEqual({"a", "b"},
                          self._find_missing({"a": ["b"], "b": ["c"], "c": ["d"]},
                                             ["a"], ["c"]))
 
@@ -111,7 +111,7 @@ class FindMissingBzrRevidsTests(TestCase):
 class LRUTreeCacheTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(LRUTreeCacheTests, self).setUp()
+        super().setUp()
         self.branch = self.make_branch(".")
         self.branch.lock_write()
         self.addCleanup(self.branch.unlock)
@@ -145,7 +145,7 @@ class LRUTreeCacheTests(TestCaseWithTransport):
 class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(BazaarObjectStoreTests, self).setUp()
+        super().setUp()
         self.branch = self.make_branch(".")
         self.store = BazaarObjectStore(self.branch.repository)
 
@@ -238,7 +238,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 class TreeToObjectsTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(TreeToObjectsTests, self).setUp()
+        super().setUp()
         self.idmap = DictGitShaMap()
 
     def test_no_changes(self):
@@ -307,7 +307,7 @@ class TreeToObjectsTests(TestCaseWithTransport):
              for r in revtree_merge.get_parent_ids()],
             self.idmap, {}))
         objects = {path: obj for (path, obj, key) in entries}
-        self.assertEqual(set(['', 'foo', 'foo/subdir']), set(objects))
+        self.assertEqual({'', 'foo', 'foo/subdir'}, set(objects))
         self.assertEqual(
             (stat.S_IFDIR, subdir_a.id), objects['foo'][b'subdir-a'])
 

@@ -38,7 +38,7 @@ class CatchingExceptionThread(threading.Thread):
         except KeyError:
             # If the caller didn't pass a specific event, create our own
             sync_event = threading.Event()
-        super(CatchingExceptionThread, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.set_sync_event(sync_event)
         self.exception = None
         self.ignored_exceptions = None  # see set_ignored_exceptions
@@ -124,7 +124,7 @@ class CatchingExceptionThread(threading.Thread):
         self.sync_event.clear()
         try:
             try:
-                super(CatchingExceptionThread, self).run()
+                super().run()
             except BaseException:
                 self.exception = sys.exc_info()
         finally:
@@ -137,7 +137,7 @@ class CatchingExceptionThread(threading.Thread):
         Calling join(timeout=0) will raise the caught exception or return None
         if the thread is still alive.
         """
-        super(CatchingExceptionThread, self).join(timeout)
+        super().join(timeout)
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
             self.exception = None  # The exception should be raised only once

@@ -46,11 +46,11 @@ def reconcile(dir, canonicalize_chks=False):
     return reconciler.reconcile()
 
 
-class ReconcileResult(object):
+class ReconcileResult:
     """Class describing the result of a reconcile operation."""
 
 
-class Reconciler(object):
+class Reconciler:
     """Reconcilers are used to reconcile existing data."""
 
     def __init__(self, dir, other=None, canonicalize_chks=False):

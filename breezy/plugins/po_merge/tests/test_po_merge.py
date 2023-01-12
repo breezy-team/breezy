@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # Copyright (C) 2011 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -35,7 +34,7 @@ class BlackboxTestPoMerger(script.TestCaseWithTransportAndScript):
     _test_needs_features = [features.msgmerge_feature]
 
     def setUp(self):
-        super(BlackboxTestPoMerger, self).setUp()
+        super().setUp()
         self.builder = make_adduser_branch(self, 'adduser')
         # We need to install our hook as the test framework cleared it as part
         # of the initialization
@@ -124,7 +123,7 @@ class TestAdduserBranch(script.TestCaseWithTransportAndScript):
     """Sanity checks on the adduser branch content."""
 
     def setUp(self):
-        super(TestAdduserBranch, self).setUp()
+        super().setUp()
         self.builder = make_adduser_branch(self, 'adduser')
 
     def assertAdduserBranchContent(self, revid):

@@ -27,7 +27,7 @@ class TestCommitWithBoundBranch(
         transport_util.TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
-        super(TestCommitWithBoundBranch, self).setUp()
+        super().setUp()
         self.master_wt = self.make_branch_and_tree('master')
         self.local_wt = self.make_branch_and_tree('local')
 
@@ -42,7 +42,7 @@ class TestCommitWithBoundBranch(
         # commit do not provide a directory parameter, we have to change dir
         # manually
         os.chdir('local')
-        commit.run(message=u'empty commit', unchanged=True)
+        commit.run(message='empty commit', unchanged=True)
         self.assertEqual(1, len(self.connections))
 
     def test_commit_both_modified(self):
@@ -54,7 +54,7 @@ class TestCommitWithBoundBranch(
         # manually
         os.chdir('local')
         self.assertRaises(errors.BoundBranchOutOfDate, commit.run,
-                          message=u'empty commit', unchanged=True)
+                          message='empty commit', unchanged=True)
         self.assertEqual(1, len(self.connections))
 
     def test_commit_local(self):
@@ -65,7 +65,7 @@ class TestCommitWithBoundBranch(
         # commit do not provide a directory parameter, we have to change dir
         # manually
         os.chdir('local')
-        commit.run(message=u'empty commit', unchanged=True, local=True)
+        commit.run(message='empty commit', unchanged=True, local=True)
 
         # it shouldn't open any connections
         self.assertEqual(0, len(self.connections))

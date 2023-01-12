@@ -56,7 +56,7 @@ _PAGE_SIZE = 4096
 _NODE_CACHE_SIZE = 1000
 
 
-class _BuilderRow(object):
+class _BuilderRow:
     """The stored state accumulated while writing out a row in the index.
 
     :ivar spool: A temporary file used to accumulate nodes for this row
@@ -256,8 +256,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
 
     def _iter_smallest(self, iterators_to_combine):
         if len(iterators_to_combine) == 1:
-            for value in iterators_to_combine[0]:
-                yield value
+            yield from iterators_to_combine[0]
             return
         current_values = []
         for iterator in iterators_to_combine:
@@ -548,8 +547,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     yield self, key, node[1]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from index._iter_entries_prefix(self, nodes_by_key, keys)
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
@@ -606,7 +604,7 @@ class _LeafNode(dict):
             self.max_key = key_list[-1][0]
         else:
             self.min_key = self.max_key = None
-        super(_LeafNode, self).__init__(key_list)
+        super().__init__(key_list)
         self._keys = dict(self)
 
     def all_items(self):
@@ -620,7 +618,7 @@ class _LeafNode(dict):
         return keys
 
 
-class _InternalNode(object):
+class _InternalNode:
     """An internal node for a serialised B+Tree index."""
 
     __slots__ = ('keys', 'offset')
@@ -643,7 +641,7 @@ class _InternalNode(object):
         return nodes
 
 
-class BTreeGraphIndex(object):
+class BTreeGraphIndex:
     """Access to nodes via the standard GraphIndex interface for B+Tree's.
 
     Individual nodes are held in a LRU cache. This holds the root node in
@@ -1393,8 +1391,7 @@ class BTreeGraphIndex(object):
                 except KeyError:
                     pass
             return
-        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from index._iter_entries_prefix(self, nodes_by_key, keys)
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.

@@ -56,7 +56,7 @@ class VersionInfoTestCase(TestCaseWithTransport):
         wt.commit('b', rev_id=b'r2')
 
         self.build_tree_contents([('branch/a', b'new contents\n')])
-        wt.commit(u'\xe52', rev_id=b'r3')
+        wt.commit('\xe52', rev_id=b'r3')
 
         return wt
 
@@ -195,7 +195,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
         stanza = self.regen(wt, include_revision_history=True)
         revision_stanza = self.get_one_stanza(stanza, 'revisions')
         self.assertEqual(['r1', 'r2', 'r3'], revision_stanza.get_all('id'))
-        self.assertEqual(['a', 'b', u'\xe52'],
+        self.assertEqual(['a', 'b', '\xe52'],
                          revision_stanza.get_all('message'))
         self.assertEqual(3, len(revision_stanza.get_all('date')))
 
@@ -356,7 +356,7 @@ class TestVersionInfoYaml(VersionInfoTestCase):
         self.assertEqual(
             ['r1', 'r2', 'r3'], [r['id'] for r in revision_stanza])
         self.assertEqual(
-            ['a', 'b', u'\xe52'],
+            ['a', 'b', '\xe52'],
             [r['message'] for r in revision_stanza])
         self.assertEqual(3, len([r['date'] for r in revision_stanza]))
 
@@ -466,7 +466,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         rev_info = [(rev, message) for rev, message, timestamp, timezone
                     in tvi['revisions']]
         self.assertEqual([(b'r1', 'a'), (b'r2', 'b'),
-                          (b'r3', u'\xe52')], rev_info)
+                          (b'r3', '\xe52')], rev_info)
 
         # a was modified, so it should show up modified again
         self.build_tree(['branch/a', 'branch/c'])
@@ -567,7 +567,7 @@ class TestBuilder(version_info_formats.VersionInfoBuilder):
 class TestVersionInfoFormatRegistry(tests.TestCase):
 
     def setUp(self):
-        super(TestVersionInfoFormatRegistry, self).setUp()
+        super().setUp()
         self.overrideAttr(version_info_formats,
                           'format_registry', registry.Registry())
 

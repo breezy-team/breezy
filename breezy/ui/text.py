@@ -43,7 +43,7 @@ from . import (
     )
 
 
-class _ChooseUI(object):
+class _ChooseUI:
 
     """ Helper class for choose implementation.
     """
@@ -96,7 +96,7 @@ class _ChooseUI(object):
             else:
                 c = c.replace('&', '')
                 shortcut = c[0]
-                help = '[%s]%s' % (shortcut, c[1:])
+                help = '[{}]{}'.format(shortcut, c[1:])
             shortcut = shortcut.lower()
             if shortcut in self.alternatives:
                 raise ValueError("duplicated shortcut: %s" % shortcut)
@@ -108,7 +108,7 @@ class _ChooseUI(object):
             help_list.append(help)
             index += 1
 
-        self.prompt = u'%s (%s): ' % (msg, ', '.join(help_list))
+        self.prompt = '{} ({}): '.format(msg, ', '.join(help_list))
 
     def _getline(self):
         line = self.ui.stdin.readline()
@@ -141,10 +141,10 @@ class _ChooseUI(object):
             try:
                 choice = getchoice()
             except EOFError:
-                self.ui.stderr.write(u'\n')
+                self.ui.stderr.write('\n')
                 return None
             except KeyboardInterrupt:
-                self.ui.stderr.write(u'\n')
+                self.ui.stderr.write('\n')
                 raise
             choice = choice.lower()
             if choice not in self.alternatives:
@@ -152,7 +152,7 @@ class _ChooseUI(object):
                 continue
             name, index = self.alternatives[choice]
             if self.echo_back:
-                self.ui.stderr.write(name + u'\n')
+                self.ui.stderr.write(name + '\n')
             return index
 
 
@@ -167,7 +167,7 @@ class TextUIFactory(UIFactory):
 
     def __init__(self, stdin, stdout, stderr):
         """Create a TextUIFactory."""
-        super(TextUIFactory, self).__init__()
+        super().__init__()
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -252,7 +252,7 @@ class TextUIFactory(UIFactory):
                     password = password[:-1]
         return password
 
-    def get_password(self, prompt=u'', **kwargs):
+    def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
 
         :param prompt: The prompt to present the user
@@ -397,7 +397,7 @@ def pad_to_width(line, width, encoding_hint='ascii'):
     return (b'%-*.*s' % (width, width, s)).decode(encoding_hint)
 
 
-class TextProgressView(object):
+class TextProgressView:
     """Display of progress bar and other information on a tty.
 
     This shows one line of text, including possibly a network indicator,
@@ -673,7 +673,7 @@ def _wrap_in_stream(stream, encoding=None, errors='replace'):
         encoded_stream.encoding = encoding
         return encoded_stream
     else:
-        return io.open(fileno, encoding=encoding, errors=errors, mode='r', buffering=1)
+        return open(fileno, encoding=encoding, errors=errors, buffering=1)
 
 
 def _wrap_out_stream(stream, encoding=None, errors='replace'):
@@ -684,7 +684,7 @@ def _wrap_out_stream(stream, encoding=None, errors='replace'):
     return encoded_stream
 
 
-class TextUIOutputStream(object):
+class TextUIOutputStream:
     """Decorates stream to interact better with progress and change encoding.
 
     Before writing to the wrapped stream, progress is cleared. Callers must

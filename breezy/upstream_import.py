@@ -56,7 +56,7 @@ class NotArchiveType(BzrError):
         self.path = path
 
 
-class ZipFileWrapper(object):
+class ZipFileWrapper:
 
     def __init__(self, fileobj, mode):
         self.zipfile = zipfile.ZipFile(fileobj, mode)
@@ -78,7 +78,7 @@ class ZipFileWrapper(object):
         self.zipfile.close()
 
 
-class ZipInfoWrapper(object):
+class ZipInfoWrapper:
 
     def __init__(self, zipfile, info):
         self.info = info
@@ -96,7 +96,7 @@ class ZipInfoWrapper(object):
         return not self.isdir()
 
 
-class DirWrapper(object):
+class DirWrapper:
 
     def __init__(self, fileobj, mode='r'):
         if mode != 'r':
@@ -118,14 +118,13 @@ class DirWrapper(object):
             fi = FileInfo(self.root, child)
             yield fi
             if fi.isdir():
-                for v in self.getmembers(child):
-                    yield v
+                yield from self.getmembers(child)
 
     def extractfile(self, member):
         return open(member.fullpath, 'rb')
 
 
-class FileInfo(object):
+class FileInfo:
 
     def __init__(self, root, filepath):
         self.fullpath = pathjoin(root, filepath)
@@ -341,7 +340,7 @@ def do_import(source, tree_directory=None):
                     elif external_compressor == 'lzma':
                         import lzma
                         tar_input = BytesIO(lzma.decompress(tar_input.read()))
-                except IOError as e:
+                except OSError as e:
                     if e.errno == errno.ENOENT:
                         raise NoSuchFile(source)
                 try:

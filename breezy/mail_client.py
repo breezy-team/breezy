@@ -54,7 +54,7 @@ class NoMailAddressSpecified(errors.BzrError):
     _fmt = "No mail-to address (--mail-to) or output (-o) specified."
 
 
-class MailClient(object):
+class MailClient:
     """A mail client that can send messages with attachements."""
 
     def __init__(self, config):
@@ -118,10 +118,10 @@ class Editor(MailClient):
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
         """See MailClient._get_merge_prompt"""
-        return (u"%s\n\n"
-                u"To: %s\n"
-                u"Subject: %s\n\n"
-                u"%s" % (prompt, to, subject,
+        return ("%s\n\n"
+                "To: %s\n"
+                "Subject: %s\n\n"
+                "%s" % (prompt, to, subject,
                          attachment.decode('utf-8', 'replace')))
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
@@ -264,9 +264,9 @@ class Evolution(BodyExternalMailClient):
             message_options['attach'] = attach_path
         if body is not None:
             message_options['body'] = body
-        options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
+        options_list = ['{}={}'.format(k, urlutils.escape(v)) for (k, v) in
                         sorted(message_options.items())]
-        return ['mailto:%s?%s' % (self._encode_safe(to or ''),
+        return ['mailto:{}?{}'.format(self._encode_safe(to or ''),
                                   '&'.join(options_list))]
 
 
@@ -335,7 +335,7 @@ class Thunderbird(BodyExternalMailClient):
                             urlutils.quote(self._encode_safe(body))]
         else:
             options_list = []
-        options_list.extend(["%s='%s'" % (k, v) for k, v in
+        options_list.extend(["{}='{}'".format(k, v) for k, v in
                              sorted(message_options.items())])
         return ['-compose', ','.join(options_list)]
 
@@ -390,7 +390,7 @@ class Claws(ExternalMailClient):
         # to must be supplied for the claws-mail --compose syntax to work.
         if to is None:
             raise NoMailAddressSpecified()
-        compose_url = 'mailto:%s?%s' % (
+        compose_url = 'mailto:{}?{}'.format(
             self._encode_safe(to), '&'.join(compose_url))
         # Collect command-line options.
         message_options = ['--compose', compose_url]
@@ -404,7 +404,7 @@ class Claws(ExternalMailClient):
         """See ExternalMailClient._compose"""
         if from_ is None:
             from_ = self.config.get('email')
-        super(Claws, self)._compose(prompt, to, subject, attach_path,
+        super()._compose(prompt, to, subject, attach_path,
                                     mime_subtype, extension, body, from_)
 
 
@@ -453,7 +453,7 @@ class EmacsMail(ExternalMailClient):
     _client_commands = ['emacsclient']
 
     def __init__(self, config):
-        super(EmacsMail, self).__init__(config)
+        super().__init__(config)
         self.elisp_tmp_file = None
 
     def _prepare_send_function(self):
@@ -525,7 +525,7 @@ class EmacsMail(ExternalMailClient):
         # This will work with any mail mode including default mail-mode
         # User must tweak mail-user-agent variable to tell what function
         # will be called inside compose-mail.
-        mail_cmd = "(compose-mail %s %s)" % (_to, _subject)
+        mail_cmd = "(compose-mail {} {})".format(_to, _subject)
         commandline.append(mail_cmd)
 
         # Try to attach a MIME attachment using our wrapper function
@@ -667,9 +667,9 @@ class DefaultMail(MailClient):
                 to, subject, directive, basename=basename, body=body)
 
 
-mail_client_registry.register(u'default', DefaultMail,
+mail_client_registry.register('default', DefaultMail,
                               help=DefaultMail.__doc__)
-mail_client_registry.default_key = u'default'
+mail_client_registry.default_key = 'default'
 
 opt_mail_client = _mod_config.RegistryOption(
     'mail_client', mail_client_registry, help='E-mail client to use.',

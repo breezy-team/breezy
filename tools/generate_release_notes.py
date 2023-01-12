@@ -82,11 +82,11 @@ def output_news_file_sphinx(out_file, news_file_name):
             % (news_file_name,))
     doc_name = news_file_name[:-4]
     link_text = doc_name.replace('-', ' ')
-    out_file.write('   %s <%s>\n' % (link_text, doc_name))
+    out_file.write('   {} <{}>\n'.format(link_text, doc_name))
 
 
 def output_news_file_plain(out_file, news_file_name):
-    with open(news_file_name, 'r') as f:
+    with open(news_file_name) as f:
         lines = f.readlines()
     title = os.path.basename(news_file_name)[len('brz-'):-len('.txt')]
     for line in lines:

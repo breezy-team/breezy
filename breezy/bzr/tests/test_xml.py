@@ -488,21 +488,21 @@ class TestSerializer(TestCase):
         self.assertEqual([b'erik@b\xc3\xa5gfors-01'], rev.parent_ids)
         for parent_id in rev.parent_ids:
             self.assertIsInstance(parent_id, bytes)
-        self.assertEqual(u'Include \xb5nicode characters\n', rev.message)
+        self.assertEqual('Include \xb5nicode characters\n', rev.message)
         self.assertIsInstance(rev.message, str)
 
         # ie.revision should either be None or a utf-8 revision id
         inv = s_v5.read_inventory_from_lines(breezy.osutils.split_lines(_inventory_utf8_v5))
-        rev_id_1 = u'erik@b\xe5gfors-01'.encode('utf8')
-        rev_id_2 = u'erik@b\xe5gfors-02'.encode('utf8')
-        fid_root = u'TRE\xe9_ROOT'.encode('utf8')
-        fid_bar1 = u'b\xe5r-01'.encode('utf8')
-        fid_sub = u's\xb5bdir-01'.encode('utf8')
-        fid_bar2 = u'b\xe5r-02'.encode('utf8')
-        expected = [(u'', fid_root, None, rev_id_2),
-                    (u'b\xe5r', fid_bar1, fid_root, rev_id_1),
-                    (u's\xb5bdir', fid_sub, fid_root, rev_id_1),
-                    (u's\xb5bdir/b\xe5r', fid_bar2, fid_sub, rev_id_2),
+        rev_id_1 = 'erik@b\xe5gfors-01'.encode()
+        rev_id_2 = 'erik@b\xe5gfors-02'.encode()
+        fid_root = 'TRE\xe9_ROOT'.encode()
+        fid_bar1 = 'b\xe5r-01'.encode()
+        fid_sub = 's\xb5bdir-01'.encode()
+        fid_bar2 = 'b\xe5r-02'.encode()
+        expected = [('', fid_root, None, rev_id_2),
+                    ('b\xe5r', fid_bar1, fid_root, rev_id_1),
+                    ('s\xb5bdir', fid_sub, fid_root, rev_id_1),
+                    ('s\xb5bdir/b\xe5r', fid_bar2, fid_sub, rev_id_2),
                     ]
         self.assertEqual(rev_id_2, inv.revision_id)
         self.assertIsInstance(inv.revision_id, bytes)
@@ -535,7 +535,7 @@ class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
 
     def setUp(self):
-        super(TestEncodeAndEscape, self).setUp()
+        super().setUp()
         # Keep the cache clear before and after the test
         breezy.bzr.xml_serializer._clear_cache()
         self.addCleanup(breezy.bzr.xml_serializer._clear_cache)
@@ -561,7 +561,7 @@ class TestEncodeAndEscape(TestCase):
                          breezy.bzr.xml_serializer.encode_and_escape(utf8_str))
 
     def test_unicode(self):
-        uni_str = u'\xb5\xe5&\u062c'
+        uni_str = '\xb5\xe5&\u062c'
         self.assertEqual(b'&#181;&#229;&amp;&#1580;',
                          breezy.bzr.xml_serializer.encode_and_escape(uni_str))
 

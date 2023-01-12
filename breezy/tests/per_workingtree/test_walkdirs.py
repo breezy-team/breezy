@@ -51,13 +51,13 @@ class DirBlock:
 
     def __str__(self):
         return """
-file_path      = %r
-abspath        = %r
-relpath        = %r
-file_name      = %r
-inventory_kind = %r
-stat           = %r
-disk_kind      = %r""" % (self.file_path, self.abspath, self.relpath,
+file_path      = {!r}
+abspath        = {!r}
+relpath        = {!r}
+file_name      = {!r}
+inventory_kind = {!r}
+stat           = {!r}
+disk_kind      = {!r}""".format(self.file_path, self.abspath, self.relpath,
                           self.file_name, self.inventory_kind, self.stat,
                           self.disk_kind)
 

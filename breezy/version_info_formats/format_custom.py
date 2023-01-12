@@ -43,7 +43,7 @@ class NoTemplate(errors.BzrError):
     _fmt = 'No template specified.'
 
 
-class Template(object):
+class Template:
     """A simple template engine.
 
     >>> t = Template()

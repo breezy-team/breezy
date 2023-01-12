@@ -84,7 +84,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_lp_login',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests
 
 

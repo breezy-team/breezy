@@ -124,7 +124,7 @@ class cmd_dump_btree(Command):
                 tuple([r.decode('utf-8') for r in node[1]]),
                 node[2].decode('utf-8'),
                 refs_as_tuples)
-            self.outf.write('%s\n' % (as_tuple,))
+            self.outf.write('{}\n'.format(as_tuple))
 
 
 class cmd_file_id(Command):

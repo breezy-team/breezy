@@ -86,7 +86,7 @@ class ExistingContent(errors.BzrError):
     _fmt = "The content being inserted is already present."
 
 
-class ContentFactory(object):
+class ContentFactory:
     """Abstract interface for insertion and retrieval from a VersionedFile.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
@@ -301,7 +301,7 @@ def filter_absent(record_stream):
             yield record
 
 
-class _MPDiffGenerator(object):
+class _MPDiffGenerator:
     """Pull out the functionality for generating mp_diffs."""
 
     def __init__(self, vf, keys):
@@ -433,7 +433,7 @@ class _MPDiffGenerator(object):
         return [dpop(k) for k in self.ordered_keys]
 
 
-class VersionedFile(object):
+class VersionedFile:
     """Versioned text file storage.
 
     A versioned file manages versions of line-based text files,
@@ -786,7 +786,7 @@ class VersionedFile(object):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 
-class RecordingVersionedFilesDecorator(object):
+class RecordingVersionedFilesDecorator:
     """A minimal versioned files that records calls made on it.
 
     Only enough methods have been added to support tests using it to date.
@@ -875,16 +875,14 @@ class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
             # Use a defined order by asking for the keys one-by-one from the
             # backing_vf
             for key in sorted(keys, key=sort_key):
-                for record in self._backing_vf.get_record_stream([key],
-                                                                 'unordered', include_delta_closure):
-                    yield record
+                yield from self._backing_vf.get_record_stream([key],
+                                                                 'unordered', include_delta_closure)
         else:
-            for record in self._backing_vf.get_record_stream(keys, sort_order,
-                                                             include_delta_closure):
-                yield record
+            yield from self._backing_vf.get_record_stream(keys, sort_order,
+                                                             include_delta_closure)
 
 
-class KeyMapper(object):
+class KeyMapper:
     """KeyMappers map between keys and underlying partitioned storage."""
 
     def map(self, key):
@@ -958,7 +956,7 @@ class HashPrefixMapper(URLEscapeMapper):
     def _map(self, key):
         """See KeyMapper.map()."""
         prefix = self._escape(key[0])
-        return "%02x/%s" % (adler32(prefix) & 0xff, prefix.decode('utf-8'))
+        return "{:02x}/{}".format(adler32(prefix) & 0xff, prefix.decode('utf-8'))
 
     def _escape(self, prefix):
         """No escaping needed here."""
@@ -1013,7 +1011,7 @@ def make_versioned_files_factory(versioned_file_factory, mapper):
     return factory
 
 
-class VersionedFiles(object):
+class VersionedFiles:
     """Storage for many versioned files.
 
     This object allows a single keyspace for accessing the history graph and
@@ -1719,8 +1717,7 @@ class PlanWeaveMerge(TextMerge):
         for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
-                for struct in outstanding_struct():
-                    yield struct
+                yield from outstanding_struct()
                 lines_a = []
                 lines_b = []
                 ch_a = ch_b = False
@@ -1754,8 +1751,7 @@ class PlanWeaveMerge(TextMerge):
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
                                  'killed-base'):
                     raise AssertionError(state)
-        for struct in outstanding_struct():
-            yield struct
+        yield from outstanding_struct()
 
     def base_from_plan(self):
         """Construct a BASE file from the plan text."""
@@ -1808,7 +1804,7 @@ class PlanWeaveMerge(TextMerge):
                     # It seems that having the line 2 times is better than
                     # having it omitted. (Easier to manually delete than notice
                     # it needs to be added.)
-                    raise AssertionError('Unknown state: %s' % (state,))
+                    raise AssertionError('Unknown state: {}'.format(state))
         return base_lines
 
 
@@ -1836,7 +1832,7 @@ class VirtualVersionedFiles(VersionedFiles):
         :param get_lines: Should return lines for specified key or None if
                           not available.
         """
-        super(VirtualVersionedFiles, self).__init__()
+        super().__init__()
         self._get_parent_map = get_parent_map
         self._get_lines = get_lines
 
@@ -1857,7 +1853,7 @@ class VirtualVersionedFiles(VersionedFiles):
     def get_parent_map(self, keys):
         """See VersionedFiles.get_parent_map."""
         parent_view = self._get_parent_map(k for (k,) in keys).items()
-        return dict(((k,), tuple((p,) for p in v)) for k, v in parent_view)
+        return {(k,): tuple((p,) for p in v) for k, v in parent_view}
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s."""
@@ -1892,7 +1888,7 @@ class VirtualVersionedFiles(VersionedFiles):
                 yield (l, key)
 
 
-class NoDupeAddLinesDecorator(object):
+class NoDupeAddLinesDecorator:
     """Decorator for a VersionedFiles that skips doing an add_lines if the key
     is already present.
     """
@@ -1943,7 +1939,7 @@ def network_bytes_to_kind_and_offset(network_bytes):
     return storage_kind, line_end + 1
 
 
-class NetworkRecordStream(object):
+class NetworkRecordStream:
     """A record_stream which reconstitures a serialised stream."""
 
     def __init__(self, bytes_iterator):
@@ -1971,9 +1967,8 @@ class NetworkRecordStream(object):
         """
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
-            for record in self._kind_factory[storage_kind](
-                    storage_kind, bytes, line_end):
-                yield record
+            yield from self._kind_factory[storage_kind](
+                    storage_kind, bytes, line_end)
 
 
 def fulltext_network_to_record(kind, bytes, line_end):
@@ -2031,7 +2026,7 @@ def sort_groupcompress(parent_map):
     return present_keys
 
 
-class _KeyRefs(object):
+class _KeyRefs:
 
     def __init__(self, track_new_keys=False):
         # dict mapping 'key' to 'set of keys referring to that key'

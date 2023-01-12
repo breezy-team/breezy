@@ -31,7 +31,7 @@ from ..graph import (
     )
 
 
-class AbstractSearchResult(object):
+class AbstractSearchResult:
     """The result of a search, describing a set of keys.
 
     Search results are typically used as the 'fetch_spec' parameter when
@@ -76,7 +76,7 @@ class AbstractSearchResult(object):
         raise NotImplementedError(self.refine)
 
 
-class AbstractSearch(object):
+class AbstractSearch:
     """A search that can be executed, producing a search result.
 
     :seealso: AbstractSearchResult
@@ -217,7 +217,7 @@ class PendingAncestryResult(AbstractSearchResult):
             heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
-        return '<%s heads:%s repo:%r>' % (
+        return '<{} heads:{} repo:{!r}>'.format(
             self.__class__.__name__, heads_repr, self.repo)
 
     def get_recipe(self):
@@ -284,7 +284,7 @@ class EverythingResult(AbstractSearchResult):
         self._repo = repo
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self._repo)
+        return '{}({!r})'.format(self.__class__.__name__, self._repo)
 
     def get_recipe(self):
         raise NotImplementedError(self.get_recipe)

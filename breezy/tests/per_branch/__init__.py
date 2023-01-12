@@ -62,7 +62,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
     """This helper will be parameterised in each per_branch test."""
 
     def setUp(self):
-        super(TestCaseWithBranch, self).setUp()
+        super().setUp()
         self.branch = None
 
     def get_branch(self):
@@ -77,7 +77,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
 
     def make_branch(self, relpath, format=None):
         try:
-            return super(TestCaseWithBranch, self).make_branch(relpath, format)
+            return super().make_branch(relpath, format)
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable('Uninitializable branch format')
 

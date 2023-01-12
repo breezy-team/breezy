@@ -55,7 +55,7 @@ class TextUIFactory(ui_text.TextUIFactory):
             stdout = StringIOWithEncoding()
         if stderr is None:
             stderr = StringIOWithEncoding()
-        super(TextUIFactory, self).__init__(stdin, stdout, stderr)
+        super().__init__(stdin, stdout, stderr)
 
     def _setup_streams(self):
         self.raw_stdin = self.stdin

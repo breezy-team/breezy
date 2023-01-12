@@ -38,8 +38,8 @@ class TestMutt(tests.TestCase):
 
     def test_commandline_is_8bit(self):
         mutt = mail_client.Mutt(None)
-        cmdline = mutt._get_compose_commandline(u'jrandom@example.org',
-                                                u'Hi there!', u'file%')
+        cmdline = mutt._get_compose_commandline('jrandom@example.org',
+                                                'Hi there!', 'file%')
         self.assertEqual(
             ['-s', 'Hi there!', '-a', 'file%', '--', 'jrandom@example.org'],
             cmdline)
@@ -67,8 +67,8 @@ class TestThunderbird(tests.TestCase):
     def test_commandline_is_8bit(self):
         # test for bug #139318
         tbird = mail_client.Thunderbird(None)
-        cmdline = tbird._get_compose_commandline(u'jrandom@example.org',
-                                                 u'Hi there!', u'file%')
+        cmdline = tbird._get_compose_commandline('jrandom@example.org',
+                                                 'Hi there!', 'file%')
         self.assertEqual(['-compose',
                           ("attachment='%s'," %
                            urlutils.local_path_to_url('file%'))
@@ -107,8 +107,8 @@ class TestEmacsMail(tests.TestCase):
 
     def test_commandline_is_8bit(self):
         eclient = mail_client.EmacsMail(None)
-        commandline = eclient._get_compose_commandline(u'jrandom@example.org',
-                                                       u'Hi there!', u'file%')
+        commandline = eclient._get_compose_commandline('jrandom@example.org',
+                                                       'Hi there!', 'file%')
         if eclient.elisp_tmp_file is not None:
             self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         for item in commandline:
@@ -134,8 +134,8 @@ class TestXDGEmail(tests.TestCase):
 
     def test_commandline_is_8bit(self):
         xdg_email = mail_client.XDGEmail(None)
-        cmdline = xdg_email._get_compose_commandline(u'jrandom@example.org',
-                                                     u'Hi there!', u'file%')
+        cmdline = xdg_email._get_compose_commandline('jrandom@example.org',
+                                                     'Hi there!', 'file%')
         self.assertEqual(
             ['jrandom@example.org', '--subject', 'Hi there!',
              '--attach', 'file%'],
@@ -158,8 +158,8 @@ class TestEvolution(tests.TestCase):
 
     def test_commandline_is_8bit(self):
         evo = mail_client.Evolution(None)
-        cmdline = evo._get_compose_commandline(u'jrandom@example.org',
-                                               u'Hi there!', u'file%')
+        cmdline = evo._get_compose_commandline('jrandom@example.org',
+                                               'Hi there!', 'file%')
         self.assertEqual(
             ['mailto:jrandom@example.org?attach=file%25&subject=Hi%20there%21'
              ],
@@ -182,8 +182,8 @@ class TestKMail(tests.TestCase):
 
     def test_commandline_is_8bit(self):
         kmail = mail_client.KMail(None)
-        cmdline = kmail._get_compose_commandline(u'jrandom@example.org',
-                                                 u'Hi there!', u'file%')
+        cmdline = kmail._get_compose_commandline('jrandom@example.org',
+                                                 'Hi there!', 'file%')
         self.assertEqual(
             ['-s', 'Hi there!', '--attach', 'file%', 'jrandom@example.org'],
             cmdline)
@@ -211,9 +211,9 @@ class TestClaws(tests.TestCase):
     def test_commandline_is_8bit(self):
         claws = mail_client.Claws(None)
         cmdline = claws._get_compose_commandline(
-            u'jrandom@example.org', u'\xb5cosm of fun!', u'file%')
+            'jrandom@example.org', '\xb5cosm of fun!', 'file%')
         subject_string = urlutils.quote(
-            u'\xb5cosm of fun!'.encode(osutils.get_user_encoding(), 'replace'))
+            '\xb5cosm of fun!'.encode(osutils.get_user_encoding(), 'replace'))
         self.assertEqual(
             ['--compose',
              'mailto:jrandom@example.org?subject=%s' % subject_string,
@@ -227,7 +227,7 @@ class TestClaws(tests.TestCase):
     def test_with_from(self):
         claws = mail_client.Claws(None)
         cmdline = claws._get_compose_commandline(
-            u'jrandom@example.org', None, None, None, u'qrandom@example.com')
+            'jrandom@example.org', None, None, None, 'qrandom@example.com')
         self.assertEqual(
             ['--compose',
              'mailto:jrandom@example.org?from=qrandom%40example.com'],
@@ -242,7 +242,7 @@ class TestClaws(tests.TestCase):
     def test_with_body(self):
         claws = mail_client.Claws(None)
         cmdline = claws._get_compose_commandline(
-            u'jrandom@example.org', None, None, 'This is some body text')
+            'jrandom@example.org', None, None, 'This is some body text')
         self.assertEqual(
             ['--compose',
              'mailto:jrandom@example.org?body=This%20is%20some%20body%20text'],
@@ -254,16 +254,16 @@ class TestEditor(tests.TestCase):
     def test_get_merge_prompt_unicode(self):
         """Prompt, to and subject are unicode, the attachement is binary"""
         editor = mail_client.Editor(None)
-        prompt = editor._get_merge_prompt(u'foo\u1234',
-                                          u'bar\u1234',
-                                          u'baz\u1234',
-                                          u'qux\u1234'.encode('utf-8'))
-        self.assertContainsRe(prompt, u'foo\u1234(.|\n)*bar\u1234'
-                              u'(.|\n)*baz\u1234(.|\n)*qux\u1234')
-        editor._get_merge_prompt(u'foo', u'bar', u'baz', b'qux\xff')
+        prompt = editor._get_merge_prompt('foo\u1234',
+                                          'bar\u1234',
+                                          'baz\u1234',
+                                          'qux\u1234'.encode())
+        self.assertContainsRe(prompt, 'foo\u1234(.|\n)*bar\u1234'
+                              '(.|\n)*baz\u1234(.|\n)*qux\u1234')
+        editor._get_merge_prompt('foo', 'bar', 'baz', b'qux\xff')
 
 
-class DummyMailClient(object):
+class DummyMailClient:
 
     def compose_merge_request(self, *args, **kwargs):
         self.args = args

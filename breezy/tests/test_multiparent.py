@@ -29,7 +29,7 @@ LINES_3 = b"a\nb\nc\nd\n".splitlines(True)
 LF_SPLIT_LINES = [b'\x00\n', b'\x00\r\x01\n', b'\x02\r\xff']
 
 
-class Mock(object):
+class Mock:
 
     def __init__(self, **kwargs):
         self.__dict__ = kwargs

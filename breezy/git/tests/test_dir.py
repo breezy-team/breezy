@@ -110,7 +110,7 @@ class TestGitDir(tests.TestCaseInTempDir):
 class TestGitDirFormat(tests.TestCase):
 
     def setUp(self):
-        super(TestGitDirFormat, self).setUp()
+        super().setUp()
         self.format = dir.LocalGitControlDirFormat()
 
     def test_get_format_description(self):

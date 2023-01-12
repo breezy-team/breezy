@@ -23,7 +23,7 @@ from . import (
     )
 
 
-class MultiWalker(object):
+class MultiWalker:
     """Walk multiple trees simultaneously, getting combined results."""
 
     # Note: This could be written to not assume you can do out-of-order
@@ -99,7 +99,7 @@ class MultiWalker(object):
     @staticmethod
     def _path_to_key(path):
         dirname, basename = osutils.split(path)
-        return (dirname.split(u'/'), basename)
+        return (dirname.split('/'), basename)
 
     def _lookup_by_master_path(self, extra_entries, other_tree, master_path):
         return self._lookup_by_file_id(
@@ -139,11 +139,9 @@ class MultiWalker(object):
 
     def iter_all(self):
         """Match up the values in the different trees."""
-        for result in self._walk_master_tree():
-            yield result
+        yield from self._walk_master_tree()
         self._finish_others()
-        for result in self._walk_others():
-            yield result
+        yield from self._walk_others()
 
     def _walk_master_tree(self):
         """First pass, walk all trees in lock-step.

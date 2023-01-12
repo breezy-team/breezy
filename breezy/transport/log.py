@@ -39,7 +39,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
     """
 
     def __init__(self, *args, **kw):
-        super(TransportLogDecorator, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
 
         def _make_hook(hookname):
             def _hook(relpath, *args, **kw):

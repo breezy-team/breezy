@@ -412,7 +412,7 @@ def get_trees_and_branches_to_diff_locked(
     consider_relpath = True
     if path_list is None or len(path_list) == 0:
         # If no path is given, the current working tree is used
-        default_location = u'.'
+        default_location = '.'
         consider_relpath = False
     elif old_url is not None and new_url is not None:
         other_paths = path_list
@@ -549,7 +549,7 @@ def get_executable_change(old_is_x, new_is_x):
         return []
 
 
-class DiffPath(object):
+class DiffPath:
     """Base type for command object that compare files"""
 
     # The type or contents of the file were unsuitable for diffing
@@ -590,7 +590,7 @@ class DiffPath(object):
             return DiffPath.CANNOT_DIFF
 
 
-class DiffKindChange(object):
+class DiffKindChange:
     """Special differ for file kind changes.
 
     Represents kind change as deletion + creation.  Uses the other differs
@@ -733,9 +733,9 @@ class DiffText(DiffPath):
             new_date = self.EPOCH_DATE
         else:
             return self.CANNOT_DIFF
-        from_label = '%s%s\t%s' % (
+        from_label = '{}{}\t{}'.format(
             self.old_label, old_path or new_path, old_date)
-        to_label = '%s%s\t%s' % (
+        to_label = '{}{}\t{}'.format(
             self.new_label, new_path or old_path, new_date)
         return self.diff_text(old_path, new_path, from_label, to_label)
 
@@ -866,7 +866,7 @@ class DiffFromTool(DiffPath):
         # encoded_str.replace('?', '_') may break multibyte char.
         # So we should encode, decode, then replace(u'?', u'_')
         relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
-        relpath_tmp = relpath_tmp.replace(u'?', u'_')
+        relpath_tmp = relpath_tmp.replace('?', '_')
         return osutils.pathjoin(self._root, prefix, relpath_tmp)
 
     def _write_file(self, relpath, tree, prefix, force_temp=False,
@@ -938,7 +938,7 @@ class DiffFromTool(DiffPath):
             return new_file.read()
 
 
-class DiffTree(object):
+class DiffTree:
     """Provides textual representations of the difference between two trees.
 
     A DiffTree examines two trees and where a file-id has altered

@@ -53,7 +53,7 @@ def help(topic=None, outfile=None):
         topics = indices.search(topic)
         shadowed_terms = []
         for index, topic_obj in topics[1:]:
-            shadowed_terms.append('%s%s' % (index.prefix,
+            shadowed_terms.append('{}{}'.format(index.prefix,
                                             topic_obj.get_help_topic()))
         source = topics[0][1]
         outfile.write(source.get_help_text(shadowed_terms))
@@ -62,7 +62,7 @@ def help(topic=None, outfile=None):
             raise
 
     if alias is not None:
-        outfile.write("'brz %s' is an alias for 'brz %s'.\n" % (topic,
+        outfile.write("'brz {}' is an alias for 'brz {}'.\n".format(topic,
                                                                 " ".join(alias)))
 
 
@@ -123,7 +123,7 @@ help_topics.topic_registry.register("hidden-commands",
                                     help_topics.SECT_HIDDEN)
 
 
-class HelpIndices(object):
+class HelpIndices:
     """Maintainer of help topics across multiple indices.
 
     It is currently separate to the HelpTopicRegistry because of its ordered

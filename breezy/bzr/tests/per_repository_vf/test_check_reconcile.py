@@ -44,7 +44,7 @@ from breezy.tests.scenarios import load_tests_apply_scenarios
 load_tests = load_tests_apply_scenarios
 
 
-class BrokenRepoScenario(object):
+class BrokenRepoScenario:
     """Base class for defining scenarios for testing check and reconcile.
 
     A subclass needs to define the following methods:

@@ -67,7 +67,7 @@ class DuplicateFileId(errors.BzrError):
         self.entry = entry
 
 
-class InventoryEntry(object):
+class InventoryEntry:
     """Description of a versioned file.
 
     An InventoryEntry has the following fields, which are also
@@ -231,7 +231,7 @@ class InventoryEntry(object):
         Traceback (most recent call last):
         breezy.bzr.inventory.InvalidEntryName: Invalid entry name: src/hello.c
         """
-        if u'/' in name:
+        if '/' in name:
             raise InvalidEntryName(name=name)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
@@ -266,7 +266,7 @@ class InventoryEntry(object):
         if self.parent_id is not None:
             if not inv.has_id(self.parent_id):
                 raise errors.BzrCheckError(
-                    'missing parent {%s} in inventory for revision {%s}' % (
+                    'missing parent {{{}}} in inventory for revision {{{}}}'.format(
                         self.parent_id, rev_id))
         checker._add_entry_to_text_key_references(inv, self)
         self._check(checker, rev_id)
@@ -274,7 +274,7 @@ class InventoryEntry(object):
     def _check(self, checker, rev_id):
         """Check this inventory entry for kind specific errors."""
         checker._report_items.append(
-            'unknown entry kind %r in revision {%s}' % (self.kind, rev_id))
+            'unknown entry kind {!r} in revision {{{}}}'.format(self.kind, rev_id))
 
     def copy(self):
         """Clone this inventory entry."""
@@ -421,7 +421,7 @@ class InventoryDirectory(InventoryEntry):
         return other
 
     def __init__(self, file_id, name, parent_id):
-        super(InventoryDirectory, self).__init__(file_id, name, parent_id)
+        super().__init__(file_id, name, parent_id)
         self.children = {}
 
     def sorted_children(self):
@@ -440,7 +440,7 @@ class InventoryFile(InventoryEntry):
     kind = 'file'
 
     def __init__(self, file_id, name, parent_id):
-        super(InventoryFile, self).__init__(file_id, name, parent_id)
+        super().__init__(file_id, name, parent_id)
         self.text_sha1 = None
         self.text_size = None
         self.text_id = None
@@ -454,7 +454,7 @@ class InventoryFile(InventoryEntry):
                                  self.text_sha1)
         if self.text_size is None:
             checker._report_items.append(
-                'fileid {%s} in {%s} has None for text_size' % (self.file_id,
+                'fileid {{{}}} in {{{}}} has None for text_size'.format(self.file_id,
                                                                 tree_revision_id))
 
     def copy(self):
@@ -526,7 +526,7 @@ class InventoryFile(InventoryEntry):
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(InventoryFile, self)._unchanged(previous_ie)
+        compatible = super()._unchanged(previous_ie)
         if self.text_sha1 != previous_ie.text_sha1:
             compatible = False
         else:
@@ -546,7 +546,7 @@ class InventoryLink(InventoryEntry):
     kind = 'symlink'
 
     def __init__(self, file_id, name, parent_id):
-        super(InventoryLink, self).__init__(file_id, name, parent_id)
+        super().__init__(file_id, name, parent_id)
         self.symlink_target = None
 
     def _check(self, checker, tree_revision_id):
@@ -608,7 +608,7 @@ class InventoryLink(InventoryEntry):
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(InventoryLink, self)._unchanged(previous_ie)
+        compatible = super()._unchanged(previous_ie)
         if self.symlink_target != previous_ie.symlink_target:
             compatible = False
         return compatible
@@ -641,7 +641,7 @@ class TreeReference(InventoryEntry):
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(TreeReference, self)._unchanged(previous_ie)
+        compatible = super()._unchanged(previous_ie)
         if self.reference_revision != previous_ie.reference_revision:
             compatible = False
         return compatible
@@ -651,7 +651,7 @@ class TreeReference(InventoryEntry):
         return '+'
 
 
-class CommonInventory(object):
+class CommonInventory:
     """Basic inventory logic, defined in terms of primitives like has_id.
 
     An inventory is the metadata about the contents of a tree.
@@ -707,7 +707,7 @@ class CommonInventory(object):
             yield from children
             return
         children = deque(children)
-        stack = [(u'', children)]
+        stack = [('', children)]
         while stack:
             from_dir_relpath, children = stack[-1]
 
@@ -780,7 +780,7 @@ class CommonInventory(object):
             from_dir = self.root
             if (specific_file_ids is None
                     or self.root.file_id in specific_file_ids):
-                yield u'', self.root
+                yield '', self.root
         elif isinstance(from_dir, bytes):
             from_dir = self.get_entry(from_dir)
         else:
@@ -806,7 +806,7 @@ class CommonInventory(object):
         else:
             parents = None
 
-        stack = [(u'', from_dir)]
+        stack = [('', from_dir)]
         while stack:
             cur_relpath, cur_dir = stack.pop()
 
@@ -863,7 +863,7 @@ class CommonInventory(object):
                     descend(ie, child_path)
 
         if self.root is not None:
-            descend(self.root, u'')
+            descend(self.root, '')
         return accum
 
     def get_entry_by_path_partial(self, relpath):
@@ -1035,7 +1035,7 @@ class Inventory(CommonInventory):
         an id of None.
         """
         if root_id is not None:
-            self._set_root(InventoryDirectory(root_id, u'', None))
+            self._set_root(InventoryDirectory(root_id, '', None))
         else:
             self.root = None
             self._byid = {}
@@ -1048,7 +1048,7 @@ class Inventory(CommonInventory):
         contents = repr(self._byid)
         if len(contents) > max_len:
             contents = contents[:(max_len - len(closing))] + closing
-        return "<Inventory object at %x, contents=%r>" % (id(self), contents)
+        return "<Inventory object at {:x}, contents={!r}>".format(id(self), contents)
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.

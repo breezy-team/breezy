@@ -30,7 +30,7 @@ from .trace import (
 from .i18n import gettext
 
 
-class PushResult(object):
+class PushResult:
     """Result of a push operation.
 
     :ivar branch_push_result: Result of a push between branches

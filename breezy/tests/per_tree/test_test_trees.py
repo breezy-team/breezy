@@ -226,7 +226,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 self.assertEqual(
                     {tree.path2id(p) for p in [
                         '', '0file', '1top-dir', '1top-dir/1dir-in-1topdir',
-                        '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
+                        '1top-dir/0file-in-1topdir', 'symlink', '2utf\u1234file']},
                     set(tree.all_file_ids()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -234,7 +234,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('symlink', 'symlink'),
                  ('1top-dir/0file-in-1topdir', 'file'),
                  ('1top-dir/1dir-in-1topdir', 'directory')],
@@ -245,7 +245,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                     {tree.path2id(p) for p in [
                         '', '0file', '1top-dir',
                         '1top-dir/0file-in-1topdir', 'symlink',
-                        u'2utf\u1234file']},
+                        '2utf\u1234file']},
                     set(tree.all_file_ids()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -253,7 +253,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('symlink', 'symlink'),
                  ('1top-dir/0file-in-1topdir', 'file')],
                 [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
@@ -273,7 +273,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         if tree.has_versioned_directories():
             self.assertEqual(
                 {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
-                 '1top-dir/1dir-in-1topdir', u'2utf\u1234file'},
+                 '1top-dir/1dir-in-1topdir', '2utf\u1234file'},
                 set(tree.all_versioned_paths()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -281,14 +281,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('1top-dir/0file-in-1topdir', 'file'),
                  ('1top-dir/1dir-in-1topdir', 'directory')],
                 [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
         else:
             self.assertEqual(
                 {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
-                 u'2utf\u1234file'},
+                 '2utf\u1234file'},
                 set(tree.all_versioned_paths()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -296,7 +296,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('1top-dir/0file-in-1topdir', 'file')],
                 [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
 
@@ -307,10 +307,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # checks (as performed by some file systems (OSX) are outside the scope
         # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
         # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
-        paths = [u'',
-                 u'fo\N{Euro Sign}o',
-                 u'ba\N{Euro Sign}r/',
-                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+        paths = ['',
+                 'fo\N{Euro Sign}o',
+                 'ba\N{Euro Sign}r/',
+                 'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                  ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
@@ -332,11 +332,11 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 tree.add(paths[1:])
         if tree.branch.repository._format.supports_setting_revision_ids:
             try:
-                tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
+                tree.commit('in\xedtial', rev_id='r\xe9v-1'.encode())
             except errors.NonAsciiRevisionId:
                 raise TestSkipped('non-ascii revision ids not supported')
         else:
-            tree.commit(u'in\xedtial')
+            tree.commit('in\xedtial')
 
         return tree
 
@@ -349,15 +349,15 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         tree = self.workingtree_to_test_tree(tree)
 
-        revision_id = u'r\xe9v-1'.encode('utf8')
+        revision_id = 'r\xe9v-1'.encode()
         root_id = b'TREE_ROOT'
-        bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
-        foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
-        baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
-        path_and_ids = [(u'', root_id, None, None),
-                        (u'ba\N{Euro Sign}r', bar_id, root_id, revision_id),
-                        (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id),
-                        (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+        bar_id = 'ba\N{Euro Sign}r-id'.encode()
+        foo_id = 'fo\N{Euro Sign}o-id'.encode()
+        baz_id = 'ba\N{Euro Sign}z-id'.encode()
+        path_and_ids = [('', root_id, None, None),
+                        ('ba\N{Euro Sign}r', bar_id, root_id, revision_id),
+                        ('fo\N{Euro Sign}o', foo_id, root_id, revision_id),
+                        ('ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                          baz_id, bar_id, revision_id),
                         ]
         with tree.lock_read():
@@ -392,41 +392,41 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self._create_tree_with_utf8(wt)
 
         tree2 = wt.controldir.sprout('tree2').open_workingtree()
-        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+        self.build_tree(['tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
         if wt.supports_setting_file_ids():
-            tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
-                      ids=[u'qu\N{Euro Sign}x-id'.encode('utf-8')])
+            tree2.add(['ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
+                      ids=['qu\N{Euro Sign}x-id'.encode()])
         else:
-            tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+            tree2.add(['ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
         if wt.branch.repository._format.supports_setting_revision_ids:
-            tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
+            tree2.commit('to m\xe9rge', rev_id='r\xe9v-2'.encode())
         else:
-            tree2.commit(u'to m\xe9rge')
+            tree2.commit('to m\xe9rge')
 
         self.assertTrue(tree2.is_versioned(
-            u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
+            'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
         wt.merge_from_branch(tree2.branch)
-        self.assertTrue(wt.is_versioned(u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
+        self.assertTrue(wt.is_versioned('ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
 
         if wt.branch.repository._format.supports_setting_revision_ids:
-            wt.commit(u'm\xe9rge', rev_id=u'r\xe9v-3'.encode('utf8'))
+            wt.commit('m\xe9rge', rev_id='r\xe9v-3'.encode())
         else:
-            wt.commit(u'm\xe9rge')
+            wt.commit('m\xe9rge')
         tree = self.workingtree_to_test_tree(wt)
 
-        revision_id_1 = u'r\xe9v-1'.encode('utf8')
-        revision_id_2 = u'r\xe9v-2'.encode('utf8')
+        revision_id_1 = 'r\xe9v-1'.encode()
+        revision_id_2 = 'r\xe9v-2'.encode()
         root_id = b'TREE_ROOT'
-        bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
-        foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
-        baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
-        qux_id = u'qu\N{Euro Sign}x-id'.encode('utf8')
-        path_and_ids = [(u'', root_id, None, None),
-                        (u'ba\N{Euro Sign}r', bar_id, root_id, revision_id_1),
-                        (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id_1),
-                        (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+        bar_id = 'ba\N{Euro Sign}r-id'.encode()
+        foo_id = 'fo\N{Euro Sign}o-id'.encode()
+        baz_id = 'ba\N{Euro Sign}z-id'.encode()
+        qux_id = 'qu\N{Euro Sign}x-id'.encode()
+        path_and_ids = [('', root_id, None, None),
+                        ('ba\N{Euro Sign}r', bar_id, root_id, revision_id_1),
+                        ('fo\N{Euro Sign}o', foo_id, root_id, revision_id_1),
+                        ('ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                          baz_id, bar_id, revision_id_1),
-                        (u'ba\N{Euro Sign}r/qu\N{Euro Sign}x',
+                        ('ba\N{Euro Sign}r/qu\N{Euro Sign}x',
                          qux_id, bar_id, revision_id_2),
                         ]
         with tree.lock_read():
@@ -443,7 +443,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             if eparent is not None:
                 self.assertIsInstance(ie.parent_id, bytes)
         self.assertEqual(len(path_and_ids), len(path_entries),
-                         "%r vs %r" % (
+                         "{!r} vs {!r}".format(
                              [p for (p, f, pf, r) in path_and_ids],
                              [p for (p, e) in path_entries]))
         get_revision_id = getattr(tree, 'get_revision_id', None)

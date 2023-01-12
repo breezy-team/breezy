@@ -79,7 +79,7 @@ from ..osutils import (
 from ..tree import Tree
 
 
-class Testament(object):
+class Testament:
     """Reduced summary of a revision.
 
     Testaments can be
@@ -163,7 +163,7 @@ class Testament(object):
         if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
             path = path.decode('ascii')
-        return path.replace(u'\\', u'/').replace(u' ', u'\\ ')
+        return path.replace('\\', '/').replace(' ', '\\ ')
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
@@ -183,7 +183,7 @@ class Testament(object):
             content = self._escape_path(ie.symlink_target)
             content_spacer = ' '
 
-        l = u'  %s %s %s%s%s\n' % (ie.kind, self._escape_path(path),
+        l = '  {} {} {}{}{}\n'.format(ie.kind, self._escape_path(path),
                                    ie.file_id.decode('utf8'),
                                    content_spacer, content)
         return l
@@ -208,7 +208,7 @@ class Testament(object):
                 raise ValueError(name)
             r.append('  %s:\n' % name)
             for line in value.splitlines():
-                r.append(u'    %s\n' % line)
+                r.append('    %s\n' % line)
         return r
 
     def as_sha1(self):
@@ -245,6 +245,6 @@ class StrictTestament3(StrictTestament):
         if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
             path = path.decode('ascii')
-        if path == u'':
-            path = u'.'
-        return path.replace(u'\\', u'/').replace(u' ', u'\\ ')
+        if path == '':
+            path = '.'
+        return path.replace('\\', '/').replace(' ', '\\ ')

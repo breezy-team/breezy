@@ -39,7 +39,7 @@ class TestRepositoryFormat(TestCase):
                               str)
 
 
-class ForeignRepositoryFactory(object):
+class ForeignRepositoryFactory:
     """Factory of repository for ForeignRepositoryTests."""
 
     def make_repository(self, transport):

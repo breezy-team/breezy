@@ -89,7 +89,7 @@ class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
         stream = chk_bytes.get_record_stream([key], 'unordered', True)
         record = next(stream)
         if record.storage_kind == 'absent':
-            self.fail('Store does not contain the key %s' % (key,))
+            self.fail('Store does not contain the key {}'.format(key))
         return record.get_bytes_as("fulltext")
 
     def to_dict(self, node, *args):
@@ -100,8 +100,7 @@ class TestCaseWithExampleMaps(TestCaseWithStore):
 
     def get_chk_bytes(self):
         if getattr(self, '_chk_bytes', None) is None:
-            self._chk_bytes = super(TestCaseWithExampleMaps,
-                                    self).get_chk_bytes()
+            self._chk_bytes = super().get_chk_bytes()
         return self._chk_bytes
 
     def get_map(self, a_dict, maximum_size=100, search_key_func=None):

@@ -34,7 +34,7 @@ class cmd_chk_used_by(Command):
     takes_args = ['key*']
     takes_options = ['directory']
 
-    def run(self, key_list, directory=u'.'):
+    def run(self, key_list, directory='.'):
         key_list = [static_tuple.StaticTuple(k) for k in key_list]
         if len(key_list) > 1:
             key_list = frozenset(key_list)

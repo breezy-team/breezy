@@ -97,7 +97,7 @@ def report_bug_legacy(exc_info, err_file):
         subsequent_indent='    ',
         ) + '\n')
     print_wrapped(
-        'encoding: %r, fsenc: %r, lang: %r\n' % (
+        'encoding: {!r}, fsenc: {!r}, lang: {!r}\n'.format(
             osutils.get_user_encoding(), sys.getfilesystemencoding(),
             os.environ.get('LANG')))
     # We used to show all the plugins here, but it's too verbose.
@@ -223,8 +223,8 @@ def _write_apport_report_to_file(exc_info):
 
 def _attach_log_tail(pr):
     try:
-        brz_log = open(trace._get_brz_log_filename(), 'rt')
-    except (IOError, OSError) as e:
+        brz_log = open(trace._get_brz_log_filename())
+    except OSError as e:
         pr['BrzLogTail'] = repr(e)
         return
     try:
@@ -249,7 +249,7 @@ def _open_crash_file():
         user_part = '.%d' % os.getuid()
     filename = osutils.pathjoin(
         crash_dir,
-        'brz%s.%s.crash' % (
+        'brz{}.{}.crash'.format(
             user_part,
             date_string))
     # be careful here that people can't play tmp-type symlink mischief in the

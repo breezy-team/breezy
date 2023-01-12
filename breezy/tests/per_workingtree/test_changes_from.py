@@ -25,7 +25,7 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 class TestChangesFrom(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestChangesFrom, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('tree')
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, transport=self.tree.controldir.root_transport)

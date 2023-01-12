@@ -31,7 +31,7 @@ from .trace import (
     )
 
 
-class Replacer(object):
+class Replacer:
     """Do a multiple-pattern substitution.
 
     The patterns and substitutions are combined into one, so the result of
@@ -40,7 +40,7 @@ class Replacer(object):
     must not contain capturing groups.
     """
 
-    _expand = lazy_regex.lazy_compile(u'\\\\&')
+    _expand = lazy_regex.lazy_compile('\\\\&')
 
     def __init__(self, source=None):
         self._pat = None
@@ -77,7 +77,7 @@ class Replacer(object):
     def __call__(self, text):
         if not self._pat:
             self._pat = lazy_regex.lazy_compile(
-                u'|'.join([u'(%s)' % p for p in self._pats]),
+                '|'.join(['(%s)' % p for p in self._pats]),
                 re.UNICODE)
         return self._pat.sub(self._do_sub, text)
 
@@ -99,14 +99,14 @@ _sub_named.add(r'\[:cntrl:\]', r'\0-\x1f\x7f-\x9f')
 
 
 def _sub_group(m):
-    if m[1] in (u'!', u'^'):
-        return u'[^' + _sub_named(m[2:-1]) + u']'
-    return u'[' + _sub_named(m[1:-1]) + u']'
+    if m[1] in ('!', '^'):
+        return '[^' + _sub_named(m[2:-1]) + ']'
+    return '[' + _sub_named(m[1:-1]) + ']'
 
 
 def _invalid_regex(repl):
     def _(m):
-        warning(u"'%s' not allowed within a regular expression. "
+        warning("'%s' not allowed within a regular expression. "
                 "Replacing with '%s'" % (m, repl))
         return repl
     return _
@@ -119,17 +119,17 @@ def _trailing_backslashes_regex(m):
     one on the end that would escape the brackets we wrap the RE in.
     """
     if (len(m) % 2) != 0:
-        warning(u"Regular expressions cannot end with an odd number of '\\'. "
+        warning("Regular expressions cannot end with an odd number of '\\'. "
                 "Dropping the final '\\'.")
         return m[:-1]
     return m
 
 
 _sub_re = Replacer()
-_sub_re.add(u'^RE:', u'')
-_sub_re.add(u'\\((?!\\?)', u'(?:')
-_sub_re.add(u'\\(\\?P<.*>', _invalid_regex(u'(?:'))
-_sub_re.add(u'\\(\\?P=[^)]*\\)', _invalid_regex(u''))
+_sub_re.add('^RE:', '')
+_sub_re.add('\\((?!\\?)', '(?:')
+_sub_re.add('\\(\\?P<.*>', _invalid_regex('(?:'))
+_sub_re.add('\\(\\?P=[^)]*\\)', _invalid_regex(''))
 _sub_re.add(r'\\+$', _trailing_backslashes_regex)
 
 
@@ -137,7 +137,7 @@ _sub_fullpath = Replacer()
 _sub_fullpath.add(r'^RE:.*', _sub_re)  # RE:<anything> is a regex
 _sub_fullpath.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]',
                   _sub_group)  # char group
-_sub_fullpath.add(r'(?:(?<=/)|^)(?:\.?/)+', u'')  # canonicalize path
+_sub_fullpath.add(r'(?:(?<=/)|^)(?:\.?/)+', '')  # canonicalize path
 _sub_fullpath.add(r'\\.', r'\&')  # keep anything backslashed
 _sub_fullpath.add(r'[(){}|^$+.]', r'\\&')  # escape specials
 _sub_fullpath.add(r'(?:(?<=/)|^)\*\*+/', r'(?:.*/)?')  # **/ after ^ or /
@@ -158,7 +158,7 @@ def _sub_extension(pattern):
     return _sub_basename(pattern[2:])
 
 
-class Globster(object):
+class Globster:
     """A simple wrapper for a set of glob patterns.
 
     Provides the capability to search the patterns to find a match for
@@ -223,7 +223,7 @@ class Globster(object):
         while patterns:
             grouped_rules = [
                 '(%s)' % translator(pat) for pat in patterns[:99]]
-            joined_rule = '%s(?:%s)$' % (prefix, '|'.join(grouped_rules))
+            joined_rule = '{}(?:{})$'.format(prefix, '|'.join(grouped_rules))
             # Explicitly use lazy_compile here, because we count on its
             # nicer error reporting.
             self._regex_patterns.append((
@@ -266,9 +266,9 @@ class Globster(object):
         Identify if a pattern is fullpath, basename or extension
         and returns the appropriate type.
         """
-        if pattern.startswith(u'RE:') or u'/' in pattern:
+        if pattern.startswith('RE:') or '/' in pattern:
             return "fullpath"
-        elif pattern.startswith(u'*.'):
+        elif pattern.startswith('*.'):
             return "extension"
         else:
             return "basename"
@@ -293,7 +293,7 @@ class Globster(object):
         return result
 
 
-class ExceptionGlobster(object):
+class ExceptionGlobster:
     """A Globster that supports exception patterns.
 
     Exceptions are ignore patterns prefixed with '!'.  Exception
@@ -307,9 +307,9 @@ class ExceptionGlobster(object):
     def __init__(self, patterns):
         ignores = [[], [], []]
         for p in patterns:
-            if p.startswith(u'!!'):
+            if p.startswith('!!'):
                 ignores[2].append(p[2:])
-            elif p.startswith(u'!'):
+            elif p.startswith('!'):
                 ignores[1].append(p[1:])
             else:
                 ignores[0].append(p)

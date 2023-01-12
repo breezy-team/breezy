@@ -53,8 +53,7 @@ def changelog_entries(lines):
 def entries_to_lines(entries):
     """Turn a list of entries into a flat iterable of lines."""
     for entry in entries:
-        for line in entry:
-            yield line
+        yield from entry
 
 
 class ChangeLogMerger(merge.ConfigurableFileMerger):

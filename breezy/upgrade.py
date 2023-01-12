@@ -30,7 +30,7 @@ from .i18n import gettext
 from .bzr.remote import RemoteBzrDir
 
 
-class Convert(object):
+class Convert:
 
     def __init__(self, url=None, format=None, control_dir=None):
         """Convert a Bazaar control directory to a given format.

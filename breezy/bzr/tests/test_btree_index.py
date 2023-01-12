@@ -62,7 +62,7 @@ class BTreeTestCase(TestCaseWithTransport):
     # that they test.
 
     def setUp(self):
-        super(BTreeTestCase, self).setUp()
+        super().setUp()
         self.overrideAttr(btree_index, '_RESERVED_HEADER_BYTES', 100)
 
     def make_nodes(self, count, key_elements, reference_lists):
@@ -1023,7 +1023,7 @@ class TestBTreeIndex(BTreeTestCase):
         missing_key = (b'missing',)
         index = self.make_index(ref_lists=2, nodes=[
             ((b'key',), b'value', ([], [missing_key]))])
-        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set(), index.external_references(0))
         self.assertEqual({missing_key}, index.external_references(1))
 
     def test_external_references_two_records(self):
@@ -1031,7 +1031,7 @@ class TestBTreeIndex(BTreeTestCase):
             ((b'key-1',), b'value', ([(b'key-2',)],)),
             ((b'key-2',), b'value', ([],)),
             ])
-        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set(), index.external_references(0))
 
     def test__find_ancestors_one_page(self):
         key1 = (b'key-1',)
@@ -1089,7 +1089,7 @@ class TestBTreeIndex(BTreeTestCase):
         # passing it back in, we are sure it is 'missing'
         self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
         self.assertEqual({key3}, missing_keys)
-        self.assertEqual(set([]), search_keys)
+        self.assertEqual(set(), search_keys)
 
     def test__find_ancestors_dont_search_known(self):
         key1 = (b'key-1',)
@@ -1117,7 +1117,7 @@ class TestBTreeIndex(BTreeTestCase):
         ref_lists = ((),)
         rev_keys = []
         for i in range(400):
-            rev_id = ('%s-%s-%s' % (email,
+            rev_id = ('{}-{}-{}'.format(email,
                                     osutils.compact_date(start_time + i),
                                     osutils.rand_chars(16))).encode('ascii')
             rev_key = (rev_id,)
@@ -1211,7 +1211,7 @@ class TestBTreeNodes(BTreeTestCase):
     scenarios = btreeparser_scenarios()
 
     def setUp(self):
-        super(TestBTreeNodes, self).setUp()
+        super().setUp()
         self.overrideAttr(btree_index, '_btree_serializer', self.parse_btree)
 
     def test_LeafNode_1_0(self):

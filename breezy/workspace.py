@@ -165,7 +165,7 @@ def get_dirty_tracker(local_tree, subpath='', use_inotify=None):
             return DirtyTracker(local_tree, subpath)
 
 
-class Workspace(object):
+class Workspace:
     """Create a workspace.
 
     :param tree: Tree to work in

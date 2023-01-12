@@ -25,10 +25,10 @@ from . import TestCaseWithTransport
 class TestMemoryTree(TestCaseWithTransport):
 
     def make_branch(self, path, format='git'):
-        return super(TestMemoryTree, self).make_branch(path, format=format)
+        return super().make_branch(path, format=format)
 
     def make_branch_and_tree(self, path, format='git'):
-        return super(TestMemoryTree, self).make_branch_and_tree(path, format=format)
+        return super().make_branch_and_tree(path, format=format)
 
     def test_create_on_branch(self):
         """Creating a mutable tree on a trivial branch works."""

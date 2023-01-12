@@ -75,7 +75,7 @@ class TestTagMerging(TestCaseWithTransport):
         new_branch.tags.merge_to(old_branch.tags)
         # but if there is a tag in the new one, we get a warning when trying
         # to move it back
-        new_branch.tags.set_tag(u'\u2040tag', b'revid')
+        new_branch.tags.set_tag('\u2040tag', b'revid')
         old_branch.tags.merge_to(new_branch.tags)
         self.assertRaises(errors.TagsNotSupported,
                           new_branch.tags.merge_to, old_branch.tags)
@@ -99,7 +99,7 @@ class TestTagMerging(TestCaseWithTransport):
         # overwrite conflicts
         updates, conflicts = a.tags.merge_to(b.tags, overwrite=True)
         self.assertEqual(list(conflicts), [])
-        self.assertEqual({u'tag-2': b'z'}, updates)
+        self.assertEqual({'tag-2': b'z'}, updates)
         self.assertEqual(b'z', b.tags.lookup_tag('tag-2'))
 
     def test_merge_to_with_selector(self):
@@ -110,7 +110,7 @@ class TestTagMerging(TestCaseWithTransport):
         a.tags.set_tag('tag-2', b'y')
         updates, conflicts = a.tags.merge_to(b.tags, selector=lambda x: x == 'tag-1')
         self.assertEqual(list(conflicts), [])
-        self.assertEqual({u'tag-1': b'x'}, updates)
+        self.assertEqual({'tag-1': b'x'}, updates)
         self.assertRaises(errors.NoSuchTag, b.tags.lookup_tag, 'tag-2')
 
 
@@ -172,7 +172,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
 class DisabledTagsTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(DisabledTagsTests, self).setUp()
+        super().setUp()
         branch = self.make_branch('.')
         self.tags = DisabledTags(branch)
 
@@ -186,7 +186,7 @@ class DisabledTagsTests(TestCaseWithTransport):
 class MemoryTagsTests(TestCase):
 
     def setUp(self):
-        super(MemoryTagsTests, self).setUp()
+        super().setUp()
         self.tags = MemoryTags({})
 
     def test_set_tag(self):
@@ -198,8 +198,8 @@ class MemoryTagsTests(TestCase):
         self.tags.set_tag('bar', b'revid2')
         self.tags.set_tag('blah', b'revid1')
         self.assertEqual({
-            b'revid1': set(['foo', 'blah']),
-            b'revid2': set(['bar'])},
+            b'revid1': {'foo', 'blah'},
+            b'revid2': {'bar'}},
             self.tags.get_reverse_tag_dict())
 
     def test_lookup_tag(self):
@@ -242,5 +242,5 @@ class MemoryTagsTests(TestCase):
         # overwrite conflicts
         updates, conflicts = other_tags.merge_to(self.tags, overwrite=True)
         self.assertEqual(list(conflicts), [])
-        self.assertEqual({u'tag-2': b'z'}, updates)
+        self.assertEqual({'tag-2': b'z'}, updates)
         self.assertEqual(b'z', self.tags.lookup_tag('tag-2'))

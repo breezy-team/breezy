@@ -44,7 +44,7 @@ class _NoVfsCallsMismatch(Mismatch):
 
     def describe(self):
         return "no VFS calls expected, got: %s" % ",".join([
-            "%s(%s)" % (c.method,
+            "{}({})".format(c.method,
                         ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
 
 

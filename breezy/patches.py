@@ -150,7 +150,7 @@ def hunk_from_header(line):
     return Hunk(orig_pos, orig_range, mod_pos, mod_range, tail)
 
 
-class HunkLine(object):
+class HunkLine:
 
     def __init__(self, contents):
         self.contents = contents
@@ -213,7 +213,7 @@ def parse_line(line):
 __pychecker__ = ""
 
 
-class Hunk(object):
+class Hunk:
 
     def __init__(self, orig_pos, orig_range, mod_pos, mod_range, tail=None):
         self.orig_pos = orig_pos
@@ -320,7 +320,7 @@ def iter_hunks(iter_lines, allow_dirty=False):
         yield hunk
 
 
-class BinaryPatch(object):
+class BinaryPatch:
 
     def __init__(self, oldname, newname):
         self.oldname = oldname
@@ -587,8 +587,7 @@ def iter_patched_from_hunks(orig_lines, hunks):
                         raise AssertionError(hunk_line)
                 line_no += 1
     if orig_lines is not None:
-        for line in orig_lines:
-            yield line
+        yield from orig_lines
 
 
 def apply_patches(tt, patches, prefix=1):
@@ -629,7 +628,7 @@ def apply_patches(tt, patches, prefix=1):
                 tt.create_file(new_contents, trans_id)
 
 
-class AppliedPatches(object):
+class AppliedPatches:
     """Context that provides access to a tree with patches applied.
     """
 

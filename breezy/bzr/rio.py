@@ -39,7 +39,7 @@ from ..iterablefile import IterableFile
 # through a writer object.
 
 
-class RioWriter(object):
+class RioWriter:
 
     def __init__(self, to_file):
         self._soft_nl = False
@@ -52,7 +52,7 @@ class RioWriter(object):
         self._soft_nl = True
 
 
-class RioReader(object):
+class RioReader:
     """Read stanzas from a file as a sequence
 
     to_file can be anything that can be enumerated as a sequence of
@@ -80,8 +80,7 @@ def rio_file(stanzas, header=None):
         for s in stanzas:
             if first_stanza is not True:
                 yield b'\n'
-            for line in s.to_lines():
-                yield line
+            yield from s.to_lines()
             first_stanza = False
     return IterableFile(str_iter())
 
@@ -95,7 +94,7 @@ def read_stanzas(from_file):
         yield s
 
 
-class Stanza(object):
+class Stanza:
     """One stanza for rio.
 
     Each stanza contains a set of named fields.
@@ -122,7 +121,7 @@ class Stanza(object):
     def add(self, tag, value):
         """Append a name and value to the stanza."""
         if not valid_tag(tag):
-            raise ValueError("invalid tag %r" % (tag,))
+            raise ValueError("invalid tag {!r}".format(tag))
         if isinstance(value, bytes):
             pass
         elif isinstance(value, str):
@@ -314,7 +313,7 @@ def _patch_stanza_iter(line_iter):
         elif line.startswith(b'#'):
             line = line[1:]
         else:
-            raise ValueError("bad line %r" % (line,))
+            raise ValueError("bad line {!r}".format(line))
         if last_line is not None and len(line) > 2:
             line = line[2:]
         line = re.sub(b'\r', b'', line)

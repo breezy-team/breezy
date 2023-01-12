@@ -79,7 +79,7 @@ class StraceError(errors.BzrError):
     _fmt = "strace failed: %(err_messages)s"
 
 
-class StraceResult(object):
+class StraceResult:
     """The result of stracing a function."""
 
     def __init__(self, raw_log, err_messages):

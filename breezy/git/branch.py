@@ -344,7 +344,7 @@ class LocalGitTagDict(GitTags):
     """Dictionary with tags in a local repository."""
 
     def __init__(self, branch):
-        super(LocalGitTagDict, self).__init__(branch)
+        super().__init__(branch)
         self.refs = self.repository.controldir._git.refs
 
     def _set_tag_dict(self, to_dict):
@@ -463,7 +463,7 @@ class GitBranch(ForeignBranch):
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
-        super(GitBranch, self).__init__(repository.get_mapping())
+        super().__init__(repository.get_mapping())
         if not isinstance(ref, bytes):
             raise TypeError("ref is invalid: %r" % ref)
         self.ref = ref
@@ -526,7 +526,7 @@ class GitBranch(ForeignBranch):
                     b"nick").decode("utf-8")
             except KeyError:
                 pass
-        return self.name or u"HEAD"
+        return self.name or "HEAD"
 
     def _set_nick(self, nick):
         cf = self.repository._git.get_config()
@@ -539,7 +539,7 @@ class GitBranch(ForeignBranch):
     nick = property(_get_nick, _set_nick)
 
     def __repr__(self):
-        return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
+        return "<{}({!r}, {!r})>".format(self.__class__.__name__, self.repository.base,
                                  self.name)
 
     def set_last_revision(self, revid):
@@ -719,7 +719,7 @@ class GitBranch(ForeignBranch):
         raise errors.StoringUncommittedNotSupported(self)
 
     def _clear_cached_state(self):
-        super(GitBranch, self)._clear_cached_state()
+        super()._clear_cached_state()
         self._tag_refs = None
 
     def _iter_tag_refs(self, refs):
@@ -767,7 +767,7 @@ class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
     def __init__(self, controldir, repository, ref):
-        super(LocalGitBranch, self).__init__(controldir, repository, ref,
+        super().__init__(controldir, repository, ref,
                                              LocalGitBranchFormat())
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
@@ -923,7 +923,7 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
 class GitBranchPullResult(branch.PullResult):
 
     def __init__(self):
-        super(GitBranchPullResult, self).__init__()
+        super().__init__()
         self.new_git_head = None
         self._old_revno = None
         self._new_revno = None
@@ -1073,7 +1073,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
                     _override_hook_target, _hook_master, tag_selector=None):
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
         result = GitBranchPullResult()
@@ -1156,7 +1156,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
         result = branch.BranchPushResult()
@@ -1276,7 +1276,7 @@ class InterGitLocalGitBranch(InterGitBranch):
 
     def _basic_push(self, overwrite=False, stop_revision=None, tag_selector=None):
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
         result = GitBranchPushResult()
@@ -1325,7 +1325,7 @@ class InterGitLocalGitBranch(InterGitBranch):
         if local:
             raise errors.LocalRequiresBoundBranch()
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
 
@@ -1359,7 +1359,7 @@ class InterToGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls into a Git branch."""
 
     def __init__(self, source, target):
-        super(InterToGitBranch, self).__init__(source, target)
+        super().__init__(source, target)
         self.interrepo = _mod_repository.InterRepository.get(source.repository,
                                                              target.repository)
 

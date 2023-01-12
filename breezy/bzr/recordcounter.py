@@ -17,7 +17,7 @@
 """Record counting support for showing progress of revision fetch."""
 
 
-class RecordCounter(object):
+class RecordCounter:
     """Container for maintains estimates of work requires for fetch.
 
     Instance of this class is used along with a progress bar to provide

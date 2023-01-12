@@ -115,7 +115,7 @@ def write_bundle(repository, revision_id, base_revision_id, out, format=None):
                                                    base_revision_id, out)
 
 
-class BundleSerializer(object):
+class BundleSerializer:
     """The base class for Serializers.
 
     Common functionality should be included here.

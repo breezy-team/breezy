@@ -96,9 +96,9 @@ class MetaTestLog(tests.TestCase):
         log = details['log']
         self.assertThat(log.content_type, Equals(ContentType(
             "text", "plain", {"charset": "utf8"})))
-        self.assertThat(u"".join(log.iter_text()), Equals(self.get_log()))
+        self.assertThat("".join(log.iter_text()), Equals(self.get_log()))
         self.assertThat(self.get_log(),
-                        DocTestMatches(u"...a test message\n", doctest.ELLIPSIS))
+                        DocTestMatches("...a test message\n", doctest.ELLIPSIS))
 
 
 class TestTreeShape(tests.TestCaseInTempDir):
@@ -106,7 +106,7 @@ class TestTreeShape(tests.TestCaseInTempDir):
     def test_unicode_paths(self):
         self.requireFeature(features.UnicodeFilenameFeature)
 
-        filename = u'hell\u00d8'
+        filename = 'hell\u00d8'
         self.build_tree_contents([(filename, b'contents of hello')])
         self.assertPathExists(filename)
 
@@ -137,7 +137,7 @@ class TestTransportScenarios(tests.TestCase):
     def test_get_transport_permutations(self):
         # this checks that get_test_permutations defined by the module is
         # called by the get_transport_test_permutations function.
-        class MockModule(object):
+        class MockModule:
             def get_test_permutations(self):
                 return sample_permutation
         sample_permutation = [(1, 2), (3, 4)]
@@ -725,7 +725,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 class TestTestCaseTransports(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestTestCaseTransports, self).setUp()
+        super().setUp()
         self.vfs_transport_factory = memory.MemoryServer
 
     def test_make_controldir_preserves_transport(self):
@@ -851,11 +851,11 @@ class TestTestResult(tests.TestCase):
         class TimeAddedVerboseTestResult(tests.VerboseTestResult):
             def startTest(self, test):
                 self.time(datetime.datetime.utcfromtimestamp(1.145))
-                super(TimeAddedVerboseTestResult, self).startTest(test)
+                super().startTest(test)
 
             def addSuccess(self, test):
                 self.time(datetime.datetime.utcfromtimestamp(51.147))
-                super(TimeAddedVerboseTestResult, self).addSuccess(test)
+                super().addSuccess(test)
 
             def report_tests_starting(self): pass
         sio = StringIO()
@@ -1184,7 +1184,7 @@ class TestRunner(tests.TestCase):
         class SkippedTest(tests.TestCase):
 
             def setUp(self):
-                super(SkippedTest, self).setUp()
+                super().setUp()
                 calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
@@ -1292,7 +1292,7 @@ class TestRunner(tests.TestCase):
         """Showing results should always succeed even on an ascii console"""
         class FailureWithUnicode(tests.TestCase):
             def test_log_unicode(self):
-                self.log(u"\u2606")
+                self.log("\u2606")
                 self.fail("Now print that log!")
         bio = BytesIO()
         out = TextIOWrapper(bio, 'ascii', 'backslashreplace')
@@ -1578,7 +1578,7 @@ class TestTestCase(tests.TestCase):
         """Test we revert to regular behaviour when the test is enabled."""
         test = SampleTestCase('_test_pass')
 
-        class EnabledFeature(object):
+        class EnabledFeature:
             def available(self):
                 return True
         test._test_needs_features = [EnabledFeature()]
@@ -1592,7 +1592,7 @@ class TestTestCase(tests.TestCase):
         """Test our compatibility for disabled tests with unittest results."""
         test = SampleTestCase('_test_pass')
 
-        class DisabledFeature(object):
+        class DisabledFeature:
             def available(self):
                 return False
         test._test_needs_features = [DisabledFeature()]
@@ -1606,7 +1606,7 @@ class TestTestCase(tests.TestCase):
         """Test disabled tests behaviour with support aware results."""
         test = SampleTestCase('_test_pass')
 
-        class DisabledFeature(object):
+        class DisabledFeature:
             def __eq__(self, other):
                 return isinstance(other, DisabledFeature)
 
@@ -1717,7 +1717,7 @@ class TestTestCase(tests.TestCase):
         class Test(tests.TestCase):
 
             def setUp(self):
-                super(Test, self).setUp()
+                super().setUp()
                 self.orig = self.overrideAttr(obj, 'test_attr')
 
             def test_value(self):
@@ -1736,7 +1736,7 @@ class TestTestCase(tests.TestCase):
         class Test(tests.TestCase):
 
             def setUp(self):
-                super(Test, self).setUp()
+                super().setUp()
                 self.orig = self.overrideAttr(obj, 'test_attr', new='modified')
 
             def test_value(self):
@@ -1947,7 +1947,7 @@ def sample_undeprecated_function(a_param):
     """A undeprecated function to test applyDeprecated with."""
 
 
-class ApplyDeprecatedHelper(object):
+class ApplyDeprecatedHelper:
     """A helper class for ApplyDeprecated tests."""
 
     @deprecated_method(deprecated_in((0, 11, 0)))
@@ -1968,7 +1968,7 @@ class TestExtraAssertions(tests.TestCase):
 
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
-        self.assertIsInstance(u'', str)
+        self.assertIsInstance('', str)
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertIn(
             str(e),
@@ -2105,7 +2105,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
                          tree.branch.repository.controldir.root_transport)
 
 
-class SelfTestHelper(object):
+class SelfTestHelper:
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
@@ -2178,7 +2178,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.requireFeature(features.lsprof_feature)
         results = []
 
-        class Test(object):
+        class Test:
             def __call__(test, result):
                 test.run(result)
 
@@ -2504,7 +2504,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
         self.assertEqual(cwd, osutils.getcwd())
 
 
-class StubProcess(object):
+class StubProcess:
     """A stub process for testing run_brz_subprocess."""
 
     def __init__(self, out="", err="", retcode=0):
@@ -2520,7 +2520,7 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
     """Base class for tests testing how we might run bzr."""
 
     def setUp(self):
-        super(TestWithFakedStartBzrSubprocess, self).setUp()
+        super().setUp()
         self.subprocess_calls = []
 
     def start_brz_subprocess(self, process_args, env_changes=None,
@@ -2744,7 +2744,7 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
 class TestSelftestFiltering(tests.TestCase):
 
     def setUp(self):
-        super(TestSelftestFiltering, self).setUp()
+        super().setUp()
         self.suite = TestUtil.TestSuite()
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModule(
@@ -2955,7 +2955,7 @@ class TestTestLoader(tests.TestCase):
             def test_foo(self):
                 pass
 
-        class MyModule(object):
+        class MyModule:
             pass
         MyModule.a_class = Stub
         module = MyModule()
@@ -3150,7 +3150,7 @@ class TestTestSuite(tests.TestCase):
 class TestLoadTestIdList(tests.TestCaseInTempDir):
 
     def _create_test_list_file(self, file_name, content):
-        fl = open(file_name, 'wt')
+        fl = open(file_name, 'w')
         fl.write(content)
         fl.close()
 
@@ -3456,7 +3456,7 @@ class TestRunSuite(tests.TestCase):
         self.assertLength(1, calls)
 
 
-class _Selftest(object):
+class _Selftest:
     """Mixin for tests needing full selftest output"""
 
     def _inject_stream_into_subunit(self, stream):
@@ -3497,7 +3497,7 @@ class _ForkedSelftest(_Selftest):
         # Make sure the fork code is actually invoked by claiming two cores
         self.overrideAttr(osutils, "local_concurrency", lambda: 2)
         kwargs.setdefault("suite_decorators", []).append(tests.fork_decorator)
-        return super(_ForkedSelftest, self)._run_selftest(**kwargs)
+        return super()._run_selftest(**kwargs)
 
 
 class TestParallelFork(_ForkedSelftest, tests.TestCase):
@@ -3747,7 +3747,7 @@ class TestDocTestSuiteIsolation(tests.TestCase):
 class TestSelftestExcludePatterns(tests.TestCase):
 
     def setUp(self):
-        super(TestSelftestExcludePatterns, self).setUp()
+        super().setUp()
         self.overrideAttr(tests, 'test_suite', self.suite_factory)
 
     def suite_factory(self, keep_only=None, starting_with=None):
@@ -3789,12 +3789,12 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
     _test_needs_features = [features.subunit]
 
     def setUp(self):
-        super(TestCounterHooks, self).setUp()
+        super().setUp()
 
         class Test(tests.TestCase):
 
             def setUp(self):
-                super(Test, self).setUp()
+                super().setUp()
                 self.hooks = hooks.Hooks()
                 self.hooks.add_hook('myhook', 'Foo bar blah', (2, 4))
                 self.install_counter_hook(self.hooks, 'myhook')

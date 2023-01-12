@@ -59,7 +59,7 @@ from .vf_repository import (
     )
 
 
-class _KnitParentsProvider(object):
+class _KnitParentsProvider:
 
     def __init__(self, knit):
         self._knit = knit
@@ -88,7 +88,7 @@ class _KnitParentsProvider(object):
         return parent_map
 
 
-class _KnitsParentsProvider(object):
+class _KnitsParentsProvider:
 
     def __init__(self, knit, prefix=()):
         """Create a parent provider for string keys mapped to tuple keys."""
@@ -128,7 +128,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
                  _serializer):
-        super(KnitRepository, self).__init__(
+        super().__init__(
             _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer

@@ -56,7 +56,7 @@ from .matchers import MatchesAncestry, MatchesTreeChanges
 class MustSignConfig(config.MemoryStack):
 
     def __init__(self):
-        super(MustSignConfig, self).__init__(b'''
+        super().__init__(b'''
 create_signatures=always
 ''')
 
@@ -170,7 +170,7 @@ class TestCommit(TestCaseWithTransport):
         reporter = CapturingReporter()
         wt.commit('removed hello', rev_id=b'rev2', reporter=reporter)
         self.assertEqual(
-            [('missing', u'hello'), ('deleted', u'hello')],
+            [('missing', 'hello'), ('deleted', 'hello')],
             reporter.calls)
 
         tree = b.repository.revision_tree(b'rev2')
@@ -779,7 +779,7 @@ create_signatures=when-possible
         self.assertRaises(errors.PathsNotVersionedError, tree.commit,
                           'message', specific_files=['bogus'])
 
-    class Callback(object):
+    class Callback:
 
         def __init__(self, message, testcase):
             self.called = False
@@ -803,7 +803,7 @@ create_signatures=when-possible
                              ' parameter is required for commit().', str(e))
         else:
             self.fail('exception not raised')
-        cb = self.Callback(u'commit 1', self)
+        cb = self.Callback('commit 1', self)
         tree.commit(message_callback=cb)
         self.assertTrue(cb.called)
         repository = tree.branch.repository
@@ -813,7 +813,7 @@ create_signatures=when-possible
     def test_no_callback_pointless(self):
         """Callback should not be invoked for pointless commit"""
         tree = self.make_branch_and_tree('.')
-        cb = self.Callback(u'commit 2', self)
+        cb = self.Callback('commit 2', self)
         self.assertRaises(PointlessCommit, tree.commit, message_callback=cb,
                           allow_pointless=False)
         self.assertFalse(cb.called)
@@ -821,7 +821,7 @@ create_signatures=when-possible
     def test_no_callback_netfailure(self):
         """Callback should not be invoked if connectivity fails"""
         tree = self.make_branch_and_tree('.')
-        cb = self.Callback(u'commit 2', self)
+        cb = self.Callback('commit 2', self)
         repository = tree.branch.repository
         # simulate network failure
 

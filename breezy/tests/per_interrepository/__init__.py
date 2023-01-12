@@ -58,7 +58,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     """
     result = []
     for label, repository_format, repository_format_to, extra_setup in formats:
-        id = '%s,%s,%s' % (label, repository_format.__class__.__name__,
+        id = '{},{},{}'.format(label, repository_format.__class__.__name__,
                            repository_format_to.__class__.__name__)
         scenario = (id,
                     {"transport_server": transport_server,
@@ -157,7 +157,7 @@ def default_test_list():
 class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def setUp(self):
-        super(TestCaseWithInterRepository, self).setUp()
+        super().setUp()
         if self.extra_setup:
             self.extra_setup(self)
 

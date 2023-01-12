@@ -49,7 +49,7 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
         stack = self.get_stack('')
         # Disable the default value mechanism to force the behavior we want
         self.overrideAttr(opt_ssl_ca_certs, 'default',
-                          os.path.join(self.test_dir, u"nonexisting.pem"))
+                          os.path.join(self.test_dir, "nonexisting.pem"))
         self.warnings = []
 
         def warning(*args):

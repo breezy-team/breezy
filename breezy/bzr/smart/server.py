@@ -47,7 +47,7 @@ from breezy import (
 """)
 
 
-class SmartTCPServer(object):
+class SmartTCPServer:
     """Listens on a TCP socket and accepts connections from smart clients.
 
     Each connection will be served by a SmartServerSocketStreamMedium running in
@@ -245,7 +245,7 @@ class SmartTCPServer(object):
 
     def get_url(self):
         """Return the url of the server"""
-        return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
+        return "bzr://{}:{}/".format(self._sockname[0], self._sockname[1])
 
     def _make_handler(self, conn):
         return medium.SmartServerSocketStreamMedium(
@@ -374,7 +374,7 @@ def _local_path_for_transport(transport):
             return None
 
 
-class BzrServerFactory(object):
+class BzrServerFactory:
     """Helper class for serve_bzr."""
 
     def __init__(self, userdir_expander=None, get_base_path=None):

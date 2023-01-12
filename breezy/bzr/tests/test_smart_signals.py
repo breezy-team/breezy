@@ -32,7 +32,7 @@ SIGHUP = getattr(signal, 'SIGHUP', 1)
 class TestSignalHandlers(tests.TestCase):
 
     def setUp(self):
-        super(TestSignalHandlers, self).setUp()
+        super().setUp()
         # This allows us to mutate the signal handler callbacks, but leave it
         # 'pristine' after the test case.
         # TODO: Arguably, this could be put into the base test.TestCase, along

@@ -161,7 +161,7 @@ def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
             process.stdin.write(bytes(patch))
         process.stdin.close()
 
-    except IOError as e:
+    except OSError as e:
         raise PatchInvokeError(e, process.stderr.read())
 
     result = process.wait()

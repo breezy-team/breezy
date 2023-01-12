@@ -32,7 +32,7 @@ from ...smtp_connection import SMTPConnection
 from ...email_message import EmailMessage
 
 
-class EmailSender(object):
+class EmailSender:
     """An email message sender."""
 
     _smtplib_implementation = SMTPConnection
@@ -225,7 +225,7 @@ class EmailSender(object):
             rc = process.wait()
             if rc != 0:
                 raise errors.BzrError(
-                    "Failed to send email: exit status %s" % (rc,))
+                    "Failed to send email: exit status {}".format(rc))
 
     def _send_using_smtplib(self):
         """Use python's smtplib to send the email."""
@@ -273,7 +273,7 @@ class EmailSender(object):
         return self._format(_subject)
 
     def diff_filename(self):
-        return "patch-%s.diff" % (self.revno,)
+        return "patch-{}.diff".format(self.revno)
 
 
 opt_post_commit_body = Option("post_commit_body",

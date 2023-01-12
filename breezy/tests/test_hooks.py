@@ -264,7 +264,7 @@ class TestHookRegistry(tests.TestCase):
         # isolation and prevent tests failing spuriously.
         for key, factory in known_hooks.items():
             self.assertTrue(callable(factory),
-                            "The factory(%r) for %r is not callable" % (factory, key))
+                            "The factory({!r}) for {!r} is not callable".format(factory, key))
             obj = known_hooks_key_to_object(key)
             self.assertIsInstance(obj, Hooks)
             new_hooks = factory()

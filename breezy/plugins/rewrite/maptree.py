@@ -34,7 +34,7 @@ def map_file_ids(repository, old_parents, new_parents):
     return ret
 
 
-class MapTree(object):
+class MapTree:
     """Wrapper around a tree that translates file ids.
     """
 

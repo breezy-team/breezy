@@ -226,7 +226,7 @@ def _read_dirblocks(state):
     trailing = fields.pop()
     if trailing != b'':
         raise DirstateCorrupt(state,
-                              'trailing garbage: %r' % (trailing,))
+                              'trailing garbage: {!r}'.format(trailing))
     # consider turning fields into a tuple.
 
     # skip the first field which is the trailing null from the header.

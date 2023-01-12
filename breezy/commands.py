@@ -73,7 +73,7 @@ class CommandAvailableInPlugin(Exception):
         return _fmt
 
 
-class CommandInfo(object):
+class CommandInfo:
     """Information about a command."""
 
     def __init__(self, aliases):
@@ -420,7 +420,7 @@ def _get_plugin_command(cmd_or_None, cmd_name):
     return cmd_or_None
 
 
-class Command(object):
+class Command:
     """Base class for commands.
 
     Commands are the heart of the command-line brz interface.
@@ -628,7 +628,7 @@ class Command(object):
             if sections:
                 for label in order:
                     if label in sections:
-                        result += ':%s:\n%s\n' % (label, sections[label])
+                        result += ':{}:\n{}\n'.format(label, sections[label])
                 result += '\n'
         else:
             result += (gettext("See brz help %s for more details and examples.\n\n")
@@ -935,8 +935,8 @@ def parse_args(command, argv, alias_argv=None):
         raise errors.CommandError(
             gettext('Only ASCII permitted in option names'))
 
-    opts = dict((k, v) for k, v in options.__dict__.items() if
-                v is not option.OptionParser.DEFAULT_VALUE)
+    opts = {k: v for k, v in options.__dict__.items() if
+                v is not option.OptionParser.DEFAULT_VALUE}
     return args, opts
 
 
@@ -1245,7 +1245,7 @@ def display_command(func):
             result = func(*args, **kwargs)
             sys.stdout.flush()
             return result
-        except IOError as e:
+        except OSError as e:
             import errno
             if getattr(e, 'errno', None) is None:
                 raise
@@ -1286,7 +1286,7 @@ def _specified_or_unicode_argv(argv):
         # ensure all arguments are unicode strings
         for a in argv:
             if not isinstance(a, str):
-                raise ValueError('not native str or unicode: %r' % (a,))
+                raise ValueError('not native str or unicode: {!r}'.format(a))
             new_argv.append(a)
     except (ValueError, UnicodeDecodeError):
         raise errors.BzrError("argv should be list of unicode strings.")
@@ -1346,7 +1346,7 @@ def run_bzr_catch_user_errors(argv):
             raise
 
 
-class HelpCommandIndex(object):
+class HelpCommandIndex:
     """A index for bzr help that returns commands."""
 
     def __init__(self):
@@ -1372,7 +1372,7 @@ class HelpCommandIndex(object):
             return [cmd]
 
 
-class Provider(object):
+class Provider:
     """Generic class to be overriden by plugins"""
 
     def plugin_for_command(self, cmd_name):

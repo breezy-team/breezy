@@ -243,7 +243,7 @@ def tree_files_for_add(file_list):
         file_list = file_list[:]
         file_list[0] = tree.abspath(relpath)
     else:
-        tree = WorkingTree.open_containing(u'.')[0]
+        tree = WorkingTree.open_containing('.')[0]
         if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
@@ -437,7 +437,7 @@ class cmd_cat_revision(Command):
         self.outf.write(revtext.decode('utf-8'))
 
     @display_command
-    def run(self, revision_id=None, revision=None, directory=u'.'):
+    def run(self, revision_id=None, revision=None, directory='.'):
         if revision_id is not None and revision is not None:
             raise errors.CommandError(gettext('You can only supply one of'
                                               ' revision_id or --revision'))
@@ -587,7 +587,7 @@ class cmd_revno(Command):
         ]
 
     @display_command
-    def run(self, tree=False, location=u'.', revision=None):
+    def run(self, tree=False, location='.', revision=None):
         if revision is not None and tree:
             raise errors.CommandError(
                 gettext("--tree and --revision can not be used together"))
@@ -633,7 +633,7 @@ class cmd_revision_info(Command):
         ]
 
     @display_command
-    def run(self, revision=None, directory=u'.', tree=False,
+    def run(self, revision=None, directory='.', tree=False,
             revision_info_list=[]):
 
         try:
@@ -1073,7 +1073,7 @@ class cmd_mv(Command):
             rel_names = list(tree.get_canonical_paths(rel_names))
             for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 if not is_quiet():
-                    self.outf.write("%s => %s\n" % (src, dest))
+                    self.outf.write("{} => {}\n".format(src, dest))
         else:
             if len(names_list) != 2:
                 raise errors.CommandError(gettext('to mv multiple files the'
@@ -1125,7 +1125,7 @@ class cmd_mv(Command):
             mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
             if not is_quiet():
-                self.outf.write("%s => %s\n" % (src, dest))
+                self.outf.write("{} => {}\n".format(src, dest))
 
 
 class cmd_pull(Command):
@@ -1193,7 +1193,7 @@ class cmd_pull(Command):
         revision_id = None
         mergeable = None
         if directory is None:
-            directory = u'.'
+            directory = '.'
         try:
             tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
@@ -1622,7 +1622,7 @@ class cmd_branches(Command):
                     prefix = "*"
                 else:
                     prefix = " "
-                self.outf.write("%s %s\n" % (prefix, name))
+                self.outf.write("{} {}\n".format(prefix, name))
 
 
 class cmd_checkout(Command):
@@ -1742,7 +1742,7 @@ class cmd_renames(Command):
     takes_args = ['dir?']
 
     @display_command
-    def run(self, dir=u'.'):
+    def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
         self.enter_context(tree.lock_read())
         old_tree = tree.basis_tree()
@@ -1757,7 +1757,7 @@ class cmd_renames(Command):
             renames.append(change.path)
         renames.sort()
         for old_name, new_name in renames:
-            self.outf.write("%s => %s\n" % (old_name, new_name))
+            self.outf.write("{} => {}\n".format(old_name, new_name))
 
 
 class cmd_update(Command):
@@ -2104,7 +2104,7 @@ class cmd_init(Command):
         if format is None:
             format = controldir.format_registry.make_controldir('default')
         if location is None:
-            location = u'.'
+            location = '.'
 
         to_transport = transport.get_transport(location, purpose='write')
 
@@ -2386,15 +2386,15 @@ class cmd_diff(Command):
         from .diff import (get_trees_and_branches_to_diff_locked,
                            show_diff_trees)
 
-        if prefix == u'0':
+        if prefix == '0':
             # diff -p0 format
             old_label = ''
             new_label = ''
-        elif prefix == u'1' or prefix is None:
+        elif prefix == '1' or prefix is None:
             old_label = 'old/'
             new_label = 'new/'
-        elif u':' in prefix:
-            old_label, new_label = prefix.split(u":")
+        elif ':' in prefix:
+            old_label, new_label = prefix.split(":")
         else:
             raise errors.CommandError(gettext(
                 '--prefix expects two values separated by a colon'
@@ -2448,7 +2448,7 @@ class cmd_deleted(Command):
     takes_options = ['directory', 'show-ids']
 
     @display_command
-    def run(self, show_ids=False, directory=u'.'):
+    def run(self, show_ids=False, directory='.'):
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         old = tree.basis_tree()
@@ -2471,7 +2471,7 @@ class cmd_modified(Command):
     takes_options = ['directory', 'null']
 
     @display_command
-    def run(self, null=False, directory=u'.'):
+    def run(self, null=False, directory='.'):
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         td = tree.changes_from(tree.basis_tree())
@@ -2492,7 +2492,7 @@ class cmd_added(Command):
     takes_options = ['directory', 'null']
 
     @display_command
-    def run(self, null=False, directory=u'.'):
+    def run(self, null=False, directory='.'):
         wt = WorkingTree.open_containing(directory)[0]
         self.enter_context(wt.lock_read())
         basis = wt.basis_tree()
@@ -2500,7 +2500,7 @@ class cmd_added(Command):
         for path in wt.all_versioned_paths():
             if basis.has_filename(path):
                 continue
-            if path == u'':
+            if path == '':
                 continue
             if not os.access(osutils.pathjoin(wt.basedir, path), os.F_OK):
                 continue
@@ -3141,7 +3141,7 @@ class cmd_unknowns(Command):
     takes_options = ['directory']
 
     @display_command
-    def run(self, directory=u'.'):
+    def run(self, directory='.'):
         for f in WorkingTree.open_containing(directory)[0].unknowns():
             self.outf.write(osutils.quotefn(f) + '\n')
 
@@ -3229,7 +3229,7 @@ class cmd_ignore(Command):
                      ]
 
     def run(self, name_pattern_list=None, default_rules=None,
-            directory=u'.'):
+            directory='.'):
         from breezy import ignores
         if default_rules is not None:
             # dump the default rules and exit
@@ -3291,7 +3291,7 @@ class cmd_ignored(Command):
     takes_options = ['directory']
 
     @display_command
-    def run(self, directory=u'.'):
+    def run(self, directory='.'):
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         for path, file_class, kind, entry in tree.list_files():
@@ -3313,7 +3313,7 @@ class cmd_lookup_revision(Command):
     takes_options = ['directory']
 
     @display_command
-    def run(self, revno, directory=u'.'):
+    def run(self, revno, directory='.'):
         try:
             revno = int(revno)
         except ValueError as exc:
@@ -3377,7 +3377,7 @@ class cmd_export(Command):
 
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
             root=None, filters=False, per_file_timestamps=False, uncommitted=False,
-            directory=u'.', recurse_nested=False):
+            directory='.', recurse_nested=False):
         from .export import export, guess_format, get_root_name
 
         if branch_or_subdir is None:
@@ -3645,7 +3645,7 @@ class cmd_commit(Command):
                     'Unrecognized bug %s. Commit refused.') % bug) from exc
             except bugtracker.MalformedBugIdentifier as exc:
                 raise errors.CommandError(gettext(
-                    u"%s\nCommit refused.") % (exc,)) from exc
+                    "%s\nCommit refused.") % (exc,)) from exc
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None, bugs=None,
@@ -3692,7 +3692,7 @@ class cmd_commit(Command):
                 self._iter_bug_urls(bugs, tree.branch, bugtracker.RELATED),
                 self._iter_bug_urls(fixes, tree.branch, bugtracker.FIXED)))
         if bug_property:
-            properties[u'bugs'] = bug_property
+            properties['bugs'] = bug_property
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -3945,7 +3945,7 @@ class cmd_whoami(Command):
             if directory is None:
                 # use branch if we're inside one; otherwise global config
                 try:
-                    c = Branch.open_containing(u'.')[0].get_config_stack()
+                    c = Branch.open_containing('.')[0].get_config_stack()
                 except errors.NotBranchError:
                     c = _mod_config.GlobalStack()
             else:
@@ -3972,7 +3972,7 @@ class cmd_whoami(Command):
         # use global config unless --branch given
         if branch:
             if directory is None:
-                c = Branch.open_containing(u'.')[0].get_config_stack()
+                c = Branch.open_containing('.')[0].get_config_stack()
             else:
                 b = Branch.open(directory)
                 self.enter_context(b.lock_write())
@@ -3997,7 +3997,7 @@ class cmd_nick(Command):
     takes_args = ['nickname?']
     takes_options = ['directory']
 
-    def run(self, nickname=None, directory=u'.'):
+    def run(self, nickname=None, directory='.'):
         branch = Branch.open_containing(directory)[0]
         if nickname is None:
             self.printme(branch)
@@ -4061,7 +4061,7 @@ class cmd_alias(Command):
         """Print out the defined aliases in a similar format to bash."""
         aliases = _mod_config.GlobalConfig().get_aliases()
         for key, value in sorted(aliases.items()):
-            self.outf.write('brz alias %s="%s"\n' % (key, value))
+            self.outf.write('brz alias {}="{}"\n'.format(key, value))
 
     @display_command
     def print_alias(self, alias_name):
@@ -4071,7 +4071,7 @@ class cmd_alias(Command):
             self.outf.write("brz alias: %s: not found\n" % alias_name)
         else:
             self.outf.write(
-                'brz alias %s="%s"\n' % (alias_name, ' '.join(alias)))
+                'brz alias {}="{}"\n'.format(alias_name, ' '.join(alias)))
 
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the global config."""
@@ -4484,7 +4484,7 @@ class cmd_merge(Command):
             merge_type = _mod_merge.Merge3Merger
 
         if directory is None:
-            directory = u'.'
+            directory = '.'
         possible_transports = []
         merger = None
         allow_pending = True
@@ -4678,9 +4678,9 @@ class cmd_merge(Command):
         # - user ask to remember or there is no previous location set to merge
         #   from and user didn't ask to *not* remember
         if (user_location is not None
-            and ((remember or
+            and (remember or
                  (remember is None and
-                  tree.branch.get_submit_branch() is None)))):
+                  tree.branch.get_submit_branch() is None))):
             tree.branch.set_submit_branch(other_branch.base)
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
@@ -5042,7 +5042,7 @@ class cmd_missing(Command):
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
             include_merged=None, revision=None, my_revision=None,
-            directory=u'.'):
+            directory='.'):
         from breezy.missing import find_unmerged, iter_log_revisions
 
         def message(s):
@@ -5237,7 +5237,7 @@ class cmd_testament(Command):
     encoding_type = 'exact'
 
     @display_command
-    def run(self, branch=u'.', revision=None, long=False, strict=False):
+    def run(self, branch='.', revision=None, long=False, strict=False):
         from .bzr.testament import Testament, StrictTestament
         if strict is True:
             testament_class = StrictTestament
@@ -5317,7 +5317,7 @@ class cmd_re_sign(Command):
     takes_args = ['revision_id*']
     takes_options = ['directory', 'revision']
 
-    def run(self, revision_id_list=None, revision=None, directory=u'.'):
+    def run(self, revision_id_list=None, revision=None, directory='.'):
         if revision_id_list is not None and revision is not None:
             raise errors.CommandError(
                 gettext('You can only supply one of revision_id or --revision'))
@@ -5377,7 +5377,7 @@ class cmd_bind(Command):
     takes_args = ['location?']
     takes_options = ['directory']
 
-    def run(self, location=None, directory=u'.'):
+    def run(self, location=None, directory='.'):
         b, relpath = Branch.open_containing(directory)
         if location is None:
             try:
@@ -5416,7 +5416,7 @@ class cmd_unbind(Command):
     _see_also = ['checkouts', 'bind']
     takes_options = ['directory']
 
-    def run(self, directory=u'.'):
+    def run(self, directory='.'):
         b, relpath = Branch.open_containing(directory)
         if not b.unbind():
             raise errors.CommandError(gettext('Local branch is not bound'))
@@ -5459,7 +5459,7 @@ class cmd_uncommit(Command):
     def run(self, location=None, dry_run=False, verbose=False,
             revision=None, force=False, local=False, keep_tags=False):
         if location is None:
-            location = u'.'
+            location = '.'
         control, relpath = controldir.ControlDir.open_containing(location)
         try:
             tree = control.open_workingtree()
@@ -5520,7 +5520,7 @@ class cmd_uncommit(Command):
 
         if not force:
             if not ui.ui_factory.confirm_action(
-                    gettext(u'Uncommit these revisions'),
+                    gettext('Uncommit these revisions'),
                     'breezy.builtins.uncommit',
                     {}):
                 self.outf.write(gettext('Canceled\n'))
@@ -5570,7 +5570,7 @@ class cmd_break_lock(Command):
 
     def run(self, location=None, config=False, force=False):
         if location is None:
-            location = u'.'
+            location = '.'
         if force:
             ui.ui_factory = ui.ConfirmationUserInterfacePolicy(ui.ui_factory,
                                                                None,
@@ -5768,7 +5768,7 @@ class cmd_merge_directive(Command):
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
             sign=False, revision=None, mail_to=None, message=None,
-            directory=u'.'):
+            directory='.'):
         from .revision import NULL_REVISION
         include_patch, include_bundle = {
             'plain': (False, False),
@@ -6322,7 +6322,7 @@ class cmd_switch(Command):
                      ]
 
     def run(self, to_location=None, force=False, create_branch=False,
-            revision=None, directory=u'.', store=False):
+            revision=None, directory='.', store=False):
         from . import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
@@ -6560,7 +6560,7 @@ class cmd_hooks(Command):
             some_hooks = hooks.known_hooks_key_to_object(hook_key)
             self.outf.write("%s:\n" % type(some_hooks).__name__)
             for hook_name, hook_point in sorted(some_hooks.items()):
-                self.outf.write("  %s:\n" % (hook_name,))
+                self.outf.write("  {}:\n".format(hook_name))
                 found_hooks = list(hook_point)
                 if found_hooks:
                     for hook in found_hooks:
@@ -6678,7 +6678,7 @@ class cmd_shelve(Command):
 
     def run_for_list(self, directory=None):
         if directory is None:
-            directory = u'.'
+            directory = '.'
         tree = WorkingTree.open_containing(directory)[0]
         self.enter_context(tree.lock_read())
         manager = tree.get_shelf_manager()
@@ -6718,7 +6718,7 @@ class cmd_unshelve(Command):
     ]
     _see_also = ['shelve']
 
-    def run(self, shelf_id=None, action='apply', directory=u'.'):
+    def run(self, shelf_id=None, action='apply', directory='.'):
         from .shelf_ui import Unshelver
         unshelver = Unshelver.from_args(shelf_id, action, directory=directory)
         try:
@@ -6753,7 +6753,7 @@ class cmd_clean_tree(Command):
                      Option('force', help='Do not prompt before deleting.')]
 
     def run(self, unknown=False, ignored=False, detritus=False, dry_run=False,
-            force=False, directory=u'.'):
+            force=False, directory='.'):
         from .clean_tree import clean_tree
         if not (unknown or ignored or detritus):
             unknown = True
@@ -6805,7 +6805,7 @@ class cmd_reference(Command):
         for path, location in info:
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
-            self.outf.write('%s %s\n' % (path, location))
+            self.outf.write('{} {}\n'.format(path, location))
 
 
 class cmd_export_pot(Command):

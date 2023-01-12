@@ -100,12 +100,12 @@ class TestTrace(TestCase):
             msg = _format_exception()
         # Linux seems to give "No such file" but Windows gives "The system
         # cannot find the file specified".
-        self.assertEqual('brz: ERROR: %s\n' % (e_str,), msg)
+        self.assertEqual('brz: ERROR: {}\n'.format(e_str), msg)
 
     def test_format_io_error(self):
         try:
             open('nosuchfile22222')
-        except IOError:
+        except OSError:
             msg = _format_exception()
         # Even though Windows and Linux differ for 'os.rmdir', they both give
         # 'No such file' for open()
@@ -132,7 +132,7 @@ class TestTrace(TestCase):
             import socket
             sock = socket.socket()
             sock.send(b"This should fail.")
-        except socket.error:
+        except OSError:
             msg = _format_exception()
 
         self.assertNotContainsRe(msg,
@@ -140,7 +140,7 @@ class TestTrace(TestCase):
 
     def test_format_unicode_error(self):
         try:
-            raise errors.CommandError(u'argument foo\xb5 does not exist')
+            raise errors.CommandError('argument foo\xb5 does not exist')
         except errors.CommandError:
             msg = _format_exception()
         expected = 'brz: ERROR: argument foo\xb5 does not exist\n'
@@ -176,33 +176,33 @@ class TestTrace(TestCase):
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
-        self.log(u'the unicode character for benzene is \N{BENZENE RING}')
+        self.log('the unicode character for benzene is \N{BENZENE RING}')
         log = self.get_log()
         self.assertContainsRe(log, "the unicode character for benzene is")
 
     def test_trace_argument_unicode(self):
         """Write a Unicode argument to the trace log"""
-        mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
+        mutter('the unicode character for benzene is %s', '\N{BENZENE RING}')
         log = self.get_log()
         self.assertContainsRe(log, 'the unicode character')
 
     def test_trace_argument_utf8(self):
         """Write a Unicode argument to the trace log"""
-        mutter(u'the unicode character for benzene is %s',
-               u'\N{BENZENE RING}'.encode('utf-8'))
+        mutter('the unicode character for benzene is %s',
+               '\N{BENZENE RING}'.encode())
         log = self.get_log()
         self.assertContainsRe(log, 'the unicode character')
 
     def test_trace_argument_exception(self):
         err = Exception('an error')
-        mutter(u'can format stringable classes %s', err)
+        mutter('can format stringable classes %s', err)
         log = self.get_log()
         self.assertContainsRe(log, 'can format stringable classes an error')
 
     def test_report_broken_pipe(self):
         try:
-            raise IOError(errno.EPIPE, 'broken pipe foofofo')
-        except IOError:
+            raise OSError(errno.EPIPE, 'broken pipe foofofo')
+        except OSError:
             msg = _format_exception()
             self.assertEqual(msg, "brz: broken pipe\n")
         else:
@@ -240,8 +240,8 @@ class TestTrace(TestCase):
 
     def test_mutter_never_fails(self):
         """Even with unencodable input mutter should not raise errors."""
-        mutter(u'can write unicode \xa7')
-        mutter('can interpolate unicode %s', u'\xa7')
+        mutter('can write unicode \xa7')
+        mutter('can interpolate unicode %s', '\xa7')
         mutter(b'can write bytes \xa7')
         mutter('can repr bytes %r', b'\xa7')
         mutter('can interpolate bytes %s', b'\xa7')
@@ -249,15 +249,15 @@ class TestTrace(TestCase):
         log = self.get_log()
         self.assertContainsRe(
             log,
-            u'.* +can write unicode \xa7\n'
-            u'.* +can interpolate unicode \xa7\n'
-            u'.* +can write bytes \ufffd\n'
-            u'.* +can repr bytes b\'\\\\xa7\'\n'
-            u'.* +can interpolate bytes (?:\ufffd|b\'\\\\xa7\')\n')
+            '.* +can write unicode \xa7\n'
+            '.* +can interpolate unicode \xa7\n'
+            '.* +can write bytes \ufffd\n'
+            '.* +can repr bytes b\'\\\\xa7\'\n'
+            '.* +can interpolate bytes (?:\ufffd|b\'\\\\xa7\')\n')
 
     def test_show_error(self):
         show_error('error1')
-        show_error(u'error2 \xb5 blah')
+        show_error('error2 \xb5 blah')
         show_error('arg: %s', 'blah')
         show_error('arg2: %(key)s', {'key': 'stuff'})
         try:
@@ -266,7 +266,7 @@ class TestTrace(TestCase):
             show_error('kwarg', exc_info=True)
         log = self.get_log()
         self.assertContainsRe(log, 'error1')
-        self.assertContainsRe(log, u'error2 \xb5 blah')
+        self.assertContainsRe(log, 'error2 \xb5 blah')
         self.assertContainsRe(log, 'arg: blah')
         self.assertContainsRe(log, 'arg2: stuff')
         self.assertContainsRe(log, 'kwarg')
@@ -389,20 +389,20 @@ class TestLogging(TestCase):
         self.assertEqual("   DEBUG  Whispered\n", self.get_log())
 
     def test_log_unicode_msg(self):
-        logging.getLogger("brz").debug(u"\xa7")
-        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+        logging.getLogger("brz").debug("\xa7")
+        self.assertEqual("   DEBUG  \xa7\n", self.get_log())
 
     def test_log_unicode_arg(self):
-        logging.getLogger("brz").debug("%s", u"\xa7")
-        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+        logging.getLogger("brz").debug("%s", "\xa7")
+        self.assertEqual("   DEBUG  \xa7\n", self.get_log())
 
     def test_log_utf8_msg(self):
         logging.getLogger("brz").debug(b"\xc2\xa7")
-        self.assertEqual(u"   DEBUG  \xa7\n", self.get_log())
+        self.assertEqual("   DEBUG  \xa7\n", self.get_log())
 
     def test_log_utf8_arg(self):
         logging.getLogger("brz").debug(b"%s", b"\xc2\xa7")
-        expected = u"   DEBUG  b'\\xc2\\xa7'\n"
+        expected = "   DEBUG  b'\\xc2\\xa7'\n"
         self.assertEqual(expected, self.get_log())
 
     def test_log_bytes_msg(self):
@@ -415,15 +415,15 @@ class TestLogging(TestCase):
     def test_log_bytes_arg(self):
         logging.getLogger("brz").debug(b"%s", b"\xa7")
         log = self.get_log()
-        self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
+        self.assertEqual("   DEBUG  b'\\xa7'\n", self.get_log())
 
     def test_log_mixed_strings(self):
-        logging.getLogger("brz").debug(u"%s", b"\xa7")
+        logging.getLogger("brz").debug("%s", b"\xa7")
         log = self.get_log()
-        self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
+        self.assertEqual("   DEBUG  b'\\xa7'\n", self.get_log())
 
     def test_log_repr_broken(self):
-        class BadRepr(object):
+        class BadRepr:
             def __repr__(self):
                 raise ValueError("Broken object")
         logging.getLogger("brz").debug("%s", BadRepr())
@@ -436,7 +436,7 @@ class TestBzrLog(TestCaseInTempDir):
 
     def test_log_rollover(self):
         temp_log_name = 'test-log'
-        trace_file = open(temp_log_name, 'at')
+        trace_file = open(temp_log_name, 'a')
         trace_file.writelines(['test_log_rollover padding\n'] * 200000)
         trace_file.close()
         _rollover_trace_maybe(temp_log_name)

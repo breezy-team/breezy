@@ -78,7 +78,7 @@ class NoColocatedBranchSupport(errors.BzrError):
         self.controldir = controldir
 
 
-class ControlComponent(object):
+class ControlComponent:
     """Abstract base class for control directory components.
 
     This provides interfaces that are common across controldirs,
@@ -967,7 +967,7 @@ class ControlDirHooks(hooks.Hooks):
 ControlDir.hooks = ControlDirHooks()  # type: ignore
 
 
-class ControlComponentFormat(object):
+class ControlComponentFormat:
     """A component that can live inside of a control directory."""
 
     upgrade_recommended = False
@@ -1014,17 +1014,17 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
     """A registry for control components (branch, workingtree, repository)."""
 
     def __init__(self, other_registry=None):
-        super(ControlComponentFormatRegistry, self).__init__(other_registry)
+        super().__init__(other_registry)
         self._extra_formats = []
 
     def register(self, format):
         """Register a new format."""
-        super(ControlComponentFormatRegistry, self).register(
+        super().register(
             format.get_format_string(), format)
 
     def remove(self, format):
         """Remove a registered format."""
-        super(ControlComponentFormatRegistry, self).remove(
+        super().remove(
             format.get_format_string())
 
     def register_extra(self, format):
@@ -1076,7 +1076,7 @@ class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFor
         return modules
 
 
-class Converter(object):
+class Converter:
     """Converts a disk format object from one format to another."""
 
     def convert(self, to_convert, pb):
@@ -1093,7 +1093,7 @@ class Converter(object):
         self.pb.update(message, self.count, self.total)
 
 
-class ControlDirFormat(object):
+class ControlDirFormat:
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -1346,7 +1346,7 @@ class ControlDirFormat(object):
         raise NotImplementedError(cls.is_control_filename)
 
 
-class Prober(object):
+class Prober:
     """Abstract class that can be used to detect a particular kind of
     control directory.
 
@@ -1399,7 +1399,7 @@ class Prober(object):
         return 0
 
 
-class ControlDirFormatInfo(object):
+class ControlDirFormatInfo:
 
     def __init__(self, native, deprecated, hidden, experimental):
         self.deprecated = deprecated
@@ -1418,7 +1418,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
         self._registration_order = list()
-        super(ControlDirFormatRegistry, self).__init__()
+        super().__init__()
 
     def register(self, key, factory, help, native=True, deprecated=False,
                  hidden=False, experimental=False):
@@ -1492,7 +1492,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
         def wrapped(key, help, info):
             if info.native:
                 help = '(native) ' + help
-            return ':%s:\n%s\n\n' % (key,
+            return ':{}:\n{}\n\n'.format(key,
                                      textwrap.fill(help, initial_indent='    ',
                                                    subsequent_indent='    ',
                                                    break_long_words=False))
@@ -1538,7 +1538,7 @@ class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
             return output
 
 
-class RepoInitHookParams(object):
+class RepoInitHookParams:
     """Object holding parameters passed to ``*_repo_init`` hooks.
 
     There are 4 fields that hooks may wish to access:
@@ -1569,10 +1569,10 @@ class RepoInitHookParams(object):
 
     def __repr__(self):
         if self.repository:
-            return "<%s for %s>" % (self.__class__.__name__,
+            return "<{} for {}>".format(self.__class__.__name__,
                                     self.repository)
         else:
-            return "<%s for %s>" % (self.__class__.__name__,
+            return "<{} for {}>".format(self.__class__.__name__,
                                     self.controldir)
 
 
@@ -1587,7 +1587,7 @@ def is_control_filename(filename):
         return False
 
 
-class RepositoryAcquisitionPolicy(object):
+class RepositoryAcquisitionPolicy:
     """Abstract base class for repository acquisition policies.
 
     A repository acquisition policy decides how a ControlDir acquires a repository

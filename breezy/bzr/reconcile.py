@@ -35,7 +35,7 @@ from ..tsort import topo_sort
 from .versionedfile import AdapterFactory, ChunkedContentFactory
 
 
-class VersionedFileRepoReconciler(object):
+class VersionedFileRepoReconciler:
     """Reconciler that reconciles a repository.
 
     The goal of repository reconciliation is to make any derived data
@@ -307,8 +307,8 @@ class KnitReconciler(VersionedFileRepoReconciler):
             self.pb.update(gettext('Fixing text parents'), num,
                            len(per_id_bad_parents))
             versions_with_bad_parents = per_id_bad_parents[file_id]
-            id_unused_versions = set(key[-1] for key in unused_versions
-                                     if key[0] == file_id)
+            id_unused_versions = {key[-1] for key in unused_versions
+                                     if key[0] == file_id}
             if file_id in file_id_versions:
                 file_versions = file_id_versions[file_id]
             else:
@@ -374,7 +374,7 @@ class PackReconciler(VersionedFileRepoReconciler):
 
     def __init__(self, repo, other=None, thorough=False,
                  canonicalize_chks=False):
-        super(PackReconciler, self).__init__(repo, other=other,
+        super().__init__(repo, other=other,
                                              thorough=thorough)
         self.canonicalize_chks = canonicalize_chks
 
@@ -423,7 +423,7 @@ class PackReconciler(VersionedFileRepoReconciler):
         self.repo._pack_collection._obsolete_packs(packs)
 
 
-class BranchReconciler(object):
+class BranchReconciler:
     """Reconciler that works on a branch."""
 
     def __init__(self, a_branch, thorough=False):

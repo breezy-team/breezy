@@ -428,7 +428,7 @@ class TestLockDir(TestCaseWithTransport):
             info_list = ld1.peek().to_readable_dict()
         finally:
             ld1.unlock()
-        self.assertEqual(info_list['user'], u'jrandom@example.com')
+        self.assertEqual(info_list['user'], 'jrandom@example.com')
         self.assertIsInstance(info_list['pid'], int)
         self.assertContainsRe(info_list['time_ago'], '^\\d+ seconds? ago$')
 
@@ -566,7 +566,7 @@ class TestLockDir(TestCaseWithTransport):
 class TestLockDirHooks(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestLockDirHooks, self).setUp()
+        super().setUp()
         self._calls = []
 
     def get_lock(self):

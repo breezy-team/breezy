@@ -44,7 +44,7 @@ def generate_unicode_names():
     False
     """
     # include a mathematical symbol unlikely to be in 8-bit encodings
-    return (u"\N{SINE WAVE}%d" % x for x in itertools.count())
+    return ("\N{SINE WAVE}%d" % x for x in itertools.count())
 
 
 interesting_encodings = [
@@ -84,7 +84,7 @@ def generate_unicode_encodings(universal_encoding=None):
     return itertools.cycle(iter(e))
 
 
-class RecordingContextManager(object):
+class RecordingContextManager:
     """A context manager that records."""
 
     def __init__(self):
@@ -144,7 +144,7 @@ class TimeoutException(Exception):
     """Timeout expired"""
 
 
-class TimeoutFixture(object):
+class TimeoutFixture:
     """Kill a test with sigalarm if it runs too long.
 
     Only works on Unix at present.

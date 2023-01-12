@@ -97,7 +97,7 @@ class InterToGitRepository(InterRepository):
     _matching_repo_format = GitRepositoryFormat()
 
     def __init__(self, source, target):
-        super(InterToGitRepository, self).__init__(source, target)
+        super().__init__(source, target)
         self.mapping = self.target.get_mapping()
         self.source_store = get_object_store(self.source, self.mapping)
 
@@ -166,7 +166,7 @@ class InterToLocalGitRepository(InterToGitRepository):
     """InterBranch implementation between a Bazaar and a Git repository."""
 
     def __init__(self, source, target):
-        super(InterToLocalGitRepository, self).__init__(source, target)
+        super().__init__(source, target)
         self.target_store = self.target.controldir._git.object_store
         self.target_refs = self.target.controldir._git.refs
 
@@ -374,7 +374,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             for ref, error in result.ref_status.items():
                 if error:
                     raise RemoteGitError(
-                        'unable to update ref %r: %s' % (ref, error))
+                        'unable to update ref {!r}: {}'.format(ref, error))
             new_refs = result.refs
         # FIXME: revidmap?
         return revidmap, self.old_refs, new_refs
@@ -386,7 +386,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 isinstance(target, RemoteGitRepository))
 
 
-class GitSearchResult(object):
+class GitSearchResult:
 
     def __init__(self, start, exclude, keys):
         self._start = start
@@ -415,7 +415,7 @@ class InterFromGitRepository(InterRepository):
             for k, v in refs.items():
                 if k.endswith(ANNOTATED_TAG_SUFFIX):
                     unpeel_lookup[v] = refs[k[:-len(ANNOTATED_TAG_SUFFIX)]]
-            potential = set([unpeel_lookup.get(w, w) for w in wants])
+            potential = {unpeel_lookup.get(w, w) for w in wants}
             if include_tags:
                 for k, sha in refs.items():
                     if k.endswith(ANNOTATED_TAG_SUFFIX):
@@ -482,7 +482,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 continue
             else:
                 revids[revid] = sha
-        return set([revids[r] for r in self.target.has_revisions(revids)])
+        return {revids[r] for r in self.target.has_revisions(revids)}
 
     def determine_wants_all(self, refs):
         potential = set()
@@ -643,8 +643,8 @@ class InterGitGitRepository(InterFromGitRepository):
         ref_changes = {}
 
         def determine_wants(heads):
-            old_refs = dict([(k, (v, None))
-                             for (k, v) in heads.items()])
+            old_refs = {k: (v, None)
+                             for (k, v) in heads.items()}
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
             return [sha1 for (sha1, bzr_revid) in new_refs.values()]
@@ -658,8 +658,8 @@ class InterGitGitRepository(InterFromGitRepository):
         raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
-        return set(
-            [sha for sha in shas if sha in self.target._git.object_store])
+        return {
+            sha for sha in shas if sha in self.target._git.object_store}
 
     def fetch(self, revision_id=None, find_ghosts=False,
               fetch_spec=None, branches=None, limit=None,
@@ -715,9 +715,9 @@ class InterGitGitRepository(InterFromGitRepository):
         return determine_wants
 
     def determine_wants_all(self, refs):
-        potential = set([
+        potential = {
             v for k, v in refs.items()
-            if not v == ZERO_SHA and not k.endswith(ANNOTATED_TAG_SUFFIX)])
+            if not v == ZERO_SHA and not k.endswith(ANNOTATED_TAG_SUFFIX)}
         return list(potential - self._target_has_shas(potential))
 
 

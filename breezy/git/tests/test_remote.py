@@ -219,7 +219,7 @@ Email support@github.com for help
 class ParseHangupTests(TestCase):
 
     def setUp(self):
-        super(ParseHangupTests, self).setUp()
+        super().setUp()
         try:
             HangupException([b'foo'])
         except TypeError:
@@ -271,7 +271,7 @@ class ParseHangupTests(TestCase):
 class TestRemoteGitBranchFormat(TestCase):
 
     def setUp(self):
-        super(TestRemoteGitBranchFormat, self).setUp()
+        super().setUp()
         self.format = RemoteGitBranchFormat()
 
     def test_get_format_description(self):
@@ -318,7 +318,7 @@ class TestRemoteGitBranch(TestCaseWithTransport):
                          newbranch.lookup_foreign_revision_id(c1))
 
 
-class FetchFromRemoteTestBase(object):
+class FetchFromRemoteTestBase:
 
     _test_needs_features = [ExecutableFeature('git')]
 
@@ -505,7 +505,7 @@ class FetchFromRemoteToGitTests(FetchFromRemoteTestBase, TestCaseWithTransport):
     _to_format = 'git'
 
 
-class PushToRemoteBase(object):
+class PushToRemoteBase:
 
     _test_needs_features = [ExecutableFeature('git')]
 
@@ -735,8 +735,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-            set(['master', 'blah', 'master']),
-            set([b.name for b in remote.list_branches()]))
+            {'master', 'blah', 'master'},
+            {b.name for b in remote.list_branches()})
 
     def test_get_branches(self):
         c1 = self.remote_real.do_commit(
@@ -754,7 +754,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
             {'': 'master', 'blah': 'blah', 'master': 'master'},
             {n: b.name for (n, b) in remote.get_branches().items()})
         self.assertEqual(
-            set(['', 'blah', 'master']), set(remote.branch_names()))
+            {'', 'blah', 'master'}, set(remote.branch_names()))
 
     def test_remove_tag(self):
         c1 = self.remote_real.do_commit(

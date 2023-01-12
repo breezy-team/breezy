@@ -142,7 +142,7 @@ class WorkspaceTests(TestCaseWithTransport):
     )
 
     def setUp(self):
-        super(WorkspaceTests, self).setUp()
+        super().setUp()
         if self._use_inotify:
             self.requireFeature(features.pyinotify)
 

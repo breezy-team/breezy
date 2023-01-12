@@ -66,7 +66,7 @@ def needs(request, *paths):
     """Errors out if the specified path does not exists"""
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
-        error('%s needs: %s' % (request, ','.join(missing)))
+        error('{} needs: {}'.format(request, ','.join(missing)))
 
 
 def rm_f(path):
@@ -211,7 +211,7 @@ def build_ssls(name, options, builders):
         for item in options:
             builder = builders.get(item, None)
             if builder is None:
-                error('%s is not a known %s' % (item, name))
+                error('{} is not a known {}'.format(item, name))
             builder()
 
 
@@ -250,8 +250,8 @@ signing_builders = dict(server=sign_server_certificate,)
 if __name__ == '__main__':
     (Options, args) = opt_parser.parse_args()
     if (Options.ca or Options.server):
-        if ((Options.keys or Options.certificates or Options.signing_requests
-             or Options.signings)):
+        if (Options.keys or Options.certificates or Options.signing_requests
+             or Options.signings):
             error("--ca and --server can't be used with other options")
         # Handles --ca before --server so that both can be used in the same run
         # to generate all the files needed by the https test server

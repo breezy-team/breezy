@@ -161,15 +161,15 @@ class TestTextProgressView(tests.TestCase):
         out = ui_testing.StringIOWithEncoding()
         out.encoding = "utf-8"
         view = self.make_view_only(out, 20)
-        task = self.make_task(None, view, u"\xa7", 0, 1)
+        task = self.make_task(None, view, "\xa7", 0, 1)
         view.show_progress(task)
-        self.assertEqual(u'\r/ \xa7 0/1            \r', out.getvalue())
+        self.assertEqual('\r/ \xa7 0/1            \r', out.getvalue())
 
     def test_render_progress_unicode_enc_missing(self):
         out = codecs.getwriter("ascii")(io.BytesIO())
         self.assertRaises(AttributeError, getattr, out, "encoding")
         view = self.make_view_only(out, 20)
-        task = self.make_task(None, view, u"\xa7", 0, 1)
+        task = self.make_task(None, view, "\xa7", 0, 1)
         view.show_progress(task)
         self.assertEqual(b'\r/ ? 0/1             \r', out.getvalue())
 
@@ -177,6 +177,6 @@ class TestTextProgressView(tests.TestCase):
         out = ui_testing.StringIOWithEncoding()
         out.encoding = None
         view = self.make_view_only(out, 20)
-        task = self.make_task(None, view, u"\xa7", 0, 1)
+        task = self.make_task(None, view, "\xa7", 0, 1)
         view.show_progress(task)
-        self.assertEqual(u'\r/ ? 0/1             \r', out.getvalue())
+        self.assertEqual('\r/ ? 0/1             \r', out.getvalue())

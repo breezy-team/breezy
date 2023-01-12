@@ -55,7 +55,7 @@ def find_repo_url(data):
             return value
 
 
-class PypiDirectory(object):
+class PypiDirectory:
 
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""

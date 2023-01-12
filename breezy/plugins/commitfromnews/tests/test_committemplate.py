@@ -44,7 +44,7 @@ class TestCommitTemplate(TestCaseWithTransport):
         self.commits.append(commit)
         self.messages.append(message)
         if message is None:
-            message = u'let this commit succeed I command thee.'
+            message = 'let this commit succeed I command thee.'
         return message
 
     def enable_commitfromnews(self):
@@ -159,7 +159,7 @@ IMPROVEMENTS
         builder.finish_series()
         self.assertEqual([change_content], self.messages)
         self.assertEqual(1, len(self.commits))
-        self.assertEquals('https://launchpad.net/bugs/523423 fixed',
+        self.assertEqual('https://launchpad.net/bugs/523423 fixed',
                           self.commits[0].revprops['bugs'])
 
     def _todo_test_passes_messages_through(self):

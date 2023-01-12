@@ -49,7 +49,7 @@ class UnknownRules(errors.BzrError):
         errors.BzrError.__init__(self, unknowns_str=", ".join(unknowns))
 
 
-class _RulesSearcher(object):
+class _RulesSearcher:
     """An object that provides rule-based preferences."""
 
     def get_items(self, path):

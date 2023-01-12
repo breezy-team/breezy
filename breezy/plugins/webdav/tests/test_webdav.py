@@ -393,7 +393,7 @@ class HatterHttpServer(http_server.HttpServer):
     """
 
     def __init__(self):
-        super(HatterHttpServer, self).__init__(CannedRequestHandler,
+        super().__init__(CannedRequestHandler,
                                                protocol_version='HTTP/1.1')
         self.canned_response = None
 
@@ -401,7 +401,7 @@ class HatterHttpServer(http_server.HttpServer):
 class TestDAVErrors(tests.TestCase):
 
     def setUp(self):
-        super(TestDAVErrors, self).setUp()
+        super().setUp()
         self._transport = webdav.HttpDavTransport
         self.server = HatterHttpServer()
         self.server.start_server()

@@ -521,7 +521,7 @@ class KnitPackStreamSource(StreamSource):
     """
 
     def __init__(self, from_repository, to_format):
-        super(KnitPackStreamSource, self).__init__(from_repository, to_format)
+        super().__init__(from_repository, to_format)
         self._text_keys = None
         self._text_fetch_order = 'unordered'
 
@@ -575,8 +575,7 @@ class KnitPackStreamSource(StreamSource):
 
     def get_stream(self, search):
         revision_ids = search.get_keys()
-        for stream_info in self._fetch_revision_texts(revision_ids):
-            yield stream_info
+        yield from self._fetch_revision_texts(revision_ids)
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         yield self._get_filtered_inv_stream(revision_ids)
         yield self._get_text_stream()
@@ -587,7 +586,7 @@ class KnitPacker(Packer):
 
     def __init__(self, pack_collection, packs, suffix, revision_ids=None,
                  reload_func=None):
-        super(KnitPacker, self).__init__(pack_collection, packs, suffix,
+        super().__init__(pack_collection, packs, suffix,
                                          revision_ids=revision_ids,
                                          reload_func=reload_func)
 
@@ -689,9 +688,8 @@ class KnitPacker(Packer):
             an iterator of line,version_id.
         """
         with ui.ui_factory.nested_progress_bar() as pb:
-            for result in self._do_copy_nodes_graph(index_map, writer,
-                                                    write_index, output_lines, pb, readv_group_iter, total_items):
-                yield result
+            yield from self._do_copy_nodes_graph(index_map, writer,
+                                                    write_index, output_lines, pb, readv_group_iter, total_items)
 
     def _do_copy_nodes_graph(self, index_map, writer, write_index,
                              output_lines, pb, readv_group_iter, total_items):
@@ -855,7 +853,7 @@ class KnitPacker(Packer):
             # saves reading knit data over the wire when we know there are
             # mising records.
             text_nodes = set(text_nodes)
-            present_text_keys = set(_node[1] for _node in text_nodes)
+            present_text_keys = {_node[1] for _node in text_nodes}
             missing_text_keys = set(self._text_filter) - present_text_keys
             if missing_text_keys:
                 # TODO: raise a specific error that can handle many missing
@@ -881,7 +879,7 @@ class KnitPacker(Packer):
         # this makes a significant difference on sftp pushes.
         new_pack.set_write_cache_size(1024 * 1024)
         if 'pack' in debug.debug_flags:
-            plain_pack_list = ['%s%s' % (a_pack.pack_transport.base, a_pack.name)
+            plain_pack_list = ['{}{}'.format(a_pack.pack_transport.base, a_pack.name)
                                for a_pack in self.packs]
             if self.revision_ids is not None:
                 rev_count = len(self.revision_ids)
@@ -973,7 +971,7 @@ class KnitReconcilePacker(KnitPacker):
     """
 
     def __init__(self, *args, **kwargs):
-        super(KnitReconcilePacker, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._data_changed = False
 
     def _process_inventory_lines(self, inv_lines):
@@ -995,9 +993,9 @@ class KnitReconcilePacker(KnitPacker):
         # we have three major tasks here:
         # 1) generate the ideal index
         repo = self._pack_collection.repo
-        ancestors = dict([(key[0], tuple(ref[0] for ref in refs[0])) for
+        ancestors = {key[0]: tuple(ref[0] for ref in refs[0]) for
                           _1, key, _2, refs in
-                          self.new_pack.revision_index.iter_all_entries()])
+                          self.new_pack.revision_index.iter_all_entries()}
         ideal_index = repo._generate_text_key_index(self._text_refs, ancestors)
         # 2) generate a text_nodes list that contains all the deltas that can
         #    be used as-is, with corrected parents.
@@ -1142,7 +1140,7 @@ class OptimisingKnitPacker(KnitPacker):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        new_pack = super(OptimisingKnitPacker, self).open_pack()
+        new_pack = super().open_pack()
         # Turn on the optimization flags for all the index builders.
         new_pack.revision_index.set_optimize(for_size=True)
         new_pack.inventory_index.set_optimize(for_size=True)

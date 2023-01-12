@@ -38,7 +38,7 @@ class TestDependencyManagement(TestCase):
     _test_needs_features = [launchpadlib_feature]
 
     def setUp(self):
-        super(TestDependencyManagement, self).setUp()
+        super().setUp()
         from . import lp_api
         self.lp_api = lp_api
 
@@ -85,7 +85,7 @@ class TestCacheDirectory(TestCase):
         from . import lp_api
         try:
             expected_path = osutils.pathjoin(bedding.cache_dir(), 'launchpad')
-        except EnvironmentError:
+        except OSError:
             self.assertRaises(EnvironmentError, lp_api.get_cache_directory)
         else:
             self.assertEqual(expected_path, lp_api.get_cache_directory())

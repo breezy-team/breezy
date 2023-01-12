@@ -47,7 +47,7 @@ class TestSymlinkSupportFunction(per_tree.TestCaseWithTree):
 class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
 
     def setUp(self):
-        super(TestTreeWithSymlinks, self).setUp()
+        super().setUp()
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
@@ -78,7 +78,7 @@ class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
 class TestTreeWithoutSymlinks(per_tree.TestCaseWithTree):
 
     def setUp(self):
-        super(TestTreeWithoutSymlinks, self).setUp()
+        super().setUp()
         self.branch = self.make_branch('a')
         mem_tree = self.branch.create_memorytree()
         with mem_tree.lock_write():

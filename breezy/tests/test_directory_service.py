@@ -30,7 +30,7 @@ from ..directory_service import (
 from . import TestCase, TestCaseWithTransport
 
 
-class FooService(object):
+class FooService:
     """A directory service that maps the name to a FILE url"""
 
     # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
@@ -43,7 +43,7 @@ class FooService(object):
 class TestDirectoryLookup(TestCase):
 
     def setUp(self):
-        super(TestDirectoryLookup, self).setUp()
+        super().setUp()
         self.registry = DirectoryServiceRegistry()
         self.registry.register('foo:', FooService, 'Map foo URLs to http urls')
 
@@ -69,7 +69,7 @@ class TestDirectoryLookup(TestCase):
                          transport.get_transport('foo:bar').base)
 
 
-class OldService(object):
+class OldService:
     """A directory service that maps the name to a FILE url"""
 
     # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
@@ -84,7 +84,7 @@ class TestOldDirectoryLookup(TestCase):
     that don't support the purpose argument."""
 
     def setUp(self):
-        super(TestOldDirectoryLookup, self).setUp()
+        super().setUp()
         self.registry = DirectoryServiceRegistry()
         self.registry.register('old:', OldService, 'Map foo URLs to http urls')
 
@@ -102,7 +102,7 @@ class TestOldDirectoryLookup(TestCase):
 class TestAliasDirectory(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestAliasDirectory, self).setUp()
+        super().setUp()
         self.branch = self.make_branch('.')
 
     def assertAliasFromBranch(self, setter, value, alias):

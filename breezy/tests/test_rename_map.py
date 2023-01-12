@@ -99,7 +99,7 @@ class TestRenameMap(TestCaseWithTransport):
         required_parents = {
             'path2': {'b'},
             'path3/path4': {'c'},
-            'path3': set([])}
+            'path3': set()}
         missing_parents = {
             'path2-id': {'b'},
             'path4-id': {'c'},

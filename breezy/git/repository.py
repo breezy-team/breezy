@@ -88,7 +88,7 @@ class GitCheck(check.Check):
                     self.problems.append((sha, e))
 
     def _report_repo_results(self, verbose):
-        trace.note('checked repository {0} format {1}'.format(
+        trace.note('checked repository {} format {}'.format(
             self.repository.user_url,
             self.repository._format))
         trace.note('%6d objects', self.object_count)
@@ -120,7 +120,7 @@ class GitRepository(ForeignRepository):
 
     def __init__(self, gitdir):
         self._transport = gitdir.root_transport
-        super(GitRepository, self).__init__(GitRepositoryFormat(),
+        super().__init__(GitRepositoryFormat(),
                                             gitdir, control_files=None)
         self.base = gitdir.root_transport.base
         self._lock_mode = None
@@ -325,7 +325,7 @@ class LocalGitRepository(GitRepository):
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
-        result = super(LocalGitRepository, self).gather_stats(
+        result = super().gather_stats(
             revid, committers)
         revs = []
         for sha in self._git.object_store:

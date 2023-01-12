@@ -76,7 +76,7 @@ class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
         """
         try:
             self._handle_one_request()
-        except socket.error as e:
+        except OSError as e:
             # Any socket error should close the connection, but some errors are
             # due to the client closing early and we don't want to pollute test
             # results, so we raise only the others.
@@ -184,7 +184,7 @@ Message: %(message)s.
         return checked_ranges
 
     def _header_line_length(self, keyword, value):
-        header_line = '%s: %s\r\n' % (keyword, value)
+        header_line = '{}: {}\r\n'.format(keyword, value)
         return len(header_line)
 
     def send_range_content(self, file, start, length):
@@ -256,7 +256,7 @@ Message: %(message)s.
             # actual size of the content transmitted *less* than
             # the content-length!
             f = open(path, 'rb')
-        except IOError:
+        except OSError:
             self.send_error(404, "File not found")
             return
 
@@ -408,7 +408,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
             raise http_client.UnknownProtocol(proto_vers)
         self.host = 'localhost'
         self.port = 0
-        super(HttpServer, self).__init__((self.host, self.port),
+        super().__init__((self.host, self.port),
                                          serv_cls,
                                          request_handler)
         self.protocol_version = proto_vers
@@ -456,8 +456,8 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self.logs = []
 
-        super(HttpServer, self).start_server()
-        self._http_base_url = '%s://%s:%s/' % (
+        super().start_server()
+        self._http_base_url = '{}://{}:{}/'.format(
             self._url_protocol, self.host, self.port)
 
     def get_url(self):

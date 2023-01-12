@@ -43,7 +43,7 @@ from .identitymap import IdentityMap, NullIdentityMap
 from .trace import mutter
 
 
-class Transaction(object):
+class Transaction:
     """Base class for transactions."""
 
     def writeable(self) -> bool:
@@ -57,7 +57,7 @@ class ReadOnlyTransaction(Transaction):
         """Clean up this transaction."""
 
     def __init__(self):
-        super(ReadOnlyTransaction, self).__init__()
+        super().__init__()
         self.map = IdentityMap()
         self._clean_objects = set()
         self._clean_queue = []
@@ -142,7 +142,7 @@ class WriteTransaction(ReadOnlyTransaction):
                 callback()
 
     def __init__(self):
-        super(WriteTransaction, self).__init__()
+        super().__init__()
         self._dirty_objects = set()
 
     def is_dirty(self, an_object):
@@ -182,7 +182,7 @@ class PassThroughTransaction(Transaction):
                 callback()
 
     def __init__(self):
-        super(PassThroughTransaction, self).__init__()
+        super().__init__()
         self.map = NullIdentityMap()
         self._dirty_objects = set()
 

@@ -56,7 +56,7 @@ DulwichFeature = _DulwichFeature()
 FastimportFeature = ModuleAvailableFeature('fastimport')
 
 
-class GitBranchBuilder(object):
+class GitBranchBuilder:
 
     def __init__(self, stream=None):
         if not FastimportFeature.available():

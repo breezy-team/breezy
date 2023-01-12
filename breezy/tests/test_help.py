@@ -343,15 +343,15 @@ class ZzzTranslationsForDoc(ZzzTranslations):
         if m is None:
             m = self._indent_pat.match(s)
         if m:
-            return u'%szz{{%s}}' % (m.group(0), s[m.end():])
-        return u'zz{{%s}}' % s
+            return '{}zz{{{{{}}}}}'.format(m.group(0), s[m.end():])
+        return 'zz{{%s}}' % s
 
 
 class TestCommandHelpI18n(tests.TestCase):
     """Tests for help on translated commands."""
 
     def setUp(self):
-        super(TestCommandHelpI18n, self).setUp()
+        super().setUp()
         self.overrideAttr(i18n, '_translations', ZzzTranslationsForDoc())
 
     def assertCmdHelp(self, expected, cmd):
@@ -507,7 +507,7 @@ Description:
 class TestHelp(tests.TestCase):
 
     def setUp(self):
-        super(TestHelp, self).setUp()
+        super().setUp()
         commands.install_bzr_command_hooks()
 
 
@@ -587,7 +587,7 @@ class TestConfigOptionIndex(TestHelp):
     """Tests for the HelpCommandIndex class."""
 
     def setUp(self):
-        super(TestConfigOptionIndex, self).setUp()
+        super().setUp()
         self.index = help_topics.ConfigOptionHelpIndex()
 
     def test_get_topics_None(self):
@@ -675,7 +675,7 @@ class TestHelpIndices(tests.TestCase):
         """Searching should call get_topics in all indexes in order."""
         calls = []
 
-        class RecordingIndex(object):
+        class RecordingIndex:
             def __init__(self, name):
                 self.prefix = name
 
@@ -702,7 +702,7 @@ class TestHelpIndices(tests.TestCase):
 
     def test_search_returns_index_and_results(self):
         """Searching should return help topics with their index"""
-        class CannedIndex(object):
+        class CannedIndex:
             def __init__(self, prefix, search_result):
                 self.prefix = prefix
                 self.result = search_result

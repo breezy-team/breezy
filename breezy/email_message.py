@@ -27,7 +27,7 @@ from .osutils import safe_unicode
 from .smtp_connection import SMTPConnection
 
 
-class EmailMessage(object):
+class EmailMessage:
     """An email message.
 
     The constructor needs an origin address, a destination address or addresses

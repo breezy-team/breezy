@@ -122,10 +122,10 @@ class TestMultiWalker(TestCaseWithTransport):
 
         walker = multiwalker.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True, [u'a'], iterator)
-        self.assertWalkerNext(u'b', b'b-id', True, [u'b'], iterator)
-        self.assertWalkerNext(u'b/c', b'c-id', True, [u'b/c'], iterator)
+        self.assertWalkerNext('', root_id, True, [''], iterator)
+        self.assertWalkerNext('a', b'a-id', True, ['a'], iterator)
+        self.assertWalkerNext('b', b'b-id', True, ['b'], iterator)
+        self.assertWalkerNext('b/c', b'c-id', True, ['b/c'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_master_has_extra(self):
@@ -140,11 +140,11 @@ class TestMultiWalker(TestCaseWithTransport):
 
         walker = multiwalker.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True, [u'a'], iterator)
-        self.assertWalkerNext(u'b', b'b-id', True, [u'b'], iterator)
-        self.assertWalkerNext(u'c', b'c-id', True, [None], iterator)
-        self.assertWalkerNext(u'd', b'd-id', True, [u'd'], iterator)
+        self.assertWalkerNext('', root_id, True, [''], iterator)
+        self.assertWalkerNext('a', b'a-id', True, ['a'], iterator)
+        self.assertWalkerNext('b', b'b-id', True, ['b'], iterator)
+        self.assertWalkerNext('c', b'c-id', True, [None], iterator)
+        self.assertWalkerNext('d', b'd-id', True, ['d'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_master_renamed_to_earlier(self):
@@ -159,10 +159,10 @@ class TestMultiWalker(TestCaseWithTransport):
 
         walker = multiwalker.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True, [u'a'], iterator)
-        self.assertWalkerNext(u'b', b'd-id', True, [u'd'], iterator)
-        self.assertWalkerNext(u'c', b'c-id', True, [u'c'], iterator)
+        self.assertWalkerNext('', root_id, True, [''], iterator)
+        self.assertWalkerNext('a', b'a-id', True, ['a'], iterator)
+        self.assertWalkerNext('b', b'd-id', True, ['d'], iterator)
+        self.assertWalkerNext('c', b'c-id', True, ['c'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_master_renamed_to_later(self):
@@ -176,10 +176,10 @@ class TestMultiWalker(TestCaseWithTransport):
 
         walker = multiwalker.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True, [u'a'], iterator)
-        self.assertWalkerNext(u'd', b'd-id', True, [u'd'], iterator)
-        self.assertWalkerNext(u'e', b'b-id', True, [u'b'], iterator)
+        self.assertWalkerNext('', root_id, True, [''], iterator)
+        self.assertWalkerNext('a', b'a-id', True, ['a'], iterator)
+        self.assertWalkerNext('d', b'd-id', True, ['d'], iterator)
+        self.assertWalkerNext('e', b'b-id', True, ['b'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_other_extra_in_middle(self):
@@ -192,10 +192,10 @@ class TestMultiWalker(TestCaseWithTransport):
         basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
         walker = multiwalker.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True, [u'a'], iterator)
-        self.assertWalkerNext(u'd', b'd-id', True, [u'd'], iterator)
-        self.assertWalkerNext(u'b', b'b-id', False, [u'b'], iterator)
+        self.assertWalkerNext('', root_id, True, [''], iterator)
+        self.assertWalkerNext('a', b'a-id', True, ['a'], iterator)
+        self.assertWalkerNext('d', b'd-id', True, ['d'], iterator)
+        self.assertWalkerNext('b', b'b-id', False, ['b'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_other_extra_at_end(self):
@@ -208,10 +208,10 @@ class TestMultiWalker(TestCaseWithTransport):
         basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
         walker = multiwalker.MultiWalker(tree, [basis_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True, [u'a'], iterator)
-        self.assertWalkerNext(u'b', b'b-id', True, [u'b'], iterator)
-        self.assertWalkerNext(u'd', b'd-id', False, [u'd'], iterator)
+        self.assertWalkerNext('', root_id, True, [''], iterator)
+        self.assertWalkerNext('a', b'a-id', True, ['a'], iterator)
+        self.assertWalkerNext('b', b'b-id', True, ['b'], iterator)
+        self.assertWalkerNext('d', b'd-id', False, ['d'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_others_extra_at_end(self):
@@ -232,17 +232,17 @@ class TestMultiWalker(TestCaseWithTransport):
         walker = multiwalker.MultiWalker(
             tree, [basis_tree, first_tree, second_tree])
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u'', u'', u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True,
-                              [u'a', u'a', u'a'], iterator)
-        self.assertWalkerNext(u'b', b'b-id', True,
-                              [u'b', u'b', u'b'], iterator)
-        self.assertWalkerNext(u'c', b'c-id', False,
-                              [u'c', u'c', u'c'], iterator)
-        self.assertWalkerNext(u'd', b'd-id', False,
-                              [None, u'd', u'd'], iterator)
-        self.assertWalkerNext(u'e', b'e-id', False,
-                              [None, u'e', None], iterator)
+        self.assertWalkerNext('', root_id, True, ['', '', ''], iterator)
+        self.assertWalkerNext('a', b'a-id', True,
+                              ['a', 'a', 'a'], iterator)
+        self.assertWalkerNext('b', b'b-id', True,
+                              ['b', 'b', 'b'], iterator)
+        self.assertWalkerNext('c', b'c-id', False,
+                              ['c', 'c', 'c'], iterator)
+        self.assertWalkerNext('d', b'd-id', False,
+                              [None, 'd', 'd'], iterator)
+        self.assertWalkerNext('e', b'e-id', False,
+                              [None, 'e', None], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_different_file_id_in_others(self):
@@ -265,12 +265,12 @@ class TestMultiWalker(TestCaseWithTransport):
         walker = multiwalker.MultiWalker(tree, [basis_tree, first_tree])
 
         iterator = walker.iter_all()
-        self.assertWalkerNext(u'', root_id, True, [u'', u''], iterator)
-        self.assertWalkerNext(u'a', b'a2-id', True, [None, None], iterator)
-        self.assertWalkerNext(u'b', b'b2-id', True, [u'b', None], iterator)
-        self.assertWalkerNext(u'c', b'c-id', True, [u'c', u'c'], iterator)
-        self.assertWalkerNext(u'c/d', b'b-id', True, [u'c/d', u'b'], iterator)
-        self.assertWalkerNext(u'c/e', b'a-id', True, [u'a', u'a'], iterator)
+        self.assertWalkerNext('', root_id, True, ['', ''], iterator)
+        self.assertWalkerNext('a', b'a2-id', True, [None, None], iterator)
+        self.assertWalkerNext('b', b'b2-id', True, ['b', None], iterator)
+        self.assertWalkerNext('c', b'c-id', True, ['c', 'c'], iterator)
+        self.assertWalkerNext('c/d', b'b-id', True, ['c/d', 'b'], iterator)
+        self.assertWalkerNext('c/e', b'a-id', True, ['a', 'a'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def assertLtByDirblock(self, lt_val, path1, path2):
@@ -281,25 +281,25 @@ class TestMultiWalker(TestCaseWithTransport):
         # We only support Unicode strings at this point
         self.assertRaises(
             TypeError, multiwalker.MultiWalker._lt_path_by_dirblock, b'', b'b')
-        self.assertLtByDirblock(False, u'', u'')
-        self.assertLtByDirblock(False, u'a', u'a')
-        self.assertLtByDirblock(False, u'a/b', u'a/b')
-        self.assertLtByDirblock(False, u'a/b/c', u'a/b/c')
-        self.assertLtByDirblock(False, u'a-a', u'a')
-        self.assertLtByDirblock(True, u'a-a', u'a/a')
-        self.assertLtByDirblock(True, u'a=a', u'a/a')
-        self.assertLtByDirblock(False, u'a-a/a', u'a/a')
-        self.assertLtByDirblock(False, u'a=a/a', u'a/a')
-        self.assertLtByDirblock(False, u'a-a/a', u'a/a/a')
-        self.assertLtByDirblock(False, u'a=a/a', u'a/a/a')
-        self.assertLtByDirblock(False, u'a-a/a/a', u'a/a/a')
-        self.assertLtByDirblock(False, u'a=a/a/a', u'a/a/a')
+        self.assertLtByDirblock(False, '', '')
+        self.assertLtByDirblock(False, 'a', 'a')
+        self.assertLtByDirblock(False, 'a/b', 'a/b')
+        self.assertLtByDirblock(False, 'a/b/c', 'a/b/c')
+        self.assertLtByDirblock(False, 'a-a', 'a')
+        self.assertLtByDirblock(True, 'a-a', 'a/a')
+        self.assertLtByDirblock(True, 'a=a', 'a/a')
+        self.assertLtByDirblock(False, 'a-a/a', 'a/a')
+        self.assertLtByDirblock(False, 'a=a/a', 'a/a')
+        self.assertLtByDirblock(False, 'a-a/a', 'a/a/a')
+        self.assertLtByDirblock(False, 'a=a/a', 'a/a/a')
+        self.assertLtByDirblock(False, 'a-a/a/a', 'a/a/a')
+        self.assertLtByDirblock(False, 'a=a/a/a', 'a/a/a')
 
     def assertPathToKey(self, expected, path):
         self.assertEqual(expected, multiwalker.MultiWalker._path_to_key(path))
 
     def test__path_to_key(self):
-        self.assertPathToKey(([u''], u''), u'')
-        self.assertPathToKey(([u''], u'a'), u'a')
-        self.assertPathToKey(([u'a'], u'b'), u'a/b')
-        self.assertPathToKey(([u'a', u'b'], u'c'), u'a/b/c')
+        self.assertPathToKey(([''], ''), '')
+        self.assertPathToKey(([''], 'a'), 'a')
+        self.assertPathToKey((['a'], 'b'), 'a/b')
+        self.assertPathToKey((['a', 'b'], 'c'), 'a/b/c')

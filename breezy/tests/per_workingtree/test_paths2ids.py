@@ -238,9 +238,9 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             raise TestNotApplicable(
                 "test not applicable on non-inventory tests")
 
-        self.build_tree([u"\xa7"])
-        self.assertExpectedIds([], tree, [u"\xa7"], require_versioned=False)
+        self.build_tree(["\xa7"])
+        self.assertExpectedIds([], tree, ["\xa7"], require_versioned=False)
         self.addCleanup(tree.lock_read().unlock)
         e = self.assertRaises(errors.PathsNotVersionedError,
-                              tree.paths2ids, [u"\xa7"])
-        self.assertEqual([u"\xa7"], e.paths)
+                              tree.paths2ids, ["\xa7"])
+        self.assertEqual(["\xa7"], e.paths)

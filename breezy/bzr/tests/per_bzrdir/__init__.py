@@ -41,7 +41,7 @@ from breezy.transport import memory
 class TestCaseWithBzrDir(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestCaseWithBzrDir, self).setUp()
+        super().setUp()
         self.controldir = None
 
     def get_bzrdir(self):

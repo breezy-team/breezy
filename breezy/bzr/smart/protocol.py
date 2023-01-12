@@ -85,7 +85,7 @@ def _encode_tuple(args):
     return b'\x01'.join(args) + b'\n'
 
 
-class Requester(object):
+class Requester:
     """Abstract base class for an object that can issue requests on a smart
     medium.
     """
@@ -119,7 +119,7 @@ class Requester(object):
         raise NotImplementedError(self.set_headers)
 
 
-class SmartProtocolBase(object):
+class SmartProtocolBase:
     """Methods common to client and server"""
 
     # TODO: this only actually accomodates a single block; possibly should
@@ -183,7 +183,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 raise
             except errors.UnknownSmartMethod as err:
                 protocol_error = errors.SmartProtocolError(
-                    "bad request '%s'" % (err.verb.decode('ascii'),))
+                    "bad request '{}'".format(err.verb.decode('ascii')))
                 failure = request.FailedSmartServerResponse(
                     (b'error', str(protocol_error).encode('utf-8')))
                 self._send_response(failure)
@@ -338,7 +338,7 @@ class _NeedMoreBytes(Exception):
         self.count = count
 
 
-class _StatefulDecoder(object):
+class _StatefulDecoder:
     """Base class for writing state machines to decode byte streams.
 
     Subclasses should provide a self.state_accept attribute that accepts bytes
@@ -466,7 +466,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         elif self.state_accept == self._state_accept_expecting_header:
             return max(0, len('chunked\n') - self._in_buffer_len)
         else:
-            raise AssertionError("Impossible state: %r" % (self.state_accept,))
+            raise AssertionError("Impossible state: {!r}".format(self.state_accept))
 
     def read_next_chunk(self):
         try:
@@ -503,7 +503,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             self.state_accept = self._state_accept_expecting_length
         else:
             raise errors.SmartProtocolError(
-                'Bad chunked body header: "%s"' % (prefix,))
+                'Bad chunked body header: "{}"'.format(prefix))
 
     def _state_accept_expecting_length(self):
         prefix = self._extract_line()
@@ -815,7 +815,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         elif resp == (b'ok', b'2'):
             return 2
         else:
-            raise errors.SmartProtocolError("bad response %r" % (resp,))
+            raise errors.SmartProtocolError("bad response {!r}".format(resp))
 
     def _write_args(self, args):
         self._write_protocol_version()
@@ -978,7 +978,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             decoded = bdecode_as_tuple(prefixed_bytes)
         except ValueError:
             raise errors.SmartProtocolError(
-                'Bytes %r not bencoded' % (prefixed_bytes,))
+                'Bytes {!r} not bencoded'.format(prefixed_bytes))
         return decoded
 
     def _extract_single_byte(self):
@@ -1015,7 +1015,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         decoded = self._extract_prefixed_bencoded_data()
         if not isinstance(decoded, dict):
             raise errors.SmartProtocolError(
-                'Header object %r is not a dict' % (decoded,))
+                'Header object {!r} is not a dict'.format(decoded))
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.headers_received(decoded)
@@ -1034,7 +1034,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             self.done()
         else:
             raise errors.SmartProtocolError(
-                'Bad message kind byte: %r' % (message_part_kind,))
+                'Bad message kind byte: {!r}'.format(message_part_kind))
 
     def _state_accept_expecting_one_byte(self):
         byte = self._extract_single_byte()
@@ -1091,7 +1091,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
                 raise AssertionError("don't know how many bytes are expected!")
 
 
-class _ProtocolThreeEncoder(object):
+class _ProtocolThreeEncoder:
 
     response_marker = request_marker = MESSAGE_VERSION_THREE
     BUFFER_SIZE = 1024 * 1024  # 1 MiB buffer before flushing

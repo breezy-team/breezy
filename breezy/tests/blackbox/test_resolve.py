@@ -29,7 +29,7 @@ from breezy.tests.blackbox import test_conflicts
 class TestResolve(script.TestCaseWithTransportAndScript):
 
     def setUp(self):
-        super(TestResolve, self).setUp()
+        super().setUp()
         test_conflicts.make_tree_with_conflicts(self, 'branch', 'other')
 
     def test_resolve_one_by_one(self):

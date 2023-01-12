@@ -51,7 +51,7 @@ class TestDeprecationWarnings(TestCase):
         self._warnings.append((message, category, stacklevel))
 
     def setUp(self):
-        super(TestDeprecationWarnings, self).setUp()
+        super().setUp()
         self._warnings = []
 
     @deprecated_method(deprecated_in((0, 7, 0)))
@@ -223,7 +223,7 @@ class TestDeprecationWarnings(TestCase):
 class TestSuppressAndActivate(TestCase):
 
     def setUp(self):
-        super(TestSuppressAndActivate, self).setUp()
+        super().setUp()
         existing_filters = list(warnings.filters)
 
         def restore():

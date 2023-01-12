@@ -74,7 +74,7 @@ def transport_test_permutations():
             permutations = get_transport_test_permutations(
                 pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
-                scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
+                scenario = ('{},{}'.format(klass.__name__, server_factory.__name__),
                             {"transport_class": klass,
                              "transport_server": server_factory})
                 result.append(scenario)
@@ -95,7 +95,7 @@ def load_tests(loader, standard_tests, pattern):
 class TransportTests(TestTransportImplementation):
 
     def setUp(self):
-        super(TransportTests, self).setUp()
+        super().setUp()
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
@@ -479,7 +479,7 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             return
-        unicode_string = u'\u1234'
+        unicode_string = '\u1234'
         self.assertRaises(TypeError, t.put_bytes, 'foo', unicode_string)
 
     def test_mkdir(self):
@@ -1435,12 +1435,12 @@ class TransportTests(TestTransportImplementation):
         # '\xe5' and '\xe4' actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [u'\xe5.1',  # a w/ circle iso-8859-1
-                 u'\xe4.2',  # a w/ dots iso-8859-1
-                 u'\u017d',  # Z with umlat iso-8859-2
-                 u'\u062c',  # Arabic j
-                 u'\u0410',  # Russian A
-                 u'\u65e5',  # Kanji person
+        files = ['\xe5.1',  # a w/ circle iso-8859-1
+                 '\xe4.2',  # a w/ dots iso-8859-1
+                 '\u017d',  # Z with umlat iso-8859-2
+                 '\u062c',  # Arabic j
+                 '\u0410',  # Russian A
+                 '\u65e5',  # Kanji person
                  ]
 
         no_unicode_support = getattr(self._server, 'no_unicode_support', False)

@@ -1,5 +1,4 @@
 # Copyright (C) 2010-2018 Jelmer Vernooij <jelmer@jelmer.uk>
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,7 +38,7 @@ from ..interrepo import (
 class InterToGitRepositoryTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(InterToGitRepositoryTests, self).setUp()
+        super().setUp()
         self.git_repo = self.make_repository("git",
                                              format=format_registry.make_controldir("git"))
         self.bzr_repo = self.make_repository("bzr", shared=True)

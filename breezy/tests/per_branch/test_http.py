@@ -36,7 +36,7 @@ class InaccessibleParentTests(per_branch.TestCaseWithBranch):
     """
 
     def setUp(self):
-        super(InaccessibleParentTests, self).setUp()
+        super().setUp()
         if self.transport_server in (test_server.LocalURLServer, None):
             self.transport_readonly_server = test_server.TestingChrootServer
 

@@ -91,7 +91,7 @@ def _check_name(name):
     :seealso: _check_name_encoding
     """
     if _whitespace_re.search(name) is not None:
-        raise InvalidRecordError("%r is not a valid name." % (name,))
+        raise InvalidRecordError("{!r} is not a valid name.".format(name))
 
 
 def _check_name_encoding(name):
@@ -108,7 +108,7 @@ def _check_name_encoding(name):
         raise InvalidRecordError(str(e))
 
 
-class ContainerSerialiser(object):
+class ContainerSerialiser:
     """A helper class for serialising containers.
 
     It simply returns bytes from method calls to 'begin', 'end' and
@@ -151,7 +151,7 @@ class ContainerSerialiser(object):
         return self.bytes_header(len(bytes), names) + bytes
 
 
-class ContainerWriter(object):
+class ContainerWriter:
     """A class for writing containers to a file.
 
     :attribute records_written: The number of user records added to the
@@ -214,7 +214,7 @@ class ContainerWriter(object):
         return current_offset, self.current_offset - current_offset
 
 
-class ReadVFile(object):
+class ReadVFile:
     """Adapt a readv result iterator to a file like protocol.
 
     The readv result must support the iterator protocol returning (offset,
@@ -278,7 +278,7 @@ def make_readv_reader(transport, filename, requested_records):
     return result
 
 
-class BaseReader(object):
+class BaseReader:
 
     def __init__(self, source_file):
         """Constructor.
@@ -418,7 +418,7 @@ class BytesRecordReader(BaseReader):
             length = int(length_line)
         except ValueError:
             raise InvalidRecordError(
-                "%r is not a valid length." % (length_line,))
+                "{!r} is not a valid length.".format(length_line))
 
         # Read the list of names.
         names = []
@@ -459,7 +459,7 @@ class BytesRecordReader(BaseReader):
         read_bytes(None)
 
 
-class ContainerPushParser(object):
+class ContainerPushParser:
     """A "push" parser for container format 1.
 
     It accepts bytes via the ``accept_bytes`` method, and parses them into
@@ -541,7 +541,7 @@ class ContainerPushParser(object):
                 self._current_record_length = int(line)
             except ValueError:
                 raise InvalidRecordError(
-                    "%r is not a valid length." % (line,))
+                    "{!r} is not a valid length.".format(line))
             self._state_handler = self._state_expecting_name
 
     def _state_expecting_name(self):
@@ -581,7 +581,6 @@ def iter_records_from_file(source_file):
     while True:
         bytes = source_file.read(parser.read_size_hint())
         parser.accept_bytes(bytes)
-        for record in parser.read_pending_records():
-            yield record
+        yield from parser.read_pending_records()
         if parser.finished:
             break

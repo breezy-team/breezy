@@ -25,7 +25,7 @@ from .. import (
 from ..bzr.inventorytree import InventoryTreeChange
 
 
-class InstrumentedReporter(object):
+class InstrumentedReporter:
     def __init__(self):
         self.calls = []
 

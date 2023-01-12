@@ -27,7 +27,7 @@ from .. import (
     )
 
 
-class UnpeelMap(object):
+class UnpeelMap:
     """Unpeel map.
 
     Keeps track of the unpeeled object id of tags.

@@ -419,7 +419,7 @@ with_tail = {b'a': [NULL_REVISION], b'b': [b'a'], b'c': [b'b'], b'd': [b'c'], b'
              b'f': [b'e'], b'g': [b'e'], b'h': [b'f'], b'i': [b'h']}
 
 
-class InstrumentedParentsProvider(object):
+class InstrumentedParentsProvider:
 
     def __init__(self, parents_provider):
         self.calls = []
@@ -439,7 +439,7 @@ class InstrumentedParentsProvider(object):
         return self._real_parents_provider.get_cached_parent_map(nodes)
 
 
-class SharedInstrumentedParentsProvider(object):
+class SharedInstrumentedParentsProvider:
 
     def __init__(self, parents_provider, calls, info):
         self.calls = calls
@@ -473,7 +473,7 @@ class TestGraphBase(tests.TestCase):
         def get_parent_map(keys):
             bad_keys = set(keys).intersection(break_on)
             if bad_keys:
-                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
+                self.fail('key(s) {} was accessed'.format(sorted(bad_keys)))
             return orig_parent_map(keys)
         g.get_parent_map = get_parent_map
         return g
@@ -677,7 +677,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = self.make_graph(criss_cross)
         self.assertEqual(({b'rev3a'}, {b'rev3b'}),
                          graph.find_difference(b'rev3a', b'rev3b'))
-        self.assertEqual((set([]), {b'rev3b', b'rev2b'}),
+        self.assertEqual((set(), {b'rev3b', b'rev2b'}),
                          graph.find_difference(b'rev2a', b'rev3b'))
 
     def test_graph_difference_extended_history(self):
@@ -881,7 +881,7 @@ class TestGraph(TestCaseWithMemoryTransport):
 
         If the search asks for the parents of b'deeper' the test will fail.
         """
-        class stub(object):
+        class stub:
             pass
 
         def get_parent_map(keys):
@@ -1209,7 +1209,7 @@ class TestGraph(TestCaseWithMemoryTransport):
              ({b'head'}, {NULL_REVISION}, 1),
              [b'head'], None, None),
             ({b'head', NULL_REVISION},
-             ({b'head'}, set([]), 2),
+             ({b'head'}, set(), 2),
              [b'head', NULL_REVISION], None, None),
             ]
         self.assertSeenAndResult(expected, search, search.__next__)
@@ -1484,7 +1484,7 @@ class TestCachingParentsProvider(tests.TestCase):
     """
 
     def setUp(self):
-        super(TestCachingParentsProvider, self).setUp()
+        super().setUp()
         dict_pp = _mod_graph.DictParentsProvider({b'a': (b'b',)})
         self.inst_pp = InstrumentedParentsProvider(dict_pp)
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
@@ -1546,9 +1546,9 @@ class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
     """Test the behaviour when parents are provided that were not requested."""
 
     def setUp(self):
-        super(TestCachingParentsProviderExtras, self).setUp()
+        super().setUp()
 
-        class ExtraParentsProvider(object):
+        class ExtraParentsProvider:
 
             def get_parent_map(self, keys):
                 return {b'rev1': [], b'rev2': [b'rev1', ]}
@@ -1690,7 +1690,7 @@ class TestGraphThunkIdsToKeys(tests.TestCase):
 class TestStackedParentsProvider(tests.TestCase):
 
     def setUp(self):
-        super(TestStackedParentsProvider, self).setUp()
+        super().setUp()
         self.calls = []
 
     def get_shared_provider(self, info, ancestry, has_cached):

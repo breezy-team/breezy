@@ -144,7 +144,7 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._exe = exe
             self._args = args
             self.assertPathExists(args[0])
-            with open(args[0], 'wt') as f:
+            with open(args[0], 'w') as f:
                 f.write('temp stuff')
             cleanup(0)
             return 0
@@ -161,7 +161,7 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._args = args
             self.assertPathExists(args[0])
             self.log(repr(args))
-            with open(args[0], 'wt') as f:
+            with open(args[0], 'w') as f:
                 self.log(repr(f))
                 f.write('temp stuff')
             cleanup(1)

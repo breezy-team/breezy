@@ -75,7 +75,7 @@ class TestContainerSerialiser(tests.TestCase):
 class TestContainerWriter(tests.TestCase):
 
     def setUp(self):
-        super(TestContainerWriter, self).setUp()
+        super().setUp()
         self.output = BytesIO()
         self.writer = pack.ContainerWriter(self.output.write)
 
@@ -774,5 +774,5 @@ class TestErrors(tests.TestCase):
         """Test the formatting of DuplicateRecordNameError."""
         e = pack.DuplicateRecordNameError(b"n\xc3\xa5me")
         self.assertEqual(
-            u"Container has multiple records with the same name: n\xe5me",
+            "Container has multiple records with the same name: n\xe5me",
             str(e))

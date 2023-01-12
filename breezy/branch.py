@@ -625,8 +625,7 @@ class Branch(ControlComponent):
         if not merge_depth:
             # We start at a mainline revision so by definition, all others
             # revisions in rev_iter are ancestors
-            for node in rev_iter:
-                yield node
+            yield from rev_iter
 
         clean = False
         whitelist = set()
@@ -1236,7 +1235,7 @@ class Branch(ControlComponent):
             actual_revno = refs[('lefthand-distance', last_revision_id)]
             if actual_revno != last_revno:
                 result.errors.append(errors.BzrCheckError(
-                    'revno does not match len(mainline) %s != %s' % (
+                    'revno does not match len(mainline) {} != {}'.format(
                         last_revno, actual_revno)))
             # TODO: We should probably also check that self.revision_history
             # matches the repository for older branch formats.
@@ -1388,7 +1387,7 @@ class Branch(ControlComponent):
         elif relation == 'a_descends_from_b':
             return False
         else:
-            raise AssertionError("invalid relation: %r" % (relation,))
+            raise AssertionError("invalid relation: {!r}".format(relation))
 
     def _revision_relations(self, revision_a, revision_b, graph):
         """Determine the relationship between two revisions.
@@ -1404,7 +1403,7 @@ class Branch(ControlComponent):
         elif heads == {revision_a}:
             return 'a_descends_from_b'
         else:
-            raise AssertionError("invalid heads: %r" % (heads,))
+            raise AssertionError("invalid heads: {!r}".format(heads))
 
     def heads_to_fetch(self):
         """Return the heads that must and that should be fetched to copy this
@@ -1697,7 +1696,7 @@ class BranchHooks(Hooks):
 Branch.hooks = BranchHooks()  # type: ignore
 
 
-class ChangeBranchTipParams(object):
+class ChangeBranchTipParams:
     """Object holding parameters passed to `*_change_branch_tip` hooks.
 
     There are 5 fields that hooks may wish to access:
@@ -1732,12 +1731,12 @@ class ChangeBranchTipParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s of %s from (%s, %s) to (%s, %s)>" % (
+        return "<{} of {} from ({}, {}) to ({}, {})>".format(
             self.__class__.__name__, self.branch,
             self.old_revno, self.old_revid, self.new_revno, self.new_revid)
 
 
-class BranchInitHookParams(object):
+class BranchInitHookParams:
     """Object holding parameters passed to `*_branch_init` hooks.
 
     There are 4 fields that hooks may wish to access:
@@ -1776,10 +1775,10 @@ class BranchInitHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s of %s>" % (self.__class__.__name__, self.branch)
+        return "<{} of {}>".format(self.__class__.__name__, self.branch)
 
 
-class SwitchHookParams(object):
+class SwitchHookParams:
     """Object holding parameters passed to `*_switch` hooks.
 
     There are 4 fields that hooks may wish to access:
@@ -1809,7 +1808,7 @@ class SwitchHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s for %s to (%s, %s)>" % (
+        return "<{} for {} to ({}, {})>".format(
             self.__class__.__name__, self.control_dir, self.to_branch,
             self.revision_id)
 
@@ -1818,7 +1817,7 @@ class BranchFormatRegistry(ControlComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):
-        super(BranchFormatRegistry, self).__init__(other_registry)
+        super().__init__(other_registry)
         self._default_format = None
         self._default_format_key = None
 
@@ -1882,21 +1881,21 @@ class BranchWriteLockResult(LogicalLockResult):
     """
 
     def __repr__(self):
-        return "BranchWriteLockResult(%r, %r)" % (self.unlock, self.token)
+        return "BranchWriteLockResult({!r}, {!r})".format(self.unlock, self.token)
 
 
 ######################################################################
 # results of operations
 
 
-class _Result(object):
+class _Result:
 
     def _show_tag_conficts(self, to_file):
         if not getattr(self, 'tag_conflicts', None):
             return
         to_file.write('Conflicting tags:\n')
         for name, value1, value2 in self.tag_conflicts:
-            to_file.write('    %s\n' % (name, ))
+            to_file.write('    {}\n'.format(name))
 
 
 class PullResult(_Result):
@@ -1999,7 +1998,7 @@ class BranchPushResult(_Result):
         self._show_tag_conficts(to_file)
 
 
-class BranchCheckResult(object):
+class BranchCheckResult:
     """Results of checking branch consistency.
 
     See `Branch.check`
@@ -2096,7 +2095,7 @@ class InterBranch(InterObject[Branch]):
 
     @classmethod
     def get(self, source: Branch, target: Branch) -> "InterBranch":
-        return cast(InterBranch, super(InterBranch, self).get(source, target))
+        return cast(InterBranch, super().get(source, target))
 
 
 def _fix_overwrite_type(overwrite):

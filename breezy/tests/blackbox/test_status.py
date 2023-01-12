@@ -50,7 +50,7 @@ from ...workingtree import WorkingTree
 class BranchStatus(TestCaseWithTransport):
 
     def setUp(self):
-        super(BranchStatus, self).setUp()
+        super().setUp()
         # As TestCase.setUp clears all hooks, we install this default
         # post_status hook handler for the test.
         status.hooks.install_named_hook('post_status',
@@ -177,7 +177,7 @@ class BranchStatus(TestCaseWithTransport):
         b_2_dir = b.controldir.sprout('./copy')
         b_2 = b_2_dir.open_branch()
         wt2 = b_2_dir.open_workingtree()
-        wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
+        wt.commit("\N{TIBETAN DIGIT TWO} Empty commit 2")
         wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
@@ -590,7 +590,7 @@ class BranchStatus(TestCaseWithTransport):
 class CheckoutStatus(BranchStatus):
 
     def setUp(self):
-        super(CheckoutStatus, self).setUp()
+        super().setUp()
         mkdir('codir')
         chdir('codir')
 
@@ -772,8 +772,8 @@ class TestStatusEncodings(TestCaseWithTransport):
 
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
-        working_tree = self.make_branch_and_tree(u'.')
-        filename = u'hell\u00d8'
+        working_tree = self.make_branch_and_tree('.')
+        filename = 'hell\u00d8'
         try:
             self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
@@ -797,7 +797,7 @@ added:
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 
-        expected = u"""\
+        expected = """\
 added:
   hell\u00d8
 """

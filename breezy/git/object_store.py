@@ -84,7 +84,7 @@ def get_object_store(repo, mapping=None):
 MAX_TREE_CACHE_SIZE = 50 * 1024 * 1024
 
 
-class LRUTreeCache(object):
+class LRUTreeCache:
 
     def __init__(self, repository):
         def approx_tree_size(tree):
@@ -114,7 +114,7 @@ class LRUTreeCache(object):
             else:
                 if tree.get_revision_id() != revid:
                     raise AssertionError(
-                        "revision id did not match: %s != %s" % (
+                        "revision id did not match: {} != {}".format(
                             tree.get_revision_id(), revid))
                 trees[revid] = tree
         for tree in self.repository.revision_trees(todo):
@@ -163,11 +163,11 @@ def _check_expected_sha(expected_sha, object):
         return
     if len(expected_sha) == 40:
         if expected_sha != object.sha().hexdigest().encode('ascii'):
-            raise AssertionError("Invalid sha for %r: %s" % (object,
+            raise AssertionError("Invalid sha for {!r}: {}".format(object,
                                                              expected_sha))
     elif len(expected_sha) == 20:
         if expected_sha != object.sha().digest():
-            raise AssertionError("Invalid sha for %r: %s" % (
+            raise AssertionError("Invalid sha for {!r}: {}".format(
                 object, sha_to_hex(expected_sha)))
     else:
         raise AssertionError("Unknown length %d for %r" % (len(expected_sha),
@@ -380,7 +380,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             shamap[path] = obj.id
 
 
-class PackTupleIterable(object):
+class PackTupleIterable:
 
     def __init__(self, store):
         self.store = store
@@ -436,7 +436,7 @@ class BazaarObjectStore(BaseObjectStore):
             all_revids = self.repository.all_revision_ids()
             missing_revids = self._missing_revisions(all_revids)
         else:
-            heads = set([stop_revision])
+            heads = {stop_revision}
             missing_revids = self._missing_revisions(heads)
             while heads:
                 parents = graph.get_parent_map(heads)
@@ -563,7 +563,7 @@ class BazaarObjectStore(BaseObjectStore):
         :param revision: Revision of the text
         """
         stream = self.repository.iter_files_bytes(
-            ((key[0], key[1], key) for key in keys))
+            (key[0], key[1], key) for key in keys)
         for (file_id, revision, expected_sha), chunks in stream:
             blob = Blob()
             blob.chunked = list(chunks)

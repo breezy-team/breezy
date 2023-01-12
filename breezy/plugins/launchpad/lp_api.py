@@ -45,7 +45,7 @@ class LaunchpadlibMissing(errors.DependencyNotPresent):
             "Please install the launchpadlib package.")
 
     def __init__(self, e):
-        super(LaunchpadlibMissing, self).__init__(
+        super().__init__(
             'launchpadlib', e)
 
 try:
@@ -109,7 +109,7 @@ class BreezyCredentialStore(CredentialStore):
     """
 
     def __init__(self, credential_save_failed=None):
-        super(BreezyCredentialStore, self).__init__(credential_save_failed)
+        super().__init__(credential_save_failed)
         from breezy.config import AuthenticationConfig
         self.auth_config = AuthenticationConfig()
 
@@ -150,7 +150,7 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
         proxy_info = httplib2.proxy_info_from_environment('https')
     try:
         cache_directory = get_cache_directory()
-    except EnvironmentError:
+    except OSError:
         cache_directory = None
     credential_store = get_credential_store()
     authorization_engine = get_auth_engine(base_url)
@@ -176,7 +176,7 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
 
 
 
-class LaunchpadBranch(object):
+class LaunchpadBranch:
     """Provide bzr and lp API access to a Launchpad branch."""
 
     def __init__(self, lp_branch, bzr_url, bzr_branch=None, check_update=True):

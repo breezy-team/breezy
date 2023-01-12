@@ -73,12 +73,12 @@ class InventoryTreeChange(TreeChange):
                  name, kind, executable, copied=False):
         self.file_id = file_id
         self.parent_id = parent_id
-        super(InventoryTreeChange, self).__init__(
+        super().__init__(
             path=path, changed_content=changed_content, versioned=versioned,
             name=name, kind=kind, executable=executable, copied=copied)
 
     def __repr__(self):
-        return "%s%r" % (self.__class__.__name__, self._as_tuple())
+        return "{}{!r}".format(self.__class__.__name__, self._as_tuple())
 
     def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
@@ -296,7 +296,7 @@ class InventoryTree(Tree):
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
                     if inventory and inventory is not self.root_inventory:
-                        raise AssertionError("%r != %r" % (
+                        raise AssertionError("{!r} != {!r}".format(
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
             else:
@@ -694,7 +694,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         raise NotImplementedError(self._add)
 
 
-class _SmartAddHelper(object):
+class _SmartAddHelper:
     """Helper for MutableTree.smart_add."""
 
     def get_inventory_delta(self):
@@ -808,7 +808,7 @@ class _SmartAddHelper(object):
             # no paths supplied: add the entire tree.
             # FIXME: this assumes we are running in a working tree subdir :-/
             # -- vila 20100208
-            file_list = [u'.']
+            file_list = ['.']
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
@@ -1058,7 +1058,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         except errors.NoSuchRevision:
             raise MissingNestedTree(path)
         if file_id is not None and file_id != revtree.path2id(''):
-            raise AssertionError('invalid root id: %r != %r' % (
+            raise AssertionError('invalid root id: {!r} != {!r}'.format(
                 file_id, revtree.path2id('')))
         return revtree
 
@@ -1121,8 +1121,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         repo_desired_files = [(self.path2id(f), self.get_file_revision(f), i)
                               for f, i in desired_files]
         try:
-            for result in self._repository.iter_files_bytes(repo_desired_files):
-                yield result
+            yield from self._repository.iter_files_bytes(repo_desired_files)
         except errors.RevisionNotPresent as e:
             raise _mod_transport.NoSuchFile(e.file_id)
 

@@ -50,7 +50,7 @@ from ...tree import (
 from ..xml5 import serializer_v5
 
 
-class RevisionInfo(object):
+class RevisionInfo:
     """Gets filled out for each revision object that is read.
     """
 
@@ -112,7 +112,7 @@ class RevisionInfo(object):
         return revision_info
 
 
-class BundleInfo(object):
+class BundleInfo:
     """This contains the meta information. Stuff that allows you to
     recreate the revision or inventory XML.
     """
@@ -634,7 +634,7 @@ class BundleTree(InventoryTree):
 
         if file_patch.startswith(b'\\'):
             raise ValueError(
-                'Malformed patch for %s, %r' % (file_id, file_patch))
+                'Malformed patch for {}, {!r}'.format(file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
     def get_symlink_target(self, path):

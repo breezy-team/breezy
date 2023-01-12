@@ -63,7 +63,7 @@ class MutableTree(tree.Tree):
     """
 
     def __init__(self, *args, **kw):
-        super(MutableTree, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
         # Is this tree on a case-insensitive or case-preserving file-system?
         # Sub-classes may initialize to False if they detect they are being
         # used on media which doesn't differentiate the case of names.
@@ -359,7 +359,7 @@ class MutableTreeHooks(hooks.Hooks):
 MutableTree.hooks = MutableTreeHooks()  # type: ignore
 
 
-class PostCommitHookParams(object):
+class PostCommitHookParams:
     """Parameters for the post_commit hook.
 
     To access the parameters, use the following attributes:

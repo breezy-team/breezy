@@ -75,7 +75,7 @@ class SampleForge(Forge):
 class SampleForgeTestCase(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(SampleForgeTestCase, self).setUp()
+        super().setUp()
         self._old_forges = _mod_forge.forges
         _mod_forge.forges = registry.Registry()
         self.forge = SampleForge()
@@ -85,7 +85,7 @@ class SampleForgeTestCase(tests.TestCaseWithTransport):
         _mod_forge.forges.register('sample', self.forge)
 
     def tearDown(self):
-        super(SampleForgeTestCase, self).tearDown()
+        super().tearDown()
         _mod_forge.forges = self._old_forges
         SampleForge._locations = []
 

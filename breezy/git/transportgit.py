@@ -104,7 +104,7 @@ class TransportRefsContainer(RefsContainer):
         self._peeled_refs = None
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.transport)
+        return "{}({!r})".format(self.__class__.__name__, self.transport)
 
     def _ensure_dir_exists(self, path):
         self.transport.clone(posixpath.dirname(path)).create_prefix()
@@ -447,7 +447,7 @@ class TransportRepo(BaseRepo):
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport)
-        super(TransportRepo, self).__init__(object_store,
+        super().__init__(object_store,
                                             refs_container)
 
     def controldir(self):
@@ -526,7 +526,7 @@ class TransportRepo(BaseRepo):
         return StackedConfig(backends, writable=writable)
 
     def __repr__(self):
-        return "<%s for %r>" % (self.__class__.__name__, self.transport)
+        return "<{} for {!r}>".format(self.__class__.__name__, self.transport)
 
     @classmethod
     def init(cls, transport, bare=False):
@@ -563,7 +563,7 @@ class TransportObjectStore(PackBasedObjectStore):
 
         :param transport: Transport to open data from
         """
-        super(TransportObjectStore, self).__init__()
+        super().__init__()
         self.pack_compression_level = pack_compression_level
         self.loose_compression_level = loose_compression_level
         self.transport = transport
@@ -595,7 +595,7 @@ class TransportObjectStore(PackBasedObjectStore):
         return self.transport == other.transport
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.transport)
+        return "{}({!r})".format(self.__class__.__name__, self.transport)
 
     @property
     def alternates(self):

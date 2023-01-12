@@ -292,7 +292,7 @@ class Launchpad(Forge):
 
     @classmethod
     def probe_from_hostname(cls, hostname, possible_transports=None):
-        if re.match(hostname, '(bazaar|git).*\.launchpad\.net'):
+        if re.match(hostname, r'(bazaar|git).*\.launchpad\.net'):
             return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedForge(hostname)
 
@@ -331,7 +331,7 @@ class Launchpad(Forge):
             project = '/'.join(base_path.split('/')[1:])
         # TODO(jelmer): Surely there is a better way of creating one of these
         # URLs?
-        return "~%s/%s" % (owner, project)
+        return "~{}/{}".format(owner, project)
 
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
                      revision_id=None, overwrite=False, allow_lossy=True,
@@ -368,7 +368,7 @@ class Launchpad(Forge):
                     lossy=True, tag_selector=tag_selector)
             br_to = dir_to.target_branch
         return br_to, (
-            "https://git.launchpad.net/%s/+ref/%s" % (to_path, name))
+            "https://git.launchpad.net/{}/+ref/{}".format(to_path, name))
 
     def _get_derived_bzr_path(self, base_branch, name, owner, project):
         if project is None:
@@ -376,7 +376,7 @@ class Launchpad(Forge):
             project = '/'.join(base_branch_lp.unique_name.split('/')[1:-1])
         # TODO(jelmer): Surely there is a better way of creating one of these
         # URLs?
-        return "~%s/%s/%s" % (owner, project, name)
+        return "~{}/{}/{}".format(owner, project, name)
 
     def get_push_url(self, branch):
         (vcs, user, password, path, params) = self._split_url(branch.user_url)
@@ -661,10 +661,10 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         with self.source_branch.lock_read():
             _call_webservice(
                 mp.createComment,
-                vote=u'Approve',
+                vote='Approve',
                 subject='',  # Use the default subject.
-                content=u"Rubberstamp! Proposer approves of own proposal.")
-            _call_webservice(mp.setStatus, status=u'Approved',
+                content="Rubberstamp! Proposer approves of own proposal.")
+            _call_webservice(mp.setStatus, status='Approved',
                              revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, title=None,
@@ -793,11 +793,11 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         with self.source_branch.lock_read():
             _call_webservice(
                 mp.createComment,
-                vote=u'Approve',
+                vote='Approve',
                 subject='',  # Use the default subject.
-                content=u"Rubberstamp! Proposer approves of own proposal.")
+                content="Rubberstamp! Proposer approves of own proposal.")
             _call_webservice(
-                mp.setStatus, status=u'Approved',
+                mp.setStatus, status='Approved',
                 revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,

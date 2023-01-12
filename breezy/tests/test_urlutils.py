@@ -86,15 +86,15 @@ class TestUrlToPath(TestCase):
 
         # Local paths are assumed to *not* be escaped at all
         try:
-            u'uni/\xb5'.encode(osutils.get_user_encoding())
+            'uni/\xb5'.encode(osutils.get_user_encoding())
         except UnicodeError:
             # locale cannot handle unicode
             pass
         else:
-            norm_file('uni/%C2%B5', u'uni/\xb5')
+            norm_file('uni/%C2%B5', 'uni/\xb5')
 
-        norm_file('uni/%25C2%25B5', u'uni/%C2%B5')
-        norm_file('uni/%20b', u'uni/ b')
+        norm_file('uni/%25C2%25B5', 'uni/%C2%B5')
+        norm_file('uni/%20b', 'uni/ b')
         # All the crazy characters get escaped in local paths => file:/// urls
         # The ' ' character must not be at the end, because on win32
         # it gets stripped off by ntpath.abspath
@@ -106,9 +106,9 @@ class TestUrlToPath(TestCase):
         normalize_url = urlutils.normalize_url
 
         eq = self.assertEqual
-        eq('file:///foo/', normalize_url(u'file:///foo/'))
-        eq('file:///foo/%20', normalize_url(u'file:///foo/ '))
-        eq('file:///foo/%20', normalize_url(u'file:///foo/%20'))
+        eq('file:///foo/', normalize_url('file:///foo/'))
+        eq('file:///foo/%20', normalize_url('file:///foo/ '))
+        eq('file:///foo/%20', normalize_url('file:///foo/%20'))
         # Don't escape reserved characters
         eq('file:///ab_c.d-e/%f:?g&h=i+j;k,L#M$',
             normalize_url('file:///ab_c.d-e/%f:?g&h=i+j;k,L#M$'))
@@ -117,13 +117,13 @@ class TestUrlToPath(TestCase):
 
         # Escape unicode characters, but not already escaped chars
         eq('http://host/ab/%C2%B5/%C2%B5',
-            normalize_url(u'http://host/ab/%C2%B5/\xb5'))
+            normalize_url('http://host/ab/%C2%B5/\xb5'))
 
         # Unescape characters that don't need to be escaped
         eq('http://host/~bob%2525-._',
            normalize_url('http://host/%7Ebob%2525%2D%2E%5F'))
         eq('http://host/~bob%2525-._',
-           normalize_url(u'http://host/%7Ebob%2525%2D%2E%5F'))
+           normalize_url('http://host/%7Ebob%2525%2D%2E%5F'))
 
     def test_url_scheme_re(self):
         # Test paths that may be URLs
@@ -144,7 +144,7 @@ class TestUrlToPath(TestCase):
         test_one('/path', None)
         test_one('C:/path', None)
         test_one('../path/to/foo', None)
-        test_one(u'../path/to/fo\xe5', None)
+        test_one('../path/to/fo\xe5', None)
 
         # Real URLS
         test_one('http://host/path/', ('http', 'host/path/'))
@@ -152,8 +152,8 @@ class TestUrlToPath(TestCase):
         test_one('file:///usr/bin', ('file', '/usr/bin'))
         test_one('file:///C:/Windows', ('file', '/C:/Windows'))
         test_one('file:///C|/Windows', ('file', '/C|/Windows'))
-        test_one(u'readonly+sftp://host/path/\xe5',
-                 ('readonly+sftp', u'host/path/\xe5'))
+        test_one('readonly+sftp://host/path/\xe5',
+                 ('readonly+sftp', 'host/path/\xe5'))
 
         # Weird stuff
         # Can't have slashes or colons in the scheme
@@ -370,7 +370,7 @@ class TestUrlToPath(TestCase):
                          to_url('/path/to/foo,bar'))
 
         try:
-            result = to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s')
+            result = to_url('/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
             raise TestSkipped("local encoding cannot handle unicode")
 
@@ -383,12 +383,12 @@ class TestUrlToPath(TestCase):
                          from_url('file:///path/to/foo'))
         self.assertEqual('/path/to/foo',
                          from_url('file:///path/to/foo,branch=foo'))
-        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual('/path/to/r\xe4ksm\xf6rg\xe5s',
                          from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual('/path/to/r\xe4ksm\xf6rg\xe5s',
                          from_url('file:///path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
         self.assertEqual(
-            u'/path/to/r\xe4ksm\xf6rg\xe5s',
+            '/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file://localhost/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(urlutils.InvalidURL, from_url, '/path/to/foo')
@@ -414,7 +414,7 @@ class TestUrlToPath(TestCase):
         self.assertEqual('file:///C:/path/to/foo%2Cbar',
                          to_url('C:/path/to/foo,bar'))
         try:
-            result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
+            result = to_url('d:/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
             raise TestSkipped("local encoding cannot handle unicode")
 
@@ -431,7 +431,7 @@ class TestUrlToPath(TestCase):
                          to_url('//HOST/path'))
 
         try:
-            result = to_url(u'//HOST/path/to/r\xe4ksm\xf6rg\xe5s')
+            result = to_url('//HOST/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
             raise TestSkipped("local encoding cannot handle unicode")
 
@@ -444,10 +444,10 @@ class TestUrlToPath(TestCase):
         self.assertEqual('C:/path/to/foo',
                          from_url('file:///C|/path/to/foo'))
         self.assertEqual(
-            u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
+            'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(
-            u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
+            'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
         self.assertEqual('/', from_url('file:///'))
         self.assertEqual('C:/path/to/foo',
@@ -677,48 +677,48 @@ class TestUrlToPath(TestCase):
             test('/foo/path', 'file:///foo/path')
 
         test('http://foo/%2Fbaz', 'http://foo/%2Fbaz')
-        test(u'http://host/r\xe4ksm\xf6rg\xe5s',
+        test('http://host/r\xe4ksm\xf6rg\xe5s',
              'http://host/r%C3%A4ksm%C3%B6rg%C3%A5s')
 
         # Make sure special escaped characters stay escaped
-        test(u'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23',
+        test('http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23',
              'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23')
 
         # Can we handle sections that don't have utf-8 encoding?
-        test(u'http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
+        test('http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
              'http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s')
 
         # Test encoding into output that can handle some characters
-        test(u'http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
+        test('http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
              'http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s',
              encoding='iso-8859-1')
 
         # This one can be encoded into utf8
-        test(u'http://host/\u062c\u0648\u062c\u0648',
+        test('http://host/\u062c\u0648\u062c\u0648',
              'http://host/%d8%ac%d9%88%d8%ac%d9%88',
              encoding='utf-8')
 
         # This can't be put into 8859-1 and so stays as escapes
-        test(u'http://host/%d8%ac%d9%88%d8%ac%d9%88',
+        test('http://host/%d8%ac%d9%88%d8%ac%d9%88',
              'http://host/%d8%ac%d9%88%d8%ac%d9%88',
              encoding='iso-8859-1')
 
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))
-        self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
-        self.assertIsInstance(urlutils.escape(u'\xe5'), str)
+        self.assertEqual('%C3%A5', urlutils.escape('\xe5'))
+        self.assertIsInstance(urlutils.escape('\xe5'), str)
 
     def test_escape_tildes(self):
         self.assertEqual('~foo', urlutils.escape('~foo'))
 
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))
-        self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))
+        self.assertEqual('\xe5', urlutils.unescape('%C3%A5'))
 
         self.assertEqual('\xe5', urlutils.unescape('%C3%A5'))
 
     def test_escape_unescape(self):
-        self.assertEqual(u'\xe5', urlutils.unescape(urlutils.escape(u'\xe5')))
+        self.assertEqual('\xe5', urlutils.unescape(urlutils.escape('\xe5')))
         self.assertEqual('%', urlutils.unescape(urlutils.escape('%')))
 
     def test_relative_url(self):
@@ -796,11 +796,11 @@ class TestCwdToURL(TestCaseInTempDir):
 
     def test_non_ascii(self):
         try:
-            os.mkdir(u'dod\xe9')
+            os.mkdir('dod\xe9')
         except UnicodeError:
             raise TestSkipped('cannot create unicode directory')
 
-        os.chdir(u'dod\xe9')
+        os.chdir('dod\xe9')
 
         # On Mac OSX this directory is actually:
         #   u'/dode\u0301' => '/dode\xcc\x81
@@ -1122,7 +1122,7 @@ class QuoteTests(TestCase):
     def test_unquote(self):
         self.assertEqual('%', urlutils.unquote('%25'))
         self.assertEqual('\xe5', urlutils.unquote('%C3%A5'))
-        self.assertEqual(u"\xe5", urlutils.unquote(u'\xe5'))
+        self.assertEqual("\xe5", urlutils.unquote('\xe5'))
 
     def test_unquote_to_bytes(self):
         self.assertEqual(b'%', urlutils.unquote_to_bytes('%25'))

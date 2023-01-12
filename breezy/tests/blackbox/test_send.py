@@ -35,7 +35,7 @@ from .. import (
 load_tests = scenarios.load_tests_apply_scenarios
 
 
-class TestSendMixin(object):
+class TestSendMixin:
 
     _default_command = ['send', '-o-']
     _default_wd = 'branch'
@@ -59,13 +59,13 @@ class TestSendMixin(object):
     def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
         md = self.get_MD(args, cmd=cmd, wd=wd)
         br = serializer.read_bundle(BytesIO(md.get_raw_bundle()))
-        self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
+        self.assertEqual(set(revs), {r.revision_id for r in br.revisions})
 
 
 class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
     def setUp(self):
-        super(TestSend, self).setUp()
+        super().setUp()
         grandparent_tree = ControlDir.create_standalone_workingtree(
             'grandparent')
         self.build_tree_contents([('grandparent/file1', b'grandparent')])
@@ -327,14 +327,14 @@ class TestSendStrictMixin(TestSendMixin):
             BytesIO(out.encode('utf-8')))
         self.assertEqual(self.parent, md.base_revision_id)
         br = serializer.read_bundle(BytesIO(md.get_raw_bundle()))
-        self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
+        self.assertEqual(set(revs), {r.revision_id for r in br.revisions})
 
 
 class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
                                    TestSendStrictMixin):
 
     def setUp(self):
-        super(TestSendStrictWithoutChanges, self).setUp()
+        super().setUp()
         self.parent, self.local = self.make_parent_and_local_branches()
 
     def test_send_without_workingtree(self):
@@ -377,7 +377,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
     _changes_type = None  # Set by load_tests
 
     def setUp(self):
-        super(TestSendStrictWithChanges, self).setUp()
+        super().setUp()
         # load tests set _changes_types to the name of the method we want to
         # call now
         do_changes_func = getattr(self, self._changes_type)

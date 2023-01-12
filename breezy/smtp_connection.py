@@ -73,7 +73,7 @@ class NoDestinationAddress(InternalBzrError):
     _fmt = "Message does not have a destination address."
 
 
-class SMTPConnection(object):
+class SMTPConnection:
     """Connect to an SMTP server and send an email.
 
     This is a gateway between breezy.config.Config and smtplib.SMTP. It
@@ -113,7 +113,7 @@ class SMTPConnection(object):
         """Create an SMTP connection."""
         try:
             self._connection = self._smtp_factory(host=self._smtp_server)
-        except socket.error as e:
+        except OSError as e:
             if e.args[0] == errno.ECONNREFUSED:
                 if self._config_smtp_server is None:
                     raise DefaultSMTPConnectionRefused(socket.error,

@@ -48,7 +48,7 @@ REBASE_CURRENT_REVID_FILENAME = 'rebase-current'
 REBASE_PLAN_VERSION = 1
 REVPROP_REBASE_OF = 'rebase-of'
 
-class RebaseState(object):
+class RebaseState:
 
     def has_plan(self):
         """Check whether there is a rebase plan present.
@@ -213,7 +213,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     :return: replace map
     """
     assert start_revid is None or start_revid in todo_set, \
-        "invalid start revid(%r), todo_set(%r)" % (start_revid, todo_set)
+        "invalid start revid({!r}), todo_set({!r})".format(start_revid, todo_set)
     assert stop_revid is None or stop_revid in todo_set, "invalid stop_revid"
     replace_map = {}
     parent_map = graph.get_parent_map(todo_set)
@@ -223,7 +223,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     if start_revid is None:
         # We need a common base.
         lca = graph.find_lca(stop_revid, onto_revid)
-        if lca == set([NULL_REVISION]):
+        if lca == {NULL_REVISION}:
             raise UnrelatedBranches()
         start_revid = order[0]
     todo = order[order.index(start_revid):order.index(stop_revid) + 1]
@@ -235,7 +235,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
         assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
         parents = []
         # Left parent:
-        if heads_cache.heads((oldparents[0], onto_revid)) == set((onto_revid,)):
+        if heads_cache.heads((oldparents[0], onto_revid)) == {onto_revid}:
             parents.append(onto_revid)
         elif oldparents[0] in replace_map:
             parents.append(replace_map[oldparents[0]][0])
@@ -247,7 +247,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
             additional_parents = heads_cache.heads(oldparents[1:])
             for oldparent in oldparents[1:]:
                 if oldparent in additional_parents:
-                    if heads_cache.heads((oldparent, onto_revid)) == set((onto_revid,)):
+                    if heads_cache.heads((oldparent, onto_revid)) == {onto_revid}:
                         pass
                     elif oldparent in replace_map:
                         newparent = replace_map[oldparent][0]
@@ -396,7 +396,7 @@ def wrap_iter_changes(old_iter_changes, map_tree):
             change.executable)
 
 
-class CommitBuilderRevisionRewriter(object):
+class CommitBuilderRevisionRewriter:
     """Revision rewriter that use commit builder.
 
     :ivar repository: Repository in which the revision is present.
@@ -465,7 +465,7 @@ class CommitBuilderRevisionRewriter(object):
             raise
 
 
-class WorkingTreeRevisionRewriter(object):
+class WorkingTreeRevisionRewriter:
 
     def __init__(self, wt, state, merge_type=None):
         """

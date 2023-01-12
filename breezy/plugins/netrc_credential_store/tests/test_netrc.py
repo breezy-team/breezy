@@ -37,7 +37,7 @@ class TestNetrcCSNoNetrc(tests.TestCaseInTempDir):
 class TestNetrcCS(tests.TestCaseInTempDir):
 
     def setUp(self):
-        super(TestNetrcCS, self).setUp()
+        super().setUp()
         # Create a .netrc file
         netrc_content = b"""
 machine host login joe password secret

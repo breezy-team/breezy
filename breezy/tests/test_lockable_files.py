@@ -38,7 +38,7 @@ from ..transactions import (PassThroughTransaction,
 #
 # they use an old style of parameterization, but we want to remove this class
 # so won't modernize them now. - mbp 20080430
-class _TestLockableFiles_mixin(object):
+class _TestLockableFiles_mixin:
 
     def test_transactions(self):
         self.assertIs(self.lockable.get_transaction().__class__,
@@ -74,7 +74,7 @@ class _TestLockableFiles_mixin(object):
         except NotImplementedError:
             # this lock cannot be broken
             self.lockable.unlock()
-            raise TestNotApplicable("%r is not breakable" % (self.lockable,))
+            raise TestNotApplicable("{!r} is not breakable".format(self.lockable))
         l2 = self.get_lockable()
         orig_factory = breezy.ui.ui_factory
         # silent ui - no need for stdout
@@ -96,7 +96,7 @@ class _TestLockableFiles_mixin(object):
         if token is not None:
             # This test does not apply, because this lockable supports
             # tokens.
-            raise TestNotApplicable("%r uses tokens" % (self.lockable,))
+            raise TestNotApplicable("{!r} uses tokens".format(self.lockable))
         self.assertRaises(errors.TokenLockingNotSupported,
                           self.lockable.lock_write, token='token')
 
@@ -272,7 +272,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
                                       _TestLockableFiles_mixin):
 
     def setUp(self):
-        super(TestLockableFiles_TransportLock, self).setUp()
+        super().setUp()
         t = transport.get_transport_from_path('.')
         t.mkdir('.bzr')
         self.sub_transport = t.clone('.bzr')
@@ -280,7 +280,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         self.lockable.create_lock()
 
     def stop_server(self):
-        super(TestLockableFiles_TransportLock, self).stop_server()
+        super().stop_server()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
         try:
@@ -297,7 +297,7 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
     """LockableFile tests run with LockDir underneath"""
 
     def setUp(self):
-        super(TestLockableFiles_LockDir, self).setUp()
+        super().setUp()
         self.transport = transport.get_transport_from_path('.')
         self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch
@@ -333,7 +333,7 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
     """LockableFile tests run with RemoteLockDir on a branch."""
 
     def setUp(self):
-        super(TestLockableFiles_RemoteLockDir, self).setUp()
+        super().setUp()
         # can only get a RemoteLockDir with some RemoteObject...
         # use a branch as thats what we want. These mixin tests test the end
         # to end behaviour, so stubbing out the backend and simulating would

@@ -68,7 +68,7 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
 class TestConfigDisplay(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigDisplay, self).setUp()
+        super().setUp()
         _t_config.create_configs(self)
 
     def test_multiline_all_values(self):
@@ -115,7 +115,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
 
     def test_registry_value_all(self):
         self.breezy_config.set_user_option('transform.orphan_policy',
-                                           u'move')
+                                           'move')
         script.run_script(self, '''\
             $ brz config -d tree
             breezy:
@@ -125,7 +125,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
 
     def test_registry_value_one(self):
         self.breezy_config.set_user_option('transform.orphan_policy',
-                                           u'move')
+                                           'move')
         script.run_script(self, '''\
             $ brz config -d tree transform.orphan_policy
             move
@@ -180,12 +180,12 @@ class TestConfigDisplayWithPolicy(tests.TestCaseWithTransport):
         # LocationConfig is the only one dealing with policies so far.
         self.make_branch_and_tree('tree')
         config_text = """\
-[%(dir)s]
+[{dir}]
 url = dir
 url:policy = appendpath
-[%(dir)s/tree]
+[{dir}/tree]
 url = tree
-""" % {'dir': self.test_dir}
+""".format(dir=self.test_dir)
         # We don't use the config directly so we save it to disk
         config.LocationConfig.from_string(config_text, 'tree', save=True)
         # policies are displayed with their options since they are part of
@@ -205,7 +205,7 @@ url = tree
 class TestConfigActive(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigActive, self).setUp()
+        super().setUp()
         _t_config.create_configs_with_file_option(self)
 
     def test_active_in_locations(self):
@@ -233,7 +233,7 @@ class TestConfigActive(tests.TestCaseWithTransport):
 class TestConfigSetOption(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigSetOption, self).setUp()
+        super().setUp()
         _t_config.create_configs(self)
 
     def test_unknown_config(self):
@@ -287,7 +287,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
 class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigRemoveOption, self).setUp()
+        super().setUp()
         _t_config.create_configs_with_file_option(self)
 
     def test_unknown_config(self):

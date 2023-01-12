@@ -27,7 +27,7 @@ from . import (
     )
 
 
-class VcsMapping(object):
+class VcsMapping:
     """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
@@ -106,12 +106,12 @@ class ForeignRevision(Revision):
     def __init__(self, foreign_revid, mapping, *args, **kwargs):
         if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = b""
-        super(ForeignRevision, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
 
 
-class ForeignVcs(object):
+class ForeignVcs:
     """A foreign version control system."""
 
     branch_format = None
@@ -223,4 +223,4 @@ class ForeignBranch(Branch):
 
     def __init__(self, mapping):
         self.mapping = mapping
-        super(ForeignBranch, self).__init__()
+        super().__init__()

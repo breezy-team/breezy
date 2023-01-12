@@ -136,7 +136,7 @@ def get_merge_type(typestring):
         raise errors.CommandError(msg)
 
 
-class Option(object):
+class Option:
     """Description of a command line option
 
     Attributes:
@@ -244,7 +244,7 @@ class Option(object):
             v = self.type(value)
         except ValueError as e:
             raise optparse.OptionValueError(
-                'invalid value for option %s: %s' % (option, value))
+                'invalid value for option {}: {}'.format(option, value))
         setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
@@ -427,8 +427,7 @@ class RegistryOption(Option):
 
         :return: an iterator of (name, short_name, argname, help)
         """
-        for value in Option.iter_switches(self):
-            yield value
+        yield from Option.iter_switches(self)
         if self.value_switches:
             for key in sorted(self.registry.keys()):
                 yield key, None, None, self.registry.get_help(key)

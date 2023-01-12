@@ -243,7 +243,7 @@ class TestRequestJail(TestCaseWithMemoryTransport):
 class TestJailHook(TestCaseWithMemoryTransport):
 
     def setUp(self):
-        super(TestJailHook, self).setUp()
+        super().setUp()
 
         def clear_jail_info():
             request.jail_info.transports = None

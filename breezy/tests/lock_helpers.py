@@ -24,7 +24,7 @@ class TestPreventLocking(errors.LockError):
     """A test exception for forcing locking failure: %(message)s"""
 
 
-class LockWrapper(object):
+class LockWrapper:
     """A wrapper which lets us set locking ability.
 
     This also lets us record what objects were locked in what order,

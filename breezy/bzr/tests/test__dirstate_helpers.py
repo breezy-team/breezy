@@ -68,7 +68,7 @@ if compiled_dirstate_helpers_feature.available():
                              {'helpers': compiled_dirstate_helpers_feature.module}))
 
 
-class TestBisectPathMixin(object):
+class TestBisectPathMixin:
     """Test that _bisect_path_*() returns the expected values.
 
     _bisect_path_* is intended to work like bisect.bisect_*() except it
@@ -478,9 +478,9 @@ class TestLtByDirs(tests.TestCase):
 
     def test_cmp_unicode_not_allowed(self):
         lt_by_dirs = self.get_lt_by_dirs()
-        self.assertRaises(TypeError, lt_by_dirs, u'Unicode', b'str')
-        self.assertRaises(TypeError, lt_by_dirs, b'str', u'Unicode')
-        self.assertRaises(TypeError, lt_by_dirs, u'Unicode', u'Unicode')
+        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', b'str')
+        self.assertRaises(TypeError, lt_by_dirs, b'str', 'Unicode')
+        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', 'Unicode')
 
     def test_cmp_non_ascii(self):
         self.assertCmpByDirs(-1, b'\xc2\xb5', b'\xc3\xa5')  # u'\xb5', u'\xe5'
@@ -605,12 +605,12 @@ class TestLtPathByDirblock(tests.TestCase):
 
     def test_unicode_not_allowed(self):
         lt_path_by_dirblock = self.get_lt_path_by_dirblock()
-        self.assertRaises(TypeError, lt_path_by_dirblock, u'Uni', 'str')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'str', u'Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, u'Uni', u'Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, u'x/Uni', 'x/str')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/str', u'x/Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, u'x/Uni', u'x/Uni')
+        self.assertRaises(TypeError, lt_path_by_dirblock, 'Uni', 'str')
+        self.assertRaises(TypeError, lt_path_by_dirblock, 'str', 'Uni')
+        self.assertRaises(TypeError, lt_path_by_dirblock, 'Uni', 'Uni')
+        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/Uni', 'x/str')
+        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/str', 'x/Uni')
+        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/Uni', 'x/Uni')
 
     def test_nonascii(self):
         self.assertLtPathByDirblock([
@@ -810,7 +810,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     update_entry = None
 
     def setUp(self):
-        super(TestUpdateEntry, self).setUp()
+        super().setUp()
         self.overrideAttr(dirstate, 'update_entry', self.update_entry)
 
     def get_state_with_a(self):
@@ -1287,7 +1287,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
     _process_entry = None
 
     def setUp(self):
-        super(TestProcessEntry, self).setUp()
+        super().setUp()
         self.overrideAttr(dirstate, '_process_entry', self._process_entry)
 
     def assertChangedFileIds(self, expected, tree):

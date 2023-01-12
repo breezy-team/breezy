@@ -1032,7 +1032,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         missing_key = (b'missing',)
         index = self.make_index(ref_lists=2, nodes=[
             ((b'key',), b'value', ([], [missing_key]))])
-        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set(), index.external_references(0))
         self.assertEqual({missing_key}, index.external_references(1))
 
     def test_external_references_two_records(self):
@@ -1040,7 +1040,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
             ((b'key-1',), b'value', ([(b'key-2',)],)),
             ((b'key-2',), b'value', ([],)),
             ])
-        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set(), index.external_references(0))
 
     def test__find_ancestors(self):
         key1 = (b'key-1',)
@@ -1167,7 +1167,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_clear_cache(self):
         log = []
 
-        class ClearCacheProxy(object):
+        class ClearCacheProxy:
 
             def __init__(self, index):
                 self._index = index
@@ -1440,7 +1440,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         Nodes will have a value of '' and no references.
         """
         nodes = [
-            ((('index-%s-key-%s' % (name, n)).encode('ascii'),), b'', ())
+            ((('index-{}-key-{}'.format(name, n)).encode('ascii'),), b'', ())
             for n in range(1, num_nodes + 1)]
         return self.make_index('index-%s' % name, 0, nodes=nodes)
 

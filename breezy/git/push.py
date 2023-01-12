@@ -43,7 +43,7 @@ class GitPushResult(PushResult):
         return self._lookup_revno(self.new_revid)
 
 
-class MissingObjectsIterator(object):
+class MissingObjectsIterator:
     """Iterate over git objects that are missing from a target repository.
 
     """
@@ -95,7 +95,7 @@ class MissingObjectsIterator(object):
         return iter(self._pending)
 
 
-class ObjectStoreParentsProvider(object):
+class ObjectStoreParentsProvider:
 
     def __init__(self, store):
         self._store = store

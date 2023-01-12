@@ -292,7 +292,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('commit e')
         out, err = self.run_bzr('merge', working_dir='branch_b')
         self.assertStartsWith(
-            err, 'Merging from remembered submit location %s\n' % (base,))
+            err, 'Merging from remembered submit location {}\n'.format(base))
         # re-open tree as external run_brz modified it
         tree_b = branch_b.controldir.open_workingtree()
         tree_b.commit('merge branch_a')
@@ -710,7 +710,7 @@ class TestMergeRevisionRange(tests.TestCaseWithTransport):
                  ('file-only', dict(context='a')))
 
     def setUp(self):
-        super(TestMergeRevisionRange, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree(".")
         self.tree.commit('initial commit')
         for f in ("a", "b"):
@@ -740,7 +740,7 @@ $ brz merge -d target source
 class TestMergeForce(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestMergeForce, self).setUp()
+        super().setUp()
         self.tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         self.tree_a.add(['foo'])

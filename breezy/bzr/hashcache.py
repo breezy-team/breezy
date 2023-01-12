@@ -46,7 +46,7 @@ FP_CTIME_COLUMN = 2
 FP_MODE_COLUMN = 5
 
 
-class HashCache(object):
+class HashCache:
     """Cache for looking up file SHA-1.
 
     Files are considered to match the cached value if the fingerprint
@@ -240,7 +240,7 @@ class HashCache(object):
         fn = self.cache_file_name()
         try:
             inf = open(fn, 'rb', buffering=65000)
-        except IOError as e:
+        except OSError as e:
             trace.mutter("failed to open %s: %s", fn, str(e))
             # better write it now so it is valid
             self.needs_write = True

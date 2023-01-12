@@ -54,4 +54,4 @@ class TestSource(TestCaseWithRepository):
         for substream_type, substream in stream:
             for record in substream:
                 self.assertNotEqual('absent', record.storage_kind,
-                                    "Absent record for %s" % (((substream_type,) + record.key),))
+                                    "Absent record for {}".format((substream_type,) + record.key))

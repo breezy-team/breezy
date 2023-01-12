@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Breezy documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.
@@ -22,7 +21,7 @@ from breezy.doc_generate.conf import *
 brz_locale = 'en'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = u"Developer Document Catalog (%s)" % (release,)
+html_short_title = "Developer Document Catalog ({})".format(release)
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -34,14 +33,14 @@ htmlhelp_basename = 'brz-developers'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 brz_documents = [
-    ('HACKING', 'brz-en-developer-guide', u'Breezy Developer Guide',
-     u'Breezy Developers', 'manual'),
-    ('testing', 'brz-en-testing-guide', u'Breezy Testing Guide',
-     u'Breezy Developers', 'manual'),
-    ('overview', 'brz-en-architecture-overview', u'Breezy Architecture Overview',
-     u'Breezy Developers', 'howto'),
-    ('integration', 'brz-en-integration-guide', u'Breezy Integration Guide',
-     u'Breezy Developers', 'howto'),
+    ('HACKING', 'brz-en-developer-guide', 'Breezy Developer Guide',
+     'Breezy Developers', 'manual'),
+    ('testing', 'brz-en-testing-guide', 'Breezy Testing Guide',
+     'Breezy Developers', 'manual'),
+    ('overview', 'brz-en-architecture-overview', 'Breezy Architecture Overview',
+     'Breezy Developers', 'howto'),
+    ('integration', 'brz-en-integration-guide', 'Breezy Integration Guide',
+     'Breezy Developers', 'howto'),
 ]
 
 latex_documents = [

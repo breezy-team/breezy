@@ -178,7 +178,7 @@ class TestPackRepository(TestCaseWithTransport):
         pack_value = node[2]
         sizes = [int(digits) for digits in pack_value.split(b' ')]
         for size, suffix in zip(sizes, ['.rix', '.iix', '.tix', '.six']):
-            stat = trans.stat('indices/%s%s' % (name.decode('ascii'), suffix))
+            stat = trans.stat('indices/{}{}'.format(name.decode('ascii'), suffix))
             self.assertEqual(size, stat.st_size)
 
     def test_pulling_nothing_leads_to_no_new_names(self):
@@ -295,7 +295,7 @@ class TestPackRepository(TestCaseWithTransport):
                    pack_coll.text_index, pack_coll.signature_index}
         if pack_coll.chk_index is not None:
             indices.add(pack_coll.chk_index)
-        combined_indices = set(idx.combined_index for idx in indices)
+        combined_indices = {idx.combined_index for idx in indices}
         for combined_index in combined_indices:
             self.assertEqual(
                 combined_indices.difference([combined_index]),
@@ -867,7 +867,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if not self.format_supports_external_lookups:
             raise TestNotApplicable("%r doesn't support stacking"
                                     % (self.format_name,))
-        super(TestPackRepositoryStacking, self).setUp()
+        super().setUp()
 
     def get_format(self):
         return controldir.format_registry.make_controldir(self.format_name)
@@ -1078,7 +1078,7 @@ class TestKeyDependencies(TestCaseWithTransport):
 class TestSmartServerAutopack(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestSmartServerAutopack, self).setUp()
+        super().setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = test_server.SmartTCPServer_for_testing()

@@ -461,7 +461,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             with open(local_inventory, 'rb') as inventory_f:
                 self.assertContainsRe(inventory_f.read(),
                                       b'<inventory format="5">\n</inventory>\n')
-        except IOError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 

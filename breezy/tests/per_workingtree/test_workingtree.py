@@ -184,7 +184,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(wt.basedir + '/', local_base)
 
         # '.' opens this dir
-        wt, relpath = WorkingTree.open_containing(u'.')
+        wt, relpath = WorkingTree.open_containing('.')
         self.assertEqual('', relpath)
         self.assertEqual(wt.basedir + '/', local_base)
 
@@ -867,26 +867,26 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         files = sorted(list(tree.list_files()))
         tree.unlock()
         self.assertEqual(
-            (u'.bzrignore', '?', 'file', None),
+            ('.bzrignore', '?', 'file', None),
             (files[0][0], files[0][1], files[0][2],
                 getattr(files[0][3], 'file_id', None)))
         self.assertEqual(
-            (u'foo.pyc', 'V', 'file'),
+            ('foo.pyc', 'V', 'file'),
             (files[1][0], files[1][1], files[1][2]))
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
         try:
-            self.build_tree([u'a\u030a'])
+            self.build_tree(['a\u030a'])
         except UnicodeError:
             raise TestSkipped('Filesystem does not support unicode filenames')
         tree = self.make_branch_and_tree('.')
         orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
-            tree.add([u'a\u030a'])
+            tree.add(['a\u030a'])
             with tree.lock_read():
-                self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+                self.assertEqual([('', 'directory'), ('\xe5', 'file')],
                                  [(path, ie.kind) for path, ie in
                                   tree.iter_entries_by_dir()])
         finally:
@@ -894,7 +894,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_non_normalized_add_inaccessible(self):
         try:
-            self.build_tree([u'a\u030a'])
+            self.build_tree(['a\u030a'])
         except UnicodeError:
             raise TestSkipped('Filesystem does not support unicode filenames')
         tree = self.make_branch_and_tree('.')
@@ -902,7 +902,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
         try:
             self.assertRaises(errors.InvalidNormalization,
-                              tree.add, [u'a\u030a'])
+                              tree.add, ['a\u030a'])
         finally:
             osutils.normalized_filename = orig
 

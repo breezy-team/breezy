@@ -65,7 +65,7 @@ class TestPlatformUse(tests.TestCase):
                  ('unicode', dict(_platform='Schr\xc3\xb6dinger'))]
 
     def setUp(self):
-        super(TestPlatformUse, self).setUp()
+        super().setUp()
         self.permit_source_tree_branch_repo()
 
     def test_platform(self):

@@ -55,7 +55,7 @@ class IllegalMergeDirectivePayload(errors.BzrError):
         self.start = start
 
 
-class MergeRequestBodyParams(object):
+class MergeRequestBodyParams:
     """Parameter object for the merge_request_body hook."""
 
     def __init__(self, body, orig_body, directive, to, basename, subject,
@@ -84,7 +84,7 @@ class MergeDirectiveHooks(hooks.Hooks):
             " provided to the next.", (1, 15, 0))
 
 
-class BaseMergeDirective(object):
+class BaseMergeDirective:
     """A request to perform a merge into a branch.
 
     This is the base class that all merge directive implementations
@@ -242,7 +242,7 @@ class BaseMergeDirective(object):
             except errors.NoSuchRevision:
                 revno = ['merge']
         nick = re.sub('(\\W+)', '-', branch.nick).strip('-')
-        return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
+        return '{}-{}'.format(nick, '.'.join(str(n) for n in revno))
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
@@ -310,8 +310,8 @@ class BaseMergeDirective(object):
                     except errors.NotBranchError:
                         raise errors.TargetNotBranch(self.target_branch)
                     missing_revisions = []
-                    bundle_revisions = set(r.revision_id for r in
-                                           info.real_revisions)
+                    bundle_revisions = {r.revision_id for r in
+                                           info.real_revisions}
                     for revision in info.real_revisions:
                         for parent_id in revision.parent_ids:
                             if (parent_id not in bundle_revisions

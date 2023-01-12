@@ -204,7 +204,7 @@ class DavStatHandler(DavResponseHandler):
                 and stack[5] == 'collection')
 
 
-class _DAVStat(object):
+class _DAVStat:
     """The stat info as it can be acquired with DAV."""
 
     def __init__(self, size, is_dir, is_exec):
@@ -366,7 +366,7 @@ class DavOpener(urllib.Opener):
     """Dav specific needs regarding HTTP(S)"""
 
     def __init__(self, report_activity=None, ca_certs=None):
-        super(DavOpener, self).__init__(connection=DavConnectionHandler,
+        super().__init__(connection=DavConnectionHandler,
                                         report_activity=report_activity,
                                         ca_certs=ca_certs)
 
@@ -703,7 +703,7 @@ class HttpDavTransport(urllib.HttpTransport):
 """
         response = self.request(
             'PROPFIND', abspath, body=propfind, headers={
-                'Depth': '%s' % (depth,),
+                'Depth': '{}'.format(depth),
                 'Content-Type': 'application/xml; charset="utf-8"'})
 
         code = response.status

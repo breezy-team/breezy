@@ -34,7 +34,7 @@ class Options:
 class TestGenerateDocs(TestCase):
 
     def setUp(self):
-        super(TestGenerateDocs, self).setUp()
+        super().setUp()
         self.sio = StringIO()
         self.options = Options()
         self.options.brz_name = 'brz'

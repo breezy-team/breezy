@@ -35,7 +35,7 @@ from breezy.tests.features import (
 class TestamentSetup(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestamentSetup, self).setUp()
+        super().setUp()
         self.wt = self.make_branch_and_tree('.', format='development-subtree')
         self.wt.set_root_id(b'TREE_ROT')
         b = self.b = self.wt.branch
@@ -116,9 +116,9 @@ class TestamentTests(TestamentSetup):
 
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
-        props = {u'flavor': 'sour cherry\ncream cheese',
-                 u'size': 'medium',
-                 u'empty': '',
+        props = {'flavor': 'sour cherry\ncream cheese',
+                 'size': 'medium',
+                 'empty': '',
                  }
         self.wt.commit(message='revision with properties',
                        timestamp=1129025493,
@@ -131,12 +131,12 @@ class TestamentTests(TestamentSetup):
 
     def test_testament_unicode_commit_message(self):
         self.wt.commit(
-            message=u'non-ascii commit \N{COPYRIGHT SIGN} me',
+            message='non-ascii commit \N{COPYRIGHT SIGN} me',
             timestamp=1129025493,
             timezone=36000,
             rev_id=b'test@user-3',
-            committer=u'Erik B\xe5gfors <test@user>',
-            revprops={u'uni': u'\xb5'}
+            committer='Erik B\xe5gfors <test@user>',
+            revprops={'uni': '\xb5'}
             )
         t = self.from_revision(self.b.repository, b'test@user-3')
         self.assertEqualDiff(
@@ -467,7 +467,7 @@ properties:
 """
 
 
-SAMPLE_UNICODE_TESTAMENT = u"""\
+SAMPLE_UNICODE_TESTAMENT = """\
 bazaar-ng testament version 1
 revision-id: test@user-3
 committer: Erik B\xe5gfors <test@user>
@@ -489,7 +489,7 @@ properties:
 """
 
 
-SAMPLE_UNICODE_TESTAMENT_STRICT = u"""\
+SAMPLE_UNICODE_TESTAMENT_STRICT = """\
 bazaar-ng testament version 2.1
 revision-id: test@user-3
 committer: Erik B\xe5gfors <test@user>
@@ -511,7 +511,7 @@ properties:
 """
 
 
-SAMPLE_UNICODE_TESTAMENT_STRICT3 = u"""\
+SAMPLE_UNICODE_TESTAMENT_STRICT3 = """\
 bazaar testament version 3 strict
 revision-id: test@user-3
 committer: Erik B\xe5gfors <test@user>

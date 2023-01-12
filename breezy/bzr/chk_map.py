@@ -96,7 +96,7 @@ search_key_registry = registry.Registry[bytes, Callable[[bytes], bytes]]()
 search_key_registry.register(b'plain', _search_key_plain)
 
 
-class CHKMap(object):
+class CHKMap:
     """A persistent map from string to string backed by a CHK store."""
 
     __slots__ = ('_store', '_root_node', '_search_key_func')
@@ -198,10 +198,10 @@ class CHKMap(object):
         else:
             node_key = node.key()
             if node_key is not None:
-                key_str = ' %s' % (decode(node_key[0]),)
+                key_str = ' {}'.format(decode(node_key[0]))
             else:
                 key_str = ' None'
-        result.append('%s%r %s%s' % (indent, decode(prefix), node.__class__.__name__,
+        result.append('{}{!r} {}{}'.format(indent, decode(prefix), node.__class__.__name__,
                                      key_str))
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
@@ -213,7 +213,7 @@ class CHKMap(object):
             for key, value in sorted(node._items.items()):
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
-                result.append('      %r %r' % (
+                result.append('      {!r} {!r}'.format(
                     tuple([decode(ke) for ke in key]), decode(value)))
         return result
 
@@ -262,8 +262,8 @@ class CHKMap(object):
         node.set_maximum_size(maximum_size)
         node._key_width = key_width
         as_st = StaticTuple.from_sequence
-        node._items = dict((as_st(key), val)
-                           for key, val in initial_value.items())
+        node._items = {as_st(key): val
+                           for key, val in initial_value.items()}
         node._raw_size = sum(node._key_value_len(key, value)
                              for key, value in node._items.items())
         node._len = len(node._items)
@@ -492,7 +492,7 @@ class CHKMap(object):
                             basis_pending)
                         if self_prefix != basis_prefix:
                             raise AssertionError(
-                                '%r != %r' % (self_prefix, basis_prefix))
+                                '{!r} != {!r}'.format(self_prefix, basis_prefix))
                         process_common_prefix_nodes(
                             self_node, self_path,
                             basis_node, basis_path)
@@ -586,7 +586,7 @@ class CHKMap(object):
         return keys[-1]
 
 
-class Node(object):
+class Node:
     """Base class defining the protocol for CHK Map nodes.
 
     :ivar _raw_size: The total size of the serialized key:value data, before
@@ -618,7 +618,7 @@ class Node(object):
         items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[:16] + '...]'
-        return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
+        return '{}(key:{} len:{} size:{} max:{} prefix:{} items:{})'.format(
             self.__class__.__name__, self._key, self._len, self._raw_size,
             self._maximum_size, self._search_prefix, items_str)
 
@@ -1046,8 +1046,7 @@ class InternalNode(Node):
 
     def iteritems(self, store, key_filter=None):
         for node, node_filter in self._iter_nodes(store, key_filter=key_filter):
-            for item in node.iteritems(store, key_filter=node_filter):
-                yield item
+            yield from node.iteritems(store, key_filter=node_filter)
 
     def _iter_nodes(self, store, key_filter=None, batch_size=None):
         """Iterate over node objects which match key_filter.
@@ -1195,8 +1194,7 @@ class InternalNode(Node):
                     node_and_filters.append((node, node_key_filter))
                     self._items[prefix] = node
                     _get_cache()[record.key] = bytes
-                for info in node_and_filters:
-                    yield info
+                yield from node_and_filters
 
     def map(self, store, key, value):
         """Map key to value."""
@@ -1342,8 +1340,7 @@ class InternalNode(Node):
         """
         if offset >= self._node_width:
             for node in valueview(self._items):
-                for result in node._split(offset):
-                    yield result
+                yield from node._split(offset)
 
     def refs(self):
         """Return the references to other CHK's held by this node."""
@@ -1458,7 +1455,7 @@ def _deserialise(data, key, search_key_func):
     return node
 
 
-class CHKMapDifference(object):
+class CHKMapDifference:
     """Iterate the stored pages and key,value pairs for (new - old).
 
     This class provides a generator over the stored CHK pages and the
@@ -1747,7 +1744,7 @@ def _check_key(key):
     to debug problems.
     """
     if not isinstance(key, StaticTuple):
-        raise TypeError('key %r is not StaticTuple but %s' % (key, type(key)))
+        raise TypeError('key {!r} is not StaticTuple but {}'.format(key, type(key)))
     if len(key) != 1:
         raise ValueError('key %r should have length 1, not %d' %
                          (key, len(key),))
@@ -1755,4 +1752,4 @@ def _check_key(key):
         raise TypeError('key %r should hold a str, not %r'
                         % (key, type(key[0])))
     if not key[0].startswith('sha1:'):
-        raise ValueError('key %r should point to a sha1:' % (key,))
+        raise ValueError('key {!r} should point to a sha1:'.format(key))
