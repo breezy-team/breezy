@@ -21,6 +21,7 @@ import json
 import os
 import re
 import time
+from typing import Optional
 
 from ... import (
     bedding,
@@ -901,7 +902,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
     def create_proposal(self, description, title=None, reviewers=None,
                         labels=None, prerequisite_branch=None,
                         commit_message=None, work_in_progress=False,
-                        allow_collaboration=False):
+                        allow_collaboration=False,
+                        delete_source_after_merge: Optional[bool] = None):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -923,6 +925,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'target_branch_name': self.target_branch_name,
             'description': description,
             'allow_collaboration': allow_collaboration}
+        if delete_source_after_merge is not None:
+            kwargs['should_remove_source_branch'] = delete_source_after_merge
         if labels:
             kwargs['labels'] = ','.join(labels)
         if reviewers:
