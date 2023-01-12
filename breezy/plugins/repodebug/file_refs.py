@@ -29,7 +29,7 @@ class cmd_file_refs(commands.Command):
     takes_args = ['file_id', 'rev_id']
     takes_options = ['directory']
 
-    def run(self, file_id, rev_id, directory=u'.'):
+    def run(self, file_id, rev_id, directory='.'):
         file_id = file_id.encode()
         rev_id = rev_id.encode()
         bd, relpath = controldir.ControlDir.open_containing(directory)

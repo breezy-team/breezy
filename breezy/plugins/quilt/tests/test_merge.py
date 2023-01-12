@@ -149,7 +149,7 @@ class TestMergeHook(TestCaseWithTransport):
 """, "a/debian/patches/patch1")
         # "a" should be unapplied again
         self.assertPathDoesNotExist("a/a")
-        self.assertEquals(1, len(conflicts))
+        self.assertEqual(1, len(conflicts))
 
     def test_auto_apply_patches_after_checkout(self):
         self.enable_hooks()
@@ -286,7 +286,7 @@ d
 c
 >>>>>>> MERGE-SOURCE
 """, "a/a")
-        self.assertEquals(2, len(conflicts))
+        self.assertEqual(2, len(conflicts))
 
 
 
@@ -356,7 +356,7 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
         quilt_push_all(tree)
         tree.smart_add([tree.basedir])
         tree.commit("initial")
-        self.assertEquals([], warnings)
+        self.assertEqual([], warnings)
         self.assertPathExists("source/.pc/applied-patches")
         self.assertPathExists("source/a")
         self.build_tree_contents([
@@ -370,7 +370,7 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
 """)])
         tree.smart_add([tree.basedir])
         tree.commit("foo")
-        self.assertEquals(
+        self.assertEqual(
             ['Committing with 1 patches applied and 1 patches unapplied.'],
             warnings)
         self.assertPathExists("source/.pc/applied-patches")

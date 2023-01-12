@@ -43,7 +43,7 @@ def kidified_rest(rest_file, template_name):
 def safe_open(filename, mode):
     try:
         return open(filename, mode + 'b')
-    except IOError as e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
         sys.stderr.write('file not found: %s\n' % sys.argv[2])

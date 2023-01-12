@@ -53,7 +53,7 @@ def _is_format_10(value):
     return 10
 
 
-class BEncodeRevisionSerializer1(object):
+class BEncodeRevisionSerializer1:
     """Simple revision serializer based around bencode.
     """
 

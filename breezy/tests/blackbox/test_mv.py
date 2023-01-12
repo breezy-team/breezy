@@ -135,7 +135,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('mv test.txt Test.txt')
         # we can't use failUnlessExists on case-insensitive filesystem
         # so try to check shape of the tree
-        shape = sorted(os.listdir(u'.'))
+        shape = sorted(os.listdir('.'))
         self.assertEqual(['.bzr', 'Test.txt'], shape)
         self.assertInWorkingTree('Test.txt')
         self.assertNotInWorkingTree('test.txt')
@@ -147,7 +147,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('mv foo Foo')
         # we can't use failUnlessExists on case-insensitive filesystem
         # so try to check shape of the tree
-        shape = sorted(os.listdir(u'.'))
+        shape = sorted(os.listdir('.'))
         self.assertEqual(['.bzr', 'Foo'], shape)
         self.assertInWorkingTree('Foo')
         self.assertNotInWorkingTree('foo')
@@ -159,7 +159,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('mv foo Foo')
         # we can't use failUnlessExists on case-insensitive filesystem
         # so try to check shape of the tree
-        shape = sorted(os.listdir(u'.'))
+        shape = sorted(os.listdir('.'))
         self.assertEqual(['.bzr', 'Foo'], shape)
         self.assertInWorkingTree('Foo')
         self.assertNotInWorkingTree('foo')
@@ -516,20 +516,20 @@ class TestMove(TestCaseWithTransport):
         """Clear error on mv of an unversioned non-ascii file, see lp:707954"""
         self.requireFeature(UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree([u"\xA7"])
+        self.build_tree(["\xA7"])
         out, err = self.run_bzr_error(["Could not rename", "not versioned"],
-                                      ["mv", u"\xA7", "b"])
+                                      ["mv", "\xA7", "b"])
 
     def test_mv_removed_non_ascii(self):
         """Clear error on mv of a removed non-ascii file, see lp:898541"""
         self.requireFeature(UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree([u"\xA7"])
-        tree.add([u"\xA7"])
-        tree.commit(u"Adding \xA7")
-        os.remove(u"\xA7")
+        self.build_tree(["\xA7"])
+        tree.add(["\xA7"])
+        tree.commit("Adding \xA7")
+        os.remove("\xA7")
         out, err = self.run_bzr_error(["Could not rename", "not exist"],
-                                      ["mv", u"\xA7", "b"])
+                                      ["mv", "\xA7", "b"])
 
     def test_dupe_move(self):
         self.script_runner = script.ScriptRunner()

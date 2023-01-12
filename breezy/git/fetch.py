@@ -336,13 +336,13 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                                  unusual_modes, verifiers):
     new_unusual_modes = mapping.export_unusual_file_modes(rev)
     if new_unusual_modes != unusual_modes:
-        raise AssertionError("unusual modes don't match: %r != %r" % (
+        raise AssertionError("unusual modes don't match: {!r} != {!r}".format(
             unusual_modes, new_unusual_modes))
     # Verify that we can reconstruct the commit properly
     rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True,
                                                             verifiers)
     if rec_o != o:
-        raise AssertionError("Reconstructed commit differs: %r != %r" % (
+        raise AssertionError("Reconstructed commit differs: {!r} != {!r}".format(
             rec_o, o))
     diff = []
     new_objs = {}
@@ -369,7 +369,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                     new_obj = new_objs[path]
                     break
         raise AssertionError(
-            "objects differ for %s: %r != %r" % (path, old_obj, new_obj))
+            "objects differ for {}: {!r} != {!r}".format(path, old_obj, new_obj))
 
 
 def ensure_inventories_in_repo(repo, trees):
@@ -536,7 +536,7 @@ def import_git_objects(repo, mapping, object_iter,
     return pack_hints, last_imported
 
 
-class DetermineWantsRecorder(object):
+class DetermineWantsRecorder:
 
     def __init__(self, actual):
         self.actual = actual

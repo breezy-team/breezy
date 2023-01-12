@@ -30,7 +30,7 @@ from breezy.tests import per_repository
 class TestSignatures(per_repository.TestCaseWithRepository):
 
     def setUp(self):
-        super(TestSignatures, self).setUp()
+        super().setUp()
         if not self.repository_format.supports_revision_signatures:
             raise tests.TestNotApplicable(
                 "repository does not support signing revisions")

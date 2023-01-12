@@ -33,7 +33,7 @@ from .ui_testing import (
     )
 
 
-class FakeCodec(object):
+class FakeCodec:
     """Special class that helps testing over several non-existed encodings.
 
     Clients can add new encoding names, but because of how codecs is
@@ -76,7 +76,7 @@ class TestTerminalEncoding(TestCase):
     """Test the auto-detection of proper terminal encoding."""
 
     def setUp(self):
-        super(TestTerminalEncoding, self).setUp()
+        super().setUp()
         self.overrideAttr(sys, 'stdin')
         self.overrideAttr(sys, 'stdout')
         self.overrideAttr(sys, 'stderr')
@@ -171,7 +171,7 @@ class TestUserEncoding(TestCase):
     """Test detection of default user encoding."""
 
     def setUp(self):
-        super(TestUserEncoding, self).setUp()
+        super().setUp()
         self.overrideAttr(osutils, '_cached_user_encoding', None)
         self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
         self.overrideAttr(locale, 'CODESET', None)

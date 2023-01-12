@@ -8,7 +8,7 @@ import re
 import sys
 
 
-class NewsParser(object):
+class NewsParser:
 
     paren_exp_re = re.compile(r'\(([^)]+)\)')
     release_re = re.compile("brz[ -]")
@@ -119,8 +119,7 @@ class NewsParser(object):
                 continue # The release date has been seen
             if self.add_line_to_entry():
                 continue # accumulate in self.enrty
-            for b in self.extract_bugs_from_entry():
-                yield b # all bugs in the news entry
+            yield from self.extract_bugs_from_entry()
 
 def main():
     opt_parser = optparse.OptionParser(
@@ -160,12 +159,12 @@ def main():
             elif msg_re.search(entry) is not None:
                 found = True
             if found:
-                print('Bug %s was fixed in brz-%s/%s by %s:' % (
+                print('Bug {} was fixed in brz-{}/{} by {}:'.format(
                     number, release, date, authors))
                 print(entry)
             seen += 1
     finally:
-        print('%s bugs seen' % (seen,))
+        print('{} bugs seen'.format(seen))
         news.close()
 
 

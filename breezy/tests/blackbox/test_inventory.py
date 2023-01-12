@@ -24,7 +24,7 @@ from breezy.tests import TestCaseWithTransport
 class TestInventory(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestInventory, self).setUp()
+        super().setUp()
 
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])

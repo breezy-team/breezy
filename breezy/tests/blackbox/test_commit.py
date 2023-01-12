@@ -67,7 +67,7 @@ brz: ERROR: No changes to commit.\
         self.assertEqual('', self.run_bzr('unknowns')[0])
 
         # same for unicode messages
-        self.run_bzr(["commit", "--unchanged", "-m", u'foo\xb5'])
+        self.run_bzr(["commit", "--unchanged", "-m", 'foo\xb5'])
         self.assertEqual('', self.run_bzr('unknowns')[0])
 
     def test_commit_lossy_native(self):
@@ -137,7 +137,7 @@ brz: ERROR: No changes to commit.\
         """Unicode commit message same as a filename (Bug #563646).
         """
         self.requireFeature(features.UnicodeFilenameFeature)
-        file_name = u'\N{euro sign}'
+        file_name = '\N{euro sign}'
         self.run_bzr(['init'])
         with open(file_name, 'w') as f:
             f.write('hello world')
@@ -146,7 +146,7 @@ brz: ERROR: No changes to commit.\
         reflags = re.MULTILINE | re.DOTALL | re.UNICODE
         te = osutils.get_terminal_encoding()
         self.assertContainsRe(err,
-                              u'The commit message is a file name:',
+                              'The commit message is a file name:',
                               flags=reflags)
 
         # Run same test with a filename that causes encode
@@ -157,7 +157,7 @@ brz: ERROR: No changes to commit.\
         default_get_terminal_enc = osutils.get_terminal_encoding
         try:
             osutils.get_terminal_encoding = lambda trace=None: 'ascii'
-            file_name = u'foo\u1234'
+            file_name = 'foo\u1234'
             with open(file_name, 'w') as f:
                 f.write('hello world')
             self.run_bzr(['add'])
@@ -165,7 +165,7 @@ brz: ERROR: No changes to commit.\
             reflags = re.MULTILINE | re.DOTALL | re.UNICODE
             te = osutils.get_terminal_encoding()
             self.assertContainsRe(err,
-                                  u'The commit message is a file name:',
+                                  'The commit message is a file name:',
                                   flags=reflags)
         finally:
             osutils.get_terminal_encoding = default_get_terminal_enc
@@ -175,7 +175,7 @@ brz: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree(".")
         self.build_tree(["f"])
         tree.add(["f"])
-        out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", u"\xa7"],
+        out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", "\xa7"],
                                     encoding="utf-8", retcode=3)
         self.assertContainsRe(err, b"(?m)not versioned: \"\xc2\xa7\"$")
 
@@ -184,7 +184,7 @@ brz: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree(".")
         self.build_tree(["f"])
         tree.add(["f"])
-        out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", u"\xa7"],
+        out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", "\xa7"],
                                     encoding="iso-8859-5", retcode=3)
         self.assertNotContainsString(err, b"\xc2\xa7")
         self.assertContainsRe(err, b"(?m)not versioned: \"\xfd\"$")
@@ -256,7 +256,7 @@ brz: ERROR: No changes to commit.\
         a_tree.commit(message='Initial message')
 
         b_tree = a_tree.branch.create_checkout('b')
-        expected = "%s/" % (osutils.abspath('a'), )
+        expected = "{}/".format(osutils.abspath('a'))
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
         self.assertEqual(err, 'Committing to: %s\n'
                          'Committed revision 2.\n' % expected)
@@ -540,7 +540,7 @@ altered in u2
         tree.add('hello.txt')
         output, err = self.run_bzr_raw(
             ['commit', '-m', 'hello',
-             u'--fixes=generic:\u20ac', 'tree/hello.txt'],
+             '--fixes=generic:\u20ac', 'tree/hello.txt'],
             encoding='utf-8', retcode=3)
         self.assertEqual(b'', output)
         self.assertContainsRe(err,
@@ -573,9 +573,9 @@ altered in u2
         # we don't care about for this test.
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = dict(last_rev.properties)
-        del properties[u'branch-nick']
+        del properties['branch-nick']
 
-        self.assertEqual({u'bugs': 'https://launchpad.net/bugs/234 related'},
+        self.assertEqual({'bugs': 'https://launchpad.net/bugs/234 related'},
                          properties)
 
     def test_fixes_bug_sets_property(self):
@@ -589,9 +589,9 @@ altered in u2
         # we don't care about for this test.
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = dict(last_rev.properties)
-        del properties[u'branch-nick']
+        del properties['branch-nick']
 
-        self.assertEqual({u'bugs': 'https://launchpad.net/bugs/234 fixed'},
+        self.assertEqual({'bugs': 'https://launchpad.net/bugs/234 fixed'},
                          properties)
 
     def test_fixes_multiple_bugs_sets_properties(self):
@@ -609,7 +609,7 @@ altered in u2
         del properties['branch-nick']
 
         self.assertEqual(
-            {u'bugs': 'https://launchpad.net/bugs/123 fixed\n'
+            {'bugs': 'https://launchpad.net/bugs/123 fixed\n'
              'https://launchpad.net/bugs/235 fixed'},
             properties)
 
@@ -705,11 +705,11 @@ altered in u2
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr(["commit", '-m', 'hello',
-                      '--author', u'John D\xf6 <jdoe@example.com>',
+                      '--author', 'John D\xf6 <jdoe@example.com>',
                       "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual(u'John D\xf6 <jdoe@example.com>',
+        self.assertEqual('John D\xf6 <jdoe@example.com>',
                          properties['authors'])
 
     def test_author_no_email(self):
@@ -885,11 +885,11 @@ altered in u2
         Regression test for bug 185211.
         """
         tree = self.make_branch_and_tree('.')
-        self.build_tree([u'abc\xa7/', u'abc\xa7/foo'])
+        self.build_tree(['abc\xa7/', 'abc\xa7/foo'])
 
-        tree.add([u'abc\xa7/', u'abc\xa7/foo'])
+        tree.add(['abc\xa7/', 'abc\xa7/foo'])
         tree.commit('checkin')
 
-        tree.rename_one(u'abc\xa7', 'abc')
+        tree.rename_one('abc\xa7', 'abc')
 
         self.run_bzr('ci -m "non-ascii mv"')

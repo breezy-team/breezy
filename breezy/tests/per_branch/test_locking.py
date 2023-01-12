@@ -30,7 +30,7 @@ from breezy.tests.matchers import *
 class TestBranchLocking(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestBranchLocking, self).setUp()
+        super().setUp()
         self.reduceLockdirTimeout()
 
     def get_instrumented_branch(self):

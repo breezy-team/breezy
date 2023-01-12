@@ -30,7 +30,7 @@ from breezy.tests.per_lock import TestCaseWithLock
 class TestLock(TestCaseWithLock):
 
     def setUp(self):
-        super(TestLock, self).setUp()
+        super().setUp()
         self.build_tree(['a-file'])
 
     def test_read_lock(self):
@@ -171,11 +171,11 @@ class TestLockUnicodePath(TestCaseWithLock):
     _test_needs_features = [features.UnicodeFilenameFeature]
 
     def test_read_lock(self):
-        self.build_tree([u'\u1234'])
-        u_lock = self.read_lock(u'\u1234')
+        self.build_tree(['\u1234'])
+        u_lock = self.read_lock('\u1234')
         self.addCleanup(u_lock.unlock)
 
     def test_write_lock(self):
-        self.build_tree([u'\u1234'])
-        u_lock = self.write_lock(u'\u1234')
+        self.build_tree(['\u1234'])
+        u_lock = self.write_lock('\u1234')
         self.addCleanup(u_lock.unlock)

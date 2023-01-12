@@ -43,7 +43,7 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
     """TestCase that isolates plugin imports and cleans up on completion."""
 
     def setUp(self):
-        super(BaseTestPlugins, self).setUp()
+        super().setUp()
         self.module_name = "breezy.testingplugins"
         self.module_prefix = self.module_name + "."
         self.module = types.ModuleType(self.module_name)
@@ -100,9 +100,9 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
             dir = name
         if source is None:
             source = '''\
-"""This is the doc for %s"""
-dir_source = '%s'
-''' % (name, dir)
+"""This is the doc for {}"""
+dir_source = '{}'
+'''.format(name, dir)
         os.makedirs(dir)
         self.create_plugin(name, source, dir,
                            file_name='__init__.py')
@@ -137,8 +137,8 @@ dir_source = '%s'
 
     def assertPluginModules(self, plugin_dict):
         self.assertEqual(
-            dict((k[len(self.module_prefix):], sys.modules[k])
-                 for k in sys.modules if k.startswith(self.module_prefix)),
+            {k[len(self.module_prefix):]: sys.modules[k]
+                 for k in sys.modules if k.startswith(self.module_prefix)},
             plugin_dict)
 
     def assertPluginUnknown(self, name):
@@ -553,7 +553,7 @@ class TestHelpIndex(tests.TestCase):
             del sys.modules['breezy.plugins.demo_module']
 
 
-class FakeModule(object):
+class FakeModule:
     """A fake module to test with."""
 
     def __init__(self, doc, name):
@@ -800,7 +800,7 @@ class TestEnvPluginsAt(tests.TestCase):
 class TestLoadPluginAt(BaseTestPlugins):
 
     def setUp(self):
-        super(TestLoadPluginAt, self).setUp()
+        super().setUp()
         # Create the same plugin in two directories
         self.create_plugin_package('test_foo', dir='non-standard-dir')
         # The "normal" directory, we use 'standard' instead of 'plugins' to
@@ -892,9 +892,9 @@ from . import test_bar
         plugin_file_name = 'iamtestfoo.py'
         plugin_path = osutils.pathjoin(plugin_dir, plugin_file_name)
         source = '''\
-"""This is the doc for %s"""
-dir_source = '%s'
-''' % ('test_foo', plugin_path)
+"""This is the doc for {}"""
+dir_source = '{}'
+'''.format('test_foo', plugin_path)
         self.create_plugin('test_foo', source=source,
                            dir=plugin_dir, file_name=plugin_file_name)
         self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@%s' % plugin_path)
@@ -905,10 +905,10 @@ dir_source = '%s'
 class TestDescribePlugins(BaseTestPlugins):
 
     def test_describe_plugins(self):
-        class DummyModule(object):
+        class DummyModule:
             __doc__ = 'Hi there'
 
-        class DummyPlugin(object):
+        class DummyPlugin:
             __version__ = '0.1.0'
             module = DummyModule()
         self.plugin_warnings = {'bad': ['Failed to load (just testing)']}
@@ -923,7 +923,7 @@ good 0.1.0
 """, ''.join(plugin.describe_plugins(state=self)))
 
 
-class DummyPlugin(object):
+class DummyPlugin:
     """Plugin."""
 
 

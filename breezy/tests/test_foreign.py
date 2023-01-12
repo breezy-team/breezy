@@ -322,7 +322,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
     def create_workingtree(self):
         # dirstate requires a ".bzr" entry to exist
         self.root_transport.put_bytes(".bzr", b"foo")
-        return super(DummyForeignVcsDir, self).create_workingtree()
+        return super().create_workingtree()
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
                     possible_transports=None):
@@ -345,7 +345,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
                source_branch=None):
         # dirstate doesn't cope with accelerator_trees well
         # that have a different control dir
-        return super(DummyForeignVcsDir, self).sprout(
+        return super().sprout(
             url=url,
             revision_id=revision_id, force_new_repo=force_new_repo,
             recurse=recurse, possible_transports=possible_transports,
@@ -421,7 +421,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
     """Very basic test for DummyForeignVcs."""
 
     def setUp(self):
-        super(DummyForeignVcsTests, self).setUp()
+        super().setUp()
         register_dummy_foreign_for_test(self)
 
     def test_create(self):

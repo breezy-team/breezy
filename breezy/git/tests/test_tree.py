@@ -40,7 +40,7 @@ REG_MODE = stat.S_IFREG | 0o644
 class ChangesFromGitChangesTests(TestCase):
 
     def setUp(self):
-        super(ChangesFromGitChangesTests, self).setUp()
+        super().setUp()
         self.maxDiff = None
         self.mapping = default_mapping
 
@@ -171,7 +171,7 @@ class ChangesFromGitChangesTests(TestCase):
             ], self.transform([
                 ('add',
                  (None, None, None), (b'a', stat.S_IFREG | 0o644, b))],
-            target_extras=set([b'a'])))
+            target_extras={b'a'}))
         self.assertEqual([
             TreeChange(
                 None, ('a', 'a'), False, (False, False),
@@ -180,14 +180,14 @@ class ChangesFromGitChangesTests(TestCase):
             ], self.transform([
                 ('add',
                  (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))],
-            source_extras=set([b'a']),
-            target_extras=set([b'a'])))
+            source_extras={b'a'},
+            target_extras={b'a'}))
 
 
 class DeltaFromGitChangesTests(TestCase):
 
     def setUp(self):
-        super(DeltaFromGitChangesTests, self).setUp()
+        super().setUp()
         self.maxDiff = None
         self.mapping = default_mapping
 
@@ -308,7 +308,7 @@ class DeltaFromGitChangesTests(TestCase):
         delta = self.transform([
             ('add',
              (None, None, None), (b'a', stat.S_IFREG | 0o644, b))],
-            target_extras=set([b'a']))
+            target_extras={b'a'})
         expected_delta = TreeDelta()
         expected_delta.unversioned.append(
             TreeChange(
@@ -319,8 +319,8 @@ class DeltaFromGitChangesTests(TestCase):
         delta = self.transform([
             ('add',
              (b'a', stat.S_IFREG | 0o644, b), (b'a', stat.S_IFREG | 0o644, b))],
-            source_extras=set([b'a']),
-            target_extras=set([b'a']))
+            source_extras={b'a'},
+            target_extras={b'a'})
         expected_delta = TreeDelta()
         expected_delta.unversioned.append(TreeChange(
             None, ('a', 'a'), False, (False, False),

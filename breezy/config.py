@@ -275,13 +275,13 @@ class ConfigObj(configobj.ConfigObj):
 
     def __init__(self, infile=None, **kwargs):
         # We define our own interpolation mechanism calling it option expansion
-        super(ConfigObj, self).__init__(infile=infile,
+        super().__init__(infile=infile,
                                         interpolation=False,
                                         **kwargs)
 
     if _has_triplequote_bug():
         def _get_triple_quote(self, value):
-            quot = super(ConfigObj, self)._get_triple_quote(value)
+            quot = super()._get_triple_quote(value)
             if quot == configobj.tdquot:
                 return configobj.tsquot
             return configobj.tdquot
@@ -299,11 +299,11 @@ class ConfigObj(configobj.ConfigObj):
         return self[section][name]
 
 
-class Config(object):
+class Config:
     """A configuration policy - what username, editor, gpg needs etc."""
 
     def __init__(self):
-        super(Config, self).__init__()
+        super().__init__()
 
     def config_id(self):
         """Returns a unique ID for the config."""
@@ -630,7 +630,7 @@ class _ConfigHooks(hooks.Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        super(_ConfigHooks, self).__init__('breezy.config', 'ConfigHooks')
+        super().__init__('breezy.config', 'ConfigHooks')
         self.add_hook('load',
                       'Invoked when a config store is loaded.'
                       ' The signature is (store).',
@@ -667,7 +667,7 @@ class _OldConfigHooks(hooks.Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        super(_OldConfigHooks, self).__init__(
+        super().__init__(
             'breezy.config', 'OldConfigHooks')
         self.add_hook('load',
                       'Invoked when a config store is loaded.'
@@ -704,7 +704,7 @@ class IniBasedConfig(Config):
         Args:
           file_name: The configuration file path.
         """
-        super(IniBasedConfig, self).__init__()
+        super().__init__()
         self.file_name = file_name
         self.file_name = file_name
         self._content = None
@@ -967,7 +967,7 @@ class LockableConfig(IniBasedConfig):
     lock_name = 'lock'
 
     def __init__(self, file_name):
-        super(LockableConfig, self).__init__(file_name=file_name)
+        super().__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
         # FIXME: It doesn't matter that we don't provide possible_transports
         # below since this is currently used only for local config files ;
@@ -978,7 +978,7 @@ class LockableConfig(IniBasedConfig):
         self._lock = lockdir.LockDir(self.transport, self.lock_name)
 
     def _create_from_string(self, unicode_bytes, save):
-        super(LockableConfig, self)._create_from_string(unicode_bytes, False)
+        super()._create_from_string(unicode_bytes, False)
         if save:
             # We need to handle the saving here (as opposed to IniBasedConfig)
             # to be able to lock
@@ -1003,7 +1003,7 @@ class LockableConfig(IniBasedConfig):
 
     def remove_user_option(self, option_name, section_name=None):
         with self.lock_write():
-            super(LockableConfig, self).remove_user_option(
+            super().remove_user_option(
                 option_name, section_name)
 
     def _write_config_file(self):
@@ -1011,14 +1011,14 @@ class LockableConfig(IniBasedConfig):
             # NB: if the following exception is raised it probably means a
             # missing call to lock_write() by one of the callers.
             raise errors.ObjectNotLocked(self)
-        super(LockableConfig, self)._write_config_file()
+        super()._write_config_file()
 
 
 class GlobalConfig(LockableConfig):
     """The configuration that should be used for a specific location."""
 
     def __init__(self):
-        super(GlobalConfig, self).__init__(file_name=bedding.config_path())
+        super().__init__(file_name=bedding.config_path())
 
     def config_id(self):
         return 'breezy'
@@ -1150,7 +1150,7 @@ class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
-        super(LocationConfig, self).__init__(
+        super().__init__(
             file_name=bedding.locations_config_path())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
@@ -1257,7 +1257,7 @@ class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
 
     def __init__(self, branch):
-        super(BranchConfig, self).__init__()
+        super().__init__()
         self._location_config = None
         self._branch_data_config = None
         self._global_config = None
@@ -1344,13 +1344,11 @@ class BranchConfig(Config):
     def _get_sections(self, name=None):
         """See IniBasedConfig.get_sections()."""
         for source in self.option_sources:
-            for section in source()._get_sections(name):
-                yield section
+            yield from source()._get_sections(name)
 
     def _get_options(self, sections=None):
         # First the locations options
-        for option in self._get_location_config()._get_options():
-            yield option
+        yield from self._get_location_config()._get_options()
         # Then the branch options
         branch_config = self._get_branch_data_config()
         if sections is None:
@@ -1363,8 +1361,7 @@ class BranchConfig(Config):
                 yield (name, value, section_name,
                        config_id, branch_config._get_parser())
         # Then the global options
-        for option in self._get_global_config()._get_options():
-            yield option
+        yield from self._get_global_config()._get_options()
 
     def set_user_option(self, name, value, store=STORE_BRANCH,
                         warn_masked=False):
@@ -1487,7 +1484,7 @@ class TreeConfig(IniBasedConfig):
 _authentication_config_permission_errors = set()
 
 
-class AuthenticationConfig(object):
+class AuthenticationConfig:
     """The authentication configuration file based on a ini file.
 
     Implements the authentication.conf file described in
@@ -1728,7 +1725,7 @@ class AuthenticationConfig(object):
             if ask:
                 if prompt is None:
                     # Create a default prompt suitable for most cases
-                    prompt = u'%s' % (scheme.upper(),) + u' %(host)s username'
+                    prompt = '{}'.format(scheme.upper()) + ' %(host)s username'
                 # Special handling for optional fields in the prompt
                 if port is not None:
                     prompt_host = '%s:%d' % (host, port)
@@ -1769,8 +1766,8 @@ class AuthenticationConfig(object):
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
-                prompt = (u'%s' %
-                          scheme.upper() + u' %(user)s@%(host)s password')
+                prompt = ('%s' %
+                          scheme.upper() + ' %(user)s@%(host)s password')
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = '%s:%d' % (host, port)
@@ -1849,8 +1846,7 @@ class CredentialStoreRegistry(registry.Registry):
           fallback: Whether this credential store should be
                 used as fallback.
         """
-        return super(CredentialStoreRegistry,
-                     self).register(key, obj, help, info=fallback,
+        return super().register(key, obj, help, info=fallback,
                                     override_existing=override_existing)
 
     def register_lazy(self, key, module_name, member_name,
@@ -1870,7 +1866,7 @@ class CredentialStoreRegistry(registry.Registry):
           fallback: Whether this credential store should be
                 used as fallback.
         """
-        return super(CredentialStoreRegistry, self).register_lazy(
+        return super().register_lazy(
             key, module_name, member_name, help,
             info=fallback, override_existing=override_existing)
 
@@ -1878,7 +1874,7 @@ class CredentialStoreRegistry(registry.Registry):
 credential_store_registry = CredentialStoreRegistry()
 
 
-class CredentialStore(object):
+class CredentialStore:
     """An abstract class to implement storage for credentials"""
 
     def decode_password(self, credentials):
@@ -1922,7 +1918,7 @@ credential_store_registry.register('base64', Base64CredentialStore,
                                    help=Base64CredentialStore.__doc__)
 
 
-class BzrDirConfig(object):
+class BzrDirConfig:
 
     def __init__(self, bzrdir):
         self._bzrdir = bzrdir
@@ -1960,7 +1956,7 @@ class BzrDirConfig(object):
         return value
 
 
-class TransportConfig(object):
+class TransportConfig:
     """A Config that reads/writes a config file on a Transport.
 
     It is a low-level object that considers config data to be name/value pairs
@@ -2063,7 +2059,7 @@ class TransportConfig(object):
             hook(self)
 
 
-class Option(object):
+class Option:
     """An option definition.
 
     The option *values* are stored in config files and found in sections.
@@ -2127,10 +2123,10 @@ class Option(object):
             if default:
                 raise AssertionError(
                     'Only empty lists are supported as default values')
-            self.default = u','
+            self.default = ','
         elif isinstance(default, (bytes, str, bool, int, float)):
             # Rely on python to convert strings, booleans and integers
-            self.default = u'%s' % (default,)
+            self.default = '{}'.format(default)
         elif callable(default):
             self.default = default
         else:
@@ -2142,7 +2138,7 @@ class Option(object):
         self.from_unicode = from_unicode
         self.unquote = unquote
         if invalid and invalid not in ('warning', 'error'):
-            raise AssertionError("%s not supported for 'invalid'" % (invalid,))
+            raise AssertionError("{} not supported for 'invalid'".format(invalid))
         self.invalid = invalid
 
     @property
@@ -2272,7 +2268,7 @@ class ListOption(Option):
         This overrides the base class so the conversion from a unicode string
         can take quoting into account.
         """
-        super(ListOption, self).__init__(
+        super().__init__(
             name, default=default, default_from_env=default_from_env,
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)
@@ -2284,7 +2280,7 @@ class ListOption(Option):
         # value from configobj, so values that need to be quoted are already
         # properly quoted.
         _list_converter_config.reset()
-        _list_converter_config._parse([u"list=%s" % (unicode_str,)])
+        _list_converter_config._parse(["list={}".format(unicode_str)])
         maybe_list = _list_converter_config['list']
         if isinstance(maybe_list, str):
             if maybe_list:
@@ -2310,7 +2306,7 @@ class RegistryOption(Option):
         This overrides the base class so the conversion from a unicode string
         can take quoting into account.
         """
-        super(RegistryOption, self).__init__(
+        super().__init__(
             name, default=lambda: registry.default_key,
             default_from_env=default_from_env,
             from_unicode=self.from_unicode, help=help,
@@ -2332,7 +2328,7 @@ class RegistryOption(Option):
     def help(self):
         ret = [self._help, "\n\nThe following values are supported:\n"]
         for key in self.registry.keys():
-            ret.append(" %s - %s\n" % (key, self.registry.get_help(key)))
+            ret.append(" {} - {}\n".format(key, self.registry.get_help(key)))
         return "".join(ret)
 
 
@@ -2377,7 +2373,7 @@ class OptionRegistry(registry.Registry):
           option: The option to register. Its name is used as the key.
         """
         self._check_option_name(option.name)
-        super(OptionRegistry, self).register(option.name, option,
+        super().register(option.name, option,
                                              help=option.help)
 
     def register_lazy(self, key, module_name, member_name):
@@ -2393,7 +2389,7 @@ class OptionRegistry(registry.Registry):
                 None, get() will return the module itself.
         """
         self._check_option_name(key)
-        super(OptionRegistry, self).register_lazy(key,
+        super().register_lazy(key,
                                                   module_name, member_name)
 
     def get_help(self, key=None):
@@ -2427,7 +2423,7 @@ List of GPG key patterns which are acceptable for verification.
 """))
 option_registry.register(
     Option('add.maximum_file_size',
-           default=u'20MB', from_unicode=int_SI_from_store,
+           default='20MB', from_unicode=int_SI_from_store,
            help="""\
 Size above which files should be added manually.
 
@@ -2702,7 +2698,7 @@ option_registry.register_lazy('ssl.cert_reqs',
                               'breezy.transport.http', 'opt_ssl_cert_reqs')
 
 
-class Section(object):
+class Section:
     """A section defines a dict of option name => value.
 
     This is merely a read-only dict which can add some knowledge about the
@@ -2719,12 +2715,11 @@ class Section(object):
         return self.options.get(name, default)
 
     def iter_option_names(self):
-        for k in self.options.keys():
-            yield k
+        yield from self.options.keys()
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.%s id=%s>" % (self.__class__.__name__, self.id)
+        return "<config.{} id={}>".format(self.__class__.__name__, self.id)
 
 
 _NewlyCreatedOption = object()
@@ -2737,7 +2732,7 @@ class MutableSection(Section):
     """A section allowing changes and keeping track of the original values."""
 
     def __init__(self, section_id, options):
-        super(MutableSection, self).__init__(section_id, options)
+        super().__init__(section_id, options)
         self.reset_changes()
 
     def set(self, name, value):
@@ -2788,15 +2783,15 @@ class MutableSection(Section):
                 # Someone changed the value since we get it from the persistent
                 # storage.
                 trace.warning(gettext(
-                    "Option {0} in section {1} of {2} was changed"
-                    " from {3} to {4}. The {5} value will be saved.".format(
+                    "Option {} in section {} of {} was changed"
+                    " from {} to {}. The {} value will be saved.".format(
                         k, self.id, store.external_url(), expected,
                         reloaded, actual)))
         # No need to keep track of these changes
         self.reset_changes()
 
 
-class Store(object):
+class Store:
     """Abstract interface to persistent storage for configuration options."""
 
     readonly_section_class = Section
@@ -2909,7 +2904,7 @@ class Store(object):
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.%s(%s)>" % (self.__class__.__name__,
+        return "<config.{}({})>".format(self.__class__.__name__,
                                     self.external_url())
 
 
@@ -2917,7 +2912,7 @@ class CommandLineStore(Store):
     "A store to carry command line overrides for the config options."""
 
     def __init__(self, opts=None):
-        super(CommandLineStore, self).__init__()
+        super().__init__()
         if opts is None:
             opts = {}
         self.options = {}
@@ -2958,7 +2953,7 @@ class IniFileStore(Store):
     def __init__(self):
         """A config Store using ConfigObj for storage.
         """
-        super(IniFileStore, self).__init__()
+        super().__init__()
         self._config_obj = None
 
     def is_loaded(self):
@@ -3004,7 +2999,7 @@ class IniFileStore(Store):
           bytes: A string representing the file content.
         """
         if self.is_loaded():
-            raise AssertionError('Already loaded: %r' % (self._config_obj,))
+            raise AssertionError('Already loaded: {!r}'.format(self._config_obj))
         co_input = BytesIO(bytes)
         try:
             # The config files are always stored utf8-encoded
@@ -3114,7 +3109,7 @@ class TransportIniFileStore(IniFileStore):
           transport: The transport object where the config file is located.
           file_name: The config file basename in the transport directory.
         """
-        super(TransportIniFileStore, self).__init__()
+        super().__init__()
         self.transport = transport
         self.file_name = file_name
 
@@ -3158,7 +3153,7 @@ class LockableIniFileStore(TransportIniFileStore):
         if lock_dir_name is None:
             lock_dir_name = 'lock'
         self.lock_dir_name = lock_dir_name
-        super(LockableIniFileStore, self).__init__(transport, file_name)
+        super().__init__(transport, file_name)
         self._lock = lockdir.LockDir(self.transport, self.lock_dir_name)
 
     def lock_write(self, token=None):
@@ -3185,7 +3180,7 @@ class LockableIniFileStore(TransportIniFileStore):
             self.save_without_locking()
 
     def save_without_locking(self):
-        super(LockableIniFileStore, self).save()
+        super().save()
 
 
 # FIXME: global, breezy, shouldn't that be 'user' instead or even
@@ -3206,7 +3201,7 @@ class GlobalStore(LockableIniFileStore):
         path, kind = bedding._config_dir()
         t = transport.get_transport_from_path(
             path, possible_transports=possible_transports)
-        super(GlobalStore, self).__init__(t, kind + '.conf')
+        super().__init__(t, kind + '.conf')
         self.id = 'breezy'
 
 
@@ -3219,7 +3214,7 @@ class LocationStore(LockableIniFileStore):
     def __init__(self, possible_transports=None):
         t = transport.get_transport_from_path(
             bedding.config_dir(), possible_transports=possible_transports)
-        super(LocationStore, self).__init__(t, 'locations.conf')
+        super().__init__(t, 'locations.conf')
         self.id = 'locations'
 
 
@@ -3230,7 +3225,7 @@ class BranchStore(TransportIniFileStore):
     """
 
     def __init__(self, branch):
-        super(BranchStore, self).__init__(branch.control_transport,
+        super().__init__(branch.control_transport,
                                           'branch.conf')
         self.branch = branch
         self.id = 'branch'
@@ -3239,13 +3234,13 @@ class BranchStore(TransportIniFileStore):
 class ControlStore(LockableIniFileStore):
 
     def __init__(self, bzrdir):
-        super(ControlStore, self).__init__(bzrdir.transport,
+        super().__init__(bzrdir.transport,
                                            'control.conf',
                                            lock_dir_name='branch_lock')
         self.id = 'control'
 
 
-class SectionMatcher(object):
+class SectionMatcher:
     """Select sections into a given Store.
 
     This is intended to be used to postpone getting an iterable of sections
@@ -3279,7 +3274,7 @@ class SectionMatcher(object):
 class NameMatcher(SectionMatcher):
 
     def __init__(self, store, section_id):
-        super(NameMatcher, self).__init__(store)
+        super().__init__(store)
         self.section_id = section_id
 
     def match(self, section):
@@ -3289,7 +3284,7 @@ class NameMatcher(SectionMatcher):
 class LocationSection(Section):
 
     def __init__(self, section, extra_path, branch_name=None):
-        super(LocationSection, self).__init__(section.id, section.options)
+        super().__init__(section.id, section.options)
         self.extra_path = extra_path
         if branch_name is None:
             branch_name = ''
@@ -3298,7 +3293,7 @@ class LocationSection(Section):
                        'branchname': branch_name}
 
     def get(self, name, default=None, expand=True):
-        value = super(LocationSection, self).get(name, default)
+        value = super().get(name, default)
         if value is not None and expand:
             policy_name = self.get(name + ':policy', None)
             policy = _policy_value.get(policy_name, POLICY_NONE)
@@ -3332,7 +3327,7 @@ class StartingPathMatcher(SectionMatcher):
     # related too. -- vila 2012-01-04
 
     def __init__(self, store, location):
-        super(StartingPathMatcher, self).__init__(store)
+        super().__init__(store)
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
@@ -3369,7 +3364,7 @@ class StartingPathMatcher(SectionMatcher):
 class LocationMatcher(SectionMatcher):
 
     def __init__(self, store, location):
-        super(LocationMatcher, self).__init__(store)
+        super().__init__(store)
         url, params = urlutils.split_segment_parameters(location)
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
@@ -3440,7 +3435,7 @@ _shared_stores: Dict[str, Store] = {}
 _shared_stores_at_exit_installed = False
 
 
-class Stack(object):
+class Stack:
     """A stack of configurations where an option can be defined"""
 
     def __init__(self, sections_def, store=None, mutable_section_id=None):
@@ -3469,8 +3464,7 @@ class Stack(object):
         # anymore by using callables to describe (possibly empty) section
         # lists.
         for sections in self.sections_def:
-            for store, section in sections():
-                yield store, section
+            yield from sections()
 
     def get(self, name, expand=True, convert=True):
         """Return the *first* option value found in the sections.
@@ -3631,7 +3625,7 @@ class Stack(object):
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
+        return "<config.{}({})>".format(self.__class__.__name__, id(self))
 
     def _get_overrides(self):
         if breezy._global_state is not None:
@@ -3698,7 +3692,7 @@ class MemoryStack(Stack):
         store = IniFileStore()
         if content is not None:
             store._load_from_string(content)
-        super(MemoryStack, self).__init__(
+        super().__init__(
             [store.get_sections], store)
 
 
@@ -3721,14 +3715,14 @@ class _CompatibleStack(Stack):
     def set(self, name, value):
         # Force a reload
         self.store.unload()
-        super(_CompatibleStack, self).set(name, value)
+        super().set(name, value)
         # Force a write to persistent storage
         self.store.save()
 
     def remove(self, name):
         # Force a reload
         self.store.unload()
-        super(_CompatibleStack, self).remove(name)
+        super().remove(name)
         # Force a write to persistent storage
         self.store.save()
 
@@ -3748,7 +3742,7 @@ class GlobalStack(Stack):
 
     def __init__(self):
         gstore = self.get_shared_store(GlobalStore())
-        super(GlobalStack, self).__init__(
+        super().__init__(
             [self._get_overrides,
              NameMatcher(gstore, 'DEFAULT').get_sections],
             gstore, mutable_section_id='DEFAULT')
@@ -3781,7 +3775,7 @@ class LocationStack(Stack):
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         gstore = self.get_shared_store(GlobalStore())
-        super(LocationStack, self).__init__(
+        super().__init__(
             [self._get_overrides,
              LocationMatcher(lstore, location).get_sections,
              NameMatcher(gstore, 'DEFAULT').get_sections],
@@ -3811,7 +3805,7 @@ class BranchStack(Stack):
         lstore = self.get_shared_store(LocationStore())
         bstore = branch._get_config_store()
         gstore = self.get_shared_store(GlobalStore())
-        super(BranchStack, self).__init__(
+        super().__init__(
             [self._get_overrides,
              LocationMatcher(lstore, branch.base).get_sections,
              NameMatcher(bstore, None).get_sections,
@@ -3827,13 +3821,13 @@ class BranchStack(Stack):
 
     def set(self, name, value):
         with self.lock_write():
-            super(BranchStack, self).set(name, value)
+            super().set(name, value)
             # Unlocking the branch will trigger a store.save_changes() so the
             # last unlock saves all the changes.
 
     def remove(self, name):
         with self.lock_write():
-            super(BranchStack, self).remove(name)
+            super().remove(name)
             # Unlocking the branch will trigger a store.save_changes() so the
             # last unlock saves all the changes.
 
@@ -3847,7 +3841,7 @@ class RemoteControlStack(Stack):
 
     def __init__(self, bzrdir):
         cstore = bzrdir._get_config_store()
-        super(RemoteControlStack, self).__init__(
+        super().__init__(
             [NameMatcher(cstore, None).get_sections],
             cstore)
         self.controldir = bzrdir
@@ -3862,7 +3856,7 @@ class BranchOnlyStack(Stack):
 
     def __init__(self, branch):
         bstore = branch._get_config_store()
-        super(BranchOnlyStack, self).__init__(
+        super().__init__(
             [NameMatcher(bstore, None).get_sections],
             bstore)
         self.branch = branch
@@ -3875,13 +3869,13 @@ class BranchOnlyStack(Stack):
 
     def set(self, name, value):
         with self.lock_write():
-            super(BranchOnlyStack, self).set(name, value)
+            super().set(name, value)
             # Force a write to persistent storage
             self.store.save_changes()
 
     def remove(self, name):
         with self.lock_write():
-            super(BranchOnlyStack, self).remove(name)
+            super().remove(name)
             # Force a write to persistent storage
             self.store.save_changes()
 
@@ -4005,7 +3999,7 @@ class cmd_config(commands.Command):
         if value is not None:
             # Quote the value appropriately
             value = self._quote_multiline(value)
-            self.outf.write('%s\n' % (value,))
+            self.outf.write('{}\n'.format(value))
         else:
             raise NoSuchConfigOption(name)
 
@@ -4023,18 +4017,18 @@ class cmd_config(commands.Command):
                 if name.search(oname):
                     if cur_store_id != store.id:
                         # Explain where the options are defined
-                        self.outf.write('%s:\n' % (store.id,))
+                        self.outf.write('{}:\n'.format(store.id))
                         cur_store_id = store.id
                         cur_section = None
                     if (section.id is not None and cur_section != section.id):
                         # Display the section id as it appears in the store
                         # (None doesn't appear by definition)
-                        self.outf.write('  [%s]\n' % (section.id,))
+                        self.outf.write('  [{}]\n'.format(section.id))
                         cur_section = section.id
                     value = section.get(oname, expand=False)
                     # Quote the value appropriately
                     value = self._quote_multiline(value)
-                    self.outf.write('  %s = %s\n' % (oname, value))
+                    self.outf.write('  {} = {}\n'.format(oname, value))
 
     def _set_config_option(self, name, value, directory, scope):
         conf = self._get_stack(directory, scope, write_access=True)

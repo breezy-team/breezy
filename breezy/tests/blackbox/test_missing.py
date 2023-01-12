@@ -252,11 +252,11 @@ class TestMissing(tests.TestCaseWithTransport):
 
         for log_format in ['long', 'short', 'line']:
             out, err = self.run_bzr(
-                'missing --log-format={0} ../a'.format(log_format),
+                f'missing --log-format={log_format} ../a',
                 working_dir='b', retcode=1)
             self.assertContainsString(out, 'a-tag')
 
             out, err = self.run_bzr(
-                'missing --log-format={0} ../b'.format(log_format),
+                f'missing --log-format={log_format} ../b',
                 working_dir='a', retcode=1)
             self.assertContainsString(out, 'a-tag')

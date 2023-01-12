@@ -39,7 +39,7 @@ def profile(f, *args, **kwds):
     return ret, stats
 
 
-class BzrProfiler(object):
+class BzrProfiler:
     """Bzr utility wrapper around Profiler.
 
     For most uses the module level 'profile()' function will be suitable.
@@ -115,7 +115,7 @@ class BzrProfiler(object):
         p.enable(subcalls=True, builtins=True)
 
 
-class Stats(object):
+class Stats:
     """Wrapper around the collected data.
 
     A Stats instance is created when the profiler finishes. Normal
@@ -219,7 +219,7 @@ class Stats(object):
                 pickle.dump(self, outfile, 2)
 
 
-class _CallTreeFilter(object):
+class _CallTreeFilter:
     """Converter of a Stats object to input suitable for KCacheGrind.
 
     This code is taken from http://ddaa.net/blog/python/lsprof-calltree
@@ -255,10 +255,10 @@ class _CallTreeFilter(object):
         if isinstance(code, str):
             out_file.write('fi=~\n')
         else:
-            out_file.write('fi=%s\n' % (code.co_filename,))
-        out_file.write('fn=%s\n' % (label(code, True),))
+            out_file.write('fi={}\n'.format(code.co_filename))
+        out_file.write('fn={}\n'.format(label(code, True)))
         if isinstance(code, str):
-            out_file.write('0  %s\n' % (inlinetime,))
+            out_file.write('0  {}\n'.format(inlinetime))
         else:
             out_file.write('%d %d\n' % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls
@@ -280,11 +280,11 @@ class _CallTreeFilter(object):
         totaltime = int(subentry.totaltime * 1000)
         if isinstance(code, str):
             out_file.write('cfi=~\n')
-            out_file.write('cfn=%s\n' % (label(code, True),))
+            out_file.write('cfn={}\n'.format(label(code, True)))
             out_file.write('calls=%d 0\n' % (subentry.callcount,))
         else:
-            out_file.write('cfi=%s\n' % (code.co_filename,))
-            out_file.write('cfn=%s\n' % (label(code, True),))
+            out_file.write('cfi={}\n'.format(code.co_filename))
+            out_file.write('cfn={}\n'.format(label(code, True)))
             out_file.write('calls=%d %d\n' % (
                 subentry.callcount, code.co_firstlineno))
         out_file.write('%d %d\n' % (lineno, totaltime))

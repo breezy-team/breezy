@@ -27,7 +27,7 @@ from breezy import (
 class TestLocale(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestLocale, self).setUp()
+        super().setUp()
 
         if sys.platform in ('win32',):
             raise tests.TestSkipped('Windows does not respond to the LANG'
@@ -36,9 +36,9 @@ class TestLocale(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
         tree.add('a')
-        tree.commit(u'Unicode \xb5 commit', rev_id=b'r1',
-                    committer=u'\u062c\u0648\u062c\u0648'
-                              u' Meinel <juju@info.com>',
+        tree.commit('Unicode \xb5 commit', rev_id=b'r1',
+                    committer='\u062c\u0648\u062c\u0648'
+                              ' Meinel <juju@info.com>',
                     timestamp=1156451297.96, timezone=0)
         self.tree = tree
 

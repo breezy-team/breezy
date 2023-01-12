@@ -106,7 +106,7 @@ class cmd_verify_signatures(Command):
     takes_args = ['location?']
 
     def run(self, acceptable_keys=None, revision=None, verbose=None,
-            location=u'.'):
+            location='.'):
         bzrdir = controldir.ControlDir.open_containing(location)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository

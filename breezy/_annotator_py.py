@@ -24,7 +24,7 @@ from . import (
     )
 
 
-class Annotator(object):
+class Annotator:
     """Class that drives performing annotations."""
 
     def __init__(self, vf):

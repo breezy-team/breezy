@@ -263,7 +263,7 @@ class Hooks(dict):
             callable_name
 
 
-class HookPoint(object):
+class HookPoint:
     """A single hook that clients can register to be called back when it fires.
 
     Attributes:

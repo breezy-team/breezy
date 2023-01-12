@@ -30,7 +30,7 @@ from breezy.tests.per_repository_reference import (
 class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
 
     def setUp(self):
-        super(TestGetRecordStream, self).setUp()
+        super().setUp()
         builder = self.make_branch_builder('all')
         builder.start_series()
         # Graph of revisions:
@@ -114,7 +114,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = set()
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: %s' % (record.key,))
+                raise ValueError('absent record: {}'.format(record.key))
             record_keys.add(record.key)
         # everything should be present, we don't care about the order
         self.assertEqual(keys, sorted(record_keys))
@@ -129,7 +129,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = set()
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: %s' % (record.key,))
+                raise ValueError('absent record: {}'.format(record.key))
             record_keys.add(record.key)
         # everything should be present, we don't care about the order
         self.assertEqual(keys, sorted(record_keys))
@@ -155,7 +155,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = []
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: %s' % (record.key,))
+                raise ValueError('absent record: {}'.format(record.key))
             record_keys.append(record.key)
         self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3, alt_4))
 
@@ -176,7 +176,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = []
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: %s' % (record.key,))
+                raise ValueError('absent record: {}'.format(record.key))
             record_keys.append(record.key)
         self.assertIn(record_keys, (keys, alt_1))
 
@@ -201,7 +201,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         record_keys = []
         for record in stream:
             if record.storage_kind == 'absent':
-                raise ValueError('absent record: %s' % (record.key,))
+                raise ValueError('absent record: {}'.format(record.key))
             record_keys.append(record.key)
         # Note that currently --2a format repositories do this correctly, but
         # KnitPack format repositories do not.

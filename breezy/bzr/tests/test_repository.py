@@ -189,7 +189,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
 class TestRepositoryFormatRegistry(TestCase):
 
     def setUp(self):
-        super(TestRepositoryFormatRegistry, self).setUp()
+        super().setUp()
         self.registry = repository.RepositoryFormatRegistry()
 
     def test_register_unregister_format(self):
@@ -358,7 +358,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class DummyRepository(object):
+class DummyRepository:
     """A dummy repository for testing."""
 
     _format = None
@@ -525,19 +525,19 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree(b'dull')
         with revision_tree.lock_read():
             self.assertRaises(
-                transport.NoSuchFile, revision_tree.get_file_lines, u'')
+                transport.NoSuchFile, revision_tree.get_file_lines, '')
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
         revision_tree = tree.branch.repository.revision_tree(b'dull')
         with revision_tree.lock_read():
-            revision_tree.get_file_lines(u'')
+            revision_tree.get_file_lines('')
         tree.commit("Another dull commit", rev_id=b'dull2')
         revision_tree = tree.branch.repository.revision_tree(b'dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
-        self.assertEqual(b'dull', revision_tree.get_file_revision(u''))
+        self.assertEqual(b'dull', revision_tree.get_file_revision(''))
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -713,7 +713,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
                 for record in substream:
                     full_chk_records.add(record.key)
             else:
-                self.fail('Should not be getting a stream of %s' % (vf_name,))
+                self.fail('Should not be getting a stream of {}'.format(vf_name))
         # We have 257 records now. This is because we have 1 root page, and 256
         # leaf pages in a complete listing.
         self.assertEqual(257, len(full_chk_records))
@@ -800,7 +800,7 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
     """Tests for _find_parent_ids_of_revisions."""
 
     def setUp(self):
-        super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
+        super().setUp()
         self.builder = self.make_branch_builder('source')
         self.builder.start_series()
         self.builder.build_snapshot(
@@ -1049,10 +1049,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs._remove_pack_from_memory(pack)
         # Simulate a concurrent update by renaming the .pack file and one of
         # the indices
-        packs.transport.rename('packs/%s.pack' % (names[0],),
-                               'obsolete_packs/%s.pack' % (names[0],))
-        packs.transport.rename('indices/%s.iix' % (names[0],),
-                               'obsolete_packs/%s.iix' % (names[0],))
+        packs.transport.rename('packs/{}.pack'.format(names[0]),
+                               'obsolete_packs/{}.pack'.format(names[0]))
+        packs.transport.rename('indices/{}.iix'.format(names[0]),
+                               'obsolete_packs/{}.iix'.format(names[0]))
         # Now trigger the obsoletion, and ensure that all the remaining files
         # are still renamed
         packs._obsolete_packs([pack])

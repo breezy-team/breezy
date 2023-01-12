@@ -104,7 +104,7 @@ def bulk_verify_signatures(repository, revids, strategy,
     return (count, result, all_verifiable)
 
 
-class DisabledGPGStrategy(object):
+class DisabledGPGStrategy:
     """A GPG Strategy that makes everything fail."""
 
     @staticmethod
@@ -125,7 +125,7 @@ disabled.')
         pass
 
 
-class LoopbackGPGStrategy(object):
+class LoopbackGPGStrategy:
     """A GPG Strategy that acts like 'cat' - data is just passed through.
     Used in tests.
     """
@@ -172,7 +172,7 @@ def _set_gpg_tty():
                      '  Is TTY exported?')
 
 
-class GPGStrategy(object):
+class GPGStrategy:
     """GPG Signing and checking facilities."""
 
     acceptable_keys: Optional[List[str]] = None
@@ -316,7 +316,7 @@ class GPGStrategy(object):
             email = key.uids[0].email
             if isinstance(email, bytes):
                 email = email.decode('utf-8')
-            return (SIGNATURE_VALID, name + u" <" + email + u">", plain_output)
+            return (SIGNATURE_VALID, name + " <" + email + ">", plain_output)
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
@@ -367,38 +367,38 @@ class GPGStrategy(object):
 
 def valid_commits_message(count):
     """returns message for number of commits"""
-    return gettext(u"{0} commits with valid signatures").format(
+    return gettext("{0} commits with valid signatures").format(
         count[SIGNATURE_VALID])
 
 
 def unknown_key_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit with unknown key",
-                    u"{0} commits with unknown keys",
+    return ngettext("{0} commit with unknown key",
+                    "{0} commits with unknown keys",
                     count[SIGNATURE_KEY_MISSING]).format(
         count[SIGNATURE_KEY_MISSING])
 
 
 def commit_not_valid_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit not valid",
-                    u"{0} commits not valid",
+    return ngettext("{0} commit not valid",
+                    "{0} commits not valid",
                     count[SIGNATURE_NOT_VALID]).format(
         count[SIGNATURE_NOT_VALID])
 
 
 def commit_not_signed_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit not signed",
-                    u"{0} commits not signed",
+    return ngettext("{0} commit not signed",
+                    "{0} commits not signed",
                     count[SIGNATURE_NOT_SIGNED]).format(
         count[SIGNATURE_NOT_SIGNED])
 
 
 def expired_commit_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit with key now expired",
-                    u"{0} commits with key now expired",
+    return ngettext("{0} commit with key now expired",
+                    "{0} commits with key now expired",
                     count[SIGNATURE_EXPIRED]).format(
         count[SIGNATURE_EXPIRED])
 
@@ -417,8 +417,8 @@ def verbose_expired_key_message(result, repo) -> List[str]:
     ret: List[str] = []
     for fingerprint, number in signers.items():
         ret.append(
-            ngettext(u"{0} commit by author {1} with key {2} now expired",
-                     u"{0} commits by author {1} with key {2} now expired",
+            ngettext("{0} commit by author {1} with key {2} now expired",
+                     "{0} commits by author {1} with key {2} now expired",
                      number).format(
                 number, fingerprint_to_authors[fingerprint], fingerprint))
     return ret
@@ -433,8 +433,8 @@ def verbose_valid_message(result) -> List[str]:
             signers[uid] += 1
     ret: List[str] = []
     for uid, number in signers.items():
-        ret.append(ngettext(u"{0} signed {1} commit",
-                            u"{0} signed {1} commits",
+        ret.append(ngettext("{0} signed {1} commit",
+                            "{0} signed {1} commits",
                             number).format(uid, number))
     return ret
 
@@ -450,8 +450,8 @@ def verbose_not_valid_message(result, repo) -> List[str]:
             signers[authors] += 1
     ret: List[str] = []
     for authors, number in signers.items():
-        ret.append(ngettext(u"{0} commit by author {1}",
-                            u"{0} commits by author {1}",
+        ret.append(ngettext("{0} commit by author {1}",
+                            "{0} commits by author {1}",
                             number).format(number, authors))
     return ret
 
@@ -467,8 +467,8 @@ def verbose_not_signed_message(result, repo) -> List[str]:
             signers[authors] += 1
     ret: List[str] = []
     for authors, number in signers.items():
-        ret.append(ngettext(u"{0} commit by author {1}",
-                            u"{0} commits by author {1}",
+        ret.append(ngettext("{0} commit by author {1}",
+                            "{0} commits by author {1}",
                             number).format(number, authors))
     return ret
 
@@ -482,7 +482,7 @@ def verbose_missing_key_message(result) -> List[str]:
             signers[fingerprint] += 1
     ret: List[str] = []
     for fingerprint, number in list(signers.items()):
-        ret.append(ngettext(u"Unknown key {0} signed {1} commit",
-                            u"Unknown key {0} signed {1} commits",
+        ret.append(ngettext("Unknown key {0} signed {1} commit",
+                            "Unknown key {0} signed {1} commits",
                             number).format(fingerprint, number))
     return ret

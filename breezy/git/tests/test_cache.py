@@ -133,7 +133,7 @@ class TestGitShaMap:
         updater.add_object(c, {"testament3-sha1": b"testament"}, None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEqual(set([b"lala", b"bla"]),
+        self.assertEqual({b"lala", b"bla"},
                          set(self.map.missing_revisions([b"myrevid", b"lala", b"bla"])))
 
 

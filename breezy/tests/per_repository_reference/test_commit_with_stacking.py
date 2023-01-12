@@ -54,7 +54,7 @@ class TestCaseWithStackedTarget(TestCaseWithRepository):
 class TestCommitWithStacking(TestCaseWithStackedTarget):
 
     def setUp(self):
-        super(TestCommitWithStacking, self).setUp()
+        super().setUp()
         format = self.repository_format
         if (not (isinstance(format, remote.RemoteRepositoryFormat)
                  or format.supports_chks)):

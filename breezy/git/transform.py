@@ -72,7 +72,7 @@ class TreeTransformBase(TreeTransform):
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """
-        super(TreeTransformBase, self).__init__(tree, pb=pb)
+        super().__init__(tree, pb=pb)
         # mapping of trans_id => (sha1 of content, stat_value)
         self._observed_sha1s = {}
         # Set of versioned trans ids
@@ -866,7 +866,7 @@ class DiskTreeTransform(TreeTransformBase):
     def adjust_path(self, name, parent, trans_id):
         previous_parent = self._new_parent.get(trans_id)
         previous_name = self._new_name.get(trans_id)
-        super(DiskTreeTransform, self).adjust_path(name, parent, trans_id)
+        super().adjust_path(name, parent, trans_id)
         if (trans_id in self._limbo_files
                 and trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
@@ -987,7 +987,7 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'Unable to create symlink "%s" on this filesystem.' % (path,))
+                'Unable to create symlink "{}" on this filesystem.'.format(path))
             self._symlink_target[trans_id] = target
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
@@ -1696,8 +1696,8 @@ class GitPreviewTree(PreviewTree, GitTree):
         return osutils.split_lines(self.get_file_text(path))
 
     def extras(self):
-        possible_extras = set(self._transform.trans_id_tree_path(p) for p
-                              in self._transform._tree.extras())
+        possible_extras = {self._transform.trans_id_tree_path(p) for p
+                              in self._transform._tree.extras()}
         possible_extras.update(self._transform._new_contents)
         possible_extras.update(self._transform._removed_id)
         for trans_id in possible_extras:

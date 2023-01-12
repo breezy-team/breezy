@@ -169,8 +169,8 @@ class TestSprout(TestCaseWithBranch):
         # The link points to a file whose name is an omega
         # U+03A9 GREEK CAPITAL LETTER OMEGA
         # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
-        target = u'\u03a9'
-        link_name = u'\N{Euro Sign}link'
+        target = '\u03a9'
+        link_name = '\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
         tree.add([link_name])
 

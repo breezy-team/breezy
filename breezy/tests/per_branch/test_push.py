@@ -248,7 +248,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.addCleanup(repo.lock_read().unlock)
         # We should have pushed revid_c, but not revid_b, since it isn't in the
         # ancestry
-        self.assertEqual(set([revid_a, revid_c]), set(repo.all_revision_ids()))
+        self.assertEqual({revid_a, revid_c}, set(repo.all_revision_ids()))
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -300,7 +300,7 @@ class TestPushHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestPushHook, self).setUp()
+        super().setUp()
 
     def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.
@@ -406,7 +406,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         if not self.branch_format.supports_leaving_lock():
             raise tests.TestNotApplicable(
                 'Branch format is not usable via HPSS.')
-        super(EmptyPushSmartEffortTests, self).setUp()
+        super().setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = test_server.SmartTCPServer_for_testing()
@@ -458,7 +458,7 @@ class TestLossyPush(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestLossyPush, self).setUp()
+        super().setUp()
 
     def test_lossy_push_raises_same_vcs(self):
         target = self.make_branch('target')

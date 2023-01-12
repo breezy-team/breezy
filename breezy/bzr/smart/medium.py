@@ -126,7 +126,7 @@ def _get_line(read_bytes_func):
     return line, excess
 
 
-class SmartMedium(object):
+class SmartMedium:
     """Base class for smart protocol media, both client- and server-side."""
 
     def __init__(self):
@@ -249,19 +249,19 @@ class SmartServerStreamMedium(SmartMedium):
                 server_protocol = self._build_protocol()
                 self._serve_one_request(server_protocol)
         except errors.ConnectionTimeout as e:
-            trace.note('%s' % (e,))
+            trace.note('{}'.format(e))
             trace.log_exception_quietly()
             self._disconnect_client()
             # We reported it, no reason to make a big fuss.
             return
         except Exception as e:
-            stderr.write("%s terminating on exception %s\n" % (self, e))
+            stderr.write("{} terminating on exception {}\n".format(self, e))
             raise
         self._disconnect_client()
 
     def _stop_gracefully(self):
         """When we finish this message, stop looking for more."""
-        trace.mutter('Stopping %s' % (self,))
+        trace.mutter('Stopping {}'.format(self))
         self.finished = True
 
     def _disconnect_client(self):
@@ -317,7 +317,7 @@ class SmartServerStreamMedium(SmartMedium):
                 return
             try:
                 rs, _, xs = select.select([fd], [], [fd], poll_timeout)
-            except (select.error, socket.error) as e:
+            except OSError as e:
                 err = getattr(e, 'errno', None)
                 if err is None and getattr(e, 'args', None) is not None:
                     # select.error doesn't have 'errno', it just has args[0]
@@ -378,14 +378,14 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         # Get the getpeername now, as we might be closed later when we care.
         try:
             self._client_info = sock.getpeername()
-        except socket.error:
+        except OSError:
             self._client_info = '<unknown>'
 
     def __str__(self):
-        return '%s(client=%s)' % (self.__class__.__name__, self._client_info)
+        return '{}(client={})'.format(self.__class__.__name__, self._client_info)
 
     def __repr__(self):
-        return '%s.%s(client=%s)' % (self.__module__, self.__class__.__name__,
+        return '{}.{}(client={})'.format(self.__module__, self.__class__.__name__,
                                      self._client_info)
 
     def _serve_one_request_unguarded(self, protocol):
@@ -465,7 +465,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         stop_gracefully = self._stop_gracefully
         signals.register_on_hangup(id(self), stop_gracefully)
         try:
-            return super(SmartServerPipeStreamMedium, self).serve()
+            return super().serve()
         finally:
             signals.unregister_on_hangup(id(self))
 
@@ -524,7 +524,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         self._out.write(bytes)
 
 
-class SmartClientMediumRequest(object):
+class SmartClientMediumRequest:
     """A request on a SmartClientMedium.
 
     Each request allows bytes to be provided to it via accept_bytes, and then
@@ -660,7 +660,7 @@ class SmartClientMediumRequest(object):
         return self._medium._get_line()
 
 
-class _VfsRefuser(object):
+class _VfsRefuser:
     """An object that refuses all VFS requests.
 
     """
@@ -679,7 +679,7 @@ class _VfsRefuser(object):
             raise HpssVfsRequestNotAllowed(params.method, params.args)
 
 
-class _DebugCounter(object):
+class _DebugCounter:
     """An object that counts the HPSS calls made to each client medium.
 
     When a medium is garbage-collected, or failing that when
@@ -747,7 +747,7 @@ class SmartClientMedium(SmartMedium):
     """Smart client is a medium for sending smart protocol requests over."""
 
     def __init__(self, base):
-        super(SmartClientMedium, self).__init__()
+        super().__init__()
         self.base = base
         self._protocol_version_error = None
         self._protocol_version = None
@@ -928,7 +928,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.accept_bytes."""
         try:
             self._writeable_pipe.write(data)
-        except IOError as e:
+        except OSError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
                     "Error trying to write to subprocess", e)
@@ -950,7 +950,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         return data
 
 
-class SSHParams(object):
+class SSHParams:
     """A set of parameters for starting a remote bzr via SSH."""
 
     def __init__(self, host, port=None, username=None, password=None,
@@ -997,7 +997,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
             maybe_user = ''
         else:
             maybe_user = '%s@' % self._ssh_params.username
-        return "%s(%s://%s%s%s/)" % (
+        return "{}({}://{}{}{}/)".format(
             self.__class__.__name__,
             self._scheme,
             maybe_user,
@@ -1138,7 +1138,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 self._socket.setsockopt(socket.IPPROTO_TCP,
                                         socket.TCP_NODELAY, 1)
                 self._socket.connect(sockaddr)
-            except socket.error as err:
+            except OSError as err:
                 if self._socket is not None:
                     self._socket.close()
                 self._socket = None

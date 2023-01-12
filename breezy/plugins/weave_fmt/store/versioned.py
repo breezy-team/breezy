@@ -40,7 +40,7 @@ class VersionedFileStore(TransportStore):
                  versionedfile_class=None,
                  versionedfile_kwargs={},
                  escaped=False):
-        super(VersionedFileStore, self).__init__(transport,
+        super().__init__(transport,
                                                  dir_mode=dir_mode, file_mode=file_mode,
                                                  prefixed=prefixed, compressed=False, escaped=escaped)
         self._precious = precious
@@ -176,5 +176,5 @@ class VersionedFileStore(TransportStore):
             'topological', False))
 
     def total_size(self):
-        count, bytes = super(VersionedFileStore, self).total_size()
+        count, bytes = super().total_size()
         return (count / len(self._versionedfile_class.get_suffixes())), bytes

@@ -28,7 +28,7 @@ from .patches import (hunk_from_header, InsertLine, RemoveLine,
 
 GLOBAL_COLORDIFFRC = '/etc/colordiffrc'
 
-class LineParser(object):
+class LineParser:
 
     def parse_line(self, line):
         if line.startswith(b"@"):
@@ -45,7 +45,7 @@ class LineParser(object):
 
 def read_colordiffrc(path):
     colors = {}
-    with open(path, 'r') as f:
+    with open(path) as f:
         for line in f.readlines():
             try:
                 key, val = line.split('=')
@@ -66,7 +66,7 @@ def read_colordiffrc(path):
     return colors
 
 
-class DiffWriter(object):
+class DiffWriter:
 
     def __init__(self, target, check_style=False):
         self.target = target
@@ -97,7 +97,7 @@ class DiffWriter(object):
     def _read_colordiffrc(self, path):
         try:
             self.colors.update(read_colordiffrc(path))
-        except IOError:
+        except OSError:
             pass
 
     def colorstring(self, type, item, bad_ws_match):

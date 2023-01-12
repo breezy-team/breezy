@@ -46,7 +46,7 @@ def portable_socket_pair():
     return server_sock, client_sock
 
 
-class TCPClient(object):
+class TCPClient:
 
     def __init__(self):
         self.sock = None
@@ -62,7 +62,7 @@ class TCPClient(object):
             try:
                 self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
-            except socket.error as e:
+            except OSError as e:
                 if e.errno in (errno.EBADF, errno.ENOTCONN, errno.ECONNRESET):
                     # Right, the socket is already down
                     pass
@@ -93,7 +93,7 @@ class TCPConnectionHandler(socketserver.BaseRequestHandler):
         # An empty string is allowed, to indicate the end of the connection
         if not req or (req.endswith(b'\n') and req.count(b'\n') == 1):
             return req
-        raise ValueError('[%r] not a simple line' % (req,))
+        raise ValueError('[{!r}] not a simple line'.format(req))
 
     def handle_connection(self):
         req = self.readline()
@@ -188,7 +188,7 @@ class TestTCPServerInAThread(tests.TestCase):
         client.write(b'ping\n')
         try:
             self.assertEqual(b'', client.read())
-        except socket.error as e:
+        except OSError as e:
             # On Windows, failing during 'handle' means we get
             # 'forced-close-of-connection'. Possibly because we haven't
             # processed the write request before we close the socket.
@@ -292,7 +292,7 @@ class TestTCPServerInAThread(tests.TestCase):
         try:
             client.connect((server.host, server.port))
             self.assertEqual(b'', client.read())
-        except socket.error as e:
+        except OSError as e:
             if e.errno != errno.ECONNRESET:
                 raise
 
@@ -311,7 +311,7 @@ class TestTestingSmartServer(tests.TestCase):
                          h._client_timeout)
 
 
-class FakeServer(object):
+class FakeServer:
     """Minimal implementation to pass to TestingSmartConnectionHandler"""
     backing_transport = None
     root_client_path = '/'
@@ -336,7 +336,7 @@ class TestTestingSmartConnectionHandler(tests.TestCase):
 
             def _build_protocol(self):
                 self.finished = True
-                return super(ShutdownConnectionHandler, self)._build_protocol()
+                return super()._build_protocol()
         # This should trigger shutdown after the entering _build_protocol, and
         # we should exit cleanly, without raising an exception.
         ShutdownConnectionHandler(server_sock, server_sock.getpeername(), s)

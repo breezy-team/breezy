@@ -206,7 +206,7 @@ def get_home_location():
     if windir:
         return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
-    return u'C:/'
+    return 'C:/'
 
 
 def get_user_name():
@@ -252,9 +252,9 @@ def get_host_name():
 
 
 def _ensure_with_dir(path):
-    if (not os.path.split(path)[0] or path.startswith(u'*')
-            or path.startswith(u'?')):
-        return u'./' + path, True
+    if (not os.path.split(path)[0] or path.startswith('*')
+            or path.startswith('?')):
+        return './' + path, True
     else:
         return path, False
 
@@ -283,7 +283,7 @@ def glob_one(possible_glob):
     elif corrected:
         glob_files = [_undo_ensure_with_dir(elem, corrected)
                       for elem in glob_files]
-    return [elem.replace(u'\\', u'/') for elem in glob_files]
+    return [elem.replace('\\', '/') for elem in glob_files]
 
 
 def glob_expand(file_list):
@@ -326,13 +326,13 @@ def get_app_path(appname):
             winreg.HKEY_LOCAL_MACHINE,
             'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\'
             + basename)
-    except EnvironmentError:
+    except OSError:
         return appname
 
     try:
         try:
             path, type_id = winreg.QueryValueEx(hkey, '')
-        except WindowsError:
+        except OSError:
             return appname
     finally:
         winreg.CloseKey(hkey)

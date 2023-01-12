@@ -53,7 +53,7 @@ class InvalidShelfId(errors.BzrError):
         errors.BzrError.__init__(self, invalid_id=invalid_id)
 
 
-class ShelfCreator(object):
+class ShelfCreator:
     """Create a transform to shelve objects and its inverse."""
 
     def __init__(self, work_tree, target_tree, file_list=None):
@@ -321,7 +321,7 @@ class ShelfCreator(object):
         shelf_file.write(serializer.end())
 
 
-class Unshelver(object):
+class Unshelver:
     """Unshelve shelved changes."""
 
     def __init__(self, tree, base_tree, transform, message):
@@ -385,7 +385,7 @@ class Unshelver(object):
         self.transform.finalize()
 
 
-class ShelfManager(object):
+class ShelfManager:
     """Maintain a list of shelved changes."""
 
     def __init__(self, tree, transport):
@@ -434,7 +434,7 @@ class ShelfManager(object):
         filename = self.get_shelf_filename(shelf_id)
         try:
             return open(self.transport.local_abspath(filename), 'rb')
-        except IOError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             raise NoSuchShelfId(shelf_id)

@@ -36,7 +36,7 @@ class TestWin32Finder(tests.TestCaseInTempDir):
     _test_needs_features = [win32_readdir_feature]
 
     def setUp(self):
-        super(TestWin32Finder, self).setUp()
+        super().setUp()
         from ._walkdirs_win32 import (
             Win32ReadDir,
             )
@@ -66,38 +66,38 @@ class TestWin32Finder(tests.TestCaseInTempDir):
     def test_top_prefix_to_starting_dir(self):
         # preparing an iteration should create a unicode native path.
         self.assertEqual(
-            ('prefix', None, None, None, u'\x12'),
+            ('prefix', None, None, None, '\x12'),
             self.reader.top_prefix_to_starting_dir(
-                u'\x12'.encode('utf8'), 'prefix'))
+                '\x12'.encode(), 'prefix'))
 
     def test_empty_directory(self):
-        self.assertReadDir([], 'prefix', u'.')
-        self.assertWalkdirs([(('', u'.'), [])], u'.')
+        self.assertReadDir([], 'prefix', '.')
+        self.assertWalkdirs([(('', '.'), [])], '.')
 
     def test_file(self):
         self.build_tree(['foo'])
-        self.assertReadDir([('foo', 'foo', 'file', u'./foo')],
-                           '', u'.')
+        self.assertReadDir([('foo', 'foo', 'file', './foo')],
+                           '', '.')
 
     def test_directory(self):
         self.build_tree(['bar/'])
-        self.assertReadDir([('bar', 'bar', 'directory', u'./bar')],
-                           '', u'.')
+        self.assertReadDir([('bar', 'bar', 'directory', './bar')],
+                           '', '.')
 
     def test_prefix(self):
         self.build_tree(['bar/', 'baf'])
         self.assertReadDir([
-            ('xxx/baf', 'baf', 'file', u'./baf'),
-            ('xxx/bar', 'bar', 'directory', u'./bar'),
+            ('xxx/baf', 'baf', 'file', './baf'),
+            ('xxx/bar', 'bar', 'directory', './bar'),
             ],
-            'xxx', u'.')
+            'xxx', '.')
 
     def test_missing_dir(self):
         e = self.assertRaises(WindowsError,
-                              self.reader.read_dir, 'prefix', u'no_such_dir')
+                              self.reader.read_dir, 'prefix', 'no_such_dir')
         self.assertEqual(errno.ENOENT, e.errno)
         self.assertEqual(3, e.winerror)
-        self.assertEqual((3, u'no_such_dir/*'), e.args)
+        self.assertEqual((3, 'no_such_dir/*'), e.args)
 
 
 class Test_Win32Stat(tests.TestCaseInTempDir):
@@ -105,7 +105,7 @@ class Test_Win32Stat(tests.TestCaseInTempDir):
     _test_needs_features = [win32_readdir_feature]
 
     def setUp(self):
-        super(Test_Win32Stat, self).setUp()
+        super().setUp()
         from ._walkdirs_win32 import lstat
         self.win32_lstat = lstat
 

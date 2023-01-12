@@ -106,7 +106,7 @@ class TestBzrServeBase(TestCaseWithTransport):
 class TestBzrServe(TestBzrServeBase):
 
     def setUp(self):
-        super(TestBzrServe, self).setUp()
+        super().setUp()
         self.disable_missing_extensions_warning()
 
     def test_server_exception_with_hook(self):

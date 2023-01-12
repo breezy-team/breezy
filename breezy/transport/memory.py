@@ -47,7 +47,7 @@ from ..transport import (
     )
 
 
-class MemoryStat(object):
+class MemoryStat:
 
     def __init__(self, size, kind, perms=None):
         self.st_size = size
@@ -70,7 +70,7 @@ class MemoryTransport(transport.Transport):
             url = "memory:///"
         if url[-1] != '/':
             url = url + '/'
-        super(MemoryTransport, self).__init__(url)
+        super().__init__(url)
         split = url.find(':') + 3
         self._scheme = url[:split]
         self._cwd = url[split:]
@@ -324,14 +324,14 @@ class MemoryTransport(transport.Transport):
             raise NoSuchFile(link_name)
 
 
-class _MemoryLock(object):
+class _MemoryLock:
     """This makes a lock."""
 
     def __init__(self, path, transport):
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:
-            raise LockError('File %r already locked' % (self.path,))
+            raise LockError('File {!r} already locked'.format(self.path))
         self.transport._locks[self.path] = self
 
     def unlock(self):

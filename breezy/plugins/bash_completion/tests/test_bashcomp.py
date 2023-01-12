@@ -25,7 +25,7 @@ from breezy.plugins.bash_completion.bashcomp import *
 import subprocess
 
 
-class BashCompletionMixin(object):
+class BashCompletionMixin:
     """Component for testing execution of a bash completion script."""
 
     _test_needs_features = [features.bash_feature]
@@ -161,13 +161,13 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
     """
 
     def setUp(self):
-        super(TestBashCompletionInvoking, self).setUp()
+        super().setUp()
         if sys.platform == 'win32':
             raise tests.KnownFailure(
                 'see bug #709104, completion is broken on windows')
 
     def get_script(self):
-        s = super(TestBashCompletionInvoking, self).get_script()
+        s = super().get_script()
         s = s.replace("$(brz ", "$('%s' " % self.get_brz_path())
         s = s.replace("2>/dev/null", "")
         return s
@@ -292,7 +292,7 @@ class TestBashCodeGen(tests.TestCase):
 class TestDataCollector(tests.TestCase):
 
     def setUp(self):
-        super(TestDataCollector, self).setUp()
+        super().setUp()
         commands.install_bzr_command_hooks()
 
     def test_global_options(self):

@@ -140,12 +140,12 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
             self.assertEqual, [
                 ('delete file', b'first-root-id', 'directory', ''),
                 ('add file', b'second-root-id', 'directory', ''),
-                ('rename', b'foo-id', u'foo', u'foo'),
+                ('rename', b'foo-id', 'foo', 'foo'),
                 ], list(creator.iter_shelvable()))
 
         self.assertEqual([('delete file', b'first-root-id', 'directory', ''),
                           ('add file', b'second-root-id', 'directory', ''),
-                          ('rename', b'foo-id', u'foo', u'foo'),
+                          ('rename', b'foo-id', 'foo', 'foo'),
                           ], list(creator.iter_shelvable()))
 
     def assertShelvedFileEqual(self, expected_content, creator, file_id):
@@ -288,8 +288,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_unicode_symlink_creation(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_shelve_symlink_creation(u'fo\N{Euro Sign}o',
-                                           u'b\N{Euro Sign}ar')
+        self._test_shelve_symlink_creation('fo\N{Euro Sign}o',
+                                           'b\N{Euro Sign}ar')
 
     def test_shelve_change_handles_symlink_creation(self):
         self._test_shelve_symlink_creation('foo', 'bar', shelve_change=True)
@@ -331,7 +331,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def test_shelve_unicode_symlink_target_change(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_shelve_symlink_target_change(
-            u'fo\N{Euro Sign}o', u'b\N{Euro Sign}ar', u'b\N{Euro Sign}az')
+            'fo\N{Euro Sign}o', 'b\N{Euro Sign}ar', 'b\N{Euro Sign}az')
 
     def test_shelve_change_handles_symlink_target_change(self):
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz',

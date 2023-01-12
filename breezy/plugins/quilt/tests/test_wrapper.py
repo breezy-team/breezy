@@ -54,7 +54,7 @@ class QuiltTests(TestCaseWithTransport):
 
     def test_series_all_empty(self):
         source = self.make_empty_quilt_dir("source")
-        self.assertEquals([], quilt_series(source, 'patches/series'))
+        self.assertEqual([], quilt_series(source, 'patches/series'))
 
     def test_series_all(self):
         source = self.make_empty_quilt_dir("source")
@@ -62,7 +62,7 @@ class QuiltTests(TestCaseWithTransport):
             ("source/patches/series", "patch1.diff\n"),
             ("source/patches/patch1.diff", TRIVIAL_PATCH)])
         source.smart_add(["source"])
-        self.assertEquals(
+        self.assertEqual(
             ["patch1.diff"], quilt_series(source, 'patches/series'))
 
     def test_push_all_empty(self):
@@ -78,14 +78,14 @@ class QuiltTests(TestCaseWithTransport):
         self.build_tree_contents([
             ("source/patches/series", "patch1.diff\n"),
             ("source/patches/patch1.diff", "foob ar")])
-        self.assertEquals([], quilt_applied(source))
+        self.assertEqual([], quilt_applied(source))
 
     def test_unapplied(self):
         self.make_empty_quilt_dir("source")
         self.build_tree_contents([
             ("source/patches/series", "patch1.diff\n"),
             ("source/patches/patch1.diff", "foob ar")])
-        self.assertEquals(["patch1.diff"], quilt_unapplied("source"))
+        self.assertEqual(["patch1.diff"], quilt_unapplied("source"))
 
     def test_unapplied_dir(self):
         self.make_empty_quilt_dir("source")
@@ -93,7 +93,7 @@ class QuiltTests(TestCaseWithTransport):
             ("source/patches/series", "debian/patch1.diff\n"),
             ("source/patches/debian/", ),
             ("source/patches/debian/patch1.diff", "foob ar")])
-        self.assertEquals(["debian/patch1.diff"], quilt_unapplied("source"))
+        self.assertEqual(["debian/patch1.diff"], quilt_unapplied("source"))
 
     def test_unapplied_multi(self):
         self.make_empty_quilt_dir("source")
@@ -101,7 +101,7 @@ class QuiltTests(TestCaseWithTransport):
             ("source/patches/series", "patch1.diff\npatch2.diff"),
             ("source/patches/patch1.diff", "foob ar"),
             ("source/patches/patch2.diff", "bazb ar")])
-        self.assertEquals(["patch1.diff", "patch2.diff"],
+        self.assertEqual(["patch1.diff", "patch2.diff"],
                           quilt_unapplied("source", "patches"))
 
     def test_delete(self):

@@ -31,7 +31,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestUncommitHook, self).setUp()
+        super().setUp()
 
     def capture_post_uncommit_hook(self, local, master, old_revno,
                                    old_revid, new_revno, new_revid):

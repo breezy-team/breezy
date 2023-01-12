@@ -595,8 +595,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
     def body_stream(self, stream, repository):
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
-            for bytes in byte_stream:
-                yield bytes
+            yield from byte_stream
         except errors.RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
@@ -630,7 +629,7 @@ def _stream_to_byte_stream(stream, src_format):
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
             elif record.storage_kind == 'absent':
-                raise ValueError("Absent factory for %s" % (record.key,))
+                raise ValueError("Absent factory for {}".format(record.key))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:
@@ -641,7 +640,7 @@ def _stream_to_byte_stream(stream, src_format):
     yield pack_writer.end()
 
 
-class _ByteStreamDecoder(object):
+class _ByteStreamDecoder:
     """Helper for _byte_stream_to_stream.
 
     The expected usage of this class is via the function _byte_stream_to_stream
@@ -678,13 +677,11 @@ class _ByteStreamDecoder(object):
     def iter_stream_decoder(self):
         """Iterate the contents of the pack from stream_decoder."""
         # dequeue pending items
-        for record in self.stream_decoder.read_pending_records():
-            yield record
+        yield from self.stream_decoder.read_pending_records()
         # Pull bytes of the wire, decode them to records, yield those records.
         for bytes in self.byte_stream:
             self.stream_decoder.accept_bytes(bytes)
-            for record in self.stream_decoder.read_pending_records():
-                yield record
+            yield from self.stream_decoder.read_pending_records()
 
     def iter_substream_bytes(self):
         if self.first_bytes is not None:
@@ -1329,8 +1326,7 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
     def body_stream(self, stream, repository):
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
-            for bytes in byte_stream:
-                yield bytes
+            yield from byte_stream
         except errors.RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.

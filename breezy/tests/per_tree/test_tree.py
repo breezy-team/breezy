@@ -106,7 +106,7 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(
-            [u'subtree'],
+            ['subtree'],
             list(tree.iter_references()))
 
     def test_get_nested_tree(self):
@@ -142,7 +142,7 @@ class TestReference(TestCaseWithTree):
 class TestFileIds(TestCaseWithTree):
 
     def setUp(self):
-        super(TestFileIds, self).setUp()
+        super().setUp()
         if not self.workingtree_format.supports_setting_file_ids:
             raise tests.TestNotApplicable("working tree does not support setting file ids")
 
@@ -152,7 +152,7 @@ class TestFileIds(TestCaseWithTree):
         tree = self.get_tree_no_parents_abc_content(work_tree)
         a_id = tree.path2id('a')
         with tree.lock_read():
-            self.assertEqual(u'a', tree.id2path(a_id))
+            self.assertEqual('a', tree.id2path(a_id))
             # other ids give an error- don't return None for this case
             self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
 
@@ -239,10 +239,10 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        extracted = dict((i, b''.join(b)) for i, b in
+        extracted = {i: b''.join(b) for i, b in
                          tree.iter_files_bytes([('foo', 'id1'),
                                                 ('bar', 'id2'),
-                                                ('baz', 'id3')]))
+                                                ('baz', 'id3')])}
         self.assertEqual(b'foo', extracted['id1'])
         self.assertEqual(b'bar', extracted['id2'])
         self.assertEqual(b'baz', extracted['id3'])

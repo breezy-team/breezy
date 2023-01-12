@@ -370,7 +370,7 @@ class cmd_web_open(Command):
 
     def run(self, location=None, dry_run=False):
         if location is None:
-            location = u'.'
+            location = '.'
         web_url = self._get_web_url(location)
         note(gettext('Opening %s in web browser') % web_url)
         if not dry_run:

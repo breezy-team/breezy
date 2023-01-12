@@ -297,7 +297,7 @@ class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
 class TestWorkingTreeFormatRegistry(TestCase):
 
     def setUp(self):
-        super(TestWorkingTreeFormatRegistry, self).setUp()
+        super().setUp()
         self.registry = workingtree.WorkingTreeFormatRegistry()
 
     def test_register_unregister_format(self):
@@ -487,7 +487,7 @@ class TestAutoResolve(TestCaseWithTransport):
         remaining, resolved = tree.auto_resolve()
         self.assertEqual(
             remaining,
-            conflicts.ConflictList([_mod_bzr_conflicts.TextConflict(u'hello', 'hello-id')]))
+            conflicts.ConflictList([_mod_bzr_conflicts.TextConflict('hello', 'hello-id')]))
         self.assertEqual(resolved, [])
 
     def test_auto_resolve_missing(self):
@@ -498,7 +498,7 @@ class TestAutoResolve(TestCaseWithTransport):
         self.assertEqual(remaining, [])
         self.assertEqual(
             resolved,
-            conflicts.ConflictList([_mod_bzr_conflicts.TextConflict(u'hello', 'hello-id')]))
+            conflicts.ConflictList([_mod_bzr_conflicts.TextConflict('hello', 'hello-id')]))
 
 
 class TestStoredUncommitted(TestCaseWithTransport):

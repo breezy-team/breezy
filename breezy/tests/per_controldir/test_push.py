@@ -129,7 +129,7 @@ class TestPush(TestCaseWithControlDir):
         branch.get_config().set_user_option('branch.fetch_tags', True)
         result = dir.push_branch(branch)
         self.assertEqual(
-            set([rev_1, rev_2, rev_3]),
+            {rev_1, rev_2, rev_3},
             set(result.source_branch.repository.all_revision_ids()))
         self.assertEqual(
             {'atag': rev_2}, result.source_branch.tags.get_tag_dict())

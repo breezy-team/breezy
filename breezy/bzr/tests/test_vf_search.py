@@ -105,7 +105,7 @@ class TestSearchResultRefine(tests.TestCase):
                                {NULL_REVISION})
         recipe = result.get_recipe()
         # We should be starting from nothing (NULL was known as a cut point)
-        self.assertEqual(set([]), recipe[1])
+        self.assertEqual(set(), recipe[1])
         # We should be stopping at NULL (original stop) and tip (seen head) and
         # tag (seen head) and mid(seen mid-point head). We could come back and
         # define this as not including mid, for minimal results, but it is
@@ -140,8 +140,8 @@ class TestSearchResultFromParentMap(TestGraphBase):
                                 missing_keys=[NULL_REVISION])
 
     def test_partial_search(self):
-        parent_map = dict((k, extended_history_shortcut[k])
-                          for k in [b'e', b'f'])
+        parent_map = {k: extended_history_shortcut[k]
+                          for k in [b'e', b'f']}
         self.assertSearchResult([b'e', b'f'], [b'd', b'a'], 2,
                                 parent_map)
         parent_map.update((k, extended_history_shortcut[k])
@@ -241,7 +241,7 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         # Make a 'graph' with an iter_ancestry that returns NULL_REVISION
         # somewhere other than the last element, which can happen in real
         # ancestries.
-        class StubGraph(object):
+        class StubGraph:
             def iter_ancestry(self, keys):
                 return [(NULL_REVISION, ()), (b'foo', (NULL_REVISION,))]
         result = vf_search.PendingAncestryResult([b'rev-3'], None)

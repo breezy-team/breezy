@@ -445,7 +445,7 @@ class TestCommit(TestCaseWithWorkingTree):
 class TestCommitProgress(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestCommitProgress, self).setUp()
+        super().setUp()
         ui.ui_factory = ProgressRecordingUIFactory()
 
     def test_commit_progress_steps(self):
@@ -460,7 +460,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b', 'c'])
         tree.add(['a', 'b', 'c'])
         tree.commit('first post')
-        with open('b', 'wt') as f:
+        with open('b', 'w') as f:
             f.write('new content')
         # set a progress bar that captures the calls so we can see what is
         # emitted

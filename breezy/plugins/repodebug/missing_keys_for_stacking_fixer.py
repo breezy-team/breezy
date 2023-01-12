@@ -65,7 +65,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
             needed = set()
             map(needed.update, rev_parents.values())
             needed.discard(NULL_REVISION)
-            needed = set((rev,) for rev in needed)
+            needed = {(rev,) for rev in needed}
             needed = needed - raw_r.inventories.keys()
             if not needed:
                 # Nothing to see here.

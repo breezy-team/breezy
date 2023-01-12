@@ -94,7 +94,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """Create new branch object at a particular location."""
         self.controldir = a_controldir
         self._user_transport = self.controldir.transport.clone('..')
-        if name != u"":
+        if name != "":
             self._user_transport.set_segment_parameter(
                 "branch", urlutils.escape(name))
         self._base = self._user_transport.base
@@ -108,7 +108,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._tags_bytes = None
 
     def __str__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.user_url)
+        return '{}({})'.format(self.__class__.__name__, self.user_url)
 
     __repr__ = __str__
 
@@ -442,7 +442,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             return self._transport.put_bytes('tags', bytes)
 
     def _clear_cached_state(self):
-        super(BzrBranch, self)._clear_cached_state()
+        super()._clear_cached_state()
         self._tags_bytes = None
 
     def reconcile(self, thorough=True):
@@ -633,12 +633,12 @@ class BzrBranch8(BzrBranch):
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
-        super(BzrBranch8, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._reference_info = None
 
     def _clear_cached_state(self):
-        super(BzrBranch8, self)._clear_cached_state()
+        super()._clear_cached_state()
         self._last_revision_info_cache = None
         self._reference_info = None
 
@@ -826,7 +826,7 @@ class BzrBranch7(BzrBranch8):
     """A branch with support for a fallback repository."""
 
     def set_reference_info(self, file_id, branch_location, tree_path=None):
-        super(BzrBranch7, self).set_reference_info(
+        super().set_reference_info(
             file_id, branch_location, tree_path)
         format_string = BzrBranchFormat8.get_format_string()
         mutter('Upgrading branch to format %r', format_string)
@@ -1203,7 +1203,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
         return result
 
 
-class Converter5to6(object):
+class Converter5to6:
     """Perform an in-place upgrade of format 5 to format 6"""
 
     def convert(self, branch):
@@ -1236,7 +1236,7 @@ class Converter5to6(object):
             branch.set_bound_location(None)
 
 
-class Converter6to7(object):
+class Converter6to7:
     """Perform an in-place upgrade of format 6 to format 7"""
 
     def convert(self, branch):
@@ -1246,7 +1246,7 @@ class Converter6to7(object):
         branch._transport.put_bytes('format', format.as_string())
 
 
-class Converter7to8(object):
+class Converter7to8:
     """Perform an in-place upgrade of format 7 to format 8"""
 
     def convert(self, branch):

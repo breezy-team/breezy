@@ -43,7 +43,7 @@ class InventoryDeltaError(errors.BzrError):
     def __init__(self, format_string, **kwargs):
         # Let each error supply a custom format string and arguments.
         self._fmt = format_string
-        super(InventoryDeltaError, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class IncompatibleInventoryDelta(errors.BzrError):
@@ -142,7 +142,7 @@ def _tree_to_entry(content, name, parent_id, file_id, last_modified,
     return result
 
 
-class InventoryDeltaSerializer(object):
+class InventoryDeltaSerializer:
     """Serialize inventory deltas."""
 
     def __init__(self, versioned_root, tree_references):
@@ -178,9 +178,9 @@ class InventoryDeltaSerializer(object):
         :return: The serialized delta as lines.
         """
         if not isinstance(old_name, bytes):
-            raise TypeError('old_name should be str, got %r' % (old_name,))
+            raise TypeError('old_name should be str, got {!r}'.format(old_name))
         if not isinstance(new_name, bytes):
-            raise TypeError('new_name should be str, got %r' % (new_name,))
+            raise TypeError('new_name should be str, got {!r}'.format(new_name))
         lines = [b'', b'', b'', b'', b'']
         to_line = self._delta_item_to_line
         for delta_item in delta_to_new:
@@ -254,7 +254,7 @@ class InventoryDeltaSerializer(object):
                  content))
 
 
-class InventoryDeltaDeserializer(object):
+class InventoryDeltaDeserializer:
     """Deserialize inventory deltas."""
 
     def __init__(self, allow_versioned_root=True, allow_tree_references=True):

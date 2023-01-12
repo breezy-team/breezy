@@ -26,7 +26,7 @@ from . import wrapper
 QuiltError = wrapper.QuiltError
 
 
-class QuiltPatches(object):
+class QuiltPatches:
     """Management object for a stack of quilt patches."""
 
     def __init__(self, tree, patches_dir=None, series_file=None):

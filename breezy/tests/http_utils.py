@@ -70,7 +70,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         self.send_header("Content-type", "application/octet-stream")
         if not self.path.endswith('.bzr/smart'):
             raise AssertionError(
-                'POST to path not ending in .bzr/smart: %r' % (self.path,))
+                'POST to path not ending in .bzr/smart: {!r}'.format(self.path))
         t = chrooted_transport.clone(self.path[:-len('.bzr/smart')])
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
@@ -114,7 +114,7 @@ class TestCaseWithWebserver(tests.TestCaseWithTransport):
     _url_protocol = 'http'
 
     def setUp(self):
-        super(TestCaseWithWebserver, self).setUp()
+        super().setUp()
         self.transport_readonly_server = http_server.HttpServer
 
     def create_transport_readonly_server(self):
@@ -132,7 +132,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
     """
 
     def setUp(self):
-        super(TestCaseWithTwoWebservers, self).setUp()
+        super().setUp()
         self.transport_secondary_server = http_server.HttpServer
         self.__secondary_server = None
 
@@ -210,7 +210,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
     def redirect_to(self, host, port):
         """Redirect all requests to a specific host:port"""
         self.redirections = [('(.*)',
-                              r'http://%s:%s\1' % (host, port),
+                              r'http://{}:{}\1'.format(host, port),
                               301)]
 
     def is_redirected(self, path):
@@ -242,7 +242,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
     """
 
     def setUp(self):
-        super(TestCaseWithRedirectedWebserver, self).setUp()
+        super().setUp()
         # The redirections will point to the new server
         self.new_server = self.get_readonly_server()
         # The requests to the old server will be redirected to the new server
@@ -367,7 +367,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
         header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
+        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce,
                                                               'MD5')
         self.send_header(tcs.auth_header_sent, header)
 
@@ -385,7 +385,7 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
         self.send_header(tcs.auth_header_sent,
                          'Basic realm="%s"' % tcs.auth_realm)
         header = 'Digest realm="%s", ' % tcs.auth_realm
-        header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
+        header += 'nonce="{}", algorithm="{}", qop="auth"'.format(tcs.auth_nonce,
                                                               'MD5')
         self.send_header(tcs.auth_header_sent, header)
 
@@ -405,7 +405,7 @@ class AuthServer(http_server.HttpServer):
     auth_header_sent = None
     auth_header_recv = None
     auth_error_code = None
-    auth_realm = u"Thou should not pass"
+    auth_realm = "Thou should not pass"
 
     def __init__(self, request_handler, auth_scheme,
                  protocol_version=None):
@@ -465,21 +465,21 @@ class DigestAuthServer(AuthServer):
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = ('%s:%s:%s' % (user, realm, password)).encode('utf-8')
-        A2 = ('%s:%s' % (command, auth['uri'])).encode('utf-8')
+        A1 = ('{}:{}:{}'.format(user, realm, password)).encode('utf-8')
+        A2 = ('{}:{}'.format(command, auth['uri'])).encode('utf-8')
 
         def H(x):
             return osutils.md5(x).hexdigest()
 
         def KD(secret, data):
-            return H(("%s:%s" % (secret, data)).encode('utf-8'))
+            return H(("{}:{}".format(secret, data)).encode('utf-8'))
 
         nonce_count = int(auth['nc'], 16)
 
         ncvalue = '%08x' % nonce_count
 
         cnonce = auth['cnonce']
-        noncebit = '%s:%s:%s:%s:%s' % (nonce, ncvalue, cnonce, qop, H(A2))
+        noncebit = '{}:{}:{}:{}:{}'.format(nonce, ncvalue, cnonce, qop, H(A2))
         response_digest = KD(H(A1), noncebit)
 
         return response_digest == auth['response']

@@ -22,7 +22,7 @@ from ..memorybranch import MemoryBranch
 class MemoryBranchTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(MemoryBranchTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('.')
         self.revid1 = self.tree.commit('rev1')
         self.revid2 = self.tree.commit('rev2')

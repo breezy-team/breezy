@@ -77,7 +77,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     _native_to_unicode = None  # Not used yet
 
     def setUp(self):
-        super(TestCaseWithDirState, self).setUp()
+        super().setUp()
         self.overrideAttr(osutils,
                           '_selected_dir_reader', self._dir_reader_class())
 
@@ -1253,12 +1253,12 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_add_symlink_to_root_no_parents_all_data(self):
         self._test_add_symlink_to_root_no_parents_all_data(
-            u'a link', u'target')
+            'a link', 'target')
 
     def test_add_symlink_unicode_to_root_no_parents_all_data(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_add_symlink_to_root_no_parents_all_data(
-            u'\N{Euro Sign}link', u'targ\N{Euro Sign}et')
+            '\N{Euro Sign}link', 'targ\N{Euro Sign}et')
 
     def test_add_directory_and_child_no_parents_all_data(self):
         # after adding a directory, we should be able to add children to it.
@@ -1825,7 +1825,7 @@ class InstrumentedDirState(dirstate.DirState):
 
     def __init__(self, path, sha1_provider, worth_saving_limit=0,
                  use_filesystem_for_exec=True):
-        super(InstrumentedDirState, self).__init__(
+        super().__init__(
             path, sha1_provider, worth_saving_limit=worth_saving_limit,
             use_filesystem_for_exec=use_filesystem_for_exec)
         self._time_offset = 0
@@ -1835,7 +1835,7 @@ class InstrumentedDirState(dirstate.DirState):
         self._sha1_file = self._sha1_file_and_log
 
     def _sha_cutoff_time(self):
-        timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
+        timestamp = super()._sha_cutoff_time()
         self._cutoff_time = timestamp + self._time_offset
 
     def _sha1_file_and_log(self, abspath):
@@ -1844,15 +1844,15 @@ class InstrumentedDirState(dirstate.DirState):
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
-        return super(InstrumentedDirState, self)._read_link(abspath, old_link)
+        return super()._read_link(abspath, old_link)
 
     def _lstat(self, abspath, entry):
         self._log.append(('lstat', abspath))
-        return super(InstrumentedDirState, self)._lstat(abspath, entry)
+        return super()._lstat(abspath, entry)
 
     def _is_executable(self, mode, old_executable):
         self._log.append(('is_exec', mode, old_executable))
-        return super(InstrumentedDirState, self)._is_executable(mode,
+        return super()._is_executable(mode,
                                                                 old_executable)
 
     def adjust_time(self, secs):
@@ -1866,7 +1866,7 @@ class InstrumentedDirState(dirstate.DirState):
         self._cutoff_time = None
 
 
-class _FakeStat(object):
+class _FakeStat:
     """A class with the same attributes as a real stat result."""
 
     def __init__(self, size, mtime, ctime, dev, ino, mode):
@@ -2432,10 +2432,10 @@ class Test_InvEntryToDetails(tests.TestCase):
 
     def test_unicode_symlink(self):
         inv_entry = inventory.InventoryLink(b'link-file-id',
-                                            u'nam\N{Euro Sign}e',
+                                            'nam\N{Euro Sign}e',
                                             b'link-parent-id')
         inv_entry.revision = b'link-revision-id'
-        target = u'link-targ\N{Euro Sign}t'
+        target = 'link-targ\N{Euro Sign}t'
         inv_entry.symlink_target = target
         self.assertDetails((b'l', target.encode('UTF-8'), 0, False,
                             b'link-revision-id'), inv_entry)
@@ -2466,7 +2466,7 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         self.assertEqual(expected_sha, sha1)
 
 
-class _Repo(object):
+class _Repo:
     """A minimal api to get InventoryRevisionTree to work."""
 
     def __init__(self):

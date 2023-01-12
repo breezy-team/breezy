@@ -175,10 +175,10 @@ class TestModuleContext(tests.TestCase):
         """New context returned with lineno updated from class"""
         path = "cls.py"
 
-        class A(object):
+        class A:
             pass
 
-        class B(object):
+        class B:
             pass
         cls_lines = {"A": 5, "B": 7}
         context = export_pot._ModuleContext(path, _source_info=(cls_lines, {}))
@@ -195,10 +195,10 @@ class TestModuleContext(tests.TestCase):
         """When class has no lineno the old context details are returned"""
         path = "cls_missing.py"
 
-        class A(object):
+        class A:
             pass
 
-        class M(object):
+        class M:
             pass
         context = export_pot._ModuleContext(path, 3, ({"A": 15}, {}))
         contextA = context.from_class(A)
@@ -318,7 +318,7 @@ class TestWriteOption(tests.TestCase):
     def test_registry_option_value_switches_hidden(self):
         reg = registry.Registry()
 
-        class Hider(object):
+        class Hider:
             hidden = True
         reg.register("new", 1, "Current.")
         reg.register("old", 0, "Legacy.", info=Hider())
@@ -358,7 +358,7 @@ class TestPotExporter(tests.TestCase):
 class PoEntryTestCase(tests.TestCase):
 
     def setUp(self):
-        super(PoEntryTestCase, self).setUp()
+        super().setUp()
         self.exporter = export_pot._PotExporter(StringIO())
 
     def check_output(self, expected):

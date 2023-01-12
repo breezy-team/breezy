@@ -45,7 +45,7 @@ class TestUnpeelMap(TestCaseWithTransport):
     def test_update(self):
         m = UnpeelMap()
         m.update({
-            b"0123456789012345678901234567890123456789": set([b"aa" * 20]),
+            b"0123456789012345678901234567890123456789": {b"aa" * 20},
             })
         self.assertEqual(b"0123456789012345678901234567890123456789",
                          m.peel_tag(b"aa" * 20))

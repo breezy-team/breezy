@@ -110,7 +110,7 @@ def filter_excluded(iter_changes, exclude):
         yield change
 
 
-class NullCommitReporter(object):
+class NullCommitReporter:
     """I report on progress of a commit."""
 
     def started(self, revno, revid, location):
@@ -179,7 +179,7 @@ class ReportCommitToLog(NullCommitReporter):
         return True
 
 
-class Commit(object):
+class Commit:
     """Task of committing a new revision.
 
     This is a MethodObject: it accumulates state as the commit is
@@ -209,13 +209,13 @@ class Commit(object):
             revprops = {}
         if possible_master_transports is None:
             possible_master_transports = []
-        if (u'branch-nick' not in revprops and
+        if ('branch-nick' not in revprops and
                 branch.repository._format.supports_storing_branch_nick):
-            revprops[u'branch-nick'] = branch._get_nick(
+            revprops['branch-nick'] = branch._get_nick(
                 local,
                 possible_master_transports)
         if authors is not None:
-            if u'author' in revprops or u'authors' in revprops:
+            if 'author' in revprops or 'authors' in revprops:
                 # XXX: maybe we should just accept one of them?
                 raise AssertionError('author property given twice')
             if authors:
@@ -223,7 +223,7 @@ class Commit(object):
                     if '\n' in individual:
                         raise AssertionError('\\n is not a valid character '
                                              'in an author identity')
-                revprops[u'authors'] = '\n'.join(authors)
+                revprops['authors'] = '\n'.join(authors)
         return revprops
 
     def commit(self,
@@ -489,7 +489,7 @@ class Commit(object):
                 self.master_branch.tags)
             if tag_conflicts:
                 warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note(gettext("Conflicting tags in bound branch:\n{0}".format(
+                note(gettext("Conflicting tags in bound branch:\n{}".format(
                     "\n".join(warning_lines))))
 
     def _select_reporter(self):

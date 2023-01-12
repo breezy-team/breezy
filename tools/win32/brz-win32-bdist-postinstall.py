@@ -64,7 +64,7 @@ Congratulation! Brz successfully installed.
         script_path = _quoted_path(os.path.join(scripts_dir, "brz"))
         python_path = _quoted_path(os.path.join(prefix, "python.exe"))
         args = _win_batch_args()
-        batch_str = "@%s %s %s" % (python_path, script_path, args)
+        batch_str = "@{} {} {}".format(python_path, script_path, args)
         # support of win98
         # if there is no HOME for brz then set it for Breezy manually
         base = os.environ.get('brz_HOME', None)
@@ -87,7 +87,7 @@ Congratulation! Brz successfully installed.
         print("Created:", batch_path)
         print("Use this batch file to run brz")
     except Exception as e:
-        print("ERROR: Unable to create %s: %s" % (batch_path, e))
+        print("ERROR: Unable to create {}: {}".format(batch_path, e))
 
     ## this hunk borrowed from pywin32_postinstall.py
     # use bdist_wininst builtins to create a shortcut.

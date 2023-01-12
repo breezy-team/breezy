@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007, 2009, 2011 Canonical Ltd.
 #
@@ -115,5 +114,5 @@ class build_mo(Command):
             self.mkpath(dir_)
             mo = os.path.join(dir_, basename)
             if self.force or newer(po, mo):
-                log.info('Compile: %s -> %s' % (po, mo))
+                log.info('Compile: {} -> {}'.format(po, mo))
                 self.spawn(['msgfmt', '-o', mo, po])

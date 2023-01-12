@@ -99,7 +99,7 @@ class TestCaseWithRepository(TestCaseWithControlDir):
 
     def make_repository(self, relpath, shared=None, format=None):
         format = self.resolve_format(format)
-        repo = super(TestCaseWithRepository, self).make_repository(
+        repo = super().make_repository(
             relpath, shared=shared, format=format)
         if format is None or format.repository_format is self.repository_format:
             # Create a repository of the type we are trying to test.

@@ -521,7 +521,7 @@ class cmd_rebase_foreign(Command):
             f = open(idmap_file, 'w')
             try:
                 for oldid, newid in renames.iteritems():
-                    f.write("%s\t%s\n" % (oldid, newid))
+                    f.write("{}\t{}\n".format(oldid, newid))
             finally:
                 f.close()
 

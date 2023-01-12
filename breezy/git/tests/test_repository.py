@@ -85,7 +85,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = Repository.open('.')
         self.assertEqual(set(), repo.has_revisions([b'foobar']))
         revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
-        self.assertEqual(set([revid]), repo.has_revisions([b'foobar', revid]))
+        self.assertEqual({revid}, repo.has_revisions([b'foobar', revid]))
 
     def test_get_revision(self):
         # GitRepository.get_revision gives a Revision object.
@@ -291,7 +291,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
 class GitRepositoryFormat(tests.TestCase):
 
     def setUp(self):
-        super(GitRepositoryFormat, self).setUp()
+        super().setUp()
         self.format = repository.GitRepositoryFormat()
 
     def test_get_format_description(self):
@@ -340,7 +340,7 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
                          self.import_rev(revid))
 
 
-class ForeignTestsRepositoryFactory(object):
+class ForeignTestsRepositoryFactory:
 
     def make_repository(self, transport):
         return dir.LocalGitControlDirFormat().initialize_on_transport(transport).open_repository()

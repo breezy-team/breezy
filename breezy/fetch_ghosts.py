@@ -21,7 +21,7 @@ from .trace import note
 from .errors import NoSuchRevision, CommandError
 
 
-class GhostFetcher(object):
+class GhostFetcher:
 
     @classmethod
     def from_cmdline(cls, other):

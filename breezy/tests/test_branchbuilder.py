@@ -130,8 +130,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_tree = branch.repository.revision_tree(b'A-id')
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file')], rev_tree)
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file')], rev_tree)
         self.assertEqual(b'contents', rev_tree.get_file_text('a'))
 
     def test_add_second_file(self):
@@ -145,9 +145,9 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_tree = branch.repository.revision_tree(rev_id2)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
-                              (u'b', b'b-id', 'file')], rev_tree)
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
+                              ('b', b'b-id', 'file')], rev_tree)
         self.assertEqual(b'content_b', rev_tree.get_file_text('b'))
 
     def test_add_empty_dir(self):
@@ -156,15 +156,15 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                                          [('add', ('b', b'b-id', 'directory', None))],
                                          revision_id=b'B-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
-                              (u'b', b'b-id', 'directory'),
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
+                              ('b', b'b-id', 'directory'),
                               ], rev_tree)
 
     def test_commit_timestamp(self):
         builder = self.make_branch_builder('foo')
         rev_id = builder.build_snapshot(None,
-                                        [('add', (u'', None, 'directory', None))],
+                                        [('add', ('', None, 'directory', None))],
                                         timestamp=1234567890)
         rev = builder.get_branch().repository.get_revision(rev_id)
         self.assertEqual(
@@ -174,28 +174,28 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
     def test_commit_message_default(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         rev_id = builder.build_snapshot(None,
-                                        [('add', (u'', None, 'directory', None))])
+                                        [('add', ('', None, 'directory', None))])
         branch = builder.get_branch()
         rev = branch.repository.get_revision(rev_id)
-        self.assertEqual(u'commit 1', rev.message)
+        self.assertEqual('commit 1', rev.message)
 
     def test_commit_message_supplied(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         rev_id = builder.build_snapshot(None,
-                                        [('add', (u'', None, 'directory', None))],
-                                        message=u'Foo')
+                                        [('add', ('', None, 'directory', None))],
+                                        message='Foo')
         branch = builder.get_branch()
         rev = branch.repository.get_revision(rev_id)
-        self.assertEqual(u'Foo', rev.message)
+        self.assertEqual('Foo', rev.message)
 
     def test_commit_message_callback(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         rev_id = builder.build_snapshot(None,
-                                        [('add', (u'', None, 'directory', None))],
-                                        message_callback=lambda x: u'Foo')
+                                        [('add', ('', None, 'directory', None))],
+                                        message_callback=lambda x: 'Foo')
         branch = builder.get_branch()
         rev = branch.repository.get_revision(rev_id)
-        self.assertEqual(u'Foo', rev.message)
+        self.assertEqual('Foo', rev.message)
 
     def test_modify_file(self):
         builder = self.build_a_rev()
@@ -219,7 +219,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_tree = branch.repository.revision_tree(rev_id2)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertTreeShape([(u'', b'a-root-id', 'directory')], rev_tree)
+        self.assertTreeShape([('', b'a-root-id', 'directory')], rev_tree)
 
     def test_delete_directory(self):
         builder = self.build_a_rev()
@@ -232,19 +232,19 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                                                       'file', b'eff\n')),
                                           ], revision_id=b'B-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
-                              (u'b', b'b-id', 'directory'),
-                              (u'b/c', b'c-id', 'file'),
-                              (u'b/d', b'd-id', 'directory'),
-                              (u'b/d/e', b'e-id', 'file')], rev_tree)
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
+                              ('b', b'b-id', 'directory'),
+                              ('b/c', b'c-id', 'file'),
+                              ('b/d', b'd-id', 'directory'),
+                              ('b/d/e', b'e-id', 'file')], rev_tree)
         # Removing a directory removes all child dirs
         builder.build_snapshot(
             None, [('unversion', 'b')],
             revision_id=b'C-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'C-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
                               ], rev_tree)
 
     def test_unknown_action(self):
@@ -260,8 +260,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         builder.build_snapshot(None,
                                [('rename', ('a', 'b'))], revision_id=b'B-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'b', b'a-id', 'file')], rev_tree)
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('b', b'a-id', 'file')], rev_tree)
 
     def test_rename_into_subdir(self):
         builder = self.build_a_rev()
@@ -269,9 +269,9 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                                [('add', ('dir', b'dir-id', 'directory', None)),
                                 ('rename', ('a', 'dir/a'))], revision_id=b'B-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'dir', b'dir-id', 'directory'),
-                              (u'dir/a', b'a-id', 'file')], rev_tree)
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('dir', b'dir-id', 'directory'),
+                              ('dir/a', b'a-id', 'file')], rev_tree)
 
     def test_rename_out_of_unversioned_subdir(self):
         builder = self.build_a_rev()
@@ -283,8 +283,8 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                                [('rename', ('dir/a', 'a')),
                                 ('unversion', 'dir')], revision_id=b'C-id')
         rev_tree = builder.get_branch().repository.revision_tree(b'C-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file')], rev_tree)
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file')], rev_tree)
 
     def test_set_parent(self):
         builder = self.build_a_rev()
@@ -305,16 +305,16 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.assertEqual({b'B-id': (b'A-id',), b'C-id': (b'A-id',)},
                          repo.get_parent_map([b'B-id', b'C-id']))
         b_tree = repo.revision_tree(b'B-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
                               ], b_tree)
         self.assertEqual(b'new\ncontent\n', b_tree.get_file_text('a'))
 
         # We should still be using the content from A in C, not from B
         c_tree = repo.revision_tree(b'C-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
-                              (u'c', b'c-id', 'file'),
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
+                              ('c', b'c-id', 'file'),
                               ], c_tree)
         self.assertEqual(b'contents', c_tree.get_file_text('a'))
         self.assertEqual(b'alt\ncontent\n', c_tree.get_file_text('c'))
@@ -337,9 +337,9 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         d_tree = repo.revision_tree(b'D-id')
         # Note: by default a merge node does *not* pull in the changes from the
         #       merged tree, you have to supply it yourself.
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
-                              (u'b', b'b-id', 'file'),
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
+                              ('b', b'b-id', 'file'),
                               ], d_tree)
 
     def test_set_merge_parent_and_contents(self):
@@ -360,10 +360,10 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                           b'D-id': (b'B-id', b'C-id')},
                          repo.get_parent_map([b'B-id', b'C-id', b'D-id']))
         d_tree = repo.revision_tree(b'D-id')
-        self.assertTreeShape([(u'', b'a-root-id', 'directory'),
-                              (u'a', b'a-id', 'file'),
-                              (u'b', b'b-id', 'file'),
-                              (u'c', b'c-id', 'file'),
+        self.assertTreeShape([('', b'a-root-id', 'directory'),
+                              ('a', b'a-id', 'file'),
+                              ('b', b'b-id', 'file'),
+                              ('c', b'c-id', 'file'),
                               ], d_tree)
         # Because we copied the exact text into *this* tree, the 'c' file
         # should look like it was not modified in the merge
@@ -423,7 +423,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                                revision_id=b'rev-2')
         builder.finish_series()
         rev_tree = builder.get_branch().repository.revision_tree(b'rev-2')
-        self.assertTreeShape([(u'', b'my-root', 'directory')], rev_tree)
+        self.assertTreeShape([('', b'my-root', 'directory')], rev_tree)
 
     def test_empty_flush(self):
         """A flush with no actions before it is a no-op."""
@@ -435,7 +435,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         builder.build_snapshot(None, [('flush', None)], revision_id=b'rev-2')
         builder.finish_series()
         rev_tree = builder.get_branch().repository.revision_tree(b'rev-2')
-        self.assertTreeShape([(u'', b'TREE_ROOT', 'directory')], rev_tree)
+        self.assertTreeShape([('', b'TREE_ROOT', 'directory')], rev_tree)
 
     def test_kind_change(self):
         """It's possible to change the kind of an entry in a single snapshot
@@ -444,18 +444,18 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         builder.start_series()
         builder.build_snapshot(None,
-                               [('add', (u'', b'a-root-id', 'directory', None)),
-                                ('add', (u'a', b'a-id', 'file', b'content\n'))],
+                               [('add', ('', b'a-root-id', 'directory', None)),
+                                ('add', ('a', b'a-id', 'file', b'content\n'))],
                                revision_id=b'A-id')
         builder.build_snapshot(None,
                                [('unversion', 'a'),
                                 ('flush', None),
-                                   ('add', (u'a', b'a-id', 'directory', None))],
+                                   ('add', ('a', b'a-id', 'directory', None))],
                                revision_id=b'B-id')
         builder.finish_series()
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
         self.assertTreeShape(
-            [(u'', b'a-root-id', 'directory'), (u'a', b'a-id', 'directory')],
+            [('', b'a-root-id', 'directory'), ('a', b'a-id', 'directory')],
             rev_tree)
 
     def test_pivot_root(self):
@@ -465,14 +465,14 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         builder.start_series()
         builder.build_snapshot(None,
-                               [('add', (u'', b'orig-root', 'directory', None)),
-                                ('add', (u'dir', b'dir-id', 'directory', None))],
+                               [('add', ('', b'orig-root', 'directory', None)),
+                                ('add', ('dir', b'dir-id', 'directory', None))],
                                revision_id=b'A-id')
         builder.build_snapshot(None,
                                [('unversion', ''),  # implicitly unversions all children
                                 ('flush', None),
-                                   ('add', (u'', b'dir-id', 'directory', None))],
+                                   ('add', ('', b'dir-id', 'directory', None))],
                                revision_id=b'B-id')
         builder.finish_series()
         rev_tree = builder.get_branch().repository.revision_tree(b'B-id')
-        self.assertTreeShape([(u'', b'dir-id', 'directory')], rev_tree)
+        self.assertTreeShape([('', b'dir-id', 'directory')], rev_tree)

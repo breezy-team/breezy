@@ -26,7 +26,7 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 class TestBreakLock(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestBreakLock, self).setUp()
+        super().setUp()
         self.unused_workingtree = self.make_branch_and_tree('.')
         self.workingtree = self.unused_workingtree.controldir.open_workingtree()
 

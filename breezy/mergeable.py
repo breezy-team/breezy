@@ -33,7 +33,7 @@ from .transport import (
     )
 
 
-class Mergeable(object):
+class Mergeable:
     """A mergeable object."""
 
     def install_revisions(self, repository):
@@ -86,7 +86,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         raise
     except (errors.TransportError, errors.PathError) as e:
         raise errors.NotABundle(str(e))
-    except (IOError,) as e:
+    except OSError as e:
         # jam 20060707
         # Abstraction leakage, SFTPTransport.get('directory')
         # doesn't always fail at get() time. Sometimes it fails

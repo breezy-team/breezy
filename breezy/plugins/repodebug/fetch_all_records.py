@@ -39,18 +39,18 @@ class cmd_fetch_all_records(Command):
                help="Show what would be done, but don't actually do anything."),
         ]
 
-    def run(self, source_repo, directory=u'.', dry_run=False):
+    def run(self, source_repo, directory='.', dry_run=False):
         try:
             source = ControlDir.open(source_repo).open_repository()
         except (errors.NotBranchError, urlutils.InvalidURL):
-            print(u"Not a branch or invalid URL: %s" % source_repo,
+            print("Not a branch or invalid URL: %s" % source_repo,
                   file=self.outf)
             return
 
         try:
             target = ControlDir.open(directory).open_repository()
         except (errors.NotBranchError, urlutils.InvalidURL):
-            print(u"Not a branch or invalid URL: %s" %
+            print("Not a branch or invalid URL: %s" %
                   directory, file=self.outf)
             return
 

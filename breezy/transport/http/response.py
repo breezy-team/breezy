@@ -33,7 +33,7 @@ from ... import (
     )
 
 
-class ResponseFile(object):
+class ResponseFile:
     """A wrapper around the http socket containing the result of a GET request.
 
     Only read() and seek() (forward) are supported.
@@ -147,7 +147,7 @@ class RangeFile(ResponseFile):
 
         :param infile: File-like socket set at body start.
         """
-        super(RangeFile, self).__init__(path, infile)
+        super().__init__(path, infile)
         self._boundary = None
         # When using multi parts response, this will be set with the headers
         # associated with the range currently read.

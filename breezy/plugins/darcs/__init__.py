@@ -54,7 +54,7 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 
     @classmethod
     def _known_formats(self):
-        return set([DarcsDirFormat()])
+        return {DarcsDirFormat()}
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):

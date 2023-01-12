@@ -54,7 +54,7 @@ class TestRio(TestCase):
     def test_empty_value(self):
         """Serialize stanza with empty field"""
         s = Stanza(empty='')
-        self.assertEquals(s.to_string(),
+        self.assertEqual(s.to_string(),
                           b"empty: \n")
 
     def test_to_lines(self):
@@ -344,7 +344,7 @@ s: both\\\"
         self.assertEqual(new_s.get('foo'), uni_data)
 
     def test_rio_unicode(self):
-        uni_data = u'\N{KATAKANA LETTER O}'
+        uni_data = '\N{KATAKANA LETTER O}'
         s = Stanza(foo=uni_data)
         self.assertEqual(s.get('foo'), uni_data)
         raw_lines = s.to_lines()

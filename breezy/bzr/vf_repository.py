@@ -110,7 +110,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
     def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False, owns_transaction=True):
-        super(VersionedFileCommitBuilder, self).__init__(repository,
+        super().__init__(repository,
                                                          parents, config_stack, timestamp, timezone, committer, revprops,
                                                          revision_id, lossy)
         try:
@@ -672,7 +672,7 @@ class VersionedFileRepository(Repository):
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
-        super(VersionedFileRepository, self).unlock()
+        super().unlock()
         if self.control_files._lock_count == 0:
             self._inventory_entry_cache.clear()
 
@@ -686,7 +686,7 @@ class VersionedFileRepository(Repository):
             repository format specific) of the serialized inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("%r not in write group" % (self,))
+            raise AssertionError("{!r} not in write group".format(self))
         _mod_revision.check_not_reserved_id(revision_id)
         if not (inv.revision_id is None or inv.revision_id == revision_id):
             raise AssertionError(
@@ -737,7 +737,7 @@ class VersionedFileRepository(Repository):
             resulting inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("%r not in write group" % (self,))
+            raise AssertionError("{!r} not in write group".format(self))
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = self.revision_tree(basis_revision_id)
         with basis_tree.lock_read():
@@ -813,7 +813,7 @@ class VersionedFileRepository(Repository):
         # Accumulate current checks.
         for key in current_keys:
             if key[0] != 'inventories' and key[0] not in kinds:
-                checker._report_items.append('unknown key type %r' % (key,))
+                checker._report_items.append('unknown key type {!r}'.format(key))
             keys[key[0]].add(key[1:])
         if keys['inventories']:
             # NB: output order *should* be roughly sorted - topo or
@@ -825,7 +825,7 @@ class VersionedFileRepository(Repository):
             for record in self.inventories.check(keys=keys['inventories']):
                 if record.storage_kind == 'absent':
                     checker._report_items.append(
-                        'Missing inventory {%s}' % (record.key,))
+                        'Missing inventory {{{}}}'.format(record.key))
                 else:
                     last_object = self._check_record('inventories', record,
                                                      checker, last_object,
@@ -843,7 +843,7 @@ class VersionedFileRepository(Repository):
             for key in current_keys:
                 if key[0] not in kinds:
                     checker._report_items.append(
-                        'unknown key type %r' % (key,))
+                        'unknown key type {!r}'.format(key))
                 keys[key[0]].add(key[1:])
             # Check the outermost kind only - inventories || chk_bytes || texts
             for kind in kinds:
@@ -852,7 +852,7 @@ class VersionedFileRepository(Repository):
                     for record in getattr(self, kind).check(keys=keys[kind]):
                         if record.storage_kind == 'absent':
                             checker._report_items.append(
-                                'Missing %s {%s}' % (kind, record.key,))
+                                'Missing {} {{{}}}'.format(kind, record.key))
                         else:
                             last_object = self._check_record(kind, record,
                                                              checker, last_object, current_keys[(kind,) + record.key])
@@ -879,12 +879,12 @@ class VersionedFileRepository(Repository):
         elif kind == 'chk_bytes':
             # No code written to check chk_bytes for this repo format.
             checker._report_items.append(
-                'unsupported key type chk_bytes for %s' % (record.key,))
+                'unsupported key type chk_bytes for {}'.format(record.key))
         elif kind == 'texts':
             self._check_text(record, checker, item_data)
         else:
             checker._report_items.append(
-                'unknown key type %s for %s' % (kind, record.key))
+                'unknown key type {} for {}'.format(kind, record.key))
 
     def _check_text(self, record, checker, item_data):
         """Check a single text."""
@@ -920,7 +920,7 @@ class VersionedFileRepository(Repository):
         # In the future we will have a single api for all stores for
         # getting file texts, inventories and revisions, then
         # this construct will accept instances of those things.
-        super(VersionedFileRepository, self).__init__(_format, a_controldir,
+        super().__init__(_format, a_controldir,
                                                       control_files)
         self._transport = control_files._transport
         self.base = self._transport.base
@@ -986,8 +986,7 @@ class VersionedFileRepository(Repository):
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
         with self.lock_read():
-            result = super(VersionedFileRepository,
-                           self).gather_stats(revid, committers)
+            result = super().gather_stats(revid, committers)
             # now gather global repository information
             # XXX: This is available for many repos regardless of listability.
             if self.user_transport.listable():
@@ -1056,7 +1055,7 @@ class VersionedFileRepository(Repository):
             # No missing parent inventories.
             return set()
         if not check_for_missing_texts:
-            return set(('inventories', rev_id) for (rev_id,) in parents)
+            return {('inventories', rev_id) for (rev_id,) in parents}
         # Ok, now we have a list of missing inventories.  But these only matter
         # if the inventories that reference them are missing some texts they
         # appear to introduce.
@@ -1079,7 +1078,7 @@ class VersionedFileRepository(Repository):
             return set()
         # Alternatively the text versions could be returned as the missing
         # keys, but this is likely to be less data.
-        missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
+        missing_keys = {('inventories', rev_id) for (rev_id,) in parents}
         return missing_keys
 
     def has_revisions(self, revision_ids):
@@ -1259,7 +1258,7 @@ class VersionedFileRepository(Repository):
             revision_ids. Each altered file-ids has the exact revision_ids that
             altered it listed explicitly.
         """
-        selected_keys = set((revid,) for revid in revision_ids)
+        selected_keys = {(revid,) for revid in revision_ids}
         w = _inv_weave or self.inventories
         return self._find_file_ids_from_xml_inventory_lines(
             w.iter_lines_added_or_present_in_keys(
@@ -1411,11 +1410,9 @@ class VersionedFileRepository(Repository):
             versions).  knit-kind is one of 'file', 'inventory', 'signatures',
             'revisions'.  file-id is None unless knit-kind is 'file'.
         """
-        for result in self._find_file_keys_to_fetch(revision_ids, _files_pb):
-            yield result
+        yield from self._find_file_keys_to_fetch(revision_ids, _files_pb)
         del _files_pb
-        for result in self._find_non_file_keys_to_fetch(revision_ids):
-            yield result
+        yield from self._find_non_file_keys_to_fetch(revision_ids)
 
     def _find_file_keys_to_fetch(self, revision_ids, pb):
         # XXX: it's a bit weird to control the inventory weave caching in this
@@ -1533,7 +1530,7 @@ class VersionedFileRepository(Repository):
             xml, revision_id, entry_cache=self._inventory_entry_cache,
             return_from_cache=self._safe_to_return_from_cache)
         if result.revision_id != revision_id:
-            raise AssertionError('revision id mismatch %s != %s' % (
+            raise AssertionError('revision id mismatch {} != {}'.format(
                 result.revision_id, revision_id))
         return result
 
@@ -1715,7 +1712,7 @@ class MetaDirVersionedFileRepository(MetaDirRepository,
     """Repositories in a meta-dir, that work via versioned file objects."""
 
     def __init__(self, _format, a_controldir, control_files):
-        super(MetaDirVersionedFileRepository, self).__init__(_format, a_controldir,
+        super().__init__(_format, a_controldir,
                                                              control_files)
 
 
@@ -1724,7 +1721,7 @@ class MetaDirVersionedFileRepositoryFormat(RepositoryFormatMetaDir,
     """Base class for repository formats using versioned files in metadirs."""
 
 
-class StreamSink(object):
+class StreamSink:
     """An object that can insert a stream into a repository.
 
     This interface handles the complexity of reserialising inventories and
@@ -1854,7 +1851,7 @@ class StreamSink(object):
             elif substream_type == 'signatures':
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
-                raise AssertionError('kaboom! %s' % (substream_type,))
+                raise AssertionError('kaboom! {}'.format(substream_type))
         # Done inserting data, and the missing_keys calculations will try to
         # read back from the inserted data, so flush the writes to the new pack
         # (if this is pack format).
@@ -1934,7 +1931,7 @@ class StreamSink(object):
             revision_id = record.key[0]
             rev = serializer.read_revision_from_string(bytes)
             if rev.revision_id != revision_id:
-                raise AssertionError('wtf: %s != %s' % (rev, revision_id))
+                raise AssertionError('wtf: {} != {}'.format(rev, revision_id))
             self.target_repo.add_revision(revision_id, rev)
 
     def finished(self):
@@ -1942,7 +1939,7 @@ class StreamSink(object):
             self.target_repo.reconcile()
 
 
-class StreamSource(object):
+class StreamSource:
     """A source of a stream for fetching between repositories."""
 
     def __init__(self, from_repository, to_format):
@@ -2019,21 +2016,18 @@ class StreamSource(object):
                 # Before we process the inventory we generate the root
                 # texts (if necessary) so that the inventories references
                 # will be valid.
-                for _ in self._generate_root_texts(revs):
-                    yield _
+                yield from self._generate_root_texts(revs)
                 # we fetch only the referenced inventories because we do not
                 # know for unselected inventories whether all their required
                 # texts are present in the other repository - it could be
                 # corrupt.
-                for info in self._get_inventory_stream(revs):
-                    yield info
+                yield from self._get_inventory_stream(revs)
             elif knit_kind == "signatures":
                 # Nothing to do here; this will be taken care of when
                 # _fetch_revision_texts happens.
                 pass
             elif knit_kind == "revisions":
-                for record in self._fetch_revision_texts(revs):
-                    yield record
+                yield from self._fetch_revision_texts(revs)
             else:
                 raise AssertionError("Unknown knit kind %r" % knit_kind)
 
@@ -2054,8 +2048,8 @@ class StreamSource(object):
             # copying a revision without copying its required texts: a
             # violation of the requirements for repository integrity.
             raise AssertionError(
-                'cannot copy revisions to fill in missing deltas %s' % (
-                    keys['revisions'],))
+                'cannot copy revisions to fill in missing deltas {}'.format(
+                    keys['revisions']))
         for substream_kind, keys in keys.items():
             vf = getattr(self.from_repository, substream_kind)
             if vf is None and keys:
@@ -2073,8 +2067,7 @@ class StreamSource(object):
                 # original stream; there's no reason to assume that records
                 # direct from the source will be suitable for the sink.  (Think
                 # e.g. 2a -> 1.9-rich-root).
-                for info in self._get_inventory_stream(revs, missing=True):
-                    yield info
+                yield from self._get_inventory_stream(revs, missing=True)
                 continue
 
             # Ask for full texts always so that we don't need more round trips
@@ -2210,7 +2203,7 @@ class StreamSource(object):
                 key, parent_keys, None, delta_serialized, chunks_are_lines=True)
 
 
-class _VersionedFileChecker(object):
+class _VersionedFileChecker:
 
     def __init__(self, repository, text_key_references=None, ancestors=None):
         self.repository = repository

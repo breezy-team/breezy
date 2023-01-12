@@ -22,7 +22,7 @@ import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
 
-class ChunkWriter(object):
+class ChunkWriter:
     """ChunkWriter allows writing of compressed data with a fixed size.
 
     If less data is supplied than fills a chunk, the chunk is padded with

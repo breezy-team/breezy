@@ -56,7 +56,7 @@ class BranchLoopError(errors.BzrError):
     _fmt = "Encountered a branch cycle"""
 
 
-class BranchOpenPolicy(object):
+class BranchOpenPolicy:
     """Policy on how to open branches.
 
     In particular, a policy determines which branches are okay to open by
@@ -134,7 +134,7 @@ class AcceptAnythingPolicy(_BlacklistPolicy):
     """Accept anything, to make testing easier."""
 
     def __init__(self):
-        super(AcceptAnythingPolicy, self).__init__(True, set())
+        super().__init__(True, set())
 
 
 class WhitelistPolicy(BranchOpenPolicy):
@@ -144,7 +144,7 @@ class WhitelistPolicy(BranchOpenPolicy):
                  check=False):
         if allowed_urls is None:
             allowed_urls = []
-        self.allowed_urls = set(url.rstrip('/') for url in allowed_urls)
+        self.allowed_urls = {url.rstrip('/') for url in allowed_urls}
         self.check = check
 
     def should_follow_references(self):
@@ -181,7 +181,7 @@ class SingleSchemePolicy(BranchOpenPolicy):
             raise BadUrl(url)
 
 
-class BranchOpener(object):
+class BranchOpener:
     """Branch opener which uses a URL policy.
 
     All locations that are opened (stacked-on branches, references) are

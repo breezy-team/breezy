@@ -63,7 +63,7 @@ def visitTests(suite, visitor):
                 visitor.visitSuite(test)
                 visitTests(test, visitor)
             else:
-                print("unvisitable non-unittest.TestCase element %r (%r)" % (
+                print("unvisitable non-unittest.TestCase element {!r} ({!r})".format(
                     test, test.__class__))
 
 
@@ -71,7 +71,7 @@ class FailedCollectionCase(unittest.TestCase):
     """Pseudo-test to run and report failure if given case was uncollected"""
 
     def __init__(self, case):
-        super(FailedCollectionCase, self).__init__("fail_uncollected")
+        super().__init__("fail_uncollected")
         # GZ 2011-09-16: Maybe catch errors from id() method as cases may be
         #                in a bit of a funny state by now.
         self._problem_case_id = case.id()
@@ -186,7 +186,7 @@ class FilteredByModuleTestLoader(TestLoader):
             return self.suiteClass()
 
 
-class TestVisitor(object):
+class TestVisitor:
     """A visitor for Tests"""
 
     def visitSuite(self, aTestSuite):

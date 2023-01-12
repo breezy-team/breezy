@@ -26,7 +26,7 @@ from breezy.tests import per_repository
 class TestBreakLock(per_repository.TestCaseWithRepository):
 
     def setUp(self):
-        super(TestBreakLock, self).setUp()
+        super().setUp()
         self.unused_repo = self.make_repository('.')
         self.repo = self.unused_repo.controldir.open_repository()
         ui.ui_factory = ui.CannedInputUIFactory([True])

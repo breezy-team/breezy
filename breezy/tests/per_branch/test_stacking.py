@@ -559,7 +559,7 @@ class TestStackingConnections(
         transport_util.TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
-        super(TestStackingConnections, self).setUp()
+        super().setUp()
         try:
             base_tree = self.make_branch_and_tree('base',
                                                   format=self.bzrdir_format)

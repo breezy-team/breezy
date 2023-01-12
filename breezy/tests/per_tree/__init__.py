@@ -267,7 +267,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
                  '1top-dir/',
-                 u'2utf\u1234file',
+                 '2utf\u1234file',
                  '1top-dir/0file-in-1topdir',
                  '1top-dir/1dir-in-1topdir/'
                  ]

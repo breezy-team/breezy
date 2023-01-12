@@ -18,7 +18,7 @@ import os
 import sys
 
 
-class FG(object):
+class FG:
     """Unix terminal foreground color codes (16-color)."""
     RED = '\033[31m'
     GREEN = '\033[32m'
@@ -40,7 +40,7 @@ class FG(object):
     NONE = '\033[0m'
 
 
-class BG(object):
+class BG:
     """Unix terminal background color codes (16-color)."""
     BLACK = '\033[40m'
     RED = '\033[41m'

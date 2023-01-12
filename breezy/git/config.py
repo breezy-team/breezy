@@ -25,12 +25,12 @@ class GitBranchConfig(config.BranchConfig):
     """BranchConfig that uses locations.conf in place of branch.conf"""
 
     def __init__(self, branch):
-        super(GitBranchConfig, self).__init__(branch)
+        super().__init__(branch)
         # do not provide a BranchDataConfig
         self.option_sources = self.option_sources[0], self.option_sources[2]
 
     def __repr__(self):
-        return "<%s of %r>" % (self.__class__.__name__, self.branch)
+        return "<{} of {!r}>".format(self.__class__.__name__, self.branch)
 
     def set_user_option(self, name, value, store=config.STORE_BRANCH,
                         warn_masked=False):
@@ -62,7 +62,7 @@ class GitConfigSectionDefault(config.Section):
                 name = self._config.get((b'user', ), b'name')
             except KeyError:
                 return email.decode()
-            return '%s <%s>' % (name.decode(), email.decode())
+            return '{} <{}>'.format(name.decode(), email.decode())
         if name == 'gpg_signing_key':
             try:
                 key = self._config.get((b'user', ), b'signingkey')
@@ -115,7 +115,7 @@ class GitBranchStack(config._CompatibleStack):
             section_getters.append(cstore.get_sections)
         gstore = config.GlobalStore()
         section_getters.append(gstore.get_sections)
-        super(GitBranchStack, self).__init__(
+        super().__init__(
             section_getters,
             # All modifications go to the corresponding section in
             # locations.conf

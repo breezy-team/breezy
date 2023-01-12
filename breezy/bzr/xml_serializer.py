@@ -107,7 +107,7 @@ def escape_invalid_chars(message):
     # represented in well-formed XML; escape characters that
     # aren't listed in the XML specification
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
-    return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+    return re.subn('[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
                    lambda match: match.group(0).encode(
                        'unicode_escape').decode('ascii'),
                    message)
@@ -135,7 +135,7 @@ def get_utf8_or_ascii(a_str):
 
 
 _utf8_re = lazy_regex.lazy_compile(b'[&<>\'\"]|[\x80-\xff]+')
-_unicode_re = lazy_regex.lazy_compile(u'[&<>\'\"\u0080-\uffff]')
+_unicode_re = lazy_regex.lazy_compile('[&<>\'\"\u0080-\uffff]')
 
 
 _xml_escape_map = {

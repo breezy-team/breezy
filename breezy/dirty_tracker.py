@@ -64,7 +64,7 @@ class _Process(ProcessEvent):  # type: ignore
             self.created.remove(path)
 
 
-class DirtyTracker(object):
+class DirtyTracker:
     """Track the changes to (part of) a working tree."""
 
     _process: _Process
@@ -133,4 +133,4 @@ class DirtyTracker(object):
 
     def relpaths(self) -> Set[str]:
         """Return the paths relative to the tree root that changed."""
-        return set(self._tree.relpath(p) for p in self.paths())
+        return {self._tree.relpath(p) for p in self.paths()}

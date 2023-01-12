@@ -63,7 +63,7 @@ class CannotSetRevisionId(errors.BzrError):
     _fmt = "Repository format does not support setting revision ids."
 
 
-class FetchResult(object):
+class FetchResult:
     """Result of a fetch operation.
 
     Attributes:
@@ -76,7 +76,7 @@ class FetchResult(object):
         self.revidmap = revidmap
 
 
-class CommitBuilder(object):
+class CommitBuilder:
     """Provides an interface to build up a commit.
 
     This allows describing a tree to be committed without needing to
@@ -148,8 +148,8 @@ class CommitBuilder(object):
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
         # TODO(jelmer): Make this repository-format specific
-        if u'\r' in text:
-            raise ValueError('Invalid value for %s: %r' % (context, text))
+        if '\r' in text:
+            raise ValueError('Invalid value for {}: {!r}'.format(context, text))
 
     def _validate_revprops(self, revprops):
         for key, value in revprops.items():
@@ -160,7 +160,7 @@ class CommitBuilder(object):
                                  ' (unicode) string: %r' % (key, value))
             # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
-                                        'revision property (%s)' % (key,))
+                                        'revision property ({})'.format(key))
 
     def commit(self, message):
         """Make the actual commit.
@@ -246,11 +246,11 @@ class RepositoryWriteLockResult(LogicalLockResult):
         self.repository_token = repository_token
 
     def __repr__(self):
-        return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
+        return "RepositoryWriteLockResult({}, {})".format(self.repository_token,
                                                       self.unlock)
 
 
-class WriteGroup(object):
+class WriteGroup:
     """Context manager that manages a write group.
 
     Raising an exception will result in the write group being aborted.
@@ -395,7 +395,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # In the future we will have a single api for all stores for
         # getting file texts, inventories and revisions, then
         # this construct will accept instances of those things.
-        super(Repository, self).__init__()
+        super().__init__()
         self._format = _format
         # the following are part of the public API for Repository:
         self.controldir = controldir
@@ -415,12 +415,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def __repr__(self):
         if self._fallback_repositories:
-            return '%s(%r, fallback_repositories=%r)' % (
+            return '{}({!r}, fallback_repositories={!r})'.format(
                 self.__class__.__name__,
                 self.base,
                 self._fallback_repositories)
         else:
-            return '%s(%r)' % (self.__class__.__name__,
+            return '{}({!r})'.format(self.__class__.__name__,
                                self.base)
 
     def _has_same_fallbacks(self, other_repo):
@@ -587,11 +587,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            for branch in self.controldir.list_branches():
-                yield branch
+            yield from self.controldir.list_branches()
             return
 
-        class Evaluator(object):
+        class Evaluator:
 
             def __init__(self):
                 self.first_call = True
@@ -613,11 +612,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         for branches, repository in controldir.ControlDir.find_controldirs(
                 self.user_transport, evaluate=Evaluator()):
             if branches is not None:
-                for branch in branches:
-                    yield branch
+                yield from branches
             if not using and repository is not None:
-                for branch in repository.find_branches():
-                    yield branch
+                yield from repository.find_branches()
 
     def search_missing_revision_ids(self, other,
                                     find_ghosts=True, revision_ids=None, if_present_ids=None,
@@ -1638,7 +1635,7 @@ class InterRepository(InterObject[Repository]):
                                                   "different serializers")
 
 
-class CopyConverter(object):
+class CopyConverter:
     """A repository conversion tool which just performs a copy of the content.
 
     This is slow but quite reliable.
@@ -1731,7 +1728,7 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
         return
 
 
-class _LazyListJoin(object):
+class _LazyListJoin:
     """An iterable yielding the contents of many lists as one list.
 
     Each iterator made from this will reflect the current contents of the lists
@@ -1756,5 +1753,5 @@ class _LazyListJoin(object):
         return iter(full_list)
 
     def __repr__(self):
-        return "%s.%s(%s)" % (self.__module__, self.__class__.__name__,
+        return "{}.{}({})".format(self.__module__, self.__class__.__name__,
                               self.list_parts)

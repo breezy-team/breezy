@@ -70,7 +70,7 @@ def external_udiff_lines(old, new, use_stringio=False):
     return lines
 
 
-class StubO(object):
+class StubO:
     """Simple file-like object that allows writes with any type and records."""
 
     def __init__(self):
@@ -82,7 +82,7 @@ class StubO(object):
     def check_types(self, testcase, expected_type):
         testcase.assertFalse(
             any(not isinstance(o, expected_type) for o in self.write_record),
-            "Not all writes of type %s: %r" % (
+            "Not all writes of type {}: {!r}".format(
                 expected_type.__name__, self.write_record))
 
 
@@ -105,8 +105,8 @@ class TestDiffOptionsScenarios(tests.TestCase):
     def test_unified_not_added(self):
         # Verify that for all valid style options, '-u' is not
         # appended to option list.
-        ret_opts = diff.default_style_unified(diff_opts=["%s" % (self.style,)])
-        self.assertEqual(["%s" % (self.style,)], ret_opts)
+        ret_opts = diff.default_style_unified(diff_opts=["{}".format(self.style)])
+        self.assertEqual(["{}".format(self.style)], ret_opts)
 
 
 class TestDiff(tests.TestCase):
@@ -193,8 +193,8 @@ class TestDiff(tests.TestCase):
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
         output = BytesIO()
-        diff.internal_diff(u'old_\xb5', [b'old_text\n'],
-                           u'new_\xe5', [b'new_text\n'], output)
+        diff.internal_diff('old_\xb5', [b'old_text\n'],
+                           'new_\xe5', [b'new_text\n'], output)
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
         self.assertEqual([b'--- old_\xc2\xb5\n',
@@ -207,8 +207,8 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_utf8(self):
         output = BytesIO()
-        diff.internal_diff(u'old_\xb5', [b'old_text\n'],
-                           u'new_\xe5', [b'new_text\n'], output,
+        diff.internal_diff('old_\xb5', [b'old_text\n'],
+                           'new_\xe5', [b'new_text\n'], output,
                            path_encoding='utf8')
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
@@ -222,8 +222,8 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_iso_8859_1(self):
         output = BytesIO()
-        diff.internal_diff(u'old_\xb5', [b'old_text\n'],
-                           u'new_\xe5', [b'new_text\n'], output,
+        diff.internal_diff('old_\xb5', [b'old_text\n'],
+                           'new_\xe5', [b'new_text\n'], output,
                            path_encoding='iso-8859-1')
         lines = output.getvalue().splitlines(True)
         self.check_patch(lines)
@@ -237,20 +237,20 @@ class TestDiff(tests.TestCase):
 
     def test_internal_diff_no_content(self):
         output = BytesIO()
-        diff.internal_diff(u'old', [], u'new', [], output)
+        diff.internal_diff('old', [], 'new', [], output)
         self.assertEqual(b'', output.getvalue())
 
     def test_internal_diff_no_changes(self):
         output = BytesIO()
-        diff.internal_diff(u'old', [b'text\n', b'contents\n'],
-                           u'new', [b'text\n', b'contents\n'],
+        diff.internal_diff('old', [b'text\n', b'contents\n'],
+                           'new', [b'text\n', b'contents\n'],
                            output)
         self.assertEqual(b'', output.getvalue())
 
     def test_internal_diff_returns_bytes(self):
         output = StubO()
-        diff.internal_diff(u'old_\xb5', [b'old_text\n'],
-                           u'new_\xe5', [b'new_text\n'], output)
+        diff.internal_diff('old_\xb5', [b'old_text\n'],
+                           'new_\xe5', [b'new_text\n'], output)
         output.check_types(self, bytes)
 
     def test_internal_diff_default_context(self):
@@ -348,7 +348,7 @@ def get_diff_as_string(tree1, tree2, specific_files=None, working_tree=None):
 class TestDiffDates(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestDiffDates, self).setUp()
+        super().setUp()
         self.wt = self.make_branch_and_tree('.')
         self.b = self.wt.branch
         self.build_tree_contents([
@@ -599,7 +599,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree')
-        alpha, omega = u'\u03b1', u'\u03c9'
+        alpha, omega = '\u03b1', '\u03c9'
         alpha_utf8, omega_utf8 = alpha.encode('utf8'), omega.encode('utf8')
         self.build_tree_contents(
             [('tree/' + alpha, b'\0'),
@@ -622,7 +622,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         """Test when the filename are unicode."""
         self.requireFeature(features.UnicodeFilenameFeature)
 
-        alpha, omega = u'\u03b1', u'\u03c9'
+        alpha, omega = '\u03b1', '\u03c9'
         autf8, outf8 = alpha.encode('utf8'), omega.encode('utf8')
 
         tree = self.make_branch_and_tree('tree')
@@ -654,10 +654,10 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         """
         self.requireFeature(features.UnicodeFilenameFeature)
         # The word 'test' in Russian
-        _russian_test = u'\u0422\u0435\u0441\u0442'
-        directory = _russian_test + u'/'
-        test_txt = _russian_test + u'.txt'
-        u1234 = u'\u1234.txt'
+        _russian_test = '\u0422\u0435\u0441\u0442'
+        directory = _russian_test + '/'
+        test_txt = _russian_test + '.txt'
+        u1234 = '\u1234.txt'
 
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([
@@ -704,7 +704,7 @@ class DiffWasIs(diff.DiffPath):
 class TestDiffTree(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestDiffTree, self).setUp()
+        super().setUp()
         self.old_tree = self.make_branch_and_tree('old-tree')
         self.old_tree.lock_write()
         self.addCleanup(self.old_tree.unlock)
@@ -1000,7 +1000,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             filename = scenario['info']['filename']
 
             self.overrideAttr(diffobj, '_fenc', lambda: encoding)
-            relpath = dirname + u'/' + filename
+            relpath = dirname + '/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(fullpath,
                              fullpath.encode(encoding).decode(encoding))
@@ -1020,7 +1020,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
                 encoding = 'iso-8859-1'
 
             self.overrideAttr(diffobj, '_fenc', lambda: encoding)
-            relpath = dirname + u'/' + filename
+            relpath = dirname + '/' + filename
             fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(fullpath,
                              fullpath.encode(encoding).decode(encoding))

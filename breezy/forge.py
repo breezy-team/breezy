@@ -123,7 +123,7 @@ class SourceNotDerivedFromTarget(errors.BzrError):
             target_branch=target_branch)
 
 
-class MergeProposal(object):
+class MergeProposal:
     """A merge proposal.
 
     :ivar url: URL for the merge proposal
@@ -232,7 +232,7 @@ class MergeProposal(object):
         raise NotImplementedError(self.reopen)
 
 
-class MergeProposalBuilder(object):
+class MergeProposalBuilder:
     """Merge proposal creator.
 
     :param source_branch: Branch to propose for merging
@@ -279,7 +279,7 @@ class MergeProposalBuilder(object):
         raise NotImplementedError(self.create_proposal)
 
 
-class Forge(object):
+class Forge:
     """A hosting site manager.
     """
 
@@ -292,7 +292,7 @@ class Forge(object):
     @property
     def name(self):
         """Name of this instance."""
-        return "%s at %s" % (type(self).__name__, self.base_url)
+        return "{} at {}".format(type(self).__name__, self.base_url)
 
     # Does this forge support suggesting a commit message in the
     # merge proposal?
@@ -498,8 +498,7 @@ def iter_forge_instances(forge: Optional[Type[Forge]] = None):
     else:
         forge_clses = [forge]
     for forge_cls in forge_clses:
-        for instance in forge_cls.iter_instances():
-            yield instance
+        yield from forge_cls.iter_instances()
 
 
 def get_proposal_by_url(url):

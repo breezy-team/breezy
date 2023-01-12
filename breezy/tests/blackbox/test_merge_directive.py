@@ -251,7 +251,7 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_encoding_exact(self):
         tree1, tree2 = self.prepare_merge_directive()
-        tree1.commit(u'messag\xe9')
+        tree1.commit('messag\xe9')
         self.run_bzr('merge-directive ../tree2')  # no exception raised
 
     def test_merge_directive_directory(self):

@@ -31,7 +31,7 @@ from .. import (
 class AutoPushHookTests(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(AutoPushHookTests, self).setUp()
+        super().setUp()
         upload.install_auto_upload_hook()
 
     def make_start_branch(self):
@@ -44,7 +44,7 @@ class AutoPushHookTests(tests.TestCaseWithTransport):
 class AutoPushWithLocation(AutoPushHookTests):
 
     def setUp(self):
-        super(AutoPushWithLocation, self).setUp()
+        super().setUp()
         self.make_start_branch()
         conf = self.wt.branch.get_config_stack()
         conf.set('upload_auto', True)
@@ -75,7 +75,7 @@ class AutoPushWithLocation(AutoPushHookTests):
 class AutoPushWithoutLocation(AutoPushHookTests):
 
     def setUp(self):
-        super(AutoPushWithoutLocation, self).setUp()
+        super().setUp()
         self.make_start_branch()
         self.wt.branch.get_config_stack().set('upload_auto', True)
 

@@ -16,7 +16,7 @@
 from email.utils import parseaddr
 
 
-class UserMapper(object):
+class UserMapper:
 
     def __init__(self, lines):
         """Create a user-mapper from a list of lines.

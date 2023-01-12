@@ -24,7 +24,7 @@ import re
 _BUG_MATCH = re.compile(r'lp:(\d+)')
 
 
-class CommitTemplate(object):
+class CommitTemplate:
 
     def __init__(self, commit, message, filespec):
         """Create a commit template for commit with initial message message.

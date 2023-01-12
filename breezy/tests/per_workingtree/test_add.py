@@ -88,12 +88,12 @@ class TestAdd(TestCaseWithWorkingTree):
     def test_add_unicode(self):
         tree = self.make_branch_and_tree('.')
         try:
-            self.build_tree([u'f\xf6'])
+            self.build_tree(['f\xf6'])
         except UnicodeError:
             raise tests.TestSkipped('Filesystem does not support filename.')
-        tree.add([u'f\xf6'])
+        tree.add(['f\xf6'])
 
-        self.assertTreeLayout(['', u'f\xf6'], tree)
+        self.assertTreeLayout(['', 'f\xf6'], tree)
 
     def test_add_subdir_with_ids(self):
         tree = self.make_branch_and_tree('.')

@@ -35,7 +35,7 @@ class TestSetRootId(TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             self.skipTest('format does not support setting file ids')
         # setting the root id allows it to be read via get_root_id.
-        root_id = u'\xe5n-id'.encode('utf8')
+        root_id = '\xe5n-id'.encode()
         with tree.lock_write():
             old_id = tree.path2id('')
             tree.set_root_id(root_id)

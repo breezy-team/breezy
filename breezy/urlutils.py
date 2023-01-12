@@ -263,7 +263,7 @@ def _win32_local_path_from_url(url):
             or win32_url[5] != '/'):
         raise InvalidURL(url, 'Win32 file urls start with'
                          ' file:///x:/, where x is a valid drive letter')
-    return win32_url[3].upper() + u':' + unescape(win32_url[5:])
+    return win32_url[3].upper() + ':' + unescape(win32_url[5:])
 
 
 def _win32_local_path_to_url(path):
@@ -632,7 +632,7 @@ def unescape(url):
             url.encode("ascii")
         except UnicodeError as e:
             raise InvalidURL(
-                url, 'URL was not a plain ASCII url: %s' % (e,))
+                url, 'URL was not a plain ASCII url: {}'.format(e))
     return urlparse.unquote(url)
 
 
@@ -641,8 +641,8 @@ _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
 _no_decode_hex = (['%02x' % o for o in _no_decode_ords]
                   + ['%02X' % o for o in _no_decode_ords])
-_hex_display_map = dict(([('%02x' % o, bytes([o])) for o in range(256)]
-                         + [('%02X' % o, bytes([o])) for o in range(256)]))
+_hex_display_map = dict([('%02x' % o, bytes([o])) for o in range(256)]
+                         + [('%02X' % o, bytes([o])) for o in range(256)])
 # These entries get mapped to themselves
 _hex_display_map.update((hex, b'%' + hex.encode('ascii'))
                         for hex in _no_decode_hex)
@@ -740,7 +740,7 @@ def unescape_for_display(url, encoding):
     res = url.split('/')
     for i in range(1, len(res)):
         res[i] = _unescape_segment_for_display(res[i], encoding)
-    return u'/'.join(res)
+    return '/'.join(res)
 
 
 def derive_to_location(from_location):
@@ -807,7 +807,7 @@ def determine_relative_path(from_path, to_path):
     return osutils.pathjoin(*segments)
 
 
-class URL(object):
+class URL:
     """Parsed URL."""
 
     def __init__(self, scheme, quoted_user, quoted_password, quoted_host,
@@ -839,7 +839,7 @@ class URL(object):
                 self.path == other.path)
 
     def __repr__(self):
-        return "<%s(%r, %r, %r, %r, %r, %r)>" % (
+        return "<{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})>".format(
             self.__class__.__name__,
             self.scheme, self.quoted_user, self.quoted_password,
             self.quoted_host, self.port, self.quoted_path)
@@ -897,7 +897,7 @@ class URL(object):
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '%s@%s' % (self.quoted_user, netloc)
+            netloc = '{}@{}'.format(self.quoted_user, netloc)
         if self.port is not None:
             netloc = '%s:%d' % (netloc, self.port)
         return urlparse.urlunparse(

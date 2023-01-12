@@ -24,7 +24,7 @@ from . import (
     )
 
 
-class BranchBuilder(object):
+class BranchBuilder:
     r"""A BranchBuilder aids creating Branches with particular shapes.
 
     The expected way to use BranchBuilder is to construct a
@@ -118,7 +118,7 @@ class BranchBuilder(object):
     def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
         if message is None and message_callback is None:
-            message = u'commit %d' % (self._branch.revno() + 1,)
+            message = 'commit %d' % (self._branch.revno() + 1,)
         return tree.commit(message, message_callback=message_callback,
                            reporter=reporter, **kwargs)
 
@@ -245,7 +245,7 @@ class BranchBuilder(object):
                     self._flush_pending(tree, pending)
                     pending = _PendingActions()
                 else:
-                    raise ValueError('Unknown build action: "%s"' % (action,))
+                    raise ValueError('Unknown build action: "{}"'.format(action))
             self._flush_pending(tree, pending)
             return self._do_commit(
                 tree, message=message, rev_id=revision_id,
@@ -287,7 +287,7 @@ class BranchBuilder(object):
         return self._branch
 
 
-class _PendingActions(object):
+class _PendingActions:
     """Pending actions for build_snapshot to take.
 
     This is just a simple class to hold a bunch of the intermediate state of

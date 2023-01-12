@@ -27,7 +27,7 @@ from breezy.tests import (
 class DirtyTrackerTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(DirtyTrackerTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('tree')
         try:
             from breezy.dirty_tracker import DirtyTracker
@@ -45,7 +45,7 @@ class DirtyTrackerTests(TestCaseWithTransport):
         with self.tracker:
             self.build_tree_contents([('tree/foo', 'bar')])
             self.assertTrue(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set(['foo']))
+            self.assertEqual(self.tracker.relpaths(), {'foo'})
 
     def test_many_added(self):
         with self.tracker:
@@ -53,19 +53,19 @@ class DirtyTrackerTests(TestCaseWithTransport):
                 [('tree/f%d' % d, 'content') for d in range(100)])
             self.assertTrue(self.tracker.is_dirty())
             self.assertEqual(
-                self.tracker.relpaths(), set(['f%d' % d for d in range(100)]))
+                self.tracker.relpaths(), {'f%d' % d for d in range(100)})
 
     def test_regular_file_in_subdir_added(self):
         with self.tracker:
             self.build_tree_contents([('tree/foo/', ), ('tree/foo/blah', 'bar')])
             self.assertTrue(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set(['foo', 'foo/blah']))
+            self.assertEqual(self.tracker.relpaths(), {'foo', 'foo/blah'})
 
     def test_directory_added(self):
         with self.tracker:
             self.build_tree_contents([('tree/foo/', )])
             self.assertTrue(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set(['foo']))
+            self.assertEqual(self.tracker.relpaths(), {'foo'})
 
     def test_file_removed(self):
         with self.tracker:
@@ -74,13 +74,13 @@ class DirtyTrackerTests(TestCaseWithTransport):
             self.tracker.mark_clean()
             self.build_tree_contents([('tree/foo', 'bar')])
             self.assertTrue(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set(['foo']))
+            self.assertEqual(self.tracker.relpaths(), {'foo'})
 
     def test_control_file(self):
         with self.tracker:
             self.tree.commit('Some change')
             self.assertFalse(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set([]))
+            self.assertEqual(self.tracker.relpaths(), set())
 
     def test_renamed(self):
         with self.tracker:
@@ -89,7 +89,7 @@ class DirtyTrackerTests(TestCaseWithTransport):
             self.assertFalse(self.tracker.is_dirty())
             os.rename('tree/foo', 'tree/bar')
             self.assertTrue(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set(['foo', 'bar']))
+            self.assertEqual(self.tracker.relpaths(), {'foo', 'bar'})
 
     def test_deleted(self):
         with self.tracker:
@@ -98,7 +98,7 @@ class DirtyTrackerTests(TestCaseWithTransport):
             self.assertFalse(self.tracker.is_dirty())
             os.unlink('tree/foo')
             self.assertTrue(self.tracker.is_dirty(), self.tracker._paths)
-            self.assertEqual(self.tracker.relpaths(), set(['foo']))
+            self.assertEqual(self.tracker.relpaths(), {'foo'})
 
     def test_added_then_deleted(self):
         with self.tracker:
@@ -107,7 +107,7 @@ class DirtyTrackerTests(TestCaseWithTransport):
             self.build_tree_contents([('tree/foo', 'bar')])
             os.unlink('tree/foo')
             self.assertFalse(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set([]))
+            self.assertEqual(self.tracker.relpaths(), set())
 
     def test_file_modified(self):
         self.build_tree_contents([('tree/foo', 'bla')])
@@ -115,4 +115,4 @@ class DirtyTrackerTests(TestCaseWithTransport):
             self.assertFalse(self.tracker.is_dirty())
             self.build_tree_contents([('tree/foo', 'bar')])
             self.assertTrue(self.tracker.is_dirty())
-            self.assertEqual(self.tracker.relpaths(), set(['foo']))
+            self.assertEqual(self.tracker.relpaths(), {'foo'})

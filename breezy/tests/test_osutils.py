@@ -101,18 +101,18 @@ load_tests = load_tests_apply_scenarios
 class TestContainsWhitespace(tests.TestCase):
 
     def test_contains_whitespace(self):
-        self.assertTrue(osutils.contains_whitespace(u' '))
-        self.assertTrue(osutils.contains_whitespace(u'hello there'))
-        self.assertTrue(osutils.contains_whitespace(u'hellothere\n'))
-        self.assertTrue(osutils.contains_whitespace(u'hello\nthere'))
-        self.assertTrue(osutils.contains_whitespace(u'hello\rthere'))
-        self.assertTrue(osutils.contains_whitespace(u'hello\tthere'))
+        self.assertTrue(osutils.contains_whitespace(' '))
+        self.assertTrue(osutils.contains_whitespace('hello there'))
+        self.assertTrue(osutils.contains_whitespace('hellothere\n'))
+        self.assertTrue(osutils.contains_whitespace('hello\nthere'))
+        self.assertTrue(osutils.contains_whitespace('hello\rthere'))
+        self.assertTrue(osutils.contains_whitespace('hello\tthere'))
 
         # \xa0 is "Non-breaking-space" which on some python locales thinks it
         # is whitespace, but we do not.
-        self.assertFalse(osutils.contains_whitespace(u''))
-        self.assertFalse(osutils.contains_whitespace(u'hellothere'))
-        self.assertFalse(osutils.contains_whitespace(u'hello\xa0there'))
+        self.assertFalse(osutils.contains_whitespace(''))
+        self.assertFalse(osutils.contains_whitespace('hellothere'))
+        self.assertFalse(osutils.contains_whitespace('hello\xa0there'))
 
 
 class TestRename(tests.TestCaseInTempDir):
@@ -442,11 +442,11 @@ class TestFdatasync(tests.TestCaseInTempDir):
 
     @staticmethod
     def raise_eopnotsupp(*args, **kwargs):
-        raise IOError(errno.EOPNOTSUPP, os.strerror(errno.EOPNOTSUPP))
+        raise OSError(errno.EOPNOTSUPP, os.strerror(errno.EOPNOTSUPP))
 
     @staticmethod
     def raise_enotsup(*args, **kwargs):
-        raise IOError(errno.ENOTSUP, os.strerror(errno.ENOTSUP))
+        raise OSError(errno.ENOTSUP, os.strerror(errno.ENOTSUP))
 
     def test_fdatasync_handles_system_function(self):
         self.overrideAttr(os, "fdatasync")
@@ -590,7 +590,7 @@ class TestPumpFile(tests.TestCase):
     """Test pumpfile method."""
 
     def setUp(self):
-        super(TestPumpFile, self).setUp()
+        super().setUp()
         # create a test datablock
         self.block_size = 512
         pattern = b'0123456789ABCDEF'
@@ -778,16 +778,16 @@ class TestRelpath(tests.TestCase):
 class TestSafeUnicode(tests.TestCase):
 
     def test_from_ascii_string(self):
-        self.assertEqual(u'foobar', osutils.safe_unicode(b'foobar'))
+        self.assertEqual('foobar', osutils.safe_unicode(b'foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual(u'bargam', osutils.safe_unicode(u'bargam'))
+        self.assertEqual('bargam', osutils.safe_unicode('bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual(u'bargam\xae', osutils.safe_unicode(u'bargam\xae'))
+        self.assertEqual('bargam\xae', osutils.safe_unicode('bargam\xae'))
 
     def test_from_utf8_string(self):
-        self.assertEqual(u'foo\xae', osutils.safe_unicode(b'foo\xc2\xae'))
+        self.assertEqual('foo\xae', osutils.safe_unicode(b'foo\xc2\xae'))
 
     def test_bad_utf8_string(self):
         self.assertRaises(errors.BzrBadParameterNotUnicode,
@@ -802,10 +802,10 @@ class TestSafeUtf8(tests.TestCase):
         self.assertEqual(b'foobar', osutils.safe_utf8(f))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual(b'bargam', osutils.safe_utf8(u'bargam'))
+        self.assertEqual(b'bargam', osutils.safe_utf8('bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual(b'bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
+        self.assertEqual(b'bargam\xc2\xae', osutils.safe_utf8('bargam\xae'))
 
     def test_from_utf8_string(self):
         self.assertEqual(b'foo\xc2\xae', osutils.safe_utf8(b'foo\xc2\xae'))
@@ -818,7 +818,7 @@ class TestSafeUtf8(tests.TestCase):
 class TestSendAll(tests.TestCase):
 
     def test_send_with_disconnected_socket(self):
-        class DisconnectedSocket(object):
+        class DisconnectedSocket:
             def __init__(self, err):
                 self.err = err
 
@@ -841,7 +841,7 @@ class TestSendAll(tests.TestCase):
         # See https://bugs.launchpad.net/bzr/+bug/1047309
         # It seems that paramiko can get into a state where it doesn't error,
         # but it returns 0 bytes sent for requests over and over again.
-        class NoSendingSocket(object):
+        class NoSendingSocket:
             def __init__(self):
                 self.call_count = 0
 
@@ -928,13 +928,13 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
     def test_getcwd(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        os.mkdir(u'mu-\xb5')
-        os.chdir(u'mu-\xb5')
+        os.mkdir('mu-\xb5')
+        os.chdir('mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
         #       it will change the normalization of B\xe5gfors
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
-        self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
+        self.assertEndsWith(osutils._win32_getcwd(), 'mu-\xb5')
 
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
@@ -967,7 +967,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError) as e:
+        except OSError as e:
             self.assertEqual(errno.ENOENT, e.errno)
         self.assertFileEqual(b'foo\n', 'a')
 
@@ -975,7 +975,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         os.mkdir('a')
         try:
             osutils._win32_rename('b', 'a')
-        except (IOError, OSError) as e:
+        except OSError as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_rename_current_dir(self):
@@ -987,7 +987,7 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
-        except (IOError, OSError) as e:
+        except OSError as e:
             self.assertEqual(errno.ENOENT, e.errno)
 
     def test_splitpath(self):
@@ -1020,16 +1020,16 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
 
     def test_getcwd(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        os.mkdir(u'B\xe5gfors')
-        os.chdir(u'B\xe5gfors')
-        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+        os.mkdir('B\xe5gfors')
+        os.chdir('B\xe5gfors')
+        self.assertEndsWith(osutils._mac_getcwd(), 'B\xe5gfors')
 
     def test_getcwd_nonnorm(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         # Test that _mac_getcwd() will normalize this path
-        os.mkdir(u'Ba\u030agfors')
-        os.chdir(u'Ba\u030agfors')
-        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+        os.mkdir('Ba\u030agfors')
+        os.chdir('Ba\u030agfors')
+        self.assertEndsWith(osutils._mac_getcwd(), 'B\xe5gfors')
 
 
 class TestChunksToLines(tests.TestCase):
@@ -1052,10 +1052,10 @@ class TestChunksToLines(tests.TestCase):
 class TestSplitLines(tests.TestCase):
 
     def test_split_unicode(self):
-        self.assertEqual([u'foo\n', u'bar\xae'],
-                         osutils.split_lines(u'foo\nbar\xae'))
-        self.assertEqual([u'foo\n', u'bar\xae\n'],
-                         osutils.split_lines(u'foo\nbar\xae\n'))
+        self.assertEqual(['foo\n', 'bar\xae'],
+                         osutils.split_lines('foo\nbar\xae'))
+        self.assertEqual(['foo\n', 'bar\xae\n'],
+                         osutils.split_lines('foo\nbar\xae\n'))
 
     def test_split_with_carriage_returns(self):
         self.assertEqual([b'foo\rbar\n'],
@@ -1262,9 +1262,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
         self.requireFeature(features.UnicodeFilenameFeature)
-        name0 = u'0file-\xb6'
-        name1 = u'1dir-\u062c\u0648'
-        name2 = u'2file-\u0633'
+        name0 = '0file-\xb6'
+        name1 = '1dir-\u062c\u0648'
+        name2 = '2file-\u0633'
         tree = [
             name0,
             name1 + '/',
@@ -1274,7 +1274,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_dirblocks = [
-            ((u'', u'.'),
+            (('', '.'),
              [(name0, name0, 'file', './' + name0),
               (name1, name1, 'directory', './' + name1),
               (name2, name2, 'file', './' + name2),
@@ -1295,7 +1295,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         result = list(osutils.walkdirs('.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
-        result = list(osutils.walkdirs(u'./' + name1, name1))
+        result = list(osutils.walkdirs('./' + name1, name1))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks[1:], result)
 
@@ -1305,9 +1305,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         The abspath portion might be in unicode or utf-8
         """
         self.requireFeature(features.UnicodeFilenameFeature)
-        name0 = u'0file-\xb6'
-        name1 = u'1dir-\u062c\u0648'
-        name2 = u'2file-\u0633'
+        name0 = '0file-\xb6'
+        name1 = '1dir-\u062c\u0648'
+        name2 = '2file-\u0633'
         tree = [
             name0,
             name1 + '/',
@@ -1370,9 +1370,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # tests.
         self._save_platform_info()
         osutils._selected_dir_reader = osutils.UnicodeDirReader()
-        name0u = u'0file-\xb6'
-        name1u = u'1dir-\u062c\u0648'
-        name2u = u'2file-\u0633'
+        name0u = '0file-\xb6'
+        name1u = '1dir-\u062c\u0648'
+        name2u = '2file-\u0633'
         tree = [
             name0u,
             name1u + '/',
@@ -1416,9 +1416,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         from .._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
         osutils._selected_dir_reader = Win32ReadDir()
-        name0u = u'0file-\xb6'
-        name1u = u'1dir-\u062c\u0648'
-        name2u = u'2file-\u0633'
+        name0u = '0file-\xb6'
+        name1u = '1dir-\u062c\u0648'
+        name2u = '2file-\u0633'
         tree = [
             name0u,
             name1u + '/',
@@ -1452,7 +1452,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
                 ]
              ),
             ]
-        result = list(osutils._walkdirs_utf8(u'.'))
+        result = list(osutils._walkdirs_utf8('.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
 
@@ -1471,7 +1471,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(features.UnicodeFilenameFeature)
         from .._walkdirs_win32 import Win32ReadDir
-        name0u = u'0file-\xb6'
+        name0u = '0file-\xb6'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u])
         # I hate to sleep() here, but I'm trying to make the ctime different
@@ -1480,10 +1480,10 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         with open(name0u, 'ab') as f:
             f.write(b'just a small update')
 
-        result = Win32ReadDir().read_dir('', u'.')
+        result = Win32ReadDir().read_dir('', '.')
         entry = result[0]
         self.assertEqual((name0, name0, 'file'), entry[:3])
-        self.assertEqual(u'./' + name0u, entry[4])
+        self.assertEqual('./' + name0u, entry[4])
         self.assertStatIsCorrect(entry[4], entry[3])
         self.assertNotEqual(entry[3].st_mtime, entry[3].st_ctime)
 
@@ -1492,14 +1492,14 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(features.UnicodeFilenameFeature)
         from .._walkdirs_win32 import Win32ReadDir
-        name0u = u'0dir-\u062c\u0648'
+        name0u = '0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u + '/'])
 
-        result = Win32ReadDir().read_dir('', u'.')
+        result = Win32ReadDir().read_dir('', '.')
         entry = result[0]
         self.assertEqual((name0, name0, 'directory'), entry[:3])
-        self.assertEqual(u'./' + name0u, entry[4])
+        self.assertEqual('./' + name0u, entry[4])
         self.assertStatIsCorrect(entry[4], entry[3])
 
     def assertPathCompare(self, path_less, path_greater):
@@ -1639,7 +1639,7 @@ class TestSetUnsetEnv(tests.TestCase):
     """Test updating the environment"""
 
     def setUp(self):
-        super(TestSetUnsetEnv, self).setUp()
+        super().setUp()
 
         self.assertEqual(None, os.environ.get('BRZ_TEST_ENV_VAR'),
                          'Environment was not cleaned up properly.'
@@ -1747,7 +1747,7 @@ class TestDirReader(tests.TestCaseInTempDir):
     _native_to_unicode = None
 
     def setUp(self):
-        super(TestDirReader, self).setUp()
+        super().setUp()
         self.overrideAttr(osutils,
                           '_selected_dir_reader', self._dir_reader_class())
 
@@ -1796,9 +1796,9 @@ class TestDirReader(tests.TestCaseInTempDir):
                          self._filter_out(result))
 
     def _get_unicode_tree(self):
-        name0u = u'0file-\xb6'
-        name1u = u'1dir-\u062c\u0648'
-        name2u = u'2file-\u0633'
+        name0u = '0file-\xb6'
+        name1u = '1dir-\u062c\u0648'
+        name2u = '2file-\u0633'
         tree = [
             name0u,
             name1u + '/',
@@ -1855,8 +1855,8 @@ class TestDirReader(tests.TestCaseInTempDir):
     def test_symlink(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
-        target = u'target\N{Euro Sign}'
-        link_name = u'l\N{Euro Sign}nk'
+        target = 'target\N{Euro Sign}'
+        link_name = 'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
         link_name_utf8 = link_name.encode('UTF-8')
         expected_dirblocks = [
@@ -1882,8 +1882,8 @@ class TestReadLink(tests.TestCaseInTempDir):
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
         self._test_needs_features.append(features.SymlinkFeature(self.test_dir))
-        self.link = u'l\N{Euro Sign}ink'
-        self.target = u'targe\N{Euro Sign}t'
+        self.link = 'l\N{Euro Sign}ink'
+        self.target = 'targe\N{Euro Sign}t'
         os.symlink(self.target, self.link)
 
     def test_os_readlink_link_encoding(self):
@@ -1897,7 +1897,7 @@ class TestReadLink(tests.TestCaseInTempDir):
 class TestConcurrency(tests.TestCase):
 
     def setUp(self):
-        super(TestConcurrency, self).setUp()
+        super().setUp()
         self.overrideAttr(osutils, '_cached_local_concurrency')
 
     def test_local_concurrency(self):
@@ -1930,7 +1930,7 @@ class TestFailedToLoadExtension(tests.TestCase):
             return True
 
     def setUp(self):
-        super(TestFailedToLoadExtension, self).setUp()
+        super().setUp()
         self.overrideAttr(osutils, '_extension_load_failures', [])
 
     def test_failure_to_load(self):
@@ -1962,7 +1962,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def setUp(self):
-        super(TestTerminalWidth, self).setUp()
+        super().setUp()
         self._orig_terminal_size_state = osutils._terminal_size_state
         self._orig_first_terminal_size = osutils._first_terminal_size
         self.addCleanup(self.restore_osutils_globals)
@@ -1981,7 +1981,7 @@ class TestTerminalWidth(tests.TestCase):
 
     def set_fake_tty(self):
 
-        class I_am_a_tty(object):
+        class I_am_a_tty:
             def isatty(self):
                 return True
 
@@ -2049,7 +2049,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
     _test_needs_features = [features.chown_feature]
 
     def setUp(self):
-        super(TestCreationOps, self).setUp()
+        super().setUp()
         self.overrideAttr(os, 'chown', self._dummy_chown)
 
         # params set by call to _dummy_chown
@@ -2061,7 +2061,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
     def test_copy_ownership_from_path(self):
         """copy_ownership_from_path test with specified src."""
         ownsrc = '/'
-        open('test_file', 'wt').close()
+        open('test_file', 'w').close()
         osutils.copy_ownership_from_path('test_file', ownsrc)
 
         s = os.stat(ownsrc)
@@ -2071,7 +2071,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def test_copy_ownership_nonesrc(self):
         """copy_ownership_from_path test with src=None."""
-        open('test_file', 'wt').close()
+        open('test_file', 'w').close()
         # should use parent dir for permissions
         osutils.copy_ownership_from_path('test_file')
 
@@ -2096,7 +2096,7 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_ascii_user(self):
         self.overrideEnv(self.envvar_to_override(), 'jrandom')
-        self.assertEqual(u'jrandom', osutils.getuser_unicode())
+        self.assertEqual('jrandom', osutils.getuser_unicode())
 
     def test_unicode_user(self):
         ue = osutils.get_user_encoding()
@@ -2105,7 +2105,7 @@ class TestGetuserUnicode(tests.TestCase):
             raise tests.TestSkipped(
                 'Cannot find a unicode character that works in encoding %s'
                 % (osutils.get_user_encoding(),))
-        uni_username = u'jrandom' + uni_val
+        uni_username = 'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
         self.overrideEnv(self.envvar_to_override(), uni_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
@@ -2114,7 +2114,7 @@ class TestGetuserUnicode(tests.TestCase):
 class TestBackupNames(tests.TestCase):
 
     def setUp(self):
-        super(TestBackupNames, self).setUp()
+        super().setUp()
         self.backups = []
 
     def backup_exists(self, name):
@@ -2182,7 +2182,7 @@ class SupportsExecutableTests(tests.TestCaseInTempDir):
 class SupportsSymlinksTests(tests.TestCaseInTempDir):
 
     def setUp(self):
-        super(SupportsSymlinksTests, self).setUp()
+        super().setUp()
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
             osutils.MtabFilesystemFinder([

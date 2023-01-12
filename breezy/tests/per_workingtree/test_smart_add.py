@@ -97,7 +97,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
         action = RecordingAddAction()
-        wt.smart_add((u".",), action=action)
+        wt.smart_add((".",), action=action)
         for path in paths:
             self.assertTrue(wt.is_versioned(path))
         if wt.has_versioned_directories():
@@ -121,7 +121,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
-        wt.smart_add((u".",))
+        wt.smart_add((".",))
         self.assertFalse(wt.is_versioned("nested"))
         self.assertEqual(
             ['skipping nested tree %r' % nested_wt.basedir], warnings)
@@ -131,7 +131,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
-        wt.smart_add((u".",))
+        wt.smart_add((".",))
         for path in paths:
             self.assertTrue(wt.is_versioned(path))
 
@@ -205,7 +205,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         ignores._set_user_ignores(['*.py[co]'])
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                          'inertiatic/foo.pyc'])
-        added, ignored = wt.smart_add(u'.')
+        added, ignored = wt.smart_add('.')
         if wt.has_versioned_directories():
             self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
                               added)
@@ -231,10 +231,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
         for path in added_paths:
             self.assertTrue(wt.is_versioned(path.rstrip('/')),
-                            'Failed to add path: %s' % (path,))
+                            'Failed to add path: {}'.format(path))
         for path in not_added:
             self.assertFalse(wt.is_versioned(path.rstrip('/')),
-                             'Accidentally added path: %s' % (path,))
+                             'Accidentally added path: {}'.format(path))
 
     def test_add_file_in_unknown_dir(self):
         # Test that parent directory addition is implicit
@@ -259,7 +259,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.smart_add(["dir"])
         tree.commit("Add dir contents")
         self.addCleanup(tree.lock_read().unlock)
-        self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
+        self.assertEqual([("dir", "directory"), ("dir/file", "file")],
                          [(t[0], t[2]) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
@@ -273,7 +273,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.smart_add(["dir/file"])
         tree.commit("Add file in dir")
         self.addCleanup(tree.lock_read().unlock)
-        self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
+        self.assertEqual([("dir", "directory"), ("dir/file", "file")],
                          [(t[0], t[2]) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
@@ -345,8 +345,8 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
     _test_needs_features = [features.UnicodeFilenameFeature]
 
     def setUp(self):
-        super(TestSmartAddTreeUnicode, self).setUp()
-        self.build_tree([u'a\u030a'])
+        super().setUp()
+        self.build_tree(['a\u030a'])
         self.wt = self.make_branch_and_tree('.')
         self.overrideAttr(osutils, 'normalized_filename')
 
@@ -359,9 +359,9 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         if (self.workingtree_format.requires_normalized_unicode_filenames
                 and sys.platform != 'darwin'):
             self.assertRaises(
-                transport.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
+                transport.NoSuchFile, self.wt.smart_add, ['a\u030a'])
         else:
-            self.wt.smart_add([u'a\u030a'])
+            self.wt.smart_add(['a\u030a'])
 
     def test_accessible_explicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
@@ -369,10 +369,10 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'Working tree format smart_add requires normalized unicode '
                 'filenames')
-        self.wt.smart_add([u'a\u030a'])
+        self.wt.smart_add(['a\u030a'])
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
-        self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+        self.assertEqual([('', 'directory'), ('\xe5', 'file')],
                          [(path, ie.kind) for path, ie in
                           self.wt.iter_entries_by_dir()])
 
@@ -385,14 +385,14 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         self.wt.smart_add([])
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
-        self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+        self.assertEqual([('', 'directory'), ('\xe5', 'file')],
                          [(path, ie.kind) for path, ie
                           in self.wt.iter_entries_by_dir()])
 
     def test_inaccessible_explicit(self):
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
         self.assertRaises(errors.InvalidNormalization,
-                          self.wt.smart_add, [u'a\u030a'])
+                          self.wt.smart_add, ['a\u030a'])
 
     def test_inaccessible_implicit(self):
         osutils.normalized_filename = osutils._inaccessible_normalized_filename

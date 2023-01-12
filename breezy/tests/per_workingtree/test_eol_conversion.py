@@ -36,7 +36,7 @@ _sample_clean_crlf = _sample_text_on_win
 
 # Lists of formats for each storage policy
 _LF_IN_REPO = ['native', 'lf', 'crlf']
-_CRLF_IN_REPO = ['%s-with-crlf-in-repo' % (f,) for f in _LF_IN_REPO]
+_CRLF_IN_REPO = ['{}-with-crlf-in-repo'.format(f) for f in _LF_IN_REPO]
 
 
 class TestEolConversion(TestCaseWithWorkingTree):
@@ -51,7 +51,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         if not f():
             raise TestSkipped("format %s doesn't support content filtering"
                               % fmt)
-        super(TestEolConversion, self).setUp()
+        super().setUp()
 
     def patch_rules_searcher(self, eol):
         """Patch in a custom rules searcher with a given eol setting."""

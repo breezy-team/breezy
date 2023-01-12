@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from typing import Dict, Any, List
 
 #
@@ -43,8 +41,8 @@ source_suffix = '.txt'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Breezy'
-copyright = u'2009-2011 Canonical Ltd, 2017-2018 Breezy Developers'
+project = 'Breezy'
+copyright = '2009-2011 Canonical Ltd, 2017-2018 Breezy Developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -222,7 +220,7 @@ latex_documents: List[Any] = []
 # -- Bazaar-specific configuration ---------------------------------------------
 
 # Authors of the documents
-brz_team = u'Breezy Developers'
+brz_team = 'Breezy Developers'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),

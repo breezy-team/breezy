@@ -35,7 +35,7 @@ from breezy.tests import per_branch
 class TestBranchTags(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestBranchTags, self).setUp()
+        super().setUp()
         # formats that don't support tags can skip the rest of these
         # tests...
         branch = self.make_branch('probe')
@@ -91,8 +91,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b = branch.Branch.open('b')
         self.assertEqual(
             dict(b.tags.get_reverse_tag_dict()),
-            {target_revid1: set(['tag-name']),
-             target_revid2: set(['other-name']),
+            {target_revid1: {'tag-name'},
+             target_revid2: {'other-name'},
              })
 
     def test_ghost_tag(self):
@@ -158,13 +158,13 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertRaises(errors.NoSuchTag, b2.tags.lookup_tag, 'tag2')
 
     def test_unicode_tag(self):
-        tag_name = u'\u3070'
+        tag_name = '\u3070'
         b1, [revid] = self.make_branch_with_revision_tuple('b', 1)
         b1.tags.set_tag(tag_name, revid)
         self.assertEqual(b1.tags.lookup_tag(tag_name), revid)
 
     def test_delete_tag(self):
-        tag_name = u'\N{GREEK SMALL LETTER ALPHA}'
+        tag_name = '\N{GREEK SMALL LETTER ALPHA}'
         b, [revid] = self.make_branch_with_revision_tuple('b', 1)
         b.tags.set_tag(tag_name, revid)
         # now try to delete it
@@ -285,7 +285,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
     """
 
     def setUp(self):
-        super(TestTagsMergeToInCheckouts, self).setUp()
+        super().setUp()
         branch1 = self.make_branch('tags-probe')
         if not branch1._format.supports_tags():
             raise tests.TestSkipped(
@@ -356,7 +356,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
             child.tags, overwrite=True)
         self.assertEqual(b'rev-1', child.tags.lookup_tag('foo'))
         self.assertEqual(b'rev-1', master.tags.lookup_tag('foo'))
-        self.assertEqual({u'foo': b'rev-1'}, tag_updates)
+        self.assertEqual({'foo': b'rev-1'}, tag_updates)
         self.assertLength(0, tag_conflicts)
 
     def test_merge_to_conflict_in_child_only(self):
@@ -377,8 +377,8 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         # No conflict in the master, so the 'foo' tag equals other's value here.
         self.assertEqual(b'rev-1', master.tags.lookup_tag('foo'))
         # The conflict is reported.
-        self.assertEqual([(u'foo', b'rev-1', b'rev-2')], list(tag_conflicts))
-        self.assertEqual({u'foo': b'rev-1'}, tag_updates)
+        self.assertEqual([('foo', b'rev-1', b'rev-2')], list(tag_conflicts))
+        self.assertEqual({'foo': b'rev-1'}, tag_updates)
 
     def test_merge_to_conflict_in_master_only(self):
         """When new_tags.merge_to(child.tags) conflicts with the master but not
@@ -397,8 +397,8 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         # Conflict in master, so it is unchanged.
         self.assertEqual(b'rev-2', master.tags.lookup_tag('foo'))
         # The conflict is reported.
-        self.assertEqual({u'foo': b'rev-1'}, tag_updates)
-        self.assertEqual([(u'foo', b'rev-1', b'rev-2')], list(tag_conflicts))
+        self.assertEqual({'foo': b'rev-1'}, tag_updates)
+        self.assertEqual([('foo', b'rev-1', b'rev-2')], list(tag_conflicts))
 
     def test_merge_to_same_conflict_in_master_and_child(self):
         """When new_tags.merge_to(child.tags) conflicts the same way with the
@@ -418,7 +418,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         # The conflict is reported exactly once, even though it occurs in both
         # master and child.
         self.assertEqual({}, tag_updates)
-        self.assertEqual([(u'foo', b'rev-1', b'rev-2')], list(tag_conflicts))
+        self.assertEqual([('foo', b'rev-1', b'rev-2')], list(tag_conflicts))
 
     def test_merge_to_different_conflict_in_master_and_child(self):
         """When new_tags.merge_to(child.tags) conflicts differently in the
@@ -441,7 +441,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         # Both conflicts are reported.
         self.assertEqual({}, tag_updates)
         self.assertEqual(
-            [(u'foo', b'rev-1', b'rev-2'), (u'foo', b'rev-1', b'rev-3')],
+            [('foo', b'rev-1', b'rev-2'), ('foo', b'rev-1', b'rev-3')],
             sorted(tag_conflicts))
 
 
@@ -449,7 +449,7 @@ class TestUnsupportedTags(per_branch.TestCaseWithBranch):
     """Formats that don't support tags should give reasonable errors."""
 
     def setUp(self):
-        super(TestUnsupportedTags, self).setUp()
+        super().setUp()
         branch = self.make_branch('probe')
         if branch._format.supports_tags():
             raise tests.TestSkipped("Format %s declares that tags are supported"
@@ -477,7 +477,7 @@ class TestUnsupportedTags(per_branch.TestCaseWithBranch):
 class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(AutomaticTagNameTests, self).setUp()
+        super().setUp()
         if isinstance(self.branch_format, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.

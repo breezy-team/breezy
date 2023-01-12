@@ -114,7 +114,7 @@ class GitMergeDirective(BaseMergeDirective):
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, source_branch=None, message=None,
                  patches=None, local_target_branch=None):
-        super(GitMergeDirective, self).__init__(
+        super().__init__(
             revision_id=revision_id, testament_sha1=testament_sha1, time=time,
             timezone=timezone, target_branch=target_branch, patch=None,
             source_branch=source_branch, message=message, bundle=None)

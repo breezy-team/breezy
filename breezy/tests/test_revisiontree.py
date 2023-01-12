@@ -27,7 +27,7 @@ from breezy.tests import TestCaseWithTransport
 class TestTreeWithCommits(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestTreeWithCommits, self).setUp()
+        super().setUp()
         self.t = self.make_branch_and_tree('.')
         self.rev_id = self.t.commit('foo', allow_pointless=True)
         self.rev_tree = self.t.branch.repository.revision_tree(self.rev_id)
@@ -61,7 +61,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
         self.assertIs(None, null_tree.path2id(''))
 
     def test_get_file_revision_root(self):
-        self.assertEqual(self.rev_id, self.rev_tree.get_file_revision(u''))
+        self.assertEqual(self.rev_id, self.rev_tree.get_file_revision(''))
 
     def test_get_file_revision(self):
         self.build_tree_contents([('a', b'initial')])

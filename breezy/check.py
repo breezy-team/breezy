@@ -44,7 +44,7 @@ from .trace import note
 from .i18n import gettext
 
 
-class Check(object):
+class Check:
     """Check a repository"""
 
     def __init__(self, repository, check_repo=True):

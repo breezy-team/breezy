@@ -627,7 +627,7 @@ class TestTransformPreview(TestCaseWithTree):
         preview.new_file('new-versioned-file', preview.root, [b'contents'],
                          b'new-versioned-id')
         tree = preview.get_preview_tree()
-        self.assertEquals({'existing-file'}, set(work_tree.extras()))
+        self.assertEqual({'existing-file'}, set(work_tree.extras()))
         preview.unversion_file(preview.trans_id_tree_path('removed-file'))
         self.assertEqual({'new-file', 'removed-file', 'existing-file'},
                          set(tree.extras()))
@@ -744,6 +744,6 @@ class TestTransformPreview(TestCaseWithTree):
         tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         foo_id = tt.new_directory('', ROOT_PARENT)
-        bar_id = tt.new_file(u'\u1234bar', foo_id, [b'contents'])
+        bar_id = tt.new_file('\u1234bar', foo_id, [b'contents'])
         limbo_path = tt._limbo_name(bar_id)
         self.assertEqual(limbo_path, limbo_path)

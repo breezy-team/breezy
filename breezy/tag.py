@@ -79,7 +79,7 @@ def _reconcile_tags(
     return result, updates, conflicts
 
 
-class Tags(object):
+class Tags:
 
     def __init__(self, branch):
         self.branch = branch

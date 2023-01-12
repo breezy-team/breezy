@@ -44,7 +44,7 @@ class StoreError(Exception):
     pass
 
 
-class Store(object):
+class Store:
     """This class represents the abstract storage layout for saving information.
 
     Files can be added, but not modified once they are in.  Typically
@@ -109,7 +109,7 @@ class TransportStore(Store):
 
     def _check_fileid(self, fileid):
         if not isinstance(fileid, bytes):
-            raise TypeError('Fileids should be bytestrings: %s %r' % (
+            raise TypeError('Fileids should be bytestrings: {} {!r}'.format(
                 type(fileid), fileid))
         if b'\\' in fileid or b'/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
@@ -164,7 +164,7 @@ class TransportStore(Store):
     def __init__(self, a_transport, prefixed=False, compressed=False,
                  dir_mode=None, file_mode=None,
                  escaped=False):
-        super(TransportStore, self).__init__()
+        super().__init__()
         self._transport = a_transport
         self._prefixed = prefixed
         # FIXME RBC 20051128 this belongs in TextStore.
@@ -190,8 +190,7 @@ class TransportStore(Store):
 
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
-        for quoted_relpath in self._transport.iter_files_recursive():
-            yield quoted_relpath
+        yield from self._transport.iter_files_recursive()
 
     def __iter__(self):
         for relpath in self._iter_files_recursive():
@@ -227,7 +226,7 @@ class TransportStore(Store):
         if self._transport is None:
             return "%s(None)" % (self.__class__.__name__)
         else:
-            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
+            return "{}({!r})".format(self.__class__.__name__, self._transport.base)
 
     __str__ = __repr__
 

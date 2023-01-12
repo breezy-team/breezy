@@ -38,7 +38,7 @@ from breezy.tests.features import (
 class TestCheckout(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestCheckout, self).setUp()
+        super().setUp()
         tree = controldir.ControlDir.create_standalone_workingtree('branch')
         self.rev1 = tree.commit('1', allow_pointless=True)
         self.build_tree(['branch/added_in_2'])

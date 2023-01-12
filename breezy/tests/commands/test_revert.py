@@ -30,7 +30,7 @@ from breezy.tests import (
 class TestRevert(TestCaseInTempDir):
 
     def setUp(self):
-        super(TestRevert, self).setUp()
+        super().setUp()
 
     def test_revert_tree_write_lock_and_branch_read_lock(self):
 

@@ -171,7 +171,7 @@ def register_metadir(registry, key,
         try:
             factory = pyutils.get_named_object(mod_name, factory_name)
         except ImportError as e:
-            raise ImportError('failed to load %s: %s' % (full_name, e))
+            raise ImportError('failed to load {}: {}'.format(full_name, e))
         except AttributeError:
             raise AttributeError('no factory %s in module %r'
                                  % (full_name, sys.modules[mod_name]))

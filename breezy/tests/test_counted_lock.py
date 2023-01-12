@@ -26,7 +26,7 @@ from ..errors import (
 from . import TestCase
 
 
-class DummyLock(object):
+class DummyLock:
     """Lock that just records what's been done to it."""
 
     def __init__(self):
@@ -64,7 +64,7 @@ class DummyLock(object):
 
     def _assert_locked(self):
         if not self._lock_mode:
-            raise LockError("%s is not locked" % (self,))
+            raise LockError("{} is not locked".format(self))
 
     def _assert_not_locked(self):
         if self._lock_mode:

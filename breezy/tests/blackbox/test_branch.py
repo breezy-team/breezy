@@ -554,7 +554,7 @@ class TestBranchStacked(tests.TestCaseWithTransport):
 class TestRemoteBranch(TestCaseWithSFTPServer):
 
     def setUp(self):
-        super(TestRemoteBranch, self).setUp()
+        super().setUp()
         self.skipTest('tests often hang - see pad.lv/1997033')
         tree = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/file', b'file content\n')])

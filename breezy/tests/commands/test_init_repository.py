@@ -24,7 +24,7 @@ from .. import (
 class TestInitRepository(transport_util.TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
-        super(TestInitRepository, self).setUp()
+        super().setUp()
         self.start_logging_connections()
 
     def test_init_shared_repository(self):

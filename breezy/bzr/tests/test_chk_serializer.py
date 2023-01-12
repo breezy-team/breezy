@@ -71,7 +71,7 @@ class TestBEncodeSerializer1(TestCase):
         self.assertEqual("(Jelmer) Move dpush to InterBranch.", rev.message)
         self.assertEqual(b"pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",
                          rev.revision_id)
-        self.assertEqual({u"branch-nick": u"+trunk"}, rev.properties)
+        self.assertEqual({"branch-nick": "+trunk"}, rev.properties)
         self.assertEqual(3600, rev.timezone)
 
     def test_written_form_matches(self):
@@ -92,8 +92,8 @@ class TestBEncodeSerializer1(TestCase):
 
     def test_roundtrips_non_ascii(self):
         rev = Revision(b"revid1")
-        rev.message = u"\n\xe5me"
-        rev.committer = u'Erik B\xe5gfors'
+        rev.message = "\n\xe5me"
+        rev.committer = 'Erik B\xe5gfors'
         rev.timestamp = 1242385452
         rev.inventory_sha1 = b"4a2c7fb50e077699242cf6eb16a61779c7b680a7"
         rev.timezone = 3600
@@ -102,7 +102,7 @@ class TestBEncodeSerializer1(TestCase):
     def test_roundtrips_xml_invalid_chars(self):
         rev = Revision(b"revid1")
         rev.message = "\t\ue000"
-        rev.committer = u'Erik B\xe5gfors'
+        rev.committer = 'Erik B\xe5gfors'
         rev.timestamp = 1242385452
         rev.timezone = 3600
         rev.inventory_sha1 = b"4a2c7fb50e077699242cf6eb16a61779c7b680a7"

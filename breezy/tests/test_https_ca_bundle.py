@@ -29,7 +29,7 @@ from ..transport.http import ca_bundle
 class TestGetCAPath(TestCaseInTempDir):
 
     def setUp(self):
-        super(TestGetCAPath, self).setUp()
+        super().setUp()
         self.overrideEnv('CURL_CA_BUNDLE', None)
         self.overrideEnv('PATH', None)
 

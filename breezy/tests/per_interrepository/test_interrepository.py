@@ -62,7 +62,7 @@ class TestInterRepository(TestCaseWithInterRepository):
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 
     def setUp(self):
-        super(TestCaseWithComplexRepository, self).setUp()
+        super().setUp()
         tree_a = self.make_branch_and_tree('a')
         self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'

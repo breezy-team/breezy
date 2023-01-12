@@ -19,7 +19,7 @@
 import zlib
 
 
-class ZLibEstimator(object):
+class ZLibEstimator:
     """Uses zlib.compressobj to estimate compressed size."""
 
     def __init__(self, target_size, min_compression=2.0):

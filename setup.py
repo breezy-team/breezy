@@ -193,7 +193,7 @@ add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 if unavailable_files:
     print('C extension(s) not found:')
-    print(('   %s' % ('\n  '.join(unavailable_files),)))
+    print('   {}'.format('\n  '.join(unavailable_files)))
     print('The python versions will be used instead.')
     print("")
 

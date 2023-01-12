@@ -24,7 +24,7 @@ from . import (
     )
 
 
-class _KnownGraphNode(object):
+class _KnownGraphNode:
     """Represents a single object in the known graph."""
 
     __slots__ = ('key', 'parent_keys', 'child_keys', 'gdfo')
@@ -37,12 +37,12 @@ class _KnownGraphNode(object):
         self.gdfo = None
 
     def __repr__(self):
-        return '%s(%s  gdfo:%s par:%s child:%s)' % (
+        return '{}({}  gdfo:{} par:{} child:{})'.format(
             self.__class__.__name__, self.key, self.gdfo,
             self.parent_keys, self.child_keys)
 
 
-class _MergeSortNode(object):
+class _MergeSortNode:
     """Information about a specific node in the merge graph."""
 
     __slots__ = ('key', 'merge_depth', 'revno', 'end_of_merge')
@@ -54,7 +54,7 @@ class _MergeSortNode(object):
         self.end_of_merge = end_of_merge
 
 
-class KnownGraph(object):
+class KnownGraph:
     """This is a class which assumes we already know the full graph."""
 
     def __init__(self, parent_map, do_cache=True):
@@ -213,7 +213,7 @@ class KnownGraph(object):
             information. Callers will need to filter their input to create
             order if they need it.
         """
-        candidate_nodes = dict((key, self._nodes[key]) for key in keys)
+        candidate_nodes = {key: self._nodes[key] for key in keys}
         if revision.NULL_REVISION in candidate_nodes:
             # NULL_REVISION is only a head if it is the only entry
             candidate_nodes.pop(revision.NULL_REVISION)
@@ -337,9 +337,9 @@ class KnownGraph(object):
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
         from breezy import tsort
-        as_parent_map = dict((node.key, node.parent_keys)
+        as_parent_map = {node.key: node.parent_keys
                              for node in self._nodes.values()
-                             if node.parent_keys is not None)
+                             if node.parent_keys is not None}
         # We intentionally always generate revnos and never force the
         # mainline_revisions
         # Strip the sequence_number that merge_sort generates

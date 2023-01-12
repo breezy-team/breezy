@@ -44,7 +44,7 @@ class TestRevert(TestCaseWithWorkingTree):
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestApplyInventoryDelta, self).setUp()
+        super().setUp()
         if not self.bzrdir_format.repository_format.supports_full_versioned_files:
             raise tests.TestNotApplicable(
                 "format does not support inventory deltas")

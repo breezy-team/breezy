@@ -67,7 +67,7 @@ class TestTransport(tests.TestCase):
         # don't pollute the current handlers
         transport._clear_protocol_handlers()
 
-        class SampleHandler(object):
+        class SampleHandler:
             """I exist, isnt that enough?"""
         transport._clear_protocol_handlers()
         transport.register_transport_proto('foo')
@@ -458,7 +458,7 @@ class TestHooks(tests.TestCase):
         """Check all expected transport hook points are set up"""
         hookpoint = transport.TransportHooks()
         self.assertTrue("post_connect" in hookpoint,
-                        "post_connect not in %s" % (hookpoint,))
+                        "post_connect not in {}".format(hookpoint))
 
     def test_post_connect(self):
         """Ensure the post_connect hook is called when _set_transport is"""
@@ -682,7 +682,7 @@ class TestTransportImplementation(tests.TestCaseInTempDir):
     """
 
     def setUp(self):
-        super(TestTransportImplementation, self).setUp()
+        super().setUp()
         self._server = self.transport_server()
         self.start_server(self._server)
 

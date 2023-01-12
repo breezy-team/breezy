@@ -17,7 +17,7 @@
 from io import BytesIO
 
 
-class FakeReadFile(object):
+class FakeReadFile:
     """A file-like object that can be given predefined content and read
     like a file.  The maximum size and number of the reads is recorded."""
 

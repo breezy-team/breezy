@@ -29,7 +29,7 @@ from .decorators import (
 from .transport import Transport
 
 
-class LockableFiles(object):
+class LockableFiles:
     """Object representing a set of related files locked within the same scope.
 
     This coordinates access to the lock along with providing a transaction.
@@ -87,11 +87,11 @@ class LockableFiles(object):
         self._lock.create(mode=self._dir_mode)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__,
+        return '{}({!r})'.format(self.__class__.__name__,
                            self._transport)
 
     def __str__(self):
-        return 'LockableFiles(%s, %s)' % (self.lock_name, self._transport.base)
+        return 'LockableFiles({}, {})'.format(self.lock_name, self._transport.base)
 
     def break_lock(self) -> None:
         """Break the lock of this lockable files group if it is held.
@@ -170,7 +170,7 @@ class LockableFiles(object):
     def lock_read(self) -> None:
         if self._lock_mode:
             if self._lock_mode not in ('r', 'w'):
-                raise ValueError("invalid lock mode %r" % (self._lock_mode,))
+                raise ValueError("invalid lock mode {!r}".format(self._lock_mode))
             self._lock_count += 1
         else:
             self._lock.lock_read()
@@ -248,7 +248,7 @@ class LockableFiles(object):
         transaction.finish()
 
 
-class TransportLock(object):
+class TransportLock:
     """Locking method which uses transport-dependent locks.
 
     On the local filesystem these transform into OS-managed locks.

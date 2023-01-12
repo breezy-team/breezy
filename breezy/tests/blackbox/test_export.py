@@ -105,7 +105,7 @@ class TestExport(TestCaseWithTransport):
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
         # export itself --vila 20090406
-        fname = u'\N{Euro Sign}.txt'
+        fname = '\N{Euro Sign}.txt'
         self.build_tree(['tar/' + fname])
         tree.add([fname])
         tree.commit('first')
@@ -113,16 +113,16 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export test.tar -d tar')
         with tarfile.open('test.tar') as ball:
             # all paths are prefixed with the base name of the tarball
-            self.assertEqual([u'test/' + fname],
+            self.assertEqual(['test/' + fname],
                              [osutils.safe_unicode(n) for n in ball.getnames()])
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
         self.requireFeature(features.UnicodeFilenameFeature)
-        basedir = u'\N{euro sign}'
+        basedir = '\N{euro sign}'
         os.mkdir(basedir)
         self.run_bzr(['init', basedir])
-        self.run_bzr(['export', '--format', 'tgz', u'test.tar.gz',
+        self.run_bzr(['export', '--format', 'tgz', 'test.tar.gz',
                       '-d', basedir])
 
     def test_zip_export_ignores_bzr(self):
@@ -176,13 +176,13 @@ class TestExport(TestCaseWithTransport):
 
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
         tree = self.make_basic_tree()
-        fname = 'test.%s' % (extension,)
-        self.run_bzr('export -d tree %s' % (fname,))
-        mode = 'r|%s' % (tarfile_flags,)
+        fname = 'test.{}'.format(extension)
+        self.run_bzr('export -d tree {}'.format(fname))
+        mode = 'r|{}'.format(tarfile_flags)
         with tarfile.open(fname, mode=mode) as ball:
             self.assertTarANameAndContent(ball, root='test/')
         content = self.run_bzr_raw(
-            'export -d tree --format=%s -' % (extension,))[0]
+            'export -d tree --format={} -'.format(extension))[0]
         with tarfile.open(mode=mode, fileobj=BytesIO(content)) as ball:
             self.assertTarANameAndContent(ball, root='')
 
@@ -198,7 +198,7 @@ class TestExport(TestCaseWithTransport):
     def test_zip_export_unicode(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
-        fname = u'\N{Euro Sign}.txt'
+        fname = '\N{Euro Sign}.txt'
         self.build_tree(['zip/' + fname])
         tree.add([fname])
         tree.commit('first')

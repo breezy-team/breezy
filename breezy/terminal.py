@@ -79,7 +79,7 @@ def term_title(title):
     term = os.environ.get('TERM', '')
     if term.startswith('xterm') or term == 'dtterm':
         return "\033]0;%s\007" % title
-    return str()
+    return ''
 
 
 # arch-tag: a79b9993-146e-4a51-8bae-a13791703ddd

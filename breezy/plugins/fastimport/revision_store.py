@@ -29,7 +29,7 @@ from ...bzr import (
     )
 
 
-class _TreeShim(object):
+class _TreeShim:
     """Fake a Tree implementation.
 
     This implements just enough of the tree api to make commit builder happy.
@@ -40,8 +40,8 @@ class _TreeShim(object):
         self._content_provider = content_provider
         self._basis_inv = basis_inv
         self._inv_delta = inv_delta
-        self._new_info_by_id = dict([(file_id, (new_path, ie))
-                                    for _, new_path, file_id, ie in inv_delta])
+        self._new_info_by_id = {file_id: (new_path, ie)
+                                    for _, new_path, file_id, ie in inv_delta}
         self._new_info_by_path = {new_path: ie
                                   for _, new_path, file_id, ie in inv_delta}
 
@@ -167,7 +167,7 @@ class _TreeShim(object):
             yield change
 
 
-class RevisionStore(object):
+class RevisionStore:
 
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.

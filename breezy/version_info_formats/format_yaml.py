@@ -95,7 +95,7 @@ class YamlVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for yaml-formatted version-info output."""
 
     def __init__(self):
-        super(YamlVersionInfoBuilderHooks, self).__init__(
+        super().__init__(
             "breezy.version_info_formats.format_yaml", "YamlVersionInfoBuilder.hooks")
         self.add_hook('revision',
                       "Invoked when adding information about a revision to the"

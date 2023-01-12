@@ -57,7 +57,7 @@ class TestTextUIFactory(tests.TestCase):
             self.assertEqual(
                 False,
                 ui.confirm_action(
-                    u'Should %(thing)s pass?',
+                    'Should %(thing)s pass?',
                     'breezy.tests.test_ui.confirmation',
                     {'thing': 'this'}))
 
@@ -76,11 +76,11 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_factory_unicode_password(self):
         """Test a unicode password."""
-        ui = ui_testing.TextUIFactory(u'baz\u1234')
+        ui = ui_testing.TextUIFactory('baz\u1234')
         password = ui.get_password(
-            u'Hello \u1234 %(user)s', user=u'some\u1234')
-        self.assertEqual(u'baz\u1234', password)
-        self.assertEqual(u'Hello \u1234 some\u1234: ', ui.stderr.getvalue())
+            'Hello \u1234 %(user)s', user='some\u1234')
+        self.assertEqual('baz\u1234', password)
+        self.assertEqual('Hello \u1234 some\u1234: ', ui.stderr.getvalue())
         # stdin and stdout should be empty
         self.assertEqual('', ui.stdin.readline())
         self.assertEqual('', ui.stdout.getvalue())
@@ -97,50 +97,50 @@ class TestTextUIFactory(tests.TestCase):
             "NO\n"  # False
             "foo\n")
         with ui_testing.TextUIFactory(stdin_text) as factory:
-            self.assertEqual(True, factory.get_boolean(u""))
-            self.assertEqual(False, factory.get_boolean(u""))
-            self.assertEqual(True, factory.get_boolean(u""))
-            self.assertEqual(False, factory.get_boolean(u""))
-            self.assertEqual(True, factory.get_boolean(u""))
-            self.assertEqual(False, factory.get_boolean(u""))
-            self.assertEqual(True, factory.get_boolean(u""))
-            self.assertEqual(False, factory.get_boolean(u""))
+            self.assertEqual(True, factory.get_boolean(""))
+            self.assertEqual(False, factory.get_boolean(""))
+            self.assertEqual(True, factory.get_boolean(""))
+            self.assertEqual(False, factory.get_boolean(""))
+            self.assertEqual(True, factory.get_boolean(""))
+            self.assertEqual(False, factory.get_boolean(""))
+            self.assertEqual(True, factory.get_boolean(""))
+            self.assertEqual(False, factory.get_boolean(""))
             self.assertEqual("foo\n", factory.stdin.read())
             # stdin should be empty
             self.assertEqual('', factory.stdin.readline())
             # return false on EOF
-            self.assertEqual(False, factory.get_boolean(u""))
+            self.assertEqual(False, factory.get_boolean(""))
 
     def test_text_ui_choose_bad_parameters(self):
-        with ui_testing.TextUIFactory(u"") as factory:
+        with ui_testing.TextUIFactory("") as factory:
             # invalid default index
-            self.assertRaises(ValueError, factory.choose, u"", u"&Yes\n&No", 3)
+            self.assertRaises(ValueError, factory.choose, "", "&Yes\n&No", 3)
             # duplicated choice
             self.assertRaises(
-                ValueError, factory.choose, u"", u"&choice\n&ChOiCe")
+                ValueError, factory.choose, "", "&choice\n&ChOiCe")
             # duplicated shortcut
             self.assertRaises(
-                ValueError, factory.choose, u"", u"&choice1\nchoi&ce2")
+                ValueError, factory.choose, "", "&choice1\nchoi&ce2")
 
     def test_text_ui_choose_prompt_explicit(self):
         # choices with explicit shortcuts
-        with ui_testing.TextUIFactory(u"") as factory:
-            factory.choose(u"prompt", u"&yes\n&No\nmore &info")
+        with ui_testing.TextUIFactory("") as factory:
+            factory.choose("prompt", "&yes\n&No\nmore &info")
             self.assertEqual(
                 "prompt ([y]es, [N]o, more [i]nfo): \n",
                 factory.stderr.getvalue())
 
     def test_text_ui_choose_prompt_automatic(self):
         # automatic shortcuts
-        with ui_testing.TextUIFactory(u"") as factory:
-            factory.choose(u"prompt", u"yes\nNo\nmore info")
+        with ui_testing.TextUIFactory("") as factory:
+            factory.choose("prompt", "yes\nNo\nmore info")
             self.assertEqual(
                 "prompt ([y]es, [N]o, [m]ore info): \n",
                 factory.stderr.getvalue())
 
     def test_text_ui_choose_return_values(self):
         def choose():
-            return factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
+            return factory.choose("", "&Yes\n&No\nMaybe\nmore &info", 3)
         stdin_text = (
             "y\n"  # 0
             "n\n"  # 1
@@ -173,7 +173,7 @@ class TestTextUIFactory(tests.TestCase):
             " yes \n"  # 0
             "foo\n")
         with ui_testing.TextUIFactory(stdin_text) as factory:
-            self.assertEqual(0, factory.choose(u"", u"&Yes\n&No"))
+            self.assertEqual(0, factory.choose("", "&Yes\n&No"))
             self.assertEqual("foo\n", factory.stdin.read())
 
     def test_text_ui_get_integer(self):
@@ -182,14 +182,14 @@ class TestTextUIFactory(tests.TestCase):
             "  -2  \n"
             "hmmm\nwhat else ?\nCome on\nok 42\n4.24\n42\n")
         with ui_testing.TextUIFactory(stdin_text) as factory:
-            self.assertEqual(1, factory.get_integer(u""))
-            self.assertEqual(-2, factory.get_integer(u""))
-            self.assertEqual(42, factory.get_integer(u""))
+            self.assertEqual(1, factory.get_integer(""))
+            self.assertEqual(-2, factory.get_integer(""))
+            self.assertEqual(42, factory.get_integer(""))
 
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
         with ui_testing.TextUIFactory() as factory:
-            factory.prompt(u'foo %2e')
+            factory.prompt('foo %2e')
             self.assertEqual('', factory.stdout.getvalue())
             self.assertEqual('foo %2e', factory.stderr.getvalue())
 
@@ -209,7 +209,7 @@ class TestTextUIFactory(tests.TestCase):
                 True,
                 self.apply_redirected(
                     None, factory.stdout, factory.stdout, factory.get_boolean,
-                    u"what do you want"))
+                    "what do you want"))
             output = out.getvalue()
             self.assertContainsRe(output,
                                   "| foo *\r\r  *\r*")
@@ -231,18 +231,18 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_ui_getusername(self):
         ui = ui_testing.TextUIFactory('someuser\n\n')
         self.assertEqual('someuser',
-                         ui.get_username(u'Hello %(host)s', host='some'))
+                         ui.get_username('Hello %(host)s', host='some'))
         self.assertEqual('Hello some: ', ui.stderr.getvalue())
         self.assertEqual('', ui.stdout.getvalue())
-        self.assertEqual('', ui.get_username(u"Gebruiker"))
+        self.assertEqual('', ui.get_username("Gebruiker"))
         # stdin should be empty
         self.assertEqual('', ui.stdin.readline())
 
     def test_text_ui_getusername_unicode(self):
-        ui = ui_testing.TextUIFactory(u'someuser\u1234')
-        username = ui.get_username(u'Hello %(host)s', host=u'some\u1234')
-        self.assertEqual(u"someuser\u1234", username)
-        self.assertEqual(u"Hello some\u1234: ", ui.stderr.getvalue())
+        ui = ui_testing.TextUIFactory('someuser\u1234')
+        username = ui.get_username('Hello %(host)s', host='some\u1234')
+        self.assertEqual("someuser\u1234", username)
+        self.assertEqual("Hello some\u1234: ", ui.stderr.getvalue())
         self.assertEqual('', ui.stdout.getvalue())
 
     def test_quietness(self):
@@ -294,14 +294,14 @@ class TestTextUIOutputStream(tests.TestCase):
 
         stream = _mod_ui_text.TextUIOutputStream(
             uif, uif.stdout, 'utf-8', 'strict')
-        stream.write(u"Hello world!\n")
-        stream.write(u"there's more...\n")
-        stream.writelines([u"1\n", u"2\n", u"3\n"])
+        stream.write("Hello world!\n")
+        stream.write("there's more...\n")
+        stream.writelines(["1\n", "2\n", "3\n"])
 
         self.assertEqual(uif.stdout.getvalue(),
-                         u"Hello world!\n"
-                         u"there's more...\n"
-                         u"1\n2\n3\n")
+                         "Hello world!\n"
+                         "there's more...\n"
+                         "1\n2\n3\n")
         self.assertEqual(['clear', 'clear', 'clear'],
                          clear_calls)
 
@@ -334,17 +334,17 @@ class UITests(tests.TestCase):
                 ):
             self.overrideEnv('TERM', term)
             self.overrideEnv('BRZ_PROGRESS_BAR', pb)
-            stdin = file_class(u'')
+            stdin = file_class('')
             stderr = file_class()
             stdout = file_class()
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(
                 uif, _mod_ui_text.TextUIFactory,
-                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+                "TERM={} BRZ_PROGRESS_BAR={} uif={!r}".format(term, pb, uif))
             self.assertIsInstance(
                 uif.make_progress_view(),
                 expected_pb_class,
-                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+                "TERM={} BRZ_PROGRESS_BAR={} uif={!r}".format(term, pb, uif))
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""
@@ -353,7 +353,7 @@ class UITests(tests.TestCase):
             self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
-                                  'TERM=%r' % (term_type,))
+                                  'TERM={!r}'.format(term_type))
 
 
 class SilentUITests(tests.TestCase):
@@ -377,7 +377,7 @@ class SilentUITests(tests.TestCase):
         self.assertRaises(
             NotImplementedError,
             self.apply_redirected,
-            None, stdout, stdout, factory.get_boolean, u"foo")
+            None, stdout, stdout, factory.get_boolean, "foo")
 
 
 class TestUIFactoryTests(tests.TestCase):
@@ -395,12 +395,12 @@ class CannedInputUIFactoryTests(tests.TestCase):
 
     def test_canned_input_get_input(self):
         uif = _mod_ui.CannedInputUIFactory([True, 'mbp', 'password', 42])
-        self.assertEqual(True, uif.get_boolean(u'Extra cheese?'))
-        self.assertEqual('mbp', uif.get_username(u'Enter your user name'))
+        self.assertEqual(True, uif.get_boolean('Extra cheese?'))
+        self.assertEqual('mbp', uif.get_username('Enter your user name'))
         self.assertEqual('password',
-                         uif.get_password(u'Password for %(host)s',
+                         uif.get_password('Password for %(host)s',
                                           host='example.com'))
-        self.assertEqual(42, uif.get_integer(u'And all that jazz ?'))
+        self.assertEqual(42, uif.get_integer('And all that jazz ?'))
 
 
 class TestBoolFromString(tests.TestCase):

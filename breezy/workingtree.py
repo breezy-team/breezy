@@ -245,7 +245,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         any number of files and that require they all be in the same tree.
         """
         if default_directory is None:
-            default_directory = u'.'
+            default_directory = '.'
         # recommended replacement for builtins.internal_tree_files
         if file_list is None or len(file_list) == 0:
             tree = WorkingTree.open_containing(default_directory)[0]
@@ -259,7 +259,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                     view_str = views.view_display_str(view_files)
                     note(gettext("Ignoring files outside view. View is %s") % view_str)
             return tree, file_list
-        if default_directory == u'.':
+        if default_directory == '.':
             seed = file_list[0]
         else:
             seed = default_directory
@@ -315,7 +315,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return WorkingTree.open(path, _unsupported=True)
 
     def __repr__(self):
-        return "<%s of %s>" % (self.__class__.__name__,
+        return "<{} of {}>".format(self.__class__.__name__,
                                getattr(self, 'basedir', None))
 
     def abspath(self, filename):
@@ -375,7 +375,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             file_obj = open(abspath, 'rb')
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 raise NoSuchFile(path)
             raise
@@ -1185,8 +1185,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
-            self._rules_searcher = super(WorkingTree,
-                                         self)._get_rules_searcher(default_searcher)
+            self._rules_searcher = super()._get_rules_searcher(default_searcher)
         return self._rules_searcher
 
     def get_shelf_manager(self):
@@ -1249,7 +1248,7 @@ class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
-        super(WorkingTreeFormatRegistry, self).__init__(other_registry)
+        super().__init__(other_registry)
         self._default_format = None
         self._default_format_key = None
 

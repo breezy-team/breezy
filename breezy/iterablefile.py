@@ -19,7 +19,7 @@
 from typing import List, Optional, Iterator, Callable, Iterable
 
 
-class IterableFileBase(object):
+class IterableFileBase:
     """Create a file-like object from any iterable"""
 
     def __init__(self, iterable: Iterable[bytes]) -> None:
@@ -99,7 +99,7 @@ class IterableFileBase(object):
         self._buffer = contents + self._buffer
 
 
-class IterableFile(object):
+class IterableFile:
     """This class supplies all File methods that can be implemented cheaply."""
 
     def __init__(self, iterable: Iterable[bytes]) -> None:

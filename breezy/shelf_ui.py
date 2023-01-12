@@ -42,7 +42,7 @@ class UseEditor(Exception):
     """Use an editor instead of selecting hunks."""
 
 
-class ShelfReporter(object):
+class ShelfReporter:
 
     vocab = {'add file': gettext('Shelve adding file "%(path)s"?'),
              'binary': gettext('Shelve binary changes?'),
@@ -114,7 +114,7 @@ class ApplyReporter(ShelfReporter):
         pass
 
 
-class Shelver(object):
+class Shelver:
     """Interactively shelve the changes in a working tree."""
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
@@ -171,7 +171,7 @@ class Shelver(object):
             changes.
         """
         if directory is None:
-            directory = u'.'
+            directory = '.'
         elif file_list:
             file_list = [osutils.pathjoin(directory, f) for f in file_list]
         tree, path = workingtree.WorkingTree.open_containing(directory)
@@ -372,7 +372,7 @@ class Shelver(object):
         return len(blocks) - 2
 
 
-class Unshelver(object):
+class Unshelver:
     """Unshelve changes into a working tree."""
 
     @classmethod

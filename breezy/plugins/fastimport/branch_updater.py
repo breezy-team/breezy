@@ -27,7 +27,7 @@ from .helpers import (
     )
 
 
-class BranchUpdater(object):
+class BranchUpdater:
 
     def __init__(self, repo, branch, cache_mgr, heads_by_ref, last_ref, tags):
         """Create an object responsible for updating branches.

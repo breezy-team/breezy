@@ -89,7 +89,7 @@ class _AncestryMismatch(Mismatch):
         self.expected = expected
 
     def describe(self):
-        return "mismatched ancestry for revision %r was %r, expected %r" % (
+        return "mismatched ancestry for revision {!r} was {!r}, expected {!r}".format(
             self.tip_revision, self.got, self.expected)
 
 
@@ -106,7 +106,7 @@ class MatchesAncestry(Matcher):
         self.revision_id = revision_id
 
     def __str__(self):
-        return ('MatchesAncestry(repository=%r, revision_id=%r)' % (
+        return ('MatchesAncestry(repository={!r}, revision_id={!r})'.format(
             self.repository, self.revision_id))
 
     def match(self, expected):
@@ -134,7 +134,7 @@ class HasLayout(Matcher):
         """Get the (path, file_id) pairs for the current tree."""
         with tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
-                if path != u'':
+                if path != '':
                     path += ie.kind_character()
                 if include_file_ids:
                     yield (path, ie.file_id)
@@ -207,8 +207,8 @@ class HasPathRelations(Matcher):
                     kind = self.previous_tree.kind(previous_path)
                     if kind == 'directory':
                         previous_path += '/'
-                if path == u'':
-                    yield (u"", previous_path)
+                if path == '':
+                    yield ("", previous_path)
                 else:
                     yield (path + ie.kind_character(), previous_path)
 
@@ -234,7 +234,7 @@ class HasPathRelations(Matcher):
                 yield (path, previous_path)
 
     def __str__(self):
-        return 'HasPathRelations(%r, %r)' % (self.previous_tree, self.previous_entries)
+        return 'HasPathRelations({!r}, {!r})'.format(self.previous_tree, self.previous_entries)
 
     def match(self, tree):
         actual = list(self.get_path_map(tree))

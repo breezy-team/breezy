@@ -75,7 +75,7 @@ class _LazyObjectGetter(_ObjectGetter[T]):
         self._module_name = module_name
         self._member_name = member_name
         self._imported = False
-        super(_LazyObjectGetter, self).__init__(None)
+        super().__init__(None)
 
     def get_module(self):
         """Get the module the referenced object will be loaded from.
@@ -91,10 +91,10 @@ class _LazyObjectGetter(_ObjectGetter[T]):
         if not self._imported:
             self._obj = get_named_object(self._module_name, self._member_name)
             self._imported = True
-        return super(_LazyObjectGetter, self).get_obj()
+        return super().get_obj()
 
     def __repr__(self):
-        return "<%s.%s object at %x, module=%r attribute=%r imported=%r>" % (
+        return "<{}.{} object at {:x}, module={!r} attribute={!r} imported={!r}>".format(
             self.__class__.__module__, self.__class__.__name__, id(self),
             self._module_name, self._member_name, self._imported)
 
@@ -304,7 +304,7 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):
-        super(FormatRegistry, self).__init__()
+        super().__init__()
         self._other_registry = other_registry
 
     def register(self, key, obj, help=None, info=None,
@@ -327,7 +327,7 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
                                                help=help, info=info, override_existing=override_existing)
 
     def remove(self, key):
-        super(FormatRegistry, self).remove(key)
+        super().remove(key)
         if self._other_registry is not None:
             self._other_registry.remove(key)
 

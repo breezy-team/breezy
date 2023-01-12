@@ -43,7 +43,7 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_set_file_unicode(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_file(u'f\xb5/bar', b'contents\nbar\n', False)
+        builder.set_file('f\xb5/bar', b'contents\nbar\n', False)
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\ncontents\nbar\n\n',
                              stream.getvalue())
         self.assertEqual([b'M 100644 :1 f\xc2\xb5/bar\n'], builder.commit_info)
@@ -51,7 +51,7 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_set_file_newline(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_file(u'foo\nbar', b'contents\nbar\n', False)
+        builder.set_file('foo\nbar', b'contents\nbar\n', False)
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\ncontents\nbar\n\n',
                              stream.getvalue())
         self.assertEqual([b'M 100644 :1 "foo\\nbar"\n'], builder.commit_info)
@@ -59,7 +59,7 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_set_file_executable(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_file(u'f\xb5/bar', b'contents\nbar\n', True)
+        builder.set_file('f\xb5/bar', b'contents\nbar\n', True)
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\ncontents\nbar\n\n',
                              stream.getvalue())
         self.assertEqual([b'M 100755 :1 f\xc2\xb5/bar\n'], builder.commit_info)
@@ -67,7 +67,7 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_set_symlink(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_symlink(u'f\xb5/bar', b'link/contents')
+        builder.set_symlink('f\xb5/bar', b'link/contents')
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\nlink/contents\n',
                              stream.getvalue())
         self.assertEqual([b'M 120000 :1 f\xc2\xb5/bar\n'], builder.commit_info)
@@ -75,7 +75,7 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_set_symlink_newline(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.set_symlink(u'foo\nbar', 'link/contents')
+        builder.set_symlink('foo\nbar', 'link/contents')
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\nlink/contents\n',
                              stream.getvalue())
         self.assertEqual([b'M 120000 :1 "foo\\nbar"\n'], builder.commit_info)
@@ -83,37 +83,37 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_delete_entry(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.delete_entry(u'path/to/f\xb5')
+        builder.delete_entry('path/to/f\xb5')
         self.assertEqual([b'D path/to/f\xc2\xb5\n'], builder.commit_info)
 
     def test_delete_entry_newline(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.delete_entry(u'path/to/foo\nbar')
+        builder.delete_entry('path/to/foo\nbar')
         self.assertEqual([b'D "path/to/foo\\nbar"\n'], builder.commit_info)
 
     def test_encode_path(self):
         encode = tests.GitBranchBuilder._encode_path
         # Unicode is encoded to utf-8
-        self.assertEqual(encode(u'f\xb5'), b'f\xc2\xb5')
+        self.assertEqual(encode('f\xb5'), b'f\xc2\xb5')
         # The name must be quoted if it starts by a double quote or contains a
         # newline.
-        self.assertEqual(encode(u'"foo'), b'"\\"foo"')
-        self.assertEqual(encode(u'fo\no'), b'"fo\\no"')
+        self.assertEqual(encode('"foo'), b'"\\"foo"')
+        self.assertEqual(encode('fo\no'), b'"fo\\no"')
         # When the name is quoted, all backslash and quote chars must be
         # escaped.
-        self.assertEqual(encode(u'fo\\o\nbar'), b'"fo\\\\o\\nbar"')
-        self.assertEqual(encode(u'fo"o"\nbar'), b'"fo\\"o\\"\\nbar"')
+        self.assertEqual(encode('fo\\o\nbar'), b'"fo\\\\o\\nbar"')
+        self.assertEqual(encode('fo"o"\nbar'), b'"fo\\"o\\"\\nbar"')
         # Other control chars, such as \r, need not be escaped.
-        self.assertEqual(encode(u'foo\r\nbar'), b'"foo\r\\nbar"')
+        self.assertEqual(encode('foo\r\nbar'), b'"foo\r\\nbar"')
 
     def test_add_and_commit(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
 
-        builder.set_file(u'f\xb5/bar', b'contents\nbar\n', False)
+        builder.set_file('f\xb5/bar', b'contents\nbar\n', False)
         self.assertEqual(b'2', builder.commit(b'Joe Foo <joe@foo.com>',
-                                              u'committing f\xb5/bar',
+                                              'committing f\xb5/bar',
                                               timestamp=1194586400,
                                               timezone=b'+0100'))
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\ncontents\nbar\n\n'
@@ -131,12 +131,12 @@ class TestGitBranchBuilder(tests.TestCase):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
 
-        builder.set_file(u'foo', b'contents\nfoo\n', False)
-        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'first',
+        builder.set_file('foo', b'contents\nfoo\n', False)
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', 'first',
                             timestamp=1194586400)
-        r2 = builder.commit(b'Joe Foo <joe@foo.com>', u'second',
+        r2 = builder.commit(b'Joe Foo <joe@foo.com>', 'second',
                             timestamp=1194586405)
-        r3 = builder.commit(b'Joe Foo <joe@foo.com>', u'third',
+        r3 = builder.commit(b'Joe Foo <joe@foo.com>', 'third',
                             timestamp=1194586410,
                             base=r1)
 
@@ -169,15 +169,15 @@ class TestGitBranchBuilder(tests.TestCase):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
 
-        builder.set_file(u'foo', b'contents\nfoo\n', False)
-        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'first',
+        builder.set_file('foo', b'contents\nfoo\n', False)
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', 'first',
                             timestamp=1194586400)
-        r2 = builder.commit(b'Joe Foo <joe@foo.com>', u'second',
+        r2 = builder.commit(b'Joe Foo <joe@foo.com>', 'second',
                             timestamp=1194586405)
-        r3 = builder.commit(b'Joe Foo <joe@foo.com>', u'third',
+        r3 = builder.commit(b'Joe Foo <joe@foo.com>', 'third',
                             timestamp=1194586410,
                             base=r1)
-        r4 = builder.commit(b'Joe Foo <joe@foo.com>', u'Merge',
+        r4 = builder.commit(b'Joe Foo <joe@foo.com>', 'Merge',
                             timestamp=1194586415,
                             merge=[r2])
 
@@ -217,7 +217,7 @@ class TestGitBranchBuilder(tests.TestCase):
     def test_auto_timestamp(self):
         stream = BytesIO()
         builder = tests.GitBranchBuilder(stream)
-        builder.commit(b'Joe Foo <joe@foo.com>', u'message')
+        builder.commit(b'Joe Foo <joe@foo.com>', 'message')
         self.assertContainsRe(stream.getvalue(),
                               br'committer Joe Foo <joe@foo\.com> \d+ \+0000')
 
@@ -249,8 +249,8 @@ class TestGitBranchBuilderReal(tests.TestCaseInTempDir):
         GitRepo.init(".")
 
         builder = tests.GitBranchBuilder()
-        builder.set_file(u'foo', b'contents\nfoo\n', False)
-        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'first',
+        builder.set_file('foo', b'contents\nfoo\n', False)
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', 'first',
                             timestamp=1194586400)
         mapping = builder.finish()
         self.assertEqual({b'1': b'44411e8e9202177dd19b6599d7a7991059fa3cb4',

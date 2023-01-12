@@ -35,10 +35,10 @@ from subprocess import call
 
 verbose = False
 
-IMAGE_DIRECTIVE_PATTERN = re.compile(u'^..\\s+image::\\s+(.*)\\`\\s+$')
-DIRECTIVE_ELEMENT_PATTERN = re.compile(u'^\\s+:[^:]+:\\s+')
+IMAGE_DIRECTIVE_PATTERN = re.compile('^..\\s+image::\\s+(.*)\\`\\s+$')
+DIRECTIVE_ELEMENT_PATTERN = re.compile('^\\s+:[^:]+:\\s+')
 
-class Converter(object):
+class Converter:
     def __init__(self, srcdir, destdir):
         self.srcdir = srcdir
         self.destdir = destdir
@@ -53,7 +53,7 @@ class Converter(object):
                 self._process_file(inpath, outpath)
 
     def _process_file(self, inpath, outpath):
-        infile = open(inpath, 'r')
+        infile = open(inpath)
         outfile = open(outpath, 'w')
         foundimg = False
         for line in infile:
@@ -72,15 +72,15 @@ class Converter(object):
             if directive_match is not None:
                 image_src = directive_match.group(1)
                 if verbose:
-                    print(('Image ' + image_src + ' in ' + filename
-                          + ': ' + line.strip()))
+                    print('Image ' + image_src + ' in ' + filename
+                          + ': ' + line.strip())
 
                 foundimg = True
             outfile.write(line)
         outfile.close()
         infile.close()
 
-class ImageFixer(object):
+class ImageFixer:
     def __init__(self, srcdir, destdir):
         self.srcdir = srcdir
         self.destdir = destdir
@@ -142,8 +142,8 @@ if __name__ == '__main__':
     destdir = None
 
     if len(argv) < 2:
-        print(('Usage: ' + argv[0] + ' ' + IN_DIR_OPT + 'INDIR '
-              + OUT_DIR_OPT + 'OUTDIR'))
+        print('Usage: ' + argv[0] + ' ' + IN_DIR_OPT + 'INDIR '
+              + OUT_DIR_OPT + 'OUTDIR')
         print()
         print('This will convert all .txt files in INDIR into file in OUTDIR')
         print('while adjusting the use of images and possibly converting SVG')
@@ -158,12 +158,12 @@ if __name__ == '__main__':
         elif arg.startswith(OUT_DIR_OPT):
             destdir = arg[len(OUT_DIR_OPT):]
         else:
-            print(('Invalid argument ' + arg))
+            print('Invalid argument ' + arg)
             sys.exit(1)
 
     if srcdir is None or destdir is None:
-        print(('Please specify the ' + IN_DIR_OPT + ' and '
-              + OUT_DIR_OPT + ' options.'))
+        print('Please specify the ' + IN_DIR_OPT + ' and '
+              + OUT_DIR_OPT + ' options.')
         sys.exit(1)
 
     if not os.path.exists(destdir):

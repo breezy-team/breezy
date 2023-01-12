@@ -57,7 +57,7 @@ from .transportgit import (
     )
 
 
-class GitDirConfig(object):
+class GitDirConfig:
 
     def get_default_stack_on(self):
         return None
@@ -93,7 +93,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
         :param stack_on_pwd: If stack_on is relative, the location it is
             relative to.
         """
-        super(UseExistingRepository, self).__init__(
+        super().__init__(
             stack_on, stack_on_pwd, require_stacking)
         self._repository = repository
 
@@ -405,7 +405,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
     @classmethod
     def _known_formats(self):
-        return set([LocalGitControlDirFormat()])
+        return {LocalGitControlDirFormat()}
 
     @property
     def repository_format(self):
@@ -525,7 +525,7 @@ class LocalGitDir(GitDir):
         return LocalGitRepository
 
     def __repr__(self):
-        return "<%s at %r>" % (
+        return "<{} at {!r}>".format(
             self.__class__.__name__, self.root_transport.base)
 
     _gitrepository_class = property(_get_gitrepository_class)

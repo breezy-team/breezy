@@ -135,7 +135,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         with self.lock_tree_write():
             state = self.current_dirstate()
             for f, file_id, kind in zip(files, ids, kinds):
-                f = f.strip(u'/')
+                f = f.strip('/')
                 if self.path2id(f):
                     # special case tree root handling.
                     if f == b'' and self.path2id(f) == ROOT_ID:
@@ -923,7 +923,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         for tree in trees:
             if not (isinstance(tree, DirStateRevisionTree) and
                     tree._revision_id in parents):
-                return super(DirStateWorkingTree, self).paths2ids(
+                return super().paths2ids(
                     paths, trees, require_versioned)
         search_indexes = [
             0] + [1 + parents.index(tree._revision_id) for tree in trees]
@@ -1043,7 +1043,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         found = state._bisect_recursive(split_paths)
 
         if require_versioned:
-            found_dir_names = set(dir_name_id[:2] for dir_name_id in found)
+            found_dir_names = {dir_name_id[:2] for dir_name_id in found}
             for dir_name in split_paths:
                 if dir_name not in found_dir_names:
                     raise errors.PathsNotVersionedError(
@@ -1328,7 +1328,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         """See WorkingTree.rename_one"""
         with self.lock_tree_write():
             self.flush()
-            super(DirStateWorkingTree, self).rename_one(
+            super().rename_one(
                 from_rel, to_rel, after)
 
     def apply_inventory_delta(self, changes):
@@ -1768,7 +1768,7 @@ class DirStateRevisionTree(InventoryTree):
         :return: set of paths.
         """
         pred = self.has_filename
-        return set((p for p in paths if not pred(p)))
+        return {p for p in paths if not pred(p)}
 
     def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
@@ -1806,7 +1806,7 @@ class DirStateRevisionTree(InventoryTree):
         except errors.NoSuchRevision as e:
             raise MissingNestedTree(path) from e
         if file_id is not None and revtree.path2id('') != file_id:
-            raise AssertionError('mismatching file id: %r != %r' % (
+            raise AssertionError('mismatching file id: {!r} != {!r}'.format(
                 revtree.path2id(''), file_id))
         return revtree
 
@@ -1816,7 +1816,7 @@ class DirStateRevisionTree(InventoryTree):
             # return
             return iter([])
         # Otherwise, fall back to the default implementation
-        return super(DirStateRevisionTree, self).iter_references()
+        return super().iter_references()
 
     def _get_parent_index(self):
         """Return the index in the dirstate referenced by this tree."""
@@ -1860,7 +1860,7 @@ class DirStateRevisionTree(InventoryTree):
         self._dirstate._read_dirblocks_if_needed()
         if self._revision_id not in self._dirstate.get_parent_ids():
             raise AssertionError(
-                'parent %s has disappeared from %s' % (
+                'parent {} has disappeared from {}'.format(
                     self._revision_id, self._dirstate.get_parent_ids()))
         parent_index = self._dirstate.get_parent_ids().index(self._revision_id) + 1
         # This is identical now to the WorkingTree _generate_inventory except
@@ -2195,7 +2195,7 @@ class InterDirStateTree(InterInventoryTree):
     # dirstate, and possibly between trees stored in different dirstates.
 
     def __init__(self, source, target):
-        super(InterDirStateTree, self).__init__(source, target)
+        super().__init__(source, target)
         if not InterDirStateTree.is_compatible(source, target):
             raise Exception("invalid source %r and target %r" %
                             (source, target))
@@ -2259,7 +2259,7 @@ class InterDirStateTree(InterInventoryTree):
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
-            return super(InterDirStateTree, self).iter_changes(
+            return super().iter_changes(
                 include_unchanged, specific_files, pb, extra_trees,
                 require_versioned, want_unversioned=want_unversioned)
         parent_ids = self.target.get_parent_ids()
@@ -2276,7 +2276,7 @@ class InterDirStateTree(InterInventoryTree):
         else:
             if not (self.source._revision_id in parent_ids):
                 raise AssertionError(
-                    "Failure: source._revision_id: %s not in target.parent_ids(%s)" % (
+                    "Failure: source._revision_id: {} not in target.parent_ids({})".format(
                         self.source._revision_id, parent_ids))
             source_index = 1 + parent_ids.index(self.source._revision_id)
             indices = (source_index, target_index)
@@ -2347,7 +2347,7 @@ class InterDirStateTree(InterInventoryTree):
 InterTree.register_optimiser(InterDirStateTree)
 
 
-class Converter3to4(object):
+class Converter3to4:
     """Perform an in-place upgrade of format 3 to format 4 trees."""
 
     def __init__(self):
@@ -2392,7 +2392,7 @@ class Converter3to4(object):
                                   mode=tree.controldir._get_file_mode())
 
 
-class Converter4to5(object):
+class Converter4to5:
     """Perform an in-place upgrade of format 4 to format 5 trees."""
 
     def __init__(self):
@@ -2415,7 +2415,7 @@ class Converter4to5(object):
                                   mode=tree.controldir._get_file_mode())
 
 
-class Converter4or5to6(object):
+class Converter4or5to6:
     """Perform an in-place upgrade of format 4 or 5 to format 6 trees."""
 
     def __init__(self):

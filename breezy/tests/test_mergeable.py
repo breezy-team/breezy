@@ -37,7 +37,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         """
         out, wt = test_read_bundle.create_bundle_file(self)
 
-        class FooService(object):
+        class FooService:
             """A directory service that always returns source"""
 
             def look_up(self, name, url):
@@ -80,7 +80,7 @@ class DisconnectingHandler(socketserver.BaseRequestHandler):
 class DisconnectingServer(test_server.TestingTCPServerInAThread):
 
     def __init__(self):
-        super(DisconnectingServer, self).__init__(
+        super().__init__(
             ('127.0.0.1', 0),
             test_server.TestingTCPServer,
             DisconnectingHandler)

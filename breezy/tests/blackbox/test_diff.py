@@ -335,7 +335,7 @@ class TestDiff(DiffBase):
 
             def show_diff(self, specific_files, extra_trees=None):
                 self.to_file.write("BOO!\n")
-                return super(BooDiffTree, self).show_diff(specific_files,
+                return super().show_diff(specific_files,
                                                           extra_trees)
 
         diff_format_registry.register("boo", BooDiffTree, "Scary diff format")
@@ -382,21 +382,20 @@ class TestDiff(DiffBase):
 class TestCheckoutDiff(TestDiff):
 
     def make_example_branch(self):
-        tree = super(TestCheckoutDiff, self).make_example_branch()
+        tree = super().make_example_branch()
         tree = tree.branch.create_checkout('checkout')
         os.chdir('checkout')
         return tree
 
     def example_branch2(self):
-        tree = super(TestCheckoutDiff, self).example_branch2()
+        tree = super().example_branch2()
         os.mkdir('checkouts')
         tree = tree.branch.create_checkout('checkouts/branch1')
         os.chdir('checkouts')
         return tree
 
     def example_branches(self):
-        branch1_tree, branch2_tree = super(TestCheckoutDiff,
-                                           self).example_branches()
+        branch1_tree, branch2_tree = super().example_branches()
         os.mkdir('checkouts')
         branch1_tree = branch1_tree.branch.create_checkout('checkouts/branch1')
         branch2_tree = branch2_tree.branch.create_checkout('checkouts/branch2')
@@ -407,26 +406,26 @@ class TestCheckoutDiff(TestDiff):
 class TestDiffLabels(DiffBase):
 
     def test_diff_label_removed(self):
-        tree = super(TestDiffLabels, self).make_example_branch()
+        tree = super().make_example_branch()
         tree.remove('hello', keep_files=False)
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== removed file 'hello'" in diff[0])
 
     def test_diff_label_added(self):
-        tree = super(TestDiffLabels, self).make_example_branch()
+        tree = super().make_example_branch()
         self.build_tree_contents([('barbar', b'barbar')])
         tree.add('barbar')
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== added file 'barbar'" in diff[0])
 
     def test_diff_label_modified(self):
-        super(TestDiffLabels, self).make_example_branch()
+        super().make_example_branch()
         self.build_tree_contents([('hello', b'barbar')])
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== modified file 'hello'" in diff[0])
 
     def test_diff_label_renamed(self):
-        tree = super(TestDiffLabels, self).make_example_branch()
+        tree = super().make_example_branch()
         tree.rename_one('hello', 'gruezi')
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== renamed file 'hello' => 'gruezi'" in diff[0])

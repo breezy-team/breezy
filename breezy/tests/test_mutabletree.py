@@ -46,7 +46,7 @@ class TestHooks(tests.TestCase):
 class TestHasChanges(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestHasChanges, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('tree')
 
     def test_with_uncommitted_changes(self):

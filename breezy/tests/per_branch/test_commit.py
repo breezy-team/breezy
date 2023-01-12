@@ -47,7 +47,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestCommitHook, self).setUp()
+        super().setUp()
 
     def capture_post_commit_hook(self, local, master, old_revno,
                                  old_revid, new_revno, new_revid):

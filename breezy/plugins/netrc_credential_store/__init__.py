@@ -30,12 +30,12 @@ from ... import (
 class NetrcCredentialStore(config.CredentialStore):
 
     def __init__(self):
-        super(NetrcCredentialStore, self).__init__()
+        super().__init__()
         import netrc
         import errno
         try:
             self._netrc = netrc.netrc()
-        except IOError as e:
+        except OSError as e:
             if e.args[0] == errno.ENOENT:
                 raise _mod_transport.NoSuchFile(e.filename)
             else:
@@ -64,5 +64,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests

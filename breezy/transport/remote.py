@@ -38,7 +38,7 @@ from ..bzr import (
 from ..bzr.smart import client, medium
 
 
-class _SmartStat(object):
+class _SmartStat:
 
     def __init__(self, size, mode):
         self.st_size = size
@@ -91,7 +91,7 @@ class RemoteTransport(transport.ConnectedTransport):
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
-        super(RemoteTransport, self).__init__(
+        super().__init__(
             url, _from_transport=_from_transport)
 
         # The medium is the connection, except when we need to share it with
@@ -372,11 +372,10 @@ class RemoteTransport(transport.ConnectedTransport):
                 response_handler.cancel_read_body()
                 raise errors.UnexpectedSmartServerResponse(resp)
 
-            for res in self._handle_response(offset_stack, cur_request,
+            yield from self._handle_response(offset_stack, cur_request,
                                              response_handler,
                                              data_map,
-                                             next_offset):
-                yield res
+                                             next_offset)
 
     def _handle_response(self, offset_stack, coalesced, response_handler,
                          data_map, next_offset):
@@ -549,7 +548,7 @@ class RemoteHTTPTransport(RemoteTransport):
             self._http_transport = transport.get_transport_from_url(http_url)
         else:
             self._http_transport = http_transport
-        super(RemoteHTTPTransport, self).__init__(
+        super().__init__(
             base, _from_transport=_from_transport)
 
     def _build_medium(self):

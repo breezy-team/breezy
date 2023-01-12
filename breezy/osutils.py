@@ -101,12 +101,12 @@ def chmod_if_possible(filename, mode):
         # It is probably faster to just do the chmod, rather than
         # doing a stat, and then trying to compare
         os.chmod(filename, mode)
-    except (IOError, OSError) as e:
+    except OSError as e:
         # Permission/access denied seems to commonly happen on smbfs; there's
         # probably no point warning about it.
         # <https://bugs.launchpad.net/bzr/+bug/606537>
         if getattr(e, 'errno') in (errno.EPERM, errno.EACCES):
-            trace.mutter("ignore error on chmod of %r: %r" % (
+            trace.mutter("ignore error on chmod of {!r}: {!r}".format(
                 filename, e))
             return
         raise
@@ -232,7 +232,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         rename_func(new, tmp_name)
     except NoSuchFile:
         pass
-    except IOError as e:
+    except OSError as e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
         # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
@@ -251,7 +251,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         # not be set.
         rename_func(old, new)
         success = True
-    except (IOError, OSError) as e:
+    except OSError as e:
         # source and target may be aliases of each other (e.g. on a
         # case-insensitive filesystem), so we may have accidentally renamed
         # source by when we tried to rename target
@@ -1055,7 +1055,7 @@ def _split_lines(s):
 
     This supports Unicode or plain string objects.
     """
-    nl = b'\n' if isinstance(s, bytes) else u'\n'
+    nl = b'\n' if isinstance(s, bytes) else '\n'
     lines = s.split(nl)
     result = [line + nl for line in lines[:-1]]
     if lines[-1]:
@@ -1074,7 +1074,7 @@ def link_or_copy(src, dest):
         return
     try:
         os.link(src, dest)
-    except (OSError, IOError) as e:
+    except OSError as e:
         if e.errno != errno.EXDEV:
             raise
         shutil.copyfile(src, dest)
@@ -1087,12 +1087,12 @@ def delete_any(path):
     """
     try:
         _delete_file_or_dir(path)
-    except (OSError, IOError) as e:
+    except OSError as e:
         if e.errno in (errno.EPERM, errno.EACCES):
             # make writable and try again
             try:
                 make_writable(path)
-            except (OSError, IOError):
+            except OSError:
                 pass
             _delete_file_or_dir(path)
         else:
@@ -1509,7 +1509,7 @@ def _ioctl_terminal_size(width, height):
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         height, width = struct.unpack('HHHH', x)[0:2]
-    except (IOError, AttributeError):
+    except (OSError, AttributeError):
         pass
     return width, height
 
@@ -1655,10 +1655,10 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
         relroot, _, _, _, top = pending.pop()
         if relroot:
-            relprefix = relroot + u'/'
+            relprefix = relroot + '/'
         else:
             relprefix = ''
-        top_slash = top + u'/'
+        top_slash = top + '/'
 
         dirblock = []
         try:
@@ -1676,7 +1676,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
-class DirReader(object):
+class DirReader:
     """An interface for reading directories."""
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
@@ -1976,7 +1976,7 @@ def read_bytes_from_socket(sock, report_activity=None,
     while True:
         try:
             data = sock.recv(max_read_size)
-        except socket.error as e:
+        except OSError as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
@@ -2030,7 +2030,7 @@ def send_all(sock, bytes, report_activity=None):
     while sent_total < byte_count:
         try:
             sent = sock.send(view[sent_total:sent_total + MAX_SOCKET_CHUNK])
-        except (socket.error, IOError) as e:
+        except OSError as e:
             if e.args[0] in _end_of_stream_errors:
                 raise errors.ConnectionReset(
                     "Error trying to write to socket", e)
@@ -2061,7 +2061,7 @@ def connect_socket(address):
             sock.connect(sa)
             return sock
 
-        except socket.error as e:
+        except OSError as e:
             err = e
             # 'err' is now the most recent error
             if sock is not None:
@@ -2113,7 +2113,7 @@ def resource_string(package, resource_name):
     base = dirname(breezy.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    with open(pathjoin(base, resource_relpath), "rt") as f:
+    with open(pathjoin(base, resource_relpath)) as f:
         return f.read()
 
 
@@ -2167,7 +2167,7 @@ def until_no_eintr(f, *a, **kw):
     while True:
         try:
             return f(*a, **kw)
-        except (IOError, OSError) as e:
+        except OSError as e:
             if e.errno == errno.EINTR:
                 continue
             raise
@@ -2241,7 +2241,7 @@ def local_concurrency(use_cache=True):
             # multiprocessing.cpu_count() isn't implemented on all platforms
             try:
                 concurrency = _local_concurrency()
-            except (OSError, IOError):
+            except OSError:
                 pass
     try:
         concurrency = int(concurrency)
@@ -2377,12 +2377,12 @@ def fdatasync(fileno):
     if fn is not None:
         try:
             fn(fileno)
-        except IOError as e:
+        except OSError as e:
             # See bug #1075108, on some platforms fdatasync exists, but can
             # raise ENOTSUP. However, we are calling fdatasync to be helpful
             # and reduce the chance of corruption-on-powerloss situations. It
             # is not a mandatory call, so it is ok to suppress failures.
-            trace.mutter("ignoring error calling fdatasync: %s" % (e,))
+            trace.mutter("ignoring error calling fdatasync: {}".format(e))
             if getattr(e, 'errno', None) not in _fdatasync_ignored:
                 raise
 
@@ -2418,7 +2418,7 @@ def read_mtab(path):
             yield cols[1], cols[2].decode('ascii', 'replace')
 
 
-class FilesystemFinder(object):
+class FilesystemFinder:
     """Find the filesystem for a particular path."""
 
     def find(self, path):
@@ -2446,7 +2446,7 @@ class MtabFilesystemFinder(FilesystemFinder):
         # we need to re-read it.
         try:
             return cls(read_mtab(cls.MTAB_PATH))
-        except EnvironmentError as e:
+        except OSError as e:
             trace.mutter('Unable to read mtab: %s', e)
             return cls([])
 

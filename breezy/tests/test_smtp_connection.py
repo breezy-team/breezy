@@ -29,10 +29,10 @@ from breezy import (
 
 
 def connection_refuser(host):
-    raise socket.error(errno.ECONNREFUSED, 'Connection Refused')
+    raise OSError(errno.ECONNREFUSED, 'Connection Refused')
 
 
-class StubSMTPFactory(object):
+class StubSMTPFactory:
     """A fake SMTP connection to test the connection setup."""
 
     def __init__(self, fail_on=None, smtp_features=None):
@@ -114,14 +114,14 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         self.assertIs(None, conn._smtp_username)
 
         conn = self.get_connection(b'smtp_username=joebody')
-        self.assertEqual(u'joebody', conn._smtp_username)
+        self.assertEqual('joebody', conn._smtp_username)
 
     def test_smtp_password_from_config(self):
         conn = self.get_connection(b'')
         self.assertIs(None, conn._smtp_password)
 
         conn = self.get_connection(b'smtp_password=mypass')
-        self.assertEqual(u'mypass', conn._smtp_password)
+        self.assertEqual('mypass', conn._smtp_password)
 
     def test_smtp_password_from_user(self):
         user = 'joe'
@@ -157,7 +157,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def test_authenticate_with_byte_strings(self):
         user = b'joe'
-        unicode_pass = u'h\xECspass'
+        unicode_pass = 'h\xECspass'
         utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
@@ -234,7 +234,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
         msg['To'] = 'John Doe <john@doe.com>, Jane Doe <jane@doe.com>'
-        msg['CC'] = u'Pepe P\xe9rez <pperez@ejemplo.com>'
+        msg['CC'] = 'Pepe P\xe9rez <pperez@ejemplo.com>'
         msg['Bcc'] = 'user@localhost'
 
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
@@ -246,7 +246,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         msg = email_message.EmailMessage(
             '"J. Random Developer" <jrandom@example.com>',
             ['John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
-             u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost'],
+             'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost'],
             'subject')
 
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)

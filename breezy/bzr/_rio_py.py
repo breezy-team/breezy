@@ -45,30 +45,30 @@ def _read_stanza_utf8(line_iter: Iterator[bytes]) -> Optional[Stanza]:
         if not isinstance(bline, bytes):
             raise TypeError(bline)
         line = bline.decode('utf-8', 'surrogateescape')
-        if line is None or line == u'':
+        if line is None or line == '':
             break       # end of file
-        if line == u'\n':
+        if line == '\n':
             break       # end of stanza
         real_l = line
-        if line[0] == u'\t':  # continues previous value
+        if line[0] == '\t':  # continues previous value
             if tag is None:
                 raise ValueError('invalid continuation line %r' % real_l)
-            accum_value.append(u'\n' + line[1:-1])
+            accum_value.append('\n' + line[1:-1])
         else:  # new tag:value line
             if tag is not None:
-                stanza.add(tag, u''.join(accum_value))
+                stanza.add(tag, ''.join(accum_value))
             try:
-                colon_index = line.index(u': ')
+                colon_index = line.index(': ')
             except ValueError:
                 raise ValueError('tag/value separator not found in line %r'
                                  % real_l)
             tag = str(line[:colon_index])
             if not _valid_tag(tag):
-                raise ValueError("invalid rio tag %r" % (tag,))
+                raise ValueError("invalid rio tag {!r}".format(tag))
             accum_value = [line[colon_index + 2:-1]]
 
     if tag is not None:  # add last tag-value
-        stanza.add(tag, u''.join(accum_value))  # type: ignore
+        stanza.add(tag, ''.join(accum_value))  # type: ignore
         return stanza
     else:     # didn't see any content
         return None

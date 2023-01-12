@@ -60,7 +60,7 @@ class cmd_conflicts(commands.Command):
         ]
     _see_also = ['resolve', 'conflict-types']
 
-    def run(self, text=False, directory=u'.'):
+    def run(self, text=False, directory='.'):
         wt = workingtree.WorkingTree.open_containing(directory)[0]
         for conflict in wt.conflicts():
             if text:
@@ -90,7 +90,7 @@ resolve_action_registry.default_key = 'done'
 class ResolveActionOption(option.RegistryOption):
 
     def __init__(self):
-        super(ResolveActionOption, self).__init__(
+        super().__init__(
             'action', 'How to resolve the conflict.',
             value_switches=True,
             registry=resolve_action_registry)
@@ -123,7 +123,7 @@ class cmd_resolve(commands.Command):
                 raise errors.CommandError(gettext("If --all is specified,"
                                                   " no FILE may be provided"))
             if directory is None:
-                directory = u'.'
+                directory = '.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
             if action is None:
                 action = 'done'
@@ -225,7 +225,7 @@ def restore(filename):
         raise errors.NotConflicted(filename)
 
 
-class ConflictList(object):
+class ConflictList:
     """List of conflicts.
 
     Typically obtained from WorkingTree.conflicts()
@@ -308,7 +308,7 @@ class ConflictList(object):
         return new_conflicts, selected_conflicts
 
 
-class Conflict(object):
+class Conflict:
     """Base class for conflicts."""
 
     typestring: str

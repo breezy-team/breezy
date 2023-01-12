@@ -54,7 +54,7 @@ from .. import (
     )
 
 
-class ContentFilter(object):
+class ContentFilter:
 
     def __init__(self, reader, writer):
         """Create a filter that converts content while reading and writing.
@@ -67,14 +67,14 @@ class ContentFilter(object):
         self.writer = writer
 
     def __repr__(self):
-        return "reader: %s, writer: %s" % (self.reader, self.writer)
+        return "reader: {}, writer: {}".format(self.reader, self.writer)
 
 
 Preferences = List[Tuple[str, str]]
 Stack = List[ContentFilter]
 
 
-class ContentFilterContext(object):
+class ContentFilterContext:
     """Object providing information that filters can use."""
 
     def __init__(self, relpath=None, tree=None):
@@ -168,7 +168,7 @@ def internal_size_sha_file_byname(name, filters):
         return osutils.size_sha_file(f)
 
 
-class FilteredStat(object):
+class FilteredStat:
 
     def __init__(self, base, st_size=None):
         self.st_mode = base.st_mode
