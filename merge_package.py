@@ -269,6 +269,8 @@ def main(argv=None):
                 if not m:
                     continue
                 vcs_type = m.group(2)
+                if vcs_type == 'Browser':
+                    continue
                 vcs_url = dict(
                     vcs_field_to_bzr_url_converters)[vcs_type](value)
                 origin = m.group(1)
