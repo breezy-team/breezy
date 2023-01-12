@@ -261,7 +261,7 @@ class MergeProposalBuilder(object):
                         labels=None, prerequisite_branch=None,
                         commit_message=None,
                         work_in_progress=False, allow_collaboration=False,
-                        delete_source_after_merge: Optional[bool ] = None):
+                        delete_source_after_merge: Optional[bool] = None):
         """Create a proposal to merge a branch for merging.
 
         Args:
