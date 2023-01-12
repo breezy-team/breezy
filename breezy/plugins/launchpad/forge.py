@@ -20,7 +20,7 @@
 import re
 import shutil
 import tempfile
-from typing import Optional
+from typing import Optional, List, Any
 
 from ...forge import (
     Forge,
@@ -685,7 +685,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             prereq = None
         if reviewers is None:
-            reviewer_objs = []
+            reviewer_objs: List[Any] = []
         else:
             reviewer_objs = []
             for reviewer in reviewers:

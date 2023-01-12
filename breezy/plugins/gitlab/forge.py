@@ -837,7 +837,7 @@ class GitLab(Forge):
         for mp in self._list_merge_requests(author=author, state=state):
             yield GitLabMergeProposal(self, mp)
 
-    def iter_my_forks(self, owner=None):
+    def iter_my_forks(self, owner: Optional[str] = None):
         if owner is None:
             owner = self.get_current_user()
         for project in self._list_projects(owner=owner):
@@ -846,7 +846,7 @@ class GitLab(Forge):
                 continue
             yield project['path_with_namespace']
 
-    def get_proposal_by_url(self, url):
+    def get_proposal_by_url(self, url: str) -> GitLabMergeProposal:
         try:
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
         except NotGitLabUrl:
