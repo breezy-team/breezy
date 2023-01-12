@@ -133,8 +133,9 @@ class DebBuildConfigTests(TestCaseWithTransport):
         self.tree.add(
             ['debian', 'debian/upstream', 'debian/upstream/metadata'])
 
-        self.assertRaises(
-            UpstreamMetadataSyntaxError, DebBuildConfig, [], tree=self.tree)
+        # We just ignore the upstream metadata file in this case
+        config = DebBuildConfig([], tree=self.tree)
+        self.assertEqual([], config._config_files)
 
 
 try:
