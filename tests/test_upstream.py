@@ -122,7 +122,7 @@ class MockApt(Apt):
         self._run_apt_source(source_name, target_directory, source_version)
 
 
-class MockAptCaller(object):
+class MockAptCaller:
 
     def __init__(self, work=True):
         self.work = work
@@ -172,7 +172,7 @@ class AptSourceTests(TestCase):
         apt._run_apt_source = caller.call
         src = AptSource(apt)
         paths = src.fetch_tarballs("apackage", "0.2", "target")
-        self.assertEquals(paths, [
+        self.assertEqual(paths, [
             "target/apackage_0.2.orig.tar.bz2",
             "target/apackage_0.2.orig-extra.tar.gz"])
 
@@ -188,7 +188,7 @@ class AptSourceTests(TestCase):
         apt._run_apt_source = caller.call
         src = AptSource(apt)
         paths = src.fetch_tarballs("apackage", "0.2", "target")
-        self.assertEquals(paths, ["target/apackage_0.2.orig.tar.bz2"])
+        self.assertEqual(paths, ["target/apackage_0.2.orig.tar.bz2"])
 
     def test_apt_provider_right_version_xz(self):
         source1 = MockSource(
@@ -202,7 +202,7 @@ class AptSourceTests(TestCase):
         apt._run_apt_source = caller.call
         src = AptSource(apt)
         paths = src.fetch_tarballs("apackage", "0.2", "target")
-        self.assertEquals(paths, ["target/apackage_0.2.orig.tar.xz"])
+        self.assertEqual(paths, ["target/apackage_0.2.orig.tar.xz"])
         self.assertEqual("apackage", caller.package)
         self.assertEqual("0.2-1", caller.version_str)
         self.assertEqual("target", caller.target_dir)
@@ -219,7 +219,7 @@ class AptSourceTests(TestCase):
         apt._run_apt_source = caller.call
         src = AptSource(apt)
         paths = src.fetch_tarballs("apackage", "0.2", "target")
-        self.assertEquals(paths, ["target/apackage_0.2.orig.tar.gz"])
+        self.assertEqual(paths, ["target/apackage_0.2.orig.tar.gz"])
         self.assertEqual(1, caller.called)
         self.assertEqual("apackage", caller.package)
         self.assertEqual("0.2-1", caller.version_str)
@@ -300,37 +300,37 @@ class StackedUpstreamSourceTests(TestCase):
         c = RecordingSource(False)
         stack = StackedUpstreamSource([a, b, c])
         stack.fetch_tarballs("mypkg", "1.0", "bla")
-        self.assertEquals([("mypkg", "1.0", "bla")], b._specific_versions)
-        self.assertEquals([("mypkg", "1.0", "bla")], a._specific_versions)
-        self.assertEquals([], c._specific_versions)
+        self.assertEqual([("mypkg", "1.0", "bla")], b._specific_versions)
+        self.assertEqual([("mypkg", "1.0", "bla")], a._specific_versions)
+        self.assertEqual([], c._specific_versions)
 
     def test_get_latest_version_first_wins(self):
         a = RecordingSource(False, latest="1.1")
         b = RecordingSource(False, latest="1.2")
         stack = StackedUpstreamSource([a, b])
-        self.assertEquals(
+        self.assertEqual(
             ("1.1", "1.1"), stack.get_latest_version("mypkg", "1.0"))
 
     def test_get_recent_versions(self):
         a = RecordingSource(False, recent=["1.0", "1.1"])
         b = RecordingSource(False, recent=["1.1", "1.2"])
         stack = StackedUpstreamSource([a, b])
-        self.assertEquals(
+        self.assertEqual(
             [("1.0", "1.0"),
              ("1.1", "1.1"),
              ("1.2", "1.2"),
              ], stack.get_recent_versions("mypkg", "0.9"))
-        self.assertEquals(
+        self.assertEqual(
             [("1.0", "1.0"), ("1.1", "1.1"), ("1.2", "1.2")],
             stack.get_recent_versions("mypkg"))
-        self.assertEquals(
+        self.assertEqual(
             [("1.2", "1.2")], stack.get_recent_versions("mypkg", "1.1"))
 
     def test_repr(self):
-        self.assertEquals(
+        self.assertEqual(
             "StackedUpstreamSource([])",
             repr(StackedUpstreamSource([])))
-        self.assertEquals(
+        self.assertEqual(
             "StackedUpstreamSource([RecordingSource()])",
             repr(StackedUpstreamSource([RecordingSource(False)])))
 
@@ -341,50 +341,50 @@ class StackedUpstreamSourceTests(TestCase):
         self.assertRaises(
             PackageVersionNotPresent,
             stack.fetch_tarballs, "pkg", "1.0", "bla")
-        self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
-        self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
+        self.assertEqual([("pkg", "1.0", "bla")], b._specific_versions)
+        self.assertEqual([("pkg", "1.0", "bla")], a._specific_versions)
 
 
 class GuessUpstreamRevspecTests(TestCase):
 
     def test_guess_upstream_revspec(self):
         self.assertEqual(
-                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2', u'tag:v.1.2',
+                ['tag:1.2', 'tag:foo-1.2', 'tag:v1.2', 'tag:v.1.2',
                  'tag:release-1.2', 'tag:1_2_release', 'tag:1_2',
                  'tag:version-1.2', 'tag:foo-1_2-release', 'tag:foo-v1.2'],
                 list(guess_upstream_revspec('foo', '1.2')))
 
     def test_guess_upstream_revspec_ds(self):
         self.assertEqual(
-                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2', u'tag:v.1.2',
+                ['tag:1.2', 'tag:foo-1.2', 'tag:v1.2', 'tag:v.1.2',
                  'tag:release-1.2', 'tag:1_2_release', 'tag:1_2',
                  'tag:version-1.2', 'tag:foo-1_2-release', 'tag:foo-v1.2'],
                 list(guess_upstream_revspec('foo', '1.2+ds')))
 
     def test_snapshot(self):
         self.assertEqual(
-                [u'revno:1200', u'tag:1.2+bzr1200', u'tag:foo-1.2+bzr1200'],
+                ['revno:1200', 'tag:1.2+bzr1200', 'tag:foo-1.2+bzr1200'],
                 list(guess_upstream_revspec('foo', '1.2+bzr1200')))
         self.assertEqual(
-                [u'revno:1200', u'tag:1.2+bzr.1200', u'tag:foo-1.2+bzr.1200'],
+                ['revno:1200', 'tag:1.2+bzr.1200', 'tag:foo-1.2+bzr.1200'],
                 list(guess_upstream_revspec('foo', '1.2+bzr.1200')))
         self.assertEqual(
-                [u'revno:1200', u'tag:1.2~bzr1200', u'tag:foo-1.2~bzr1200'],
+                ['revno:1200', 'tag:1.2~bzr1200', 'tag:foo-1.2~bzr1200'],
                 list(guess_upstream_revspec('foo', '1.2~bzr1200')))
         self.assertEqual(
-                [u'git:abc1def', u'date:2018-01-01',
-                 u'tag:1.2~git20180101.abc1def',
-                 u'tag:foo-1.2~git20180101.abc1def'],
+                ['git:abc1def', 'date:2018-01-01',
+                 'tag:1.2~git20180101.abc1def',
+                 'tag:foo-1.2~git20180101.abc1def'],
                 list(guess_upstream_revspec('foo', '1.2~git20180101.abc1def')))
         self.assertEqual(
-                [u'git:abc1def', u'date:2018-01-01',
-                 u'tag:1.2~git20180101.0.abc1def',
-                 u'tag:foo-1.2~git20180101.0.abc1def'],
+                ['git:abc1def', 'date:2018-01-01',
+                 'tag:1.2~git20180101.0.abc1def',
+                 'tag:foo-1.2~git20180101.0.abc1def'],
                 list(guess_upstream_revspec(
                     'foo', '1.2~git20180101.0.abc1def')))
         self.assertEqual(
-                [u'date:2018-01-01', u'tag:1.2~git20180101',
-                 u'tag:foo-1.2~git20180101'],
+                ['date:2018-01-01', 'tag:1.2~git20180101',
+                 'tag:foo-1.2~git20180101'],
                 list(guess_upstream_revspec(
                     'foo', '1.2~git20180101')))
 
@@ -393,7 +393,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
     """Tests for UpstreamBranchSource."""
 
     def setUp(self):
-        super(UpstreamBranchSourceTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('upstream')
 
     def test_fetch_tarballs(self):
@@ -403,7 +403,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             self.tree.branch,
             {"1.0": self.tree.branch.last_revision().decode('utf-8')})
         os.mkdir("mydir")
-        self.assertEquals(
+        self.assertEqual(
             ["mydir/foo_1.0.orig.tar.gz"],
             source.fetch_tarballs("foo", "1.0", "mydir"))
         self.assertPathExists("mydir/foo_1.0.orig.tar.gz")
@@ -421,10 +421,10 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         source = UpstreamBranchSource(
             self.tree.branch,
             {"2.1": self.tree.branch.last_revision().decode('utf-8')})
-        self.assertEquals(
+        self.assertEqual(
             ("2.1", "2.1"), source.get_latest_version("foo", "2.1"))
         self.tree.commit("msg")
-        self.assertEquals(
+        self.assertEqual(
             ("2.1+bzr2", "2.1+bzr2"), source.get_latest_version("foo", "2.1"))
 
     def test_get_latest_version_not_snapshot(self):
@@ -436,10 +436,10 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             self.tree.branch,
             {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             version_kind="release")
-        self.assertEquals(
+        self.assertEqual(
             ("2.1", "2.1"), source.get_latest_version("foo", "1.0"))
         self.tree.commit("msg")
-        self.assertEquals(
+        self.assertEqual(
             ("2.1", "2.1"), source.get_latest_version("foo", "1.0"))
 
     def test_get_latest_version_irreversible_version(self):
@@ -448,7 +448,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.branch.tags.set_tag("0.01_01", revid2)
         source = UpstreamBranchSource(
             self.tree.branch, {}, version_kind="release")
-        self.assertEquals(
+        self.assertEqual(
             ("0.01_01", "0.0101"), source.get_latest_version("foo", None))
 
     def test_get_recent_versions(self):
@@ -459,11 +459,11 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         source = UpstreamBranchSource(
             self.tree.branch,
             {"2.9": self.tree.branch.last_revision().decode('utf-8')})
-        self.assertEquals(
+        self.assertEqual(
             [("2.9", "2.9")], source.get_recent_versions("foo", "1.0"))
         revid2 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag('2.10', revid2)
-        self.assertEquals(
+        self.assertEqual(
             [("2.9", "2.9"), ("2.10", "2.10")],
             source.get_recent_versions("foo", "1.0"))
 
@@ -488,11 +488,11 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             config=config)
         revid2 = self.tree.commit("msg")
-        self.assertEquals(
+        self.assertEqual(
             revid2,
-            source.version_as_revision("foo", u"2.1+bzr2"))
-        self.assertEquals(
-            {None: revid1}, source.version_as_revisions("foo", u"2.1"))
+            source.version_as_revision("foo", "2.1+bzr2"))
+        self.assertEqual(
+            {None: revid1}, source.version_as_revisions("foo", "2.1"))
 
     def test_version_as_revision(self):
         revid1 = self.tree.commit("msg")
@@ -505,9 +505,9 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             config=config)
         revid2 = self.tree.commit("msg")
-        self.assertEquals(
+        self.assertEqual(
             revid2, source.version_as_revision("foo", "2.1+bzr2"))
-        self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))
+        self.assertEqual(revid1, source.version_as_revision("foo", "2.1"))
 
     def test_version_as_revision_no_revspec(self):
         # There is no relevant revspec known
@@ -538,7 +538,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             self.tree.branch, {"2.1": "tag:foo"}, config=config)
         self.assertRaises(
             PackageVersionNotPresent,
-            source.version_as_revision, "foo", u"2.1")
+            source.version_as_revision, "foo", "2.1")
 
     def test_get_latest_version_no_random_access(self):
         local_repo = self.make_repository('local')
@@ -564,7 +564,7 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
     """Tests for LazyUpstreamBranchSource."""
 
     def setUp(self):
-        super(LazyUpstreamBranchSourceTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('.')
 
     def test_fetch_tarballs(self):
@@ -575,7 +575,7 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
             {"1.0": self.tree.branch.last_revision().decode('utf-8')})
         self.assertIs(None, source._upstream_branch)
         os.mkdir("mydir")
-        self.assertEquals(
+        self.assertEqual(
             ["mydir/foo_1.0.orig.tar.gz"],
             source.fetch_tarballs("foo", "1.0", "mydir"))
         self.assertPathExists("mydir/foo_1.0.orig.tar.gz")
@@ -597,10 +597,10 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
             self.tree.branch.base,
             {"2.1": self.tree.branch.last_revision()})
         self.assertIs(None, source._upstream_branch)
-        self.assertEquals(
+        self.assertEqual(
             ("2.1", "2.1"), source.get_latest_version("foo", "1.0"))
         self.tree.commit("msg")
-        self.assertEquals(
+        self.assertEqual(
             ("2.1+bzr2", "2.1+bzr2"), source.get_latest_version("foo", "1.0"))
         self.assertIsNot(None, source._upstream_branch)
 
@@ -613,11 +613,11 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
             self.tree.branch.base,
             {"2.1": self.tree.branch.last_revision()})
         self.assertIs(None, source._upstream_branch)
-        self.assertEquals(
+        self.assertEqual(
             [("2.1", "2.1")], source.get_recent_versions("foo", "1.0"))
         revid3 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("2.2", revid3)
-        self.assertEquals(
+        self.assertEqual(
             [("2.1", "2.1"), ("2.2", "2.2")],
             source.get_recent_versions("foo", "1.0"))
         self.assertIsNot(None, source._upstream_branch)
@@ -634,9 +634,9 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
             config=config)
         self.assertIs(None, source._upstream_branch)
         revid2 = self.tree.commit("msg")
-        self.assertEquals(
+        self.assertEqual(
             revid2, source.version_as_revision("foo", "2.1+bzr2"))
-        self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))
+        self.assertEqual(revid1, source.version_as_revision("foo", "2.1"))
         self.assertIsNot(None, source._upstream_branch)
 
 
@@ -652,7 +652,7 @@ class TestUpstreamBranchVersion(TestCase):
 
     def test_snapshot_none_existing(self):
         self.revhistory = [b"somerevid"]
-        self.assertEquals(
+        self.assertEqual(
             ("1.2+bzr1", "1.2+bzr1"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid", {}, "bla",
@@ -660,7 +660,7 @@ class TestUpstreamBranchVersion(TestCase):
 
     def test_snapshot_nothing_new(self):
         self.revhistory = []
-        self.assertEquals(
+        self.assertEqual(
             ("1.2", "1.2"),
             _upstream_branch_version(
                 self.revhistory, NULL_REVISION, {}, "bla", "1.2",
@@ -669,35 +669,35 @@ class TestUpstreamBranchVersion(TestCase):
     def test_new_tagged_release(self):
         """Last revision is tagged - use as upstream version."""
         self.revhistory = [b"somerevid", b"oldrevid"]
-        self.assertEquals(
+        self.assertEqual(
             ("1.3", "1.3"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid",
-                {b"somerevid": [u"1.3", u"1.3a"], b"oldrevid": ["1.2"]}, "bla",
+                {b"somerevid": ["1.3", "1.3a"], b"oldrevid": ["1.2"]}, "bla",
                 "1.2", self.get_suffix))
 
     def test_snapshot_since_new_tagged_release(self):
         """Last revision is tagged - use as upstream version."""
         self.revhistory = [b"lastrevid", b"somerevid", b"oldrevid"]
-        self.assertEquals(
+        self.assertEqual(
             ("1.3+bzr3", "1.3+bzr3"),
             _upstream_branch_version(
                 self.revhistory, b"lastrevid",
-                {b"somerevid": [u"1.3"], b'oldrevid': ["1.2"]}, "bla",
+                {b"somerevid": ["1.3"], b'oldrevid': ["1.2"]}, "bla",
                 "1.2", self.get_suffix))
 
     def test_snapshot_before_new_tagged_release(self):
         """Last revision is tagged - use as upstream version."""
         self.revhistory = [b"somerevid", b"targetrevid"]
-        self.assertEquals(
+        self.assertEqual(
             ("1.3~bzr1", "1.3~bzr1"),
             _upstream_branch_version(
                 self.revhistory, b"targetrevid",
-                {b"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
+                {b"somerevid": ["1.3"]}, "bla", "1.2", self.get_suffix))
 
     def test_refresh_snapshot_pre(self):
         self.revhistory = [b"somerevid", b"oldrevid"]
-        self.assertEquals(
+        self.assertEqual(
             ("1.3~bzr2", "1.3~bzr2"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid", {}, "bla",
@@ -706,7 +706,7 @@ class TestUpstreamBranchVersion(TestCase):
 
     def test_refresh_snapshot_post(self):
         self.revhistory = [b"somerevid", b"oldrevid"]
-        self.assertEquals(
+        self.assertEqual(
             ("1.3+bzr2", "1.3+bzr2"),
             _upstream_branch_version(
                 self.revhistory, b"somerevid", {}, "bla", "1.3+bzr1",
@@ -714,62 +714,62 @@ class TestUpstreamBranchVersion(TestCase):
 
     def test_new_tag_refresh_snapshot(self):
         self.revhistory = [b"newrevid", b"somerevid", b"oldrevid"]
-        self.assertEquals(
+        self.assertEqual(
             ("1.3+bzr3", "1.3+bzr3"),
             _upstream_branch_version(
                 self.revhistory, b"newrevid",
-                {b"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
+                {b"somerevid": ["1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
 
 
 class TestUpstreamTagToVersion(TestCase):
 
     def test_prefix(self):
-        self.assertEquals("5.0", upstream_tag_to_version(u"release-5.0"))
+        self.assertEqual("5.0", upstream_tag_to_version("release-5.0"))
 
     def test_gibberish(self):
-        self.assertIs(None, upstream_tag_to_version(u"blabla"))
+        self.assertIs(None, upstream_tag_to_version("blabla"))
 
     def test_vprefix(self):
-        self.assertEquals("2.0", upstream_tag_to_version(u"v2.0"))
+        self.assertEqual("2.0", upstream_tag_to_version("v2.0"))
 
     def test_plain(self):
-        self.assertEquals("2.0", upstream_tag_to_version(u"2.0"))
+        self.assertEqual("2.0", upstream_tag_to_version("2.0"))
 
     def test_v(self):
-        self.assertEquals("2.0", upstream_tag_to_version(u"v2.0"))
-        self.assertEquals("2.0", upstream_tag_to_version(u"v.2.0"))
+        self.assertEqual("2.0", upstream_tag_to_version("v2.0"))
+        self.assertEqual("2.0", upstream_tag_to_version("v.2.0"))
 
     def test_package_prefix(self):
-        self.assertEquals("42.0", upstream_tag_to_version(u"bla-42.0", "bla"))
+        self.assertEqual("42.0", upstream_tag_to_version("bla-42.0", "bla"))
 
     def test_unicode(self):
         self.assertIs(
                 None,
-                upstream_tag_to_version(u"bla-42.0\xa9", "bla"))
+                upstream_tag_to_version("bla-42.0\xa9", "bla"))
 
     def test_popt(self):
-        self.assertEquals("1_4", upstream_tag_to_version("popt-1_4", "popt"))
-        self.assertEquals(
+        self.assertEqual("1_4", upstream_tag_to_version("popt-1_4", "popt"))
+        self.assertEqual(
             "1_4", upstream_tag_to_version("popt-1_4-release", "popt"))
 
     def test_perl(self):
-        self.assertEquals("0.006_019", upstream_tag_to_version("v0.006_019"))
+        self.assertEqual("0.006_019", upstream_tag_to_version("v0.006_019"))
 
     def test_alpha(self):
-        self.assertEquals("1.4a1", upstream_tag_to_version("1.4a1", "popt"))
-        self.assertEquals("1.4a", upstream_tag_to_version("1.4a", "popt"))
+        self.assertEqual("1.4a1", upstream_tag_to_version("1.4a1", "popt"))
+        self.assertEqual("1.4a", upstream_tag_to_version("1.4a", "popt"))
 
     def test_no_package(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.4a1", upstream_tag_to_version("erbium-1.4a1", None))
-        self.assertEquals(None, upstream_tag_to_version("erbium-blah", None))
+        self.assertEqual(None, upstream_tag_to_version("erbium-blah", None))
 
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):
     """Test that updating the version string works."""
 
     def setUp(self):
-        super(TestUpstreamVersionAddRevision, self).setUp()
+        super().setUp()
         self.revnos = {}
         self.svn_revnos = {b"somesvnrev": 45}
         self.git_shas = {
@@ -802,59 +802,59 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
         return rev
 
     def test_update_plus_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3+bzr42",
             upstream_version_add_revision(self, "1.3+bzr23", b"somerev"))
 
     def test_update_tilde_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3~bzr42",
             upstream_version_add_revision(self, "1.3~bzr23", b"somerev"))
 
     def test_new_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3+bzr42",
             upstream_version_add_revision(self, "1.3", b"somerev"))
 
     def test_svn_new_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3+svn45",
             upstream_version_add_revision(self, "1.3", b"somesvnrev"))
 
     def test_svn_plus_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3+svn45",
             upstream_version_add_revision(self, "1.3+svn3", b"somesvnrev"))
 
     def test_svn_tilde_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3~svn45",
             upstream_version_add_revision(self, "1.3~svn800", b"somesvnrev"))
 
     def test_git_tilde_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3~git20180101.e7f47cf",
             upstream_version_add_revision(
                 self, "1.3~git20171201.11b1d57", b"somegitrev"))
 
     def test_git_new_rev(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.3+git20180101.1.e7f47cf",
             upstream_version_add_revision(
                 self, "1.3", b"somegitrev"))
-        self.assertEquals(
+        self.assertEqual(
             "1.0~git20180101",
             upstream_version_add_revision(
                 self, "1.0~git20160320", b"somegitrev"))
-        self.assertEquals(
+        self.assertEqual(
             "1.0-git20180101",
             upstream_version_add_revision(
                 self, "1.0-git20160320", b"somegitrev"))
-        self.assertEquals(
+        self.assertEqual(
             "1.0~git20180101.1.e7f47cf",
             upstream_version_add_revision(
                 self, "1.0~git20180101.0.11b1d57", b"somegitrev"))
-        self.assertEquals(
+        self.assertEqual(
             "1.0~git20180101.0.e7f47cf",
             upstream_version_add_revision(
                 self, "1.0~git20170101.0.11b1d57", b"somegitrev"))
@@ -864,13 +864,13 @@ class GetExportUpstreamRevisionTests(TestCase):
 
     def test_snapshot_rev(self):
         config = DebBuildConfig([])
-        self.assertEquals(
+        self.assertEqual(
             "34", get_export_upstream_revision(config, "0.1+bzr34"))
 
     def test_export_upstream_rev(self):
         config = DebBuildConfig([
             ({"BUILDDEB": {"export-upstream-revision": "tag:foobar"}}, True)])
-        self.assertEquals(
+        self.assertEqual(
             "tag:foobar",
             get_export_upstream_revision(config, "0.1"))
 
@@ -879,40 +879,40 @@ class GetExportUpstreamRevisionTests(TestCase):
             [({"BUILDDEB": {
                 "export-upstream-revision": "tag:foobar-$UPSTREAM_VERSION"}},
               True)])
-        self.assertEquals(
+        self.assertEqual(
             "tag:foobar-0.1",
             get_export_upstream_revision(config, "0.1"))
 
     def test_export_upstream_rev_not_set(self):
         config = DebBuildConfig([])
-        self.assertEquals(None, get_export_upstream_revision(config, "0.1"))
+        self.assertEqual(None, get_export_upstream_revision(config, "0.1"))
 
 
 class GetRevisionSnapshotTests(TestCase):
 
     def test_with_snapshot(self):
-        self.assertEquals("30", get_snapshot_revision("0.4.4~bzr30"))
+        self.assertEqual("30", get_snapshot_revision("0.4.4~bzr30"))
 
     def test_with_snapshot_plus(self):
-        self.assertEquals("30", get_snapshot_revision("0.4.4+bzr30"))
+        self.assertEqual("30", get_snapshot_revision("0.4.4+bzr30"))
 
     def test_without_snapshot(self):
-        self.assertEquals(None, get_snapshot_revision("0.4.4"))
+        self.assertEqual(None, get_snapshot_revision("0.4.4"))
 
     def test_non_numeric_snapshot(self):
-        self.assertEquals(None, get_snapshot_revision("0.4.4~bzra"))
+        self.assertEqual(None, get_snapshot_revision("0.4.4~bzra"))
 
     def test_with_svn_snapshot(self):
-        self.assertEquals("svn:4242", get_snapshot_revision("0.4.4~svn4242"))
+        self.assertEqual("svn:4242", get_snapshot_revision("0.4.4~svn4242"))
 
     def test_with_svn_snapshot_plus(self):
-        self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
+        self.assertEqual("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
 
     def test_git(self):
-        self.assertEquals(
+        self.assertEqual(
             "date:20190101",
             get_snapshot_revision("0.4.4+git20190101"))
-        self.assertEquals(
+        self.assertEqual(
             "git:abc1def",
             get_snapshot_revision("0.4.4+git20190101.abc1def"))
 
@@ -969,18 +969,18 @@ class GenericPristineTarSourceTests(TestCase):
 
     def test_pristine_tar_format_gz(self):
         rev = Revision("myrevid")
-        rev.properties[u"deb-pristine-delta"] = "1"
-        self.assertEquals("gz", revision_pristine_tar_format(rev))
+        rev.properties["deb-pristine-delta"] = "1"
+        self.assertEqual("gz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_bz2(self):
         rev = Revision("myrevid")
-        rev.properties[u"deb-pristine-delta-bz2"] = "1"
-        self.assertEquals("bz2", revision_pristine_tar_format(rev))
+        rev.properties["deb-pristine-delta-bz2"] = "1"
+        self.assertEqual("bz2", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_xz(self):
         rev = Revision("myrevid")
-        rev.properties[u"deb-pristine-delta-xz"] = "1"
-        self.assertEquals("xz", revision_pristine_tar_format(rev))
+        rev.properties["deb-pristine-delta-xz"] = "1"
+        self.assertEqual("xz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_unknown(self):
         rev = Revision("myrevid")
@@ -992,14 +992,14 @@ class GenericPristineTarSourceTests(TestCase):
 
     def test_pristine_tar_delta_gz(self):
         rev = Revision("myrevid")
-        rev.properties[u"deb-pristine-delta"] = standard_b64encode(b"bla")
-        self.assertEquals(b"bla", revision_pristine_tar_delta(rev))
+        rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
+        self.assertEqual(b"bla", revision_pristine_tar_delta(rev))
 
 
 class GitPristineTarSourceTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(GitPristineTarSourceTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('unstable', format='git')
         self.source = GitPristineTarSource(self.tree.branch)
 
@@ -1035,19 +1035,19 @@ upstream-tag = blah-%(version%~%-)s
             "upstream/" + upstream_v_no)
 
     def test_tag_name_distro(self):
-        self.assertEquals(
+        self.assertEqual(
             self.source.tag_name("0.3", distro="ubuntu"),
             "upstream-ubuntu/0.3")
 
     def test_version(self):
-        self.assertEquals(
+        self.assertEqual(
             ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
              'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3',
              'v.3.3'],
             self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):
-        self.assertEquals([
+        self.assertEqual([
             'upstream/3.3~brz232',
             'upstream-3.3~brz232',
             'upstream/3.3_brz232',
@@ -1060,7 +1060,7 @@ upstream-tag = blah-%(version%~%-)s
                 'pkg', "3.3~brz232", component=None))
 
     def test_version_component(self):
-        self.assertEquals([
+        self.assertEqual([
             'upstream-3.3/extlib', 'upstream/3.3/extlib'],
             self.source.possible_tag_names('pkg', "3.3", component="extlib"))
 
@@ -1072,14 +1072,14 @@ upstream-tag = blah-%(version%~%-)s
     def test_version_as_revisions_single(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
-        self.assertEquals(
+        self.assertEqual(
             {None: revid1},
             self.source.version_as_revisions(None, "2.1"))
 
     def test_version_component_as_revision(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid1)
-        self.assertEquals(
+        self.assertEqual(
             revid1,
             self.source.version_component_as_revision(None, "2.1", "lib"))
 
@@ -1090,7 +1090,7 @@ upstream-tag = blah-%(version%~%-)s
         revid2 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
-        self.assertEquals(
+        self.assertEqual(
             {None: revid1, "lib": revid2},
             self.source.version_as_revisions(None, "2.1", [
                 ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
@@ -1128,7 +1128,7 @@ upstream-tag = blah-%(version%~%-)s
 class BzrPristineTarSourceTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(BzrPristineTarSourceTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('unstable', format='bzr')
         self.source = BzrPristineTarSource(self.tree.branch)
 
@@ -1139,19 +1139,19 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
             "upstream-" + upstream_v_no)
 
     def test_tag_name_distro(self):
-        self.assertEquals(
+        self.assertEqual(
             self.source.tag_name("0.3", distro="ubuntu"),
             "upstream-ubuntu-0.3")
 
     def test_version(self):
-        self.assertEquals(
+        self.assertEqual(
             ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
              'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3', 'v/3.3',
              'v.3.3'],
             self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):
-        self.assertEquals([
+        self.assertEqual([
             'upstream/3.3~brz232',
             'upstream-3.3~brz232',
             'upstream/3.3_brz232',
@@ -1164,7 +1164,7 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
                 'pkg', "3.3~brz232", component=None))
 
     def test_version_component(self):
-        self.assertEquals([
+        self.assertEqual([
             'upstream-3.3/extlib', 'upstream/3.3/extlib'],
             self.source.possible_tag_names('pkg', "3.3", component="extlib"))
 
@@ -1176,14 +1176,14 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
     def test_version_as_revisions_single(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
-        self.assertEquals(
+        self.assertEqual(
             {None: revid1},
             self.source.version_as_revisions(None, "2.1"))
 
     def test_version_component_as_revision(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid1)
-        self.assertEquals(
+        self.assertEqual(
             revid1,
             self.source.version_component_as_revision(None, "2.1", "lib"))
 
@@ -1192,7 +1192,7 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
         revid2 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
-        self.assertEquals(
+        self.assertEqual(
             {None: revid1, "lib": revid2},
             self.source.version_as_revisions(None, "2.1", [
                 ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
@@ -1230,39 +1230,39 @@ class TarfileSourceTests(TestCaseWithTransport):
     """Tests for TarfileSource."""
 
     def setUp(self):
-        super(TarfileSourceTests, self).setUp()
+        super().setUp()
         tar = tarfile.open("foo-1.0.tar.gz", "w:gz")
         tar.close()
 
     def test_version(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
-        self.assertEquals(
+        self.assertEqual(
             ("1.0", "1.0"), source.get_latest_version("foo", "0.9"))
 
     def test_version_unicode(self):
-        source = TarfileSource(u"foo-1.0.tar.gz", u"1.0")
+        source = TarfileSource("foo-1.0.tar.gz", "1.0")
         latest_version = source.get_latest_version("foo", "0.9")
-        self.assertEquals(("1.0", "1.0"), latest_version)
+        self.assertEqual(("1.0", "1.0"), latest_version)
 
     def test_version_unicode_not_specified(self):
-        source = TarfileSource(u"foo-1.0.tar.gz")
-        latest_version = source.get_latest_version("foo", u"0.9")
-        self.assertEquals(("1.0", "1.0"), latest_version)
+        source = TarfileSource("foo-1.0.tar.gz")
+        latest_version = source.get_latest_version("foo", "0.9")
+        self.assertEqual(("1.0", "1.0"), latest_version)
 
     def test_get_latest_version_parses(self):
         source = TarfileSource("foo-1.0.tar.gz")
-        self.assertEquals(
+        self.assertEqual(
             ("1.0", "1.0"), source.get_latest_version("foo", "0.9"))
 
     def test_get_recent_versions(self):
         source = TarfileSource("foo-1.0.tar.gz")
-        self.assertEquals(
+        self.assertEqual(
             [("1.0", "1.0")], source.get_recent_versions("foo", "0.9"))
 
     def test_fetch_tarballs(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
         os.mkdir("bar")
-        self.assertEquals(
+        self.assertEqual(
             ["bar/foo_1.0.orig.tar.gz"],
             source.fetch_tarballs("foo", "1.0", "bar"))
         self.assertPathExists("bar/foo_1.0.orig.tar.gz")
@@ -1273,7 +1273,7 @@ class TarfileSourceTests(TestCaseWithTransport):
         zf.close()
         source = TarfileSource("bla-2.0.zip", "2.0")
         os.mkdir("bar")
-        self.assertEquals(
+        self.assertEqual(
             ["bar/foo_2.0.orig.tar.gz"],
             source.fetch_tarballs("foo", "2.0", "bar"))
         self.assertPathExists("bar/foo_2.0.orig.tar.gz")
@@ -1301,7 +1301,7 @@ class TarfileSourceTests(TestCaseWithTransport):
             zf.close()
         source = TarfileSource("foo-1.0.tar.bz2", "1.0")
         os.mkdir("bar")
-        self.assertEquals(
+        self.assertEqual(
             ["bar/foo_1.0.orig.tar.bz2"],
             source.fetch_tarballs("foo", "1.0", "bar"))
         self.assertPathExists("bar/foo_1.0.orig.tar.bz2")
@@ -1315,7 +1315,7 @@ class TarfileSourceTests(TestCaseWithTransport):
         make_new_upstream_tarball_xz("empty", "foo-1.0.tar.xz")
         source = TarfileSource("foo-1.0.tar.xz", "1.0")
         os.mkdir("bar")
-        self.assertEquals(
+        self.assertEqual(
             ["bar/foo_1.0.orig.tar.xz"],
             source.fetch_tarballs("foo", "1.0", "bar"))
         self.assertPathExists("bar/foo_1.0.orig.tar.xz")
@@ -1368,17 +1368,17 @@ class _SimpleUpstreamProvider(UpstreamProvider):
 class ExtractTarballVersionTests(TestCase):
 
     def test_unknown_extension(self):
-        self.assertEquals(
+        self.assertEqual(
             None,
             extract_tarball_version("/tmp/foo-1.2.tar.bla", "foo"))
 
     def test_debian_style(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.2+testfix",
             extract_tarball_version("/tmp/foo_1.2+testfix.orig.tar.gz", "foo"))
 
     def test_traditional_style(self):
-        self.assertEquals(
+        self.assertEqual(
             "1.2b2",
             extract_tarball_version("/tmp/foo-1.2b2.zip", "foo"))
 
@@ -1386,17 +1386,17 @@ class ExtractTarballVersionTests(TestCase):
 class NewTarballNameTests(TestCase):
 
     def test_bz2(self):
-        self.assertEquals(
+        self.assertEqual(
             "foo_1.0.orig.tar.bz2",
             new_tarball_name("foo", "1.0", "bla.tar.bz2"))
 
     def test_gz(self):
-        self.assertEquals(
+        self.assertEqual(
             "foo_1.0.orig.tar.gz",
             new_tarball_name("foo", "1.0", "bla.tar.gz"))
 
     def test_zip(self):
-        self.assertEquals(
+        self.assertEqual(
             "foo_1.0.orig.tar.gz",
             new_tarball_name("foo", "1.0", "bla.zip"))
 
@@ -1412,21 +1412,21 @@ class TestGatherOrigTarballs(TestCaseWithTransport):
 
     def test_single(self):
         self.build_tree(["mypkg_1.0.orig.tar.gz"])
-        self.assertEquals(
+        self.assertEqual(
             [os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz")],
             gather_orig_files("mypkg", "1.0", "."))
 
     def test_multiple(self):
         self.build_tree(["mypkg_1.0.orig.tar.gz", "mypkg_1.0.orig-foo.tar.gz"])
-        self.assertEquals(
-            set([os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz"),
-                 os.path.join(self.test_dir, "mypkg_1.0.orig-foo.tar.gz")]),
+        self.assertEqual(
+            {os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz"),
+             os.path.join(self.test_dir, "mypkg_1.0.orig-foo.tar.gz")},
             set(gather_orig_files("mypkg", "1.0", ".")))
 
     def test_utf8_invalid_file(self):
         with open("\xf6o.tar.gz", "w") as f:
             f.write("foo")
         self.build_tree(["mypkg_1.0.orig.tar.gz"])
-        self.assertEquals(
+        self.assertEqual(
             [os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz")],
-            gather_orig_files(u"mypkg", "1.0", "."))
+            gather_orig_files("mypkg", "1.0", "."))

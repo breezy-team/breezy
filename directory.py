@@ -52,14 +52,14 @@ def fixup_broken_git_url(url):
 
     if host in ('salsa.debian.org', 'github.com'):
         if '/' not in path[1:] and port:
-            path = '%s/%s' % (port, path.lstrip('/'))
+            path = '{}/{}'.format(port, path.lstrip('/'))
         netloc = host
         if ":" in netloc:
             netloc = "[%s]" % netloc
         if (credentials is not None and
             not (credentials == 'git' and
                  scheme not in ('git', 'http', 'https'))):
-            netloc = '%s@%s' % (credentials, netloc)
+            netloc = '{}@{}'.format(credentials, netloc)
         if host == 'salsa.debian.org':
             scheme = 'https'
         if host == 'salsa.debian.org' and path.startswith('/cgit/'):
@@ -153,7 +153,7 @@ def source_package_vcs_url(control):
     return vcs_type, dict(vcs_field_to_bzr_url_converters)[vcs_type](vcs_url)
 
 
-class AptDirectory(object):
+class AptDirectory:
     """Simple Bazaar directory service which uses dpkg Vcs-* fields."""
 
     def look_up(self, name, url, purpose=None):
@@ -200,7 +200,7 @@ class AptDirectory(object):
         return url
 
 
-class DgitDirectory(object):
+class DgitDirectory:
     """Directory that looks up the URL according to a Dgit control field."""
 
     def look_up(self, name, url, purpose=None):
@@ -252,12 +252,12 @@ class DgitDirectory(object):
         return url
 
 
-class VcsDirectory(object):
+class VcsDirectory:
     """Use local Vcs Directory."""
 
     def look_up(self, name, url, purpose=None):
         from debian.deb822 import Deb822
-        with open('debian/control', 'r') as f:
+        with open('debian/control') as f:
             source = Deb822(f)
             vcs, url = source_package_vcs_url(source)
             return url

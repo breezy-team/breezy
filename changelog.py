@@ -19,7 +19,7 @@
 #
 
 import posixpath
-from typing import List, Optional
+from typing import Optional
 
 from breezy.errors import BzrError
 from breezy.tree import Tree
@@ -40,7 +40,7 @@ class UnreleasedChanges(BzrError):
 
 def changelog_changes(
         tree: Tree, basis_tree: Tree,
-        cl_path: str = 'debian/changelog') -> List[str]:
+        cl_path: str = 'debian/changelog') -> list[str]:
     changes = []
     for change in tree.iter_changes(
             basis_tree, specific_files=[cl_path]):
@@ -111,7 +111,7 @@ def debcommit_release(
     if message is None or vendor is None:
         cl = Changelog(tree.get_file(cl_path), max_blocks=1)
         if message is None:
-            message = "releasing package %s version %s" % (
+            message = "releasing package {} version {}".format(
                     cl[0].package, cl[0].version)
         if vendor is None:
             from .util import suite_to_distribution

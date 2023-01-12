@@ -50,7 +50,7 @@ class BuildFailedError(BzrError):
     _fmt = "The build failed."
 
 
-class DebBuild(object):
+class DebBuild:
     """The object that does the building work."""
 
     def __init__(self, distiller, target_dir, builder, use_existing=False):

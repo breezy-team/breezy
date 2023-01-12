@@ -25,7 +25,7 @@ import socket
 import ssl
 import tempfile
 import traceback
-from typing import List, Optional, Callable, Union
+from typing import Optional, Callable, Union
 
 from breezy.bzr import LineEndingError
 from breezy.git.remote import RemoteGitError
@@ -134,7 +134,6 @@ from debmutate.vcs import split_vcs_url
 from debmutate.watch import WatchSyntaxError
 
 from breezy.tree import Tree, MissingNestedTree
-
 
 
 class BigVersionJump(Exception):
@@ -287,7 +286,7 @@ def is_big_version_jump(old_upstream_version, new_upstream_version):
     return False
 
 
-class ImportUpstreamResult(object):
+class ImportUpstreamResult:
     """Object representing the result of an import_upstream operation."""
 
     __slots__ = [
@@ -392,7 +391,7 @@ def _convert_exception(url: str, e: Exception) -> Optional[BranchOpenError]:
 
 def open_branch(
     url: str,
-    possible_transports: Optional[List[Transport]] = None,
+    possible_transports: Optional[list[Transport]] = None,
     name: str = None,
 ) -> Branch:
     """Open a branch by URL."""
@@ -783,7 +782,7 @@ def import_upstream(
     )
 
 
-class MergeUpstreamResult(object):
+class MergeUpstreamResult:
     """Object representing the result of a merge_upstream operation."""
 
     __slots__ = [
@@ -1305,7 +1304,7 @@ def main(argv=None):
         except UpstreamBranchLocationInvalid as e:
             report_fatal(
                 "upstream-branch-invalid",
-                "The upstream branch location (%s) is invalid: %s" % (
+                "The upstream branch location ({}) is invalid: {}".format(
                     e.url, e.extra), transient=False)
             return 1
         except ChangelogGeneratedFile as e:
@@ -1351,7 +1350,7 @@ def main(argv=None):
         except InvalidFormatUpstreamVersion as e:
             report_fatal(
                 "invalid-upstream-version-format",
-                "%r reported invalid format version string %s." % (
+                "{!r} reported invalid format version string {}.".format(
                     e.source, e.version), transient=False
             )
             return 1
@@ -1360,7 +1359,7 @@ def main(argv=None):
             return 1
         except UpstreamBranchUnavailable as e:
             error_description = (
-                "The upstream branch at %s was unavailable: %s" % (
+                "The upstream branch at {} was unavailable: {}".format(
                     e.location, e.error))
             transient = None
             error_code = "upstream-branch-unavailable"
@@ -1409,8 +1408,8 @@ def main(argv=None):
         except PackageIsNative as e:
             report_fatal(
                 "native-package",
-                "Package %s is native; unable to merge new upstream." % (
-                    e.package,),
+                "Package {} is native; unable to merge new upstream.".format(
+                    e.package),
                 transient=False
             )
             return 1
@@ -1421,7 +1420,7 @@ def main(argv=None):
             return 1
         except UpstreamVersionMissingInUpstreamBranch as e:
             error_description = (
-                "Upstream version %s not in upstream branch %r" % (
+                "Upstream version {} not in upstream branch {!r}".format(
                     e.version, e.branch))
             error_code = "upstream-version-missing-in-upstream-branch"
             report_fatal(error_code, error_description, transient=False)
@@ -1459,8 +1458,8 @@ def main(argv=None):
         except UpstreamMetadataSyntaxError as e:
             report_fatal(
                 "upstream-metadata-syntax-error",
-                "Unable to parse %s: %s" % (e.path, e.error), transient=False,
-            )
+                "Unable to parse {}: {}".format(
+                    e.path, e.error), transient=False)
             return 1
         except InvalidNormalization as e:
             error_description = str(e)
@@ -1513,7 +1512,7 @@ def main(argv=None):
         except BigVersionJump as e:
             report_fatal(
                 "big-version-jump",
-                "There was a big jump in upstream versions: %s ⇒ %s" % (
+                "There was a big jump in upstream versions: {} ⇒ {}".format(
                     e.old_upstream_version, e.new_upstream_version),
                 upstream_version=e.new_upstream_version, transient=False)
             return 1

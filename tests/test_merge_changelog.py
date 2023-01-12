@@ -335,7 +335,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
-        class FakeMerger(object):
+        class FakeMerger:
 
             def __init__(self, this_tree):
                 self.this_tree = this_tree

@@ -91,7 +91,7 @@ class TestBaseImportDsc(BuilddebTestCase):
         proc.wait()
         self.assertEqual(proc.returncode, 0)
         shutil.rmtree(upstream_dir)
-        dsc_name = "%s_%s.dsc" % (self.package_name, version)
+        dsc_name = "{}_{}.dsc".format(self.package_name, version)
         return dsc_name
 
 

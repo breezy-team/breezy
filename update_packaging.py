@@ -20,7 +20,7 @@
 from email.utils import parseaddr
 import logging
 import os
-from typing import Optional, List
+from typing import Optional
 
 from debian.changelog import get_maintainer
 from debmutate.changelog import ChangelogEditor
@@ -55,7 +55,7 @@ def override_dh_autoreconf_add_arguments(basedir: str, args):
 
 def update_packaging(
         tree: Tree, old_tree: Tree, subpath: str = "",
-        committer: Optional[str] = None) -> List[str]:
+        committer: Optional[str] = None) -> list[str]:
     """Update packaging to take in changes between upstream trees.
 
     Args:

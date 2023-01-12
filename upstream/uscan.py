@@ -148,7 +148,7 @@ class UScanSource(UpstreamSource):
                 args.append("--skip-signature")
             text, retcode = _run_dehs_uscan(args, cwd=tmpdir)
             uversionmangle = None
-            with open(watch_tempfilename, 'r') as f:
+            with open(watch_tempfilename) as f:
                 wf = parse_watch_file(f)
                 if wf and wf.entries and len(wf.entries) == 1:
                     uversionmangle = getattr(

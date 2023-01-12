@@ -26,7 +26,7 @@ from debian.deb822 import Dsc
 from ..apt_repo import LocalApt, NoAptSources
 
 
-class MockSources(object):
+class MockSources:
 
     def __init__(self, versions, files):
         self.restart_called_times = 0
@@ -76,7 +76,7 @@ class MockSources(object):
             return False
 
 
-class MockAptPkg(object):
+class MockAptPkg:
 
     def __init__(self, sources):
         self.init_called_times = 0
@@ -91,7 +91,7 @@ class MockAptPkg(object):
         return self.sources
 
 
-class MockAptCaller(object):
+class MockAptCaller:
 
     def __init__(self, work=False):
         self.work = work

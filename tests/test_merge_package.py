@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: iso-8859-15 -*-
 #    test_merge_package.py -- Merge packaging branches, fix ancestry as needed.
 #    Copyright (C) 2009 Canonical Ltd.
 #
@@ -59,11 +58,11 @@ class MergePackageTests(TestCaseWithTransport):
         ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
         vdata = MP._upstream_version_data(
             debp_n.branch, debp_n.last_revision())
-        self.assertEquals(vdata[0], Version('1.10'))
+        self.assertEqual(vdata[0], Version('1.10'))
 
         vdata = MP._upstream_version_data(
             ubup_o.branch, ubup_o.last_revision())
-        self.assertEquals(vdata[0], Version('1.2'))
+        self.assertEqual(vdata[0], Version('1.2'))
 
     def test_debian_upstream_newer(self):
         """Diverging upstreams (debian newer) don't cause merge conflicts.
@@ -88,9 +87,9 @@ class MergePackageTests(TestCaseWithTransport):
 
         # There are two conflicts in the 'c' and the 'debian/changelog' files
         # respectively.
-        self.assertEquals(len(conflicts), 2)
+        self.assertEqual(len(conflicts), 2)
         conflict_paths = sorted([c.path for c in conflicts])
-        self.assertEquals(conflict_paths, [u'c.moved', u'debian/changelog'])
+        self.assertEqual(conflict_paths, ['c.moved', 'debian/changelog'])
 
         # Undo the failed merge.
         ubup.revert()
@@ -118,10 +117,10 @@ class MergePackageTests(TestCaseWithTransport):
             ubup, debp.branch)
 
         # The ancestry did diverge and needed to be fixed.
-        self.assertEquals(upstreams_diverged, True)
+        self.assertEqual(upstreams_diverged, True)
         # The (temporary) target upstream branch had to be reverted to the
         # source upstream branch since the latter was more recent.
-        self.assertEquals(t_upstream_reverted, True)
+        self.assertEqual(t_upstream_reverted, True)
 
         # Check the versions present in the tree with the fixed ancestry.
         db2 = DistributionBranch(ubup.branch, ubup.branch)
@@ -139,15 +138,15 @@ class MergePackageTests(TestCaseWithTransport):
             ubup_tip_post_fix).get_parent_ids()
 
         # The tip of the fixed ubuntu packaging branch has 2 parents.
-        self.assertEquals(len(ubup_parents_post_fix), 2)
+        self.assertEqual(len(ubup_parents_post_fix), 2)
 
         # The left parent is the packaging branch tip before fixing.
-        self.assertEquals(ubup_parents_post_fix[0], ubup_tip_pre_fix)
+        self.assertEqual(ubup_parents_post_fix[0], ubup_tip_pre_fix)
 
         # The right parent is derived from a merge
         ubup_parents_sharedupstream = ubup.branch.repository.revision_tree(
             ubup_parents_post_fix[1]).get_parent_ids()
-        self.assertEquals(ubup_parents_sharedupstream, [ubuu_tip, debu_tip])
+        self.assertEqual(ubup_parents_sharedupstream, [ubuu_tip, debu_tip])
 
         # Try merging again.
         conflicts = ubup.merge_from_branch(
@@ -158,7 +157,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # And, voila, only the packaging branch conflict remains.
         conflict_paths = sorted([c.path for c in conflicts])
-        self.assertEquals(conflict_paths, [u'debian/changelog'])
+        self.assertEqual(conflict_paths, ['debian/changelog'])
 
     def test_deb_upstream_conflicts_with_ubu_packaging(self):
         """Source upstream conflicts with target packaging -> exception.
@@ -177,7 +176,7 @@ class MergePackageTests(TestCaseWithTransport):
             MP.fix_ancestry_as_needed, ubup, debp.branch)
 
         conflict_paths = sorted([c.path for c in ubup.conflicts()])
-        self.assertEquals(conflict_paths, [u'c.moved'])
+        self.assertEqual(conflict_paths, ['c.moved'])
         # Check that all the merged revisions are now in this repo
         merged_parent = ubup.get_parent_ids()[1]
         its_parents_map = ubup.branch.repository.get_parent_map([
@@ -212,7 +211,7 @@ class MergePackageTests(TestCaseWithTransport):
         # There are two conflicts in the 'c' and the 'debian/changelog' files
         # respectively.
         conflict_paths = sorted([c.path for c in conflicts])
-        self.assertEquals(conflict_paths, [u'c.moved', u'debian/changelog'])
+        self.assertEqual(conflict_paths, ['c.moved', 'debian/changelog'])
 
         # Undo the failed merge.
         ubup.revert()
@@ -222,10 +221,10 @@ class MergePackageTests(TestCaseWithTransport):
             ubup, debp.branch)
 
         # The ancestry did diverge and needed to be fixed.
-        self.assertEquals(upstreams_diverged, True)
+        self.assertEqual(upstreams_diverged, True)
         # The target upstream branch was more recent in this case and hence
         # was not reverted to the source upstream branch.
-        self.assertEquals(t_upstream_reverted, False)
+        self.assertEqual(t_upstream_reverted, False)
 
         # Try merging again.
         conflicts = ubup.merge_from_branch(
@@ -236,7 +235,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # And, voila, only the packaging branch conflict remains.
         conflict_paths = sorted([c.path for c in conflicts])
-        self.assertEquals(conflict_paths, [u'debian/changelog'])
+        self.assertEqual(conflict_paths, ['debian/changelog'])
 
     def test_upstreams_not_diverged(self):
         """Non-diverging upstreams result in a normal merge.
@@ -259,7 +258,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # There is only a conflict in the 'debian/changelog' file.
         conflict_paths = sorted([c.path for c in conflicts])
-        self.assertEquals(conflict_paths, [u'debian/changelog'])
+        self.assertEqual(conflict_paths, ['debian/changelog'])
 
         # Undo the failed merge.
         ubuntup.revert()
@@ -269,10 +268,10 @@ class MergePackageTests(TestCaseWithTransport):
             ubuntup, debianp.branch)
 
         # The ancestry did *not* diverge.
-        self.assertEquals(upstreams_diverged, False)
+        self.assertEqual(upstreams_diverged, False)
         # The upstreams have not diverged, hence no need to fix/revert
         # either of them.
-        self.assertEquals(t_upstream_reverted, False)
+        self.assertEqual(t_upstream_reverted, False)
 
         # Try merging again.
         conflicts = ubuntup.merge_from_branch(
@@ -283,7 +282,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         # The packaging branch conflict we saw above is still there.
         conflict_paths = sorted([c.path for c in conflicts])
-        self.assertEquals(conflict_paths, [u'debian/changelog'])
+        self.assertEqual(conflict_paths, ['debian/changelog'])
 
     def _setup_debian_upstream_newer(self):
         r"""
@@ -589,10 +588,10 @@ class MergePackageTests(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
 
         def revid_name(vid):
-            return 'revid_%s_%s' % (name.replace('-', '_'), vid)
+            return 'revid_{}_{}'.format(name.replace('-', '_'), vid)
 
         def add_paths(paths):
-            qpaths = ['%s/%s' % (name, path) for path in paths]
+            qpaths = ['{}/{}'.format(name, path) for path in paths]
             self.build_tree(qpaths)
             tree.add(paths)
 
@@ -616,9 +615,10 @@ class MergePackageTests(TestCaseWithTransport):
             vid = vids.pop(0)
             if log_format is not None:
                 cle = changelog(version, vid)
-                p = '%s/work/%s/debian/changelog' % (self.test_base_dir, name)
+                p = '{}/work/{}/debian/changelog'.format(
+                    self.test_base_dir, name)
                 _prepend_log(cle, p)
-            revid = tree.commit('%s: %s' % (vid, msg))
+            revid = tree.commit('{}: {}'.format(vid, msg))
             setattr(self, revid_name(vid), revid)
             tree.branch.tags.set_tag(version, revid)
 
@@ -631,7 +631,8 @@ class MergePackageTests(TestCaseWithTransport):
                 tree.merge_from_branch(utree.branch, to_revision=urevid)
                 utree.branch.tags.merge_to(tree.branch.tags)
                 if urevid is not None:
-                    msg += 'Merged tree %s|%s. ' % (tree_nick(utree), urevid)
+                    msg += 'Merged tree {}|{}. '.format(
+                        tree_nick(utree), urevid)
                 else:
                     msg += 'Merged tree %s. ' % utree
             if paths is not None:

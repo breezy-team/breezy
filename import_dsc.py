@@ -31,7 +31,7 @@ import os
 import stat
 import tempfile
 import tarfile
-from typing import Optional, List, Tuple
+from typing import Optional
 
 from debian import deb822
 from debian.changelog import Version, Changelog, VersionError
@@ -104,7 +104,7 @@ class VersionAlreadyImported(BzrError):
         BzrError.__init__(self, version=str(version), tag_name=tag_name)
 
 
-class DscCache(object):
+class DscCache:
 
     def __init__(self, transport=None):
         self.cache = {}
@@ -129,7 +129,7 @@ class DscCache(object):
         return self.transport_cache[name]
 
 
-class DscComp(object):
+class DscComp:
 
     def __init__(self, cache):
         self.cache = cache
@@ -139,7 +139,7 @@ class DscComp(object):
         return Version(dsc['Version'])
 
 
-class DistributionBranchSet(object):
+class DistributionBranchSet:
     """A collection of DistributionBranches with an ordering.
 
     A DistributionBranchSet collects a group of DistributionBranches
@@ -222,7 +222,7 @@ def checkout_upstream_version(tree, package, version, revisions):
     tree.set_parent_ids(parent_ids)
 
 
-class DistributionBranch(object):
+class DistributionBranch:
     """A DistributionBranch is a representation of one line of development.
 
     It is a branch that is linked to a line of development, such as Debian
@@ -305,7 +305,7 @@ class DistributionBranch(object):
         :return: a String with the name of the tag.
         """
         if vendor is not None and version.debian_revision:
-            return '%s/%s' % (vendor, mangle_version(self.branch, version))
+            return '{}/{}'.format(vendor, mangle_version(self.branch, version))
         else:
             return mangle_version(self.branch, version)
 
@@ -332,7 +332,7 @@ class DistributionBranch(object):
 
     def contained_versions(
             self,
-            versions: List[Version]) -> Tuple[List[Version], List[Version]]:
+            versions: list[Version]) -> tuple[list[Version], list[Version]]:
         """Splits a list of versions depending on presence in the branch.
 
         Partitions the input list of versions depending on whether they
@@ -365,7 +365,7 @@ class DistributionBranch(object):
                 not_contained.append(version)
         return contained, not_contained
 
-    def missing_versions(self, versions: List[Version]) -> List[Version]:
+    def missing_versions(self, versions: list[Version]) -> list[Version]:
         """Returns the versions from the list that the branch does not have.
 
         Looks at all the versions specified and returns a list of the ones
@@ -384,7 +384,7 @@ class DistributionBranch(object):
         return versions[:index]
 
     def last_contained_version(
-            self, versions: List[Version]) -> Optional[Version]:
+            self, versions: list[Version]) -> Optional[Version]:
         """Returns the highest version from the list present in this branch.
 
         It assumes that the input list of versions is sorted with the
@@ -404,20 +404,16 @@ class DistributionBranch(object):
     def possible_tags(self, version: Version, vendor: Optional[str] = None):
         if vendor:
             if version.debian_revision:
-                for tag_name in ["%s-%s" % (vendor, version),
-                                 "%s/%s" % (vendor, version)]:
-                    yield tag_name
+                yield from ["{}-{}".format(vendor, version),
+                            "{}/{}".format(vendor, version)]
             else:
                 yield str(version)
         else:
             version = mangle_version(self.branch, version)
             yield str(version)
-            for tag_name in ["debian-%s" % version, "debian/%s" % version]:
-                yield tag_name
-            for tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
-                yield tag_name
-            for tag_name in ["v%s" % version]:
-                yield tag_name
+            yield from ["debian-%s" % version, "debian/%s" % version]
+            yield from ["ubuntu-%s" % version, "ubuntu/%s" % version]
+            yield from ["v%s" % version]
 
     def revid_of_version(self, version: Version) -> RevisionID:
         """Returns the revision id corresponding to that version.
@@ -581,7 +577,7 @@ class DistributionBranch(object):
                 return branch
         return None
 
-    def get_parents(self, versions: List[Version]):
+    def get_parents(self, versions: list[Version]):
         """Return the list of parents for a specific version.
 
         This method returns the list of revision ids that should be parents
@@ -1128,7 +1124,7 @@ class DistributionBranch(object):
 
     def get_native_parents(
             self, version: Version,
-            versions: List[Version]) -> List[RevisionID]:
+            versions: list[Version]) -> list[RevisionID]:
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is None:
             parents = []

@@ -89,7 +89,8 @@ class TestBuilddeb(BuilddebTestCase):
         tree.add([self.uncommited_file])
         tree.commit("two", rev_id=b'revid2')
 
-        p = '%s/work/newtree/%s' % (self.test_base_dir, self.uncommited_file)
+        p = '{}/work/newtree/{}'.format(
+            self.test_base_dir, self.uncommited_file)
         with open(p, 'w') as fh:
             fh.write('** This is the conflicting line.')
         newtree.add([self.uncommited_file])
@@ -193,5 +194,5 @@ class TestBuilddeb(BuilddebTestCase):
         self.run_bzr(['commit'])
         branch = tree.branch
         self.assertEqual(
-            u"\u2026and another thing",
+            "\u2026and another thing",
             branch.repository.get_revision(branch.last_revision()).message)

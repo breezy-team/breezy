@@ -38,7 +38,7 @@ from .util import (
 )
 
 
-class SourceExtractor(object):
+class SourceExtractor:
     """A class to extract a source package to its constituent parts"""
 
     def __init__(self, dsc_path, dsc, apply_patches: bool = False):
@@ -82,9 +82,9 @@ class OneZeroSourceExtractor(SourceExtractor):
         name = self.dsc['Source']
         version = Version(self.dsc['Version'])
         self.extracted_upstream = os.path.join(
-            tempdir, "%s-%s.orig" % (name, str(version.upstream_version)))
+            tempdir, "{}-{}.orig".format(name, str(version.upstream_version)))
         self.extracted_debianised = os.path.join(
-            tempdir, "%s-%s" % (name, str(version.upstream_version)))
+            tempdir, "{}-{}".format(name, str(version.upstream_version)))
         if not os.path.exists(self.extracted_upstream):
             mutter("It's a native package")
             self.extracted_upstream = None
@@ -122,7 +122,7 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
         name = self.dsc['Source']
         version = Version(self.dsc['Version'])
         self.extracted_debianised = os.path.join(
-            tempdir, "%s-%s" % (name, str(version.upstream_version)))
+            tempdir, "{}-{}".format(name, str(version.upstream_version)))
         self.extracted_upstream = None
         for part in self.dsc['files']:
             if (part['name'].endswith(".tar.gz")
@@ -153,7 +153,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         name = self.dsc['Source']
         version = Version(self.dsc['Version'])
         self.extracted_debianised = os.path.join(
-            tempdir, "%s-%s" % (name, str(version.upstream_version)))
+            tempdir, "{}-{}".format(name, str(version.upstream_version)))
         self.extracted_upstream = self.extracted_debianised + ".orig"
         os.rename(self.extracted_debianised, self.extracted_upstream)
         proc = subprocess.Popen(
@@ -172,7 +172,7 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
              "0000", "-exec", "chmod", "644", "{}", ";"])
         for part in self.dsc['files']:
             if (part['name'].startswith(
-                    "%s_%s.orig" % (name, str(version.upstream_version)))
+                    "{}_{}.orig".format(name, str(version.upstream_version)))
                     and not part['name'].endswith('.asc')):
                 self.upstream_tarballs.append((
                     os.path.abspath(os.path.join(

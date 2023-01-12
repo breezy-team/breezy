@@ -47,7 +47,7 @@ class UnsupportedRepackFormat(BzrError):
         BzrError.__init__(self, location=location)
 
 
-class TgzRepacker(object):
+class TgzRepacker:
     """Repacks something to be a .tar.gz"""
 
     def __init__(self, source_f):

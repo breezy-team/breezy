@@ -37,7 +37,7 @@ BUILD_TYPE_MERGE = "merge"
 BUILD_TYPE_SPLIT = "split"
 
 
-class SvnBuildPackageMappedConfig(object):
+class SvnBuildPackageMappedConfig:
     """Config object that provides a bzr-builddeb configuration
     based on a svn-buildpackage configuration.
     """
@@ -68,7 +68,7 @@ class UpstreamMetadataSyntaxError(BzrError):
         self.error = error
 
 
-class UpstreamMetadataConfig(object):
+class UpstreamMetadataConfig:
     """Config object that represents debian/upstream/metadata.
     """
 
@@ -118,7 +118,7 @@ class UpstreamMetadataConfig(object):
         raise KeyError
 
 
-class DebBuildConfig(object):
+class DebBuildConfig:
     """Holds the configuration settings for builddeb. These are taken from
     a hierarchy of config files. .bzr-builddeb/local.conf then
     debian/bzr-builddeb.conf.local,

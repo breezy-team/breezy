@@ -50,7 +50,7 @@ ipsec-tools (%s) karmic; urgency=low
 
 
 def _prepend_log(text, path):
-    with open(path, 'r') as f:
+    with open(path) as f:
         content = f.read()
     with open(path, 'w') as fh:
         fh.write(text+content)
@@ -174,10 +174,10 @@ class TestMergePackageBB(BuilddebTestCase):
             tree = self.make_branch_and_tree(name)
 
         def revid_name(vid):
-            return 'revid_%s_%s' % (name.replace('-', '_'), vid)
+            return 'revid_{}_{}'.format(name.replace('-', '_'), vid)
 
         def add_paths(paths):
-            qpaths = ['%s/%s' % (name, path) for path in paths]
+            qpaths = ['{}/{}'.format(name, path) for path in paths]
             self.build_tree(qpaths)
             tree.add(paths)
 
@@ -201,9 +201,10 @@ class TestMergePackageBB(BuilddebTestCase):
             vid = vids.pop(0)
             if log_format is not None:
                 cle = changelog(version, vid)
-                p = '%s/work/%s/debian/changelog' % (self.test_base_dir, name)
+                p = '{}/work/{}/debian/changelog'.format(
+                    self.test_base_dir, name)
                 _prepend_log(cle, p)
-            revid = tree.commit('%s: %s' % (vid, msg))
+            revid = tree.commit('{}: {}'.format(vid, msg))
             setattr(self, revid_name(vid), revid)
             tree.branch.tags.set_tag(version, revid)
 
@@ -217,7 +218,7 @@ class TestMergePackageBB(BuilddebTestCase):
                     tree.merge_from_branch(utree.branch, to_revision=urevid)
                     utree.branch.tags.merge_to(tree.branch.tags)
                     if urevid is not None:
-                        msg += 'Merged tree %s|%s. ' % (
+                        msg += 'Merged tree {}|{}. '.format(
                             tree_nick(utree), urevid)
                     else:
                         msg += 'Merged tree %s. ' % utree

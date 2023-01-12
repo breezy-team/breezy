@@ -229,10 +229,10 @@ def tarball_name(package, version, component=None, format=None):
     """
     if format is None:
         format = 'gz'
-    name = "%s_%s.orig" % (package, str(version))
+    name = "{}_{}.orig".format(package, str(version))
     if component is not None:
         name += "-" + component
-    return "%s.tar.%s" % (name, format)
+    return "{}.tar.{}".format(name, format)
 
 
 def suite_to_distribution(suite):
@@ -600,9 +600,9 @@ def tree_contains_upstream_source(tree, subpath=''):
     :return: Boolean indicating whether or not the tree contains the upstream
         source. None if the tree is empty
     """
-    present_files = set(
-        [f[0] for f in tree.list_files(recursive=False, from_dir=subpath)
-         if f[1] == 'V'])
+    present_files = {
+        f[0] for f in tree.list_files(recursive=False, from_dir=subpath)
+        if f[1] == 'V'}
     if len(present_files) == 0:
         return None
     packaging_files = frozenset([
@@ -619,7 +619,7 @@ def tree_get_source_format(tree, subpath=''):
     filename = osutils.pathjoin(subpath, "debian/source/format")
     try:
         text = tree.get_file_text(filename)
-    except IOError as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             return FORMAT_1_0
         raise
@@ -700,11 +700,11 @@ def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
 
 def component_from_orig_tarball(tarball_filename, package, version):
     tarball_filename = os.path.basename(tarball_filename)
-    prefix = "%s_%s.orig" % (package, version)
+    prefix = "{}_{}.orig".format(package, version)
     if not tarball_filename.startswith(prefix):
         raise ValueError(
-            "invalid orig tarball file %s does not have expected prefix %s" % (
-                tarball_filename, prefix))
+            "invalid orig tarball file {} does not have expected prefix {}"
+            .format(tarball_filename, prefix))
     base = tarball_filename[len(prefix):]
     for ext in (".tar.gz", ".tar.bz2", ".tar.lzma", ".tar.xz"):
         if tarball_filename.endswith(ext):
@@ -815,7 +815,7 @@ def find_changes_files(path, package, version):
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
-    c = re.compile('%s_%s_(.*).changes' % (
+    c = re.compile('{}_{}_(.*).changes'.format(
         re.escape(package), re.escape(non_epoch_version)))
     for entry in os.scandir(path):
         m = c.match(entry.name)

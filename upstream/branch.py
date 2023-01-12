@@ -24,7 +24,8 @@ import os
 import re
 import subprocess
 import tempfile
-from typing import Optional, Tuple, Iterable
+from typing import Optional
+from collections.abc import Iterable
 
 from debian.changelog import Version
 from debmutate.versions import (
@@ -79,7 +80,7 @@ class PreviousVersionTagMissing(BzrError):
             "%(tag_name)s")
 
     def __init__(self, version, tag_name):
-        super(PreviousVersionTagMissing, self).__init__(
+        super().__init__(
             version=version, tag_name=tag_name)
 
 
@@ -137,7 +138,7 @@ def _upstream_branch_version(
     if upstream_revision == NULL_REVISION:
         # No new version to merge
         return previous_version, previous_version
-    last_upstream: Optional[Tuple[Version, str, str]] = None
+    last_upstream: Optional[tuple[Version, str, str]] = None
     try:
         for r in revhistory:
             if r in reverse_tag_dict:
@@ -358,8 +359,8 @@ def guess_upstream_tag(package, version,
     if package:
         for prefix in ['rust-']:
             if package.startswith(prefix):
-                yield '%s-%s' % (package[len(prefix):], version)
-        yield '%s-%s' % (package, version)
+                yield '{}-{}'.format(package[len(prefix):], version)
+        yield '{}-{}'.format(package, version)
     if not is_snapshot:
         yield 'v%s' % version
         yield 'v.%s' % version
@@ -368,8 +369,8 @@ def guess_upstream_tag(package, version,
         yield '%s' % version.replace('.', '_')
         yield 'version-%s' % version
         if package:
-            yield '%s-%s-release' % (package, version.replace('.', '_'))
-            yield '%s-v%s' % (package, version)
+            yield '{}-{}-release'.format(package, version.replace('.', '_'))
+            yield '{}-v{}'.format(package, version)
 
 
 def guess_upstream_revspec(package, version):
@@ -594,7 +595,7 @@ class UpstreamBranchSource(UpstreamSource):
                         nfn = new_tarball_name(package, version, fn)
                         repack_tarball(os.path.join(td, fn), nfn, target_dir)
                         return [os.path.join(target_dir, nfn)]
-            tarball_base = "%s-%s" % (package, version)
+            tarball_base = "{}-{}".format(package, version)
             target_filename = self._tarball_path(
                 package, version, None, target_dir)
             try:
@@ -610,7 +611,7 @@ class UpstreamBranchSource(UpstreamSource):
         return [target_filename]
 
     def __repr__(self):
-        return "<%s for %r>" % (
+        return "<{} for {!r}>".format(
             self.__class__.__name__, self._actual_branch.base)
 
 
@@ -641,7 +642,7 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
         return self._upstream_branch
 
     def __repr__(self):
-        return "<%s for %r>" % (
+        return "<{} for {!r}>".format(
             self.__class__.__name__, self.upstream_branch_url)
 
 
@@ -650,7 +651,7 @@ class DistCommandFailed(BzrError):
     _fmt = "Dist command failed to produce a tarball: %(error)s"
 
     def __init__(self, error, kind=None):
-        super(DistCommandFailed, self).__init__(error=error, kind=kind)
+        super().__init__(error=error, kind=kind)
 
 
 def _dupe_vcs_tree(tree, directory):
@@ -690,7 +691,7 @@ def run_dist_command(
                 raise MemoryError(str(e)) from e
             try:
                 import json
-                with open(env['DIST_RESULT'], 'r') as f:
+                with open(env['DIST_RESULT']) as f:
                     result = json.load(f)
                 raise DistCommandFailed(
                     result['description'], result['result_code']) from e
@@ -744,7 +745,7 @@ def run_dist_command(
                     os.rename(entry.path, os.path.join(target_dir, entry.name))
                     return entry.name
             note('No tarballs found in dist directory.')
-        diff = set(os.listdir(td)) - set([os.path.basename(package_dir)])
+        diff = set(os.listdir(td)) - {os.path.basename(package_dir)}
         if len(diff) == 1:
             fn = diff.pop()
             note('Found tarball %s in parent directory.', fn)

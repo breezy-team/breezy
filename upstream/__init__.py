@@ -23,7 +23,7 @@ import re
 import shutil
 import tarfile
 import tempfile
-from typing import Optional, Dict
+from typing import Optional
 
 from debmutate.versions import debianize_upstream_version
 
@@ -78,7 +78,7 @@ def new_tarball_name(package, version, old_name):
     return tarball_name(package, version, None, "gz")
 
 
-class UpstreamSource(object):
+class UpstreamSource:
     """A source for upstream versions (uscan, debian/rules, etc)."""
 
     def get_latest_version(self, package: str, current_version: str):
@@ -105,7 +105,7 @@ class UpstreamSource(object):
 
     def version_as_revisions(
             self, package: str, version: str,
-            tarballs=None) -> Dict[Optional[str], RevisionID]:
+            tarballs=None) -> dict[Optional[str], RevisionID]:
         """Lookup the revision ids for a particular version.
 
         :param package: Package name
@@ -165,7 +165,8 @@ class AptSource(UpstreamSource):
                     for entry in source['Files']:
                         filename = os.path.basename(entry['name'])
                         if filename.startswith(
-                                "%s_%s.orig" % (package, upstream_version)):
+                                "{}_{}.orig".format(
+                                    package, upstream_version)):
                             filenames.append(filename)
                     if filenames:
                         source_version = source["Version"]
@@ -204,11 +205,11 @@ class SelfSplitSource(UpstreamSource):
         with tempfile.TemporaryDirectory(
                 prefix="builddeb-get-orig-source-") as tmpdir:
             export_dir = os.path.join(
-                tmpdir, "%s-%s" % (package, upstream_version))
+                tmpdir, "{}-{}".format(package, upstream_version))
             export_with_nested(self.tree, export_dir, format="dir")
             shutil.rmtree(os.path.join(export_dir, "debian"))
             with tarfile.open(target_filename, "w:gz") as tar:
-                tar.add(export_dir, "%s-%s" % (package, upstream_version))
+                tar.add(export_dir, "{}-{}".format(package, upstream_version))
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         note("Using the current branch without the 'debian' directory "
@@ -228,7 +229,7 @@ class StackedUpstreamSource(UpstreamSource):
         self._sources = sources
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._sources)
+        return "{}({!r})".format(self.__class__.__name__, self._sources)
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         for source in self._sources:
@@ -294,7 +295,7 @@ def gather_orig_files(package, version, path):
     :param version: package upstream version string
     :return: List of orig tarfile paths, or None if none were found
     """
-    prefix = ("%s_%s.orig" % (package, version))
+    prefix = ("{}_{}.orig".format(package, version))
     ret = []
     path = os.path.abspath(path)
     if not os.path.isdir(path):
@@ -311,7 +312,7 @@ def gather_orig_files(package, version, path):
     return None
 
 
-class UpstreamProvider(object):
+class UpstreamProvider:
     """An upstream provider can provide the upstream source for a package.
 
     Different implementations can provide it in different ways, for
@@ -540,7 +541,7 @@ class DirectoryScanSource(UpstreamSource):
 
     def fetch_tarballs(self, package: str, version: str, target_dir,
                        components=None):
-        prefix = '%s_%s.orig' % (package, version)
+        prefix = '{}_{}.orig'.format(package, version)
         ret = []
         for entry in os.scandir(self.path):
             if entry.name.startswith(prefix):

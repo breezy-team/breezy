@@ -182,7 +182,7 @@ def commit_pristine_tar(dest, tarball_path, upstream=None, committer=None):
         if b'excessively large binary delta' in stderr:
             raise PristineTarDeltaTooLarge(stderr)
         elif b'No space left on device' in stderr:
-            raise IOError(
+            raise OSError(
                 errno.ENOSPC,
                 'Generating pristine tar delta failed: '
                 'no space left on device')
@@ -238,7 +238,7 @@ def make_pristine_tar_delta_from_tree(
             if 'pristine-tar' in debug.debug_flags:
                 revno, revid = tree.branch.last_revision_info()
                 preserved = osutils.pathjoin(osutils.dirname(tarball_path),
-                                             'orig-%s' % (revno,))
+                                             'orig-{}'.format(revno))
                 mutter('pristine-tar failed for delta between %s rev: %s'
                        ' and tarball %s'
                        % (tree.basedir, (revno, revid), tarball_path))
@@ -252,18 +252,18 @@ def make_pristine_tar_delta_from_tree(
 
 
 def revision_has_pristine_tar_delta(rev):
-    return (u'deb-pristine-delta' in rev.properties
-            or u'deb-pristine-delta-bz2' in rev.properties
-            or u'deb-pristine-delta-xz' in rev.properties)
+    return ('deb-pristine-delta' in rev.properties
+            or 'deb-pristine-delta-bz2' in rev.properties
+            or 'deb-pristine-delta-xz' in rev.properties)
 
 
 def revision_pristine_tar_delta(rev):
-    if u'deb-pristine-delta' in rev.properties:
-        uuencoded = rev.properties[u'deb-pristine-delta']
-    elif u'deb-pristine-delta-bz2' in rev.properties:
-        uuencoded = rev.properties[u'deb-pristine-delta-bz2']
-    elif u'deb-pristine-delta-xz' in rev.properties:
-        uuencoded = rev.properties[u'deb-pristine-delta-xz']
+    if 'deb-pristine-delta' in rev.properties:
+        uuencoded = rev.properties['deb-pristine-delta']
+    elif 'deb-pristine-delta-bz2' in rev.properties:
+        uuencoded = rev.properties['deb-pristine-delta-bz2']
+    elif 'deb-pristine-delta-xz' in rev.properties:
+        uuencoded = rev.properties['deb-pristine-delta-xz']
     else:
         assert revision_has_pristine_tar_delta(rev)
         raise AssertionError(
@@ -272,11 +272,11 @@ def revision_pristine_tar_delta(rev):
 
 
 def revision_pristine_tar_format(rev):
-    if u'deb-pristine-delta' in rev.properties:
+    if 'deb-pristine-delta' in rev.properties:
         return 'gz'
-    elif u'deb-pristine-delta-bz2' in rev.properties:
+    elif 'deb-pristine-delta-bz2' in rev.properties:
         return 'bz2'
-    elif u'deb-pristine-delta-xz' in rev.properties:
+    elif 'deb-pristine-delta-xz' in rev.properties:
         return 'xz'
     assert revision_has_pristine_tar_delta(rev)
     raise AssertionError(
@@ -420,7 +420,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         self.branch = branch
 
     def __repr__(self):
-        return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
+        return "<{} at {}>".format(self.__class__.__name__, self.branch.base)
 
     def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
@@ -434,7 +434,7 @@ class BzrPristineTarSource(BasePristineTarSource):
         if distro is None:
             name = "upstream-" + version
         else:
-            name = "upstream-%s-%s" % (distro, version)
+            name = "upstream-{}-{}".format(distro, version)
         if component is not None:
             name += "/%s" % component
         return name
@@ -474,7 +474,7 @@ class BzrPristineTarSource(BasePristineTarSource):
             if files_excluded_re and files_excluded_re.match(path):
                 return False
             return True
-        message = "Import upstream version %s" % (version,)
+        message = "Import upstream version {}".format(version)
         revprops = {}
         supports_custom_revprops = (
             tree.branch.repository._format.supports_custom_revision_properties)
@@ -490,11 +490,11 @@ class BzrPristineTarSource(BasePristineTarSource):
             if supports_custom_revprops:
                 uuencoded = standard_b64encode(delta).decode('ascii')
                 if tarball.endswith(".tar.bz2"):
-                    revprops[u"deb-pristine-delta-bz2"] = uuencoded
+                    revprops["deb-pristine-delta-bz2"] = uuencoded
                 elif tarball.endswith(".tar.xz"):
-                    revprops[u"deb-pristine-delta-xz"] = uuencoded
+                    revprops["deb-pristine-delta-xz"] = uuencoded
                 else:
-                    revprops[u"deb-pristine-delta"] = uuencoded
+                    revprops["deb-pristine-delta"] = uuencoded
             else:
                 warning('Not setting pristine tar revision properties '
                         'since the repository does not support it.')
@@ -638,7 +638,7 @@ def get_pristine_tar_source(packaging_tree, packaging_branch):
     return BzrPristineTarSource(packaging_branch)
 
 
-class PristineTarDelta(object):
+class PristineTarDelta:
 
     def __init__(self, tar):
         self._tar = tar
@@ -685,7 +685,7 @@ class GitPristineTarSource(BasePristineTarSource):
         self.packaging_branch = packaging_branch
 
     def __repr__(self):
-        return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
+        return "<{} at {}>".format(self.__class__.__name__, self.branch.base)
 
     @classmethod
     def from_tree(cls, tree, packaging_branch=None):
@@ -745,7 +745,8 @@ class GitPristineTarSource(BasePristineTarSource):
         if distro is None:
             name = "upstream/" + mangle_version_for_git(version)
         else:
-            name = "upstream-%s/%s" % (distro, mangle_version_for_git(version))
+            name = "upstream-{}/{}".format(
+                distro, mangle_version_for_git(version))
         if component is not None:
             name += "/%s" % component
         return name
@@ -785,7 +786,7 @@ class GitPristineTarSource(BasePristineTarSource):
             if files_excluded_re and files_excluded_re.match(path):
                 return False
             return True
-        message = "Import upstream version %s" % (version,)
+        message = "Import upstream version {}".format(version)
         revprops = {}
         if component is not None:
             message += ", component %s" % component
@@ -831,7 +832,7 @@ class GitPristineTarSource(BasePristineTarSource):
                 builder.finish_inventory()
                 builder.commit('Merge %s.' % version)
 
-        tree_id = revtree._lookup_path(u'')[2]
+        tree_id = revtree._lookup_path('')[2]
         try:
             pristine_tar_branch = self.branch.controldir.open_branch(
                 name='pristine-tar')
@@ -916,7 +917,7 @@ class GitPristineTarSource(BasePristineTarSource):
             revtree = pristine_tar_branch.repository.revision_tree(
                 pristine_tar_branch.last_revision())
             for suffix in self.SUFFIXES:
-                basename = '%s_%s.orig.%s' % (package, version, suffix)
+                basename = '{}_{}.orig.{}'.format(package, version, suffix)
                 try:
                     delta_bytes = revtree.get_file_text(basename + '.delta')
                 except NoSuchFile:

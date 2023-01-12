@@ -36,9 +36,9 @@ class UnknownType(BzrError):
         BzrError.__init__(self, path=path)
 
 
-files_to_ignore = set(
-    ['.shelf', '.bzr', '.bzr.backup', '.bzrtags',
-     '.bzr-builddeb'])
+files_to_ignore = {
+    '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
+    '.bzr-builddeb'}
 
 
 def should_ignore(relative_path: str) -> bool:

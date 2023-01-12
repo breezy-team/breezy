@@ -44,8 +44,8 @@ LaunchpadConnectionFeature = _LaunchpadConnectionFeature()
 
 class CommitMessageTests(TestCaseWithTransport):
 
-    class _Commit(object):
-        class _Builder(object):
+    class _Commit:
+        class _Builder:
             _revprops = {}
 
         def __init__(self, work_tree, exclude=[], specific_files=[]):
@@ -158,4 +158,4 @@ class CommitMessageTests(TestCaseWithTransport):
         commit = self._Commit(wt)
         self.assertEqual(
             debian_changelog_commit(commit, None),
-            u"\u2026real fix this time\n")
+            "\u2026real fix this time\n")

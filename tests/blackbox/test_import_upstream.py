@@ -97,7 +97,7 @@ class TestImportUpstream(TestBaseImportDsc):
             ['import-upstream', self.upstream_version,
              tar_path], working_dir='working')
         self.assertEqual(
-            'Imported %s as tag:upstream-%s.\n' % (
+            'Imported {} as tag:upstream-{}.\n'.format(
                 tar_path, self.upstream_version), out)
         tree.lock_read()
         self.addCleanup(tree.unlock)

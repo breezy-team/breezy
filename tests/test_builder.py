@@ -57,7 +57,7 @@ class TestDebBuild(TestCaseInTempDir):
         self.assertPathDoesNotExist('target/sub')
 
     def test_export(self):
-        class MkdirDistiller(object):
+        class MkdirDistiller:
             def distill(self, target):
                 os.mkdir(target)
         builder = DebBuild(MkdirDistiller(), 'target', None)

@@ -41,8 +41,8 @@ class ChangelogAddNewVersionTests(TestCaseWithTransport):
         # created
         with open('debian/changelog', 'rb') as f:
             cl = Changelog(f)
-        self.assertEquals(cl._blocks[0].package, "somepkg")
-        self.assertEquals(cl._blocks[0].distributions, "UNRELEASED")
-        self.assertEquals(cl._blocks[0].version, Version("1.0-1"))
-        self.assertEquals(
+        self.assertEqual(cl._blocks[0].package, "somepkg")
+        self.assertEqual(cl._blocks[0].distributions, "UNRELEASED")
+        self.assertEqual(cl._blocks[0].version, Version("1.0-1"))
+        self.assertEqual(
             [], list(tree.filter_unversioned_files(["debian/changelog"])))

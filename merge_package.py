@@ -320,7 +320,7 @@ def main(argv=None):
         else:
             report_fatal(
                 'missing-remote-tag',
-                'Unable to find tag for version %s in branch %s' % (
+                'Unable to find tag for version {} in branch {}'.format(
                     version, db.branch))
             return 1
         logging.info('Merging tag %s', tag_name)

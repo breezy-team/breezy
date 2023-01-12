@@ -82,7 +82,7 @@ def write_to_file(filename, contents):
 class DistributionBranchTests(BuilddebTestCase):
 
     def setUp(self):
-        super(DistributionBranchTests, self).setUp()
+        super().setUp()
         self.tree1 = self.make_branch_and_tree('unstable')
         root_id = self.tree1.path2id("")
         self.up_tree1 = self.make_branch_and_tree('unstable-upstream')
@@ -961,7 +961,7 @@ class DistributionBranchTests(BuilddebTestCase):
             rev.message,
             "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
-        self.assertTrue(u'deb-pristine-delta' in rev.properties)
+        self.assertTrue('deb-pristine-delta' in rev.properties)
 
     def test_import_upstream_with_bzip2_tarball(self):
         self.requireFeature(PristineTarFeature)
@@ -993,7 +993,7 @@ class DistributionBranchTests(BuilddebTestCase):
             rev.message,
             "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
-        self.assertTrue(u'deb-pristine-delta-bz2' in rev.properties)
+        self.assertTrue('deb-pristine-delta-bz2' in rev.properties)
 
     def test_import_upstream_with_lzma_tarball(self):
         self.requireFeature(PristineTarFeature)
@@ -1043,7 +1043,7 @@ class DistributionBranchTests(BuilddebTestCase):
             rev.message,
             "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
-        self.assertTrue(u'deb-pristine-delta-xz' in rev.properties)
+        self.assertTrue('deb-pristine-delta-xz' in rev.properties)
 
     def test_import_package_init_from_other(self):
         self.requireFeature(PristineTarFeature)
@@ -1956,11 +1956,11 @@ class DistributionBranchTests(BuilddebTestCase):
     def test_parsechangelog_with_latin1(self):
         self.build_tree_contents(
             [('unstable/debian/',),
-             ('unstable/debian/changelog', u'''\
+             ('unstable/debian/changelog', b'''\
 package (1.0-1) UNRELEASED; urgency=low
 
   * Lots of work.
 
  -- Jo\xe9 Master <joe@example.com>  Thu,  2 Dec 2004 16:59:43 +0100
-'''.encode('latin_1'))])
+''')])
         get_changelog_from_source(self.db1.tree.basedir)

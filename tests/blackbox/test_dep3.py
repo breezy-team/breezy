@@ -29,7 +29,7 @@ import os
 class TestDep3Patch(ExternalBase):
 
     def setUp(self):
-        super(TestDep3Patch, self).setUp()
+        super().setUp()
         self.upstream_tree = self.make_branch_and_tree("upstream")
         self.upstream_tree.commit(message="initial commit")
         packaging = self.upstream_tree.controldir.sprout("packaging")
@@ -39,8 +39,8 @@ class TestDep3Patch(ExternalBase):
 
     def test_nothing_to_do(self):
         (out, err) = self.run_bzr("dep3-patch -d packaging feature", retcode=3)
-        self.assertEquals("brz: ERROR: No unmerged revisions\n", err)
-        self.assertEquals("", out)
+        self.assertEqual("brz: ERROR: No unmerged revisions\n", err)
+        self.assertEqual("", out)
 
     def test_simple(self):
         # If there is a single revision the commit message from

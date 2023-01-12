@@ -145,11 +145,11 @@ def determine_applied_upstream(
             pass
         else:
             if mapping.vcs.abbreviation == 'git':
-                return "merged in commit %s" % (
-                    foreign_revid.decode('ascii')[:7], )
-        return "merged in revision %s" % (".".join(
+                return "merged in commit {}".format(
+                    foreign_revid.decode('ascii')[:7])
+        return "merged in revision {}".format(".".join(
             str(x)
-            for x in upstream_branch.revision_id_to_dotted_revno(merger)), )
+            for x in upstream_branch.revision_id_to_dotted_revno(merger)))
     else:
         return "no"
 
@@ -184,11 +184,11 @@ def describe_origin(branch, revid):
             pass
         else:
             if mapping.vcs.abbreviation == 'git':
-                return "commit, %s, commit: %s" % (
-                    public_branch_url, foreign_revid.decode('ascii')[:7], )
-        return "commit, %s, revision: %s" % (
+                return "commit, {}, commit: {}".format(
+                    public_branch_url, foreign_revid.decode('ascii')[:7])
+        return "commit, {}, revision: {}".format(
             public_branch_url, ".".join(
-                str(x) for x in branch.revision_id_to_dotted_revno(revid)), )
+                str(x) for x in branch.revision_id_to_dotted_revno(revid)))
     else:
         try:
             (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
@@ -197,7 +197,7 @@ def describe_origin(branch, revid):
             pass
         else:
             if mapping.vcs.abbreviation == 'git':
-                return "commit: %s" % (foreign_revid.decode('ascii')[:7], )
+                return "commit: {}".format(foreign_revid.decode('ascii')[:7])
         return "commit, revision id: %s" % revid.decode('utf-8')
 
 

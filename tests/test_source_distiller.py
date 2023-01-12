@@ -181,7 +181,7 @@ class MergeModeDistillerTests(TestCaseWithTransport):
             _SimpleUpstreamProvider(name, version.upstream_version, "."))
         sd.distill('target/foo')
         self.assertPathExists(
-            'target/%s_%s.orig.tar.gz' % (name, version.upstream_version))
+            'target/{}_{}.orig.tar.gz'.format(name, version.upstream_version))
         self.assertPathExists('target/foo/a')
 
     def test_distill_exports_branch(self):

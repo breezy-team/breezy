@@ -576,8 +576,8 @@ class cmd_builddeb(Command):
 
             build_source_dir = os.path.join(
                 build_dir,
-                "%s-%s" % (changelog.package,
-                           changelog.version.upstream_version))
+                "{}-{}".format(
+                    changelog.package, changelog.version.upstream_version))
 
             builder = DebBuild(
                 distiller, build_source_dir, build_cmd,
@@ -1437,7 +1437,7 @@ class cmd_builddeb_do(Command):
         destination = os.path.join(t.basedir, destination)
         source_debian = os.path.join(build_source_dir, 'debian')
         for filename in os.listdir(source_debian):
-            proc = subprocess.Popen('cp -apf "%s" "%s"' % (
+            proc = subprocess.Popen('cp -apf "{}" "{}"'.format(
                 os.path.join(source_debian, filename), destination),
                 shell=True)
             proc.wait()
@@ -1547,7 +1547,7 @@ class cmd_dep3_patch(Command):
             last_update=last_update)
 
 
-class LocalTree(object):
+class LocalTree:
 
     def __init__(self, branch):
         self.branch = branch

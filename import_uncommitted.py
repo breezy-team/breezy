@@ -22,7 +22,7 @@ import logging
 import os
 import subprocess
 import tempfile
-from typing import List, Tuple, Optional
+from typing import Optional
 
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
@@ -132,9 +132,11 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
             transient = True
         else:
             transient = None
-        raise SnapshotDownloadError(srcfiles_url, e, transient=transient) from e
+        raise SnapshotDownloadError(
+            srcfiles_url, e, transient=transient) from e
     except URLError as e:
-        raise SnapshotDownloadError(srcfiles_url, e, transient=None) from e
+        raise SnapshotDownloadError(
+            srcfiles_url, e, transient=None) from e
 
     for hsh, entries in srcfiles["fileinfo"].items():
         for entry in entries:
@@ -158,12 +160,14 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                         transient = True
                     else:
                         transient = None
-                    raise SnapshotDownloadError(url, e, transient=transient) from e
+                    raise SnapshotDownloadError(
+                        url, e, transient=transient) from e
                 except URLError as e:
-                    raise SnapshotDownloadError(url, e, transient=None) from e
+                    raise SnapshotDownloadError(
+                        url, e, transient=None) from e
     file_version = Version(version)
     file_version.epoch = None
-    dsc_filename = "%s_%s.dsc" % (package, file_version)
+    dsc_filename = "{}_{}.dsc".format(package, file_version)
     return os.path.join(output_dir, dsc_filename)
 
 
@@ -172,7 +176,8 @@ class NoopChangesOnly(Exception):
         self.vcs_version = vcs_version
         self.archive_version = archive_version
         super(NoMissingVersions, self).__init__(
-            "No missing versions with effective changes. Archive has %s, VCS has %s"
+            "No missing versions with effective changes. "
+            "Archive has %s, VCS has %s"
             % (archive_version, vcs_version)
         )
 
@@ -181,7 +186,7 @@ class NoMissingVersions(Exception):
     def __init__(self, vcs_version, archive_version):
         self.vcs_version = vcs_version
         self.archive_version = archive_version
-        super(NoMissingVersions, self).__init__(
+        super().__init__(
             "No missing versions after all. Archive has %s, VCS has %s"
             % (archive_version, vcs_version)
         )
@@ -190,7 +195,7 @@ class NoMissingVersions(Exception):
 class TreeVersionNotInArchiveChangelog(Exception):
     def __init__(self, tree_version):
         self.tree_version = tree_version
-        super(TreeVersionNotInArchiveChangelog, self).__init__(
+        super().__init__(
             "tree version %s does not appear in archive changelog" %
             tree_version
         )
@@ -199,27 +204,28 @@ class TreeVersionNotInArchiveChangelog(Exception):
 class TreeVersionWithoutTag(Exception):
     def __init__(self, tree_version, tag_name):
         self.tree_version = tree_version
-        super(TreeVersionWithoutTag, self).__init__(
-            "unable to find revision for version %s; no tags (e.g. %s)" % (
+        super().__init__(
+            "unable to find revision for version {}; no tags (e.g. {})".format(
                 tree_version, tag_name))
 
 
 class TreeUpstreamVersionMissing(Exception):
     def __init__(self, upstream_version):
         self.upstream_version = upstream_version
-        super(TreeUpstreamVersionMissing, self).__init__(
+        super().__init__(
             "unable to find upstream version %r" % upstream_version
         )
 
 
 class UnreleasedChangesSinceTreeVersion(Exception):
     def __init__(self, tree_version):
-        super(UnreleasedChangesSinceTreeVersion, self).__init__(
+        super().__init__(
             "there are unreleased changes since %s" % tree_version)
 
 
-def find_missing_versions(archive_cl: Version, tree_version: Version) -> List[Version]:
-    missing_versions: List[Version] = []
+def find_missing_versions(
+        archive_cl: Version, tree_version: Version) -> list[Version]:
+    missing_versions: list[Version] = []
     for block in archive_cl:
         if tree_version is not None and block.version == tree_version:
             break
@@ -273,7 +279,7 @@ def import_uncommitted(
         tree_version: Optional[Version] = None,
         merge_unreleased: bool = True,
         skip_noop: bool = True,
-        ) -> List[Tuple[str, Version, RevisionID]]:
+        ) -> list[tuple[str, Version, RevisionID]]:
     with contextlib.ExitStack() as es:
         es.enter_context(apt)
         archive_source = es.enter_context(tempfile.TemporaryDirectory())
@@ -284,7 +290,7 @@ def import_uncommitted(
         note("Unpacking source %s", dsc)
         subprocess.check_output(['dpkg-source', '-x', dsc], cwd=archive_source)
         [subdir] = [e.path for e in os.scandir(archive_source) if e.is_dir()]
-        with open(os.path.join(subdir, "debian", "changelog"), "r") as f:
+        with open(os.path.join(subdir, "debian", "changelog")) as f:
             archive_cl = Changelog(f)
         missing_versions = find_missing_versions(archive_cl, tree_version)
         if len(missing_versions) == 0:
@@ -375,7 +381,7 @@ def import_uncommitted(
                 str(v) for (t, v, r) in ret]))
         parent_ids = tree.branch.repository.get_revision(revid).parent_ids
         assert parent_ids == [merge_into, to_merge], \
-            "Expected parents to be %r, was %r" % (
+            "Expected parents to be {!r}, was {!r}".format(
                 [merge_into, to_merge], parent_ids)
     return ret
 
@@ -500,7 +506,7 @@ def main(argv=None):
         if args.package and tree_cl.package != args.package:
             report_fatal(
                 'inconsistent-package',
-                'Inconsistent package name: %s specified, %s found' % (
+                'Inconsistent package name: {} specified, {} found'.format(
                     args.package, tree_cl.package))
             return 1
 
@@ -557,13 +563,13 @@ def main(argv=None):
     except SnapshotDownloadError as e:
         report_fatal(
             'snapshot-download-failed',
-            'Downloading %s failed: %s' % (e.url, e.inner),
+            'Downloading {} failed: {}'.format(e.url, e.inner),
             transient=e.transient)
         return 1
     except SnapshotHashMismatch as e:
         report_fatal(
             'snapshot-hash-mismatch',
-            'Snapshot hash mismatch for %s: %s != %s' % (
+            'Snapshot hash mismatch for {}: {} != {}'.format(
                 e.filename, e.expected_hash, e.actual_hash))
         return 1
     except MalformedTransform as e:

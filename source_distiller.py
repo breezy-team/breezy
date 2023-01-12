@@ -22,7 +22,6 @@ from debian.changelog import Changelog
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 
 from ... import errors as bzr_errors
@@ -34,11 +33,10 @@ from .util import (
     export_with_nested,
     extract_orig_tarballs,
     get_parent_dir,
-    recursive_copy,
     )
 
 
-class SourceDistiller(object):
+class SourceDistiller:
     """A source distiller extracts the source to build from a location.
 
     It does whatever is needed to give you a source you can build at
@@ -75,7 +73,7 @@ class NativeSourceDistiller(SourceDistiller):
         :param tree: The tree to use as the source.
         :param subpath: subpath in the tree where the package lives
         """
-        super(NativeSourceDistiller, self).__init__(tree, subpath)
+        super().__init__(tree, subpath)
         self.use_existing = use_existing
 
     def distill(self, target):
@@ -104,7 +102,7 @@ class FullSourceDistiller(SourceDistiller):
         :param upstream_provider: an UpstreamProvider to provide the upstream
             tarball if needed.
         """
-        super(FullSourceDistiller, self).__init__(tree, subpath)
+        super().__init__(tree, subpath)
         self.upstream_provider = upstream_provider
         self.use_existing = use_existing
 
@@ -141,7 +139,7 @@ class MergeModeDistiller(SourceDistiller):
         :param use_existing: whether the distiller should re-use an existing
             target if the distiller supports it.
         """
-        super(MergeModeDistiller, self).__init__(tree, subpath)
+        super().__init__(tree, subpath)
         self.upstream_provider = upstream_provider
         self.top_level = top_level
         self.use_existing = use_existing
@@ -185,11 +183,8 @@ class MergeModeDistiller(SourceDistiller):
             # use_existing
             if os.path.exists(os.path.join(target, 'debian')):
                 shutil.rmtree(os.path.join(target, 'debian'))
-            if sys.version_info >= (3, 8):
-                shutil.copytree(
-                    tempdir, target, symlinks=True, dirs_exist_ok=True)
-            else:
-                recursive_copy(tempdir, target)
+            shutil.copytree(
+                tempdir, target, symlinks=True, dirs_exist_ok=True)
 
 
 class DebcargoError(bzr_errors.BzrError):
@@ -218,7 +213,7 @@ class DebcargoDistiller(SourceDistiller):
         :param tree: The tree to use as the source.
         :param subpath: subpath in the tree where the package lives
         """
-        super(DebcargoDistiller, self).__init__(tree, subpath)
+        super().__init__(tree, subpath)
         self.top_level = top_level
         self.use_existing = use_existing
 

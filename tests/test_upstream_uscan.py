@@ -37,7 +37,7 @@ from ..upstream.uscan import (
 class UScanSourceTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(UScanSourceTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('.')
 
     def test_export_watchfile_none(self):
@@ -71,7 +71,7 @@ class UScanOutputParsingTests(TestCase):
 <upstream-url>ftp://ftp.samba.org/pub/tdb/tdb-1.2.9.tar.gz</upstream-url>
 <status>Newer version available</status>
 </dehs>"""
-        self.assertEquals("1.2.9", _xml_report_extract_upstream_version(text))
+        self.assertEqual("1.2.9", _xml_report_extract_upstream_version(text))
 
     def test__xml_report_extract_warnings(self):
         text = b"""
@@ -85,7 +85,7 @@ class UScanOutputParsingTests(TestCase):
 <warnings>this is a warning
 with a newline</warnings>
 </dehs>"""
-        self.assertEquals(
+        self.assertEqual(
             ["this is a warning\nwith a newline"],
             list(_xml_report_extract_warnings(text)))
 
@@ -114,7 +114,7 @@ in debian/watch, skipping:
 ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 </dehs>
 """
-        self.assertEquals(
+        self.assertEqual(
             "1.2.9",
             _xml_report_extract_upstream_version(text))
 

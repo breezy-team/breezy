@@ -106,9 +106,9 @@ class TestRevisionSpec_upstream(TestRevisionSpec):
         t.commit('Mention upstream.')
         self.add_changelog(t, "1.2-1")
         spec = RevisionSpec.from_string('upstream:1.2')
-        self.assertEquals(upstream_revid, spec.as_revision_id(t.branch))
+        self.assertEqual(upstream_revid, spec.as_revision_id(t.branch))
         spec = RevisionSpec.from_string('upstream:1.2-1')
-        self.assertEquals(upstream_revid, spec.as_revision_id(t.branch))
+        self.assertEqual(upstream_revid, spec.as_revision_id(t.branch))
 
     def test_version_from_changelog(self):
         t = self.make_branch_and_tree('.')
@@ -117,4 +117,4 @@ class TestRevisionSpec_upstream(TestRevisionSpec):
         t.commit('Mention upstream.')
         self.add_changelog(t, "1.2-1")
         spec = RevisionSpec.from_string('upstream:')
-        self.assertEquals(upstream_revid, spec.as_revision_id(t.branch))
+        self.assertEqual(upstream_revid, spec.as_revision_id(t.branch))

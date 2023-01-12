@@ -31,7 +31,7 @@ from . import TestCaseWithTransport
 class DebBuildConfigTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(DebBuildConfigTests, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('.')
         self.branch = self.tree.branch
         with open('default.conf', 'w') as f:
@@ -94,8 +94,8 @@ class DebBuildConfigTests(TestCaseWithTransport):
             ['debian', 'debian/upstream', 'debian/upstream/metadata'])
 
         cfg = DebBuildConfig([], tree=self.tree)
-        self.assertEquals("http://example.com/foo", cfg.upstream_branch)
-        self.assertEquals(
+        self.assertEqual("http://example.com/foo", cfg.upstream_branch)
+        self.assertEqual(
             "tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
 
     def test_upstream_metadata_multidoc(self):
@@ -116,8 +116,8 @@ class DebBuildConfigTests(TestCaseWithTransport):
             ['debian', 'debian/upstream', 'debian/upstream/metadata'])
 
         cfg = DebBuildConfig([], tree=self.tree)
-        self.assertEquals("http://example.com/foo", cfg.upstream_branch)
-        self.assertEquals(
+        self.assertEqual("http://example.com/foo", cfg.upstream_branch)
+        self.assertEqual(
             "tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
 
     def test_invalid_upstream_metadata(self):
@@ -155,7 +155,7 @@ else:
             branch = self.make_svn_branch("d")
 
             cfg = DebBuildConfig([], tree=branch.basis_tree())
-            self.assertEquals(False, cfg.merge)
+            self.assertEqual(False, cfg.merge)
 
             dc = self.get_commit_editor(branch.base)
             d = dc.add_dir("debian")
@@ -164,15 +164,15 @@ else:
             dc.close()
 
             cfg = DebBuildConfig([], tree=branch.basis_tree())
-            self.assertEquals(True, cfg.merge)
-            self.assertEquals(BUILD_TYPE_MERGE, cfg.build_type)
-            self.assertEquals("someorigdir", cfg.orig_dir)
+            self.assertEqual(True, cfg.merge)
+            self.assertEqual(BUILD_TYPE_MERGE, cfg.build_type)
+            self.assertEqual("someorigdir", cfg.orig_dir)
 
         def test_from_svn_layout_file(self):
             branch = self.make_svn_branch("d")
 
             cfg = DebBuildConfig([], tree=branch.basis_tree())
-            self.assertEquals(False, cfg.merge)
+            self.assertEqual(False, cfg.merge)
 
             with self.get_commit_editor(branch.base) as dc:
                 d = dc.add_dir("debian")
@@ -180,4 +180,4 @@ else:
                 f.modify(b"origDir = someorigdir\n")
 
             cfg = DebBuildConfig([], tree=branch.basis_tree())
-            self.assertEquals("someorigdir", cfg.orig_dir)
+            self.assertEqual("someorigdir", cfg.orig_dir)

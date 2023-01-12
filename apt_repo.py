@@ -85,7 +85,7 @@ class LocalApt(Apt):
         self._rootdir = rootdir
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self._rootdir)
+        return "{}({!r})".format(type(self).__name__, self._rootdir)
 
     def __enter__(self):
         try:
@@ -153,7 +153,7 @@ class LocalApt(Apt):
             args.append('--tar-only')
         args.extend([
             '-y', '--only-source',
-            ('%s=%s' % (package, version_str))
+            ('{}={}'.format(package, version_str))
             if version_str is not None else package])
         return args
 
@@ -163,8 +163,8 @@ class LocalApt(Apt):
         command = self._get_command(package, version_str, tar_only=tar_only)
         try:
             subprocess.run(
-                command, cwd=target_dir, stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE,
+                command, cwd=target_dir,
+                capture_output=True,
                 check=True)
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.splitlines()
@@ -193,7 +193,7 @@ class RemoteApt(LocalApt):
 
     def __init__(self, mirror_uri, distribution=None, components=None,
                  key_path=None):
-        super(RemoteApt, self).__init__()
+        super().__init__()
         self.mirror_uri = mirror_uri
         self.distribution = distribution
         self.components = components
@@ -201,9 +201,11 @@ class RemoteApt(LocalApt):
         self._rootdir = None
 
     def __repr__(self):
-        return "%s(%r, distribution=%r, components=%r, key_path=%r)" % (
-            type(self).__name__, self.mirror_uri, self.distribution,
-            self.components, self.key_path)
+        return (
+            "{}({!r}, distribution={!r}, components={!r}, key_path={!r})"
+            .format(
+                type(self).__name__, self.mirror_uri, self.distribution,
+                self.components, self.key_path))
 
     def __enter__(self):
         self._rootdir = tempfile.mkdtemp()
@@ -214,10 +216,10 @@ class RemoteApt(LocalApt):
         else:
             tag = "[trusted=yes]"
         with open(os.path.join(aptdir, 'sources.list'), 'w') as f:
-            f.write('deb %s %s %s %s\n' % (
+            f.write('deb {} {} {} {}\n'.format(
                 tag, self.mirror_uri, self.distribution,
                 ' '.join(self.components)))
-            f.write('deb-src %s %s %s %s\n' % (
+            f.write('deb-src {} {} {} {}\n'.format(
                 tag, self.mirror_uri, self.distribution,
                 ' '.join(self.components)))
         try:

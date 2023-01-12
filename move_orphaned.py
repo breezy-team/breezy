@@ -76,7 +76,7 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
     if from_project is not None:
         salsa.fork_project(from_project, owner=user)
     else:
-        to_project = "%s/%s" % (user, name)
+        to_project = "{}/{}".format(user, name)
         try:
             salsa.create_project(to_project)
         except PermissionDenied as e:
@@ -86,7 +86,7 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
         except AlreadyControlDirError:
             logging.info('Project %s already exists, using..', to_project)
     target_branch = Branch.open(
-        "git+ssh://git@salsa.debian.org/%s/%s.git" % (user, name)
+        "git+ssh://git@salsa.debian.org/{}/{}.git".format(user, name)
     )
     additional_colocated_branches = pick_additional_colocated_branches(
         local_tree.branch
@@ -100,7 +100,7 @@ def push_to_salsa(local_tree, orig_branch, user, name, dry_run=False):
     )
 
 
-class OrphanResult(object):
+class OrphanResult:
 
     def __init__(
         self,
@@ -152,12 +152,12 @@ def find_wnpp_bug(source):
 
 def set_vcs_fields_to_salsa_user(control, salsa_user):
     old_vcs_url = control.source.get("Vcs-Git")
-    control.source["Vcs-Git"] = "https://salsa.debian.org/%s/%s.git" % (
+    control.source["Vcs-Git"] = "https://salsa.debian.org/{}/{}.git".format(
         salsa_user,
         control.source['Source']
     )
     new_vcs_url = control.source["Vcs-Git"]
-    control.source["Vcs-Browser"] = "https://salsa.debian.org/%s/%s" % (
+    control.source["Vcs-Browser"] = "https://salsa.debian.org/{}/{}".format(
         salsa_user,
         control.source['Source']
     )
@@ -261,7 +261,7 @@ def orphan(
 
 
 def move_instructions(package_name, salsa_user, old_vcs_url, new_vcs_url):
-    yield "Please move the repository from %s to %s." % (
+    yield "Please move the repository from {} to {}.".format(
         old_vcs_url, new_vcs_url)
     if urlparse(old_vcs_url).hostname == "salsa.debian.org":
         path = urlparse(old_vcs_url).path
@@ -269,12 +269,13 @@ def move_instructions(package_name, salsa_user, old_vcs_url, new_vcs_url):
             path = path[:-4]
         yield "If you have the salsa(1) tool installed, run: "
         yield ""
-        yield "    salsa fork --group=%s %s" % (salsa_user, path)
+        yield "    salsa fork --group={} {}".format(salsa_user, path)
     else:
         yield "If you have the salsa(1) tool installed, run: "
         yield ""
-        yield "    git clone %s %s" % (old_vcs_url, package_name)
-        yield "    salsa --group=%s push_repo %s" % (salsa_user, package_name)
+        yield "    git clone {} {}".format(old_vcs_url, package_name)
+        yield "    salsa --group={} push_repo {}".format(
+            salsa_user, package_name)
 
 
 def report_fatal(code, description):

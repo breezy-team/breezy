@@ -36,7 +36,7 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         ('bzr', dict(_format='bzr'))])
 
     def make_branch_and_tree(self, path):
-        return super(ImportArchiveTests, self).make_branch_and_tree(
+        return super().make_branch_and_tree(
             path, format=self._format)
 
     def test_strips_common_prefix(self):
@@ -215,19 +215,19 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.build_tree(["source/", u"source/\xa7"])
+        self.build_tree(["source/", "source/\xa7"])
         import_dir(tree, "source")
-        self.assertEqual({'', u"\xa7"}, tree.all_versioned_paths())
+        self.assertEqual({'', "\xa7"}, tree.all_versioned_paths())
         if tree.supports_setting_file_ids():
             self.assertEqual(
-                ["", u"\xa7"],
+                ["", "\xa7"],
                 sorted([tree.id2path(i) for i in tree.all_file_ids()]))
 
     def test_exclude(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        self.build_tree(["source/", u"source/not-excluded", u"source/test"])
+        self.build_tree(["source/", "source/not-excluded", "source/test"])
         import_dir(tree, "source", exclude=['test'])
         self.assertEqual({'', 'not-excluded'}, tree.all_versioned_paths())
         if tree.supports_setting_file_ids():

@@ -91,7 +91,7 @@ class VcsHgUrlToBzrUrlTests(TestCase):
 class VcsCvsUrlToBzrUrlTests(TestCase):
 
     def setUp(self):
-        super(VcsCvsUrlToBzrUrlTests, self).setUp()
+        super().setUp()
         import breezy
         if breezy.version_info < (3, 1, 1):
             self.skipTest('version of breezy too old')

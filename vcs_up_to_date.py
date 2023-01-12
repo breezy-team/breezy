@@ -40,7 +40,7 @@ from breezy.plugins.debian.apt_repo import (
 class PackageMissingInArchive(Exception):
     def __init__(self, package):
         self.package = package
-        super(PackageMissingInArchive, self).__init__(
+        super().__init__(
             "package %s is missing in archive" % package)
 
 
@@ -48,8 +48,8 @@ class NewArchiveVersion(Exception):
     def __init__(self, archive_version, tree_version):
         self.archive_version = archive_version
         self.tree_version = tree_version
-        super(NewArchiveVersion, self).__init__(
-            "archive version %s is newer than version %s in tree" % (
+        super().__init__(
+            "archive version {} is newer than version {} in tree".format(
                 archive_version, tree_version))
 
 
@@ -57,7 +57,7 @@ class TreeVersionNotInArchive(Exception):
     def __init__(self, tree_version, archive_versions):
         self.tree_version = tree_version
         self.archive_versions = archive_versions
-        super(TreeVersionNotInArchive, self).__init__(
+        super().__init__(
             "tree version %s does not appear in archive" %
             tree_version
         )

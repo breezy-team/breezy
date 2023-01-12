@@ -132,7 +132,7 @@ def load_tests(loader, basic_tests, pattern):
             'test_tagging',
             ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, i) for i in testmod_names]))
+        ["{}.{}".format(__name__, i) for i in testmod_names]))
 
     doctest_mod_names = [
              'config'
@@ -229,7 +229,7 @@ class BuilddebTestCase(tests.TestCaseWithTransport):
             tar.close()
 
 
-class SourcePackageBuilder(object):
+class SourcePackageBuilder:
     """An interface to ease building source packages.
 
     >>> builder = SourcePackageBuilder("package", Version("0.1-1"))
@@ -313,20 +313,20 @@ class SourcePackageBuilder(object):
             self._cl.add_change(change_text)
 
     def dsc_name(self):
-        return "%s_%s.dsc" % (self.name, str(self._cl.version))
+        return "{}_{}.dsc".format(self.name, str(self._cl.version))
 
     def tar_name(self):
         if self.native:
-            return "%s_%s.tar.gz" % (self.name, str(self._cl.version))
-        return "%s_%s.orig.tar.gz" % (
+            return "{}_{}.tar.gz".format(self.name, str(self._cl.version))
+        return "{}_{}.orig.tar.gz".format(
             self.name, str(self._cl.version.upstream_version))
 
     def diff_name(self):
         assert not self.native, "Can't have a diff with a native package"
-        return "%s_%s.diff.gz" % (self.name, str(self._cl.version))
+        return "{}_{}.diff.gz".format(self.name, str(self._cl.version))
 
     def changes_name(self):
-        return "%s_%s_source.changes" % (self.name, str(self._cl.version))
+        return "{}_{}_source.changes".format(self.name, str(self._cl.version))
 
     def _make_files(self, files_list, basedir):
         for (path, content) in files_list.items():
@@ -371,7 +371,7 @@ class SourcePackageBuilder(object):
                 shutil.copytree(basedir, orig_basedir, symlinks=True)
                 cmd = ["dpkg-source", "-sa", "-b", basedir]
                 if os.path.exists(
-                    "%s_%s.orig.tar.gz" % (
+                    "{}_{}.orig.tar.gz".format(
                         self.name, self._cl.version.upstream_version)):
                     cmd = ["dpkg-source", "-ss", "-b", basedir]
             else:
@@ -380,7 +380,7 @@ class SourcePackageBuilder(object):
             if not self.native:
                 if self.multiple_upstream_tarballs:
                     for part in self.multiple_upstream_tarballs:
-                        tar_path = "%s_%s.orig-%s.tar.%s" % (
+                        tar_path = "{}_{}.orig-{}.tar.{}".format(
                             self.name, self._cl.version.upstream_version,
                             part, tar_format)
                         if os.path.exists(tar_path):
@@ -392,7 +392,7 @@ class SourcePackageBuilder(object):
                         finally:
                             tar.close()
                         shutil.rmtree(part_basedir)
-                tar_path = "%s_%s.orig.tar.%s" % (
+                tar_path = "{}_{}.orig.tar.{}".format(
                     self.name, self._cl.version.upstream_version, tar_format)
                 if os.path.exists(tar_path):
                     os.unlink(tar_path)

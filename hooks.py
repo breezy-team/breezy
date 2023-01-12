@@ -35,7 +35,7 @@ def run_hook(tree, hook_name, config, wd="."):
     hook = config.get_hook(hook_name)
     if hook is None:
         return
-    note("Running %s as %s hook" % (hook, hook_name))
+    note("Running {} as {} hook".format(hook, hook_name))
     proc = subprocess.Popen(hook, shell=True, cwd=tree.abspath(wd))
     proc.wait()
     if proc.returncode != 0:

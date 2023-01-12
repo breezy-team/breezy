@@ -69,7 +69,6 @@ from ..util import (
     )
 
 from .... import errors as bzr_errors
-from six import text_type
 from ....tests import (
     TestCase,
     )
@@ -465,15 +464,15 @@ class ChangelogInfoTests(TestCaseWithTransport):
         changes = ["  * Do foo", "", "  [ A. Hacker ]", "  * Do bar", "",
                    "  [ B. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
-        self.assertEqual([u"A. Hacker", u"B. Hacker"], authors)
-        self.assertEqual([text_type]*len(authors), list(map(type, authors)))
+        self.assertEqual(["A. Hacker", "B. Hacker"], authors)
+        self.assertEqual([str]*len(authors), list(map(type, authors)))
 
     def test_find_extra_authors_utf8(self):
-        changes = [u"  * Do foo", u"", "  [ \xe1. Hacker ]", "  * Do bar", "",
-                   u"  [ \xe7. Hacker ]", "  [ A. Hacker}"]
+        changes = ["  * Do foo", "", "  [ \xe1. Hacker ]", "  * Do bar", "",
+                   "  [ \xe7. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
-        self.assertEqual([u"\xe1. Hacker", u"\xe7. Hacker"], authors)
-        self.assertEqual([text_type]*len(authors), list(map(type, authors)))
+        self.assertEqual(["\xe1. Hacker", "\xe7. Hacker"], authors)
+        self.assertEqual([str]*len(authors), list(map(type, authors)))
 
     def test_find_extra_authors_iso_8859_1(self):
         # We try to treat lines as utf-8, but if that fails to decode, we fall
@@ -481,8 +480,8 @@ class ChangelogInfoTests(TestCaseWithTransport):
         changes = ["  * Do foo", "", "  [ \xe1. Hacker ]", "  * Do bar", "",
                    "  [ \xe7. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
-        self.assertEqual([u"\xe1. Hacker", u"\xe7. Hacker"], authors)
-        self.assertEqual([text_type]*len(authors), list(map(type, authors)))
+        self.assertEqual(["\xe1. Hacker", "\xe7. Hacker"], authors)
+        self.assertEqual([str]*len(authors), list(map(type, authors)))
 
     def test_find_extra_authors_no_changes(self):
         authors = find_extra_authors([])
@@ -491,7 +490,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
     def assert_thanks_is(self, changes, expected_thanks):
         thanks = find_thanks(changes)
         self.assertEqual(expected_thanks, thanks)
-        self.assertEqual([text_type]*len(thanks), list(map(type, thanks)))
+        self.assertEqual([str]*len(thanks), list(map(type, thanks)))
 
     def test_find_thanks_no_changes(self):
         self.assert_thanks_is([], [])
@@ -502,27 +501,27 @@ class ChangelogInfoTests(TestCaseWithTransport):
 
     def test_find_thanks(self):
         changes = ["  * Thanks to A. Hacker"]
-        self.assert_thanks_is(changes, [u"A. Hacker"])
+        self.assert_thanks_is(changes, ["A. Hacker"])
         changes = ["  * Thanks to James A. Hacker"]
-        self.assert_thanks_is(changes, [u"James A. Hacker"])
+        self.assert_thanks_is(changes, ["James A. Hacker"])
         changes = ["  * Thankyou to B. Hacker"]
-        self.assert_thanks_is(changes, [u"B. Hacker"])
+        self.assert_thanks_is(changes, ["B. Hacker"])
         changes = ["  * thanks to A. Hacker"]
-        self.assert_thanks_is(changes, [u"A. Hacker"])
+        self.assert_thanks_is(changes, ["A. Hacker"])
         changes = ["  * thankyou to B. Hacker"]
-        self.assert_thanks_is(changes, [u"B. Hacker"])
+        self.assert_thanks_is(changes, ["B. Hacker"])
         changes = ["  * Thanks A. Hacker"]
-        self.assert_thanks_is(changes, [u"A. Hacker"])
+        self.assert_thanks_is(changes, ["A. Hacker"])
         changes = ["  * Thankyou B.  Hacker"]
-        self.assert_thanks_is(changes, [u"B. Hacker"])
+        self.assert_thanks_is(changes, ["B. Hacker"])
         changes = ["  * Thanks to Mark A. Super-Hacker"]
-        self.assert_thanks_is(changes, [u"Mark A. Super-Hacker"])
+        self.assert_thanks_is(changes, ["Mark A. Super-Hacker"])
         changes = ["  * Thanks to A. Hacker <ahacker@example.com>"]
-        self.assert_thanks_is(changes, [u"A. Hacker <ahacker@example.com>"])
-        changes = [u"  * Thanks to Adeodato Sim\xc3\xb3"]
-        self.assert_thanks_is(changes, [u"Adeodato Sim\xc3\xb3"])
-        changes = [u"  * Thanks to \xc1deodato Sim\xc3\xb3"]
-        self.assert_thanks_is(changes, [u"\xc1deodato Sim\xc3\xb3"])
+        self.assert_thanks_is(changes, ["A. Hacker <ahacker@example.com>"])
+        changes = ["  * Thanks to Adeodato Sim\xc3\xb3"]
+        self.assert_thanks_is(changes, ["Adeodato Sim\xc3\xb3"])
+        changes = ["  * Thanks to \xc1deodato Sim\xc3\xb3"]
+        self.assert_thanks_is(changes, ["\xc1deodato Sim\xc3\xb3"])
 
     def test_find_bugs_fixed_no_changes(self):
         self.assertEqual([], find_bugs_fixed([], None, _lplib=MockLaunchpad()))
@@ -600,7 +599,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
             changelog, wt.branch, _lplib=MockLaunchpad())
         self.assertEqual("\n".join(strip_changelog_message(changes)), message)
         self.assertEqual([author]+find_extra_authors(changes), authors)
-        self.assertEqual(text_type, type(authors[0]))
+        self.assertEqual(str, type(authors[0]))
         self.assertEqual(find_thanks(changes), thanks)
         self.assertEqual(find_bugs_fixed(
             changes, wt.branch, _lplib=MockLaunchpad()), bugs)
@@ -612,23 +611,23 @@ class ChangelogInfoTests(TestCaseWithTransport):
         changelog.new_block(changes=changes, author=author)
         message, authors, thanks, bugs = get_commit_info_from_changelog(
             changelog, wt.branch, _lplib=MockLaunchpad())
-        self.assertEqual(u'[ \xc1. Hacker ]\n'
-                         u'* First ch\xe1nge, LP: #12345\n'
-                         u'* Second change, thanks to \xde. Hacker',
+        self.assertEqual('[ \xc1. Hacker ]\n'
+                         '* First ch\xe1nge, LP: #12345\n'
+                         '* Second change, thanks to \xde. Hacker',
                          message)
-        self.assertEqual([author, u'\xc1. Hacker'], authors)
-        self.assertEqual(text_type, type(authors[0]))
-        self.assertEqual([u'\xde. Hacker'], thanks)
+        self.assertEqual([author, '\xc1. Hacker'], authors)
+        self.assertEqual(str, type(authors[0]))
+        self.assertEqual(['\xde. Hacker'], thanks)
         self.assertEqual(['https://launchpad.net/bugs/12345 fixed'], bugs)
 
     def test_get_commit_info_unicode(self):
-        changes = [u"  [ \xc1. Hacker ]",
-                   u"  * First ch\xe1nge, LP: #12345",
-                   u"  * Second change, thanks to \xde. Hacker"]
+        changes = ["  [ \xc1. Hacker ]",
+                   "  * First ch\xe1nge, LP: #12345",
+                   "  * Second change, thanks to \xde. Hacker"]
         self.assertUnicodeCommitInfo(changes)
 
 
-class MockLaunchpad(object):
+class MockLaunchpad:
 
     def __init__(self, debian_bug_to_ubuntu_bugs={},
                  ubuntu_bug_to_debian_bugs={}):
@@ -716,7 +715,7 @@ class SourceFormatTests(TestCaseWithTransport):
 
     def test_no_source_format_file(self):
         tree = self.make_branch_and_tree('.')
-        self.assertEquals("1.0", tree_get_source_format(tree))
+        self.assertEqual("1.0", tree_get_source_format(tree))
 
     def test_source_format_newline(self):
         tree = self.make_branch_and_tree('.')
@@ -724,7 +723,7 @@ class SourceFormatTests(TestCaseWithTransport):
             [("debian/", ), ("debian/source/",),
              ("debian/source/format", "3.0 (native)\n")])
         tree.add(["debian", "debian/source", "debian/source/format"])
-        self.assertEquals("3.0 (native)", tree_get_source_format(tree))
+        self.assertEqual("3.0 (native)", tree_get_source_format(tree))
 
     def test_source_format(self):
         tree = self.make_branch_and_tree('.')
@@ -732,14 +731,14 @@ class SourceFormatTests(TestCaseWithTransport):
             [("debian/",), ("debian/source/",),
              ("debian/source/format", "3.0 (quilt)")])
         tree.add(["debian", "debian/source", "debian/source/format"])
-        self.assertEquals("3.0 (quilt)", tree_get_source_format(tree))
+        self.assertEqual("3.0 (quilt)", tree_get_source_format(tree))
 
     def test_source_format_file_unversioned(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents(
             [("debian/",), ("debian/source/",),
              ("debian/source/format", "3.0 (quilt)")])
-        self.assertEquals("3.0 (quilt)", tree_get_source_format(tree))
+        self.assertEqual("3.0 (quilt)", tree_get_source_format(tree))
 
 
 class GuessBuildTypeTests(TestCaseWithTransport):
@@ -760,7 +759,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         # Normal source format -> NORMAL
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (quilt)")
-        self.assertEquals(
+        self.assertEqual(
             BUILD_TYPE_NORMAL,
             guess_build_type(tree, None, contains_upstream_source=True))
 
@@ -768,7 +767,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         # Normal source format without upstream source -> MERGE
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (quilt)")
-        self.assertEquals(
+        self.assertEqual(
             BUILD_TYPE_MERGE,
             guess_build_type(tree, None, contains_upstream_source=False))
 
@@ -776,14 +775,14 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         # Native source format -> NATIVE
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (native)")
-        self.assertEquals(
+        self.assertEqual(
             BUILD_TYPE_NATIVE,
             guess_build_type(tree, None, contains_upstream_source=True))
 
     def test_prev_version_native(self):
         # Native package version -> NATIVE
         tree = self.make_branch_and_tree('.')
-        self.assertEquals(
+        self.assertEqual(
             BUILD_TYPE_NATIVE,
             guess_build_type(
                 tree, Version("1.0"), contains_upstream_source=True))
@@ -791,7 +790,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
     def test_empty(self):
         # Empty tree and a non-native package -> NORMAL
         tree = self.make_branch_and_tree('.')
-        self.assertEquals(
+        self.assertEqual(
             BUILD_TYPE_NORMAL,
             guess_build_type(
                 tree, Version("1.0-1"), contains_upstream_source=None))
@@ -800,7 +799,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         # No upstream source code and a non-native package -> MERGE
         tree = self.make_branch_and_tree('.')
         tree.mkdir("debian")
-        self.assertEquals(
+        self.assertEqual(
             BUILD_TYPE_MERGE,
             guess_build_type(
                 tree, Version("1.0-1"), contains_upstream_source=False))
@@ -808,7 +807,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
     def test_default(self):
         # Upstream source code and a non-native package -> NORMAL
         tree = self.make_branch_and_tree('.')
-        self.assertEquals(
+        self.assertEqual(
             BUILD_TYPE_NORMAL,
             guess_build_type(
                 tree, Version("1.0-1"), contains_upstream_source=True))
@@ -821,7 +820,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         e = self.assertRaises(
             InconsistentSourceFormatError, guess_build_type, tree,
             Version("1.0"), contains_upstream_source=True)
-        self.assertEquals(
+        self.assertEqual(
             "Inconsistency between source format and version: "
             "version 1.0 is native, format '3.0 (quilt)' is not native.",
             str(e))
@@ -830,7 +829,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
 class TestExtractOrigTarballs(TestCaseInTempDir):
 
     def create_tarball(self, package, version, compression, part=None):
-        basedir = "%s-%s" % (package, version)
+        basedir = "{}-{}".format(package, version)
         os.mkdir(basedir)
         try:
             f = open(os.path.join(basedir, "README"), 'w')
@@ -838,7 +837,7 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
                 f.write("Hi\n")
             finally:
                 f.close()
-            prefix = "%s_%s.orig" % (package, version)
+            prefix = "{}_{}.orig".format(package, version)
             if part is not None:
                 prefix += "-%s" % part
             tar_path = os.path.abspath(prefix + ".tar." + compression)
@@ -869,14 +868,14 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
         os.mkdir("target")
         extract_orig_tarballs(
             [(tar_path, None)], "target", strip_components=1)
-        self.assertEquals(os.listdir("target"), ["README"])
+        self.assertEqual(os.listdir("target"), ["README"])
 
     def test_single_orig_tar_bz2(self):
         tar_path = self.create_tarball("package", "0.1", "bz2")
         os.mkdir("target")
         extract_orig_tarballs(
             [(tar_path, None)], "target", strip_components=1)
-        self.assertEquals(os.listdir("target"), ["README"])
+        self.assertEqual(os.listdir("target"), ["README"])
 
     def test_single_orig_tar_xz(self):
         self.requireFeature(LzmaFeature)
@@ -884,7 +883,7 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
         os.mkdir("target")
         extract_orig_tarballs(
             [(tar_path, None)], "target", strip_components=1)
-        self.assertEquals(os.listdir("target"), ["README"])
+        self.assertEqual(os.listdir("target"), ["README"])
 
     def test_multiple_tarballs(self):
         base_tar_path = self.create_tarball("package", "0.1", "bz2")
@@ -894,7 +893,7 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
         extract_orig_tarballs(
             [(base_tar_path, None), (tar_path_extra, "extra")], "target",
             strip_components=1)
-        self.assertEquals(
+        self.assertEqual(
             sorted(os.listdir("target")),
             sorted(["README", "extra"]))
 
@@ -916,11 +915,11 @@ class ComponentFromOrigTarballTests(TestCase):
             component_from_orig_tarball, "foo_0.1.orig.unknown", "foo", "0.1")
 
     def test_component(self):
-        self.assertEquals(
+        self.assertEqual(
             "comp",
             component_from_orig_tarball(
                 "foo_0.1.orig-comp.tar.gz", "foo", "0.1"))
-        self.assertEquals(
+        self.assertEqual(
             "comp-dash",
             component_from_orig_tarball(
                 "foo_0.1.orig-comp-dash.tar.gz", "foo", "0.1"))

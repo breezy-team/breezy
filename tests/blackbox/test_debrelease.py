@@ -64,7 +64,7 @@ Architecture: all
             "debrelease package --skip-upload --builder true", retcode=0)
         self.assertContainsRe(
             err, 'Building the package in .*/breezy-foo-2.8.17, using true\n')
-        self.assertEquals("", out)
+        self.assertEqual("", out)
         self.assertEqual(2, wt.branch.revno())
         self.assertEqual(
                 'releasing package breezy-foo version 2.8.17',
@@ -83,8 +83,8 @@ Architecture: all
             ])
         wt.add(["debian", "debian/changelog"])
         (out, err) = self.run_bzr("debrelease package", retcode=3)
-        self.assertEquals(
+        self.assertEqual(
             'brz: ERROR: Build refused because there are unknown '
             'files in the tree. To '
             "list all known files, run 'bzr unknowns'.\n", err)
-        self.assertEquals("", out)
+        self.assertEqual("", out)

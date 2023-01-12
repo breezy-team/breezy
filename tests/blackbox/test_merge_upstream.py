@@ -35,7 +35,7 @@ from ...util import (
     )
 
 
-class Fixture(object):
+class Fixture:
     """A test fixture."""
 
     def __init__(self):
@@ -59,7 +59,7 @@ class Upstream(Fixture):
         treename = test_case.getUniqueString()
         tree = test_case.make_branch_and_tree(treename)
         filename = test_case.getUniqueString()
-        test_case.build_tree(["%s/%s" % (treename, filename)])
+        test_case.build_tree(["{}/{}".format(treename, filename)])
         tree.add([filename])
         tree.commit(test_case.getUniqueString())
         self.tree = tree
@@ -127,7 +127,7 @@ class FileMovedReplacedUpstream(Fixture):
                     oldpath = child.name
             tree.rename_one(oldpath, newpath)
             test_case.build_tree(
-                ["%s/%s" % (os.path.basename(tree.basedir), oldpath)])
+                ["{}/{}".format(os.path.basename(tree.basedir), oldpath)])
             tree.add([oldpath])
             tree.commit('yo, renaming and replacing')
 
@@ -241,7 +241,7 @@ class TestMergeUpstream(BuilddebTestCase):
              '-rrevid:%s'
              % changed_upstream.tree.last_revision().decode('utf-8')],
             working_dir=package.tree.basedir)
-        self.assertEquals(out, "")
+        self.assertEqual(out, "")
         self.assertContainsRe(err, "Using version string 8.")
 
     def test_upstream_branch_revision_requires_upstream(self):
@@ -256,8 +256,8 @@ class TestMergeUpstream(BuilddebTestCase):
         (out, err) = self.run_bzr(
             ['merge-upstream', '-r8'],
             working_dir=package.tree.basedir, retcode=3)
-        self.assertEquals(out, "")
-        self.assertEquals(
+        self.assertEqual(out, "")
+        self.assertEqual(
             err,
             "Using distribution unstable\n"
             "brz: ERROR: --revision can only be used with a "

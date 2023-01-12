@@ -31,5 +31,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_merge_upstream',
     ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, i) for i in testmod_names]))
+        ["{}.{}".format(__name__, i) for i in testmod_names]))
     return basic_tests

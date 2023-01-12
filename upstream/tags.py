@@ -49,12 +49,12 @@ def possible_upstream_tag_names(package: Optional[str], version: str,
                 tags.append("release-%s" % version)
                 tags.append("v%s-release" % version)
             if package:
-                tags.append("%s-%s" % (package, version))
+                tags.append("{}-{}".format(package, version))
             tags.append("v/%s" % version)
             tags.append("v.%s" % version)
     else:
-        tags.append('upstream-%s/%s' % (version, component))
-        tags.append('upstream/%s/%s' % (
+        tags.append('upstream-{}/{}'.format(version, component))
+        tags.append('upstream/{}/{}'.format(
             mangle_version_for_git(version), component))
     return tags
 
@@ -101,10 +101,10 @@ def _rev_is_upstream_import(
     ]
     if package is not None:
         possible_messages.extend([
-            'Import %s_%s' % (package, version),
-            'import %s_%s' % (package, version),
-            'import %s-%s' % (package.replace('-', '_'), version),
-            '%s-%s' % (package, version),
+            'Import {}_{}'.format(package, version),
+            'import {}_{}'.format(package, version),
+            'import {}-{}'.format(package.replace('-', '_'), version),
+            '{}-{}'.format(package, version),
         ])
     possible_messages.extend([
         'Imported upstream version %s' % version,
@@ -124,7 +124,7 @@ def _rev_is_upstream_merge(
             ("Merge tag 'v%s' into debian/" % version).lower()):
         return True
     if package is not None and revision.message.lower().startswith(
-            ("Merge tag '%s-%s' into " % (package, version)).lower()):
+            ("Merge tag '{}-{}' into ".format(package, version)).lower()):
         return True
     return False
 
@@ -142,10 +142,10 @@ def upstream_version_tag_start_revids(
         # as DEP-14 suggests.
         'debian/%s-' % mangle_version_for_git(version.replace(':', '_')),
         # Haskell repo style
-        "%s_v%s" % (package, version),
+        "{}_v{}".format(package, version),
         ]
     if package:
-        candidate_tag_start.append('debian-%s-%s' % (package, version))
+        candidate_tag_start.append('debian-{}-{}'.format(package, version))
     for tag_name, revid in tag_dict.items():
         if any([tag_name.startswith(tag_start)
                 for tag_start in candidate_tag_start]):

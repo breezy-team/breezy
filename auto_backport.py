@@ -77,7 +77,7 @@ def debsign(path, keyid=None):
 # See https://backports.debian.org/Contribute/
 
 
-class BackportResult(object):
+class BackportResult:
     def __init__(self, source, target_release, version, since_version):
         self.source = source
         self.target_release = target_release
@@ -277,7 +277,7 @@ def main(argv=None):
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
             json.dump({
-                'description': 'Backport %s to %s' % (
+                'description': 'Backport {} to {}'.format(
                     result.source, result.target_release),
                 'versions': versions_dict(),
                 'context': {
