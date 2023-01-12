@@ -260,7 +260,8 @@ class MergeProposalBuilder:
     def create_proposal(self, description, title=None, reviewers=None,
                         labels=None, prerequisite_branch=None,
                         commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+                        work_in_progress=False, allow_collaboration=False,
+                        delete_source_after_merge: Optional[bool] = None):
         """Create a proposal to merge a branch for merging.
 
         Args:
@@ -274,6 +275,8 @@ class MergeProposalBuilder:
           allow_collaboration:
             Whether to allow changes to the branch from the target branch
             maintainer(s)
+          delete_after_merge: Whether to delete the source branch after it
+            has been merged
         Returns: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)

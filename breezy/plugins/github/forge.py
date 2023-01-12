@@ -19,6 +19,7 @@
 from datetime import datetime
 import json
 import os
+from typing import Optional, Dict, Any, List
 
 from ...forge import (
     determine_title,
@@ -824,7 +825,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, title=None, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+                        work_in_progress=False, allow_collaboration=False,
+                        delete_source_after_merge: Optional[bool] = None):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
@@ -836,7 +838,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             title = determine_title(description)
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
-        assignees = []
+        assignees: Optional[List[Dict[str, Any]]] = []
         if reviewers:
             assignees = []
             for reviewer in reviewers:
@@ -847,6 +849,9 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 assignees.append(user['login'])
         else:
             assignees = None
+        kwargs: Dict[str, Any] = {}
+        if delete_source_after_merge is not None:
+            kwargs['delete_branch_on_merge'] = delete_source_after_merge
         try:
             pull_request = self.gh._create_pull(
                 strip_optional(target_repo['pulls_url']),
@@ -856,6 +861,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 labels=labels, assignee=assignees,
                 draft=work_in_progress,
                 maintainer_can_modify=allow_collaboration,
+                **kwargs
                 )
         except ValidationFailed:
             # TODO(jelmer): Check the actual error message rather than assuming

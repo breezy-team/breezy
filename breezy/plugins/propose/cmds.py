@@ -164,6 +164,7 @@ class cmd_propose_merge(Command):
                help='Do not prevent empty merge proposals.'),
         Option('overwrite', help="Overwrite existing commits."),
         Option('open', help='Open merge proposal in web browser'),
+        Option('delete-source-after-merge', help='Delete source branch when proposal is merged'),
         ]
     takes_args = ['submit_branch?']
 
@@ -173,7 +174,7 @@ class cmd_propose_merge(Command):
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
             allow_collaboration=False, allow_empty=False, overwrite=False,
-            open=False, auto=False):
+            open=False, auto=False, delete_source_after_merge=None):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -216,7 +217,8 @@ class cmd_propose_merge(Command):
                 description=description, reviewers=reviewers,
                 prerequisite_branch=prerequisite_branch, labels=labels,
                 commit_message=commit_message,
-                work_in_progress=wip, allow_collaboration=allow_collaboration)
+                work_in_progress=wip, allow_collaboration=allow_collaboration,
+                delete_source_after_merge=delete_source_after_merge)
         except _mod_forge.MergeProposalExists as e:
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:

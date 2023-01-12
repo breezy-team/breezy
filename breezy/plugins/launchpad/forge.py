@@ -20,6 +20,7 @@
 import re
 import shutil
 import tempfile
+from typing import Optional, List, Any
 
 from ...forge import (
     Forge,
@@ -39,6 +40,7 @@ from ... import (
     hooks,
     urlutils,
     )
+from ...trace import mutter
 from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
@@ -670,7 +672,8 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
     def create_proposal(self, description, title=None,
                         reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+                        work_in_progress=False, allow_collaboration=False,
+                        delete_source_after_merge: Optional[bool] = None):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
@@ -682,11 +685,15 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             prereq = None
         if reviewers is None:
-            reviewer_objs = []
+            reviewer_objs: List[Any] = []
         else:
             reviewer_objs = []
             for reviewer in reviewers:
                 reviewer_objs.append(self.lp_host._getPerson(reviewer))
+        if delete_source_after_merge is True:
+            mutter(
+                'Ignoring request to delete source after merge, '
+                'which launchpad does not support')
         try:
             mp = _call_webservice(
                 self.source_branch_lp.createMergeProposal,
