@@ -39,6 +39,7 @@ from dulwich.index import (
     )
 from dulwich.object_store import (
     OverlayObjectStore,
+    iter_tree_contents,
     )
 from dulwich.objects import (
     Blob,
@@ -729,8 +730,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     def _iter_tree_contents(self, include_trees=False):
         if self.tree is None:
             return iter([])
-        return self.store.iter_tree_contents(
-            self.tree, include_trees=include_trees)
+        return iter_tree_contents(
+            self.store, self.tree, include_trees=include_trees)
 
     def annotate_iter(self, path, default_revision=CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.

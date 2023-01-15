@@ -556,7 +556,7 @@ class RemoteGitDir(GitDir):
             ret[refname] = dulwich.client.ZERO_SHA
             return ret
 
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.send_pack(get_changed_refs, generate_pack_data)
         error = result.ref_status.get(refname)
@@ -1062,7 +1062,7 @@ class RemoteGitTagDict(GitTags):
             ret[ref] = sha
             return ret
 
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)
@@ -1142,7 +1142,7 @@ class RemoteGitBranch(GitBranch):
         sha = self.lookup_bzr_revision_id(revision_id)[0]
         def get_changed_refs(old_refs):
             return {self.ref: sha}
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)

@@ -16,9 +16,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from dulwich.server import TCPGitServer
-
 import sys
+
+from dulwich.object_store import (
+    MissingObjectFinder,
+    peel_sha,
+)
+from dulwich.protocol import Protocol
+from dulwich.server import (
+    TCPGitServer,
+    Backend,
+    BackendRepo,
+    ReceivePackHandler,
+    UploadPackHandler,
+    )
+
 
 from .. import (
     errors,
@@ -39,14 +51,6 @@ from .object_store import (
     )
 from .refs import (
     get_refs_container,
-    )
-
-from dulwich.protocol import Protocol
-from dulwich.server import (
-    Backend,
-    BackendRepo,
-    ReceivePackHandler,
-    UploadPackHandler,
     )
 
 
@@ -81,9 +85,9 @@ class BzrBackendRepo(BackendRepo):
         cached = self.refs.get_peeled(name)
         if cached is not None:
             return cached
-        return self.object_store.peel_sha(self.refs[name]).id
+        return peel_sha(self.object_store, self.refs[name]).id
 
-    def fetch_objects(self, determine_wants, graph_walker, progress,
+    def find_missing_objects(self, determine_wants, graph_walker, progress,
                       get_tagged=None):
         """Yield git objects to send to client """
         with self.object_store.lock_read():
@@ -93,16 +97,13 @@ class BzrBackendRepo(BackendRepo):
                 return
             shallows = getattr(graph_walker, 'shallow', frozenset())
             if isinstance(self.object_store, BazaarObjectStore):
-                return self.object_store.generate_pack_contents(
+                return self.object_store.find_missing_objects(
                     have, wants, shallow=shallows,
                     progress=progress, get_tagged=get_tagged, lossy=True)
             else:
-                if shallows:
-                    return self.object_store.generate_pack_contents(
-                        have, wants, shallow=shallows, progress=progress)
-                else:
-                    return self.object_store.generate_pack_contents(
-                        have, wants, progress=progress)
+                return MissingObjectFinder(
+                    self.object_store,
+                    have, wants, shallow=shallows, progress=progress)
 
 
 class BzrTCPGitServer(TCPGitServer):
