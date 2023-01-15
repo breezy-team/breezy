@@ -33,7 +33,7 @@ from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy import urlutils
-from breezy.errors import NotBranchError, NoSuchTag
+from breezy.errors import NotBranchError, NoSuchTag, ConflictsInTree
 from breezy.revision import RevisionID, NULL_REVISION
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
@@ -574,6 +574,11 @@ def main(argv=None):
         return 1
     except MalformedTransform as e:
         report_fatal('malformed-transform', str(e))
+        return 1
+    except ConflictsInTree as e:
+        report_fatal(
+            'merge-conflicts', "Merging uncommitted changes resulted in conflicts.",
+            transient=False)
         return 1
 
     if args.vcs_git_base:
