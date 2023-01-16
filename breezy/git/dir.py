@@ -366,6 +366,7 @@ class GitDir(ControlDir):
                     remember=False, create_prefix=False, lossy=False,
                     name=None, tag_selector=None):
         """Push the source branch into this ControlDir."""
+        import pdb; pdb.set_trace()
         push_result = GitPushResult()
         push_result.workingtree_updated = None
         push_result.master_branch = None

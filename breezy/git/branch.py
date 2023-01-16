@@ -78,7 +78,6 @@ from .refs import (
     is_tag,
     ref_to_branch_name,
     ref_to_tag_name,
-    remote_refs_dict_to_tag_refs,
     tag_name_to_ref,
     )
 from .unpeel_map import (

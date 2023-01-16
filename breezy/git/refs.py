@@ -17,10 +17,13 @@
 """Conversion between refs and Bazaar revision pointers."""
 
 from dulwich.refs import (
-    ANNOTATED_TAG_SUFFIX,
     LOCAL_BRANCH_PREFIX,
     LOCAL_TAG_PREFIX,
     )
+try:
+    from dulwich.refs import PEELED_TAG_SUFFIX
+except ImportError:  # dulwich < 0.21.1
+    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
 from dulwich.repo import (
     RefsContainer,
     )
@@ -37,27 +40,8 @@ def is_tag(x):
     return x.startswith(LOCAL_TAG_PREFIX)
 
 
-def is_head(x):
-    return x.startswith(LOCAL_BRANCH_PREFIX)
-
-
 def is_peeled(x):
-    return x.endswith(ANNOTATED_TAG_SUFFIX)
-
-
-def gather_peeled(refs):
-    ret = {}
-    for k, v in refs.items():
-        if is_peeled(k):
-            continue
-        try:
-            peeled = refs[k + ANNOTATED_TAG_SUFFIX]
-            unpeeled = v
-        except KeyError:
-            peeled = v
-            unpeeled = None
-        ret[k] = (peeled, unpeeled)
-    return ret
+    return x.endswith(PEELED_TAG_SUFFIX)
 
 
 def branch_name_to_ref(name):
@@ -200,21 +184,3 @@ def get_refs_container(controldir, object_store):
     if fn is not None:
         return fn()
     return BazaarRefsContainer(controldir, object_store)
-
-
-def remote_refs_dict_to_tag_refs(refs_dict):
-    base = {}
-    peeled = {}
-    for k, v in refs_dict.items():
-        if is_peeled(k):
-            peeled[k[:-3]] = v
-        else:
-            base[k] = v
-            peeled[k] = v
-    all_keys = set().union(base.keys(), peeled.keys())
-    for n in all_keys:
-        try:
-            tag_name = ref_to_tag_name(n)
-        except ValueError:
-            continue
-        yield (n, tag_name, peeled.get(n), base.get(n))
