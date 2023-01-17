@@ -50,7 +50,6 @@ from dulwich.pack import (
     write_pack_header,
     compute_file_sha,
     write_pack_object,
-    _PackTupleIterable,
     PackInflater,
 )
 from dulwich.refs import SymrefLoop
