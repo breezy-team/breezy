@@ -130,6 +130,11 @@ register_urlparse_netloc_protocol('git+ssh')
 
 from dulwich.pack import load_pack_index
 
+try:
+    from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
+except ImportError:  # dulwich < 0.21.1
+    PACK_SPOOL_FILE_MAX_SIZE = 16 * 1024 * 1024
+
 
 class GitPushResult(PushResult):
 
@@ -948,8 +953,8 @@ class GitRemoteRevisionTree(RevisionTree):
             raise NotImplementedError('recurse_nested is not yet supported')
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
-        import tempfile
-        f = tempfile.SpooledTemporaryFile()
+        from tempfile import SpooledTemporaryFile
+        f = SpooledTemporaryFile(max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-')
         # git-upload-archive(1) generaly only supports refs. So let's see if we
         # can find one.
         reverse_refs = {

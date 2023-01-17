@@ -16,7 +16,6 @@
 
 """InterRepository operations."""
 
-from io import BytesIO
 import itertools
 
 from dulwich.errors import (
@@ -89,6 +88,11 @@ from .remote import (
 from .unpeel_map import (
     UnpeelMap,
     )
+
+try:
+    from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
+except ImportError:  # dulwich < 0.21.1
+    PACK_SPOOL_FILE_MAX_SIZE = 16 * 1024 * 1024
 
 
 class InterToGitRepository(InterRepository):
@@ -752,15 +756,16 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
                 self.source.controldir._client._fetch_capabilities):
             # TODO(jelmer): Avoid reading entire file into memory and
             # only processing it after the whole file has been fetched.
-            f = SpooledTemporaryFile()
+            f = SpooledTemporaryFile(
+                max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-',
+                dir=getattr(self.target._git.object_store, 'path', None))
 
             def commit():
-                if f.tell():
-                    f.seek(0)
-                    self.target._git.object_store.move_in_thin_pack(f)
-                f.close()
+                f.seek(0)
+                self.target._git.object_store.add_thin_pack(f.read, None)
 
-            abort = f.close
+            def abort():
+                pass
         else:
             f, commit, abort = self.target._git.object_store.add_pack()
         try:

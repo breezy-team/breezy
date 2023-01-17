@@ -43,6 +43,7 @@ from dulwich.pack import (
     PackIndexer,
     Pack,
     PackStreamCopier,
+    extend_pack,
     iter_sha1,
     load_pack_index_file,
     write_pack_objects,
@@ -89,6 +90,14 @@ from ..transport import (
     FileExists,
     NoSuchFile,
     )
+from ..transport.local import LocalTransport
+from .. import ui
+
+
+try:
+    from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
+except ImportError:  # dulwich < 0.21.1
+    PACK_SPOOL_FILE_MAX_SIZE = 16 * 1024 * 1024
 
 
 class TransportRefsContainer(RefsContainer):
@@ -631,19 +640,10 @@ class TransportObjectStore(PackBasedObjectStore):
                 try:
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
-                    try:
-                        f = self.pack_transport.get(pack_name)
-                    except NoSuchFile:
-                        warning('Unable to read pack file %s',
-                                self.pack_transport.abspath(pack_name))
-                        continue
-                    from tempfile import SpooledTemporaryFile
-                    f = SpooledTemporaryFile(f.read())
-                    pd = PackData(pack_name, f)
-                else:
-                    pd = PackData(
-                        pack_name, self.pack_transport.get(pack_name),
-                        size=size)
+                    size = None
+                pd = PackData(
+                    pack_name, self.pack_transport.get(pack_name),
+                    size=size)
                 idxname = basename + ".idx"
                 idx = load_pack_index_file(
                     idxname, self.pack_transport.get(idxname))
@@ -760,30 +760,6 @@ class TransportObjectStore(PackBasedObjectStore):
         self._add_cached_pack(basename, final_pack)
         return final_pack
 
-    def move_in_thin_pack(self, f):
-        """Move a specific file containing a pack into the pack directory.
-
-        :note: The file should be on the same file system as the
-            packs directory.
-
-        :param path: Path to the pack file.
-        """
-        f.seek(0)
-        tp = Pack('', resolve_ext_ref=self.get_raw)
-        tp._data = PackData.from_file(f)
-        tp._idx_load = lambda: MemoryPackIndex(
-            tp.data.sorted_entries(resolve_ext_ref=self.get_raw), tp.data.get_stored_checksum())
-
-        pack_sha = tp.index.objects_sha1()
-
-        with self.pack_transport.open_write_stream(
-                "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
-            entries, data_sum = write_pack_objects(datafile.write, tp.pack_tuples())
-        entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
-        with self.pack_transport.open_write_stream(
-                "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
-            write_pack_index_v2(idxfile, entries, data_sum)
-
     def add_pack(self):
         """Add a new pack to this object store.
 
@@ -791,7 +767,13 @@ class TransportObjectStore(PackBasedObjectStore):
             call when the pack is finished.
         """
         from tempfile import SpooledTemporaryFile
-        f = SpooledTemporaryFile()
+
+        if isinstance(self.pack_transport, LocalTransport):
+            dir = self.pack_transport.local_abspath('.')
+        else:
+            dir = None
+
+        f = SpooledTemporaryFile(max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-', dir=dir)
 
         def commit():
             try:
@@ -835,32 +817,17 @@ class TransportObjectStore(PackBasedObjectStore):
           copier: A PackStreamCopier to use for writing pack data.
           indexer: A PackIndexer for indexing the pack.
         """
-        entries = list(indexer)
 
-        # Update the header with the new number of objects.
-        f.seek(0)
-        write_pack_header(f, len(entries) + len(indexer.ext_refs()))
+        entries = []
+        with ui.ui_factory.nested_progress_bar() as pb:
+            for i, entry in enumerate(indexer):
+                pb.update('generating index', i, len(copier))
+                entries.append(entry)
 
-        # Must flush before reading (http://bugs.python.org/issue3207)
-        f.flush()
-
-        # Rescan the rest of the pack, computing the SHA with the new header.
-        new_sha = compute_file_sha(f, end_ofs=-20)
-
-        # Must reposition before writing (http://bugs.python.org/issue3207)
-        f.seek(0, os.SEEK_CUR)
-
-        # Complete the pack.
-        for ext_sha in indexer.ext_refs():
-            type_num, data = self.get_raw(ext_sha)
-            offset = f.tell()
-            crc32 = write_pack_object(
-                f, type_num, data, sha=new_sha,
-                compression_level=self.pack_compression_level)
-            entries.append((ext_sha, offset, crc32))
-        pack_sha = new_sha.digest()
-        f.write(pack_sha)
-        f.close()
+        pack_sha, extra_entries = extend_pack(
+            f, indexer.ext_refs(), compression_level=self.pack_compression_level,
+            get_raw=self.get_raw)
+        entries.extend(extra_entries)
 
         # Move the pack in.
         entries.sort()
@@ -876,12 +843,8 @@ class TransportObjectStore(PackBasedObjectStore):
         os.rename(path, target_pack)
 
         # Write the index.
-        index_file = GitFile(pack_base_name + '.idx', 'wb')
-        try:
+        with GitFile(pack_base_name + '.idx', 'wb') as index_file:
             write_pack_index_v2(index_file, entries, pack_sha)
-            index_file.close()
-        finally:
-            index_file.abort()
 
         # Add the pack to the store and return it.
         final_pack = Pack(pack_base_name)
