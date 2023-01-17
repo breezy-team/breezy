@@ -679,7 +679,7 @@ class BazaarObjectStore(BaseObjectStore):
         self.repository.unlock()
 
     def lookup_git_shas(self, shas: Iterable[ObjectID]) -> Dict[ObjectID, List]:
-        ret = {}
+        ret: Dict[ObjectID, List] = {}
         for sha in shas:
             if sha == ZERO_SHA:
                 ret[sha] = [("commit", (NULL_REVISION, None, {}))]
