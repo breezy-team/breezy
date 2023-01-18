@@ -686,8 +686,9 @@ def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
                 version_native, format_native, version, source_format)
         if version_native is False and format_native is True:
             warning(
-                'Version suggests non-native package, '
-                'but format is for native.')
+                'Version (%s) suggests non-native package, '
+                'but format (%s) is for native.',
+                version, source_format)
 
     if version_native or format_native:
         return BUILD_TYPE_NATIVE
