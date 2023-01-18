@@ -31,6 +31,14 @@ from dulwich.object_store import (
     )
 
 
+try:
+    from dulwich.object_store import peel_sha
+except ImportError:  # dulwich < 0.21.1
+    def peel_sha(store, sha):
+        return store[sha], store.peel_sha(sha)
+
+
+
 from .. import (
     check,
     errors,
@@ -440,10 +448,10 @@ class LocalGitRepository(GitRepository):
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return _mod_revision.NULL_REVISION
-        commit = self._git.object_store.peel_sha(foreign_revid)
-        if not isinstance(commit, Commit):
-            raise NotCommitError(commit.id)
-        revid = mapping.get_revision_id(commit)
+        unpeeled, peeled = peel_sha(self._git.object_store, foreign_revid)
+        if not isinstance(peeled, Commit):
+            raise NotCommitError(peeled.id)
+        revid = mapping.get_revision_id(peeled)
         # FIXME: check testament before doing this?
         return revid
 

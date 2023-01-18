@@ -41,6 +41,12 @@ from .refs import (
     get_refs_container,
     )
 
+try:
+    from dulwich.object_store import peel_sha
+except ImportError:  # dulwich < 0.21.1
+    def peel_sha(store, sha):
+        return store[sha], store.peel_sha(sha)
+
 from dulwich.protocol import Protocol
 from dulwich.server import (
     Backend,
@@ -81,7 +87,7 @@ class BzrBackendRepo(BackendRepo):
         cached = self.refs.get_peeled(name)
         if cached is not None:
             return cached
-        return self.object_store.peel_sha(self.refs[name]).id
+        return peel_sha(self.object_store, self.refs[name]).id
 
     def fetch_objects(self, determine_wants, graph_walker, progress,
                       get_tagged=None):
