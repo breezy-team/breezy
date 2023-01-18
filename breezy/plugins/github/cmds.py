@@ -52,7 +52,5 @@ class cmd_github_login(Command):
                 if err_code == 'already_exists':
                     raise errors.CommandError('token already exists')
             raise errors.CommandError(e.data['message'])
-        # TODO(jelmer): This should really use something in
-        # AuthenticationConfig
         from .forge import store_github_token
         store_github_token(token=authorization.token)

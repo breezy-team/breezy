@@ -112,10 +112,10 @@ class TestGitBlackBox(ExternalBase):
         os.chdir('..')
 
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
+        errlines = error.splitlines(False)
         self.assertTrue(
-            (error == 'Branched 1 revision(s).\n') or
-            (error == 'Branched 1 revision.\n'),
-            error)
+            'Branched 1 revision(s).' in errlines or
+            'Branched 1 revision.' in errlines, errlines)
 
     def test_checkout(self):
         os.mkdir("gitbranch")

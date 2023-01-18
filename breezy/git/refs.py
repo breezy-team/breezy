@@ -16,6 +16,7 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
+from dulwich.objects import Tag, object_class
 from dulwich.refs import (
     ANNOTATED_TAG_SUFFIX,
     LOCAL_BRANCH_PREFIX,
@@ -31,6 +32,17 @@ from .. import (
     osutils,
     revision as _mod_revision,
     )
+
+
+# TODO: Once we depend on dulwich >= 0.21.2, drop this and use
+# dulwich.object_store.peel_sha
+def peel_sha(store, sha):
+    unpeeled = obj = store[sha]
+    obj_class = object_class(obj.type_name)
+    while obj_class is Tag:
+        obj_class, sha = obj.object
+        obj = store[sha]
+    return unpeeled, obj
 
 
 def is_tag(x):
