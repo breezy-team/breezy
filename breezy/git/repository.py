@@ -31,12 +31,6 @@ from dulwich.object_store import (
     )
 
 
-try:
-    from dulwich.object_store import peel_sha  # type: ignore
-except ImportError:  # dulwich < 0.21.1
-    def peel_sha(store, sha):  # type: ignore
-        return store[sha], store.peel_sha(sha)
-
 
 from .. import (
     check,
@@ -64,6 +58,7 @@ from .mapping import (
     foreign_vcs_git,
     mapping_registry,
     )
+from .refs import peel_sha
 from .tree import (
     GitRevisionTree,
     )
