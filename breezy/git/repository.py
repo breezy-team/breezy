@@ -32,6 +32,7 @@ from dulwich.object_store import (
     )
 
 
+
 from .. import (
     check,
     errors,
@@ -58,6 +59,7 @@ from .mapping import (
     foreign_vcs_git,
     mapping_registry,
     )
+from .refs import peel_sha
 from .tree import (
     GitRevisionTree,
     )
@@ -441,10 +443,10 @@ class LocalGitRepository(GitRepository):
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return _mod_revision.NULL_REVISION
-        commit = peel_sha(self._git.object_store, foreign_revid)
-        if not isinstance(commit, Commit):
-            raise NotCommitError(commit.id)
-        revid = mapping.get_revision_id(commit)
+        unpeeled, peeled = peel_sha(self._git.object_store, foreign_revid)
+        if not isinstance(peeled, Commit):
+            raise NotCommitError(peeled.id)
+        revid = mapping.get_revision_id(peeled)
         # FIXME: check testament before doing this?
         return revid
 

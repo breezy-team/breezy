@@ -51,6 +51,7 @@ from .object_store import (
     )
 from .refs import (
     get_refs_container,
+    peel_sha,
     )
 
 
@@ -85,7 +86,7 @@ class BzrBackendRepo(BackendRepo):
         cached = self.refs.get_peeled(name)
         if cached is not None:
             return cached
-        return peel_sha(self.object_store, self.refs[name]).id
+        return peel_sha(self.object_store, self.refs[name])[1].id
 
     def find_missing_objects(self, determine_wants, graph_walker, progress,
                       get_tagged=None):
