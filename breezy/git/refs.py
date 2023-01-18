@@ -40,7 +40,6 @@ def peel_sha(store, sha):
     unpeeled = obj = store[sha]
     obj_class = object_class(obj.type_name)
     while obj_class is Tag:
-        assert isinstance(obj, Tag)
         obj_class, sha = obj.object
         obj = store[sha]
     return unpeeled, obj
