@@ -53,6 +53,7 @@ from dulwich.pack import (
     compute_file_sha,
     write_pack_object,
     PackInflater,
+    PACK_SPOOL_FILE_MAX_SIZE,
 )
 from dulwich.refs import SymrefLoop
 from dulwich.repo import (
@@ -93,12 +94,6 @@ from ..transport import (
     )
 from ..transport.local import LocalTransport
 from .. import ui
-
-
-try:
-    from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
-except ImportError:  # dulwich < 0.21.1
-    PACK_SPOOL_FILE_MAX_SIZE = 16 * 1024 * 1024
 
 
 class _RemoteGitFile(object):

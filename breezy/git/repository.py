@@ -59,7 +59,6 @@ from .mapping import (
     foreign_vcs_git,
     mapping_registry,
     )
-from .refs import peel_sha
 from .tree import (
     GitRevisionTree,
     )
