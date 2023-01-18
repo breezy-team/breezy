@@ -24,6 +24,7 @@ from dulwich.errors import (
 from dulwich.object_store import (
     ObjectStoreGraphWalker,
     )
+from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import (
     CAPABILITY_THIN_PACK,
     ZERO_SHA,
@@ -88,11 +89,6 @@ from .remote import (
 from .unpeel_map import (
     UnpeelMap,
     )
-
-try:
-    from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
-except ImportError:  # dulwich < 0.21.1
-    PACK_SPOOL_FILE_MAX_SIZE = 16 * 1024 * 1024
 
 
 class InterToGitRepository(InterRepository):

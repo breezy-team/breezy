@@ -51,7 +51,6 @@ from .object_store import (
     )
 from .refs import (
     get_refs_container,
-    peel_sha,
     )
 
 

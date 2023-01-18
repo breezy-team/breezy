@@ -34,17 +34,6 @@ from .. import (
     )
 
 
-# TODO: Once we depend on dulwich >= 0.21.2, drop this and use
-# dulwich.object_store.peel_sha
-def peel_sha(store, sha):
-    unpeeled = obj = store[sha]
-    obj_class = object_class(obj.type_name)
-    while obj_class is Tag:
-        obj_class, sha = obj.object
-        obj = store[sha]
-    return unpeeled, obj
-
-
 def is_tag(x):
     return x.startswith(LOCAL_TAG_PREFIX)
 

@@ -110,6 +110,8 @@ from dulwich.errors import (
 from dulwich.pack import (
     Pack,
     pack_objects_to_data,
+    load_pack_index,
+    PACK_SPOOL_FILE_MAX_SIZE,
     )
 from dulwich.protocol import ZERO_SHA
 from dulwich.refs import (
@@ -127,13 +129,6 @@ import urllib.parse as urlparse
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
 register_urlparse_netloc_protocol('git+ssh')
-
-from dulwich.pack import load_pack_index
-
-try:
-    from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
-except ImportError:  # dulwich < 0.21.1
-    PACK_SPOOL_FILE_MAX_SIZE = 16 * 1024 * 1024
 
 
 class GitPushResult(PushResult):

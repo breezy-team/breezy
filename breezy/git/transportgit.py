@@ -26,7 +26,7 @@ from dulwich.errors import (
     NoIndexPresent,
     )
 from dulwich.file import (
-    GitFile,
+    _GitFile,
     FileLocked,
     )
 from dulwich.objects import (
@@ -35,6 +35,7 @@ from dulwich.objects import (
 from dulwich.object_store import (
     PackBasedObjectStore,
     PACKDIR,
+    PACK_MODE,
     read_packs_file,
     )
 from dulwich.pack import (
@@ -47,11 +48,12 @@ from dulwich.pack import (
     iter_sha1,
     load_pack_index_file,
     write_pack_objects,
-    write_pack_index_v2,
+    write_pack_index,
     write_pack_header,
     compute_file_sha,
     write_pack_object,
     PackInflater,
+    PACK_SPOOL_FILE_MAX_SIZE,
 )
 from dulwich.refs import SymrefLoop
 from dulwich.repo import (
@@ -94,10 +96,63 @@ from ..transport.local import LocalTransport
 from .. import ui
 
 
-try:
-    from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
-except ImportError:  # dulwich < 0.21.1
-    PACK_SPOOL_FILE_MAX_SIZE = 16 * 1024 * 1024
+class _RemoteGitFile(object):
+
+    def __init__(self, transport, filename, mode, bufsize, mask):
+        self.transport = transport
+        self.filename = filename
+        self.mode = mode
+        self.bufsize = bufsize
+        self.mask = mask
+        import tempfile
+        self._file = tempfile.SpooledTemporaryFile(max_size=1024 * 1024)
+        self._closed = False
+        for method in _GitFile.PROXY_METHODS:
+            setattr(self, method, getattr(self._file, method))
+
+    def abort(self):
+        self._file.close()
+        self._closed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self.abort()
+        else:
+            self.close()
+
+    def __getattr__(self, name):
+        """Proxy property calls to the underlying file."""
+        if name in _GitFile.PROXY_PROPERTIES:
+            return getattr(self._file, name)
+        raise AttributeError(name)
+
+    def close(self):
+        if self._closed:
+            return
+        self._file.flush()
+        self._file.seek(0)
+        self.transport.put_file(self.filename, self._file)
+        self._file.close()
+        self._closed = True
+
+
+def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
+    if "a" in mode:
+        raise OSError("append mode not supported for Git files")
+    if "+" in mode:
+        raise OSError("read/write mode not supported for Git files")
+    if "b" not in mode:
+        raise OSError("text mode not supported for Git files")
+    if "w" in mode:
+        try:
+            return _GitFile(transport.local_abspath(filename), mode, bufsize, mask)
+        except NotLocalUrl:
+            return _RemoteGitFile(transport, filename, mode, bufsize, mask)
+    else:
+        return transport.get(filename)
 
 
 class TransportRefsContainer(RefsContainer):
@@ -381,7 +436,7 @@ class TransportRefsContainer(RefsContainer):
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
-                gf = GitFile(local_path, 'wb')
+                gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), 'wb')
             except FileLocked as e:
                 raise LockContention(name, e)
             else:
@@ -734,59 +789,6 @@ class TransportObjectStore(PackBasedObjectStore):
             raw_string = obj.as_legacy_object()
         self.transport.put_bytes(path, raw_string)
 
-    def move_in_pack(self, f):
-        """Move a specific file containing a pack into the pack directory.
-
-        :note: The file should be on the same file system as the
-            packs directory.
-
-        :param path: Path to the pack file.
-        """
-        f.seek(0)
-        p = PackData(b"", f)
-        entries = p.sorted_entries()
-        basename = "pack-%s" % iter_sha1(entry[0]
-                                         for entry in entries).decode('ascii')
-        f.seek(0)
-        self.pack_transport.put_file(basename + ".pack", f)
-        with self.pack_transport.open_write_stream(basename + ".idx") as idxfile:
-            write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
-        packfile = self.pack_transport.get(basename + ".pack")
-        data = PackData(basename + ".pack", packfile)
-        idxfile = self.pack_transport.get(basename + ".idx")
-        idx = load_pack_index_file(basename + ".idx", idxfile)
-        final_pack = Pack.from_objects(data, idx)
-        final_pack._basename = basename
-        self._add_cached_pack(basename, final_pack)
-        return final_pack
-
-    def add_pack(self):
-        """Add a new pack to this object store.
-
-        :return: Fileobject to write to and a commit function to
-            call when the pack is finished.
-        """
-        from tempfile import SpooledTemporaryFile
-
-        if isinstance(self.pack_transport, LocalTransport):
-            dir = self.pack_transport.local_abspath('.')
-        else:
-            dir = None
-
-        f = SpooledTemporaryFile(max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-', dir=dir)
-
-        def commit():
-            try:
-                if f.tell() > 0:
-                    return self.move_in_pack(f)
-                else:
-                    return None
-            finally:
-                f.close()
-
-        abort = f.close
-        return f, commit, abort
-
     @classmethod
     def init(cls, transport):
         try:
@@ -799,13 +801,7 @@ class TransportObjectStore(PackBasedObjectStore):
             pass
         return cls(transport)
 
-    def _get_pack_basepath(self, entries):
-        suffix = iter_sha1(entry[0] for entry in entries)
-        # TODO: Handle self.pack_dir being bytes
-        suffix = suffix.decode('ascii')
-        return self.pack_transport.local_abspath("pack-" + suffix)
-
-    def _complete_thin_pack(self, f, path, copier, indexer):
+    def _complete_pack(self, f, path, num_objects, indexer, progress=None):
         """Move a specific file containing a pack into the pack directory.
 
         Note: The file should be on the same file system as the
@@ -814,45 +810,67 @@ class TransportObjectStore(PackBasedObjectStore):
         Args:
           f: Open file object for the pack.
           path: Path to the pack file.
-          copier: A PackStreamCopier to use for writing pack data.
           indexer: A PackIndexer for indexing the pack.
         """
-
         entries = []
-        with ui.ui_factory.nested_progress_bar() as pb:
-            for i, entry in enumerate(indexer):
-                pb.update('generating index', i, len(copier))
-                entries.append(entry)
+        for i, entry in enumerate(indexer):
+            if progress is not None:
+                progress(("generating index: %d/%d\r" % (i, num_objects)).encode('ascii'))
+            entries.append(entry)
 
         pack_sha, extra_entries = extend_pack(
-            f, indexer.ext_refs(), compression_level=self.pack_compression_level,
-            get_raw=self.get_raw)
+            f, indexer.ext_refs(), get_raw=self.get_raw, compression_level=self.pack_compression_level,
+            progress=progress)
+        f.flush()
+        try:
+            fileno = f.fileno()
+        except AttributeError:
+            pass
+        else:
+            os.fsync(fileno)
+
         entries.extend(extra_entries)
 
         # Move the pack in.
         entries.sort()
-        pack_base_name = self._get_pack_basepath(entries)
-        target_pack = pack_base_name + '.pack'
-        if sys.platform == 'win32':
+        pack_base_name = "pack-" + iter_sha1(entry[0] for entry in entries).decode('ascii')
+
+        for pack in self.packs:
+            if osutils.basename(pack._basename) == pack_base_name:
+                f.close()
+                return pack
+
+        target_pack_name = pack_base_name + ".pack"
+        target_pack_index = pack_base_name + ".idx"
+        if sys.platform == "win32":
             # Windows might have the target pack file lingering. Attempt
             # removal, silently passing if the target does not exist.
-            try:
-                os.remove(target_pack)
-            except FileNotFoundError:
-                pass
-        os.rename(path, target_pack)
+            with suppress(NoSuchFile):
+                self.transport.remove(target_pack_name)
+
+        if path:
+            f.close()
+            self.pack_transport.ensure_base()
+            os.rename(path, self.transport.local_abspath(osutils.pathjoin(PACKDIR, target_pack_name)))
+        else:
+            f.seek(0)
+            self.pack_transport.put_file(target_pack_name, f, mode=PACK_MODE)
 
         # Write the index.
-        with GitFile(pack_base_name + '.idx', 'wb') as index_file:
-            write_pack_index_v2(index_file, entries, pack_sha)
+        with TransportGitFile(self.pack_transport, target_pack_index, "wb", mask=PACK_MODE) as index_file:
+            write_pack_index(index_file, entries, pack_sha)
 
         # Add the pack to the store and return it.
-        final_pack = Pack(pack_base_name)
+        final_pack = Pack.from_objects(
+            PackData(target_pack_name, self.pack_transport.get(target_pack_name)),
+            load_pack_index_file(target_pack_index, self.pack_transport.get(target_pack_index)))
+        final_pack._basename = pack_base_name
+
         final_pack.check_length_and_checksum()
         self._add_cached_pack(pack_base_name, final_pack)
         return final_pack
 
-    def add_thin_pack(self, read_all, read_some):
+    def add_thin_pack(self, read_all, read_some, progress=None):
         """Add a new thin pack to this object store.
 
         Thin packs are packs that contain deltas with parents that exist
@@ -868,10 +886,60 @@ class TransportObjectStore(PackBasedObjectStore):
             objects/pack directory.
         """
         import tempfile
-        fd, path = tempfile.mkstemp(dir=self.pack_transport.local_abspath('.'), prefix='tmp_pack_')
-        with os.fdopen(fd, 'w+b') as f:
+
+        try:
+            dir = self.transport.local_abspath('.')
+        except NotLocalUrl:
+            f = tempfile.SpooledTemporaryFile(prefix="tmp_pack_")
+            path = None
+        else:
+            f = tempfile.NamedTemporaryFile(dir=dir, prefix="tmp_pack_", delete=False)
+            path = f.name
+
+        try:
             indexer = PackIndexer(f, resolve_ext_ref=self.get_raw)
-            copier = PackStreamCopier(read_all, read_some, f,
-                                      delta_iter=indexer)
-            copier.verify()
-            return self._complete_thin_pack(f, path, copier, indexer)
+            copier = PackStreamCopier(read_all, read_some, f, delta_iter=indexer)
+            copier.verify(progress=progress)
+            if f.name:
+                os.chmod(f.name, PACK_MODE)
+            return self._complete_pack(f, path, len(copier), indexer, progress=progress)
+        except BaseException:
+            f.close()
+            if path:
+                os.remove(path)
+            raise
+
+    def add_pack(self):
+        """Add a new pack to this object store.
+
+        Returns: Fileobject to write to, a commit function to
+            call when the pack is finished and an abort
+            function.
+        """
+        import tempfile
+
+        try:
+            dir = self.transport.local_abspath('.')
+        except NotLocalUrl:
+            f = tempfile.SpooledTemporaryFile(prefix="tmp_pack_")
+            path = None
+        else:
+            f = tempfile.NamedTemporaryFile(dir=dir, prefix="tmp_pack_", delete=False)
+            path = f.name
+
+        def commit():
+            if f.tell() > 0:
+                f.seek(0)
+                with PackData(path, f) as pd:
+                    indexer = PackIndexer.for_pack_data(pd, resolve_ext_ref=self.get_raw)
+                    return self._complete_pack(f, path, len(pd), indexer)
+            else:
+                abort()
+                return None
+
+        def abort():
+            f.close()
+            if path:
+                os.remove(path)
+
+        return f, commit, abort
