@@ -175,7 +175,7 @@ class NoopChangesOnly(Exception):
     def __init__(self, vcs_version, archive_version):
         self.vcs_version = vcs_version
         self.archive_version = archive_version
-        super(NoMissingVersions, self).__init__(
+        super(NoopChangesOnly, self).__init__(
             "No missing versions with effective changes. "
             "Archive has %s, VCS has %s"
             % (archive_version, vcs_version)
