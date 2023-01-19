@@ -654,7 +654,7 @@ class InterGitGitRepository(InterFromGitRepository):
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, limit=None, mapping=None):
+    def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
         raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
@@ -723,9 +723,11 @@ class InterGitGitRepository(InterFromGitRepository):
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, limit=None, mapping=None):
+    def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
         if limit is not None:
             raise FetchLimitUnsupported(self)
+        if lossy:
+            raise LossyPushToSameVCS(self.source, self.target)
         from .remote import DefaultProgressReporter
         with ui.ui_factory.nested_progress_bar() as pb:
             progress = DefaultProgressReporter(pb).progress
