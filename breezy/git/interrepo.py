@@ -757,8 +757,9 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
                 dir=getattr(self.target._git.object_store, 'path', None))
 
             def commit():
-                f.seek(0)
-                self.target._git.object_store.add_thin_pack(f.read, None)
+                if f.tell():
+                    f.seek(0)
+                    self.target._git.object_store.add_thin_pack(f.read, None)
 
             def abort():
                 pass
