@@ -39,19 +39,19 @@ def default_user_agent():
 # Note for packagers: if there is no package providing certs for your platform,
 # the curl project produces http://curl.haxx.se/ca/cacert.pem weekly.
 _ssl_ca_certs_known_locations = [
-    u'/etc/ssl/certs/ca-certificates.crt',  # Ubuntu/debian/gentoo
-    u'/etc/pki/tls/certs/ca-bundle.crt',  # Fedora/CentOS/RH
-    u'/etc/ssl/ca-bundle.pem',  # OpenSuse
-    u'/etc/ssl/cert.pem',  # OpenSuse
-    u"/usr/local/share/certs/ca-root-nss.crt",  # FreeBSD
+    '/etc/ssl/certs/ca-certificates.crt',  # Ubuntu/debian/gentoo
+    '/etc/pki/tls/certs/ca-bundle.crt',  # Fedora/CentOS/RH
+    '/etc/ssl/ca-bundle.pem',  # OpenSuse
+    '/etc/ssl/cert.pem',  # OpenSuse
+    "/usr/local/share/certs/ca-root-nss.crt",  # FreeBSD
     # XXX: Needs checking, can't trust the interweb ;) -- vila 2012-01-25
-    u'/etc/openssl/certs/ca-certificates.crt',  # Solaris
+    '/etc/openssl/certs/ca-certificates.crt',  # Solaris
 ]
 
 
 def default_ca_certs():
     if sys.platform == 'win32':
-        return os.path.join(os.path.dirname(sys.executable), u"cacert.pem")
+        return os.path.join(os.path.dirname(sys.executable), "cacert.pem")
     elif sys.platform == 'darwin':
         # FIXME: Needs some default value for osx, waiting for osx installers
         # guys feedback -- vila 2012-01-25
@@ -87,9 +87,9 @@ def default_ca_reqs():
     if sys.platform in ('win32', 'darwin'):
         # FIXME: Once we get a native access to root certificates there, this
         # won't needed anymore. See http://pad.lv/920455 -- vila 2012-02-15
-        return u'none'
+        return 'none'
     else:
-        return u'required'
+        return 'required'
 
 
 opt_ssl_ca_certs = config.Option('ssl.ca_certs',

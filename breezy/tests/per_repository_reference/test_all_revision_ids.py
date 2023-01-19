@@ -26,7 +26,7 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
     def test_all_revision_ids_empty(self):
         base = self.make_repository('base')
         repo = self.make_referring('referring', base)
-        self.assertEqual(set([]), set(repo.all_revision_ids()))
+        self.assertEqual(set(), set(repo.all_revision_ids()))
 
     def test_all_revision_ids_from_base(self):
         tree = self.make_branch_and_tree('base')

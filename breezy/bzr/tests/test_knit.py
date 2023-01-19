@@ -102,7 +102,7 @@ class ErrorTests(TestCase):
                          str(error))
 
 
-class KnitContentTestsMixin(object):
+class KnitContentTestsMixin:
 
     def test_constructor(self):
         content = self._make_content([])
@@ -272,7 +272,7 @@ class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
         self.assertRaises(StopIteration, next, it)
 
 
-class MockTransport(object):
+class MockTransport:
 
     def __init__(self, file_lines=None):
         self.file_lines = file_lines
@@ -316,7 +316,7 @@ class MockReadvFailingTransport(MockTransport):
             yield result
 
 
-class KnitRecordAccessTestsMixin(object):
+class KnitRecordAccessTestsMixin:
     """Tests for getting and putting knit records."""
 
     def test_add_raw_records(self):
@@ -760,7 +760,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         repo.commit_write_group()
         # Request in random order, to make sure the output order isn't based on
         # the request
-        request_keys = set((b'f-id', b'rev-%d' % i) for i in range(1, 7))
+        request_keys = {(b'f-id', b'rev-%d' % i) for i in range(1, 7)}
         stream = vf.get_record_stream(request_keys, 'unordered', False)
         keys = [r.key for r in stream]
         # We want to get the keys back in disk order, but it doesn't matter
@@ -963,7 +963,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual({'create_parent_dir': True}, call[2])
 
     def test_read_utf8_version_id(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER,
@@ -977,7 +977,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertFalse((unicode_revision_id,) in index.keys())
 
     def test_read_utf8_parents(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER,
@@ -1034,7 +1034,7 @@ class LowLevelKnitIndexTests(TestCase):
                          index.get_parent_map([(b"b",), (b"c",)]))
 
     def test_write_utf8_version_id(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER
@@ -1053,7 +1053,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual({'create_parent_dir': True}, call[2])
 
     def test_write_utf8_parents(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER
@@ -2154,7 +2154,7 @@ class TestKnitVersionedFiles(KnitTests):
                                   [f_a], [], positions)
         self.assertGroupKeysForIo([([f_a], {f_a})],
                                   [f_a], [f_a], positions)
-        self.assertGroupKeysForIo([([f_a, f_b], set([]))],
+        self.assertGroupKeysForIo([([f_a, f_b], set())],
                                   [f_a, f_b], [], positions)
         self.assertGroupKeysForIo([([f_a, f_b], {f_b})],
                                   [f_a, f_b], [f_b], positions)

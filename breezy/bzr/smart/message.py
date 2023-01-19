@@ -27,7 +27,7 @@ from ... import (
 from ...trace import mutter
 
 
-class MessageHandler(object):
+class MessageHandler:
     """Base class for handling messages received via the smart protocol.
 
     As parts of a message are received, the corresponding PART_received method
@@ -123,10 +123,10 @@ class ConventionalRequestHandler(MessageHandler):
                 self.expecting = 'error'
             else:
                 raise errors.SmartProtocolError(
-                    'Non-success status byte in request body: %r' % (byte,))
+                    'Non-success status byte in request body: {!r}'.format(byte))
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: byte(%r)' % (byte,))
+                'Unexpected message part: byte({!r})'.format(byte))
 
     def structure_part_received(self, structure):
         if self.expecting == 'args':
@@ -135,7 +135,7 @@ class ConventionalRequestHandler(MessageHandler):
             self._error_received(structure)
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: structure(%r)' % (structure,))
+                'Unexpected message part: structure({!r})'.format(structure))
 
     def _args_received(self, args):
         self.expecting = 'body'
@@ -155,7 +155,7 @@ class ConventionalRequestHandler(MessageHandler):
             self.request_handler.accept_body(bytes)
         else:
             raise errors.SmartProtocolError(
-                'Unexpected message part: bytes(%r)' % (bytes,))
+                'Unexpected message part: bytes({!r})'.format(bytes))
 
     def end_received(self):
         if self.expecting not in ['body', 'end']:
@@ -172,7 +172,7 @@ class ConventionalRequestHandler(MessageHandler):
             self.responder.send_response(self.request_handler.response)
 
 
-class ResponseHandler(object):
+class ResponseHandler:
     """Abstract base class for an object that handles a smart response."""
 
     def read_response_tuple(self, expect_body=False):
@@ -233,16 +233,16 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             raise TypeError(byte)
         if byte not in [b'E', b'S']:
             raise errors.SmartProtocolError(
-                'Unknown response status: %r' % (byte,))
+                'Unknown response status: {!r}'.format(byte))
         if self._body_started:
             if self._body_stream_status is not None:
                 raise errors.SmartProtocolError(
-                    'Unexpected byte part received: %r' % (byte,))
+                    'Unexpected byte part received: {!r}'.format(byte))
             self._body_stream_status = byte
         else:
             if self.status is not None:
                 raise errors.SmartProtocolError(
-                    'Unexpected byte part received: %r' % (byte,))
+                    'Unexpected byte part received: {!r}'.format(byte))
             self.status = byte
 
     def bytes_part_received(self, bytes):
@@ -252,7 +252,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
     def structure_part_received(self, structure):
         if not isinstance(structure, tuple):
             raise errors.SmartProtocolError(
-                'Args structure is not a sequence: %r' % (structure,))
+                'Args structure is not a sequence: {!r}'.format(structure))
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(

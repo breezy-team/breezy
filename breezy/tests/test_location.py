@@ -29,7 +29,7 @@ from ..location import (
     )
 
 
-class SomeDirectory(object):
+class SomeDirectory:
 
     def look_up(self, name, url, purpose=None):
         return "http://bar"
@@ -40,11 +40,11 @@ class TestLocationToUrl(tests.TestCase):
     def get_base_location(self):
         path = osutils.abspath('/foo/bar')
         if path.startswith('/'):
-            url = 'file://%s' % (path,)
+            url = 'file://{}'.format(path)
         else:
             # On Windows, abspaths start with the drive letter, so we have to
             # add in the extra '/'
-            url = 'file:///%s' % (path,)
+            url = 'file:///{}'.format(path)
         return path, url
 
     def test_regular_url(self):

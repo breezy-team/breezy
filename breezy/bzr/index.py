@@ -123,7 +123,7 @@ def _missing_keys_from_parent_map(self, keys):
     return set(keys) - set(self.get_parent_map(keys))
 
 
-class GraphIndexBuilder(object):
+class GraphIndexBuilder:
     """A builder that can build a GraphIndex.
 
     The resulting graph has the structure::
@@ -428,7 +428,7 @@ class GraphIndexBuilder(object):
         return parent_map, missing_keys
 
 
-class GraphIndex(object):
+class GraphIndex:
     """An index for data with embedded graphs.
 
     The index maps keys to a list of key reference lists, and a value.
@@ -506,7 +506,7 @@ class GraphIndex(object):
         return hash((type(self), self._transport, self._name, self._size))
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__,
+        return "{}({!r})".format(self.__class__.__name__,
                            self._transport.abspath(self._name))
 
     def _buffer_all(self, stream=None):
@@ -790,8 +790,7 @@ class GraphIndex(object):
                     yield self, key, self._nodes[key]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for entry in _iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from _iter_entries_prefix(self, nodes_by_key, keys)
 
     def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
         """See BTreeIndex._find_ancestors."""
@@ -1146,7 +1145,7 @@ class GraphIndex(object):
                 # must be at the end
                 if self._size:
                     if not (self._size == pos + 1):
-                        raise AssertionError("%s %s" % (self._size, pos))
+                        raise AssertionError("{} {}".format(self._size, pos))
                 trailers += 1
                 continue
             elements = line.split(b'\0')
@@ -1280,7 +1279,7 @@ class GraphIndex(object):
             pass
 
 
-class CombinedGraphIndex(object):
+class CombinedGraphIndex:
     """A GraphIndex made up from smaller GraphIndices.
 
     The backing indices must implement GraphIndex, and are presumed to be
@@ -1317,7 +1316,7 @@ class CombinedGraphIndex(object):
         self._index_names = [None] * len(self._indices)
 
     def __repr__(self):
-        return "%s(%s)" % (
+        return "{}({})".format(
             self.__class__.__name__,
             ', '.join(map(repr, self._indices)))
 
@@ -1728,8 +1727,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     yield self, key, node[2]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for entry in _iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from _iter_entries_prefix(self, nodes_by_key, keys)
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
@@ -1749,7 +1747,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         return hash(self) < hash(other)
 
 
-class GraphIndexPrefixAdapter(object):
+class GraphIndexPrefixAdapter:
     """An adapter between GraphIndex with different key lengths.
 
     Queries against this will emit queries against the adapted Graph with the

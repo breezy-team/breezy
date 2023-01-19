@@ -30,7 +30,7 @@ class TestGetConfig(per_branch.TestCaseWithBranch):
         b = self.make_branch('b')
         config = b.get_config()
         value_dict = {
-            'ascii': 'abcd', u'unicode \N{WATCH}': u'foo \N{INTERROBANG}'}
+            'ascii': 'abcd', 'unicode \N{WATCH}': 'foo \N{INTERROBANG}'}
         config.set_user_option('name', value_dict.copy())
         self.assertEqual(value_dict, config.get_user_option('name'))
 

@@ -23,7 +23,7 @@ from breezy.tests import TestCase
 import breezy.transactions as transactions
 
 
-class DummyWeave(object):
+class DummyWeave:
     """A class that can be instantiated and compared."""
 
     def __init__(self, message):
@@ -53,7 +53,7 @@ class TestReadOnlyTransaction(TestCase):
 
     def setUp(self):
         self.transaction = transactions.ReadOnlyTransaction()
-        super(TestReadOnlyTransaction, self).setUp()
+        super().setUp()
 
     def test_register_clean(self):
         self.transaction.register_clean("anobject")
@@ -194,7 +194,7 @@ class TestWriteTransaction(TestCase):
 
     def setUp(self):
         self.transaction = transactions.WriteTransaction()
-        super(TestWriteTransaction, self).setUp()
+        super().setUp()
 
     def test_register_clean(self):
         self.transaction.register_clean("anobject")

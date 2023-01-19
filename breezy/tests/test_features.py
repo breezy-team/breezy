@@ -34,7 +34,7 @@ class TestFeature(tests.TestCase):
         """Feature._probe is called by the feature at most once."""
         class InstrumentedFeature(features.Feature):
             def __init__(self):
-                super(InstrumentedFeature, self).__init__()
+                super().__init__()
                 self.calls = []
 
             def _probe(self):

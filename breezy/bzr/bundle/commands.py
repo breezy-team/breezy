@@ -94,8 +94,8 @@ class cmd_bundle_info(Command):
         self.outf.write(gettext('Revisions\n'))
         self.outf.write((gettext('nicks: %s\n')
                          % ', '.join(sorted(nicks))).encode(term_encoding, 'replace'))
-        self.outf.write((gettext('committers: \n%s\n') %
-                         '\n'.join(sorted(committers)).encode(term_encoding, 'replace')))
+        self.outf.write(gettext('committers: \n%s\n') %
+                         '\n'.join(sorted(committers)).encode(term_encoding, 'replace'))
         if verbose:
             self.outf.write('\n')
             bundle_file.seek(0)

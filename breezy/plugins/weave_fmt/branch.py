@@ -144,7 +144,7 @@ class BzrBranchFormat4(BranchFormat):
             raise errors.UpgradeRequired(a_controldir.user_url)
         if repository is not None:
             raise NotImplementedError(
-                "initialize(repository=<not None>) on %r" % (self,))
+                "initialize(repository=<not None>) on {!r}".format(self))
         if not [isinstance(a_controldir._format, format) for format in
                 self._compatible_bzrdirs]:
             raise errors.IncompatibleFormat(self, a_controldir._format)
@@ -176,7 +176,7 @@ class BzrBranchFormat4(BranchFormat):
         return branch
 
     def __init__(self):
-        super(BzrBranchFormat4, self).__init__()
+        super().__init__()
         from .bzrdir import (
             BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
             )

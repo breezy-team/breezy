@@ -22,7 +22,7 @@ from . import (
     )
 
 
-class IdentityMap(object):
+class IdentityMap:
     """An in memory map from object id to instance.
 
     An IdentityMap maps from keys to single instances of objects in memory.
@@ -42,7 +42,7 @@ class IdentityMap(object):
         return self._map.get(self._weave_key(id), None)
 
     def __init__(self):
-        super(IdentityMap, self).__init__()
+        super().__init__()
         self._map = {}
         self._reverse_map = {}
 
@@ -59,7 +59,7 @@ class IdentityMap(object):
         return "weave-" + id
 
 
-class NullIdentityMap(object):
+class NullIdentityMap:
     """A pretend in memory map from object id to instance.
 
     A NullIdentityMap is an Identity map that does not store anything in it.

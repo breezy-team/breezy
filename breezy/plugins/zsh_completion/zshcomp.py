@@ -27,7 +27,7 @@ import re
 import sys
 
 
-class ZshCodeGen(object):
+class ZshCodeGen:
     """Generate a zsh script for given completion data."""
 
     def __init__(self, data, function_name='_brz', debug=False):
@@ -61,7 +61,7 @@ class ZshCodeGen(object):
         lines = []
         for (long, short, help) in self.data.global_options:
             lines.append(
-                '      \'(%s%s)%s[%s]\'' % (
+                '      \'({}{}){}[{}]\''.format(
                     (short + ' ') if short else '',
                     long,
                     long,
@@ -70,7 +70,7 @@ class ZshCodeGen(object):
         return "\n".join(lines)
 
 
-class CompletionData(object):
+class CompletionData:
 
     def __init__(self):
         self.plugins = {}
@@ -79,11 +79,10 @@ class CompletionData(object):
 
     def all_command_aliases(self):
         for c in self.commands:
-            for a in c.aliases:
-                yield a
+            yield from c.aliases
 
 
-class CommandData(object):
+class CommandData:
 
     def __init__(self, name):
         self.name = name
@@ -93,7 +92,7 @@ class CommandData(object):
         self.fixed_words = None
 
 
-class PluginData(object):
+class PluginData:
 
     def __init__(self, name, version=None):
         if version is None:
@@ -107,10 +106,10 @@ class PluginData(object):
     def __str__(self):
         if self.version == 'unknown':
             return self.name
-        return '%s %s' % (self.name, self.version)
+        return '{} {}'.format(self.name, self.version)
 
 
-class OptionData(object):
+class OptionData:
 
     def __init__(self, name):
         self.name = name
@@ -124,7 +123,7 @@ class OptionData(object):
         return self.name < other.name
 
 
-class DataCollector(object):
+class DataCollector:
 
     def __init__(self, no_plugins=False, selected_plugins=None):
         self.data = CompletionData()

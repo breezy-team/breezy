@@ -6,7 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import brzflakes
 
 
-class LazyImport(object):
+class LazyImport:
     """A dummy plugin that is present mainly to monkey patch pyflakes."""
 
     name = 'lazy-import'

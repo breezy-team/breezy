@@ -212,7 +212,7 @@ def quilt_applied(tree):
                 if patch.strip() != b""]
     except _mod_transport.NoSuchFile:
         return []
-    except (IOError, OSError) as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             # File has already been removed
             return []
@@ -254,7 +254,7 @@ def quilt_series(tree, series_path):
         return [os.fsdecode(patch.rstrip(b"\n")) for patch in
                 tree.get_file_lines(series_path)
                 if patch.strip() != b""]
-    except (IOError, OSError) as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             # File has already been removed
             return []

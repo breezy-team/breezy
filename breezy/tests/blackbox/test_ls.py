@@ -25,7 +25,7 @@ from breezy import (
 class TestLS(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestLS, self).setUp()
+        super().setUp()
 
         # Create a simple branch that can be used in testing
         ignores._set_user_ignores(['user-ignore'])

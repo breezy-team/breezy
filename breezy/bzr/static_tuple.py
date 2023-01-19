@@ -38,7 +38,7 @@ def expect_static_tuple(obj):
     if 'static_tuple' not in debug.debug_flags:
         return StaticTuple.from_sequence(obj)
     if not isinstance(obj, StaticTuple):
-        raise TypeError('We expected a StaticTuple not a %s' % (type(obj),))
+        raise TypeError('We expected a StaticTuple not a {}'.format(type(obj)))
     return obj
 
 

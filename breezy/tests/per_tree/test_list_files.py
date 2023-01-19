@@ -90,7 +90,7 @@ class TestListFiles(TestCaseWithTree):
         expected = [('a', 'V', 'file')]
         expected.append(('b', 'V', 'directory'))
 
-        self.assertFilesListEqual(tree, expected, from_dir=u'', recursive=False)
+        self.assertFilesListEqual(tree, expected, from_dir='', recursive=False)
 
     def skip_if_no_reference(self, tree):
         if not getattr(tree, 'supports_tree_reference', lambda: False)():

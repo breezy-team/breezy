@@ -57,7 +57,7 @@ def import_tar_broken(tree, tar_input):
     import_archive(tree, tar_file)
 
 
-class DirFileWriter(object):
+class DirFileWriter:
 
     def __init__(self, fileobj, mode):
         # We may be asked to 'append'.  If so, fileobj already has a path.
@@ -293,10 +293,10 @@ class TestWithStuff(TestCaseWithTransport):
     def test_nonascii_paths(self):
         self.requireFeature(UnicodeFilenameFeature)
         tt = self.get_empty_tt()
-        tt.new_file(u'\u1234file', tt.root, [b'contents'], b'new-file')
+        tt.new_file('\u1234file', tt.root, [b'contents'], b'new-file')
         tt.new_file('other', tt.root, [b'contents'], b'other-file')
         tarfile = self.transform_to_tar(tt)
         tarfile.seek(0)
         tree = self.make_branch_and_tree('bar')
         import_tar(tree, tarfile)
-        self.assertPathExists(u'bar/\u1234file')
+        self.assertPathExists('bar/\u1234file')

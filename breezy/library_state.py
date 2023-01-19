@@ -37,7 +37,7 @@ from breezy import (
 """)
 
 
-class BzrLibraryState(object):
+class BzrLibraryState:
     """The state about how breezy has been configured.
 
     This is the core state needed to make use of bzr. The current instance is

@@ -274,7 +274,7 @@ class GenericProcessor(processor.ImportProcessor):
         elif self.repo is not None:
             self.repo.lock_write()
         try:
-            super(GenericProcessor, self)._process(command_iter)
+            super()._process(command_iter)
         finally:
             # If an unhandled exception occurred, abort the write group
             if self.repo is not None and self.repo.is_in_write_group():
@@ -546,7 +546,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Most progress messages embedded in streams are annoying.
         # Ignore them unless in verbose mode.
         if self.verbose:
-            self.note("progress %s" % (cmd.message,))
+            self.note("progress {}".format(cmd.message))
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
@@ -584,15 +584,15 @@ class GenericProcessor(processor.ImportProcessor):
     def debug(self, msg, *args):
         """Output a debug message if the appropriate -D option was given."""
         if "fast-import" in debug.debug_flags:
-            msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
+            msg = "{} DEBUG: {}".format(self._time_of_day(), msg)
             mutter(msg, *args)
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
-        msg = "%s %s" % (self._time_of_day(), msg)
+        msg = "{} {}".format(self._time_of_day(), msg)
         note(msg, *args)
 
     def warning(self, msg, *args):
         """Output a warning but timestamp it."""
-        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
+        msg = "{} WARNING: {}".format(self._time_of_day(), msg)
         warning(msg, *args)

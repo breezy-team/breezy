@@ -172,7 +172,7 @@ class TestErrors(tests.TestCase):
                              str(error))
 
     def test_unstackable_repository_format(self):
-        format = u'foo'
+        format = 'foo'
         url = "/foo"
         error = errors.UnstackableRepositoryFormat(format, url)
         self.assertEqualDiff(
@@ -188,7 +188,7 @@ class TestErrors(tests.TestCase):
 
     def test_read_error(self):
         # a unicode path to check that %r is being used.
-        path = u'a path'
+        path = 'a path'
         error = errors.ReadError(path)
         self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
 
@@ -262,7 +262,7 @@ class TestErrors(tests.TestCase):
         # An exception object can be passed rather than a string
         orig_error = ValueError('bad value')
         self.assertSocketConnectionError(
-            'Failed to connect to ahost; %s' % (str(orig_error),),
+            'Failed to connect to ahost; {}'.format(str(orig_error)),
             host='ahost', orig_error=orig_error)
 
         # And we can supply a custom failure message
@@ -295,7 +295,7 @@ class TestErrors(tests.TestCase):
 
     def test_repository_data_stream_error(self):
         """Test the formatting of RepositoryDataStreamError."""
-        e = errors.RepositoryDataStreamError(u"my reason")
+        e = errors.RepositoryDataStreamError("my reason")
         self.assertEqual(
             "Corrupt or incompatible data stream: my reason", str(e))
 
@@ -325,9 +325,9 @@ class TestErrors(tests.TestCase):
         self.assertEqual("Unknown foo format: 'bar'", str(err))
 
     def test_tip_change_rejected(self):
-        err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
+        err = errors.TipChangeRejected('Unicode message\N{INTERROBANG}')
         self.assertEqual(
-            u'Tip change rejected: Unicode message\N{INTERROBANG}',
+            'Tip change rejected: Unicode message\N{INTERROBANG}',
             str(err))
 
     def test_error_from_smart_server(self):
@@ -356,7 +356,7 @@ class TestErrors(tests.TestCase):
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_bzrdir_with_recursive_not_branch_error(self):
-        class FakeBzrDir(object):
+        class FakeBzrDir:
             def open_repository(self):
                 # str() on the NotBranchError will trigger a call to this,
                 # which in turn will another, identical NotBranchError.
@@ -391,7 +391,7 @@ class ErrorWithNoFormat(errors.BzrError):
 class TestErrorFormatting(tests.TestCase):
 
     def test_always_str(self):
-        e = PassThroughError(u'\xb5', 'bar')
+        e = PassThroughError('\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
         # In Python 2 str(foo) *must* return a real byte string
         # not a Unicode string. The following line would raise a
@@ -436,8 +436,8 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         dir = controldir.ControlDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1,
-                            str(error).find((dir.transport.clone('..').base)))
-        self.assertEqual(-1, str(error).find((dir.transport.base)))
+                            str(error).find(dir.transport.clone('..').base))
+        self.assertEqual(-1, str(error).find(dir.transport.base))
 
     def test_corrupt_repository(self):
         repo = self.make_repository('.')
@@ -461,7 +461,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
     def test_not_branch_laziness(self):
         real_bzrdir = self.make_controldir('path')
 
-        class FakeBzrDir(object):
+        class FakeBzrDir:
             def __init__(self):
                 self.calls = []
 

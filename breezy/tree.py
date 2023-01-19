@@ -49,7 +49,7 @@ class MissingNestedTree(errors.BzrError):
         self.path = path
 
 
-class TreeEntry(object):
+class TreeEntry:
     """An entry that implements the minimum interface used by commands.
     """
 
@@ -118,7 +118,7 @@ class TreeReference(TreeEntry):
         return '+'
 
 
-class TreeChange(object):
+class TreeChange:
     """Describes the changes between the same item in two different trees."""
 
     __slots__ = ['path', 'changed_content', 'versioned',
@@ -135,7 +135,7 @@ class TreeChange(object):
         self.copied = copied
 
     def __repr__(self):
-        return "%s%r" % (self.__class__.__name__, self._as_tuple())
+        return "{}{!r}".format(self.__class__.__name__, self._as_tuple())
 
     def _as_tuple(self):
         return (self.path, self.changed_content, self.versioned,
@@ -175,7 +175,7 @@ class TreeChange(object):
             copied=False)
 
 
-class Tree(object):
+class Tree:
     """Abstract file tree.
 
     There are several subclasses:
@@ -653,7 +653,7 @@ class Tree(object):
         # NB: we specifically *don't* call self.has_filename, because for
         # WorkingTrees that can indicate files that exist on disk but that
         # are not versioned.
-        return set(p for p in paths if not self.is_versioned(p))
+        return {p for p in paths if not self.is_versioned(p)}
 
     def walkdirs(self, prefix=""):
         """Walk the contents of this tree from path down.
@@ -811,7 +811,7 @@ class InterTree(InterObject[Tree]):
 
     @classmethod
     def get(cls, source: Tree, target: Tree) -> "InterTree":
-        return cast(InterTree, super(InterTree, cls).get(source, target))
+        return cast(InterTree, super().get(source, target))
 
     def compare(self, want_unchanged: bool = False,
                 specific_files: Optional[List[str]] = None,

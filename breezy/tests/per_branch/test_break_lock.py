@@ -28,7 +28,7 @@ from breezy.tests import per_branch
 class TestBreakLock(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestBreakLock, self).setUp()
+        super().setUp()
         self.unused_branch = self.make_branch('branch')
         self.branch = _mod_branch.Branch.open(self.unused_branch.base)
 

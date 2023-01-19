@@ -37,7 +37,7 @@ import contextlib
 import errno
 import os
 import sys
-from typing import Dict, Set, List, Tuple, Type, Any
+from typing import Dict, Set, List, Tuple, Optional, Any
 import warnings
 
 from . import (
@@ -48,6 +48,10 @@ from . import (
     )
 from .hooks import Hooks
 from .i18n import gettext
+from .transport import Transport
+
+
+LockToken = bytes
 
 
 class LockHooks(Hooks):
@@ -68,7 +72,7 @@ class LockHooks(Hooks):
             "broken.", (1, 15))
 
 
-class Lock(object):
+class Lock:
     """Base class for locks.
 
     :cvar hooks: Hook dictionary for operations on locks.
@@ -76,8 +80,30 @@ class Lock(object):
 
     hooks = LockHooks()
 
+    def __init__(self, transport: Transport, path: str, file_modebits: int,
+                 dir_modebits: int) -> None: ...
 
-class LockResult(object):
+    def create(self, mode: int): ...
+
+    def break_lock(self) -> None: ...
+
+    def leave_in_place(self) -> None: ...
+
+    def dont_leave_in_place(self) -> None: ...
+
+    def validate_token(self, token: Optional[LockToken]) -> None: ...
+
+    def lock_write(self, token: Optional[LockToken]) -> Optional[LockToken]: ...
+
+    def lock_read(self) -> None: ...
+
+    def unlock(self) -> None: ...
+
+    def peek(self) -> LockToken:
+        raise NotImplementedError(self.peek)
+
+
+class LockResult:
     """Result of an operation on a lock; passed to a hook"""
 
     def __init__(self, lock_url, details=None):
@@ -89,11 +115,11 @@ class LockResult(object):
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
-        return '%s(%s, %s)' % (self.__class__.__name__,
+        return '{}({}, {})'.format(self.__class__.__name__,
                                self.lock_url, self.details)
 
 
-class LogicalLockResult(object):
+class LogicalLockResult:
     """The result of a lock_read/lock_write/lock_tree_write call on lockables.
 
     :ivar unlock: A callable which will unlock the lock.
@@ -130,7 +156,7 @@ def cant_unlock_not_held(locked_object):
     # here.  You can use -Werror to make it fatal.  It should possibly also
     # raise LockNotHeld.
     if 'unlock' in debug.debug_flags:
-        warnings.warn("%r is already unlocked" % (locked_object,),
+        warnings.warn("{!r} is already unlocked".format(locked_object),
                       stacklevel=3)
     else:
         raise errors.LockNotHeld(locked_object)
@@ -152,7 +178,7 @@ if sys.platform == 'win32':
         pass
 
 
-class _OSLock(object):
+class _OSLock:
 
     def __init__(self):
         self.f = None
@@ -163,7 +189,7 @@ class _OSLock(object):
         try:
             self.f = open(self.filename, filemode)
             return self.f
-        except IOError as e:
+        except OSError as e:
             if e.errno in (errno.EACCES, errno.EPERM):
                 raise errors.LockFailed(self.filename, str(e))
             if e.errno != errno.ENOENT:
@@ -201,7 +227,7 @@ if have_fcntl:
         _open_locks: Set[str] = set()
 
         def __init__(self, filename):
-            super(_fcntl_WriteLock, self).__init__()
+            super().__init__()
             # Check we can grab a lock before we actually open the file.
             self.filename = osutils.realpath(filename)
             if self.filename in _fcntl_WriteLock._open_locks:
@@ -224,7 +250,7 @@ if have_fcntl:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
                 fcntl.lockf(self.f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except IOError as e:
+            except OSError as e:
                 if e.errno in (errno.EAGAIN, errno.EACCES):
                     # We couldn't grab the lock
                     self.unlock()
@@ -241,7 +267,7 @@ if have_fcntl:
         _open_locks: Dict[str, int] = {}
 
         def __init__(self, filename):
-            super(_fcntl_ReadLock, self).__init__()
+            super().__init__()
             self.filename = osutils.realpath(filename)
             if self.filename in _fcntl_WriteLock._open_locks:
                 if 'strict_locks' in debug.debug_flags:
@@ -258,7 +284,7 @@ if have_fcntl:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
                 fcntl.lockf(self.f, fcntl.LOCK_SH | fcntl.LOCK_NB)
-            except IOError as e:
+            except OSError as e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
                 raise errors.LockContention(self.filename, e)
@@ -298,7 +324,7 @@ if have_fcntl:
         """
 
         def __init__(self, read_lock):
-            super(_fcntl_TemporaryWriteLock, self).__init__()
+            super().__init__()
             self._read_lock = read_lock
             self.filename = read_lock.filename
 
@@ -318,7 +344,7 @@ if have_fcntl:
             # done by _fcntl_ReadLock
             try:
                 new_f = open(self.filename, 'rb+')
-            except IOError as e:
+            except OSError as e:
                 if e.errno in (errno.EACCES, errno.EPERM):
                     raise errors.LockFailed(self.filename, str(e))
                 raise
@@ -326,7 +352,7 @@ if have_fcntl:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.
                 fcntl.lockf(new_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except IOError as e:
+            except OSError as e:
                 # TODO: Raise a more specific error based on the type of error
                 raise errors.LockContention(self.filename, e)
             _fcntl_WriteLock._open_locks.add(self.filename)
@@ -400,7 +426,7 @@ if have_ctypes_win32:
 
     class _ctypes_ReadLock(_ctypes_FileLock):
         def __init__(self, filename):
-            super(_ctypes_ReadLock, self).__init__()
+            super().__init__()
             self._open(filename, GENERIC_READ, FILE_SHARE_READ, os.O_RDONLY,
                        "rb")
 
@@ -425,7 +451,7 @@ if have_ctypes_win32:
 
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
-            super(_ctypes_WriteLock, self).__init__()
+            super().__init__()
             self._open(filename, GENERIC_READ | GENERIC_WRITE, 0, os.O_RDWR,
                        "rb+")
 
@@ -450,7 +476,7 @@ if len(_lock_classes) == 0:
 _lock_type, WriteLock, ReadLock = _lock_classes[0]
 
 
-class _RelockDebugMixin(object):
+class _RelockDebugMixin:
     """Mixin support for -Drelock flag.
 
     Add this as a base class then call self._note_lock with 'r' or 'w' when

@@ -33,7 +33,7 @@ class NotBuilding(errors.BzrError):
     _fmt = "Not currently building a tree."
 
 
-class TreeBuilder(object):
+class TreeBuilder:
     """A TreeBuilder allows the creation of specific content in one tree at a
     time.
     """

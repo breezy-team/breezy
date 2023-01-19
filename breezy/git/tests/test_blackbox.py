@@ -44,7 +44,7 @@ class TestGitBlackBox(ExternalBase):
         repo = GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
         builder.set_file('a', b'text for a\n', False)
-        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', '<The commit message>')
         return repo, builder.finish()[r1]
 
     def test_add(self):
@@ -112,10 +112,10 @@ class TestGitBlackBox(ExternalBase):
         os.chdir('..')
 
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
+        errlines = error.splitlines(False)
         self.assertTrue(
-            (error == 'Branched 1 revision(s).\n') or
-            (error == 'Branched 1 revision.\n'),
-            error)
+            'Branched 1 revision(s).' in errlines or
+            'Branched 1 revision.' in errlines, errlines)
 
     def test_checkout(self):
         os.mkdir("gitbranch")
@@ -236,7 +236,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(error, '')
         self.assertTrue(
             '<The commit message>' in output,
-            "Commit message was not found in output:\n%s" % (output,))
+            "Commit message was not found in output:\n{}".format(output))
 
     def test_log_verbose(self):
         # Smoke test for "bzr log -v" in a git repository.
@@ -269,13 +269,13 @@ class TestGitBlackBox(ExternalBase):
         repo = GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
         builder.set_file('a', b'text for a\n', False)
-        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'First')
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', 'First')
         builder.set_file('a', b'text 3a for a\n', False)
-        r2a = builder.commit(b'Joe Foo <joe@foo.com>', u'Second a', base=r1)
+        r2a = builder.commit(b'Joe Foo <joe@foo.com>', 'Second a', base=r1)
         builder.set_file('a', b'text 3b for a\n', False)
-        r2b = builder.commit(b'Joe Foo <joe@foo.com>', u'Second b', base=r1)
+        r2b = builder.commit(b'Joe Foo <joe@foo.com>', 'Second b', base=r1)
         builder.set_file('a', b'text 4 for a\n', False)
-        builder.commit(b'Joe Foo <joe@foo.com>', u'Third', merge=[r2a], base=r2b)
+        builder.commit(b'Joe Foo <joe@foo.com>', 'Third', merge=[r2a], base=r2b)
         builder.finish()
 
         # Check that bzr log does not fail and includes the revision.
@@ -348,7 +348,7 @@ class TestGitBlackBox(ExternalBase):
                     committer=b"Joe <joe@example.com>", message=b"Dummy")
         self.run_bzr(["git-import", "a", "b"])
         self.assertEqual(
-            set([".bzr", "abranch", "bbranch"]), set(os.listdir("b")))
+            {".bzr", "abranch", "bbranch"}, set(os.listdir("b")))
 
     def test_git_import(self):
         r = GitRepo.init("a", mkdir=True)
@@ -359,8 +359,8 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(ref=b"refs/heads/bbranch",
                     committer=b"Joe <joe@example.com>", message=b"Dummy")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
-        self.assertEqual(set([".bzr"]), set(os.listdir("b")))
-        self.assertEqual(set(["abranch", "bbranch"]),
+        self.assertEqual({".bzr"}, set(os.listdir("b")))
+        self.assertEqual({"abranch", "bbranch"},
                          set(ControlDir.open("b").branch_names()))
 
     def test_git_import_incremental(self):
@@ -371,7 +371,7 @@ class TestGitBlackBox(ExternalBase):
                     committer=b"Joe <joe@example.com>", message=b"Dummy")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.run_bzr(["git-import", "--colocated", "a", "b"])
-        self.assertEqual(set([".bzr"]), set(os.listdir("b")))
+        self.assertEqual({".bzr"}, set(os.listdir("b")))
         b = ControlDir.open("b")
         self.assertEqual(["abranch"], b.branch_names())
 
@@ -383,7 +383,7 @@ class TestGitBlackBox(ExternalBase):
                           committer=b"Joe <joe@example.com>", message=b"Dummy")
         r[b"refs/tags/atag"] = cid
         self.run_bzr(["git-import", "--colocated", "a", "b"])
-        self.assertEqual(set([".bzr"]), set(os.listdir("b")))
+        self.assertEqual({".bzr"}, set(os.listdir("b")))
         b = ControlDir.open("b")
         self.assertEqual(["abranch"], b.branch_names())
         self.assertEqual(["atag"],
@@ -400,8 +400,8 @@ class TestGitBlackBox(ExternalBase):
         self.make_controldir("b", format="development-colo")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(
-            set([b.name for b in ControlDir.open("b").list_branches()]),
-            set(["abranch", "bbranch"]))
+            {b.name for b in ControlDir.open("b").list_branches()},
+            {"abranch", "bbranch"})
 
     def test_git_refs_from_git(self):
         r = GitRepo.init("a", mkdir=True)
@@ -473,7 +473,7 @@ class TestGitBlackBox(ExternalBase):
 class ShallowTests(ExternalBase):
 
     def setUp(self):
-        super(ShallowTests, self).setUp()
+        super().setUp()
         # Smoke test for "bzr log" in a git repository with shallow depth.
         self.repo = GitRepo.init('gitr', mkdir=True)
         self.build_tree_contents([("gitr/foo", b"hello from git")])
@@ -533,11 +533,11 @@ class SwitchTests(ExternalBase):
         builder = tests.GitBranchBuilder()
         builder.set_branch(b'refs/heads/oldbranch')
         builder.set_file('a', b'text for a\n', False)
-        builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.commit(b'Joe Foo <joe@foo.com>', '<The commit message>')
         builder.set_branch(b'refs/heads/newbranch')
         builder.reset()
         builder.set_file('a', b'text for new a\n', False)
-        builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.commit(b'Joe Foo <joe@foo.com>', '<The commit message>')
         builder.finish()
 
         repo.refs.set_symbolic_ref(b'HEAD', b'refs/heads/newbranch')

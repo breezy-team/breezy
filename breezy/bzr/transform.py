@@ -97,7 +97,7 @@ class TreeTransformBase(TreeTransform):
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """
-        super(TreeTransformBase, self).__init__(tree, pb=pb)
+        super().__init__(tree, pb=pb)
         # mapping of trans_id => (sha1 of content, stat_value)
         self._observed_sha1s = {}
         # Mapping of trans_id -> new file_id
@@ -947,9 +947,9 @@ class TreeTransformBase(TreeTransform):
             self._tree_id_paths[trans_id] = path
         self._removed_id = {trans_id.decode('utf-8')
                             for trans_id in attribs[b'_removed_id']}
-        self._removed_contents = set(
+        self._removed_contents = {
             trans_id.decode('utf-8')
-            for trans_id in attribs[b'_removed_contents'])
+            for trans_id in attribs[b'_removed_contents']}
         self._non_present_ids = {
             k: v.decode('utf-8')
             for k, v in attribs[b'_non_present_ids'].items()}
@@ -1202,7 +1202,7 @@ class DiskTreeTransform(TreeTransformBase):
     def adjust_path(self, name, parent, trans_id):
         previous_parent = self._new_parent.get(trans_id)
         previous_name = self._new_name.get(trans_id)
-        super(DiskTreeTransform, self).adjust_path(name, parent, trans_id)
+        super().adjust_path(name, parent, trans_id)
         if (trans_id in self._limbo_files
                 and trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
@@ -1323,7 +1323,7 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'Unable to create symlink "%s" on this filesystem.' % (path,))
+                'Unable to create symlink "{}" on this filesystem.'.format(path))
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink
@@ -1496,10 +1496,7 @@ class InventoryTreeTransform(DiskTreeTransform):
             return
         try:
             children = os.listdir(self._tree.abspath(path))
-        except OSError as e:
-            if not (osutils._is_error_enotdir(e) or
-                    e.errno in (errno.ENOENT, errno.ESRCH)):
-                raise
+        except (NotADirectoryError, FileNotFoundError):
             return
 
         for child in children:
@@ -1576,8 +1573,8 @@ class InventoryTreeTransform(DiskTreeTransform):
         except errors.UnsupportedOperation:
             # it's okay for non-file-id trees to raise UnsupportedOperation.
             return []
-        removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
-                                self._removed_id))
+        removed_tree_ids = {self.tree_file_id(trans_id) for trans_id in
+                                self._removed_id}
         active_tree_ids = all_ids.difference(removed_tree_ids)
         for trans_id, file_id in self._new_id.items():
             if file_id in active_tree_ids:
@@ -1587,7 +1584,7 @@ class InventoryTreeTransform(DiskTreeTransform):
         return conflicts
 
     def find_raw_conflicts(self):
-        conflicts = super(InventoryTreeTransform, self).find_raw_conflicts()
+        conflicts = super().find_raw_conflicts()
         conflicts.extend(self._duplicate_ids())
         return conflicts
 
@@ -1762,8 +1759,8 @@ class InventoryTreeTransform(DiskTreeTransform):
         """
         changed_ids = set()
         # Find entries whose file_ids are new (or changed).
-        new_file_id = set(t for t in self._new_id
-                          if self._new_id[t] != self.tree_file_id(t))
+        new_file_id = {t for t in self._new_id
+                          if self._new_id[t] != self.tree_file_id(t)}
         for id_set in [self._new_name, self._new_parent, new_file_id,
                        self._new_executability]:
             changed_ids.update(id_set)
@@ -1804,8 +1801,8 @@ class InventoryTreeTransform(DiskTreeTransform):
                     continue
                 path = self._tree_id_paths[trans_id]
                 inventory_delta.append((path, None, file_id, None))
-            new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
-                                     new_paths)
+            new_path_file_ids = {t: self.final_file_id(t) for p, t in
+                                     new_paths}
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
                     child_pb.update(gettext('adding file'),
@@ -1987,8 +1984,8 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
             raise errors.NoSuchId(self, file_id)
 
     def extras(self):
-        possible_extras = set(self._transform.trans_id_tree_path(p) for p
-                              in self._transform._tree.extras())
+        possible_extras = {self._transform.trans_id_tree_path(p) for p
+                              in self._transform._tree.extras()}
         possible_extras.update(self._transform._new_contents)
         possible_extras.update(self._transform._removed_id)
         for trans_id in possible_extras:
@@ -2405,7 +2402,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             _create_files(tt, tree, deferred_contents, pb, offset,
                           accelerator_tree, hardlink)
         pp.next_phase()
-        divert_trans = set(file_trans_id[f] for f in divert)
+        divert_trans = {file_trans_id[f] for f in divert}
 
         def resolver(t, c):
             return resolve_checkout(t, c, divert_trans)

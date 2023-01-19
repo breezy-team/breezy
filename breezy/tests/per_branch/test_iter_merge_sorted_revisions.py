@@ -28,7 +28,7 @@ from breezy.tests import per_branch
 class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestIterMergeSortedRevisionsSimpleGraph, self).setUp()
+        super().setUp()
         self.revids = {}
         builder = self.make_builder_with_merges('.')
         self.branch = builder.get_branch()
@@ -154,13 +154,12 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
 class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestIterMergeSortedRevisionsBushyGraph, self).setUp()
+        super().setUp()
         self.revids = {}
 
     def make_branch_builder(self, relpath):
         try:
-            builder = super(TestIterMergeSortedRevisionsBushyGraph,
-                            self).make_branch_builder(relpath)
+            builder = super().make_branch_builder(relpath)
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         return builder

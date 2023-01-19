@@ -66,7 +66,7 @@ class cmd_gitlab_login(Command):
         if private_token is None:
             note("Please visit %s to obtain a private token.",
                  urlutils.join(url, "-/profile/personal_access_tokens"))
-            private_token = ui.ui_factory.get_password(u'Private token')
+            private_token = ui.ui_factory.get_password('Private token')
         if not no_check:
             from breezy.transport import get_transport
             from .forge import GitLab

@@ -196,7 +196,7 @@ class LockDir(lock.Lock):
         self._warned_about_lock_holder = None
 
     def __repr__(self):
-        return '%s(%s%s)' % (self.__class__.__name__,
+        return '{}({}{})'.format(self.__class__.__name__,
                              self.transport.base,
                              self.path)
 
@@ -318,7 +318,7 @@ class LockDir(lock.Lock):
             note(gettext("error removing pending lock: %s"), e)
 
     def _create_pending_dir(self):
-        tmpname = '%s/%s.tmp' % (self.path, rand_chars(10))
+        tmpname = '{}/{}.tmp'.format(self.path, rand_chars(10))
         try:
             self.transport.mkdir(tmpname)
         except NoSuchFile:
@@ -357,7 +357,7 @@ class LockDir(lock.Lock):
             # whole tree
             start_time = time.time()
             self._trace("unlocking")
-            tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+            tmpname = '{}/releasing.{}.tmp'.format(self.path, rand_chars(20))
             # gotta own it to unlock
             self.confirm()
             self.transport.rename(self._held_dir, tmpname)
@@ -395,12 +395,12 @@ class LockDir(lock.Lock):
             holder_info = self.peek()
         except LockCorrupt as e:
             # The lock info is corrupt.
-            if ui.ui_factory.get_boolean(u"Break (corrupt %r)" % (self,)):
+            if ui.ui_factory.get_boolean("Break (corrupt {!r})".format(self)):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
             if ui.ui_factory.confirm_action(
-                u"Break %(lock_info)s",
+                "Break %(lock_info)s",
                 'breezy.lockdir.break',
                     dict(lock_info=str(holder_info))):
                 result = self.force_break(holder_info)
@@ -435,7 +435,7 @@ class LockDir(lock.Lock):
             return
         if current_info != dead_holder_info:
             raise LockBreakMismatch(self, current_info, dead_holder_info)
-        tmpname = '%s/broken.%s.tmp' % (self.path, rand_chars(20))
+        tmpname = '{}/broken.{}.tmp'.format(self.path, rand_chars(20))
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -465,7 +465,7 @@ class LockDir(lock.Lock):
         # XXX: this copes with unparseable info files, but what about missing
         # info files?  Or missing lock dirs?
         self._check_not_locked()
-        tmpname = '%s/broken.%s.tmp' % (self.path, rand_chars(20))
+        tmpname = '{}/broken.{}.tmp'.format(self.path, rand_chars(20))
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the
@@ -708,7 +708,7 @@ class LockDir(lock.Lock):
         return config.GlobalStack()
 
 
-class LockHeldInfo(object):
+class LockHeldInfo:
     """The information recorded about a held lock.
 
     This information is recorded into the lock when it's taken, and it can be
@@ -722,14 +722,14 @@ class LockHeldInfo(object):
 
     def __repr__(self):
         """Return a debugging representation of this object."""
-        return "%s(%r)" % (self.__class__.__name__, self.info_dict)
+        return "{}({!r})".format(self.__class__.__name__, self.info_dict)
 
     def __str__(self):
         """Return a user-oriented description of this object."""
         d = self.to_readable_dict()
         return (gettext(
-            u'held by %(user)s on %(hostname)s (process #%(pid)s), '
-            u'acquired %(time_ago)s') % d)
+            'held by %(user)s on %(hostname)s (process #%(pid)s), '
+            'acquired %(time_ago)s') % d)
 
     def to_readable_dict(self):
         """Turn the holder info into a dict of human-readable attributes.
@@ -842,7 +842,7 @@ class LockHeldInfo(object):
             return False
         pid_str = self.info_dict.get('pid', None)
         if not pid_str:
-            mutter("no pid recorded in %r" % (self, ))
+            mutter("no pid recorded in {!r}".format(self))
             return False
         try:
             pid = int(pid_str)

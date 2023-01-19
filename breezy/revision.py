@@ -33,7 +33,7 @@ NULL_REVISION = b"null:"
 CURRENT_REVISION = b"current:"
 
 
-class Revision(object):
+class Revision:
     """Single revision on a branch.
 
     Revisions may know their revision_hash, but only once they've been

@@ -66,7 +66,7 @@ class OpenLocalDirTests(TestCaseWithTransport):
 class FetchTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(FetchTests, self).setUp()
+        super().setUp()
         self.local_dir = self.make_branch_and_tree(
             'local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')
@@ -112,7 +112,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
             stderr=subprocess.PIPE, env=env)
         (out, err) = p.communicate(b'capabilities\n')
         lines = out.splitlines()
-        self.assertIn(b'push', lines, "no 'push' in %r, error: %r" % (lines, err))
+        self.assertIn(b'push', lines, "no 'push' in {!r}, error: {!r}".format(lines, err))
         self.assertEqual(
             b"git-remote-bzr is experimental and has not been optimized "
             b"for performance. Use 'brz fast-export' and 'git fast-import' "
@@ -122,7 +122,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
 class RemoteHelperTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(RemoteHelperTests, self).setUp()
+        super().setUp()
         self.local_dir = self.make_branch_and_tree(
             'local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')

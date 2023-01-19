@@ -15,9 +15,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""An adapter between a Git Repository and a Bazaar Branch"""
+"""An adapter between a Git Repository and a Breezy one."""
 
 from io import BytesIO
+
+from dulwich.errors import (
+    NotCommitError,
+    )
+from dulwich.objects import (
+    Commit,
+    ZERO_SHA,
+    )
+from dulwich.object_store import (
+    peel_sha,
+    tree_lookup_path,
+    )
+
+
 
 from .. import (
     check,
@@ -50,18 +64,6 @@ from .tree import (
     )
 
 
-from dulwich.errors import (
-    NotCommitError,
-    )
-from dulwich.objects import (
-    Commit,
-    ZERO_SHA,
-    )
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
-
-
 class GitCheck(check.Check):
 
     def __init__(self, repository, check_repo=True):
@@ -88,7 +90,7 @@ class GitCheck(check.Check):
                     self.problems.append((sha, e))
 
     def _report_repo_results(self, verbose):
-        trace.note('checked repository {0} format {1}'.format(
+        trace.note('checked repository {} format {}'.format(
             self.repository.user_url,
             self.repository._format))
         trace.note('%6d objects', self.object_count)
@@ -120,7 +122,7 @@ class GitRepository(ForeignRepository):
 
     def __init__(self, gitdir):
         self._transport = gitdir.root_transport
-        super(GitRepository, self).__init__(GitRepositoryFormat(),
+        super().__init__(GitRepositoryFormat(),
                                             gitdir, control_files=None)
         self.base = gitdir.root_transport.base
         self._lock_mode = None
@@ -215,7 +217,7 @@ class GitRepository(ForeignRepository):
         return default_mapping
 
     def make_working_trees(self):
-        return not self._git.get_config().get_boolean(("core", ), "bare")
+        raise NotImplementedError(self.make_working_trees)
 
     def revision_graph_can_have_wrong_parents(self):
         return False
@@ -325,7 +327,7 @@ class LocalGitRepository(GitRepository):
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
-        result = super(LocalGitRepository, self).gather_stats(
+        result = super().gather_stats(
             revid, committers)
         revs = []
         for sha in self._git.object_store:
@@ -440,10 +442,10 @@ class LocalGitRepository(GitRepository):
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return _mod_revision.NULL_REVISION
-        commit = self._git.object_store.peel_sha(foreign_revid)
-        if not isinstance(commit, Commit):
-            raise NotCommitError(commit.id)
-        revid = mapping.get_revision_id(commit)
+        unpeeled, peeled = peel_sha(self._git.object_store, foreign_revid)
+        if not isinstance(peeled, Commit):
+            raise NotCommitError(peeled.id)
+        revid = mapping.get_revision_id(peeled)
         # FIXME: check testament before doing this?
         return revid
 
@@ -555,10 +557,8 @@ class LocalGitRepository(GitRepository):
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
-    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
-                      progress=None, limit=None):
-        return self._git.fetch_objects(determine_wants, graph_walker, progress,
-                                       limit=limit)
+    def make_working_trees(self):
+        return not self._git.get_config().get_boolean(("core", ), "bare")
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):

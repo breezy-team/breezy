@@ -49,7 +49,7 @@ def topo_sort(graph):
     return kg.topo_sort()
 
 
-class TopoSorter(object):
+class TopoSorter:
 
     def __init__(self, graph):
         """Topological sorting of a graph.
@@ -183,7 +183,7 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
                        generate_revno).sorted()
 
 
-class MergeSorter(object):
+class MergeSorter:
 
     __slots__ = ['_node_name_stack',
                  '_node_merge_depth_stack',
@@ -369,8 +369,8 @@ class MergeSorter(object):
         # and revno_tuple is the tuple that was assigned to the node.
         # we dont know revnos to start with, so we start it seeded with
         # [None, True]
-        self._revnos = dict((revision, [None, True])
-                            for revision in self._graph)
+        self._revnos = {revision: [None, True]
+                            for revision in self._graph}
         # Each mainline revision counts how many child branches have spawned from it.
         self._revno_to_branch_count = {}
 

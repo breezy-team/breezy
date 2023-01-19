@@ -1423,7 +1423,7 @@ class TestControlDir(TestCaseWithControlDir):
             made_tree = made_control.create_workingtree()
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped(
-                "Can't initialize %r on transport %r" % (
+                "Can't initialize {!r} on transport {!r}".format(
                     self.bzrdir_format, t))
         opened_tree = made_control.open_workingtree()
         self.assertEqual(made_control, opened_tree.controldir)
@@ -1457,7 +1457,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         dir = controldir.ControlDir.open(t.base)
-        self.assertEqual(u"", dir._get_selected_branch())
+        self.assertEqual("", dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_controldir('.')

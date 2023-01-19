@@ -49,7 +49,7 @@ STEP_UNIQUE_SEARCHER_EVERY = 5
 # 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
 
 
-class DictParentsProvider(object):
+class DictParentsProvider:
     """A parents provider for Graph objects."""
 
     def __init__(self, ancestry):
@@ -66,10 +66,10 @@ class DictParentsProvider(object):
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
-        return dict([(k, ancestry[k]) for k in keys if k in ancestry])
+        return {k: ancestry[k] for k in keys if k in ancestry}
 
 
-class StackedParentsProvider(object):
+class StackedParentsProvider:
     """A parents provider which stacks (or unions) multiple providers.
 
     The providers are queries in the order of the provided parent_providers.
@@ -79,7 +79,7 @@ class StackedParentsProvider(object):
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._parent_providers)
+        return "{}({!r})".format(self.__class__.__name__, self._parent_providers)
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
@@ -124,7 +124,7 @@ class StackedParentsProvider(object):
         return found
 
 
-class CachingParentsProvider(object):
+class CachingParentsProvider:
     """A parents provider which will cache the revision => parents as a dict.
 
     This is useful for providers which have an expensive look up.
@@ -153,7 +153,7 @@ class CachingParentsProvider(object):
         self.enable_cache(True)
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._real_provider)
+        return "{}({!r})".format(self.__class__.__name__, self._real_provider)
 
     def enable_cache(self, cache_misses=True):
         """Enable cache."""
@@ -184,7 +184,7 @@ class CachingParentsProvider(object):
         cache = self._cache
         if cache is None:
             return {}
-        return dict([(key, cache[key]) for key in keys if key in cache])
+        return {key: cache[key] for key in keys if key in cache}
 
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map."""
@@ -192,7 +192,7 @@ class CachingParentsProvider(object):
         if cache is None:
             cache = self._get_parent_map(keys)
         else:
-            needed_revisions = set(key for key in keys if key not in cache)
+            needed_revisions = {key for key in keys if key not in cache}
             # Do not ask for negatively cached keys
             needed_revisions.difference_update(self.missing_keys)
             if needed_revisions:
@@ -215,7 +215,7 @@ class CachingParentsProvider(object):
             self.missing_keys.add(key)
 
 
-class CallableToParentsProviderAdapter(object):
+class CallableToParentsProviderAdapter:
     """A parents provider that adapts any callable to the parents provider API.
 
     i.e. it accepts calls to self.get_parent_map and relays them to the
@@ -226,13 +226,13 @@ class CallableToParentsProviderAdapter(object):
         self.callable = a_callable
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.callable)
+        return "{}({!r})".format(self.__class__.__name__, self.callable)
 
     def get_parent_map(self, keys):
         return self.callable(keys)
 
 
-class Graph(object):
+class Graph:
     """Provide incremental access to revision graphs.
 
     This is the generic implementation; it is intended to be subclassed to
@@ -833,8 +833,8 @@ class Graph(object):
                 return {revision.NULL_REVISION}
         if len(candidate_heads) < 2:
             return candidate_heads
-        searchers = dict((c, self._make_breadth_first_searcher([c]))
-                         for c in candidate_heads)
+        searchers = {c: self._make_breadth_first_searcher([c])
+                         for c in candidate_heads}
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
         for searcher in active_searchers.values():
@@ -1265,7 +1265,7 @@ class Graph(object):
         return simple_ancestors
 
 
-class HeadsCache(object):
+class HeadsCache:
     """A cache of results for graph heads calls."""
 
     def __init__(self, graph):
@@ -1293,7 +1293,7 @@ class HeadsCache(object):
             return set(heads)
 
 
-class FrozenHeadsCache(object):
+class FrozenHeadsCache:
     """Cache heads() calls, assuming the caller won't modify them."""
 
     def __init__(self, graph):
@@ -1323,7 +1323,7 @@ class FrozenHeadsCache(object):
         self._heads[frozenset(keys)] = frozenset(heads)
 
 
-class _BreadthFirstSearcher(object):
+class _BreadthFirstSearcher:
     """Parallel search breadth-first the ancestry of revisions.
 
     This class implements the iterator protocol, but additionally
@@ -1348,7 +1348,7 @@ class _BreadthFirstSearcher(object):
             prefix = "searching"
         else:
             prefix = "starting"
-        search = '%s=%r' % (prefix, list(self._next_query))
+        search = '{}={!r}'.format(prefix, list(self._next_query))
         return ('_BreadthFirstSearcher(iterations=%d, %s,'
                 ' seen=%r)' % (self._iterations, search, list(self.seen)))
 
@@ -1676,7 +1676,7 @@ def collapse_linear_regions(parent_map):
     return result
 
 
-class GraphThunkIdsToKeys(object):
+class GraphThunkIdsToKeys:
     """Forwards calls about 'ids' to be about keys internally."""
 
     def __init__(self, graph):

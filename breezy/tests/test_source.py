@@ -71,7 +71,7 @@ class TestApiUsage(TestSourceHelper):
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
-        source = open(filename, 'r')
+        source = open(filename)
         for line in source:
             if line.find(rule) > -1:
                 occurences += 1
@@ -138,7 +138,7 @@ class TestSource(TestSourceHelper):
 
     def get_source_file_contents(self, extensions=None):
         for fname in self.get_source_files(extensions=extensions):
-            with open(fname, 'r') as f:
+            with open(fname) as f:
                 yield fname, f.read()
 
     def is_our_code(self, fname):
@@ -192,7 +192,7 @@ class TestSource(TestSourceHelper):
             if not match:
                 match = copyright_re.search(text)
                 if match:
-                    incorrect.append((fname, 'found: %s' % (match.group(),)))
+                    incorrect.append((fname, 'found: {}'.format(match.group())))
                 else:
                     incorrect.append((fname, 'no copyright line found\n'))
             else:
@@ -267,7 +267,7 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = sorted(["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
+        files = sorted(["{}: {}".format(f, ', '.join([str(i + 1) for i in lines]))
                         for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
@@ -378,7 +378,7 @@ class TestSource(TestSourceHelper):
                 'The following functions had "cannot raise" comments'
                 ' but did have an except clause set:')
             for fname, func in both_exc_and_no_exc:
-                error_msg.append('%s:%s' % (fname, func))
+                error_msg.append('{}:{}'.format(fname, func))
             error_msg.extend(('', ''))
         if missing_except:
             error_msg.append(
@@ -387,7 +387,7 @@ class TestSource(TestSourceHelper):
             error_msg.append(
                 'Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:
-                error_msg.append('%s:%s' % (fname, func))
+                error_msg.append('{}:{}'.format(fname, func))
             error_msg.extend(('', ''))
         if error_msg:
             self.fail('\n'.join(error_msg))

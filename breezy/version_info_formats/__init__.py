@@ -42,7 +42,7 @@ def create_date_str(timestamp=None, offset=None):
                        timezone='original', show_offset=True)
 
 
-class VersionInfoBuilder(object):
+class VersionInfoBuilder:
     """A class which lets you build up information about a revision."""
 
     def __init__(self, branch, working_tree=None,
@@ -122,7 +122,7 @@ class VersionInfoBuilder(object):
             # in which case we would rather see the renamed marker
             for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[change.path[0]] = u'renamed to %s' % (change.path[1],)
+                self._file_revisions[change.path[0]] = 'renamed to {}'.format(change.path[1])
             for change in delta.removed:
                 self._clean = False
                 self._file_revisions[change.path[0]] = 'removed'
@@ -131,12 +131,12 @@ class VersionInfoBuilder(object):
                 self._file_revisions[change.path[1]] = 'new'
             for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[change.path[1]] = u'renamed from %s' % (
-                    change.path[0],)
+                self._file_revisions[change.path[1]] = 'renamed from {}'.format(
+                    change.path[0])
             for change in delta.copied:
                 self._clean = False
-                self._file_revisions[change.path[1]] = u'copied from %s' % (
-                    change.path[0],)
+                self._file_revisions[change.path[1]] = 'copied from {}'.format(
+                    change.path[0])
             for change in delta.modified:
                 self._clean = False
                 self._file_revisions[change.path[1]] = 'modified'

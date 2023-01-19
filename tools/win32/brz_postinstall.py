@@ -159,7 +159,7 @@ def main():
     if start_brz:
         fname = os.path.join(brz_dir, "start_brz.bat")
         if os.path.isfile(fname):
-            with open(fname, "r") as f:
+            with open(fname) as f:
                 content = f.readlines()
         else:
             content = ["brz.exe help\n"]
@@ -199,15 +199,15 @@ def main():
                 hkey = _winreg.OpenKey(key, subkey, 0, _winreg.KEY_ALL_ACCESS)
                 try:
                     path_u, type_ = _winreg.QueryValueEx(hkey, 'Path')
-                except WindowsError:
+                except OSError:
                     if key != _winreg.HKEY_CURRENT_USER:
                         _winreg.CloseKey(hkey)
                         hkey = None
                         continue
                     else:
-                        path_u = u''
+                        path_u = ''
                         type_ = _winreg.REG_SZ
-            except EnvironmentError:
+            except OSError:
                 continue
             break
 
@@ -232,7 +232,7 @@ def main():
             if f_change:
                 path_u = os.pathsep.join(path_list)
                 if dry_run:
-                    print("*** Registry key %s\\%s" % (hkey_str[key], subkey))
+                    print("*** Registry key {}\\{}".format(hkey_str[key], subkey))
                     print("*** Modify PATH variable. New value:")
                     print(path_u)
                 else:
@@ -266,7 +266,7 @@ def main():
         pattern = 'SET PATH=%PATH%;' + brz_dir_8_3
 
         # search pattern
-        with open(abat, 'r') as f:
+        with open(abat) as f:
             lines = f.readlines()
         found = False
         for i in lines:
@@ -298,7 +298,7 @@ def main():
         try:
             hkey = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT,
                                      r'Folder\shell\brz')
-        except EnvironmentError:
+        except OSError:
             if not silent:
                 MessageBoxA(None,
                             'Unable to create registry key for context menu',
@@ -309,7 +309,7 @@ def main():
             _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Brz Here')
             hkey2 = _winreg.CreateKey(hkey, 'command')
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
-                             '%s /K "%s"' % (
+                             '{} /K "{}"'.format(
                                     os.environ.get('COMSPEC', '%COMSPEC%'),
                                     os.path.join(brz_dir, 'start_brz.bat')))
             _winreg.CloseKey(hkey2)
@@ -319,19 +319,19 @@ def main():
         try:
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT,
                               r'Folder\shell\brz\command')
-        except EnvironmentError:
+        except OSError:
             pass
 
         try:
             _winreg.DeleteKey(_winreg.HKEY_CLASSES_ROOT,
                               r'Folder\shell\brz')
-        except EnvironmentError:
+        except OSError:
             pass
 
     if check_mfc71:
         try:
             ctypes.windll.LoadLibrary('mfc71.dll')
-        except WindowsError:
+        except OSError:
             MessageBoxA(None,
                         ("Library MFC71.DLL is not found on your system.\n"
                          "This library needed for SFTP transport.\n"

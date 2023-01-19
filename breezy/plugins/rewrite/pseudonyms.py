@@ -37,7 +37,7 @@ def parse_git_svn_id(text):
     return (full_url.encode("utf-8"), int(rev), uuid.encode("utf-8"))
 
 
-class SubversionBranchUrlFinder(object):
+class SubversionBranchUrlFinder:
 
     def __init__(self):
         self._roots = defaultdict(set)
@@ -80,7 +80,7 @@ def _extract_cscvs(rev):
     if "cscvs-svn-branch-path" not in rev.properties:
         return
     yield (
-        "svn", "%s:%s:%s" % (
+        "svn", "{}:{}:{}".format(
             rev.properties["cscvs-svn-repository-uuid"],
             rev.properties["cscvs-svn-revision-number"],
             urlutils.quote(rev.properties["cscvs-svn-branch-path"].strip("/"))))
@@ -188,7 +188,7 @@ def pseudonyms_as_dict(l):
     ret = {}
     for pns in l:
         for pn in pns:
-            ret[pn] = pns - set([pn])
+            ret[pn] = pns - {pn}
     return ret
 
 

@@ -143,7 +143,7 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit fifteen", rev_id=b"b@u-0-10")
 
 
-class MockRevisionSource(object):
+class MockRevisionSource:
     """A RevisionSource that takes a pregenerated graph.
 
     This is useful for testing revision graph algorithms where
@@ -211,9 +211,9 @@ class TestRevisionMethods(TestCase):
         r = revision.Revision('1')
         r.committer = 'A'
         self.assertEqual(['A'], r.get_apparent_authors())
-        r.properties[u'author'] = 'B'
+        r.properties['author'] = 'B'
         self.assertEqual(['B'], r.get_apparent_authors())
-        r.properties[u'authors'] = 'C\nD'
+        r.properties['authors'] = 'C\nD'
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):
@@ -231,7 +231,7 @@ class TestRevisionBugs(TestCase):
     def test_some_bugs(self):
         r = revision.Revision(
             '1', properties={
-                u'bugs': bugtracker.encode_fixes_bug_urls(
+                'bugs': bugtracker.encode_fixes_bug_urls(
                     [('http://example.com/bugs/1', 'fixed'),
                      ('http://launchpad.net/bugs/1234', 'fixed')])})
         self.assertEqual(
@@ -241,17 +241,17 @@ class TestRevisionBugs(TestCase):
 
     def test_no_status(self):
         r = revision.Revision(
-            '1', properties={u'bugs': 'http://example.com/bugs/1'})
+            '1', properties={'bugs': 'http://example.com/bugs/1'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
                           r.iter_bugs())
 
     def test_too_much_information(self):
         r = revision.Revision(
-            '1', properties={u'bugs': 'http://example.com/bugs/1 fixed bar'})
+            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
                           r.iter_bugs())
 
     def test_invalid_status(self):
         r = revision.Revision(
-            '1', properties={u'bugs': 'http://example.com/bugs/1 faxed'})
+            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
         self.assertRaises(bugtracker.InvalidBugStatus, list, r.iter_bugs())

@@ -34,6 +34,7 @@ from ... import (
     errors,
     lockable_files,
     )
+from ...i18n import gettext
 from ...transport import (
     get_transport,
     local,
@@ -42,7 +43,6 @@ from ...transport import (
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import os
-import warnings
 
 from breezy import (
     branch as _mod_branch,,
@@ -59,7 +59,6 @@ from breezy.bzr import (
     weave,
     xml5,
     )
-from breezy.i18n import gettext
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
 from breezy.plugins.weave_fmt import xml4
@@ -143,7 +142,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         """
         from .branch import BzrBranchFormat4
         from .repository import RepositoryFormat5
-        result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
+        result = (super().initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
             branch = BzrBranchFormat4().initialize(result)
@@ -207,7 +206,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         """
         from .branch import BzrBranchFormat4
         from .repository import RepositoryFormat6
-        result = super(BzrDirFormat6, self).initialize_on_transport(transport)
+        result = super().initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
             branch = BzrBranchFormat4().initialize(result)
@@ -232,7 +231,7 @@ class ConvertBzrDir4To5(Converter):
     """Converts format 4 bzr dirs to format 5."""
 
     def __init__(self):
-        super(ConvertBzrDir4To5, self).__init__()
+        super().__init__()
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
@@ -241,8 +240,6 @@ class ConvertBzrDir4To5(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        if pb is not None:
-            warnings.warn(gettext("pb parameter to convert() is deprecated"))
         with ui.ui_factory.nested_progress_bar() as self.pb:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
@@ -447,9 +444,9 @@ class ConvertBzrDir4To5(Converter):
 
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map"""
-        return dict((revision_id, self.revisions[revision_id])
+        return {revision_id: self.revisions[revision_id]
                     for revision_id in revision_ids
-                    if revision_id in self.revisions)
+                    if revision_id in self.revisions}
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
@@ -649,7 +646,7 @@ class ConvertBzrDir6ToMeta(Converter):
         mandatory = entry[1]
         self.step(gettext('Moving %s') % name)
         try:
-            self.controldir.transport.move(name, '%s/%s' % (new_dir, name))
+            self.controldir.transport.move(name, '{}/{}'.format(new_dir, name))
         except NoSuchFile:
             if mandatory:
                 raise
@@ -730,7 +727,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def __init__(self, _transport, _format):
         """See ControlDir.__init__."""
-        super(BzrDirPreSplitOut, self).__init__(_transport, _format)
+        super().__init__(_transport, _format)
         self._control_files = lockable_files.LockableFiles(
             self.get_branch_transport(None),
             self._format._lock_file_name,
@@ -774,7 +771,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See ControlDir.create_branch."""
         if repository is not None:
             raise NotImplementedError(
-                "create_branch(repository=<not None>) on %r" % (self,))
+                "create_branch(repository=<not None>) on {!r}".format(self))
         return self._format.get_branch_format().initialize(self, name=name,
                                                            append_revisions_only=append_revisions_only)
 

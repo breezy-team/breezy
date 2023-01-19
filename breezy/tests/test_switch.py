@@ -32,7 +32,7 @@ from breezy import (
 class TestSwitch(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestSwitch, self).setUp()
+        super().setUp()
         self.lightweight = True
 
     @staticmethod
@@ -203,7 +203,7 @@ class TestSwitch(tests.TestCaseWithTransport):
 class TestSwitchHeavyweight(TestSwitch):
 
     def setUp(self):
-        super(TestSwitchHeavyweight, self).setUp()
+        super().setUp()
         self.lightweight = False
 
     def test_switch_with_local_commits(self):

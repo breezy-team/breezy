@@ -41,7 +41,7 @@ class NoSuchView(errors.BzrError):
     """A view does not exist.
     """
 
-    _fmt = u"No such view: %(view_name)s."
+    _fmt = "No such view: %(view_name)s."
 
     def __init__(self, view_name):
         self.view_name = view_name
@@ -68,7 +68,7 @@ class FileOutsideView(errors.BzrError):
         self.view_str = ", ".join(view_files)
 
 
-class _Views(object):
+class _Views:
     """Base class for View managers."""
 
     def supports_views(self):
@@ -216,12 +216,12 @@ class PathBasedViews(_Views):
         """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
-            line = "%s=%s\n" % (key, keywords[key])
+            line = "{}={}\n".format(key, keywords[key])
             lines.append(line.encode('utf-8'))
         if view_dict:
-            lines.append("views:\n".encode('utf-8'))
+            lines.append(b"views:\n")
             for view in sorted(view_dict):
-                view_data = "%s\0%s\n" % (view, "\0".join(view_dict[view]))
+                view_data = "{}\0{}\n".format(view, "\0".join(view_dict[view]))
                 lines.append(view_data.encode('utf-8'))
         return b"".join(lines)
 

@@ -58,7 +58,7 @@ oldrev newrev newparent1 newparent2
                           {b"oldrev": (b"newrev", (b"newparent1", b"newparent2"))}))
 
     def test_simple_unmarshall_rebase_plan(self):
-        self.assertEquals(((1, b"bla"),
+        self.assertEqual(((1, b"bla"),
                           {b"oldrev": (b"newrev", (b"newparent1", b"newparent2"))}),
                           unmarshall_rebase_plan(b"""# Bazaar rebase plan 1
 1 bla
@@ -123,7 +123,7 @@ class PlanCreatorTests(TestCaseWithTransport):
 
         b.repository.lock_read()
         graph = b.repository.get_graph()
-        self.assertEquals(
+        self.assertEqual(
             {b'bla2': (b'newbla2', (b"bloe",))},
             generate_simple_plan(
                 graph.find_difference(b.last_revision(), b"bla")[0],
@@ -151,7 +151,7 @@ class PlanCreatorTests(TestCaseWithTransport):
 
         with b.repository.lock_read():
             graph = b.repository.get_graph()
-            self.assertEquals(
+            self.assertEqual(
                 {b'bla2': (b'newbla2', (b"bloe",)), b'bla3': (b'newbla3', (b'newbla2',))},
                 generate_simple_plan(
                     graph.find_difference(b.last_revision(), b"bloe")[0],
@@ -188,12 +188,12 @@ class PlanCreatorTests(TestCaseWithTransport):
 
         b.repository.lock_read()
         graph = b.repository.get_graph()
-        self.assertEquals({
+        self.assertEqual({
             b'blie': (b'newblie', (b'lala',))},
             generate_transpose_plan(graph.iter_ancestry(
                 [b"blie"]),
                 {b"bla": b"lala"}, graph, lambda y, _: b"new" + y))
-        self.assertEquals({
+        self.assertEqual({
             b'bla2': (b'newbla2', (b'lala',)),
             b'bla3': (b'newbla3', (b'newbla2',)),
             b'blie': (b'newblie', (b'lala',)),
@@ -205,7 +205,7 @@ class PlanCreatorTests(TestCaseWithTransport):
 
     def test_generate_transpose_plan_one(self):
         graph = Graph(DictParentsProvider({"bla": ("bloe",), "bloe": (), "lala": ()}))
-        self.assertEquals(
+        self.assertEqual(
             {"bla": ("newbla", ("lala",))},
             generate_transpose_plan(graph.iter_ancestry(
                 ["bla", "bloe"]), {"bloe": "lala"}, graph, lambda y, _: "new" + y))
@@ -236,7 +236,7 @@ class PlanCreatorTests(TestCaseWithTransport):
             "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals(
+        self.assertEqual(
             {"D": ("D'", ("C",)), "E": ("E'", ("D'",))},
             generate_simple_plan(
                 ["D", "E"], "D", None, "C", graph, lambda y, _: y + "'"))
@@ -266,7 +266,7 @@ class PlanCreatorTests(TestCaseWithTransport):
             "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals(
+        self.assertEqual(
             {"D": ("D'", ("C",))},
             generate_simple_plan(
                 ["D", "E"], "D", None, "C", graph, lambda y, _: y + "'", True))
@@ -275,7 +275,7 @@ class PlanCreatorTests(TestCaseWithTransport):
 class RebaseStateTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(RebaseStateTests, self).setUp()
+        super().setUp()
         self.wt = self.make_branch_and_tree('.')
         self.state = RebaseState1(self.wt)
 
@@ -325,7 +325,7 @@ oldrev newrev newparent1 newparent2
 1 bla
 oldrev newrev newparent1 newparent2
 """)
-        self.assertEquals(
+        self.assertEqual(
             ((1, b"bla"), {b"oldrev": (b"newrev", (b"newparent1", b"newparent2"))}),
             self.state.read_plan())
 
@@ -338,11 +338,11 @@ oldrev newrev newparent1 newparent2
 
     def test_read(self):
         self.wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, b"bla")
-        self.assertEquals(b"bla", self.state.read_active_revid())
+        self.assertEqual(b"bla", self.state.read_active_revid())
 
     def test_write(self):
         self.state.write_active_revid(b"bloe")
-        self.assertEquals(b"bloe", self.state.read_active_revid())
+        self.assertEqual(b"bloe", self.state.read_active_revid())
 
     def test_write_null(self):
         self.state.write_active_revid(None)
@@ -355,20 +355,20 @@ class RebaseTodoTests(TestCase):
         class Repository:
             def has_revision(self, revid):
                 return revid == "bloe"
-        self.assertEquals(
+        self.assertEqual(
             [], list(rebase_todo(Repository(), {"bla": ("bloe", [])})))
 
     def test_notstarted(self):
         class Repository:
             def has_revision(self, revid):
                 return False
-        self.assertEquals(["bla"], list(rebase_todo(Repository(), {"bla": ("bloe", [])})))
+        self.assertEqual(["bla"], list(rebase_todo(Repository(), {"bla": ("bloe", [])})))
 
     def test_halfway(self):
         class Repository:
             def has_revision(self, revid):
                 return revid == "bloe"
-        self.assertEquals(
+        self.assertEqual(
             ["ha"],
             list(rebase_todo(Repository(), {"bla": ("bloe", []), "ha": ("hee", [])})))
 
@@ -385,13 +385,13 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
-        self.assertEquals([], newrev.parent_ids)
-        self.assertEquals(b"newcommit", newrev.revision_id)
-        self.assertEquals(oldrev.committer, newrev.committer)
-        self.assertEquals(oldrev.timestamp, newrev.timestamp)
-        self.assertEquals(oldrev.timezone, newrev.timezone)
+        self.assertEqual([], newrev.parent_ids)
+        self.assertEqual(b"newcommit", newrev.revision_id)
+        self.assertEqual(oldrev.committer, newrev.committer)
+        self.assertEqual(oldrev.timestamp, newrev.timestamp)
+        self.assertEqual(oldrev.timezone, newrev.timezone)
         tree = wt.branch.repository.revision_tree(b"newcommit")
-        self.assertEquals(b"newcommit", tree.get_file_revision("afile"))
+        self.assertEqual(b"newcommit", tree.get_file_revision("afile"))
 
     def test_two_revisions(self):
         wt = self.make_branch_and_tree("old")
@@ -412,14 +412,14 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
-        self.assertEquals([b"newparent"], newrev.parent_ids)
-        self.assertEquals(b"newcommit", newrev.revision_id)
-        self.assertEquals(oldrev.committer, newrev.committer)
-        self.assertEquals(oldrev.timestamp, newrev.timestamp)
-        self.assertEquals(oldrev.timezone, newrev.timezone)
+        self.assertEqual([b"newparent"], newrev.parent_ids)
+        self.assertEqual(b"newcommit", newrev.revision_id)
+        self.assertEqual(oldrev.committer, newrev.committer)
+        self.assertEqual(oldrev.timestamp, newrev.timestamp)
+        self.assertEqual(oldrev.timezone, newrev.timezone)
         tree = wt.branch.repository.revision_tree(b"newcommit")
-        self.assertEquals(b"afileid", tree.path2id("afile"))
-        self.assertEquals(b"newcommit", tree.get_file_revision("notherfile"))
+        self.assertEqual(b"afileid", tree.path2id("afile"))
+        self.assertEqual(b"newcommit", tree.get_file_revision("notherfile"))
 
     def test_two_revisions_no_renames(self):
         wt = self.make_branch_and_tree("old")
@@ -468,15 +468,15 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
-        self.assertEquals([b"newparent"], newrev.parent_ids)
-        self.assertEquals(b"newcommit", newrev.revision_id)
-        self.assertEquals(oldrev.committer, newrev.committer)
-        self.assertEquals(oldrev.timestamp, newrev.timestamp)
-        self.assertEquals(oldrev.timezone, newrev.timezone)
+        self.assertEqual([b"newparent"], newrev.parent_ids)
+        self.assertEqual(b"newcommit", newrev.revision_id)
+        self.assertEqual(oldrev.committer, newrev.committer)
+        self.assertEqual(oldrev.timestamp, newrev.timestamp)
+        self.assertEqual(oldrev.timezone, newrev.timezone)
         tree = wt.branch.repository.revision_tree(b"newcommit")
-        self.assertEquals(b"afileid", tree.path2id("afile"))
-        self.assertEquals(b"newcommit", tree.get_file_revision("notherfile"))
-        self.assertEquals(b"newgrandparent", tree.get_file_revision("sfile"))
+        self.assertEqual(b"afileid", tree.path2id("afile"))
+        self.assertEqual(b"newcommit", tree.get_file_revision("notherfile"))
+        self.assertEqual(b"newgrandparent", tree.get_file_revision("sfile"))
 
     def test_maps_ids(self):
         wt = self.make_branch_and_tree("old")
@@ -499,14 +499,14 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
-        self.assertEquals([b"newparent"], newrev.parent_ids)
-        self.assertEquals(b"newcommit", newrev.revision_id)
-        self.assertEquals(oldrev.committer, newrev.committer)
-        self.assertEquals(oldrev.timestamp, newrev.timestamp)
-        self.assertEquals(oldrev.timezone, newrev.timezone)
+        self.assertEqual([b"newparent"], newrev.parent_ids)
+        self.assertEqual(b"newcommit", newrev.revision_id)
+        self.assertEqual(oldrev.committer, newrev.committer)
+        self.assertEqual(oldrev.timestamp, newrev.timestamp)
+        self.assertEqual(oldrev.timezone, newrev.timezone)
         tree = wt.branch.repository.revision_tree(b"newcommit")
-        self.assertEquals(b"newid", tree.path2id("afile"))
-        self.assertEquals(b"newcommit", tree.get_file_revision("afile"))
+        self.assertEqual(b"newid", tree.path2id("afile"))
+        self.assertEqual(b"newcommit", tree.get_file_revision("afile"))
 
 
 class TestReplayWorkingtree(TestCaseWithTransport):
@@ -549,10 +549,10 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         replayer(b"oldcommit", b"newcommit", [b"newparent"])
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
-        self.assertEquals([b"newparent"], newrev.parent_ids)
-        self.assertEquals(b"newcommit", newrev.revision_id)
-        self.assertEquals(oldrev.timestamp, newrev.timestamp)
-        self.assertEquals(oldrev.timezone, newrev.timezone)
+        self.assertEqual([b"newparent"], newrev.parent_ids)
+        self.assertEqual(b"newcommit", newrev.revision_id)
+        self.assertEqual(oldrev.timestamp, newrev.timestamp)
+        self.assertEqual(oldrev.timezone, newrev.timezone)
 
     def test_multiple(self):
         # rebase from
@@ -590,11 +590,11 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.unlock()
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
-        self.assertEquals([b"oldparent", b"ghost"], oldrev.parent_ids)
-        self.assertEquals([b"newparent", b"ghost"], newrev.parent_ids)
-        self.assertEquals(b"newcommit", newrev.revision_id)
-        self.assertEquals(oldrev.timestamp, newrev.timestamp)
-        self.assertEquals(oldrev.timezone, newrev.timezone)
+        self.assertEqual([b"oldparent", b"ghost"], oldrev.parent_ids)
+        self.assertEqual([b"newparent", b"ghost"], newrev.parent_ids)
+        self.assertEqual(b"newcommit", newrev.revision_id)
+        self.assertEqual(oldrev.timestamp, newrev.timestamp)
+        self.assertEqual(oldrev.timezone, newrev.timezone)
 
     def test_already_merged(self):
         r"""We need to use a merge base that makes sense.
@@ -650,18 +650,18 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         newwt.unlock()
         oldrev = newwt.branch.repository.get_revision(b"D")
         newrev = newwt.branch.repository.get_revision(b"D'")
-        self.assertEquals([b"C"], newrev.parent_ids)
+        self.assertEqual([b"C"], newrev.parent_ids)
         newwt.lock_write()
         replayer = WorkingTreeRevisionRewriter(newwt, RebaseState1(newwt))
         self.assertRaises(ConflictsInTree, replayer, b"E", b"E'", [b"D'"])
         newwt.unlock()
-        with open("new/afile", 'r') as f:
-            self.assertEquals("E\n" + "A\n" * 10 + "C\n", f.read())
+        with open("new/afile") as f:
+            self.assertEqual("E\n" + "A\n" * 10 + "C\n", f.read())
         newwt.set_conflicts([])
         oldrev = newwt.branch.repository.get_revision(b"E")
         replayer.commit_rebase(oldrev, b"E'")
         newrev = newwt.branch.repository.get_revision(b"E'")
-        self.assertEquals([b"D'"], newrev.parent_ids)
+        self.assertEqual([b"D'"], newrev.parent_ids)
         self.assertThat(
             newwt.branch,
             RevisionHistoryMatches([b"A", b"B", b"C", b"D'", b"E'"]))

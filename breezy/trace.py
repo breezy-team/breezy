@@ -154,7 +154,7 @@ def mutter(fmt, *args):
     else:
         out = fmt
     now = time.time()
-    out = '%0.3f  %s\n' % (now - _brz_log_start_time, out)
+    out = '{:0.3f}  {}\n'.format(now - _brz_log_start_time, out)
     _trace_file.write(out.encode('utf-8'))
     # there's no explicit flushing; the file is typically line buffered.
 
@@ -255,13 +255,13 @@ def _open_brz_log():
 
         return brz_log_file
 
-    except EnvironmentError as e:
+    except OSError as e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no
         # handlers registered for "brz"' when something goes wrong on the
         # server. (bug #503886)
-        sys.stderr.write("failed to open trace file: %s\n" % (e,))
+        sys.stderr.write("failed to open trace file: {}\n".format(e))
     # TODO: What should happen if we fail to open the trace file?  Maybe the
     # objects should be pointed at /dev/null or the equivalent?  Currently
     # returns None which will cause failures later.
@@ -421,7 +421,7 @@ _short_fields = ('VmPeak', 'VmSize', 'VmRSS')
 def _debug_memory_proc(message='', short=True):
     try:
         status_file = open('/proc/%s/status' % os.getpid(), 'rb')
-    except IOError:
+    except OSError:
         return
     try:
         status = status_file.read()
@@ -472,7 +472,7 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
     if module_name in ("builtins", "exceptions", "__main__") or (
             unqualified_breezy_errors and module_name == "breezy.errors"):
         return class_name
-    return "%s.%s" % (module_name, class_name)
+    return "{}.{}".format(module_name, class_name)
 
 
 def report_exception(exc_info, err_file):
@@ -523,7 +523,7 @@ def report_exception(exc_info, err_file):
 def print_exception(exc_info, err_file):
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    err_file.write("brz: ERROR: %s: %s\n" % (
+    err_file.write("brz: ERROR: {}: {}\n".format(
         _qualified_exception_name(exc_type), exc_object))
     err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
@@ -539,9 +539,9 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write(("brz: ERROR: %s\n" % (str(exc_info[1]),)))
+    err_file.write("brz: ERROR: {}\n".format(str(exc_info[1])))
     if advice:
-        err_file.write(("%s\n" % advice))
+        err_file.write("%s\n" % advice)
 
 
 def report_bug(exc_info, err_file):
@@ -559,7 +559,7 @@ def _flush_stdout_stderr():
         # On Windows, I get ValueError calling stdout.flush() on a closed
         # handle
         pass
-    except IOError as e:
+    except OSError as e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:
             pass
@@ -620,7 +620,7 @@ class EncodedStreamHandler(logging.Handler):
             mutter("Logging record unformattable: %s %% %s", msg, args)
 
 
-class Config(object):
+class Config:
     """Configuration of message tracing in breezy.
 
     This implements the context manager protocol and should manage any global

@@ -275,7 +275,7 @@ class cmd_git_apply(Command):
         message = c.message.decode('utf-8')
         if signoff:
             signed_off_by = wt.branch.get_config().username()
-            message += "Signed-off-by: %s\n" % (signed_off_by, )
+            message += "Signed-off-by: {}\n".format(signed_off_by)
         wt.commit(authors=[c.author.decode('utf-8')], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
@@ -289,7 +289,7 @@ class cmd_git_apply(Command):
             raise UncommittedChanges(tree)
         with tree.lock_write():
             for patch in patches_list:
-                with open(patch, 'r') as f:
+                with open(patch) as f:
                     self._apply_patch(tree, f, signoff=signoff)
 
 
@@ -340,7 +340,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
                         "Ignoring.", name)
                     continue
                 upstream_version = name[len("upstream/"):]
-                filename = '%s_%s.orig.tar.%s' % (
+                filename = '{}_{}.orig.tar.{}'.format(
                     package, upstream_version, kind)
                 if gitid not in target:
                     warning(

@@ -26,7 +26,7 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 class TestIsIgnored(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestIsIgnored, self).setUp()
+        super().setUp()
         if self.workingtree_format.ignore_filename != '.bzrignore':
             raise tests.TestNotApplicable(
                 'format does not use .bzrignore for ignore patterns')
@@ -90,12 +90,12 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('**/piffle.py', tree.is_ignored('foo/bar/piffle.py'))
         self.assertEqual(None, tree.is_ignored('p/iffle.py'))
 
-        self.assertEqual(u'unicode\xb5', tree.is_ignored(u'unicode\xb5'))
+        self.assertEqual('unicode\xb5', tree.is_ignored('unicode\xb5'))
         self.assertEqual(
-            u'unicode\xb5', tree.is_ignored(u'subdir/unicode\xb5'))
-        self.assertEqual(None, tree.is_ignored(u'unicode\xe5'))
-        self.assertEqual(None, tree.is_ignored(u'unicode'))
-        self.assertEqual(None, tree.is_ignored(u'\xb5'))
+            'unicode\xb5', tree.is_ignored('subdir/unicode\xb5'))
+        self.assertEqual(None, tree.is_ignored('unicode\xe5'))
+        self.assertEqual(None, tree.is_ignored('unicode'))
+        self.assertEqual(None, tree.is_ignored('\xb5'))
 
         self.assertEqual('dos', tree.is_ignored('dos'))
         self.assertEqual(None, tree.is_ignored('dosfoo'))
@@ -168,11 +168,11 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual(None, tree.is_ignored('bar/foo.py'))
 
         # Unicode
-        self.assertEqual(u'*\xe5*', tree.is_ignored(u'b\xe5gfors'))
-        self.assertEqual(u'*\xe5*', tree.is_ignored(u'\xe5gfors'))
-        self.assertEqual(u'*\xe5*', tree.is_ignored(u'\xe5'))
-        self.assertEqual(u'*\xe5*', tree.is_ignored(u'b\xe5'))
-        self.assertEqual(u'*\xe5*', tree.is_ignored(u'b/\xe5'))
+        self.assertEqual('*\xe5*', tree.is_ignored('b\xe5gfors'))
+        self.assertEqual('*\xe5*', tree.is_ignored('\xe5gfors'))
+        self.assertEqual('*\xe5*', tree.is_ignored('\xe5'))
+        self.assertEqual('*\xe5*', tree.is_ignored('b\xe5'))
+        self.assertEqual('*\xe5*', tree.is_ignored('b/\xe5'))
 
         # Whitespace
         self.assertEqual(' * ', tree.is_ignored(' bbb '))

@@ -219,7 +219,7 @@ class TestingPathFilteringServer(pathfilter.PathFilteringServer):
             self.backing_transport = transport.get_transport_from_path('.')
         self.backing_transport.clone('added-by-filter').ensure_base()
         self.filter_func = lambda x: 'added-by-filter/' + x
-        super(TestingPathFilteringServer, self).start_server()
+        super().start_server()
 
     def get_bogus_url(self):
         raise NotImplementedError
@@ -229,7 +229,7 @@ class TestingChrootServer(chroot.ChrootServer):
 
     def __init__(self):
         """TestingChrootServer is not usable until start_server is called."""
-        super(TestingChrootServer, self).__init__(None)
+        super().__init__(None)
 
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
@@ -238,7 +238,7 @@ class TestingChrootServer(chroot.ChrootServer):
                 backing_server.get_url())
         else:
             self.backing_transport = transport.get_transport_from_path('.')
-        super(TestingChrootServer, self).start_server()
+        super().start_server()
 
     def get_bogus_url(self):
         raise NotImplementedError
@@ -252,7 +252,7 @@ class TestThread(cethread.CatchingExceptionThread):
         The default timeout is set to 5 and should expire only when a thread
         serving a client connection is hung.
         """
-        super(TestThread, self).join(timeout)
+        super().join(timeout)
         if timeout and self.is_alive():
             # The timeout expired without joining the thread, the thread is
             # therefore stucked and that's a failure as far as the test is
@@ -262,11 +262,11 @@ class TestThread(cethread.CatchingExceptionThread):
             # concerned, raising an assertion is too strong. On most of the
             # platforms, this doesn't occur, so just mentioning the problem is
             # enough for now -- vila 2010824
-            sys.stderr.write('thread %s hung\n' % (self.name,))
+            sys.stderr.write('thread {} hung\n'.format(self.name))
             # raise AssertionError('thread %s hung' % (self.name,))
 
 
-class TestingTCPServerMixin(object):
+class TestingTCPServerMixin:
     """Mixin to support running socketserver.TCPServer in a thread.
 
     Tests are connecting from the main thread, the server has to be run in a
@@ -453,7 +453,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         stopped = threading.Event()
         t = TestThread(
             sync_event=stopped,
-            name='%s -> %s' % (client_address, self.server_address),
+            name='{} -> {}'.format(client_address, self.server_address),
             target=self.process_request_thread,
             args=(started, detached, stopped, request, client_address))
         # Update the client description
@@ -467,7 +467,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         # If an exception occured during the thread start, it will get raised.
         t.pending_exception()
         if debug_threads():
-            sys.stderr.write('Client thread %s started\n' % (t.name,))
+            sys.stderr.write('Client thread {} started\n'.format(t.name))
         # Tell the thread, it's now on its own for exception handling.
         detached.set()
 
@@ -512,7 +512,7 @@ class TestingTCPServerInAThread(transport.Server):
         self._server_thread = None
 
     def __repr__(self):
-        return "%s(%s:%s)" % (self.__class__.__name__, self.host, self.port)
+        return "{}({}:{})".format(self.__class__.__name__, self.host, self.port)
 
     def create_server(self):
         return self.server_class((self.host, self.port),
@@ -559,7 +559,7 @@ class TestingTCPServerInAThread(transport.Server):
             last_conn = None
             try:
                 last_conn = osutils.connect_socket((self.host, self.port))
-            except socket.error:
+            except OSError:
                 # But ignore connection errors as the point is to unblock the
                 # server thread, it may happen that it's not blocked or even
                 # not started.
@@ -657,7 +657,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         self.thread_name_suffix = thread_name_suffix
         self.host = '127.0.0.1'
         self.port = 0
-        super(SmartTCPServer_for_testing, self).__init__(
+        super().__init__(
             (self.host, self.port),
             TestingSmartServer,
             TestingSmartConnectionHandler)
@@ -693,11 +693,11 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         self.chroot_server.start_server()
         self.backing_transport = transport.get_transport_from_url(
             self.chroot_server.get_url())
-        super(SmartTCPServer_for_testing, self).start_server()
+        super().start_server()
 
     def stop_server(self):
         try:
-            super(SmartTCPServer_for_testing, self).stop_server()
+            super().stop_server()
         finally:
             self.chroot_server.stop_server()
 
@@ -730,7 +730,7 @@ class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
     """
 
     def get_url(self):
-        url = super(SmartTCPServer_for_testing_v2_only, self).get_url()
+        url = super().get_url()
         url = 'bzr-v2://' + url[len('bzr://'):]
         return url
 

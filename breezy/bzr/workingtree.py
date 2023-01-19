@@ -130,7 +130,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         :param branch: A branch to override probing for the branch.
         """
-        super(InventoryWorkingTree, self).__init__(
+        super().__init__(
             basedir=basedir, branch=branch,
             _transport=_control_files._transport, _internal=_internal,
             _format=_format, _controldir=_controldir)
@@ -190,7 +190,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _directory_may_be_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then
         # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
+        return relpath and osutils.isdir(self.abspath(relpath) + "/.bzr")
         # TODO: We could ask all the control formats whether they
         # recognize this directory, but at the moment there's no cheap api
         # to do that.  Since we probably can only nest bzr checkouts and
@@ -455,7 +455,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 backup_name = self.controldir._available_backup_name(
                     file_to_backup)
                 osutils.rename(abs_path, self.abspath(backup_name))
-                return "removed %s (but kept a copy: %s)" % (file_to_backup,
+                return "removed {} (but kept a copy: {})".format(file_to_backup,
                                                              backup_name)
 
             # Build inv_delta and delete files where applicable,
@@ -464,7 +464,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 fid = self.path2id(f)
                 message = None
                 if not fid:
-                    message = "%s is not versioned." % (f,)
+                    message = "{} is not versioned.".format(f)
                 else:
                     if verbose:
                         # having removed it, it must be either ignored or
@@ -480,7 +480,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             new_status + '       ' + f + kind_ch + '\n')
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
-                    message = "removed %s" % (f,)
+                    message = "removed {}".format(f)
 
                 if not keep_files:
                     abs_path = self.abspath(f)
@@ -489,7 +489,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 and len(os.listdir(abs_path)) > 0):
                             if force:
                                 osutils.rmtree(abs_path)
-                                message = "deleted %s" % (f,)
+                                message = "deleted {}".format(f)
                             else:
                                 message = backup(f)
                         else:
@@ -497,10 +497,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 message = backup(f)
                             else:
                                 osutils.delete_any(abs_path)
-                                message = "deleted %s" % (f,)
+                                message = "deleted {}".format(f)
                     elif message is not None:
                         # Only care if we haven't done anything yet.
-                        message = "%s does not exist." % (f,)
+                        message = "{} does not exist.".format(f)
 
                 # Print only one message (if any) per file.
                 if message is not None:
@@ -1126,7 +1126,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # use a deque and popleft to keep them sorted, or if we use a plain
             # list and just reverse() them.
             children = deque(children)
-            stack = [(from_inv, from_dir_id, u'', from_dir_abspath, children)]
+            stack = [(from_inv, from_dir_id, '', from_dir_abspath, children)]
             while stack:
                 (inv, from_dir_id, from_dir_relpath, from_dir_abspath,
                  children) = stack[-1]
@@ -1397,7 +1397,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self._move(rename_entries)
             self._write_inventory(to_inv)
 
-    class _RenameEntry(object):
+    class _RenameEntry:
         def __init__(self, from_rel, from_id, from_tail, from_parent_id,
                      to_rel, to_tail, to_parent_id, only_change_inv=False,
                      change_id=False):

@@ -87,7 +87,7 @@ class MergeHooks(hooks.Hooks):
                       (2, 5))
 
 
-class AbstractPerFileMerger(object):
+class AbstractPerFileMerger:
     """PerFileMerger objects are used by plugins extending merge for breezy.
 
     See ``breezy.plugins.news_merge.news_merge`` for an example concrete class.
@@ -172,7 +172,7 @@ class ConfigurableFileMerger(PerFileMerger):
     default_files = None
 
     def __init__(self, merger):
-        super(ConfigurableFileMerger, self).__init__(merger)
+        super().__init__(merger)
         self.affected_files = None
         self.default_files = self.__class__.default_files or []
         self.name_prefix = self.__class__.name_prefix
@@ -217,7 +217,7 @@ class ConfigurableFileMerger(PerFileMerger):
         raise NotImplementedError(self.merge_text)
 
 
-class MergeFileHookParams(object):
+class MergeFileHookParams:
     """Object holding parameters passed to merge_file_content hooks.
 
     There are some fields hooks can access:
@@ -261,7 +261,7 @@ class MergeFileHookParams(object):
         return self._merger.get_lines(self._merger.other_tree, self.other_path)
 
 
-class Merger(object):
+class Merger:
 
     hooks = MergeHooks()
 
@@ -556,9 +556,9 @@ class Merger(object):
                                  % self.base_rev_id)
                 interesting_revision_ids = set(lcas)
                 interesting_revision_ids.add(self.base_rev_id)
-                interesting_trees = dict((t.get_revision_id(), t)
+                interesting_trees = {t.get_revision_id(): t
                                          for t in self.this_branch.repository.revision_trees(
-                    interesting_revision_ids))
+                    interesting_revision_ids)}
                 self._cached_trees.update(interesting_trees)
                 if self.base_rev_id in lcas:
                     self.base_tree = interesting_trees[self.base_rev_id]
@@ -676,7 +676,7 @@ class Merger(object):
         return merge.cooked_conflicts
 
 
-class _InventoryNoneEntry(object):
+class _InventoryNoneEntry:
     """This represents an inventory entry which *isn't there*.
 
     It simplifies the merging logic if we always have an InventoryEntry, even
@@ -697,7 +697,7 @@ class _InventoryNoneEntry(object):
 _none_entry = _InventoryNoneEntry()
 
 
-class Merge3Merger(object):
+class Merge3Merger:
     """Three-way merger that uses the merge3 text merger"""
     requires_base = True
     supports_reprocess = True
@@ -1346,7 +1346,7 @@ class Merge3Merger(object):
             # further action needed here.
             pass
         else:
-            raise AssertionError('unknown hook_status: %r' % (hook_status,))
+            raise AssertionError('unknown hook_status: {!r}'.format(hook_status))
         if not this_path and result == "modified":
             self.tt.version_file(trans_id, file_id=file_id)
         if not keep_this:
@@ -1695,7 +1695,7 @@ class MergeIntoMerger(Merger):
         # ancestry, which means we are using the "EmptyTree" as our basis.
         null_ancestor_tree = this_tree.branch.repository.revision_tree(
             _mod_revision.NULL_REVISION)
-        super(MergeIntoMerger, self).__init__(
+        super().__init__(
             this_branch=this_tree.branch,
             this_tree=this_tree,
             other_tree=other_tree,
@@ -1728,7 +1728,7 @@ class MergeIntoMerger(Merger):
         Merger.set_pending(self)
 
 
-class _MergeTypeParameterizer(object):
+class _MergeTypeParameterizer:
     """Wrap a merge-type class to provide extra parameters.
 
     This is hack used by MergeIntoMerger to pass some extra parameters to its
@@ -1768,7 +1768,7 @@ class MergeIntoMergeType(Merge3Merger):
         # so we have have to hack in to get our extra parameters set.
         self._source_subpath = kwargs.pop('source_subpath')
         self._target_subdir = kwargs.pop('target_subdir')
-        super(MergeIntoMergeType, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _compute_transform(self):
         with ui.ui_factory.nested_progress_bar() as child_pb:
@@ -1916,7 +1916,7 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
             yield "unchanged", text_a
 
 
-class _PlanMergeBase(object):
+class _PlanMergeBase:
 
     def __init__(self, a_rev, b_rev, vf, key_prefix):
         """Contructor.
@@ -2070,7 +2070,7 @@ class _PlanMerge(_PlanMergeBase):
     """Plan an annotate merge using on-the-fly annotation"""
 
     def __init__(self, a_rev, b_rev, vf, key_prefix):
-        super(_PlanMerge, self).__init__(a_rev, b_rev, vf, key_prefix)
+        super().__init__(a_rev, b_rev, vf, key_prefix)
         self.a_key = self._key_prefix + (self.a_rev,)
         self.b_key = self._key_prefix + (self.b_rev,)
         self.graph = _mod_graph.Graph(self.vf)

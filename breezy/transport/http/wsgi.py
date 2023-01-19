@@ -51,7 +51,7 @@ def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
     return app
 
 
-class RelpathSetter(object):
+class RelpathSetter:
     """WSGI middleware to set 'breezy.relpath' in the environ.
 
     Different servers can invoke a SmartWSGIApp in different ways.  This
@@ -89,7 +89,7 @@ class RelpathSetter(object):
         return self.app(environ, start_response)
 
 
-class SmartWSGIApp(object):
+class SmartWSGIApp:
     """A WSGI application for the bzr smart server."""
 
     def __init__(self, backing_transport, root_client_path='/'):

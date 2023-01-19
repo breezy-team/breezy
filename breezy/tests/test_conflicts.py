@@ -45,22 +45,22 @@ load_tests = scenarios.load_tests_apply_scenarios
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'path' and 'id' only with a circle and a hat. (shappo?)
 example_conflicts = [
-    bzr_conflicts.MissingParent('Not deleting', u'p\xe5thg', b'\xc3\xaedg'),
-    bzr_conflicts.ContentsConflict(u'p\xe5tha', None, b'\xc3\xaeda'),
-    bzr_conflicts.TextConflict(u'p\xe5tha'),
-    bzr_conflicts.PathConflict(u'p\xe5thb', u'p\xe5thc', b'\xc3\xaedb'),
+    bzr_conflicts.MissingParent('Not deleting', 'p\xe5thg', b'\xc3\xaedg'),
+    bzr_conflicts.ContentsConflict('p\xe5tha', None, b'\xc3\xaeda'),
+    bzr_conflicts.TextConflict('p\xe5tha'),
+    bzr_conflicts.PathConflict('p\xe5thb', 'p\xe5thc', b'\xc3\xaedb'),
     bzr_conflicts.DuplicateID('Unversioned existing file',
-                              u'p\xe5thc', u'p\xe5thc2',
+                              'p\xe5thc', 'p\xe5thc2',
                               b'\xc3\xaedc', b'\xc3\xaedc'),
     bzr_conflicts.DuplicateEntry('Moved existing file to',
-                                 u'p\xe5thdd.moved', u'p\xe5thd',
+                                 'p\xe5thdd.moved', 'p\xe5thd',
                                  b'\xc3\xaedd', None),
-    bzr_conflicts.ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
+    bzr_conflicts.ParentLoop('Cancelled move', 'p\xe5the', 'p\xe5th2e',
                              None, b'\xc3\xaed2e'),
     bzr_conflicts.UnversionedParent('Versioned directory',
-                                    u'p\xe5thf', b'\xc3\xaedf'),
+                                    'p\xe5thf', b'\xc3\xaedf'),
     bzr_conflicts.NonDirectoryParent('Created directory',
-                                     u'p\xe5thg', b'\xc3\xaedg'),
+                                     'p\xe5thg', b'\xc3\xaedg'),
     ]
 
 
@@ -164,7 +164,7 @@ class TestResolveConflicts(script.TestCaseWithTransportAndScript):
     preamble: str  # The setup script set by daughter classes
 
     def setUp(self):
-        super(TestResolveConflicts, self).setUp()
+        super().setUp()
         self.run_script(self.preamble)
 
 
@@ -276,13 +276,13 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """
 
     def setUp(self):
-        super(TestParametrizedResolveConflicts, self).setUp()
+        super().setUp()
         builder = self.make_branch_builder('trunk')
         builder.start_series()
 
         # Create an empty trunk
         builder.build_snapshot(None, [
-            ('add', (u'', b'root-id', 'directory', ''))],
+            ('add', ('', b'root-id', 'directory', ''))],
             revision_id=b'start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
@@ -1163,7 +1163,7 @@ $ brz merge ../experimental
 class TestResolveActionOption(tests.TestCase):
 
     def setUp(self):
-        super(TestResolveActionOption, self).setUp()
+        super().setUp()
         self.options = [conflicts.ResolveActionOption()]
         self.parser = option.get_optparser(self.options)
 

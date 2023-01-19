@@ -100,7 +100,7 @@ class PoMerger(merge.PerFileMerger):
         for po_dir in self.po_dirs:
             glob = osutils.pathjoin(po_dir, self.po_glob)
             if fnmatch.fnmatch(po_path, glob):
-                trace.mutter('po %s matches: %s' % (po_path, glob))
+                trace.mutter('po {} matches: {}'.format(po_path, glob))
                 break
         else:
             trace.mutter('PoMerger did not match for %s and %s'
@@ -127,7 +127,7 @@ class PoMerger(merge.PerFileMerger):
             return False
 
     def _invoke(self, command):
-        trace.mutter('Will msgmerge: %s' % (command,))
+        trace.mutter('Will msgmerge: {}'.format(command))
         # We use only absolute paths so we don't care about the cwd
         proc = subprocess.Popen(cmdline.split(command),
                                 stdout=subprocess.PIPE,

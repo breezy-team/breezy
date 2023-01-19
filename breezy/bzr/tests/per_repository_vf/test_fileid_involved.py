@@ -148,7 +148,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     scenarios = all_repository_vf_format_scenarios()
 
     def setUp(self):
-        super(TestFileIdInvolved, self).setUp()
+        super().setUp()
         # create three branches, and merge it
         #
         #          ,-->J------>K                (branch2)
@@ -340,9 +340,9 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         main_branch = main_wt.branch
         self.build_tree(["main/a"])
 
-        file_id = u'a-f\xedle-id'.encode('utf8')
+        file_id = 'a-f\xedle-id'.encode()
         main_wt.add(['a'], ids=[file_id])
-        revision_id = u'r\xe9v-a'.encode('utf8')
+        revision_id = 'r\xe9v-a'.encode()
         try:
             main_wt.commit('a', rev_id=revision_id)
         except errors.NonAsciiRevisionId:
@@ -367,7 +367,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
     scenarios = all_repository_vf_format_scenarios()
 
     def setUp(self):
-        super(TestFileIdInvolvedSuperset, self).setUp()
+        super().setUp()
 
         self.branch = None
         main_wt = self.make_branch_and_tree('main')

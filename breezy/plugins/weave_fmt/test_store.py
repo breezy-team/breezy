@@ -32,7 +32,7 @@ from ...transport.memory import MemoryTransport
 from ...bzr.weave import WeaveFile
 
 
-class TestStores(object):
+class TestStores:
     """Mixin template class that provides some common tests for stores"""
 
     def check_content(self, store, fileid, value):
@@ -65,12 +65,12 @@ class TestStores(object):
 
 class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 
-    def get_store(self, path=u'.'):
+    def get_store(self, path='.'):
         t = transport.get_transport_from_path(path)
         return TextStore(t, compressed=True)
 
     def test_total_size(self):
-        store = self.get_store(u'.')
+        store = self.get_store('.')
         store.register_suffix('dsc')
         store.add(BytesIO(b'goodbye'), b'123123')
         store.add(BytesIO(b'goodbye2'), b'123123', 'dsc')
@@ -122,7 +122,7 @@ class TestMemoryStore(TestCase):
 
 class TestTextStore(TestCaseInTempDir, TestStores):
 
-    def get_store(self, path=u'.'):
+    def get_store(self, path='.'):
         t = transport.get_transport_from_path(path)
         return TextStore(t, compressed=False)
 
@@ -140,13 +140,13 @@ class TestTextStore(TestCaseInTempDir, TestStores):
 
 class TestMixedTextStore(TestCaseInTempDir, TestStores):
 
-    def get_store(self, path=u'.', compressed=True):
+    def get_store(self, path='.', compressed=True):
         t = transport.get_transport_from_path(path)
         return TextStore(t, compressed=compressed)
 
     def test_get_mixed(self):
-        cs = self.get_store(u'.', compressed=True)
-        s = self.get_store(u'.', compressed=False)
+        cs = self.get_store('.', compressed=True)
+        s = self.get_store('.', compressed=False)
         cs.add(BytesIO(b'hello there'), b'a')
 
         self.assertPathExists('a.gz')
@@ -185,7 +185,7 @@ class MockTransport(transport.Transport):
     def __init__(self, url=None):
         if url is None:
             url = "http://example.com"
-        super(MockTransport, self).__init__(url)
+        super().__init__(url)
 
     def mkdir(self, filename):
         return
@@ -202,7 +202,7 @@ class InstrumentedTransportStore(TransportStore):
         self._calls.append(("_add", filename, file))
 
     def __init__(self, transport, prefixed=False):
-        super(InstrumentedTransportStore, self).__init__(transport, prefixed)
+        super().__init__(transport, prefixed)
         self._calls = []
 
 
@@ -388,7 +388,7 @@ class TestVersionFileStore(TestCaseWithTransport):
         return self._transaction
 
     def setUp(self):
-        super(TestVersionFileStore, self).setUp()
+        super().setUp()
         self.vfstore = VersionedFileStore(MemoryTransport(),
                                           versionedfile_class=WeaveFile)
         self.vfstore.get_scope = self.get_scope

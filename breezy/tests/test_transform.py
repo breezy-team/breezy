@@ -85,7 +85,7 @@ from ..transform import (
 )
 
 
-class TransformGroup(object):
+class TransformGroup:
 
     def __init__(self, dirname, root_id):
         self.name = dirname
@@ -234,10 +234,10 @@ class TestTransformMerge(TestCaseInTempDir):
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
-        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, b'a')
-                                   for t in [base, this, other]]
-        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, b'b')
-                                   for t in [base, this, other]]
+        base_a, this_a, other_a = (t.tt.new_directory('a', t.root, b'a')
+                                   for t in [base, this, other])
+        base_b, this_b, other_b = (t.tt.new_directory('b', t.root, b'b')
+                                   for t in [base, this, other])
         base.tt.new_directory('c', base_a, b'c')
         this.tt.new_directory('c1', this_a, b'c')
         other.tt.new_directory('c', other_b, b'c')
@@ -267,10 +267,10 @@ class TestTransformMerge(TestCaseInTempDir):
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
-        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, b'a')
-                                   for t in [base, this, other]]
-        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, b'b')
-                                   for t in [base, this, other]]
+        base_a, this_a, other_a = (t.tt.new_directory('a', t.root, b'a')
+                                   for t in [base, this, other])
+        base_b, this_b, other_b = (t.tt.new_directory('b', t.root, b'b')
+                                   for t in [base, this, other])
 
         base.tt.new_file('g', base_a, [b'g'], b'g')
         other.tt.new_file('g1', other_b, [b'g1'], b'g')
@@ -403,7 +403,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43201,
                            committer='me <me@example.com>',
-                           revprops={u'foo': 'bar'}, revision_id=b'revid-1',
+                           revprops={'foo': 'bar'}, revision_id=b'revid-1',
                            authors=['Author1 <author1@example.com>',
                                     'Author2 <author2@example.com>',
                                     ])
@@ -645,7 +645,7 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         child1 = tt.new_file('child1', parent1, [b'contents'])
         parent2 = tt.new_directory('parent2', tt.root)
 
-        class FakeOSModule(object):
+        class FakeOSModule:
             def rename(self, old, new):
                 os.rename(old, new)
                 raise RuntimeError
@@ -665,7 +665,7 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         child1 = tt.new_file('child1', parent1, [b'contents'])
         parent2 = tt.new_directory('parent2', tt.root)
 
-        class FakeOSModule(object):
+        class FakeOSModule:
             def rename(self, old, new):
                 raise RuntimeError
         self._override_globals_in_method(tt, "_rename_in_limbo",
@@ -714,7 +714,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
                          conflicts.pop())
 
 
-class FakeSerializer(object):
+class FakeSerializer:
     """Serializer implementation that simply returns the input.
 
     The input is returned in the order used by pack.ContainerPushParser.
@@ -763,7 +763,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         attribs = self.default_attribs()
         attribs[b'_id_number'] = 3
         attribs[b'_new_name'] = {
-            b'new-1': u'foo\u1234'.encode('utf-8'), b'new-2': b'qux'}
+            b'new-1': 'foo\u1234'.encode(), b'new-2': b'qux'}
         attribs[b'_new_id'] = {b'new-1': b'baz', b'new-2': b'quxx'}
         attribs[b'_new_parent'] = {b'new-1': b'new-0', b'new-2': b'new-0'}
         attribs[b'_new_executability'] = {b'new-1': 1}
@@ -775,7 +775,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
     def test_serialize_creation(self):
         tt = self.get_preview()
-        tt.new_file(u'foo\u1234', tt.root, [b'bar'], b'baz', True)
+        tt.new_file('foo\u1234', tt.root, [b'bar'], b'baz', True)
         tt.new_directory('qux', tt.root, b'quxx')
         self.assertSerializesTo(self.creation_records(), tt)
 
@@ -783,7 +783,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt = self.get_preview()
         tt.deserialize(iter(self.creation_records()))
         self.assertEqual(3, tt._id_number)
-        self.assertEqual({'new-1': u'foo\u1234',
+        self.assertEqual({'new-1': 'foo\u1234',
                           'new-2': 'qux'}, tt._new_name)
         self.assertEqual({'new-1': b'baz', 'new-2': b'quxx'}, tt._new_id)
         self.assertEqual({'new-1': tt.root, 'new-2': tt.root}, tt._new_parent)
@@ -798,15 +798,15 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def symlink_creation_records(self):
         attribs = self.default_attribs()
         attribs[b'_id_number'] = 2
-        attribs[b'_new_name'] = {b'new-1': u'foo\u1234'.encode('utf-8')}
+        attribs[b'_new_name'] = {b'new-1': 'foo\u1234'.encode()}
         attribs[b'_new_parent'] = {b'new-1': b'new-0'}
-        contents = [(b'new-1', b'symlink', u'bar\u1234'.encode('utf-8'))]
+        contents = [(b'new-1', b'symlink', 'bar\u1234'.encode())]
         return self.make_records(attribs, contents)
 
     def test_serialize_symlink_creation(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         tt = self.get_preview()
-        tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
+        tt.new_symlink('foo\u1234', tt.root, 'bar\u1234')
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
@@ -815,12 +815,12 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt.deserialize(iter(self.symlink_creation_records()))
         abspath = tt._limbo_name('new-1')
         foo_content = osutils.readlink(abspath)
-        self.assertEqual(u'bar\u1234', foo_content)
+        self.assertEqual('bar\u1234', foo_content)
 
     def make_destruction_preview(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree([u'foo\u1234', 'bar'])
-        tree.add([u'foo\u1234', 'bar'], ids=[b'foo-id', b'bar-id'])
+        self.build_tree(['foo\u1234', 'bar'])
+        tree.add(['foo\u1234', 'bar'], ids=[b'foo-id', b'bar-id'])
         return self.get_preview(tree)
 
     def destruction_records(self):
@@ -830,14 +830,14 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         attribs[b'_removed_contents'] = [b'new-2']
         attribs[b'_tree_path_ids'] = {
             b'': b'new-0',
-            u'foo\u1234'.encode('utf-8'): b'new-1',
+            'foo\u1234'.encode(): b'new-1',
             b'bar': b'new-2',
             }
         return self.make_records(attribs, [])
 
     def test_serialize_destruction(self):
         tt = self.make_destruction_preview()
-        foo_trans_id = tt.trans_id_tree_path(u'foo\u1234')
+        foo_trans_id = tt.trans_id_tree_path('foo\u1234')
         tt.unversion_file(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_path('bar')
         tt.delete_contents(bar_trans_id)
@@ -846,10 +846,10 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def test_deserialize_destruction(self):
         tt = self.make_destruction_preview()
         tt.deserialize(iter(self.destruction_records()))
-        self.assertEqual({u'foo\u1234': 'new-1',
+        self.assertEqual({'foo\u1234': 'new-1',
                           'bar': 'new-2',
                           '': tt.root}, tt._tree_path_ids)
-        self.assertEqual({'new-1': u'foo\u1234',
+        self.assertEqual({'new-1': 'foo\u1234',
                           'new-2': 'bar',
                           tt.root: ''}, tt._tree_id_paths)
         self.assertEqual({'new-1'}, tt._removed_id)
@@ -1079,7 +1079,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 class TestTransformHooks(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestTransformHooks, self).setUp()
+        super().setUp()
         self.wt = self.make_branch_and_tree('.')
         os.chdir('..')
 
@@ -1161,7 +1161,7 @@ class TestLinkTree(tests.TestCaseWithTransport):
 class ErrorTests(tests.TestCase):
 
     def test_transform_rename_failed(self):
-        e = TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        e = TransformRenameFailed("from", "to", "readonly file", 2)
         self.assertEqual(
-            u"Failed to rename from to to: readonly file",
+            "Failed to rename from to to: readonly file",
             str(e))

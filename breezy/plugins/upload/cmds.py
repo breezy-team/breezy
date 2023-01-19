@@ -54,7 +54,7 @@ location_option = config.Option(
 The url to upload the working tree to.
 """)
 revid_location_option = config.Option(
-    'upload_revid_location', default=u'.bzr-upload.revid',
+    'upload_revid_location', default='.bzr-upload.revid',
     help="""\
 The relative path to be used to store the uploaded revid.
 
@@ -86,7 +86,7 @@ branch.conf file:
 # 'upload_revid_location'
 
 
-class BzrUploader(object):
+class BzrUploader:
 
     def __init__(self, branch, to_transport, outf, tree, rev_id,
                  quiet=False):
@@ -185,12 +185,12 @@ class BzrUploader(object):
             if stat.S_ISDIR(st.st_mode):
                 # A simple rmdir may not be enough
                 if not self.quiet:
-                    self.outf.write('Clearing %s/%s\n' % (
+                    self.outf.write('Clearing {}/{}\n'.format(
                         self.to_transport.external_url(), relpath))
                 self._up_delete_tree(relpath)
             elif stat.S_ISLNK(st.st_mode):
                 if not self.quiet:
-                    self.outf.write('Clearing %s/%s\n' % (
+                    self.outf.write('Clearing {}/{}\n'.format(
                         self.to_transport.external_url(), relpath))
                 self._up_delete(relpath)
         except errors.PathError:
@@ -235,7 +235,7 @@ class BzrUploader(object):
             st = self._up_stat(relpath)
             if not stat.S_ISDIR(st.st_mode):
                 if not self.quiet:
-                    self.outf.write('Deleting %s/%s\n' % (
+                    self.outf.write('Deleting {}/{}\n'.format(
                         self.to_transport.external_url(), relpath))
                 self._up_delete(relpath)
             else:
@@ -294,7 +294,7 @@ class BzrUploader(object):
                                      os.getpid(),
                                      random.randint(0, 0x7FFFFFFF))
         if not self.quiet:
-            self.outf.write('Renaming %s to %s\n' % (old_relpath, new_relpath))
+            self.outf.write('Renaming {} to {}\n'.format(old_relpath, new_relpath))
         self._up_rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
 
@@ -489,7 +489,7 @@ class cmd_upload(commands.Command):
             directory=None, quiet=False, auto=None, overwrite=False
             ):
         if directory is None:
-            directory = u'.'
+            directory = '.'
 
         (wt, branch,
          relpath) = controldir.ControlDir.open_containing_tree_or_branch(

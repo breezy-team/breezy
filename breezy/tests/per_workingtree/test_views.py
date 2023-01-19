@@ -40,7 +40,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
                               "supports views, assuming not" % fmt)
         if not f():
             raise TestNotApplicable("format %s doesn't support views" % fmt)
-        super(TestTreeViews, self).setUp()
+        super().setUp()
 
     def test_views_initially_empty(self):
         wt = self.make_branch_and_tree('wt')
@@ -104,7 +104,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
 
     def test_unicode_view(self):
         wt = self.make_branch_and_tree('wt')
-        view_name = u'\u3070'
+        view_name = '\u3070'
         view_files = ['foo', 'bar/']
         view_dict = {view_name: view_files}
         wt.views.set_view_info(view_name, view_dict)
@@ -124,7 +124,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
 
     def test_delete_view(self):
         wt = self.make_branch_and_tree('wt')
-        view_name = u'\N{GREEK SMALL LETTER ALPHA}'
+        view_name = '\N{GREEK SMALL LETTER ALPHA}'
         view_files = ['alphas/']
         wt.views.set_view(view_name, view_files)
         # now try to delete it
@@ -172,7 +172,7 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
             raise TestSkipped("Format %s declares that views are supported"
                               % fmt)
             # it's covered by TestTreeViews
-        super(TestUnsupportedViews, self).setUp()
+        super().setUp()
 
     def test_view_methods_raise(self):
         wt = self.make_branch_and_tree('wt')

@@ -59,7 +59,7 @@ def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
 class TestCaseWithControlDir(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestCaseWithControlDir, self).setUp()
+        super().setUp()
         self.controldir = None
 
     def get_bzrdir(self):

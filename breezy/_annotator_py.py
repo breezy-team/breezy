@@ -16,24 +16,15 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-
-import patiencediff
-
-from breezy import (
-    annotate, # Must be lazy to avoid circular importing
-    graph as _mod_graph,
-    )
-""")
 from . import (
     errors,
+    graph as _mod_graph,
     osutils,
     ui,
     )
 
 
-class Annotator(object):
+class Annotator:
     """Class that drives performing annotations."""
 
     def __init__(self, vf):
@@ -144,7 +135,8 @@ class Annotator(object):
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
-        matcher = patiencediff.PatienceSequenceMatcher(
+        from patiencediff import PatienceSequenceMatcher
+        matcher = PatienceSequenceMatcher(
             None, parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
@@ -292,7 +284,8 @@ class Annotator(object):
         :return: [(ann_key, line)]
             A list of tuples with a single annotation key for each line.
         """
-        custom_tiebreaker = annotate._break_annotation_tie
+        from .annotate import _break_annotation_tie
+        custom_tiebreaker = _break_annotation_tie
         annotations, lines = self.annotate(key)
         out = []
         heads = self._get_heads_provider().heads

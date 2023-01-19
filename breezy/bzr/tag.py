@@ -93,8 +93,8 @@ class BasicTags(Tags):
         return self.branch._set_tags_bytes(self._serialize_tag_dict(new_dict))
 
     def _serialize_tag_dict(self, tag_dict):
-        td = dict((k.encode('utf-8'), v)
-                  for k, v in tag_dict.items())
+        td = {k.encode('utf-8'): v
+                  for k, v in tag_dict.items()}
         return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):

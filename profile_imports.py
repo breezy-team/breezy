@@ -53,7 +53,7 @@ def stack_finish(this, cost):
     global _parent_stack
 
     assert _parent_stack[-1] == this, \
-        'import stack does not end with this %s: %s' % (this, _parent_stack)
+        'import stack does not end with this {}: {}'.format(this, _parent_stack)
     _parent_stack.pop()
     _info[this].append(cost)
 
@@ -138,7 +138,7 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
         frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     if fromlist:
-        extra += ' [%s]' % (', '.join(map(str, fromlist)),)
+        extra += ' [{}]'.format(', '.join(map(str, fromlist)))
     frame_lineno = frame.f_lineno
 
     this = stack_add(extra + name, frame_name, frame_lineno, scope_name)

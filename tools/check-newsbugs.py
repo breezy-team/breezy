@@ -42,7 +42,7 @@ def report_notmarked(bug, task, section):
         print("  status fixreleased")
     if "--webbrowser" in options or "-w" in options:
         import webbrowser
-        webbrowser.open('http://pad.lv/%s>' % (bug.id,))
+        webbrowser.open('http://pad.lv/{}>'.format(bug.id))
 
 
 def read_news_bugnos(path):
@@ -55,7 +55,7 @@ def read_news_bugnos(path):
     # Pattern to find bug numbers
     bug_pattern = re.compile(r"\#([0-9]+)")
     ret = set()
-    with open(path, 'r') as f:
+    with open(path) as f:
         section = ""
         for l in f.readlines():
             if l.strip() == "":
@@ -73,7 +73,7 @@ def read_news_bugnos(path):
 
 
 def print_bug_url(bugno):
-    print('<URL:http://pad.lv/%s>' % (bugno,))
+    print('<URL:http://pad.lv/{}>'.format(bugno))
 
 launchpad = hydrazine.create_session()
 bugnos = read_news_bugnos(args[1])
@@ -84,7 +84,7 @@ for bugno, section in bugnos:
         if e.response.status == 401:
             print_bug_url(bugno)
             # Private, we can't access the bug content
-            print('%s is private and cannot be accessed' % (bugno,))
+            print('{} is private and cannot be accessed'.format(bugno))
             continue
         raise
 

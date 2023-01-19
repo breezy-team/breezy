@@ -380,7 +380,7 @@ class BundleTester1(tests.TestCaseWithTransport):
                           target.repository, read_bundle(text))
 
 
-class BundleTester(object):
+class BundleTester:
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -409,7 +409,7 @@ class BundleTester(object):
 
         rev = self.b1.repository.get_revision(rev_id)
         self.assertEqual(bundle_txt.readline().decode('utf-8'),
-                         u'# message:\n')
+                         '# message:\n')
         bundle_txt.seek(0)
         return bundle_txt, rev_ids
 
@@ -653,7 +653,7 @@ class BundleTester(object):
         self.tree1.rename_one('sub/dir/WithCaps.txt', 'temp')
         self.tree1.rename_one('with space.txt', 'WithCaps.txt')
         self.tree1.rename_one('temp', 'with space.txt')
-        self.tree1.commit(u'swap filenames', rev_id=b'a@cset-0-6',
+        self.tree1.commit('swap filenames', rev_id=b'a@cset-0-6',
                           verbose=False)
         bundle = self.get_valid_bundle(b'a@cset-0-5', b'a@cset-0-6')
         other = self.get_checkout(b'a@cset-0-5')
@@ -665,7 +665,7 @@ class BundleTester(object):
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id=b'a@cset-0-6b')
         self.tree1.merge_from_branch(other.branch)
-        self.tree1.commit(u'Merge', rev_id=b'a@cset-0-7',
+        self.tree1.commit('Merge', rev_id=b'a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle(b'a@cset-0-6', b'a@cset-0-7')
 
@@ -721,9 +721,9 @@ class BundleTester(object):
 
     def test_unicode_symlink_bundle(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_symlink_bundle(u'\N{Euro Sign}link',
-                                  u'bar/\N{Euro Sign}foo',
-                                  u'mars\N{Euro Sign}')
+        self._test_symlink_bundle('\N{Euro Sign}link',
+                                  'bar/\N{Euro Sign}foo',
+                                  'mars\N{Euro Sign}')
 
     def test_binary_bundle(self):
         self.tree1 = self.make_branch_and_tree('b1')
@@ -792,9 +792,9 @@ class BundleTester(object):
         tt.apply()
         other.commit('modify text in another tree', rev_id=b'a@lmod-0-2b')
         self.tree1.merge_from_branch(other.branch)
-        self.tree1.commit(u'Merge', rev_id=b'a@lmod-0-3',
+        self.tree1.commit('Merge', rev_id=b'a@lmod-0-3',
                           verbose=False)
-        self.tree1.commit(u'Merge', rev_id=b'a@lmod-0-4')
+        self.tree1.commit('Merge', rev_id=b'a@lmod-0-4')
         bundle = self.get_valid_bundle(b'a@lmod-0-2a', b'a@lmod-0-4')
 
     def test_hide_history(self):
@@ -834,41 +834,41 @@ class BundleTester(object):
         self.requireFeature(features.UnicodeFilenameFeature)
         # Handle international characters
         os.mkdir('b1')
-        f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
+        f = open('b1/with Dod\N{Euro Sign}', 'wb')
 
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        f.write((u'A file\n'
-                 u'With international man of mystery\n'
-                 u'William Dod\xe9\n').encode('utf-8'))
+        f.write(('A file\n'
+                 'With international man of mystery\n'
+                 'William Dod\xe9\n').encode())
         f.close()
 
-        self.tree1.add([u'with Dod\N{Euro Sign}'], ids=[b'withdod-id'])
-        self.tree1.commit(u'i18n commit from William Dod\xe9',
-                          rev_id=b'i18n-1', committer=u'William Dod\xe9')
+        self.tree1.add(['with Dod\N{Euro Sign}'], ids=[b'withdod-id'])
+        self.tree1.commit('i18n commit from William Dod\xe9',
+                          rev_id=b'i18n-1', committer='William Dod\xe9')
 
         # Add
         bundle = self.get_valid_bundle(b'null:', b'i18n-1')
 
         # Modified
-        f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
-        f.write(u'Modified \xb5\n'.encode('utf8'))
+        f = open('b1/with Dod\N{Euro Sign}', 'wb')
+        f.write('Modified \xb5\n'.encode())
         f.close()
-        self.tree1.commit(u'modified', rev_id=b'i18n-2')
+        self.tree1.commit('modified', rev_id=b'i18n-2')
 
         bundle = self.get_valid_bundle(b'i18n-1', b'i18n-2')
 
         # Renamed
-        self.tree1.rename_one(u'with Dod\N{Euro Sign}', u'B\N{Euro Sign}gfors')
-        self.tree1.commit(u'renamed, the new i18n man', rev_id=b'i18n-3',
-                          committer=u'Erik B\xe5gfors')
+        self.tree1.rename_one('with Dod\N{Euro Sign}', 'B\N{Euro Sign}gfors')
+        self.tree1.commit('renamed, the new i18n man', rev_id=b'i18n-3',
+                          committer='Erik B\xe5gfors')
 
         bundle = self.get_valid_bundle(b'i18n-2', b'i18n-3')
 
         # Removed
-        self.tree1.remove([u'B\N{Euro Sign}gfors'])
-        self.tree1.commit(u'removed', rev_id=b'i18n-4')
+        self.tree1.remove(['B\N{Euro Sign}gfors'])
+        self.tree1.commit('removed', rev_id=b'i18n-4')
 
         bundle = self.get_valid_bundle(b'i18n-3', b'i18n-4')
 
@@ -942,7 +942,7 @@ class BundleTester(object):
         self.tree1.commit('message', rev_id=b'revid1')
         bundle = self.get_valid_bundle(b'null:', b'revid1')
         tree = self.get_bundle_tree(bundle, b'revid1')
-        root_revision = tree.get_file_revision(u'')
+        root_revision = tree.get_file_revision('')
         self.assertEqual(b'revid1', root_revision)
 
     def test_install_revisions(self):
@@ -962,8 +962,8 @@ class BundleTester(object):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add([''], ids=[b'TREE_ROOT'])
-        tree.commit('One', revprops={u'one': 'two',
-                                     u'empty': ''}, rev_id=b'rev1')
+        tree.commit('One', revprops={'one': 'two',
+                                     'empty': ''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         bundle = read_bundle(bundle_sio)
@@ -981,7 +981,7 @@ class BundleTester(object):
 
         tree.add([''], ids=[b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
-                    revprops={u'a': '4', u'b': '3', u'c': '2', u'd': '1'})
+                    revprops={'a': '4', 'b': '3', 'c': '2', 'd': '1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         bundle = read_bundle(bundle_sio)
@@ -1004,15 +1004,15 @@ class BundleTester(object):
         # However, Testaments assert than they are str(), and thus should not
         # be Unicode.
         tree.commit('One', rev_id=b'rev1',
-                    revprops={u'omega': u'\u03a9', u'alpha': u'\u03b1'})
+                    revprops={'omega': '\u03a9', 'alpha': '\u03b1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
         self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
-        self.assertEqual({'branch-nick': 'tree', 'omega': u'\u03a9',
-                          'alpha': u'\u03b1'}, rev.properties)
+        self.assertEqual({'branch-nick': 'tree', 'omega': '\u03a9',
+                          'alpha': '\u03b1'}, rev.properties)
 
     def test_bundle_with_ghosts(self):
         tree = self.make_branch_and_tree('tree')
@@ -1142,9 +1142,9 @@ class BundleTester(object):
         bundle = self.get_valid_bundle(b'reva', b'rev3')
         if getattr(bundle, 'get_bundle_reader', None) is None:
             raise tests.TestSkipped('Bundle format cannot provide reader')
-        file_ids = set(
+        file_ids = {
             (f, r) for b, m, k, r, f in bundle.get_bundle_reader().iter_records()
-            if f is not None)
+            if f is not None}
         self.assertEqual(
             {(b'file2-id', b'rev3'), (b'file3-id', rev2)}, file_ids)
         bundle.install_revisions(target.branch.repository)
@@ -1160,8 +1160,8 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add([''], ids=[b'TREE_ROOT'])
-        tree.commit('One', revprops={u'one': 'two',
-                                     u'empty': ''}, rev_id=b'rev1')
+        tree.commit('One', revprops={'one': 'two',
+                                     'empty': ''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
@@ -1193,8 +1193,8 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.add([''], ids=[b'TREE_ROOT'])
-        tree.commit('One', revprops={u'one': 'two',
-                                     u'empty': ''}, rev_id=b'rev1')
+        tree.commit('One', revprops={'one': 'two',
+                                     'empty': ''}, rev_id=b'rev1')
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         txt = bundle_sio.getvalue()
@@ -1223,7 +1223,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         tree.add([''], ids=[b'TREE_ROOT'])
         tree.commit('One', rev_id=b'rev1',
-                    revprops={u'a': '4', u'b': '3', u'c': '2', u'd': '1'})
+                    revprops={'a': '4', 'b': '3', 'c': '2', 'd': '1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
@@ -1254,7 +1254,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         # However, Testaments assert than they are str(), and thus should not
         # be Unicode.
         tree.commit('One', rev_id=b'rev1',
-                    revprops={u'omega': u'\u03a9', u'alpha': u'\u03b1'})
+                    revprops={'omega': '\u03a9', 'alpha': '\u03b1'})
         self.b1 = tree.branch
         bundle_sio, revision_ids = self.create_bundle_text(b'null:', b'rev1')
         self.assertContainsRe(bundle_sio.getvalue(),
@@ -1267,8 +1267,8 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
         revision_info = bundle.revisions[0]
         self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
-        self.assertEqual({'branch-nick': 'tree', 'omega': u'\u03a9',
-                          'alpha': u'\u03b1'}, rev.properties)
+        self.assertEqual({'branch-nick': 'tree', 'omega': '\u03a9',
+                          'alpha': '\u03b1'}, rev.properties)
 
 
 class V09BundleKnit2Tester(V08BundleTester):
@@ -1384,10 +1384,10 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         target_repo.lock_read()
         self.addCleanup(target_repo.unlock)
         # Turn the 'iterators_of_bytes' back into simple strings for comparison
-        repo_texts = dict((i, b''.join(content)) for i, content
+        repo_texts = {i: b''.join(content) for i, content
                           in target_repo.iter_files_bytes(
             [(b'fileid-2', b'rev1', '1'),
-             (b'fileid-2', b'rev2', '2')]))
+             (b'fileid-2', b'rev2', '2')])}
         self.assertEqual({'1': b'contents1\nstatic\n',
                           '2': b'contents2\nstatic\n'},
                          repo_texts)
@@ -1629,7 +1629,7 @@ class V4_2aBundleTester(V4BundleTester):
                                            revision_id=b'a@cset-0-2a').open_branch()
         bundle_txt, rev_ids = self.create_bundle_text(b'a@cset-0-2a',
                                                       b'a@cset-0-3')
-        self.assertEqual(set([b'a@cset-0-2b', b'a@cset-0-3']), set(rev_ids))
+        self.assertEqual({b'a@cset-0-2b', b'a@cset-0-3'}, set(rev_ids))
         bundle = read_bundle(bundle_txt)
         target.lock_write()
         self.addCleanup(target.unlock)
@@ -1643,7 +1643,7 @@ class V4_2aBundleTester(V4BundleTester):
         self.assertEqualDiff(inv1, inv2)
 
 
-class MungedBundleTester(object):
+class MungedBundleTester:
 
     def build_test_bundle(self):
         wt = self.make_branch_and_tree('b1')
@@ -1654,7 +1654,7 @@ class MungedBundleTester(object):
         self.build_tree(['b1/two'])
         wt.add('two')
         wt.commit('add two', rev_id=b'a@cset-0-2',
-                  revprops={u'branch-nick': 'test'})
+                  revprops={'branch-nick': 'test'})
 
         bundle_txt = BytesIO()
         rev_ids = write_bundle(wt.branch.repository, b'a@cset-0-2',

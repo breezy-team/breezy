@@ -289,7 +289,7 @@ class Weave(VersionedFile):
             for detecting when this weave goes out of scope (should stop
             answering requests or allowing mutation).
         """
-        super(Weave, self).__init__()
+        super().__init__()
         self._weave = []
         self._parents = []
         self._sha1s = []
@@ -596,7 +596,7 @@ class Weave(VersionedFile):
         if isinstance(version_ids, bytes):
             version_ids = [version_ids]
         i = self._inclusions([self._lookup(v) for v in version_ids])
-        return set(self._idx_to_name(v) for v in i)
+        return {self._idx_to_name(v) for v in i}
 
     def _check_versions(self, indexes):
         """Check everything in the sequence of indexes is valid"""
@@ -873,7 +873,7 @@ class Weave(VersionedFile):
         update_text = 'checking weave'
         if self._weave_name:
             short_name = os.path.basename(self._weave_name)
-            update_text = 'checking %s' % (short_name,)
+            update_text = 'checking {}'.format(short_name)
             update_text = update_text[:25]
 
         for lineno, insert, deleteset, line in self._walk_internal():
@@ -971,7 +971,7 @@ class WeaveFile(Weave):
 
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope,
+        super().__init__(name, access_mode, get_scope=get_scope,
                                         allow_reserved=False)
         self._transport = transport
         self._filemode = filemode
@@ -989,7 +989,7 @@ class WeaveFile(Weave):
                    check_content):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
-        result = super(WeaveFile, self)._add_lines(
+        result = super()._add_lines(
             version_id, parents, lines, parent_texts, left_matching_blocks,
             nostore_sha, random_id, check_content)
         self._save()
@@ -1023,7 +1023,7 @@ class WeaveFile(Weave):
         return [WeaveFile.WEAVE_SUFFIX]
 
     def insert_record_stream(self, stream):
-        super(WeaveFile, self).insert_record_stream(stream)
+        super().insert_record_stream(stream)
         self._save()
 
 

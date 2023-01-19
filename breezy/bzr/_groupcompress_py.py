@@ -23,7 +23,7 @@ useless stuff.
 from .. import osutils
 
 
-class _OutputHandler(object):
+class _OutputHandler:
     """A simple class which just tracks how to split up an insert request."""
 
     def __init__(self, out_lines, index_lines, min_len_to_index):
@@ -91,7 +91,7 @@ class _OutputHandler(object):
         self._flush_insert()
 
 
-class LinesDeltaIndex(object):
+class LinesDeltaIndex:
     """This class indexes matches between strings.
 
     :ivar lines: The 'static' lines that will be preserved between runs.

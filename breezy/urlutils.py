@@ -19,6 +19,7 @@
 import os
 import re
 import sys
+from typing import Tuple, Union
 
 from urllib import parse as urlparse
 
@@ -27,10 +28,7 @@ from . import (
     osutils,
     )
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from posixpath import split as _posix_split
-""")
+import posixpath
 
 
 
@@ -76,7 +74,7 @@ def basename(url, exclude_trailing_slash=True):
     return split(url, exclude_trailing_slash=exclude_trailing_slash)[1]
 
 
-def dirname(url, exclude_trailing_slash=True):
+def dirname(url: str, exclude_trailing_slash: bool = True) -> str:
     """Return the parent directory of the given path.
 
     Args:
@@ -97,12 +95,12 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-def escape(relpath, safe='/~'):
+def escape(relpath: Union[bytes, str], safe: str = '/~') -> str:
     """Escape relpath to be a valid url."""
     return quote(relpath, safe=safe)
 
 
-def file_relpath(base, path):
+def file_relpath(base: str, path: str) -> str:
     """Compute just the relative sub-portion of a url
 
     This assumes that both paths are already fully specified file:// URLs.
@@ -234,7 +232,7 @@ def _posix_local_path_to_url(path):
     """
     # importing directly from posixpath allows us to test this
     # on non-posix platforms
-    return 'file://' + escape(osutils._posix_abspath(path))
+    return 'file://' + escape(posixpath.abspath(path))
 
 
 def _win32_local_path_from_url(url):
@@ -265,7 +263,7 @@ def _win32_local_path_from_url(url):
             or win32_url[5] != '/'):
         raise InvalidURL(url, 'Win32 file urls start with'
                          ' file:///x:/, where x is a valid drive letter')
-    return win32_url[3].upper() + u':' + unescape(win32_url[5:])
+    return win32_url[3].upper() + ':' + unescape(win32_url[5:])
 
 
 def _win32_local_path_to_url(path):
@@ -428,7 +426,7 @@ def _win32_extract_drive_letter(url_base, path):
     return url_base, path
 
 
-def split(url, exclude_trailing_slash=True):
+def split(url: str, exclude_trailing_slash: bool = True) -> Tuple[str, str]:
     """Split a URL into its parent directory and a child directory.
 
     Args:
@@ -447,7 +445,7 @@ def split(url, exclude_trailing_slash=True):
             # Relative path
             if exclude_trailing_slash and url.endswith('/'):
                 url = url[:-1]
-            return _posix_split(url)
+            return posixpath.split(url)
         else:
             # Scheme with no path
             return url, ''
@@ -465,7 +463,7 @@ def split(url, exclude_trailing_slash=True):
 
     if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
         path = path[:-1]
-    head, tail = _posix_split(path)
+    head, tail = posixpath.split(path)
     return url_base + head, tail
 
 
@@ -634,7 +632,7 @@ def unescape(url):
             url.encode("ascii")
         except UnicodeError as e:
             raise InvalidURL(
-                url, 'URL was not a plain ASCII url: %s' % (e,))
+                url, 'URL was not a plain ASCII url: {}'.format(e))
     return urlparse.unquote(url)
 
 
@@ -643,8 +641,8 @@ _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
 _no_decode_hex = (['%02x' % o for o in _no_decode_ords]
                   + ['%02X' % o for o in _no_decode_ords])
-_hex_display_map = dict(([('%02x' % o, bytes([o])) for o in range(256)]
-                         + [('%02X' % o, bytes([o])) for o in range(256)]))
+_hex_display_map = dict([('%02x' % o, bytes([o])) for o in range(256)]
+                         + [('%02X' % o, bytes([o])) for o in range(256)])
 # These entries get mapped to themselves
 _hex_display_map.update((hex, b'%' + hex.encode('ascii'))
                         for hex in _no_decode_hex)
@@ -742,7 +740,7 @@ def unescape_for_display(url, encoding):
     res = url.split('/')
     for i in range(1, len(res)):
         res[i] = _unescape_segment_for_display(res[i], encoding)
-    return u'/'.join(res)
+    return '/'.join(res)
 
 
 def derive_to_location(from_location):
@@ -809,7 +807,7 @@ def determine_relative_path(from_path, to_path):
     return osutils.pathjoin(*segments)
 
 
-class URL(object):
+class URL:
     """Parsed URL."""
 
     def __init__(self, scheme, quoted_user, quoted_password, quoted_host,
@@ -841,7 +839,7 @@ class URL(object):
                 self.path == other.path)
 
     def __repr__(self):
-        return "<%s(%r, %r, %r, %r, %r, %r)>" % (
+        return "<{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})>".format(
             self.__class__.__name__,
             self.scheme, self.quoted_user, self.quoted_password,
             self.quoted_host, self.port, self.quoted_path)
@@ -899,7 +897,7 @@ class URL(object):
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '%s@%s' % (self.quoted_user, netloc)
+            netloc = '{}@{}'.format(self.quoted_user, netloc)
         if self.port is not None:
             netloc = '%s:%d' % (netloc, self.port)
         return urlparse.urlunparse(

@@ -30,10 +30,10 @@ class TestRevProps(TestCaseWithRepository):
         b = wt.branch
         b.nick = 'Nicholas'
         if b.repository._format.supports_custom_revision_properties:
-            props = {u'flavor': 'choc-mint',
-                     u'condiment': 'orange\n  mint\n\tcandy',
-                     u'empty': '',
-                     u'non_ascii': u'\xb5'}
+            props = {'flavor': 'choc-mint',
+                     'condiment': 'orange\n  mint\n\tcandy',
+                     'empty': '',
+                     'non_ascii': '\xb5'}
         else:
             props = {}
         rev1 = wt.commit(message='initial null commit',
@@ -41,18 +41,18 @@ class TestRevProps(TestCaseWithRepository):
                          allow_pointless=True)
         rev = b.repository.get_revision(rev1)
         if b.repository._format.supports_custom_revision_properties:
-            self.assertTrue(u'flavor' in rev.properties)
-            self.assertEqual(rev.properties[u'flavor'], 'choc-mint')
+            self.assertTrue('flavor' in rev.properties)
+            self.assertEqual(rev.properties['flavor'], 'choc-mint')
             expected_revprops = {
-                u'condiment': 'orange\n  mint\n\tcandy',
-                u'empty': '',
-                u'flavor': 'choc-mint',
-                u'non_ascii': u'\xb5',
+                'condiment': 'orange\n  mint\n\tcandy',
+                'empty': '',
+                'flavor': 'choc-mint',
+                'non_ascii': '\xb5',
                 }
         else:
             expected_revprops = {}
         if b.repository._format.supports_storing_branch_nick:
-            expected_revprops[u'branch-nick'] = 'Nicholas'
+            expected_revprops['branch-nick'] = 'Nicholas'
         for name, value in expected_revprops.items():
             self.assertEqual(rev.properties[name], value)
 
@@ -82,10 +82,10 @@ class TestRevisionAttributes(TestCaseWithRepository):
         """
         tree1 = self.make_branch_and_tree("br1")
         if tree1.branch.repository._format.supports_custom_revision_properties:
-            revprops = {u'empty': '',
-                        u'value': 'one',
-                        u'unicode': u'\xb5',
-                        u'multiline': 'foo\nbar\n\n'
+            revprops = {'empty': '',
+                        'value': 'one',
+                        'unicode': '\xb5',
+                        'multiline': 'foo\nbar\n\n'
                         }
         else:
             revprops = {}

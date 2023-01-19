@@ -32,7 +32,7 @@ from ..maptree import (
 class EmptyMapTreeTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(EmptyMapTreeTests, self).setUp()
+        super().setUp()
         tree = self.make_branch_and_tree('branch')
         self.oldtree = tree
 
@@ -58,7 +58,7 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         builder.build(['bla'])
         builder.finish_tree()
         self.maptree = MapTree(self.oldtree, {})
-        self.assertEquals(self.oldtree.path2id("foo"),
+        self.assertEqual(self.oldtree.path2id("foo"),
                           self.maptree.path2id("foo"))
 
     def test_id2path(self):
@@ -71,11 +71,11 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         builder.build(['bla'])
         builder.finish_tree()
         self.maptree = MapTree(self.oldtree, {})
-        self.assertEquals(
+        self.assertEqual(
             "foo", self.maptree.id2path(self.maptree.path2id("foo")))
 
 
 class MapFileIdTests(TestCase):
 
     def test_empty(self):
-        self.assertEquals({}, map_file_ids(None, [], []))
+        self.assertEqual({}, map_file_ids(None, [], []))

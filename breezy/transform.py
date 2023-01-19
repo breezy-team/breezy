@@ -113,7 +113,7 @@ def unique_add(map, key, value):
     map[key] = value
 
 
-class _TransformResults(object):
+class _TransformResults:
 
     def __init__(self, modified_paths, rename_count):
         object.__init__(self)
@@ -121,7 +121,7 @@ class _TransformResults(object):
         self.rename_count = rename_count
 
 
-class TreeTransform(object):
+class TreeTransform:
     """Represent a tree transformation.
 
     This object is designed to support incremental generation of the transform,
@@ -586,12 +586,12 @@ def refuse_orphan(tt, orphan_id, parent_id):
 
 orphaning_registry = registry.Registry[str, Callable[[TreeTransform, bytes, bytes], None]]()
 orphaning_registry.register(
-    u'conflict', refuse_orphan,
+    'conflict', refuse_orphan,
     'Leave orphans in place and create a conflict on the directory.')
 orphaning_registry.register(
-    u'move', move_orphan,
+    'move', move_orphan,
     'Move orphans into the brz-orphans directory.')
-orphaning_registry._set_default_key(u'conflict')
+orphaning_registry._set_default_key('conflict')
 
 
 opt_transform_orphan = _mod_config.RegistryOption(
@@ -608,7 +608,7 @@ def joinpath(parent, child):
         return pathjoin(parent, child)
 
 
-class FinalPaths(object):
+class FinalPaths:
     """Make path calculation cheap by memoizing paths.
 
     The underlying tree must not be manipulated between calls, or else
@@ -622,7 +622,7 @@ class FinalPaths(object):
 
     def _determine_path(self, trans_id):
         if trans_id == self.transform.root or trans_id == ROOT_PARENT:
-            return u""
+            return ""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)
         if parent_id == self.transform.root:
@@ -766,7 +766,7 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
     # reverse.
     change_list = working_tree.iter_changes(
         target_tree, specific_files=specific_files, pb=pb)
-    if not target_tree.is_versioned(u''):
+    if not target_tree.is_versioned(''):
         skip_root = True
     else:
         skip_root = False
@@ -1047,7 +1047,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
     return new_conflicts
 
 
-class _FileMover(object):
+class _FileMover:
     """Moves and deletes files for TreeTransform, tracking operations"""
 
     def __init__(self):
@@ -1116,7 +1116,7 @@ def link_tree(target_tree, source_tree):
         tt.apply()
 
 
-class PreviewTree(object):
+class PreviewTree:
     """Preview tree."""
 
     def __init__(self, transform):

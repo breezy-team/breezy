@@ -64,7 +64,7 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
     """Unit tests for `BranchOpener.check_and_follow_branch_reference`."""
 
     def setUp(self):
-        super(TestBranchOpenerCheckAndFollowBranchReference, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     class StubbedBranchOpener(BranchOpener):
@@ -170,7 +170,7 @@ class TrackingProber(BzrProber):
 class TestBranchOpenerStacking(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestBranchOpenerStacking, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     def make_branch_opener(self, allowed_urls, probers=None):
@@ -321,7 +321,7 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
 class TestRedirects(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestRedirects, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     def setup_redirect(self, target_url):
@@ -364,7 +364,7 @@ class TestOpenOnlyScheme(TestCaseWithTransport):
     """Tests for `open_only_scheme`."""
 
     def setUp(self):
-        super(TestOpenOnlyScheme, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     def test_hook_does_not_interfere(self):

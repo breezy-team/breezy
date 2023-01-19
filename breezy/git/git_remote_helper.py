@@ -96,7 +96,7 @@ def push(outf, wants, shortname, remote_dir, local_dir):
     outf.write(b"\n")
 
 
-class RemoteHelper(object):
+class RemoteHelper:
     """Git remote helper."""
 
     def __init__(self, local_dir, shortname, remote_dir):

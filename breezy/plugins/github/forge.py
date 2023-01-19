@@ -19,6 +19,7 @@
 from datetime import datetime
 import json
 import os
+from typing import Optional, Dict, Any, List
 
 from ...forge import (
     determine_title,
@@ -91,7 +92,7 @@ def retrieve_github_token():
     path = os.path.join(bedding.config_dir(), 'github.conf')
     if not os.path.exists(path):
         return None
-    with open(path, 'r') as f:
+    with open(path) as f:
         return f.read().strip()
 
 
@@ -127,7 +128,7 @@ class GitHubMergeProposal(MergeProposal):
         self._pr = pr
 
     def __repr__(self):
-        return "<%s at %r>" % (type(self).__name__, self.url)
+        return "<{} at {!r}>".format(type(self).__name__, self.url)
 
     name = 'GitHub'
 
@@ -324,38 +325,38 @@ class _LazyDict(dict):
 
     def __init__(self, base, load_fn):
         self._load_fn = load_fn
-        super(_LazyDict, self).update(base)
+        super().update(base)
 
     def _load_full(self):
-        super(_LazyDict, self).update(self._load_fn())
+        super().update(self._load_fn())
         self._load_fn = None
 
     def __getitem__(self, key):
         if self._load_fn is not None:
             try:
-                return super(_LazyDict, self).__getitem__(key)
+                return super().__getitem__(key)
             except KeyError:
                 self._load_full()
-        return super(_LazyDict, self).__getitem__(key)
+        return super().__getitem__(key)
 
     def items(self):
         self._load_full()
-        return super(_LazyDict, self).items()
+        return super().items()
 
     def keys(self):
         self._load_full()
-        return super(_LazyDict, self).keys()
+        return super().keys()
 
     def values(self):
         self._load_full()
-        return super(_LazyDict, self).values()
+        return super().values()
 
     def __contains__(self, key):
-        if super(_LazyDict, self).__contains__(key):
+        if super().__contains__(key):
             return True
         if self._load_fn is not None:
             self._load_full()
-            return super(_LazyDict, self).__contains__(key)
+            return super().__contains__(key)
         return False
 
     def __delitem__(self, name):
@@ -367,10 +368,10 @@ class _LazyDict(dict):
     def get(self, name, default=None):
         if self._load_fn is not None:
             try:
-                return super(_LazyDict, self).get(name, default)
+                return super().get(name, default)
             except KeyError:
                 self._load_full()
-        return super(_LazyDict, self).get(name, default)
+        return super().get(name, default)
 
     def pop(self):
         raise NotImplementedError
@@ -440,7 +441,7 @@ class GitHub(Forge):
         return response
 
     def _get_repo(self, owner, repo):
-        path = 'repos/%s/%s' % (owner, repo)
+        path = 'repos/{}/{}'.format(owner, repo)
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(path)
@@ -456,7 +457,7 @@ class GitHub(Forge):
             params['head'] = head
         if state is not None:
             params['state'] = state
-        path += ';'.join(['%s=%s' % (k, urlutils.quote(v))
+        path += ';'.join(['{}={}'.format(k, urlutils.quote(v))
                          for k, v in params.items()])
         response = self._api_request('GET', path)
         if response.status == 404:
@@ -532,7 +533,7 @@ class GitHub(Forge):
             parameters['page'] = str(page)
             response = self._api_request(
                 'GET', path + '?' +
-                ';'.join(['%s=%s' % (k, urlutils.quote(v))
+                ';'.join(['{}={}'.format(k, urlutils.quote(v))
                           for (k, v) in parameters.items()]))
             if response.status != 200:
                 raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
@@ -634,7 +635,7 @@ class GitHub(Forge):
         try:
             remote_repo = self._get_repo(owner, project)
         except NoSuchProject:
-            raise errors.NotBranchError('%s/%s/%s' % (WEB_GITHUB_URL, owner, project))
+            raise errors.NotBranchError('{}/{}/{}'.format(WEB_GITHUB_URL, owner, project))
         if preferred_schemes is None:
             preferred_schemes = DEFAULT_PREFERRED_SCHEMES
         for scheme in preferred_schemes:
@@ -735,7 +736,7 @@ class GitHub(Forge):
             (owner, repo, pr_id) = parse_github_pr_url(url)
         except NotGitHubUrl as e:
             raise UnsupportedForge(url) from e
-        api_url = 'https://api.github.com/repos/%s/%s/pulls/%s' % (
+        api_url = 'https://api.github.com/repos/{}/{}/pulls/{}'.format(
             owner, repo, pr_id)
         response = self._api_request('GET', api_url)
         if response.status != 200:
@@ -808,7 +809,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
         info = []
-        info.append("Merge %s into %s:%s\n" % (
+        info.append("Merge {} into {}:{}\n".format(
             self.source_branch_name, self.target_owner,
             self.target_branch_name))
         info.append("Source: %s\n" % self.source_branch.user_url)
@@ -824,7 +825,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, title=None, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False, allow_collaboration=False):
+                        work_in_progress=False, allow_collaboration=False,
+                        delete_source_after_merge: Optional[bool] = None):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
@@ -836,7 +838,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             title = determine_title(description)
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
-        assignees = []
+        assignees: Optional[List[Dict[str, Any]]] = []
         if reviewers:
             assignees = []
             for reviewer in reviewers:
@@ -847,15 +849,19 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 assignees.append(user['login'])
         else:
             assignees = None
+        kwargs: Dict[str, Any] = {}
+        if delete_source_after_merge is not None:
+            kwargs['delete_branch_on_merge'] = delete_source_after_merge
         try:
             pull_request = self.gh._create_pull(
                 strip_optional(target_repo['pulls_url']),
                 title=title, body=description,
-                head="%s:%s" % (self.source_owner, self.source_branch_name),
+                head="{}:{}".format(self.source_owner, self.source_branch_name),
                 base=self.target_branch_name,
                 labels=labels, assignee=assignees,
                 draft=work_in_progress,
                 maintainer_can_modify=allow_collaboration,
+                **kwargs
                 )
         except ValidationFailed:
             # TODO(jelmer): Check the actual error message rather than assuming

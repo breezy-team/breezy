@@ -94,7 +94,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         class TestThread(cethread.CatchingExceptionThread):
 
             def __init__(self):
-                super(TestThread, self).__init__(target=self.step_by_step)
+                super().__init__(target=self.step_by_step)
                 self.current_step = 'starting'
                 self.step1 = threading.Event()
                 self.set_sync_event(self.step1)
@@ -136,7 +136,7 @@ class TestCatchingExceptionThread(tests.TestCase):
             def __init__(self, *args, **kwargs):
                 self.step1 = threading.Event()
                 self.step2 = threading.Event()
-                super(TestThread, self).__init__(target=self.step_by_step,
+                super().__init__(target=self.step_by_step,
                                                  sync_event=self.step1)
                 self.current_step = 'starting'
                 self.set_sync_event(self.step1)
@@ -150,7 +150,7 @@ class TestCatchingExceptionThread(tests.TestCase):
                 # We force an exception while trying to set step2
                 if event is self.step2:
                     raise MyException()
-                super(TestThread, self).set_sync_event(event)
+                super().set_sync_event(event)
 
         tt = TestThread()
         tt.start()

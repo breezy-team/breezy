@@ -30,7 +30,7 @@ from .. import (
     )
 
 
-class ArchiveFormatInfo(object):
+class ArchiveFormatInfo:
 
     def __init__(self, extensions):
         self.extensions = extensions
@@ -41,7 +41,7 @@ class ArchiveFormatRegistry(registry.Registry):
 
     def __init__(self):
         self._extension_map = {}
-        super(ArchiveFormatRegistry, self).__init__()
+        super().__init__()
 
     @property
     def extensions(self):

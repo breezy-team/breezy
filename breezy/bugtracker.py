@@ -230,7 +230,7 @@ tracker_registry = TrackerRegistry()
 """Registry of bug trackers."""
 
 
-class BugTracker(object):
+class BugTracker:
     """Base class for bug trackers."""
 
     def check_bug_id(self, bug_id):
@@ -352,7 +352,7 @@ class URLParametrizedBugTracker(BugTracker):
     def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "%s_%s_url" % (self.type_name, abbreviation), expand=False)
+            "{}_{}_url".format(self.type_name, abbreviation), expand=False)
         if url is None:
             return None
         self._base_url = url
@@ -393,11 +393,11 @@ class GenericBugTracker(URLParametrizedBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):
-        super(GenericBugTracker, self).__init__('bugtracker', None)
+        super().__init__('bugtracker', None)
 
     def get(self, abbreviation, branch):
         self._abbreviation = abbreviation
-        return super(GenericBugTracker, self).get(abbreviation, branch)
+        return super().get(abbreviation, branch)
 
     def _get_bug_url(self, bug_id):
         """Given a validated bug_id, return the bug's web page's URL."""
@@ -427,7 +427,7 @@ def encode_fixes_bug_urls(bug_urls):
     for (url, tag) in bug_urls:
         if ' ' in url:
             raise InvalidBugUrl(url)
-        lines.append('%s %s' % (url, tag))
+        lines.append('{} {}'.format(url, tag))
     return '\n'.join(lines)
 
 

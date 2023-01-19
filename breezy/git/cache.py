@@ -77,7 +77,7 @@ def mapdbs():
         return _mapdbs.cache
 
 
-class GitShaMap(object):
+class GitShaMap:
     """Git<->Bzr revision id mapping database."""
 
     def lookup_git_sha(self, sha):
@@ -133,7 +133,7 @@ class GitShaMap(object):
         """Abort any pending changes."""
 
 
-class ContentCache(object):
+class ContentCache:
     """Object that can cache Git objects."""
 
     def add(self, object):
@@ -150,7 +150,7 @@ class ContentCache(object):
         raise NotImplementedError(self.__getitem__)
 
 
-class BzrGitCacheFormat(object):
+class BzrGitCacheFormat:
     """Bazaar-Git Cache Format."""
 
     def get_format_string(self):
@@ -215,7 +215,7 @@ class BzrGitCacheFormat(object):
         return cls.from_transport(transport)
 
 
-class CacheUpdater(object):
+class CacheUpdater:
     """Base class for objects that can update a bzr-git cache."""
 
     def add_object(self, obj, bzr_key_data, path):
@@ -232,7 +232,7 @@ class CacheUpdater(object):
         raise NotImplementedError(self.finish)
 
 
-class BzrGitCache(object):
+class BzrGitCache:
     """Caching backend."""
 
     def __init__(self, idmap, cache_updater_klass):
@@ -305,8 +305,7 @@ class DictGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         if not isinstance(sha, bytes):
             raise TypeError(sha)
-        for entry in self._by_sha[sha].values():
-            yield entry
+        yield from self._by_sha[sha].values()
 
     def lookup_tree_id(self, fileid, revision):
         return self._by_fileid[revision][fileid]
@@ -435,7 +434,7 @@ class SqliteGitShaMap(GitShaMap):
             pass  # Column already exists.
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.path)
+        return "{}({!r})".format(self.__class__.__name__, self.path)
 
     def lookup_commit(self, revid):
         cursor = self.db.execute("select sha1 from commits where revid = ?",
@@ -636,7 +635,7 @@ class TdbGitShaMap(GitShaMap):
         self.db.transaction_cancel()
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.path)
+        return "{}({!r})".format(self.__class__.__name__, self.path)
 
     def lookup_commit(self, revid):
         try:
@@ -754,7 +753,7 @@ class IndexBzrGitCache(BzrGitCache):
 
     def __init__(self, transport=None):
         shamap = IndexGitShaMap(transport.clone('index'))
-        super(IndexBzrGitCache, self).__init__(shamap, IndexCacheUpdater)
+        super().__init__(shamap, IndexCacheUpdater)
 
 
 class IndexGitCacheFormat(BzrGitCacheFormat):
@@ -763,7 +762,7 @@ class IndexGitCacheFormat(BzrGitCacheFormat):
         return b'bzr-git sha map with git object cache version 1\n'
 
     def initialize(self, transport):
-        super(IndexGitCacheFormat, self).initialize(transport)
+        super().initialize(transport)
         transport.mkdir('index')
         transport.mkdir('objects')
         from .transportgit import TransportObjectStore
@@ -814,7 +813,7 @@ class IndexGitShaMap(GitShaMap):
 
     def __repr__(self):
         if self._transport is not None:
-            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
+            return "{}({!r})".format(self.__class__.__name__, self._transport.base)
         else:
             return "%s()" % (self.__class__.__name__)
 
@@ -823,8 +822,8 @@ class IndexGitShaMap(GitShaMap):
             raise bzr_errors.BzrError('builder already open')
         self.start_write_group()
         self._builder.add_nodes(
-            ((key, value) for (_, key, value) in
-                self._index.iter_all_entries()))
+            (key, value)
+            for (_, key, value) in self._index.iter_all_entries())
         to_remove = []
         for name in self._transport.list_dir('.'):
             if name.endswith('.rix'):
@@ -934,8 +933,8 @@ class IndexGitShaMap(GitShaMap):
     def missing_revisions(self, revids):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
-        for _, key, value in self._index.iter_entries((
-                (b"commit", revid, b"X") for revid in revids)):
+        for _, key, value in self._index.iter_entries(
+                (b"commit", revid, b"X") for revid in revids):
             missing_revids.remove(key[1])
         return missing_revids
 

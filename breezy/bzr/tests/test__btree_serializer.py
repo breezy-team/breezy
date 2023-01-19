@@ -77,7 +77,7 @@ class TestHexAndUnhex(TestBtreeSerializer):
         self.assertFailUnhexlify(b'12345678901234567890123456789012345678X9')
 
     def test_bad_argument(self):
-        self.assertRaises(ValueError, self.module._py_unhexlify, u'1a')
+        self.assertRaises(ValueError, self.module._py_unhexlify, '1a')
         self.assertRaises(ValueError, self.module._py_unhexlify, b'1b')
 
 
@@ -188,7 +188,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
             (ValueError, TypeError), self.module._parse_into_chk, data, 1, 0)
 
     def test_non_bytes(self):
-        self.assertInvalid(u'type=leaf\n')
+        self.assertInvalid('type=leaf\n')
 
     def test_not_leaf(self):
         self.assertInvalid(b'type=internal\n')

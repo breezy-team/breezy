@@ -58,7 +58,7 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
     scenarios = transport_test_permutations()
 
     def setUp(self):
-        super(TestReadMergeableBundleFromURL, self).setUp()
+        super().setUp()
         self.bundle_name = 'test_bundle'
         # read_mergeable_from_url will invoke get_transport which may *not*
         # respect self._transport (i.e. returns a transport that is different

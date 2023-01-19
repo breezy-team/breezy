@@ -36,7 +36,7 @@ class GitTransformTests(TestCaseWithTransport):
         conflicts = tt.cook_conflicts(raw_conflicts)
         self.assertEqual([], list(conflicts))
         tt.apply()
-        self.assertEqual(set(['name1', 'name2']), set(os.listdir('dir')))
+        self.assertEqual({'name1', 'name2'}, set(os.listdir('dir')))
 
     def test_revert_does_not_remove(self):
         tree = self.make_branch_and_tree('.', format='git')

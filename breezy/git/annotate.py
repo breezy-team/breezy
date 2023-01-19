@@ -36,7 +36,7 @@ from .mapping import (
     )
 
 
-class GitBlobContentFactory(object):
+class GitBlobContentFactory:
     """Static data content factory.
 
     This takes a fulltext when created and just returns that during
@@ -80,7 +80,7 @@ class GitBlobContentFactory(object):
                                         self.storage_kind)
 
 
-class GitAbsentContentFactory(object):
+class GitAbsentContentFactory:
     """Absent data content factory.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
@@ -108,7 +108,7 @@ class GitAbsentContentFactory(object):
         raise ValueError
 
 
-class AnnotateProvider(object):
+class AnnotateProvider:
 
     def __init__(self, change_scanner):
         self.change_scanner = change_scanner

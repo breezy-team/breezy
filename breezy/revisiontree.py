@@ -79,7 +79,7 @@ class RevisionTree(tree.Tree):
         return lock.LogicalLockResult(self.unlock)
 
     def __repr__(self):
-        return '<%s instance at %x, rev_id=%r>' % (
+        return '<{} instance at {:x}, rev_id={!r}>'.format(
             self.__class__.__name__, id(self), self._revision_id)
 
     def unlock(self):
@@ -88,6 +88,5 @@ class RevisionTree(tree.Tree):
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
-            self._rules_searcher = super(RevisionTree,
-                                         self)._get_rules_searcher(default_searcher)
+            self._rules_searcher = super()._get_rules_searcher(default_searcher)
         return self._rules_searcher

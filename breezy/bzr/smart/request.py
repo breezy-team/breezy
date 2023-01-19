@@ -90,7 +90,7 @@ def _pre_open_hook(transport):
 _install_hook()
 
 
-class SmartServerRequest(object):
+class SmartServerRequest:
     """Base class for request handlers.
 
     To define a new request, subclass this class and override the `do` method
@@ -219,7 +219,7 @@ class SmartServerRequest(object):
         return self._backing_transport.clone(relpath)
 
 
-class SmartServerResponse(object):
+class SmartServerResponse:
     """A response to a client request.
 
     This base class should not be used. Instead use
@@ -249,7 +249,7 @@ class SmartServerResponse(object):
                 and other.body_stream is self.body_stream)
 
     def __repr__(self):
-        return "<%s args=%r body=%r>" % (self.__class__.__name__,
+        return "<{} args={!r} body={!r}>".format(self.__class__.__name__,
                                          self.args, self.body)
 
 
@@ -269,7 +269,7 @@ class SuccessfulSmartServerResponse(SmartServerResponse):
         return True
 
 
-class SmartServerRequestHandler(object):
+class SmartServerRequestHandler:
     """Protocol logic for smart server.
 
     This doesn't handle serialization at all, it just processes requests and
@@ -395,7 +395,7 @@ class SmartServerRequestHandler(object):
                 action = 'hpss vfs req'
             else:
                 action = 'hpss request'
-            self._trace(action, '%s %s' % (cmd, repr(args)[1:-1]))
+            self._trace(action, '{} {}'.format(cmd, repr(args)[1:-1]))
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})

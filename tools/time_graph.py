@@ -84,13 +84,13 @@ def combi_graph(graph_klass, comb):
     return dict(elapsed=(end - begin), graph=g, heads=heads)
 
 def report(name, g):
-    print('%s: %.3fs' % (name, g['elapsed']))
+    print('{}: {:.3f}s'.format(name, g['elapsed']))
     counters_used = False
     for c in graph._counters:
         if c:
             counters_used = True
     if counters_used:
-        print('  %s' % (graph._counters,))
+        print('  {}'.format(graph._counters))
 
 known_python = combi_graph(_known_graph_py.KnownGraph, combinations)
 report('Known', known_python)
@@ -104,8 +104,8 @@ def _simple_graph(parent_map):
 if opts.quick:
     if known_python['heads'] != known_pyrex['heads']:
         import pdb; pdb.set_trace()
-    print('ratio: %.1f:1 faster' % (
-        known_python['elapsed'] / known_pyrex['elapsed'],))
+    print('ratio: {:.1f}:1 faster'.format(
+        known_python['elapsed'] / known_pyrex['elapsed']))
 else:
     orig = combi_graph(_simple_graph, combinations)
     report('Orig', orig)
@@ -113,5 +113,5 @@ else:
     if orig['heads'] != known_pyrex['heads']:
         import pdb; pdb.set_trace()
 
-    print('ratio: %.1f:1 faster' % (
-        orig['elapsed'] / known_pyrex['elapsed'],))
+    print('ratio: {:.1f}:1 faster'.format(
+        orig['elapsed'] / known_pyrex['elapsed']))

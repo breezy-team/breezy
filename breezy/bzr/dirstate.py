@@ -264,7 +264,7 @@ class DirstateCorrupt(errors.BzrError):
         self.msg = msg
 
 
-class SHA1Provider(object):
+class SHA1Provider:
     """An interface for getting sha1s of a file."""
 
     def sha1(self, abspath):
@@ -302,7 +302,7 @@ class DefaultSHA1Provider(SHA1Provider):
         return statvalue, sha1
 
 
-class DirState(object):
+class DirState:
     """Record directory and metadata state for fast access.
 
     A dirstate is a specialised data structure for managing local working
@@ -503,7 +503,7 @@ class DirState(object):
         # uses __class__ for speed; the check is needed for safety
         if file_id.__class__ is not bytes:
             raise AssertionError(
-                "must be a utf8 file_id not %s" % (type(file_id), ))
+                "must be a utf8 file_id not {}".format(type(file_id)))
         # Make sure the file_id does not exist in this tree
         rename_from = None
         file_id_entry = self._get_entry(
@@ -523,7 +523,7 @@ class DirState(object):
                 path = osutils.pathjoin(
                     file_id_entry[0][0], file_id_entry[0][1])
                 kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
-                info = '%s:%s' % (kind, path)
+                info = '{}:{}'.format(kind, path)
                 raise inventory.DuplicateFileId(file_id, info)
         first_key = (dirname, basename, b'')
         block_index, present = self._find_block_index_from_key(first_key)
@@ -1125,7 +1125,7 @@ class DirState(object):
         """
         if new_entries[0][0][0:2] != (b'', b''):
             raise AssertionError(
-                "Missing root row %r" % (new_entries[0][0],))
+                "Missing root row {!r}".format(new_entries[0][0]))
         # The two blocks here are deliberate: the root block and the
         # contents-of-root block.
         self._dirblocks = [(b'', []), (b'', [])]
@@ -1154,7 +1154,7 @@ class DirState(object):
         # "contents-of-root block". But we don't want an if check on
         # all entries, so instead we just fix it up here.
         if self._dirblocks[1] != (b'', []):
-            raise ValueError("bad dirblock start %r" % (self._dirblocks[1],))
+            raise ValueError("bad dirblock start {!r}".format(self._dirblocks[1]))
         root_block = []
         contents_of_root_block = []
         for entry in self._dirblocks[0][1]:
@@ -1369,7 +1369,7 @@ class DirState(object):
         for old_path, new_path, file_id, inv_entry in delta:
             if not isinstance(file_id, bytes):
                 raise AssertionError(
-                    "must be a utf8 file_id not %s" % (type(file_id), ))
+                    "must be a utf8 file_id not {}".format(type(file_id)))
             if (file_id in insertions) or (file_id in removals):
                 self._raise_invalid(old_path or new_path, file_id,
                                     "repeated file_id")
@@ -1428,7 +1428,7 @@ class DirState(object):
             # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(delta,
-                                                "error from _get_entry. %s" % (e,))
+                                                "error from _get_entry. {}".format(e))
 
     def _apply_removals(self, removals):
         for file_id, path in sorted(removals, reverse=True,
@@ -1530,7 +1530,7 @@ class DirState(object):
         for old_path, new_path, file_id, inv_entry in delta:
             if file_id.__class__ is not bytes:
                 raise AssertionError(
-                    "must be a utf8 file_id not %s" % (type(file_id), ))
+                    "must be a utf8 file_id not {}".format(type(file_id)))
             if inv_entry is not None and file_id != inv_entry.file_id:
                 self._raise_invalid(new_path, file_id,
                                     "mismatched entry file_id %r" % inv_entry)
@@ -1629,7 +1629,7 @@ class DirState(object):
             # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(delta,
-                                                "error from _get_entry. %s" % (e,))
+                                                "error from _get_entry. {}".format(e))
 
         self._mark_modified(header_modified=True)
         self._id_index = None
@@ -2323,8 +2323,7 @@ class DirState(object):
         """
         self._read_dirblocks_if_needed()
         for directory in self._dirblocks:
-            for entry in directory[1]:
-                yield entry
+            yield from directory[1]
 
     def _get_id_index(self):
         """Get an id index of self._dirblocks.
@@ -2466,7 +2465,7 @@ class DirState(object):
         header = self._state_file.readline()
         if header != DirState.HEADER_FORMAT_3:
             raise errors.BzrError(
-                'invalid header line: %r' % (header,))
+                'invalid header line: {!r}'.format(header))
         crc_line = self._state_file.readline()
         if not crc_line.startswith(b'crc32: '):
             raise errors.BzrError('missing crc32 checksum: %r' % crc_line)
@@ -2607,7 +2606,7 @@ class DirState(object):
             return
         if new_id.__class__ != bytes:
             raise AssertionError(
-                "must be a utf8 file_id not %s" % (type(new_id), ))
+                "must be a utf8 file_id not {}".format(type(new_id)))
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
         self.update_minimal((b'', b'', new_id), b'd',
@@ -2972,7 +2971,7 @@ class DirState(object):
                 current_old[0], block[1])
             if not present:
                 raise AssertionError(
-                    'could not find entry for %s' % (current_old,))
+                    'could not find entry for {}'.format(current_old))
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
             if self._id_index is not None:
@@ -2986,17 +2985,17 @@ class DirState(object):
                 self._find_block_index_from_key(update_key)
             if not present:
                 raise AssertionError(
-                    'could not find block for %s' % (update_key,))
+                    'could not find block for {}'.format(update_key))
             update_entry_index, present = \
                 self._find_entry_index(
                     update_key, self._dirblocks[update_block_index][1])
             if not present:
                 raise AssertionError(
-                    'could not find entry for %s' % (update_key,))
+                    'could not find entry for {}'.format(update_key))
             update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
             # it must not be absent at the moment
             if update_tree_details[0][0] == b'a':  # absent
-                raise AssertionError('bad row %r' % (update_tree_details,))
+                raise AssertionError('bad row {!r}'.format(update_tree_details))
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
         self._mark_modified()
         return last_reference
@@ -3073,8 +3072,8 @@ class DirState(object):
                     other_block_index, present = self._find_block_index_from_key(
                         other_key)
                     if not present:
-                        raise AssertionError('could not find block for %s' % (
-                            other_key,))
+                        raise AssertionError('could not find block for {}'.format(
+                            other_key))
                     other_block = self._dirblocks[other_block_index][1]
                     other_entry_index, present = self._find_entry_index(
                         other_key, other_block)
@@ -3115,13 +3114,13 @@ class DirState(object):
                         self._find_block_index_from_key(other_key)
                     if not present:
                         raise AssertionError(
-                            'could not find block for %s' % (other_key,))
+                            'could not find block for {}'.format(other_key))
                     update_entry_index, present = \
                         self._find_entry_index(
                             other_key, self._dirblocks[update_block_index][1])
                     if not present:
                         raise AssertionError(
-                            'update_minimal: could not find entry for %s' % (other_key,))
+                            'update_minimal: could not find entry for {}'.format(other_key))
                     update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
                     if update_details[0] in (b'a', b'r'):  # relocated, absent
                         # its a pointer or absent in lookup_index's tree, use
@@ -3338,7 +3337,7 @@ class DirState(object):
                         check_valid_parent()
             if absent_positions == tree_count:
                 raise AssertionError(
-                    "entry %r has no data for any tree." % (entry,))
+                    "entry {!r} has no data for any tree.".format(entry))
         if self._id_index is not None:
             for file_id, entry_keys in self._id_index.items():
                 for entry_key in entry_keys:
@@ -3523,7 +3522,7 @@ def py_update_entry(state, entry, abspath, stat_value,
     return link_or_sha1
 
 
-class ProcessEntryPython(object):
+class ProcessEntryPython:
 
     __slots__ = ["old_dirname_to_file_id", "new_dirname_to_file_id",
                  "last_source_parent", "last_target_parent", "include_unchanged",
@@ -4264,7 +4263,7 @@ class ProcessEntryPython(object):
                             candidate_entry[1][self.target_index][1])
             if not found_item:
                 raise AssertionError(
-                    "Missing entry for specific path parent %r, %r" % (
+                    "Missing entry for specific path parent {!r}, {!r}".format(
                         path_utf8, path_entries))
             path_info = self._path_info(path_utf8, path_utf8.decode('utf8'))
             for entry in selected_entries:

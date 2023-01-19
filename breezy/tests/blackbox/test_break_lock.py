@@ -46,7 +46,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
     # granularity as needed.
 
     def setUp(self):
-        super(TestBreakLock, self).setUp()
+        super().setUp()
         self.build_tree(
             ['master-repo/',
              'master-repo/master-branch/',
@@ -111,7 +111,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
 class TestConfigBreakLock(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigBreakLock, self).setUp()
+        super().setUp()
         self.config_file_name = './my.conf'
         self.build_tree_contents([(self.config_file_name,
                                    b'[DEFAULT]\none=1\n')])

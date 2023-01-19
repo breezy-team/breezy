@@ -50,7 +50,7 @@ class TestValidTag(tests.TestCase):
 
     def test_unicode(self):
         # When str is a unicode type, it is valid for a tag
-        self.assertTrue(self.module._valid_tag(u"foo"))
+        self.assertTrue(self.module._valid_tag("foo"))
 
     def test_non_ascii_char(self):
         self.assertFalse(self.module._valid_tag("\xb5"))
@@ -108,5 +108,5 @@ class TestReadUTF8Stanza(tests.TestCase):
                               [b"foo: %s\n" % value])
 
     def test_non_ascii_char(self):
-        self.assertReadStanza(rio.Stanza(foo=u"n\xe5me"),
-                              [u"foo: n\xe5me\n".encode("utf-8")])
+        self.assertReadStanza(rio.Stanza(foo="n\xe5me"),
+                              ["foo: n\xe5me\n".encode()])

@@ -172,7 +172,7 @@ def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
     return result
 
 
-class VersionedFileTestMixIn(object):
+class VersionedFileTestMixIn:
     """A mixin test class for testing VersionedFiles.
 
     This is not an adaptor-style test at this point because
@@ -250,10 +250,10 @@ class VersionedFileTestMixIn(object):
         # versioned files version sequences of bytes only.
         vf = self.get_file()
         self.assertRaises(errors.BzrBadParameterUnicode,
-                          vf.add_lines, b'a', [], [b'a\n', u'b\n', b'c\n'])
+                          vf.add_lines, b'a', [], [b'a\n', 'b\n', b'c\n'])
         self.assertRaises(
             (errors.BzrBadParameterUnicode, NotImplementedError),
-            vf.add_lines_with_ghosts, b'a', [], [b'a\n', u'b\n', b'c\n'])
+            vf.add_lines_with_ghosts, b'a', [], [b'a\n', 'b\n', b'c\n'])
 
     def test_add_follows_left_matching_blocks(self):
         """If we change left_matching_blocks, delta changes
@@ -705,7 +705,7 @@ class VersionedFileTestMixIn(object):
         vf = self.get_file()
         # add a revision with ghost parents
         # The preferred form is utf8, but we should translate when needed
-        parent_id_unicode = u'b\xbfse'
+        parent_id_unicode = 'b\xbfse'
         parent_id_utf8 = parent_id_unicode.encode('utf8')
         try:
             vf.add_lines_with_ghosts(b'notbxbfse', [parent_id_utf8], [])
@@ -720,23 +720,23 @@ class VersionedFileTestMixIn(object):
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
-        self.assertEqual(set([b'notbxbfse']), vf.get_ancestry(b'notbxbfse'))
+        self.assertEqual({b'notbxbfse'}, vf.get_ancestry(b'notbxbfse'))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual(set([parent_id_utf8, b'notbxbfse']),
+        self.assertEqual({parent_id_utf8, b'notbxbfse'},
                          vf.get_ancestry_with_ghosts([b'notbxbfse']))
         self.assertEqual([parent_id_utf8],
                          vf.get_parents_with_ghosts(b'notbxbfse'))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
         vf.add_lines(parent_id_utf8, [], [])
-        self.assertEqual(set([parent_id_utf8, b'notbxbfse']),
+        self.assertEqual({parent_id_utf8, b'notbxbfse'},
                          vf.get_ancestry([b'notbxbfse']))
         self.assertEqual({b'notbxbfse': (parent_id_utf8,)},
                          vf.get_parent_map([b'notbxbfse']))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual(set([parent_id_utf8, b'notbxbfse']),
+        self.assertEqual({parent_id_utf8, b'notbxbfse'},
                          vf.get_ancestry_with_ghosts([b'notbxbfse']))
         self.assertEqual([parent_id_utf8],
                          vf.get_parents_with_ghosts(b'notbxbfse'))
@@ -845,7 +845,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
 
     def setUp(self):
-        super(TestPlanMergeVersionedFile, self).setUp()
+        super().setUp()
         mapper = PrefixMapper()
         factory = make_file_factory(True, mapper)
         self.vf1 = factory(self.get_transport('root-1'))
@@ -901,7 +901,7 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
         self.assertEqual('absent', get_record('F').storage_kind)
 
 
-class TestReadonlyHttpMixin(object):
+class TestReadonlyHttpMixin:
 
     def get_transaction(self):
         return 1
@@ -939,7 +939,7 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
         return WeaveFile
 
 
-class MergeCasesMixin(object):
+class MergeCasesMixin:
 
     def doMerge(self, base, a, b, mp):
         from textwrap import dedent
@@ -1955,7 +1955,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             for key in seen:
                 sort_pos = sort_order[key]
                 self.assertTrue(sort_pos >= lows[key[:-1]],
-                                "Out of order in sorted stream: %r, %r" % (key, seen))
+                                "Out of order in sorted stream: {!r}, {!r}".format(key, seen))
                 lows[key[:-1]] = sort_pos
 
     def test_get_record_stream_unknown_storage_kind_raises(self):
@@ -2779,7 +2779,7 @@ class VirtualVersionedFilesTests(TestCase):
         return ret
 
     def setUp(self):
-        super(VirtualVersionedFilesTests, self).setUp()
+        super().setUp()
         self._lines = {}
         self._parent_map = {}
         self.texts = VirtualVersionedFiles(self._get_parent_map,

@@ -41,15 +41,15 @@ def package_docs(section, src_build, dest_html, dest_downloads):
     copytree(src_html, dest_html)
 
     # Package the html as a downloadable archive
-    archive_root = "brz-%s-html" % (section,)
-    archive_basename = "%s.tar.bz2" % (archive_root,)
+    archive_root = "brz-{}-html".format(section)
+    archive_basename = "{}.tar.bz2".format(archive_root)
     archive_name = os.path.join(dest_downloads, archive_basename)
     build_archive(src_html, archive_name, archive_root, 'bz2')
 
     # Copy across the PDF docs, if any, including the quick ref card
     pdf_files = []
     quick_ref = os.path.join(
-        src_html, '_static/%s/brz-%s-quick-reference.pdf' % (section, section))
+        src_html, '_static/{}/brz-{}-quick-reference.pdf'.format(section, section))
     if os.path.exists(quick_ref):
         pdf_files.append(quick_ref)
     src_pdf = os.path.join(src_build, 'latex')
@@ -58,7 +58,7 @@ def package_docs(section, src_build, dest_html, dest_downloads):
             if name.endswith('.pdf'):
                 pdf_files.append(os.path.join(src_pdf, name))
     if pdf_files:
-        dest_pdf = os.path.join(dest_downloads, 'pdf-%s' % (section,))
+        dest_pdf = os.path.join(dest_downloads, 'pdf-{}'.format(section))
         if not os.path.exists(dest_pdf):
             os.mkdir(dest_pdf)
         for pdf in pdf_files:
@@ -68,8 +68,8 @@ def package_docs(section, src_build, dest_html, dest_downloads):
 
 
 def build_archive(src_dir, archive_name, archive_root, format):
-    print("creating %s ..." % (archive_name,))
-    tar = tarfile.open(archive_name, "w:%s" % (format,))
+    print("creating {} ...".format(archive_name))
+    tar = tarfile.open(archive_name, "w:{}".format(format))
     for relpath in os.listdir(src_dir):
         src_path = os.path.join(src_dir, relpath)
         archive_path = os.path.join(archive_root, relpath)
@@ -98,7 +98,7 @@ def main(argv):
     dest_downloads = os.path.join(dest_dir, 'downloads')
     for d in [dest_dir, dest_downloads]:
         if not os.path.exists(d):
-            print("creating directory %s ..." % (d,))
+            print("creating directory {} ...".format(d))
             os.mkdir(d)
 
     # Package and copy the files across

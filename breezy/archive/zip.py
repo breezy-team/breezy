@@ -93,5 +93,4 @@ def zip_archive_generator(tree, dest, root, subdir=None,
         # Urgh, headers are written last since they include e.g. file size.
         # So we have to buffer it all :(
         buf.seek(0)
-        for chunk in osutils.file_iterator(buf):
-            yield chunk
+        yield from osutils.file_iterator(buf)

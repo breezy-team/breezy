@@ -39,7 +39,7 @@ def override_whoami(test):
 class TestConfigPath(tests.TestCase):
 
     def setUp(self):
-        super(TestConfigPath, self).setUp()
+        super().setUp()
         self.overrideEnv('HOME', '/home/bogus')
         self.overrideEnv('XDG_CACHE_HOME', '')
         if sys.platform == 'win32':
@@ -73,7 +73,7 @@ class TestConfigPath(tests.TestCase):
 class TestConfigPathFallback(tests.TestCaseInTempDir):
 
     def setUp(self):
-        super(TestConfigPathFallback, self).setUp()
+        super().setUp()
         self.overrideEnv('HOME', self.test_dir)
         self.overrideEnv('XDG_CACHE_HOME', '')
         self.bzr_home = os.path.join(self.test_dir, '.bazaar')
@@ -111,7 +111,7 @@ class TestConfigPathFallbackWindows(tests.TestCaseInTempDir):
         if sys.platform != 'win32':
             raise tests.TestNotApplicable(
                 'This test is specific to Windows platform')
-        super(TestConfigPathFallbackWindows, self).setUp()
+        super().setUp()
         # Note: No HOME fallback on Windows.  The configs MUST be in AppData,
         # and we only fall back from breezy to bazaar configuration files.
         self.appdata = os.path.join(self.test_dir, 'appdata')
@@ -162,7 +162,7 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
         if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 'XDG config dir not used on this platform')
-        super(TestXDGConfigDir, self).setUp()
+        super().setUp()
         self.overrideEnv('HOME', self.test_home_dir)
         # BRZ_HOME overrides everything we want to test so unset it.
         self.overrideEnv('BRZ_HOME', None)
@@ -238,7 +238,7 @@ class TestXDGCacheDir(tests.TestCaseInTempDir):
     # subdirectory of $XDG_CACHE_HOME
 
     def setUp(self):
-        super(TestXDGCacheDir, self).setUp()
+        super().setUp()
         if sys.platform in ('darwin', 'win32'):
             raise tests.TestNotApplicable(
                 'XDG cache dir not used on this platform')

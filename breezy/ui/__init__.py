@@ -88,7 +88,7 @@ def bool_from_string(s, accepted_values=None):
     return val
 
 
-class ConfirmationUserInterfacePolicy(object):
+class ConfirmationUserInterfacePolicy:
     """Wrapper for a UIFactory that allows or denies all confirmed actions."""
 
     def __init__(self, wrapped_ui, default_answer, specific_answers):
@@ -109,7 +109,7 @@ class ConfirmationUserInterfacePolicy(object):
         return getattr(self.wrapped_ui, name)
 
     def __repr__(self):
-        return '%s(%r, %r, %r)' % (
+        return '{}({!r}, {!r}, {!r})'.format(
             self.__class__.__name__,
             self.wrapped_ui,
             self.default_answer,
@@ -125,7 +125,7 @@ class ConfirmationUserInterfacePolicy(object):
                 prompt, confirmation_id, prompt_kwargs)
 
 
-class UIFactory(object):
+class UIFactory:
     """UI abstraction.
 
     This tells the library how to display things to the user.  Through this
@@ -163,9 +163,9 @@ class UIFactory(object):
                            "running the command\n"
                            "  brz upgrade %(basedir)s"),
         locks_steal_dead=(
-            u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
+            "Stole dead lock %(lock_url)s %(other_holder_info)s."),
         not_checking_ssl_cert=(
-            u"Not checking SSL certificate for %(host)s."),
+            "Not checking SSL certificate for %(host)s."),
         )
 
     def __init__(self):
@@ -217,7 +217,7 @@ class UIFactory(object):
         """
         return self.get_boolean(prompt % prompt_kwargs)
 
-    def get_password(self, prompt=u'', **kwargs):
+    def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
 
         Args:
@@ -313,14 +313,14 @@ class UIFactory(object):
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
-            fail = "brz warning: %r, %r" % (warning_id, message_args)
+            fail = "brz warning: {!r}, {!r}".format(warning_id, message_args)
             warnings.warn("no template for warning: "
                           + fail)   # so tests will fail etc
             return str(fail)
         try:
             return str(template) % message_args
         except ValueError as e:
-            fail = "brz unprintable warning: %r, %r, %s" % (
+            fail = "brz unprintable warning: {!r}, {!r}, {}".format(
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
             return str(fail)
@@ -457,7 +457,7 @@ class NoninteractiveUIFactory(UIFactory):
         return True
 
     def __repr__(self):
-        return '%s()' % (self.__class__.__name__, )
+        return '{}()'.format(self.__class__.__name__)
 
 
 class SilentUIFactory(NoninteractiveUIFactory):
@@ -499,7 +499,7 @@ class CannedInputUIFactory(SilentUIFactory):
         self.responses = responses
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.responses)
+        return "{}({!r})".format(self.__class__.__name__, self.responses)
 
     def confirm_action(self, prompt, confirmation_id, args):
         return self.get_boolean(prompt % args)
@@ -510,7 +510,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_integer(self, prompt):
         return self.responses.pop(0)
 
-    def get_password(self, prompt=u'', **kwargs):
+    def get_password(self, prompt='', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):
@@ -536,7 +536,7 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     return TextUIFactory(stdin, stdout, stderr)
 
 
-class NullProgressView(object):
+class NullProgressView:
     """Soak up and ignore progress information."""
 
     def clear(self):
@@ -552,7 +552,7 @@ class NullProgressView(object):
         pass
 
 
-class NullOutputStream(object):
+class NullOutputStream:
     """Acts like a file, but discard all output."""
 
     def __init__(self, encoding):

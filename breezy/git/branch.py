@@ -21,7 +21,7 @@
 import contextlib
 from io import BytesIO
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Optional, Set, Tuple
 
 from dulwich.config import (
     ConfigFile as GitConfigFile,
@@ -53,6 +53,9 @@ from ..revision import (
 from ..tag import (
     Tags,
     InterTags,
+    TagSelector,
+    TagConflict,
+    TagUpdates,
     )
 from ..trace import (
     is_quiet,
@@ -140,9 +143,11 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return False
         return True
 
-    def merge(self, overwrite=False, ignore_master=False, selector=None):
+    def merge(self, overwrite: bool = False, ignore_master: bool = False,
+              selector: Optional[TagSelector] = None) -> Tuple[
+                    TagUpdates, Set[TagConflict]]:
         if self.source.branch.repository.has_same_location(self.target.branch.repository):
-            return {}, []
+            return {}, set()
         updates = {}
         conflicts = []
         source_tag_refs = self.source.branch.get_tag_refs()
@@ -242,7 +247,7 @@ class InterTagsFromGitToLocalGit(InterTags):
 class InterTagsFromGitToNonGit(InterTags):
 
     @classmethod
-    def is_compatible(klass, source, target):
+    def is_compatible(klass, source: Tags, target: Tags):
         if not isinstance(source, GitTags):
             return False
         if isinstance(target, GitTags):
@@ -339,7 +344,7 @@ class LocalGitTagDict(GitTags):
     """Dictionary with tags in a local repository."""
 
     def __init__(self, branch):
-        super(LocalGitTagDict, self).__init__(branch)
+        super().__init__(branch)
         self.refs = self.repository.controldir._git.refs
 
     def _set_tag_dict(self, to_dict):
@@ -458,7 +463,7 @@ class GitBranch(ForeignBranch):
         self.controldir = controldir
         self._lock_mode = None
         self._lock_count = 0
-        super(GitBranch, self).__init__(repository.get_mapping())
+        super().__init__(repository.get_mapping())
         if not isinstance(ref, bytes):
             raise TypeError("ref is invalid: %r" % ref)
         self.ref = ref
@@ -474,7 +479,7 @@ class GitBranch(ForeignBranch):
             if self.ref is not None:
                 params = {"ref": urlutils.escape(self.ref, safe='')}
         else:
-            if self.name != "":
+            if self.name:
                 params = {"branch": urlutils.escape(self.name, safe='')}
         for k, v in params.items():
             self._user_transport.set_segment_parameter(k, v)
@@ -489,6 +494,9 @@ class GitBranch(ForeignBranch):
             return controldir.format_registry.make_controldir("git")
         else:
             return controldir.format_registry.make_controldir("default")
+
+    def set_stacked_on_url(self, url):
+        raise branch.UnstackableBranchFormat(self._format, self.base)
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
@@ -518,7 +526,7 @@ class GitBranch(ForeignBranch):
                     b"nick").decode("utf-8")
             except KeyError:
                 pass
-        return self.name or u"HEAD"
+        return self.name or "HEAD"
 
     def _set_nick(self, nick):
         cf = self.repository._git.get_config()
@@ -531,7 +539,7 @@ class GitBranch(ForeignBranch):
     nick = property(_get_nick, _set_nick)
 
     def __repr__(self):
-        return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
+        return "<{}({!r}, {!r})>".format(self.__class__.__name__, self.repository.base,
                                  self.name)
 
     def set_last_revision(self, revid):
@@ -711,7 +719,7 @@ class GitBranch(ForeignBranch):
         raise errors.StoringUncommittedNotSupported(self)
 
     def _clear_cached_state(self):
-        super(GitBranch, self)._clear_cached_state()
+        super()._clear_cached_state()
         self._tag_refs = None
 
     def _iter_tag_refs(self, refs):
@@ -759,7 +767,7 @@ class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
     def __init__(self, controldir, repository, ref):
-        super(LocalGitBranch, self).__init__(controldir, repository, ref,
+        super().__init__(controldir, repository, ref,
                                              LocalGitBranchFormat())
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
@@ -915,7 +923,7 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
 class GitBranchPullResult(branch.PullResult):
 
     def __init__(self):
-        super(GitBranchPullResult, self).__init__()
+        super().__init__()
         self.new_git_head = None
         self._old_revno = None
         self._new_revno = None
@@ -1065,7 +1073,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
                     _override_hook_target, _hook_master, tag_selector=None):
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
         result = GitBranchPullResult()
@@ -1136,8 +1144,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 master_branch = self.target.get_master_branch(possible_transports)
                 es.enter_context(master_branch.lock_write())
                 # pull from source into master.
-                master_branch.pull(self.source, overwrite, stop_revision,
-                                   run_hooks=False)
+                master_branch.pull(
+                    self.source, overwrite=overwrite,
+                    stop_revision=stop_revision, run_hooks=False)
             else:
                 master_branch = None
             return self._basic_pull(stop_revision, overwrite, run_hooks,
@@ -1147,7 +1156,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
         result = branch.BranchPushResult()
@@ -1250,6 +1259,9 @@ class InterGitLocalGitBranch(InterGitBranch):
                 isinstance(target, LocalGitBranch))
 
     def fetch(self, stop_revision=None, fetch_tags=None, limit=None, lossy=False):
+        if lossy:
+            raise errors.LossyPushToSameVCS(
+                source_branch=self.source, target_branch=self.target)
         interrepo = _mod_repository.InterRepository.get(
             self.source.repository, self.target.repository)
         if stop_revision is None:
@@ -1259,12 +1271,12 @@ class InterGitLocalGitBranch(InterGitBranch):
             fetch_tags = c.get('branch.fetch_tags')
         determine_wants = interrepo.get_determine_wants_revids(
             [stop_revision], include_tags=fetch_tags)
-        interrepo.fetch_objects(determine_wants, limit=limit, lossy=lossy)
+        interrepo.fetch_objects(determine_wants, limit=limit)
         return _mod_repository.FetchResult()
 
     def _basic_push(self, overwrite=False, stop_revision=None, tag_selector=None):
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
         result = GitBranchPushResult()
@@ -1313,7 +1325,7 @@ class InterGitLocalGitBranch(InterGitBranch):
         if local:
             raise errors.LocalRequiresBoundBranch()
         if overwrite is True:
-            overwrite = set(["history", "tags"])
+            overwrite = {"history", "tags"}
         elif not overwrite:
             overwrite = set()
 
@@ -1347,7 +1359,7 @@ class InterToGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls into a Git branch."""
 
     def __init__(self, source, target):
-        super(InterToGitBranch, self).__init__(source, target)
+        super().__init__(source, target)
         self.interrepo = _mod_repository.InterRepository.get(source.repository,
                                                              target.repository)
 

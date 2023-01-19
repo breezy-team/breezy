@@ -16,6 +16,7 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
+from dulwich.objects import Tag, object_class
 from dulwich.refs import (
     ANNOTATED_TAG_SUFFIX,
     LOCAL_BRANCH_PREFIX,
@@ -90,7 +91,7 @@ def ref_to_branch_name(ref):
     :return: A branch name
     """
     if ref == b"HEAD":
-        return u""
+        return ""
     if ref is None:
         return ref
     if ref.startswith(LOCAL_BRANCH_PREFIX):

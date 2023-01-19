@@ -40,7 +40,7 @@ def spec_in_history(spec, branch):
 class TestRevisionSpec(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestRevisionSpec, self).setUp()
+        super().setUp()
         # this sets up a revision graph:
         # r1: []             1
         # alt_r2: [r1]       1.1.1
@@ -110,7 +110,7 @@ class RevisionSpecMatchOnTrap(RevisionSpec):
 
     def _match_on(self, branch, revs):
         self.last_call = (branch, revs)
-        return super(RevisionSpecMatchOnTrap, self)._match_on(branch, revs)
+        return super()._match_on(branch, revs)
 
 
 class TestRevisionSpecBase(TestRevisionSpec):
@@ -286,7 +286,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_with_url(self):
         url = self.get_url() + '/tree2'
-        revinfo = self.get_in_history('revno:2:%s' % (url,))
+        revinfo = self.get_in_history('revno:2:{}'.format(url))
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -294,7 +294,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_negative_with_url(self):
         url = self.get_url() + '/tree2'
-        revinfo = self.get_in_history('revno:-1:%s' % (url,))
+        revinfo = self.get_in_history('revno:-1:{}'.format(url))
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -394,9 +394,9 @@ class TestRevisionSpec_revid(TestRevisionSpec):
 
     def test_unicode(self):
         """We correctly convert a unicode ui string to an encoded revid."""
-        revision_id = u'\N{SNOWMAN}'.encode('utf-8')
+        revision_id = '\N{SNOWMAN}'.encode()
         self.tree.commit('unicode', rev_id=revision_id)
-        self.assertInHistoryIs(3, revision_id, u'revid:\N{SNOWMAN}')
+        self.assertInHistoryIs(3, revision_id, 'revid:\N{SNOWMAN}')
         self.assertInHistoryIs(3, revision_id, 'revid:' +
                                revision_id.decode('utf-8'))
 
@@ -707,7 +707,7 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
 class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def setUp(self):
-        super(TestRevisionSpec_annotate, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('annotate-tree')
         self.build_tree_contents([('annotate-tree/file1', b'1\n')])
         self.tree.add('file1')

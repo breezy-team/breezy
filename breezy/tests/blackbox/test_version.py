@@ -75,7 +75,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         # but we run these tests in separate temp dir
         # with relative unicoded path
         old_trace_file = trace._brz_log_filename
-        trace._brz_log_filename = u'\u1234/.brz.log'
+        trace._brz_log_filename = '\u1234/.brz.log'
         try:
             out = self.run_bzr(args)[0]
         finally:
@@ -134,16 +134,16 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertPathDoesNotExist(self.default_log())
 
     def test_unicode_brz_log(self):
-        uni_val = u"\xa7"
+        uni_val = "\xa7"
         enc = osutils.get_user_encoding()
         try:
             str_val = uni_val.encode(enc)
         except UnicodeEncodeError:
             self.skipTest(
-                "Test string %r unrepresentable in user encoding %s" % (
+                "Test string {!r} unrepresentable in user encoding {}".format(
                     uni_val, enc))
         brz_log = os.path.join(self.test_base_dir, uni_val)
         self.overrideEnv("BRZ_LOG", brz_log)
         out, err = self.run_brz_subprocess("version")
         uni_out = out.decode(enc)
-        self.assertContainsRe(uni_out, u"(?m)^  Breezy log file: .*/\xa7$")
+        self.assertContainsRe(uni_out, "(?m)^  Breezy log file: .*/\xa7$")

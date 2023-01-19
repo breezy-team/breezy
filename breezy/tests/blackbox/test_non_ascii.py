@@ -37,7 +37,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
     scenarios = EncodingAdapter.encoding_scenarios
 
     def setUp(self):
-        super(TestNonAscii, self).setUp()
+        super().setUp()
         self._check_can_encode_paths()
 
         self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
@@ -127,7 +127,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         fname = self.info['filename']
         self.build_tree_contents([(fname, b'unicode filename\n')])
         wt.add(fname)
-        wt.commit(u'And a unicode file\n')
+        wt.commit('And a unicode file\n')
         self.wt = wt
         # FIXME: We don't check that the add went well, in fact, it doesn't on
         # OSX (when LC_ALL is set correctly) because the added path doesn't
@@ -140,11 +140,11 @@ class TestNonAscii(tests.TestCaseWithTransport):
             [(self.info['filename'], b'changed something\n')])
         txt = self.run_bzr_decode('status')
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
+        self.assertEqual('modified:\n  {}\n'.format(self.info['filename']), txt)
 
         txt = self.run_bzr_decode('status', encoding='ascii')
-        expected = u'modified:\n  %s\n' % (
-            self.info['filename'].encode('ascii', 'replace').decode('ascii'),)
+        expected = 'modified:\n  {}\n'.format(
+            self.info['filename'].encode('ascii', 'replace').decode('ascii'))
         self.assertEqual(expected, txt)
 
     def test_cat(self):
@@ -161,20 +161,20 @@ class TestNonAscii(tests.TestCaseWithTransport):
         committer = self.info['committer']
         txt = self.run_bzr_decode('cat-revision -r 1')
         self.assertTrue(committer in txt,
-                        'failed to find %r in %r' % (committer, txt))
+                        'failed to find {!r} in {!r}'.format(committer, txt))
 
         msg = self.info['message']
         txt = self.run_bzr_decode('cat-revision -r 2')
-        self.assertTrue(msg in txt, 'failed to find %r in %r' % (msg, txt))
+        self.assertTrue(msg in txt, 'failed to find {!r} in {!r}'.format(msg, txt))
 
     def test_mkdir(self):
         txt = self.run_bzr_decode(['mkdir', self.info['directory']])
-        self.assertEqual(u'added %s\n' % self.info['directory'], txt)
+        self.assertEqual('added %s\n' % self.info['directory'], txt)
 
         # The text should be garbled, but the command should succeed
         txt = self.run_bzr_raw(['mkdir', self.info['directory'] + '2'],
                                encoding='ascii')[0]
-        expected = u'added %s2\n' % (self.info['directory'],)
+        expected = 'added {}2\n'.format(self.info['directory'])
         expected = expected.encode('ascii', 'replace')
         self.assertEqual(expected, txt)
 
@@ -220,7 +220,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.run_bzr_decode(['mv', 'a', fname1], fail=True)
 
         txt = self.run_bzr_decode(['mv', 'a', fname2])
-        self.assertEqual(u'a => %s\n' % fname2, txt)
+        self.assertEqual('a => %s\n' % fname2, txt)
         self.assertPathDoesNotExist('a')
         self.assertPathExists(fname2)
 
@@ -232,11 +232,11 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.add(dirname)
         txt = self.run_bzr_decode(['mv', fname1, fname2, dirname])
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual([u'%s => %s/%s' % (fname1, dirname, fname1),
-                          u'%s => %s/%s' % (fname2, dirname, fname2)], txt.splitlines())
+        self.assertEqual(['{} => {}/{}'.format(fname1, dirname, fname1),
+                          '{} => {}/{}'.format(fname2, dirname, fname2)], txt.splitlines())
 
         # The rename should still succeed
-        newpath = u'%s/%s' % (dirname, fname2)
+        newpath = '{}/{}'.format(dirname, fname2)
         txt = self.run_bzr_raw(['mv', newpath, 'a'], encoding='ascii')[0]
         self.assertPathExists('a')
         self.assertEqual(newpath.encode('ascii', 'replace') + b' => a\n', txt)
@@ -244,8 +244,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
     def test_branch(self):
         # We should be able to branch into a directory that
         # has a unicode name, even if we can't display the name
-        self.run_bzr_decode(['branch', u'.', self.info['directory']])
-        self.run_bzr_decode(['branch', u'.', self.info['directory'] + '2'],
+        self.run_bzr_decode(['branch', '.', self.info['directory']])
+        self.run_bzr_decode(['branch', '.', self.info['directory'] + '2'],
                             encoding='ascii')
 
     def test_pull(self):
@@ -264,12 +264,12 @@ class TestNonAscii(tests.TestCaseWithTransport):
         txt = self.run_bzr_decode('pull', working_dir=dirname2)
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
-        self.assertEqual(u'Using saved parent location: %s/\n'
+        self.assertEqual('Using saved parent location: %s/\n'
                          'No revisions or tags to pull.\n' % (expected,), txt)
 
         self.build_tree_contents(
             [(osutils.pathjoin(dirname1, 'a'), b'and yet more\n')])
-        self.wt.commit(u'modifying a by ' + self.info['committer'])
+        self.wt.commit('modifying a by ' + self.info['committer'])
 
         # We should be able to pull, even if our encoding is bad
         self.run_bzr_decode('pull --verbose', encoding='ascii',
@@ -313,7 +313,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         fname = self.info['filename'] + '2'
         self.wt.rename_one('a', fname)
         txt = self.run_bzr_decode('renames')
-        self.assertEqual(u'a => %s\n' % fname, txt)
+        self.assertEqual('a => %s\n' % fname, txt)
 
         self.run_bzr_decode('renames', fail=True, encoding='ascii')
 
@@ -341,7 +341,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         dirname = self.info['directory']
         self.build_tree_contents([
             ('base/', ),
-            (osutils.pathjoin('base', '%s/' % (dirname,)), )])
+            (osutils.pathjoin('base', '{}/'.format(dirname)), )])
         self.wt.add('base')
         self.wt.add('base/' + dirname)
         path = osutils.pathjoin('base', dirname, fname)
@@ -444,15 +444,15 @@ class TestNonAscii(tests.TestCaseWithTransport):
         fname = self.info['filename']
         txt = self.run_bzr_decode(['touching-revisions', fname])
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual(u'     3 added %s\n' % (fname,), txt)
+        self.assertEqual('     3 added {}\n'.format(fname), txt)
 
         fname2 = self.info['filename'] + '2'
         self.wt.rename_one(fname, fname2)
-        self.wt.commit(u'Renamed %s => %s' % (fname, fname2))
+        self.wt.commit('Renamed {} => {}'.format(fname, fname2))
 
         txt = self.run_bzr_decode(['touching-revisions', fname2])
-        expected_txt = (u'     3 added %s\n'
-                        u'     4 renamed %s => %s\n'
+        expected_txt = ('     3 added %s\n'
+                        '     4 renamed %s => %s\n'
                         % (fname, fname, fname2))
         self.assertEqual(expected_txt, txt)
 
@@ -479,7 +479,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         #       awilkins 20080521 added and modified do it now as well
         txt = self.run_bzr_decode('unknowns')
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual(u'"%s"\n' % (fname,), txt)
+        self.assertEqual('"{}"\n'.format(fname), txt)
 
         self.run_bzr_decode('unknowns', encoding='ascii', fail=True)
 
@@ -532,7 +532,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))
 
     def test_info(self):
-        self.run_bzr_decode(['branch', u'.', self.info['directory']])
+        self.run_bzr_decode(['branch', '.', self.info['directory']])
         self.run_bzr_decode(['info', self.info['directory']])
         self.run_bzr_decode(['info', self.info['directory']],
                             encoding='ascii')

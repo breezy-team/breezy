@@ -84,6 +84,6 @@ def calc_parent_name(module_name, member_name=None):
         split_name = module_name.rsplit('.', 1)
         if len(split_name) == 1:
             raise AssertionError(
-                'No parent object for top-level module %r' % (module_name,))
+                'No parent object for top-level module {!r}'.format(module_name))
         else:
             return (split_name[0], None, split_name[1])

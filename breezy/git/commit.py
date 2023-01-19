@@ -60,7 +60,7 @@ class GitCommitBuilder(CommitBuilder):
     supports_record_entry_contents = False
 
     def __init__(self, *args, **kwargs):
-        super(GitCommitBuilder, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.random_revid = True
         self._validate_revprops(self._revprops)
         self.store = self.repository._git.object_store
@@ -184,7 +184,7 @@ class GitCommitBuilder(CommitBuilder):
         c.parents = [self.repository.lookup_bzr_revision_id(
             revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, self._iterblobs())
-        encoding = self._revprops.pop(u'git-explicit-encoding', 'utf-8')
+        encoding = self._revprops.pop('git-explicit-encoding', 'utf-8')
         c.encoding = encoding.encode('ascii')
         c.committer = fix_person_identifier(self._committer.encode(encoding))
         pseudoheaders = []

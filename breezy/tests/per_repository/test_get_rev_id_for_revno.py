@@ -25,7 +25,7 @@ from breezy.tests.per_repository_reference import (
 class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
 
     def setUp(self):
-        super(TestGetRevIdForRevno, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('base')
         self.revid1 = self.tree.commit('one')
         self.revid2 = self.tree.commit('two')

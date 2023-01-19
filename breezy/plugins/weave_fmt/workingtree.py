@@ -120,7 +120,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         return wt
 
     def __init__(self):
-        super(WorkingTreeFormat2, self).__init__()
+        super().__init__()
         from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
         self._matchingcontroldir = BzrDirFormat6()
 
@@ -152,7 +152,7 @@ class WorkingTree2(PreDirStateWorkingTree):
     """
 
     def __init__(self, basedir, *args, **kwargs):
-        super(WorkingTree2, self).__init__(basedir, *args, **kwargs)
+        super().__init__(basedir, *args, **kwargs)
         # WorkingTree2 has more of a constraint that self._inventory must
         # exist. Because this is an older format, we don't mind the overhead
         # caused by the extra computation here.

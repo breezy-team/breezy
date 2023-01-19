@@ -29,7 +29,7 @@ class NonAsciiTest(TestCaseWithTransport):
 
     def test_add_in_nonascii_branch(self):
         """Test adding in a non-ASCII branch."""
-        br_dir = u"\u1234"
+        br_dir = "\u1234"
         try:
             wt = self.make_branch_and_tree(br_dir)
         except UnicodeEncodeError:
@@ -40,16 +40,16 @@ class NonAsciiTest(TestCaseWithTransport):
         wt.add(["a"], ids=[b"a-id"])
 
 
-a_circle_c = u'\xe5'
-a_circle_d = u'a\u030a'
-a_dots_c = u'\xe4'
-a_dots_d = u'a\u0308'
-z_umlat_c = u'\u017d'
-z_umlat_d = u'Z\u030c'
-squared_c = u'\xbc'  # This gets mapped to '2' if we use NFK[CD]
-squared_d = u'\xbc'
-quarter_c = u'\xb2'  # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
-quarter_d = u'\xb2'
+a_circle_c = '\xe5'
+a_circle_d = 'a\u030a'
+a_dots_c = '\xe4'
+a_dots_d = 'a\u0308'
+z_umlat_c = '\u017d'
+z_umlat_d = 'Z\u030c'
+squared_c = '\xbc'  # This gets mapped to '2' if we use NFK[CD]
+squared_d = '\xbc'
+quarter_c = '\xb2'  # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
+quarter_d = '\xb2'
 
 
 class TestNormalization(TestCase):
@@ -75,7 +75,7 @@ class NormalizedFilename(TestCaseWithTransport):
         anf = osutils._accessible_normalized_filename
         # normalized_filename should allow plain ascii strings
         # not just unicode strings
-        self.assertEqual((u'ascii', True), anf('ascii'))
+        self.assertEqual(('ascii', True), anf('ascii'))
         self.assertEqual((a_circle_c, True), anf(a_circle_c))
         self.assertEqual((a_circle_c, True), anf(a_circle_d))
         self.assertEqual((a_dots_c, True), anf(a_dots_c))
@@ -91,7 +91,7 @@ class NormalizedFilename(TestCaseWithTransport):
         inf = osutils._inaccessible_normalized_filename
         # normalized_filename should allow plain ascii strings
         # not just unicode strings
-        self.assertEqual((u'ascii', True), inf('ascii'))
+        self.assertEqual(('ascii', True), inf('ascii'))
         self.assertEqual((a_circle_c, True), inf(a_circle_c))
         self.assertEqual((a_circle_c, False), inf(a_circle_d))
         self.assertEqual((a_dots_c, True), inf(a_dots_c))
@@ -128,7 +128,7 @@ class NormalizedFilename(TestCaseWithTransport):
         else:
             expected = sorted(files)
 
-        present = sorted(os.listdir(u'.'))
+        present = sorted(os.listdir('.'))
         self.assertEqual(expected, present)
 
     def test_access_normalized(self):

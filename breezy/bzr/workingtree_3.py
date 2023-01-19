@@ -47,7 +47,7 @@ from .workingtree import (
 class PreDirStateWorkingTree(InventoryWorkingTree):
 
     def __init__(self, basedir='.', *args, **kwargs):
-        super(PreDirStateWorkingTree, self).__init__(basedir, *args, **kwargs)
+        super().__init__(basedir, *args, **kwargs)
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache

@@ -24,7 +24,7 @@ from .. import (
 class TestInit(transport_util.TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
-        super(TestInit, self).setUp()
+        super().setUp()
         self.start_logging_connections()
 
     def test_init(self):

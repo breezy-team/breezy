@@ -16,6 +16,7 @@
 
 import sys
 import threading
+from typing import Optional, List, Type, Callable, Union
 
 
 class CatchingExceptionThread(threading.Thread):
@@ -24,6 +25,8 @@ class CatchingExceptionThread(threading.Thread):
     If an exception occurs during the thread execution, it's caught and
     re-raised when the thread is joined().
     """
+
+    ignored_exceptions: Optional[Callable[[Exception], bool]]
 
     def __init__(self, *args, **kwargs):
         # There are cases where the calling thread must wait, yet, if an
@@ -35,7 +38,7 @@ class CatchingExceptionThread(threading.Thread):
         except KeyError:
             # If the caller didn't pass a specific event, create our own
             sync_event = threading.Event()
-        super(CatchingExceptionThread, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.set_sync_event(sync_event)
         self.exception = None
         self.ignored_exceptions = None  # see set_ignored_exceptions
@@ -95,7 +98,7 @@ class CatchingExceptionThread(threading.Thread):
         finally:
             self.lock.release()
 
-    def set_ignored_exceptions(self, ignored):
+    def set_ignored_exceptions(self, ignored: Union[Callable[[Exception], bool], None, List[Type[Exception]], Type[Exception]]):
         """Declare which exceptions will be ignored.
 
         :param ignored: Can be either:
@@ -111,15 +114,17 @@ class CatchingExceptionThread(threading.Thread):
             self.ignored_exceptions = None
         elif isinstance(ignored, (Exception, tuple)):
             self.ignored_exceptions = lambda e: isinstance(e, ignored)
+        elif isinstance(ignored, list):
+            self.ignored_exceptions = lambda e: isinstance(e, tuple(ignored))  # type: ignore
         else:
-            self.ignored_exceptions = ignored
+            self.ignored_exceptions = ignored  # type: ignore
 
     def run(self):
         """Overrides Thread.run to capture any exception."""
         self.sync_event.clear()
         try:
             try:
-                super(CatchingExceptionThread, self).run()
+                super().run()
             except BaseException:
                 self.exception = sys.exc_info()
         finally:
@@ -132,7 +137,7 @@ class CatchingExceptionThread(threading.Thread):
         Calling join(timeout=0) will raise the caught exception or return None
         if the thread is still alive.
         """
-        super(CatchingExceptionThread, self).join(timeout)
+        super().join(timeout)
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
             self.exception = None  # The exception should be raised only once

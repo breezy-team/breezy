@@ -35,7 +35,7 @@ from ..revision import NULL_REVISION
 from ..trace import mutter
 
 
-class RepoFetcher(object):
+class RepoFetcher:
     """Pull revisions and texts from one repository to another.
 
     This should not be used directly, it's essential a object to encapsulate
@@ -124,12 +124,12 @@ class RepoFetcher(object):
                     stream, from_format, resume_tokens)
             if missing_keys:
                 raise AssertionError(
-                    "second push failed to complete a fetch %r." % (
-                        missing_keys,))
+                    "second push failed to complete a fetch {!r}.".format(
+                        missing_keys))
             if resume_tokens:
                 raise AssertionError(
-                    "second push failed to commit the fetch %r." % (
-                        resume_tokens,))
+                    "second push failed to commit the fetch {!r}.".format(
+                        resume_tokens))
             pb.update("Finishing stream")
             self.sink.finished()
 
@@ -160,7 +160,7 @@ class RepoFetcher(object):
                                                   find_ghosts=self.find_ghosts).execute()
 
 
-class Inter1and2Helper(object):
+class Inter1and2Helper:
     """Helper for operations that convert data from model 1 and 2
 
     This is for use by fetchers and converters.
@@ -201,7 +201,7 @@ class Inter1and2Helper(object):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.path2id('')
-            revision_id = tree.get_file_revision(u'')
+            revision_id = tree.get_file_revision('')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set(parent_map.values())
@@ -328,7 +328,7 @@ def _parent_keys_for_root_version(
     return parent_keys
 
 
-class TargetRepoKinds(object):
+class TargetRepoKinds:
     """An enum-like set of constants.
 
     They are the possible values of FetchSpecFactory.target_repo_kinds.
@@ -339,7 +339,7 @@ class TargetRepoKinds(object):
     EMPTY = 'empty'
 
 
-class FetchSpecFactory(object):
+class FetchSpecFactory:
     """A helper for building the best fetch spec for a sprout call.
 
     Factors that go into determining the sort of fetch to perform:
@@ -378,7 +378,7 @@ class FetchSpecFactory(object):
         from . import vf_search
         if self.target_repo_kind is None or self.source_repo is None:
             raise AssertionError(
-                'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
+                'Incomplete FetchSpecFactory: {!r}'.format(self.__dict__))
         if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
             if self.limit is not None:
                 raise NotImplementedError(

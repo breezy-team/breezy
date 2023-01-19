@@ -398,7 +398,7 @@ class TestPushHook(TestCaseWithInterBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestPushHook, self).setUp()
+        super().setUp()
 
     def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.

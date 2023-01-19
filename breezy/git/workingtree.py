@@ -37,6 +37,9 @@ from dulwich.index import (
     validate_path,
     write_index_dict,
     )
+from dulwich.object_store import (
+    iter_tree_contents,
+    )
 from dulwich.objects import (
     S_ISGITLINK,
     )
@@ -176,7 +179,7 @@ class TextConflict(_mod_conflicts.Conflict):
         return self.describe()
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.path)
+        return "{}({!r})".format(type(self).__name__, self.path)
 
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
@@ -422,7 +425,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             backup_name = self.controldir._available_backup_name(
                 file_to_backup)
             osutils.rename(abs_path, self.abspath(backup_name))
-            return "removed %s (but kept a copy: %s)" % (
+            return "removed {} (but kept a copy: {})".format(
                 file_to_backup, backup_name)
 
         # Sort needed to first handle directory content before the directory
@@ -501,7 +504,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     kind_ch = osutils.kind_marker(kind)
                     to_file.write(new_status + '       ' + f + kind_ch + '\n')
                 if kind is None:
-                    message = "%s does not exist" % (f, )
+                    message = "{} does not exist".format(f)
                 else:
                     if not keep_files:
                         if f in files_to_backup and not force:
@@ -511,9 +514,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                 osutils.rmtree(abs_path)
                             else:
                                 osutils.delete_any(abs_path)
-                            message = "deleted %s" % (f,)
+                            message = "deleted {}".format(f)
                     else:
-                        message = "removed %s" % (f,)
+                        message = "removed {}".format(f)
                 self._unversion_path(f)
 
                 # print only one message (if any) per file.
@@ -523,7 +526,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         if not file_list:
-            file_list = [u'.']
+            file_list = ['.']
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
@@ -629,7 +632,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _iter_files_recursive(self, from_dir=None, include_dirs=False,
                               recurse_nested=False):
         if from_dir is None:
-            from_dir = u""
+            from_dir = ""
         if not isinstance(from_dir, str):
             raise TypeError(from_dir)
         encoded_from_dir = os.fsencode(self.abspath(from_dir))
@@ -663,8 +666,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree.
         """
         with self.lock_read():
-            index_paths = set(
-                [decode_git_path(p) for p, sha, mode in self.iter_git_objects()])
+            index_paths = {
+                decode_git_path(p) for p, sha, mode in self.iter_git_objects()}
             all_paths = set(self._iter_files_recursive(include_dirs=False))
             return iter(all_paths - index_paths)
 
@@ -840,17 +843,17 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True,
                    recurse_nested=False):
         if from_dir is None or from_dir == '.':
-            from_dir = u""
+            from_dir = ""
         dir_ids = {}
         fk_entries = {'directory': tree.TreeDirectory,
                       'file': tree.TreeFile,
                       'symlink': tree.TreeLink,
                       'tree-reference': tree.TreeReference}
         with self.lock_read():
-            root_ie = self._get_dir_ie(u"", None)
+            root_ie = self._get_dir_ie("", None)
             if include_root and not from_dir:
                 yield "", "V", root_ie.kind, root_ie
-            dir_ids[u""] = root_ie.file_id
+            dir_ids[""] = root_ie.file_id
             if recursive:
                 path_iterator = sorted(
                     self._iter_files_recursive(
@@ -910,7 +913,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def all_versioned_paths(self):
         with self.lock_read():
-            paths = {u""}
+            paths = {""}
             for path in self.index:
                 if self.mapping.is_special_file(path):
                     continue
@@ -945,7 +948,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     file_ie = self._get_file_ie(
                         name, decoded_item_path, value, parent_id)
                 yield file_ie
-            if not found_any and path != u'':
+            if not found_any and path != '':
                 raise _mod_transport.NoSuchFile(path)
 
     def conflicts(self):
@@ -1114,13 +1117,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 except StopIteration:
                     disk_finished = True
 
-    def _walkdirs(self, prefix=u""):
-        if prefix != u"":
-            prefix += u"/"
+    def _walkdirs(self, prefix=""):
+        if prefix != "":
+            prefix += "/"
         prefix = encode_git_path(prefix)
         per_dir = defaultdict(set)
         if prefix == b"":
-            per_dir[(u'', self.path2id(''))] = set()
+            per_dir[('', self.path2id(''))] = set()
 
         def add_entry(path, kind):
             if path == b'' or not path.startswith(prefix):
@@ -1236,8 +1239,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.index.clear()
             self._index_dirty = True
             if self.branch.head is not None:
-                for entry in self.store.iter_tree_contents(
-                        self.store[self.branch.head].tree):
+                for entry in iter_tree_contents(
+                        self.store, self.store[self.branch.head].tree):
                     if not validate_path(entry.path):
                         continue
 
@@ -1279,7 +1282,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
              show_base=False, tag_selector=None):
         with self.lock_write(), source.lock_read():
             old_revision = self.branch.last_revision()
-            count = self.branch.pull(source, overwrite, stop_revision,
+            count = self.branch.pull(source, overwrite=overwrite,
+                                     stop_revision=stop_revision,
                                      possible_transports=possible_transports,
                                      local=local, tag_selector=tag_selector)
             self._update_git_tree(
@@ -1328,7 +1332,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _directory_is_tree_reference(self, relpath):
         # as a special case, if a directory contains control files then
         # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.lexists(self.abspath(relpath) + u"/.git")
+        return relpath and osutils.lexists(self.abspath(relpath) + "/.git")
 
     def extract(self, sub_path, format=None):
         """Extract a subtree from this tree.
@@ -1420,7 +1424,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         path = self.abspath('.gitmodules')
         try:
             config = GitConfigFile.from_path(path)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 config = GitConfigFile()
             else:

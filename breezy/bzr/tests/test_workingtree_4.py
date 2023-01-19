@@ -507,20 +507,20 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.make_workingtree('tree')
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a'], ids=[b'a-id'])
-        self.assertEqual(u'a', tree.id2path(b'a-id'))
+        self.assertEqual('a', tree.id2path(b'a-id'))
         self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
         tree.commit('a')
         tree.add(['b'], ids=[b'b-id'])
 
         try:
-            new_path = u'b\u03bcrry'
+            new_path = 'b\u03bcrry'
             tree.rename_one('a', new_path)
         except UnicodeEncodeError:
             # support running the test on non-unicode platforms
             new_path = 'c'
             tree.rename_one('a', new_path)
         self.assertEqual(new_path, tree.id2path(b'a-id'))
-        tree.commit(u'b\xb5rry')
+        tree.commit('b\xb5rry')
         tree.unversion([new_path])
         self.assertRaises(errors.NoSuchId, tree.id2path, b'a-id')
         self.assertEqual('b', tree.id2path(b'b-id'))
@@ -581,15 +581,15 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # the root is new too).
         tree.lock_read()
         expected = [(b'dir-id',
-                     (None, u'dir'),
+                     (None, 'dir'),
                      True,
                      (False, True),
                      (None, b'root'),
-                     (None, u'dir'),
+                     (None, 'dir'),
                      (None, 'directory'),
                      (None, False), False),
-                    (b'root', (None, u''), True, (False, True), (None, None),
-                     (None, u''), (None, 'directory'), (None, False), False)]
+                    (b'root', (None, ''), True, (False, True), (None, None),
+                     (None, ''), (None, 'directory'), (None, False), False)]
         self.assertEqual(
             expected,
             list(tree.iter_changes(tree.basis_tree(), specific_files=['dir'])))
@@ -602,7 +602,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # now the diff will use the fast path
         tree.lock_read()
         expected = [(b'dir-id',
-                     (u'dir', u'dir'),
+                     ('dir', 'dir'),
                      True,
                      (True, True),
                      (b'root', b'root'),
@@ -700,8 +700,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         e = self.assertRaises(errors.PathsNotVersionedError,
-                              tree_iter_changes, tree, [u'\xa7', u'\u03c0'])
-        self.assertEqual(set(e.paths), set([u'\xa7', u'\u03c0']))
+                              tree_iter_changes, tree, ['\xa7', '\u03c0'])
+        self.assertEqual(set(e.paths), {'\xa7', '\u03c0'})
 
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')

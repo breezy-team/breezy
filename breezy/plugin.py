@@ -163,13 +163,13 @@ class _Path(list):
     """
 
     def __init__(self, package_name, blocked, extra, paths):
-        super(_Path, self).__init__(paths)
+        super().__init__(paths)
         self.package_name = package_name
         self.blocked_names = blocked
         self.extra_details = extra
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %s)" % (
+        return "{}({!r}, {!r}, {!r}, {})".format(
             self.__class__.__name__, self.package_name, self.blocked_names,
             self.extra_details, list.__repr__(self))
 
@@ -369,7 +369,7 @@ def describe_plugins(show_paths=False, state=None):
             version = plugin.__version__
             if version == 'unknown':
                 version = ''
-            yield '%s %s\n' % (name, version)
+            yield '{} {}\n'.format(name, version)
             d = plugin.module.__doc__
             if d:
                 doc = d.split('\n')[0]
@@ -456,7 +456,7 @@ def _load_plugin_module(name, dir):
         if 'error' in debug.debug_flags:
             trace.print_exception(sys.exc_info(), sys.stderr)
         return record_plugin_warning(
-            'Unable to load plugin %r from %r: %s' % (name, dir, e))
+            'Unable to load plugin {!r} from {!r}: {}'.format(name, dir, e))
 
 
 def plugins():
@@ -499,7 +499,7 @@ def format_concise_plugin_list(state=None):
     return ', '.join(items)
 
 
-class PluginsHelpIndex(object):
+class PluginsHelpIndex:
     """A help index that returns help topics for plugins."""
 
     def __init__(self):
@@ -530,7 +530,7 @@ class PluginsHelpIndex(object):
             return [ModuleHelpTopic(module)]
 
 
-class ModuleHelpTopic(object):
+class ModuleHelpTopic:
     """A help topic which returns the docstring for a module."""
 
     def __init__(self, module):
@@ -563,7 +563,7 @@ class ModuleHelpTopic(object):
         return self.module.__name__[len(_MODULE_PREFIX):]
 
 
-class PlugIn(object):
+class PlugIn:
     """The breezy representation of a plugin.
 
     The PlugIn object provides a way to manipulate a given plugin module.
@@ -589,7 +589,7 @@ class PlugIn(object):
             return repr(self.module)
 
     def __repr__(self):
-        return "<%s.%s name=%s, module=%s>" % (
+        return "<{}.{} name={}, module={}>".format(
             self.__class__.__module__, self.__class__.__name__,
             self.name, self.module)
 
@@ -641,15 +641,15 @@ class PlugIn(object):
         return version_string
 
 
-class _PluginsAtFinder(object):
+class _PluginsAtFinder:
     """Meta path finder to support BRZ_PLUGINS_AT configuration."""
 
     def __init__(self, prefix, names_and_paths):
         self.prefix = prefix
-        self.names_to_path = dict((prefix + n, p) for n, p in names_and_paths)
+        self.names_to_path = {prefix + n: p for n, p in names_and_paths}
 
     def __repr__(self):
-        return "<%s %r>" % (self.__class__.__name__, self.prefix)
+        return "<{} {!r}>".format(self.__class__.__name__, self.prefix)
 
     def find_spec(self, fullname, paths, target=None):
         """New module spec returning find method."""
@@ -661,6 +661,6 @@ class _PluginsAtFinder(object):
             if path is None:
                 # GZ 2017-06-02: Any reason to block loading of the name from
                 # further down the path like this?
-                raise ImportError("Not loading namespace package %s as %s" % (
+                raise ImportError("Not loading namespace package {} as {}".format(
                     path, fullname))
         return importlib_util.spec_from_file_location(fullname, path)

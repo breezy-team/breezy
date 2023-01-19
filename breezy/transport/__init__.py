@@ -90,7 +90,7 @@ class UnusableRedirect(errors.BzrError):
             "%(reason)s.")
 
     def __init__(self, source, target, reason):
-        super(UnusableRedirect, self).__init__(
+        super().__init__(
             source=source, target=target, reason=reason)
 
 
@@ -191,7 +191,7 @@ def unregister_transport(scheme, factory):
         transport_list_registry.remove(scheme)
 
 
-class _CoalescedOffset(object):
+class _CoalescedOffset:
     """A data container for keeping track of coalesced offsets."""
 
     __slots__ = ['start', 'length', 'ranges']
@@ -210,11 +210,11 @@ class _CoalescedOffset(object):
                 (other.start, other.length, other.ranges))
 
     def __repr__(self):
-        return '%s(%r, %r, %r)' % (self.__class__.__name__,
+        return '{}({!r}, {!r}, {!r})'.format(self.__class__.__name__,
                                    self.start, self.length, self.ranges)
 
 
-class LateReadError(object):
+class LateReadError:
     """A helper for transports which pretends to be a readable file.
 
     When read() is called, errors.ReadError is raised.
@@ -252,7 +252,7 @@ class LateReadError(object):
         self._fail()
 
 
-class FileStream(object):
+class FileStream:
     """Base class for FileStreams."""
 
     def __init__(self, transport, relpath):
@@ -286,7 +286,7 @@ class FileStream(object):
             flush to disk.
         """
         raise errors.TransportNotPossible(
-            "%s cannot fdatasync" % (self.transport,))
+            "{} cannot fdatasync".format(self.transport))
 
 
 class FileFileStream(FileStream):
@@ -329,14 +329,14 @@ class TransportHooks(hooks.Hooks):
     """Mapping of hook names to registered callbacks for transport hooks"""
 
     def __init__(self):
-        super(TransportHooks, self).__init__()
+        super().__init__()
         self.add_hook("post_connect",
                       "Called after a new connection is established or a reconnect "
                       "occurs. The sole argument passed is either the connected "
                       "transport or smart medium instance.", (2, 5))
 
 
-class Transport(object):
+class Transport:
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
 
@@ -356,8 +356,10 @@ class Transport(object):
 
     hooks = TransportHooks()
 
+    base: str
+
     def __init__(self, base):
-        super(Transport, self).__init__()
+        super().__init__()
         self.base = base
         (self._raw_base, self._segment_parameters) = (
             urlutils.split_segment_parameters(base))
@@ -371,7 +373,7 @@ class Transport(object):
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise NoSuchFile(path, extra=e)
             elif e.errno == errno.EINVAL:
-                mutter("EINVAL returned on path %s: %r" % (path, e))
+                mutter("EINVAL returned on path {}: {!r}".format(path, e))
                 raise NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -1142,7 +1144,7 @@ class Transport(object):
         self.rmdir(relpath)
 
     def __repr__(self):
-        return "<%s.%s url=%s>" % (self.__module__, self.__class__.__name__, self.base)
+        return "<{}.{} url={}>".format(self.__module__, self.__class__.__name__, self.base)
 
     def stat(self, relpath):
         """Return the stat information for a file.
@@ -1268,7 +1270,7 @@ class Transport(object):
             source, target, "transport does not support redirection")
 
 
-class _SharedConnection(object):
+class _SharedConnection:
     """A connection shared between several transports."""
 
     def __init__(self, connection=None, credentials=None, base=None):
@@ -1319,7 +1321,7 @@ class ConnectedTransport(Transport):
 
         base = str(self._parsed_url)
 
-        super(ConnectedTransport, self).__init__(base)
+        super().__init__(base)
         if _from_transport is None:
             self._shared_connection = _SharedConnection()
         else:
@@ -1386,7 +1388,7 @@ class ConnectedTransport(Transport):
             # Note that we don't put the password back even if we
             # have one so that it doesn't get accidentally
             # exposed.
-            netloc = '%s@%s' % (urlutils.quote(user), netloc)
+            netloc = '{}@{}'.format(urlutils.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
         path = urlutils.escape(path)
@@ -1650,7 +1652,7 @@ def do_catching_redirections(
         try:
             return action(transport)
         except errors.RedirectRequested as e:
-            redirection_notice = '%s is%s redirected to %s' % (
+            redirection_notice = '{} is{} redirected to {}'.format(
                 e.source, e.permanently, e.target)
             transport = redirected(transport, e, redirection_notice)
     else:
@@ -1667,7 +1669,7 @@ def do_catching_redirections(
         raise errors.TooManyRedirections
 
 
-class Server(object):
+class Server:
     """A Transport Server.
 
     The Server interface provides a server for a given transport type.

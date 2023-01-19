@@ -44,7 +44,7 @@ class BisectTestCase(TestCaseWithTransport):
         with open("test_file") as test_file:
             content = test_file.read().strip()
         if content != rev_contents[rev]:
-            rev_ids = dict((rev_contents[k], k) for k in rev_contents.keys())
+            rev_ids = {rev_contents[k]: k for k in rev_contents.keys()}
             found_rev = rev_ids[content]
             raise AssertionError("expected rev %0.1f, found rev %0.1f"
                                  % (rev, found_rev))

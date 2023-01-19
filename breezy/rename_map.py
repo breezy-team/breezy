@@ -25,7 +25,7 @@ from .i18n import gettext
 from .ui import ui_factory
 
 
-class RenameMap(object):
+class RenameMap:
     """Determine a mapping of renames."""
 
     def __init__(self, tree):
@@ -233,7 +233,7 @@ class RenameMap(object):
 
     def _make_inventory_delta(self, matches):
         delta = []
-        file_id_matches = dict((f, p) for p, f in matches.items())
+        file_id_matches = {f: p for p, f in matches.items()}
         file_id_query = []
         for f in matches.values():
             try:

@@ -35,7 +35,7 @@ class TestWalkdirs(TestCaseWithTree):
         dirblocks[''] = [
             ('0file', '0file', 'file', None, 'file'),
             ('1top-dir', '1top-dir', 'directory', None, 'directory'),
-            (u'2utf\u1234file', u'2utf\u1234file', 'file', None, 'file')]
+            ('2utf\u1234file', '2utf\u1234file', 'file', None, 'file')]
 
         dirblocks['1top-dir'] = [
             ('1top-dir/0file-in-1topdir', '0file-in-1topdir',

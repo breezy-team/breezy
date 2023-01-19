@@ -22,7 +22,7 @@ from .. import transport
 transport.register_urlparse_netloc_protocol('github')
 
 
-class GitHubDirectory(object):
+class GitHubDirectory:
 
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""

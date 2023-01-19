@@ -47,7 +47,7 @@ class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):
         tree.lock_write()
         tree.add('')
         for revision_id in revision_ids:
-            tree.commit(u'Message of ' + revision_id.decode('utf8'),
+            tree.commit('Message of ' + revision_id.decode('utf8'),
                         rev_id=revision_id)
         tree.unlock()
         branch = tree.branch
@@ -303,7 +303,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
     """
 
     def setUp(self):
-        super(TestAllMethodsThatChangeTipWillRunHooks, self).setUp()
+        super().setUp()
         self.installPreAndPostHooks()
 
     def installPreAndPostHooks(self):

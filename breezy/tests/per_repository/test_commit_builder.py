@@ -116,7 +116,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         with tree.lock_write():
             # use a unicode revision id to test more corner cases.
             # The repository layer is meant to handle this.
-            revision_id = u'\xc8abc'.encode('utf8')
+            revision_id = '\xc8abc'.encode()
             try:
                 try:
                     builder = tree.branch.get_commit_builder([],
@@ -176,7 +176,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.finish_inventory()
             builder.commit('rev')
             builder_tree = builder.revision_tree()
-            new_root_revision = builder_tree.get_file_revision(u'')
+            new_root_revision = builder_tree.get_file_revision('')
             if tree.branch.repository.supports_rich_root():
                 # We should not have seen a new root revision
                 self.assertEqual(old_revision_id, new_root_revision)
@@ -245,7 +245,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
-        self.assertEqual(rev_id, basis_tree.get_file_revision(u''))
+        self.assertEqual(rev_id, basis_tree.get_file_revision(''))
 
     def _get_revtrees(self, tree, revision_ids):
         with tree.lock_read():
@@ -262,11 +262,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev1 = tree.commit('rev1')
         rev2 = tree.commit('rev2')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.get_file_revision(u''))
+        self.assertEqual(rev1, tree1.get_file_revision(''))
         if tree.branch.repository.supports_rich_root():
-            self.assertEqual(rev1, tree2.get_file_revision(u''))
+            self.assertEqual(rev1, tree2.get_file_revision(''))
         else:
-            self.assertEqual(rev2, tree2.get_file_revision(u''))
+            self.assertEqual(rev2, tree2.get_file_revision(''))
 
     def _add_commit_check_unchanged(self, tree, name):
         tree.add([name])
@@ -505,7 +505,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 builder.abort()
                 raise
             delta = builder.get_basis_delta()
-            delta_dict = dict((change[1], change) for change in delta)
+            delta_dict = {change[1]: change for change in delta}
             if tree.branch.repository._format.records_per_file_revision:
                 version_recorded = (new_name in delta_dict
                                     and delta_dict[new_name][3] is not None
@@ -584,7 +584,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_rev_after_content_unicode_link_changes(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         self._test_last_mod_rev_after_content_link_changes(
-            u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget')
+            'li\u1234nk', 'targ\N{Euro Sign}t', 'n\N{Euro Sign}wtarget')
 
     def _commit_sprout(self, tree, name):
         tree.add([name])
@@ -834,13 +834,13 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(branch.repository.unlock)
         self.assertRaises(ValueError, branch.repository.get_commit_builder,
                           branch, [], branch.get_config_stack(),
-                          revprops={'invalid': u'property\rwith\r\ninvalid chars'})
+                          revprops={'invalid': 'property\rwith\r\ninvalid chars'})
 
     def test_get_commit_builder_with_surrogateescape(self):
         tree = self.make_branch_and_tree(".")
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([], revprops={
-                'invalid': u'property' + b'\xc0'.decode('utf-8', 'surrogateescape')})
+                'invalid': 'property' + b'\xc0'.decode('utf-8', 'surrogateescape')})
             list(builder.record_iter_changes(tree, tree.last_revision(),
                                              tree.iter_changes(tree.basis_tree())))
             builder.finish_inventory()
@@ -860,7 +860,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                                                        branch.get_config_stack())
         self.addCleanup(branch.repository.abort_write_group)
         self.assertRaises(ValueError, builder.commit,
-                          u'Invalid\r\ncommit message\r\n')
+                          'Invalid\r\ncommit message\r\n')
 
     def test_non_ascii_str_committer_rejected(self):
         """Ensure an error is raised on a non-ascii byte string committer"""

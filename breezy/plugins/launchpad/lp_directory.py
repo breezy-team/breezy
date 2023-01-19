@@ -109,10 +109,10 @@ def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
     lp_branch = lp.branches.getByPath(path=path)
     if not lp_branch:
         raise InvalidURL("Unknown Launchpad path: %s" % path)
-    return {'urls': [lp_branch.composePublicURL(scheme='ssh')]}
+    return {'urls': [lp_branch.composePublicURL(scheme='bzr+ssh'), lp_branch.composePublicURL(scheme='http')]}
 
 
-class LaunchpadDirectory(object):
+class LaunchpadDirectory:
 
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""
@@ -126,7 +126,7 @@ class LaunchpadDirectory(object):
         if netloc == '':
             netloc = DEFAULT_INSTANCE
         base_url = LAUNCHPAD_DOMAINS[netloc]
-        base = 'bzr+ssh://bazaar.%s/' % (base_url,)
+        base = 'bzr+ssh://bazaar.{}/'.format(base_url)
         maybe_invalid = False
         if path.startswith('~'):
             # A ~user style path, validate it a bit.

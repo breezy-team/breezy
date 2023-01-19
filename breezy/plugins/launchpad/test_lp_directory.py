@@ -45,7 +45,7 @@ from .account import get_lp_login, set_lp_login
 from ...tests import http_server
 
 
-class FakeResolveFactory(object):
+class FakeResolveFactory:
 
     def __init__(self, test, expected_path, result):
         self._test = test
@@ -339,7 +339,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         # Test that opening an lp: branch redirects to the real location.
         target_branch = self.make_branch('target')
 
-        class FooService(object):
+        class FooService:
             """A directory service that maps the name to a FILE url"""
 
             def look_up(self, name, url, purpose=None):
@@ -363,16 +363,16 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     """Test expansions for ubuntu: and debianlp: schemes."""
 
     def setUp(self):
-        super(TestDebuntuExpansions, self).setUp()
+        super().setUp()
         self.directory = LaunchpadDirectory()
 
     def _make_factory(self, package='foo', distro='ubuntu', series=None):
         if series is None:
-            path = '%s/%s' % (distro, package)
-            url_suffix = '~branch/%s/%s' % (distro, package)
+            path = '{}/{}'.format(distro, package)
+            url_suffix = '~branch/{}/{}'.format(distro, package)
         else:
-            path = '%s/%s/%s' % (distro, series, package)
-            url_suffix = '~branch/%s/%s/%s' % (distro, series, package)
+            path = '{}/{}/{}'.format(distro, series, package)
+            url_suffix = '~branch/{}/{}/{}'.format(distro, series, package)
         return FakeResolveFactory(
             self, path, dict(urls=[
                 'http://bazaar.launchpad.net/' + url_suffix]))

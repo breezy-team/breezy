@@ -28,7 +28,7 @@ def import_marks(filename):
     # Check that the file is readable and in the right format
     try:
         f = open(filename, 'rb')
-    except IOError:
+    except OSError:
         warning("Could not import marks file %s - not importing marks",
                 filename)
         return None
@@ -68,7 +68,7 @@ def export_marks(filename, revision_ids):
     """
     try:
         f = open(filename, 'wb')
-    except IOError:
+    except OSError:
         warning("Could not open export-marks file %s - not exporting marks",
                 filename)
         return

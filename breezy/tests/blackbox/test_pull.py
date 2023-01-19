@@ -350,7 +350,7 @@ class TestPull(tests.TestCaseWithTransport):
         target = source.controldir.sprout('target').open_workingtree()
         source_last = source.commit('commit 2')
 
-        class FooService(object):
+        class FooService:
             """A directory service that always returns source"""
 
             def look_up(self, name, url, purpose=None):
@@ -486,11 +486,11 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree = self.example_branch('a')
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
 
-        with open(osutils.pathjoin('a', 'hello'), 'wt') as f:
+        with open(osutils.pathjoin('a', 'hello'), 'w') as f:
             f.write('fee')
         a_tree.commit('fee')
 
-        with open(osutils.pathjoin('b', 'hello'), 'wt') as f:
+        with open(osutils.pathjoin('b', 'hello'), 'w') as f:
             f.write('fie')
 
         out, err = self.run_bzr(['pull', '-d', 'b', 'a', '--show-base'])

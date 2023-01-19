@@ -91,7 +91,7 @@ def cachedproperty(attrname_or_fn):
         return _CachedProperty(attrname, fn)
 
 
-class _CachedPropertyForAttr(object):
+class _CachedPropertyForAttr:
 
     def __init__(self, attrname):
         self.attrname = attrname
@@ -100,7 +100,7 @@ class _CachedPropertyForAttr(object):
         return _CachedProperty(self.attrname, fn)
 
 
-class _CachedProperty(object):
+class _CachedProperty:
 
     def __init__(self, attrname, fn):
         self.fn = fn

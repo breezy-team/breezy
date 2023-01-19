@@ -110,6 +110,8 @@ from dulwich.errors import (
 from dulwich.pack import (
     Pack,
     pack_objects_to_data,
+    load_pack_index,
+    PACK_SPOOL_FILE_MAX_SIZE,
     )
 from dulwich.protocol import ZERO_SHA
 from dulwich.refs import (
@@ -127,8 +129,6 @@ import urllib.parse as urlparse
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
 register_urlparse_netloc_protocol('git+ssh')
-
-from dulwich.pack import load_pack_index
 
 
 class GitPushResult(PushResult):
@@ -184,7 +184,7 @@ class HeadUpdateFailed(BzrError):
             "branch, specify the URL %(base_url)s,branch=master.")
 
     def __init__(self, base_url):
-        super(HeadUpdateFailed, self).__init__()
+        super().__init__()
         self.base_url = base_url
 
 
@@ -319,7 +319,7 @@ class TCPGitSmartTransport(GitSmartTransport):
             self._host, self._port, report_activity=self._report_activity)
 
 
-class SSHSocketWrapper(object):
+class SSHSocketWrapper:
 
     def __init__(self, sock):
         self.sock = sock
@@ -397,7 +397,7 @@ class RemoteGitBranchFormat(GitBranchFormat):
         raise UninitializableFormat(self)
 
 
-class DefaultProgressReporter(object):
+class DefaultProgressReporter:
 
     _GIT_PROGRESS_PARTIAL_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
     _GIT_PROGRESS_TOTAL_RE = re.compile(r"(.*?): (\d+)")
@@ -556,7 +556,7 @@ class RemoteGitDir(GitDir):
             ret[refname] = dulwich.client.ZERO_SHA
             return ret
 
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.send_pack(get_changed_refs, generate_pack_data)
         error = result.ref_status.get(refname)
@@ -780,7 +780,7 @@ class EmptyObjectStoreIterator(dict):
 class TemporaryPackIterator(Pack):
 
     def __init__(self, path, resolve_ext_ref):
-        super(TemporaryPackIterator, self).__init__(
+        super().__init__(
             path, resolve_ext_ref=resolve_ext_ref)
         self._idx_load = lambda: self._idx_load_or_generate(self._idx_path)
 
@@ -809,7 +809,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
         url = urlutils.strip_segment_parameters(str(url))
-        super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
+        super().__init__(url, *args, **kwargs)
 
     def archive(
         self,
@@ -854,7 +854,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
         read = response.read
 
-        class WrapResponse(object):
+        class WrapResponse:
 
             def __init__(self, response):
                 self._response = response
@@ -883,7 +883,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
     @classmethod
     def _known_formats(self):
-        return set([RemoteGitControlDirFormat()])
+        return {RemoteGitControlDirFormat()}
 
     def get_branch_format(self):
         return RemoteGitBranchFormat()
@@ -948,8 +948,8 @@ class GitRemoteRevisionTree(RevisionTree):
             raise NotImplementedError('recurse_nested is not yet supported')
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
-        import tempfile
-        f = tempfile.SpooledTemporaryFile()
+        from tempfile import SpooledTemporaryFile
+        f = SpooledTemporaryFile(max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-')
         # git-upload-archive(1) generaly only supports refs. So let's see if we
         # can find one.
         reverse_refs = {
@@ -1062,7 +1062,7 @@ class RemoteGitTagDict(GitTags):
             ret[ref] = sha
             return ret
 
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)
@@ -1075,7 +1075,7 @@ class RemoteGitBranch(GitBranch):
 
     def __init__(self, controldir, repository, ref, sha):
         self._sha = sha
-        super(RemoteGitBranch, self).__init__(controldir, repository, ref,
+        super().__init__(controldir, repository, ref,
                                               RemoteGitBranchFormat())
 
     def last_revision_info(self):
@@ -1142,7 +1142,7 @@ class RemoteGitBranch(GitBranch):
         sha = self.lookup_bzr_revision_id(revision_id)[0]
         def get_changed_refs(old_refs):
             return {self.ref: sha}
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)

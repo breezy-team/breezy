@@ -29,7 +29,7 @@ from breezy.tests import (
     )
 
 
-class ArchiveTests(object):
+class ArchiveTests:
 
     def test_export(self):
         work_a = self.make_branch_and_tree('wta')

@@ -35,7 +35,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
     # See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 
     def setUp(self):
-        super(TestSmartAddTree, self).setUp()
+        super().setUp()
         self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_smart_add_symlink(self):
@@ -70,11 +70,11 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         if tree.has_versioned_directories():
             self.assertEqual(
                 tree.smart_add(['tree/link/file']),
-                ([u'dir', u'dir/file'], {}))
+                (['dir', 'dir/file'], {}))
         else:
             self.assertEqual(
                 tree.smart_add(['tree/link/file']),
-                ([u'dir/file'], {}))
+                (['dir/file'], {}))
 
         # should add the actual parent directory, not the apparent parent
         # (which is actually a symlink)
@@ -87,7 +87,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 class TestKindChanges(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestKindChanges, self).setUp()
+        super().setUp()
         self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_symlink_changes_to_dir(self):
@@ -139,7 +139,7 @@ class TestKindChanges(TestCaseWithWorkingTree):
 class TestOpenTree(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestOpenTree, self).setUp()
+        super().setUp()
         self.requireFeature(features.SymlinkFeature(self.test_dir))
 
     def test_open_containing_through_symlink(self):

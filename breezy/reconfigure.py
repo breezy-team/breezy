@@ -108,7 +108,7 @@ class ReconfigurationNotSupported(BzrDirError):
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
 
 
-class ReconfigureStackedOn(object):
+class ReconfigureStackedOn:
     """Reconfigures a branch to be stacked on another branch."""
 
     def apply(self, controldir, stacked_on_url):
@@ -125,7 +125,7 @@ class ReconfigureStackedOn(object):
                     branch.base, branch.get_stacked_on_url()))
 
 
-class ReconfigureUnstacked(object):
+class ReconfigureUnstacked:
 
     def apply(self, controldir):
         branch = controldir.open_branch()
@@ -137,7 +137,7 @@ class ReconfigureUnstacked(object):
                     % (branch.base,))
 
 
-class Reconfigure(object):
+class Reconfigure:
 
     def __init__(self, controldir, new_bound_location=None):
         self.controldir = controldir

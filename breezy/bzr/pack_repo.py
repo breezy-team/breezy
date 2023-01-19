@@ -143,7 +143,7 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
         return {key[1] for key in self._file_graph.heads(keys)}
 
 
-class Pack(object):
+class Pack:
     """An in memory proxy for a pack and its indices.
 
     This is a base class that is not directly used, instead the classes
@@ -295,7 +295,7 @@ class ExistingPack(Pack):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "<%s.%s object at 0x%x, %s, %s" % (
+        return "<{}.{} object at 0x{:x}, {}, {}".format(
             self.__class__.__module__, self.__class__.__name__, id(self),
             self.pack_transport, self.name)
 
@@ -603,7 +603,7 @@ class NewPack(Pack):
         self._replace_index_with_readonly(index_type)
 
 
-class AggregateIndex(object):
+class AggregateIndex:
     """An aggregated index for the RepositoryPackCollection.
 
     AggregateIndex is reponsible for managing the PackAccess object,
@@ -689,7 +689,7 @@ class AggregateIndex(object):
             self.data_access.set_writer(None, None, (None, None))
 
 
-class Packer(object):
+class Packer:
     """Create a pack from packs."""
 
     def __init__(self, pack_collection, packs, suffix, revision_ids=None,
@@ -808,7 +808,7 @@ class Packer(object):
         return new_pack.data_inserted()
 
 
-class RepositoryPackCollection(object):
+class RepositoryPackCollection:
     """Management of packs within a repository.
 
     :ivar _names: map of {pack_name: (index_size,)}
@@ -877,7 +877,7 @@ class RepositoryPackCollection(object):
         self.config_stack = config.LocationStack(self.transport.base)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.repo)
+        return '{}({!r})'.format(self.__class__.__name__, self.repo)
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -886,7 +886,7 @@ class RepositoryPackCollection(object):
         """
         if pack.name in self._packs_by_name:
             raise AssertionError(
-                'pack %s already in _packs_by_name' % (pack.name,))
+                'pack {} already in _packs_by_name'.format(pack.name))
         self.packs.append(pack)
         self._packs_by_name[pack.name] = pack
         self.revision_index.add_index(pack.revision_index, pack)
@@ -1203,7 +1203,7 @@ class RepositoryPackCollection(object):
         self.ensure_loaded()
         if a_new_pack.name in self._names:
             raise errors.BzrError(
-                'Pack %r already exists in %s' % (a_new_pack.name, self))
+                'Pack {!r} already exists in {}'.format(a_new_pack.name, self))
         self._names[a_new_pack.name] = tuple(a_new_pack.index_sizes)
         self.add_pack_to_memory(a_new_pack)
 
@@ -1992,7 +1992,7 @@ class RetryPackOperations(RetryWithNewPacks):
             " context: %(context)s %(orig_error)s")
 
 
-class _DirectPackAccess(object):
+class _DirectPackAccess:
     """Access to data in one or more packs with less translation."""
 
     def __init__(self, index_to_packs, reload_func=None, flush_func=None):

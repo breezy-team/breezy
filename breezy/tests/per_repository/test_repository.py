@@ -190,7 +190,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(second_revision)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        root_revision = rev_tree.get_file_revision(u'')
+        root_revision = rev_tree.get_file_revision('')
         rich_root = (root_revision != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
@@ -298,7 +298,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev1 = wt.commit('lala!', allow_pointless=True)
         tree = wt.branch.repository.revision_tree(rev1)
         with tree.lock_read():
-            self.assertEqual(rev1, tree.get_file_revision(u''))
+            self.assertEqual(rev1, tree.get_file_revision(''))
             [root] = list(tree.list_files(include_root=True))
             self.assertEqual(('', 'V', 'directory'), root[:3])
         self.assertRaises(ValueError, wt.branch.repository.revision_tree, None)
@@ -409,7 +409,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # we have to manually escape this as we dont try to
             # roundtrip xml invalid characters in the xml-based serializers.
             escaped_message, escape_count = re.subn(
-                u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+                '[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
                 lambda match: match.group(0).encode(
                     'unicode_escape').decode('ascii'),
                 message)
@@ -422,16 +422,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_commit_unicode_message(self):
         # a siple unicode message should be preserved
-        self.assertMessageRoundtrips(u'foo bar gamm\xae plop')
+        self.assertMessageRoundtrips('foo bar gamm\xae plop')
 
     def test_commit_unicode_control_characters(self):
         # a unicode message with control characters should roundtrip too.
         unichars = [chr(x) for x in range(256)]
         # '\r' is not directly allowed anymore, as it used to be translated
         # into '\n' anyway
-        unichars[ord('\r')] = u'\n'
+        unichars[ord('\r')] = '\n'
         self.assertMessageRoundtrips(
-            u"All 8-bit chars: " + ''.join(unichars))
+            "All 8-bit chars: " + ''.join(unichars))
 
     def test_check_repository(self):
         """Check a fairly simple repository's history"""
@@ -467,8 +467,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         revision_ids = [a_rev, c_rev, b_rev, d_rev]
         revid_with_rev = repo.iter_revisions(revision_ids)
         self.assertEqual(
-            set((revid, rev.revision_id if rev is not None else None)
-                for (revid, rev) in revid_with_rev),
+            {(revid, rev.revision_id if rev is not None else None)
+                for (revid, rev) in revid_with_rev},
             {(a_rev, a_rev),
              (b_rev, b_rev),
              (c_rev, c_rev),
@@ -480,7 +480,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertEqual(revid, rev_tree.get_file_revision(u''))
+        self.assertEqual(revid, rev_tree.get_file_revision(''))
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
@@ -511,12 +511,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repository = tree.branch.repository
         repository.lock_read()
         self.addCleanup(repository.unlock)
-        extracted = dict((i, b''.join(b)) for i, b in
+        extracted = {i: b''.join(b) for i, b in
                          repository.iter_files_bytes(
                          [(file1_id, rev1, 'file1-old'),
                           (file1_id, rev2, 'file1-new'),
                           (file2_id, rev1, 'file2'),
-                          ]))
+                          ])}
         self.assertEqual(b'foo', extracted['file1-old'])
         self.assertEqual(b'bar', extracted['file2'])
         self.assertEqual(b'baz', extracted['file1-new'])
@@ -999,7 +999,7 @@ class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
 class TestDeltaRevisionFilesFiltered(per_repository.TestCaseWithRepository):
 
     def setUp(self):
-        super(TestDeltaRevisionFilesFiltered, self).setUp()
+        super().setUp()
         self.tree_a = self.make_branch_and_tree('a')
         self.build_tree(
             ['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz', 'a/oldname'])

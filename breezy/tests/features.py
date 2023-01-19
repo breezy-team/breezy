@@ -31,7 +31,7 @@ from .. import (
     )
 
 
-class Feature(object):
+class Feature:
     """An operating system Feature."""
 
     def __init__(self):
@@ -63,7 +63,7 @@ class SymlinkFeature(Feature):
     """Whether symlinks can be created by the current user."""
 
     def __init__(self, path):
-        super(SymlinkFeature, self).__init__()
+        super().__init__()
         self.path = path
 
     def _probe(self):
@@ -76,7 +76,7 @@ class SymlinkFeature(Feature):
 class HardlinkFeature(Feature):
 
     def __init__(self, path):
-        super(HardlinkFeature, self).__init__()
+        super().__init__()
         self.path = path
 
     def _probe(self):
@@ -107,10 +107,10 @@ class _UnicodeFilenameFeature(Feature):
             # single non-unicode encoding. We use the characters
             # - greek small letter alpha (U+03B1) and
             # - braille pattern dots-123456 (U+283F).
-            os.stat(u'\u03b1\u283f')
+            os.stat('\u03b1\u283f')
         except UnicodeEncodeError:
             return False
-        except (IOError, OSError):
+        except OSError:
             # The filesystem allows the Unicode filename but the file doesn't
             # exist.
             return True
@@ -132,7 +132,7 @@ class _CompatabilityThunkFeature(Feature):
 
     def __init__(self, dep_version, module, name,
                  replacement_name, replacement_module=None):
-        super(_CompatabilityThunkFeature, self).__init__()
+        super().__init__()
         self._module = module
         if replacement_module is None:
             replacement_module = module
@@ -147,7 +147,7 @@ class _CompatabilityThunkFeature(Feature):
             from breezy import pyutils
             depr_msg = self._dep_version % ('%s.%s'
                                             % (self._module, self._name))
-            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
+            use_msg = ' Use {}.{} instead.'.format(self._replacement_module,
                                                self._replacement_name)
             symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning,
                                    stacklevel=5)
@@ -171,7 +171,7 @@ class ModuleAvailableFeature(Feature):
     """
 
     def __init__(self, module_name, ignore_warnings=None):
-        super(ModuleAvailableFeature, self).__init__()
+        super().__init__()
         self.module_name = module_name
         if ignore_warnings is None:
             ignore_warnings = ()
@@ -214,7 +214,7 @@ class PluginLoadedFeature(Feature):
     """
 
     def __init__(self, plugin_name):
-        super(PluginLoadedFeature, self).__init__()
+        super().__init__()
         self.plugin_name = plugin_name
 
     def _probe(self):
@@ -232,9 +232,6 @@ class PluginLoadedFeature(Feature):
 
 class _HTTPSServerFeature(Feature):
     """Some tests want an https Server, check if one is available.
-
-    Right now, the only way this is available is under python2.6 which provides
-    an ssl module.
     """
 
     def _probe(self):
@@ -442,7 +439,7 @@ class ExecutableFeature(Feature):
     """Feature testing whether an executable of a given name is on the PATH."""
 
     def __init__(self, name):
-        super(ExecutableFeature, self).__init__()
+        super().__init__()
         self.name = name
         self._path = None
 
@@ -555,12 +552,12 @@ class _BackslashFilenameFeature(Feature):
 
         try:
             fileno, name = tempfile.mkstemp(prefix='bzr\\prefix')
-        except (IOError, OSError):
+        except OSError:
             return False
         else:
             try:
                 os.stat(name)
-            except (IOError, OSError):
+            except OSError:
                 # mkstemp succeeded but the file wasn't actually created
                 return False
             os.close(fileno)
@@ -575,7 +572,7 @@ class PathFeature(Feature):
     """Feature testing whether a particular path exists."""
 
     def __init__(self, path):
-        super(PathFeature, self).__init__()
+        super().__init__()
         self.path = path
 
     def _probe(self):

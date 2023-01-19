@@ -53,7 +53,6 @@ class TestHooks(tests.TestCase):
         class MyHooks(Hooks):
             pass
         hooks = MyHooks("breezy.tests.test_hooks", "some_hooks")
-        hooks['legacy'] = []
         hooks.add_hook('post_tip_change',
                        "Invoked after the tip of a branch changes. Called with "
                        "a ChangeBranchTipParams object.", (1, 4))
@@ -65,11 +64,6 @@ class TestHooks(tests.TestCase):
         self.assertEqualDiff(
             "MyHooks\n"
             "-------\n"
-            "\n"
-            "legacy\n"
-            "~~~~~~\n"
-            "\n"
-            "An old-style hook. For documentation see the __init__ method of 'MyHooks'\n"
             "\n"
             "post_tip_change\n"
             "~~~~~~~~~~~~~~~\n"
@@ -270,7 +264,7 @@ class TestHookRegistry(tests.TestCase):
         # isolation and prevent tests failing spuriously.
         for key, factory in known_hooks.items():
             self.assertTrue(callable(factory),
-                            "The factory(%r) for %r is not callable" % (factory, key))
+                            "The factory({!r}) for {!r} is not callable".format(factory, key))
             obj = known_hooks_key_to_object(key)
             self.assertIsInstance(obj, Hooks)
             new_hooks = factory()

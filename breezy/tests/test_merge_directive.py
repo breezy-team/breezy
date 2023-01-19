@@ -151,7 +151,7 @@ OLD_DIRECTIVE_2 = b"""# Bazaar merge directive format 2 (Bazaar 0.19)
 """.splitlines(True)
 
 
-class TestMergeDirective(object):
+class TestMergeDirective:
 
     def test_merge_source(self):
         time = 500000.0
@@ -350,7 +350,7 @@ User-Agent: Bazaar \\(.*\\)
 """
 
 
-class TestMergeDirectiveBranch(object):
+class TestMergeDirectiveBranch:
 
     def make_trees(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -463,7 +463,7 @@ class TestMergeDirectiveBranch(object):
         time = 453
         timezone = 7200
 
-        class FakeBranch(object):
+        class FakeBranch:
             def get_config_stack(self):
                 return self
         md = self.make_merge_directive(b'example:', b'sha', time, timezone,
@@ -698,7 +698,7 @@ class TestParseOldMergeDirective2(tests.TestCase):
         self.assertEqual('Hi mom!', md.message)
 
 
-class TestHook(object):
+class TestHook:
     """Hook callback for test purposes."""
 
     def __init__(self, result=None):

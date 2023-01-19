@@ -24,7 +24,7 @@ from . import test_sftp_transport
 class TestCaseWithConnectionHookedTransport(test_sftp_transport.TestCaseWithSFTPServer):
 
     def setUp(self):
-        super(TestCaseWithConnectionHookedTransport, self).setUp()
+        super().setUp()
         self.reset_connections()
 
     def start_logging_connections(self):

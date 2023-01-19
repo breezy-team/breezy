@@ -101,7 +101,7 @@ class GioFileStream(FileStream):
             raise errors.BzrError(str(e))
 
 
-class GioStatResult(object):
+class GioStatResult:
 
     def __init__(self, f):
         info = f.query_info('standard::size,standard::type')
@@ -140,7 +140,7 @@ class GioTransport(ConnectedTransport):
         self.url = urlunparse(u)
 
         # And finally initialize super
-        super(GioTransport, self).__init__(base,
+        super().__init__(base,
                                            _from_transport=_from_transport)
 
     def _relpath_to_url(self, relpath):
@@ -169,8 +169,8 @@ class GioTransport(ConnectedTransport):
         user = None
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):
-            prompt = (u'%s' % (parsed_url.scheme.upper(),) +
-                      u' %(host)s DOMAIN\\username')
+            prompt = ('{}'.format(parsed_url.scheme.upper()) +
+                      ' %(host)s DOMAIN\\username')
             user_and_domain = auth.get_user(parsed_url.scheme,
                                             parsed_url.host, port=parsed_url.port, ask=True,
                                             prompt=prompt)
@@ -186,8 +186,8 @@ class GioTransport(ConnectedTransport):
             # a DOMAIN and a username prompt should be the
             # same so I will missuse the ui_factory get_username
             # a little bit here.
-            prompt = (u'%s' % (parsed_url.scheme.upper(),) +
-                      u' %(host)s DOMAIN')
+            prompt = ('{}'.format(parsed_url.scheme.upper()) +
+                      ' %(host)s DOMAIN')
             domain = ui.ui_factory.get_username(prompt=prompt)
             op.set_domain(domain)
 
@@ -381,7 +381,7 @@ class GioTransport(ConnectedTransport):
             # just pass it forward
             raise e
         except Exception as e:
-            mutter('failed to rmdir %s: %s' % (relpath, e))
+            mutter('failed to rmdir {}: {}'.format(relpath, e))
             raise errors.PathError(relpath)
 
     def append_file(self, relpath, file, mode=None):
@@ -535,7 +535,7 @@ class GioTransport(ConnectedTransport):
         if 'gio' in debug.debug_flags:
             mutter("GIO lock_read", relpath)
 
-        class BogusLock(object):
+        class BogusLock:
             # The old RemoteBranch ignore lock for reading, so we will
             # continue that tradition and return a bogus lock object.
 
@@ -559,7 +559,7 @@ class GioTransport(ConnectedTransport):
 
     def _translate_gio_error(self, err, path, extra=None):
         if 'gio' in debug.debug_flags:
-            mutter("GIO Error: %s %s" % (str(err), path))
+            mutter("GIO Error: {} {}".format(str(err), path))
         if extra is None:
             extra = str(err)
         if err.code == gio.ERROR_NOT_FOUND:

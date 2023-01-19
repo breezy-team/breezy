@@ -62,7 +62,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
 
     def test_open_by_ref(self):
         GitRepo.init('.')
-        url = "%s,ref=%s" % (
+        url = "{},ref={}".format(
             urlutils.local_path_to_url(self.test_dir),
             urlutils.quote("refs/remotes/origin/unstable", safe='')
             )
@@ -81,9 +81,9 @@ class TestGitBranch(tests.TestCaseInTempDir):
         d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertEqual(
-            "<LocalGitBranch('%s/', %r)>" % (
+            "<LocalGitBranch('{}/', {!r})>".format(
                 urlutils.local_path_to_url(self.test_dir),
-                u'master'),
+                'master'),
             repr(thebranch))
 
     def test_last_revision_is_null(self):
@@ -167,7 +167,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
 class TestLocalGitBranchFormat(tests.TestCase):
 
     def setUp(self):
-        super(TestLocalGitBranchFormat, self).setUp()
+        super().setUp()
         self.format = branch.LocalGitBranchFormat()
 
     def test_get_format_description(self):
@@ -342,7 +342,7 @@ class BranchTests(tests.TestCaseInTempDir):
         self.assertEqual(revid2, newbranch.last_revision())
 
 
-class ForeignTestsBranchFactory(object):
+class ForeignTestsBranchFactory:
 
     def make_empty_branch(self, transport):
         d = LocalGitControlDirFormat().initialize_on_transport(transport)

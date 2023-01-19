@@ -53,7 +53,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
                 and returned_size is None):
             pass
         else:
-            self.fail("invalid size in summary: %r" % (returned_size,))
+            self.fail("invalid size in summary: {!r}".format(returned_size))
 
     def test_symlink_content_summary(self):
         self.requireFeature(SymlinkFeature(self.test_dir))
@@ -67,19 +67,19 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
-        os.symlink('target', os.fsencode(u'tree/\u03b2-path'))
-        tree.add([u'\u03b2-path'])
-        summary = self._convert_tree(tree).path_content_summary(u'\u03b2-path')
+        os.symlink('target', os.fsencode('tree/\u03b2-path'))
+        tree.add(['\u03b2-path'])
+        summary = self._convert_tree(tree).path_content_summary('\u03b2-path')
         self.assertEqual(('symlink', None, None, 'target'), summary)
 
     def test_unicode_symlink_target_summary(self):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
-        os.symlink(os.fsencode(u'tree/\u03b2-path'), 'tree/link')
+        os.symlink(os.fsencode('tree/\u03b2-path'), 'tree/link')
         tree.add(['link'])
         summary = self._convert_tree(tree).path_content_summary('link')
-        self.assertEqual(('symlink', None, None, u'tree/\u03b2-path'), summary)
+        self.assertEqual(('symlink', None, None, 'tree/\u03b2-path'), summary)
 
     def test_missing_content_summary(self):
         tree = self.make_branch_and_tree('tree')

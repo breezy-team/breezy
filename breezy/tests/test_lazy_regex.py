@@ -45,11 +45,11 @@ class InstrumentedLazyRegex(lazy_regex.LazyRegex):
 
     def __getattr__(self, attr):
         self._actions.append(('__getattr__', attr))
-        return super(InstrumentedLazyRegex, self).__getattr__(attr)
+        return super().__getattr__(attr)
 
     def _real_re_compile(self, *args, **kwargs):
         self._actions.append(('_real_re_compile', args, kwargs))
-        return super(InstrumentedLazyRegex, self)._real_re_compile(
+        return super()._real_re_compile(
             *args, **kwargs)
 
 

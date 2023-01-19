@@ -68,7 +68,7 @@ class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
 class TestLogWithLogCatcher(TestLog):
 
     def setUp(self):
-        super(TestLogWithLogCatcher, self).setUp()
+        super().setUp()
         # Capture log formatter creations
 
         class MyLogFormatter(test_log.LogCatcher):
@@ -189,7 +189,7 @@ class TestLogExcludeCommonAncestry(TestLogWithLogCatcher):
 class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
     def setUp(self):
-        super(TestLogMergedLinearAncestry, self).setUp()
+        super().setUp()
         # FIXME: Using a MemoryTree would be even better here (but until we
         # stop calling run_bzr, there is no point) --vila 100118.
         builder = branchbuilder.BranchBuilder(self.get_transport())
@@ -258,7 +258,7 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 class Test_GenerateAllRevisions(TestLogWithLogCatcher):
 
     def setUp(self):
-        super(Test_GenerateAllRevisions, self).setUp()
+        super().setUp()
         builder = self.make_branch_with_many_merges()
         b = builder.get_branch()
         b.lock_read()
@@ -335,7 +335,7 @@ class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
         self.assertLogRevnos(['-rrevno:1:branch2'],
                              ['1'])
         rev_props = self.log_catcher.revisions[0].rev.properties
-        self.assertEqual('branch2', rev_props[u'branch-nick'])
+        self.assertEqual('branch2', rev_props['branch-nick'])
 
 
 class TestLogErrors(TestLog):
@@ -498,7 +498,7 @@ class TestLogSignatures(TestLog):
 class TestLogVerbose(TestLog):
 
     def setUp(self):
-        super(TestLogVerbose, self).setUp()
+        super().setUp()
         self.make_minimal_branch()
 
     def assertUseShortDeltaFormat(self, cmd):
@@ -536,7 +536,7 @@ class TestLogVerbose(TestLog):
 class TestLogMerges(TestLogWithLogCatcher):
 
     def setUp(self):
-        super(TestLogMerges, self).setUp()
+        super().setUp()
         self.make_branches_with_merges()
 
     def make_branches_with_merges(self):
@@ -614,7 +614,7 @@ class TestLogDiff(TestLogWithLogCatcher):
     # indent and --line does't display them. -- vila 10019
 
     def setUp(self):
-        super(TestLogDiff, self).setUp()
+        super().setUp()
         self.make_branch_with_diffs()
 
     def make_branch_with_diffs(self):
@@ -711,7 +711,7 @@ class TestLogUnicodeDiff(TestLog):
 
     def test_log_show_diff_non_ascii(self):
         # Smoke test for bug #328007 UnicodeDecodeError on 'log -p'
-        message = u'Message with \xb5'
+        message = 'Message with \xb5'
         body = b'Body with \xb5\n'
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo', body)])
@@ -732,8 +732,8 @@ class TestLogUnicodeDiff(TestLog):
 
 class TestLogEncodings(tests.TestCaseInTempDir):
 
-    _mu = u'\xb5'
-    _message = u'Message with \xb5'
+    _mu = '\xb5'
+    _message = 'Message with \xb5'
 
     # Encodings which can encode mu
     good_encodings = [
@@ -752,7 +752,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
     ]
 
     def setUp(self):
-        super(TestLogEncodings, self).setUp()
+        super().setUp()
         self.overrideAttr(osutils, '_cached_user_encoding')
 
     def create_branch(self):
@@ -806,7 +806,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         brz('init')
         self.build_tree(['a'])
         brz('add a')
-        brz(['commit', '-m', u'\u0422\u0435\u0441\u0442'])
+        brz(['commit', '-m', '\u0422\u0435\u0441\u0442'])
         stdout, stderr = self.run_bzr_raw('log', encoding='cp866')
 
         message = stdout.splitlines()[-1]
@@ -983,7 +983,7 @@ class TestLogMultiple(TestLogWithLogCatcher):
 class MainlineGhostTests(TestLogWithLogCatcher):
 
     def setUp(self):
-        super(MainlineGhostTests, self).setUp()
+        super().setUp()
         tree = self.make_branch_and_tree('')
         tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         tree.add('')

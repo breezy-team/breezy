@@ -68,7 +68,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         for name in ('BRZ_PLUGIN_PATH', 'BRZ_DISABLE_PLUGINS', 'BRZ_PLUGINS_AT'
                      ):
             self.preserved_env_vars[name] = os.environ.get(name)
-        super(ImportTariffTestCase, self).setUp()
+        super().setUp()
 
     def start_brz_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.

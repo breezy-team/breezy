@@ -95,7 +95,7 @@ class DirectoryServiceRegistry(registry.Registry):
 directories = DirectoryServiceRegistry()
 
 
-class Directory(object):
+class Directory:
     """Abstract directory lookup class."""
 
     def look_up(self, name, url, purpose=None):

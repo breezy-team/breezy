@@ -43,14 +43,21 @@ from .identitymap import IdentityMap, NullIdentityMap
 from .trace import mutter
 
 
-class ReadOnlyTransaction(object):
+class Transaction:
+    """Base class for transactions."""
+
+    def writeable(self) -> bool:
+        raise NotImplementedError(self.writeable)
+
+
+class ReadOnlyTransaction(Transaction):
     """A read only unit of work for data objects."""
 
     def finish(self):
         """Clean up this transaction."""
 
     def __init__(self):
-        super(ReadOnlyTransaction, self).__init__()
+        super().__init__()
         self.map = IdentityMap()
         self._clean_objects = set()
         self._clean_queue = []
@@ -116,6 +123,7 @@ class ReadOnlyTransaction(object):
 
     def writeable(self):
         """Read only transactions do not allow writes."""
+        return False
 
 
 class WriteTransaction(ReadOnlyTransaction):
@@ -134,7 +142,7 @@ class WriteTransaction(ReadOnlyTransaction):
                 callback()
 
     def __init__(self):
-        super(WriteTransaction, self).__init__()
+        super().__init__()
         self._dirty_objects = set()
 
     def is_dirty(self, an_object):
@@ -159,7 +167,7 @@ class WriteTransaction(ReadOnlyTransaction):
         return True
 
 
-class PassThroughTransaction(object):
+class PassThroughTransaction(Transaction):
     """A pass through transaction
 
     - nothing is cached.
@@ -174,7 +182,7 @@ class PassThroughTransaction(object):
                 callback()
 
     def __init__(self):
-        super(PassThroughTransaction, self).__init__()
+        super().__init__()
         self.map = NullIdentityMap()
         self._dirty_objects = set()
 

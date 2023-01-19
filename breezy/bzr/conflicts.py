@@ -49,7 +49,7 @@ class Conflict(BaseConflict):
     has_files = False
 
     def __init__(self, path, file_id=None):
-        super(Conflict, self).__init__(path)
+        super().__init__(path)
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
         if isinstance(file_id, str):
@@ -258,7 +258,7 @@ class PathConflict(Conflict):
                 revid = tt._tree.get_parent_ids()[-1]
         else:
             # Programmer error
-            raise AssertionError('bad winner: %r' % (winner,))
+            raise AssertionError('bad winner: {!r}'.format(winner))
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
             tree = self._revision_tree(tt._tree, revid)

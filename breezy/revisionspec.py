@@ -45,7 +45,7 @@ class InvalidRevisionSpec(errors.BzrError):
             self.extra = ''
 
 
-class RevisionInfo(object):
+class RevisionInfo:
     """The results of applying a revision specification to a branch."""
 
     help_txt = """The results of applying a revision specification to a branch.
@@ -112,7 +112,7 @@ class RevisionInfo(object):
         return tuple(self) == tuple(other)
 
     def __repr__(self):
-        return '<breezy.revisionspec.RevisionInfo object %s, %s for %r>' % (
+        return '<breezy.revisionspec.RevisionInfo object {}, {} for {!r}>'.format(
             self.revno, self.rev_id, self.branch)
 
     @staticmethod
@@ -124,7 +124,7 @@ class RevisionInfo(object):
         return RevisionInfo(branch, revno=None, rev_id=revision_id)
 
 
-class RevisionSpec(object):
+class RevisionSpec:
     """A parsed revision specification."""
 
     help_txt = """A parsed revision specification.
@@ -258,7 +258,7 @@ class RevisionSpec(object):
 
     def __repr__(self):
         # this is mostly for helping with testing
-        return '<%s %s>' % (self.__class__.__name__,
+        return '<{} {}>'.format(self.__class__.__name__,
                             self.user_spec)
 
     def needs_branch(self):
@@ -394,8 +394,8 @@ class RevisionSpec_revno(RevisionSpec):
                 # but the from_string method is a little primitive
                 # right now - RBC 20060928
                 try:
-                    match_revno = tuple((int(number)
-                                         for number in revno_spec.split('.')))
+                    match_revno = tuple(int(number)
+                                         for number in revno_spec.split('.'))
                 except ValueError as e:
                     raise InvalidRevisionSpec(self.user_spec, branch, e)
 
@@ -619,7 +619,7 @@ class RevisionSpec_tag(RevisionSpec):
         return context_branch.tags.lookup_tag(self.spec)
 
 
-class _RevListToTimestamps(object):
+class _RevListToTimestamps:
     """This takes a list of revisions, and allows you to bisect by date"""
 
     __slots__ = ['branch']

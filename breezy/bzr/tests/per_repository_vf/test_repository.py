@@ -322,7 +322,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     scenarios = all_repository_vf_format_scenarios()
 
     def setUp(self):
-        super(TestCaseWithComplexRepository, self).setUp()
+        super().setUp()
         tree_a = self.make_branch_and_tree('a')
         self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'
@@ -389,7 +389,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
     scenarios = all_repository_vf_format_scenarios()
 
     def setUp(self):
-        super(TestCaseWithCorruptRepository, self).setUp()
+        super().setUp()
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')

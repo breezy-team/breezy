@@ -117,7 +117,7 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None, recurse_nested=Fal
             # If this is a revision tree, use the revisions' timestamp
             rev = tree.repository.get_revision(tree.get_revision_id())
             root_mtime = rev.timestamp
-        elif tree.is_versioned(u''):
+        elif tree.is_versioned(''):
             root_mtime = tree.get_file_mtime('')
         else:
             root_mtime = None

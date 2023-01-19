@@ -41,7 +41,7 @@ class TestSearchKeys(tests.TestCase):
 
     def assertSearchKey255(self, expected, key):
         actual = self.module._search_key_255(key)
-        self.assertEqual(expected, actual, 'actual: %r' % (actual,))
+        self.assertEqual(expected, actual, 'actual: {!r}'.format(actual))
 
     def test_simple_16(self):
         self.assertSearchKey16(b'8C736521', stuple(b'foo',))

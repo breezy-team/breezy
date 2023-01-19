@@ -14,25 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
+from typing import Union, Optional, Type
+
+from . import (
     counted_lock,
+    errors,
     lock,
     transactions,
     urlutils,
     )
-""")
-
-from . import (
-    errors,
-    )
 from .decorators import (
     only_raises,
     )
+from .transport import Transport
 
 
-class LockableFiles(object):
+class LockableFiles:
     """Object representing a set of related files locked within the same scope.
 
     This coordinates access to the lock along with providing a transaction.
@@ -54,7 +51,13 @@ class LockableFiles(object):
     :ivar _lock_mode: None, or 'r' or 'w'
     """
 
-    def __init__(self, transport, lock_name, lock_class):
+    _lock_count: int
+    # TODO(jelmer): str -> Literal['r', 'w']
+    _lock_mode: Optional[str]
+    _token_from_lock: Optional[lock.LockToken]
+    _transaction: Optional[transactions.Transaction]
+
+    def __init__(self, transport: Transport, lock_name: str, lock_class: Type[lock.Lock]) -> None:
         """Create a LockableFiles group
 
         :param transport: Transport pointing to the directory holding the
@@ -75,7 +78,7 @@ class LockableFiles(object):
                                 dir_modebits=self._dir_mode)
         self._counted_lock = counted_lock.CountedLock(self._lock)
 
-    def create_lock(self):
+    def create_lock(self) -> None:
         """Create the lock.
 
         This should normally be called only when the LockableFiles directory
@@ -84,26 +87,26 @@ class LockableFiles(object):
         self._lock.create(mode=self._dir_mode)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__,
+        return '{}({!r})'.format(self.__class__.__name__,
                            self._transport)
 
     def __str__(self):
-        return 'LockableFiles(%s, %s)' % (self.lock_name, self._transport.base)
+        return 'LockableFiles({}, {})'.format(self.lock_name, self._transport.base)
 
-    def break_lock(self):
+    def break_lock(self) -> None:
         """Break the lock of this lockable files group if it is held.
 
         The current ui factory will be used to prompt for user conformation.
         """
         self._lock.break_lock()
 
-    def _escape(self, file_or_path):
+    def _escape(self, file_or_path: str) -> str:
         """DEPRECATED: Do not use outside this class"""
         if file_or_path == '':
-            return u''
+            return ''
         return urlutils.escape(file_or_path)
 
-    def _find_modes(self):
+    def _find_modes(self) -> None:
         """Determine the appropriate modes for files and directories.
 
         :deprecated: Replaced by BzrDir._find_creation_modes.
@@ -125,15 +128,15 @@ class LockableFiles(object):
             # Remove the sticky and execute bits for files
             self._file_mode = self._dir_mode & ~0o7111
 
-    def leave_in_place(self):
+    def leave_in_place(self) -> None:
         """Set this LockableFiles to not clear the physical lock on unlock."""
         self._lock.leave_in_place()
 
-    def dont_leave_in_place(self):
+    def dont_leave_in_place(self) -> None:
         """Set this LockableFiles to clear the physical lock on unlock."""
         self._lock.dont_leave_in_place()
 
-    def lock_write(self, token=None):
+    def lock_write(self, token: Optional[lock.LockToken] = None) -> Optional[lock.LockToken]:
         """Lock this group of files for writing.
 
         :param token: if this is already locked, then lock_write will fail
@@ -164,10 +167,10 @@ class LockableFiles(object):
             self._token_from_lock = token_from_lock
             return token_from_lock
 
-    def lock_read(self):
+    def lock_read(self) -> None:
         if self._lock_mode:
             if self._lock_mode not in ('r', 'w'):
-                raise ValueError("invalid lock mode %r" % (self._lock_mode,))
+                raise ValueError("invalid lock mode {!r}".format(self._lock_mode))
             self._lock_count += 1
         else:
             self._lock.lock_read()
@@ -201,11 +204,11 @@ class LockableFiles(object):
                 self._lock_count = 0
                 self._lock_mode = None
 
-    def is_locked(self):
+    def is_locked(self) -> bool:
         """Return true if this LockableFiles group is locked"""
         return self._lock_count >= 1
 
-    def get_physical_lock_status(self):
+    def get_physical_lock_status(self) -> bool:
         """Return physical lock status.
 
         Returns true if a lock is held on the transport. If no lock is held, or
@@ -217,7 +220,7 @@ class LockableFiles(object):
         except NotImplementedError:
             return False
 
-    def get_transaction(self):
+    def get_transaction(self) -> transactions.Transaction:
         """Return the current active transaction.
 
         If no transaction is active, this returns a passthrough object
@@ -245,7 +248,7 @@ class LockableFiles(object):
         transaction.finish()
 
 
-class TransportLock(object):
+class TransportLock:
     """Locking method which uses transport-dependent locks.
 
     On the local filesystem these transform into OS-managed locks.
@@ -257,7 +260,7 @@ class TransportLock(object):
     always local).
     """
 
-    def __init__(self, transport, escaped_name, file_modebits, dir_modebits):
+    def __init__(self, transport: Transport, escaped_name: str, file_modebits, dir_modebits):
         self._transport = transport
         self._escaped_name = escaped_name
         self._file_modebits = file_modebits

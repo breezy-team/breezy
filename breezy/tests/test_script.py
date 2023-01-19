@@ -558,7 +558,7 @@ class cmd_test_confirm(commands.Command):
 
     def run(self):
         if ui.ui_factory.get_boolean(
-                u'Really do it',
+                'Really do it',
                 # 'breezy.tests.test_script.confirm',
                 # {}
                 ):
@@ -594,7 +594,7 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
 class TestShelve(script.TestCaseWithTransportAndScript):
 
     def setUp(self):
-        super(TestShelve, self).setUp()
+        super().setUp()
         self.run_script("""
             $ brz init test
             Created a standalone tree (format: 2a)

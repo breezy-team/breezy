@@ -322,7 +322,7 @@ class TestUpgrade(TestCaseWithTransport):
         """Upgrade simple v0.0.4 format to latest format"""
         eq = self.assertEqual
         self.build_tree_contents(_upgrade1_template)
-        upgrade.upgrade(u'.')
+        upgrade.upgrade('.')
         control = controldir.ControlDir.open('.')
         b = control.open_branch()
         # tsk, peeking under the covers.
@@ -381,8 +381,8 @@ class TestUpgrade(TestCaseWithTransport):
         its contents."""
         eq = self.assertEqual
         self.build_tree_contents(_ghost_template)
-        upgrade.upgrade(u'.')
-        b = branch.Branch.open(u'.')
+        upgrade.upgrade('.')
+        b = branch.Branch.open('.')
         self.addCleanup(b.lock_read().unlock)
         revision_id = b._revision_history()[1]
         rev = b.repository.get_revision(revision_id)
@@ -461,13 +461,13 @@ class TestInfo(TestCaseWithTransport):
         self.assertEqualDiff(
             """Standalone tree (format: weave)
 Location:
-  branch root: %s
+  branch root: {}
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: %s
+    repository: {}
 
 In the working tree:
          0 unchanged
@@ -485,7 +485,7 @@ Branch history:
 
 Repository:
          0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
+""".format('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
         # L L L
@@ -494,13 +494,13 @@ Repository:
         self.assertEqualDiff(
             """Standalone tree (format: weave)
 Location:
-  branch root: %s
+  branch root: {}
 
 Format:
        control: All-in-one format 6
   working tree: Working tree format 2
         branch: Branch format 4
-    repository: %s
+    repository: {}
 
 In the working tree:
          0 unchanged
@@ -518,7 +518,7 @@ Branch history:
 
 Repository:
          0 revisions
-""" % ('branch', tree.branch.repository._format.get_format_description(),
+""".format('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
         tree.unlock()
@@ -544,7 +544,7 @@ class TestBranchFormat4(TestCaseWithTransport):
 class TestBoundBranch(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestBoundBranch, self).setUp()
+        super().setUp()
         self.build_tree(['master/', 'child/'])
         self.make_branch_and_tree('master')
         self.make_branch_and_tree('child',

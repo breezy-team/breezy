@@ -27,7 +27,7 @@ from breezy.treebuilder import (
     )
 
 
-class FakeTree(object):
+class FakeTree:
     """A pretend tree to test the calls made by TreeBuilder."""
 
     def __init__(self):

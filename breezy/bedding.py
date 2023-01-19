@@ -202,7 +202,7 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
         return None
     try:
         f = open(mailname_file)
-    except (IOError, OSError):
+    except OSError:
         return None
     try:
         domain = f.readline().strip()
@@ -220,7 +220,7 @@ def default_email():
         return v
     name, email = _auto_user_id()
     if name and email:
-        return u'%s <%s>' % (name, email)
+        return '{} <{}>'.format(name, email)
     elif email:
         return email
     raise errors.NoWhoami()

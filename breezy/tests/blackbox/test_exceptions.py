@@ -60,8 +60,8 @@ class TestOptParseBugHandling(tests.TestCase):
 
     def test_nonascii_optparse(self):
         """Reasonable error raised when non-ascii in option name on Python 2"""
-        error_re = u'no such option: -\xe4'
-        out = self.run_bzr_error([error_re], ['st', u'-\xe4'])
+        error_re = 'no such option: -\xe4'
+        out = self.run_bzr_error([error_re], ['st', '-\xe4'])
 
 
 class TestObsoleteRepoFormat(RepositoryFormat2a):
@@ -84,7 +84,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
     """
 
     def setUp(self):
-        super(TestDeprecationWarning, self).setUp()
+        super().setUp()
         self.addCleanup(repository.format_registry.remove,
                         TestObsoleteRepoFormat)
         repository.format_registry.register(TestObsoleteRepoFormat)

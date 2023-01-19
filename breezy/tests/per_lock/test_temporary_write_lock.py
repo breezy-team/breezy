@@ -26,7 +26,7 @@ from breezy.tests.per_lock import TestCaseWithLock
 class TestTemporaryWriteLock(TestCaseWithLock):
 
     def setUp(self):
-        super(TestTemporaryWriteLock, self).setUp()
+        super().setUp()
         self.build_tree(['a-file'])
 
     def test_can_upgrade_and_write(self):

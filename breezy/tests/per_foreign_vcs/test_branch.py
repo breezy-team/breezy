@@ -31,7 +31,7 @@ from breezy.tests import (
     )
 
 
-class ForeignBranchFactory(object):
+class ForeignBranchFactory:
     """Factory of branches for ForeignBranchTests."""
 
     def make_empty_branch(self, transport):

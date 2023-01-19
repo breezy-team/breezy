@@ -111,7 +111,7 @@ class BzrError(Exception):
     __str__ = _format
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, str(self))
+        return '{}({})'.format(self.__class__.__name__, str(self))
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -450,13 +450,13 @@ class NotBranchError(PathError):
         PathError.__init__(self, path=path)
 
     def __repr__(self):
-        return '<%s %r>' % (self.__class__.__name__, self.__dict__)
+        return '<{} {!r}>'.format(self.__class__.__name__, self.__dict__)
 
     def _get_format_string(self):
         # GZ 2017-06-08: Not the best place to lazy fill detail in.
         if self.detail is None:
             self.detail = self._get_detail()
-        return super(NotBranchError, self)._get_format_string()
+        return super()._get_format_string()
 
     def _get_detail(self):
         if self.controldir is not None:
@@ -1190,7 +1190,7 @@ class InvalidHttpResponse(TransportError):
         else:
             # This is reached for obscure and unusual errors so we want to
             # preserve as much info as possible to ease debug.
-            orig_error = ': %r' % (orig_error,)
+            orig_error = ': {!r}'.format(orig_error)
         self.headers = headers
         TransportError.__init__(self, msg, orig_error=orig_error)
 
@@ -2013,7 +2013,7 @@ class TipChangeRejected(BzrError):
     explicitly abort a change to a branch tip.
     """
 
-    _fmt = u"Tip change rejected: %(msg)s"
+    _fmt = "Tip change rejected: %(msg)s"
 
     def __init__(self, msg):
         self.msg = msg

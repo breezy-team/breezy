@@ -37,7 +37,7 @@ class InvalidPattern(errors.BzrError):
         self.msg = msg
 
 
-class LazyRegex(object):
+class LazyRegex:
     """A proxy around a real regex, which won't be compiled until accessed."""
 
     # These are the parameters on a real _sre.SRE_Pattern object, which we

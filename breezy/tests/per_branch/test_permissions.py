@@ -37,7 +37,7 @@ from breezy.bzr.remote import RemoteBranchFormat
 from breezy.tests.test_permissions import check_mode_r
 
 
-class _NullPermsStat(object):
+class _NullPermsStat:
     """A class that proxy's a stat result and strips permissions."""
 
     def __init__(self, orig_stat):

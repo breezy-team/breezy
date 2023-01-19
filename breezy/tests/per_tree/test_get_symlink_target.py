@@ -56,10 +56,10 @@ class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
         self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
-        target = u'targ\N{Euro Sign}t'
-        os.symlink(target, os.fsencode(u'tree/\u03b2_link'))
-        tree.add([u'\u03b2_link'])
+        target = 'targ\N{Euro Sign}t'
+        os.symlink(target, os.fsencode('tree/\u03b2_link'))
+        tree.add(['\u03b2_link'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        actual = tree.get_symlink_target(u'\u03b2_link')
+        actual = tree.get_symlink_target('\u03b2_link')
         self.assertEqual(target, actual)

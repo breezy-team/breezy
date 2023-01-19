@@ -49,7 +49,7 @@ def _supports_progress(f):
     return True
 
 
-class ProgressTask(object):
+class ProgressTask:
     """Model component of a progress indicator.
 
     Most code that needs to indicate progress should update one of these,
@@ -101,7 +101,7 @@ class ProgressTask(object):
         self.show_transport_activity = True
 
     def __repr__(self):
-        return '%s(%r/%r, msg=%r)' % (
+        return '{}({!r}/{!r}, msg={!r})'.format(
             self.__class__.__name__,
             self.current_cnt,
             self.total_cnt,
@@ -173,7 +173,7 @@ class ProgressTask(object):
         return False
 
 
-class DummyProgress(object):
+class DummyProgress:
     """Progress-bar standin that does nothing.
 
     This was previously often constructed by application code if no progress
@@ -240,7 +240,7 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None,
     return total_duration - elapsed
 
 
-class ProgressPhase(object):
+class ProgressPhase:
     """Update progress object with the current phase"""
 
     def __init__(self, message, total, pb):

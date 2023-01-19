@@ -37,7 +37,7 @@ from .mapping import (
     )
 
 
-class GitFileLastChangeScanner(object):
+class GitFileLastChangeScanner:
 
     def __init__(self, repository):
         self.repository = repository
@@ -89,7 +89,7 @@ class GitFileLastChangeScanner(object):
         return (store, path, commit.id)
 
 
-class GitFileParentProvider(object):
+class GitFileParentProvider:
 
     def __init__(self, change_scanner):
         self.change_scanner = change_scanner

@@ -26,20 +26,20 @@ from . import (
 from .matchers import *
 
 
-class StubTree(object):
+class StubTree:
     """Stubg for testing."""
 
     def __init__(self, lock_status):
         self._is_locked = lock_status
 
     def __str__(self):
-        return u'I am da tree'
+        return 'I am da tree'
 
     def is_locked(self):
         return self._is_locked
 
 
-class FakeUnlockable(object):
+class FakeUnlockable:
     """Something that can be unlocked."""
 
     def unlock(self):
@@ -102,7 +102,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "mismatched ancestry for revision %r was [%r], expected []" % (
+            "mismatched ancestry for revision {!r} was [{!r}], expected []".format(
                 revid1, revid1),
             mismatch.describe())
 
@@ -111,7 +111,7 @@ class TestHasLayout(TestCaseWithTransport):
 
     def test__str__(self):
         matcher = HasLayout([(b"a", b"a-id")])
-        self.assertEqual("HasLayout(%r)" % ([(b'a', b'a-id')], ), str(matcher))
+        self.assertEqual("HasLayout({!r})".format([(b'a', b'a-id')]), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')
@@ -131,7 +131,7 @@ class TestHasLayout(TestCaseWithTransport):
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            set(("['', 'a', 'b/', 'b/c']", "['a']")),
+            {"['', 'a', 'b/', 'b/c']", "['a']"},
             set(mismatch.describe().split(" != ")))
 
     def test_no_dirs(self):
@@ -142,10 +142,10 @@ class TestHasLayout(TestCaseWithTransport):
         t.add(['a', 'b', 'b/c'], ids=[b'a-id', b'b-id', b'c-id'])
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c']).match(t))
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
-        mismatch = HasLayout([u'', u'a', u'd/']).match(t)
+        mismatch = HasLayout(['', 'a', 'd/']).match(t)
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            set(("['', 'a', 'b/', 'b/c']", "['', 'a']")),
+            {"['', 'a', 'b/', 'b/c']", "['', 'a']"},
             set(mismatch.describe().split(" != ")))
 
 
@@ -195,5 +195,5 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
         tree.commit('msg2', rev_id=b'b')
         matcher = RevisionHistoryMatches([b'a', b'b', b'c'])
         self.assertEqual(
-            set(("[b'a', b'b']", "[b'a', b'b', b'c']")),
+            {"[b'a', b'b']", "[b'a', b'b', b'c']"},
             set(matcher.match(tree.branch).describe().split(" != ")))
