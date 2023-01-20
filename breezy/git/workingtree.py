@@ -37,6 +37,9 @@ from dulwich.index import (
     validate_path,
     write_index_dict,
     )
+from dulwich.object_store import (
+    iter_tree_contents,
+    )
 from dulwich.objects import (
     S_ISGITLINK,
     )
@@ -1236,8 +1239,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.index.clear()
             self._index_dirty = True
             if self.branch.head is not None:
-                for entry in self.store.iter_tree_contents(
-                        self.store[self.branch.head].tree):
+                for entry in iter_tree_contents(
+                        self.store, self.store[self.branch.head].tree):
                     if not validate_path(entry.path):
                         continue
 

@@ -16,14 +16,12 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
+from dulwich.objects import Tag, object_class
 from dulwich.refs import (
     LOCAL_BRANCH_PREFIX,
     LOCAL_TAG_PREFIX,
+    PEELED_TAG_SUFFIX,
     )
-try:
-    from dulwich.refs import PEELED_TAG_SUFFIX
-except ImportError:  # dulwich < 0.21.1
-    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
 from dulwich.repo import (
     RefsContainer,
     )

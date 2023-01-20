@@ -16,7 +16,6 @@
 
 """InterRepository operations."""
 
-from io import BytesIO
 import itertools
 
 from dulwich.errors import (
@@ -25,17 +24,15 @@ from dulwich.errors import (
 from dulwich.object_store import (
     ObjectStoreGraphWalker,
     )
+from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import (
     CAPABILITY_THIN_PACK,
     ZERO_SHA,
     )
 from dulwich.refs import (
     SYMREF,
-    )
-try:
-    from dulwich.refs import PEELED_TAG_SUFFIX
-except ImportError:  # dulwich < 0.21.1
-    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
+    PEELED_TAG_SUFFIX,
+)
 
 from dulwich.walk import Walker
 
@@ -658,7 +655,7 @@ class InterGitGitRepository(InterFromGitRepository):
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, limit=None, mapping=None):
+    def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
         raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
@@ -727,9 +724,11 @@ class InterGitGitRepository(InterFromGitRepository):
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, limit=None, mapping=None):
+    def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
         if limit is not None:
             raise FetchLimitUnsupported(self)
+        if lossy:
+            raise LossyPushToSameVCS(self.source, self.target)
         from .remote import DefaultProgressReporter
         with ui.ui_factory.nested_progress_bar() as pb:
             progress = DefaultProgressReporter(pb).progress
@@ -756,15 +755,17 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
                 self.source.controldir._client._fetch_capabilities):
             # TODO(jelmer): Avoid reading entire file into memory and
             # only processing it after the whole file has been fetched.
-            f = SpooledTemporaryFile()
+            f = SpooledTemporaryFile(
+                max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-',
+                dir=getattr(self.target._git.object_store, 'path', None))
 
             def commit():
                 if f.tell():
                     f.seek(0)
-                    self.target._git.object_store.move_in_thin_pack(f)
-                f.close()
+                    self.target._git.object_store.add_thin_pack(f.read, None)
 
-            abort = f.close
+            def abort():
+                pass
         else:
             f, commit, abort = self.target._git.object_store.add_pack()
         try:
