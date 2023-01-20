@@ -1630,7 +1630,7 @@ class InterRepository(InterObject[Repository]):
         raise NotImplementedError(self.fetch)
 
     def search_missing_revision_ids(
-            self, find_ghosts: bool = True, revision_ids: Optional[Iterable[_mod_revision.RevisionID]] =None,
+            self, find_ghosts: bool = True, revision_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
             if_present_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
             limit: Optional[int] = None) -> AbstractSearchResult:
         """Return the revision ids that source has that target does not.

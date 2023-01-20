@@ -1372,10 +1372,10 @@ def _update_pure_git_refs(result, new_refs, overwrite, tag_selector, old_refs):
             return value[0] == git_sha
         if value[1] is not None and revid is not None:
             return value[1] == revid
-        
-        # FIXME: If one side only has the git sha available and the other
-        # only has the bzr revid, then this will cause us to show a tag as
-        # updated that hasn't actually been updated.
+
+        # FIXME: If one side only has the git sha available and the other only
+        # has the bzr revid, then this will cause us to show a tag as updated
+        # that hasn't actually been updated.
         return False
     # FIXME: Check for diverged branches
     for ref, (git_sha, revid) in new_refs.items():

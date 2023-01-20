@@ -118,7 +118,9 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id=revision_id, find_ghosts=False)
 
-    def fetch_refs(self, update_refs: Callable[[Dict[bytes, ObjectID]], Dict[bytes, ObjectID]], lossy: bool, overwrite: bool=False) -> Tuple[RevidMap, Dict[bytes, ObjectID]]:
+    def fetch_refs(
+            self, update_refs: Callable[[Dict[bytes, ObjectID]], Dict[bytes, ObjectID]],
+            lossy: bool, overwrite: bool = False) -> Tuple[RevidMap, Dict[bytes, ObjectID]]:
         """Fetch possibly roundtripped revisions into the target repository
         and update refs.
 
@@ -361,8 +363,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
         """Import the gist of the ancestry of a particular revision."""
         if not lossy and not self.mapping.roundtripping:
             raise NoPushSupport(self.source, self.target, self.mapping)
+
         unpeel_map = UnpeelMap.from_repository(self.source)
-        revidmap: Dict[bytes, bytes]  = {}
+        revidmap: Dict[bytes, bytes] = {}
 
         def git_update_refs(old_refs):
             ret = {}
