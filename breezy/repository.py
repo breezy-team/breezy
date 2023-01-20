@@ -16,7 +16,7 @@
 
 __docformat__ = "google"
 
-from typing import List, Type, TYPE_CHECKING
+from typing import List, Type, TYPE_CHECKING, Optional, Iterable
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -25,9 +25,7 @@ import time
 from breezy import (
     config,
     debug,
-    graph,
     osutils,
-    revision as _mod_revision,
     )
 from breezy.i18n import gettext
 """)
@@ -35,7 +33,9 @@ from breezy.i18n import gettext
 from . import (
     controldir,
     errors,
+    graph,
     registry,
+    revision as _mod_revision,
     ui,
     )
 from .decorators import only_raises
@@ -1539,6 +1539,51 @@ format_registry.register_lazy(
     )
 
 
+class AbstractSearchResult:
+    """The result of a search, describing a set of keys.
+
+    Search results are typically used as the 'fetch_spec' parameter when
+    fetching revisions.
+
+    :seealso: AbstractSearch
+    """
+
+    def get_recipe(self):
+        """Return a recipe that can be used to replay this search.
+
+        The recipe allows reconstruction of the same results at a later date.
+
+        :return: A tuple of `(search_kind_str, *details)`.  The details vary by
+            kind of search result.
+        """
+        raise NotImplementedError(self.get_recipe)
+
+    def get_network_struct(self):
+        """Return a tuple that can be transmitted via the HPSS protocol."""
+        raise NotImplementedError(self.get_network_struct)
+
+    def get_keys(self):
+        """Return the keys found in this search.
+
+        :return: A set of keys.
+        """
+        raise NotImplementedError(self.get_keys)
+
+    def is_empty(self):
+        """Return false if the search lists 1 or more revisions."""
+        raise NotImplementedError(self.is_empty)
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        :return: A search result.
+        """
+        raise NotImplementedError(self.refine)
+
+
 class InterRepository(InterObject[Repository]):
     """This class represents operations taking place between two repositories.
 
@@ -1554,7 +1599,7 @@ class InterRepository(InterObject[Repository]):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    def copy_content(self, revision_id=None):
+    def copy_content(self, revision_id: Optional[_mod_revision.RevisionID] = None) -> None:
         """Make a complete copy of the content in self into destination.
 
         This is a destructive operation! Do not use it on existing
@@ -1572,7 +1617,7 @@ class InterRepository(InterObject[Repository]):
                 pass
             self.target.fetch(self.source, revision_id=revision_id)
 
-    def fetch(self, revision_id=None, find_ghosts=False, lossy=False):
+    def fetch(self, revision_id: Optional[_mod_revision.RevisionID] = None, find_ghosts: bool = False, lossy: bool = False) -> FetchResult:
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
@@ -1585,8 +1630,9 @@ class InterRepository(InterObject[Repository]):
         raise NotImplementedError(self.fetch)
 
     def search_missing_revision_ids(
-            self, find_ghosts=True, revision_ids=None, if_present_ids=None,
-            limit=None):
+            self, find_ghosts: bool = True, revision_ids: Optional[Iterable[_mod_revision.RevisionID]] =None,
+            if_present_ids: Optional[Iterable[_mod_revision.RevisionID]] = None,
+            limit: Optional[int] = None) -> AbstractSearchResult:
         """Return the revision ids that source has that target does not.
 
         Args:
@@ -1601,7 +1647,7 @@ class InterRepository(InterObject[Repository]):
             rather than just finding the surface difference.
           limit: Maximum number of revisions to return, topologically
             ordered
-        Returns: A breezy.graph.SearchResult.
+        Returns: A SearchResult.
         """
         raise NotImplementedError(self.search_missing_revision_ids)
 

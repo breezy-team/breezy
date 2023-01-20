@@ -17,10 +17,12 @@
 """InterRepository operations."""
 
 import itertools
+from typing import Callable, Dict, Tuple, Optional
 
 from dulwich.errors import (
     NotCommitError,
     )
+from dulwich.objects import ObjectID
 from dulwich.object_store import (
     ObjectStoreGraphWalker,
     )
@@ -44,11 +46,13 @@ from ..errors import (
     NoSuchRevision,
     )
 from ..repository import (
+    AbstractSearchResult,
     FetchResult,
     InterRepository,
     )
 from ..revision import (
     NULL_REVISION,
+    RevisionID,
     )
 from .. import (
     config,
@@ -91,6 +95,11 @@ from .unpeel_map import (
     )
 
 
+EitherId = Tuple[Optional[RevisionID], Optional[ObjectID]]
+EitherRefDict = Dict[bytes, EitherId]
+RevidMap = Dict[RevisionID, Tuple[ObjectID, RevisionID]]
+
+
 class InterToGitRepository(InterRepository):
     """InterRepository that copies into a Git repository."""
 
@@ -109,7 +118,7 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id=revision_id, find_ghosts=False)
 
-    def fetch_refs(self, update_refs, lossy, overwrite=False):
+    def fetch_refs(self, update_refs: Callable[[Dict[bytes, ObjectID]], Dict[bytes, ObjectID]], lossy: bool, overwrite: bool=False) -> Tuple[RevidMap, Dict[bytes, ObjectID]]:
         """Fetch possibly roundtripped revisions into the target repository
         and update refs.
 
@@ -164,6 +173,8 @@ class InterToGitRepository(InterRepository):
 
 class InterToLocalGitRepository(InterToGitRepository):
     """InterBranch implementation between a Bazaar and a Git repository."""
+
+    target: LocalGitRepository
 
     def __init__(self, source, target):
         super().__init__(source, target)
@@ -229,7 +240,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 pb.update("determining revisions to fetch", len(missing))
         return graph.iter_topo_order(missing)
 
-    def _get_target_bzr_refs(self):
+    def _get_target_either_refs(self) -> EitherRefDict:
         """Return a dictionary with references.
 
         :return: Dictionary with reference names as keys and tuples
@@ -256,11 +267,11 @@ class InterToLocalGitRepository(InterToGitRepository):
             bzr_refs[k] = (v, revid)
         return bzr_refs
 
-    def fetch_refs(self, update_refs, lossy, overwrite=False):
+    def fetch_refs(self, update_refs, lossy, overwrite: bool = False):
         self._warn_slow()
         result_refs = {}
         with self.source_store.lock_read():
-            old_refs = self._get_target_bzr_refs()
+            old_refs = self._get_target_either_refs()
             new_refs = update_refs(old_refs)
             revidmap = self.fetch_revs(
                 [(git_sha, bzr_revid)
@@ -286,7 +297,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                     result_refs[name] = (gitid, revid if not lossy else self.mapping.revision_id_foreign_to_bzr(gitid))
         return revidmap, old_refs, result_refs
 
-    def fetch_revs(self, revs, lossy, limit=None):
+    def fetch_revs(self, revs, lossy: bool, limit: Optional[int] = None) -> RevidMap:
         if not lossy and not self.mapping.roundtripping:
             for git_sha, bzr_revid in revs:
                 if (bzr_revid is not None and
@@ -314,8 +325,8 @@ class InterToLocalGitRepository(InterToGitRepository):
                 self.target_store.add_objects(object_generator)
                 return revidmap
 
-    def fetch(self, revision_id=None, find_ghosts=False,
-              fetch_spec=None, lossy=False):
+    def fetch(self, revision_id=None, find_ghosts: bool = False,
+              lossy=False, fetch_spec=None) -> FetchResult:
         if revision_id is not None:
             stop_revisions = [(None, revision_id)]
         elif fetch_spec is not None:
@@ -344,12 +355,14 @@ class InterToLocalGitRepository(InterToGitRepository):
 
 class InterToRemoteGitRepository(InterToGitRepository):
 
-    def fetch_refs(self, update_refs, lossy, overwrite=False):
+    target: RemoteGitRepository
+
+    def fetch_refs(self, update_refs, lossy, overwrite: bool = False):
         """Import the gist of the ancestry of a particular revision."""
         if not lossy and not self.mapping.roundtripping:
             raise NoPushSupport(self.source, self.target, self.mapping)
         unpeel_map = UnpeelMap.from_repository(self.source)
-        revidmap = {}
+        revidmap: Dict[bytes, bytes]  = {}
 
         def git_update_refs(old_refs):
             ret = {}
@@ -386,7 +399,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 isinstance(target, RemoteGitRepository))
 
 
-class GitSearchResult:
+class GitSearchResult(AbstractSearchResult):
 
     def __init__(self, start, exclude, keys):
         self._start = start
@@ -636,23 +649,38 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 class InterGitGitRepository(InterFromGitRepository):
     """InterRepository that copies between Git repositories."""
 
-    def fetch_refs(self, update_refs, lossy, overwrite=False):
+    source: GitRepository
+    target: GitRepository
+
+    def _get_target_either_refs(self):
+        ret = {}
+        for name, sha1 in self.target.controldir.get_refs_container().as_dict().items():
+            ret[name] = (sha1, self.target.lookup_foreign_revision_id(sha1))
+        return ret
+
+    def fetch_refs(self, update_refs, lossy: bool = False, overwrite: bool = False) -> Tuple[RevidMap, EitherRefDict, EitherRefDict]:
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
-        old_refs = self.target.controldir.get_refs_container()
+        old_refs = self._get_target_either_refs()
         ref_changes = {}
 
         def determine_wants(heads):
             old_refs = {k: (v, None)
                              for (k, v) in heads.items()}
             new_refs = update_refs(old_refs)
+            ret = []
+            for name, (sha1, bzr_revid) in list(new_refs.items()):
+                if sha1 is None:
+                    sha1, unused_mapping = self.source.lookup_bzr_revision_id(bzr_revid)
+                new_refs[name] = (sha1, bzr_revid)
+                ret.append(sha1)
             ref_changes.update(new_refs)
-            return [sha1 for (sha1, bzr_revid) in new_refs.values()]
+            return ret
         self.fetch_objects(determine_wants)
         for k, (git_sha, bzr_revid) in ref_changes.items():
-            self.target._git.refs[k] = git_sha
+            self.target._git.refs[k] = git_sha  # type: ignore
         new_refs = self.target.controldir.get_refs_container()
-        return None, old_refs, new_refs
+        return {}, old_refs, new_refs
 
     def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
         raise NotImplementedError(self.fetch_objects)
@@ -723,7 +751,10 @@ class InterGitGitRepository(InterFromGitRepository):
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
+    source: LocalGitRepository
+    target: LocalGitRepository
+
+    def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy: bool = False):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         if lossy:
