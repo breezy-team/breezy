@@ -58,7 +58,7 @@ from ....errors import (
     NoSuchTag,
     NotBranchError,
     )
-from ....revision import NULL_REVISION
+from ....revision import NULL_REVISION, RevisionID
 from ....trace import (
     mutter,
     note,
@@ -360,7 +360,8 @@ class BasePristineTarSource(UpstreamSource):
 
     def version_component_as_revision(
             self, package: Optional[str], version: str,
-            component: Optional[str], md5: Optional[str] = None):
+            component: Optional[str],
+            md5: Optional[str] = None) -> tuple[RevisionID, str]:
         with self.branch.lock_read():
             for tag_name in self.possible_tag_names(
                     package, version, component=component):
@@ -370,14 +371,14 @@ class BasePristineTarSource(UpstreamSource):
                     continue
                 else:
                     if self._has_revision(revid, md5=md5):
-                        return revid
+                        return revid, ""
             # Note that we don't check *all* possible revids here,
             # since some of them are branch-local (such as revno:)
             (git_id, git_date) = git_snapshot_data_from_version(version)
             if git_id:
                 try:
                     revspec = RevisionSpec.from_string('git:%s' % git_id)
-                    return revspec.as_revision_id(self.branch)
+                    return revspec.as_revision_id(self.branch), ""
                 except (InvalidRevisionSpec, NoSuchTag):
                     pass
             revid = self._search_for_upstream_version(
@@ -388,9 +389,9 @@ class BasePristineTarSource(UpstreamSource):
                     "Upstream import of %s lacks a tag. Set one by running: "
                     "brz tag -rrevid:%s %s", version, revid.decode('utf-8'),
                     tag_name)
-                return revid
+                return revid, ""
             try:
-                return self.branch.tags.lookup_tag(tag_name)
+                return self.branch.tags.lookup_tag(tag_name), ""
             except NoSuchTag as e:
                 raise PackageVersionNotPresent(package, version, self) from e
 
@@ -509,12 +510,16 @@ class BzrPristineTarSource(BasePristineTarSource):
             timestamp = timestamp[0]
         if len(parent_ids) == 0:
             base_revid = _mod_revision.NULL_REVISION
+            base_subpath = ""
         else:
-            base_revid = parent_ids[0]
+            base_revid, base_subpath = parent_ids[0]
+        if base_subpath:
+            raise Exception('subpaths are not yet supported')
         basis_tree = tree.branch.repository.revision_tree(base_revid)
         with tree.lock_write():
             builder = tree.branch.get_commit_builder(
-                    parents=parent_ids, revprops=revprops, timestamp=timestamp,
+                    parents=[revid for revid, subpath in parent_ids],
+                    revprops=revprops, timestamp=timestamp,
                     timezone=timezone, committer=committer)
             try:
                 changes = [c for c in tree.iter_changes(basis_tree) if
@@ -534,7 +539,9 @@ class BzrPristineTarSource(BasePristineTarSource):
         return tag_name, revid, delta is not None
 
     def fetch_component_tarball(self, package, version, component, target_dir):
-        revid = self.version_component_as_revision(package, version, component)
+        revid, subpath = self.version_component_as_revision(
+            package, version, component)
+        assert subpath == ""
         try:
             rev = self.branch.repository.get_revision(revid)
         except NoSuchRevision as e:
@@ -798,8 +805,11 @@ class GitPristineTarSource(BasePristineTarSource):
             timestamp = timestamp[0]
         if len(parent_ids) == 0:
             base_revid = _mod_revision.NULL_REVISION
+            base_subpath = ""
         else:
-            base_revid = parent_ids[0]
+            base_revid, base_subpath = parent_ids[0]
+        if base_subpath:
+            raise Exception('subpaths not yet supported')
         basis_tree = tree.branch.repository.revision_tree(base_revid)
         with tree.lock_write():
             builder = tree.branch.get_commit_builder(
@@ -937,12 +947,13 @@ class GitPristineTarSource(BasePristineTarSource):
             (dest_filename, delta_bytes, delta_id,
              delta_sig) = self.get_pristine_tar_delta(package, version)
         except PristineTarDeltaAbsent:
-            revid = self.version_component_as_revision(
+            revid, subpath = self.version_component_as_revision(
                 package, version, component)
             tree = self.branch.repository.revision_tree(revid)
             dest_filename = self._tarball_path(
                 package, version, component, target_dir, format='gz')
-            export_with_nested(tree, dest_filename, per_file_timestamps=True)
+            export_with_nested(
+                tree, dest_filename, per_file_timestamps=True, subdir=subpath)
             return dest_filename
         else:
             dest_filename = os.path.join(target_dir, dest_filename)

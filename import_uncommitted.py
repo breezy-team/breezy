@@ -587,9 +587,10 @@ def main(argv=None):
     except MalformedTransform as e:
         report_fatal('malformed-transform', str(e))
         return 1
-    except ConflictsInTree as e:
+    except ConflictsInTree:
         report_fatal(
-            'merge-conflicts', "Merging uncommitted changes resulted in conflicts.",
+            'merge-conflicts',
+            "Merging uncommitted changes resulted in conflicts.",
             transient=False)
         return 1
 

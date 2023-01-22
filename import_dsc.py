@@ -209,15 +209,18 @@ def checkout_upstream_version(tree, package, version, revisions):
     """Checkout an upstream version from the pristine tar source.
 
     """
-    tree.update(revision=revisions[None])
+    main_revid, main_subpath = revisions[None]
+    if main_subpath:
+        raise Exception("subpaths not yet supported")
+    tree.update(revision=main_revid)
     parent_ids = []
     for component in sorted(revisions.keys()):
-        revid = revisions[component]
+        revid, subpath = revisions[component]
         if component is not None:
             component_tree = tree.branch.repository.revision_tree(revid)
             export_with_nested(
                component_tree, os.path.join(tree.basedir, component),
-               format='dir')
+               format='dir', subdir=subpath)
         parent_ids.append(revid)
     tree.set_parent_ids(parent_ids)
 
@@ -542,8 +545,8 @@ class DistributionBranch:
                 pristine_upstream_revids = branch.pristine_upstream_source\
                     .version_as_revisions(
                         package, version, tarballs=upstream_tarballs)
-                for (component, pristine_upstream_revid) in (
-                        pristine_upstream_revids.items()):
+                for (pristine_upstream_revid, pristine_upstream_subpath) in (
+                        pristine_upstream_revids.values()):
                     if not graph.is_ancestor(
                            up_branch.last_revision(), pristine_upstream_revid):
                         return False
@@ -614,7 +617,8 @@ class DistributionBranch:
                    str(last_contained_version))
             parents = [
                 (self, last_contained_version,
-                 self.revid_of_version(last_contained_version))]
+                 self.revid_of_version(last_contained_version),
+                 "")]
         else:
             mutter("We don't have any of those versions")
         for branch in (list(reversed(self.get_lesser_branches()))
@@ -623,7 +627,7 @@ class DistributionBranch:
                 branch.contained_versions(missing_versions)
             if merged:
                 revid = branch.revid_of_version(merged[0])
-                parents.append((branch, merged[0], revid))
+                parents.append((branch, merged[0], revid, ""))
                 mutter("Adding merge from related branch of %s for version %s",
                        revid, str(merged[0]))
                 # FIXME: should this really be here?
@@ -649,7 +653,8 @@ class DistributionBranch:
         pull_revisions = (
                 pull_branch.pristine_upstream_source.version_as_revisions(
                     package, version))
-        for (component, pull_revision) in pull_revisions.items():
+        for (component,
+             (pull_revision, _pull_subpath)) in pull_revisions.items():
             mutter("Fetching upstream part %s of %s from revision %s",
                    component, version, pull_revision)
             assert self.pristine_upstream_tree is not None, \
@@ -753,7 +758,7 @@ class DistributionBranch:
                 if parent_pair[1].upstream_version == version.upstream_version:
                     need_upstream_parent = False
                     break
-        real_parents = [p[2] for p in parents]
+        real_parents = [(p[2], p[3]) for p in parents]
         if need_upstream_parent:
             upstream_revids = self.pristine_upstream_source\
                     .version_as_revisions(
@@ -776,7 +781,8 @@ class DistributionBranch:
         # Make sure we see any revisions added by the upstream branch
         # since self.tree was locked.
         self.branch.repository.refresh_data()
-        for (component, tag, revid, pristine_tar_imported) in imported_revids:
+        for (component, tag, revid, pristine_tar_imported,
+             subpath) in imported_revids:
             self.branch.fetch(self.pristine_upstream_branch, revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
@@ -797,8 +803,8 @@ class DistributionBranch:
         :param upstream_parents: the parents to give the upstream revision
         :param timestamp: a tuple of (timestamp, timezone) to use for
             the commit, or None to use the current time.
-        :return:
-            list with (component, tag, revid, pristine_tar_imported) tuples
+        :return: list with
+            (component, tag, revid, pristine_tar_imported, subpath) tuples
         """
         # Should we just dump the upstream part on whatever is currently
         # there, or try and pull all of the other upstream versions
@@ -814,9 +820,12 @@ class DistributionBranch:
         for (tarball, component, md5) in upstream_tarballs:
             parents = upstream_parents.get(component, [])
             if upstream_revisions is not None:
-                revid = upstream_revisions[component]
+                revid, subpath = upstream_revisions[component]
             else:
                 revid = None
+                subpath = ""
+            if subpath:
+                raise Exception('subpaths are not yet supported')
             upstream_trees = [
                 o.pristine_upstream_branch.basis_tree()
                 for o in other_branches]
@@ -834,7 +843,7 @@ class DistributionBranch:
                     revid = fetch_result.revidmap[revid]
                 upstream_branch.tags.merge_to(
                     self.pristine_upstream_branch.tags)
-                parents.append(revid)
+                parents.append((revid, ""))
                 target_tree = (
                     self.pristine_upstream_branch.repository.revision_tree(
                         revid))
@@ -847,9 +856,12 @@ class DistributionBranch:
                 self_tree = self.branch.basis_tree()
                 self_tree.lock_read()
             if len(parents) > 0:
-                parent_revid = parents[0]
+                parent_revid, parent_subpath = parents[0]
             else:
                 parent_revid = NULL_REVISION
+                parent_subpath = None
+            if parent_subpath:
+                raise Exception('subpaths are not supported yet')
             self.pristine_upstream_tree.pull(
                 self.pristine_upstream_tree.branch,
                 overwrite=True, stop_revision=parent_revid)
@@ -878,7 +890,7 @@ class DistributionBranch:
                     committer=committer, files_excluded=files_excluded,
                     reuse_existing=True))
             self.pristine_upstream_branch.generate_revision_history(revid)
-            ret.append((component, tag, revid, pristine_tar_imported))
+            ret.append((component, tag, revid, pristine_tar_imported, subpath))
             self.branch.fetch(self.pristine_upstream_branch)
             self.branch.tags.set_tag(tag, revid)
         return ret
@@ -900,7 +912,7 @@ class DistributionBranch:
           upstream_revisions: Upstream revision ids dictionary
           md5sum: hex digest of the md5sum of the tarball, if known.
         Returns:
-          list with (component, tag, revid, pristine_tar_imported)
+          list with (component, tag, revid, pristine_tar_imported, subpath)
           tuples
         """
         with _extract_tarballs_to_tempdir(tarballs) as tarball_dir:
@@ -933,29 +945,31 @@ class DistributionBranch:
         # First we move the branch to the first parent
         if parents:
             if self.branch.last_revision() == NULL_REVISION:
-                parent_revid = parents[0]
+                parent_revid, parent_subpath = parents[0]
+                if parent_subpath:
+                    raise Exception('subpaths are not yet supported')
                 self.tree.pull(
                     self.tree.branch, overwrite=True,
                     stop_revision=parent_revid)
-            elif parents[0] != self.branch.last_revision():
+            elif parents[0][0] != self.branch.last_revision():
                 mutter("Adding current tip as parent: %s",
                        self.branch.last_revision())
-                parents.insert(0, self.branch.last_revision())
+                parents.insert(0, (self.branch.last_revision(), ""))
         elif self.branch.last_revision() != NULL_REVISION:
             # We were told to import with no parents. That's not
             # right, so import with the current parent. Should
             # perhaps be fixed in the methods to determine the parents.
             mutter("Told to import with no parents. Adding current tip "
                    "as the single parent")
-            parents = [self.branch.last_revision()]
+            parents = [(self.branch.last_revision(), "")]
         other_branches = self.get_other_branches()
         debian_trees = [o.branch.basis_tree() for o in other_branches]
         parent_trees = []
         if file_ids_from is not None:
             parent_trees = file_ids_from[:]
-        for parent in parents:
-            parent_trees.append(self.branch.repository.revision_tree(
-                        parent))
+        for parent_revid, parent_subpath in parents:
+            parent_trees.append(
+                self.branch.repository.revision_tree(parent_revid))
         import_dir(
             self.tree, debian_part,
             file_ids_from=parent_trees + debian_trees)
@@ -964,7 +978,8 @@ class DistributionBranch:
             os.chmod(rules_path,
                      (stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP |
                       stat.S_IROTH | stat.S_IXOTH))
-        self.tree.set_parent_ids(parents)
+        self.tree.set_parent_ids(
+            [parent_revid for (parent_revid, parent_subpath) in parents])
         changelog_path = os.path.join(
             self.tree.basedir, 'debian', 'changelog')
         if os.path.exists(changelog_path):
@@ -1009,7 +1024,7 @@ class DistributionBranch:
         parents = []
         first_parent = self.pristine_upstream_branch.last_revision()
         if first_parent != NULL_REVISION:
-            parents = [first_parent]
+            parents = [(first_parent, "")]
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is not None:
             # If the last version was native, and was not from the same
@@ -1019,7 +1034,7 @@ class DistributionBranch:
                 and not self.pristine_upstream_source.has_version(
                     package, last_contained_version.upstream_version)):
                 revid = self.revid_of_version(last_contained_version)
-                parents.append(revid)
+                parents.append((revid, ""))
                 self.pristine_upstream_branch.fetch(self.branch, revid)
         pull_parents = self.get_parents(versions)
         if ((first_parent == NULL_REVISION and len(pull_parents) > 0)
@@ -1036,13 +1051,12 @@ class DistributionBranch:
                         package, pull_version.upstream_version))
                 if list(pull_revids.keys()) != [None]:
                     raise MultipleUpstreamTarballsNotSupported()
-                pull_revid = pull_revids[None]
                 mutter("Initialising upstream from %s, version %s",
                        str(pull_branch), str(pull_version))
-                parents.append(pull_revid)
+                parents.append(pull_revids[None])
                 self.pristine_upstream_branch.fetch(
                         pull_branch.pristine_upstream_branch,
-                        pull_revid)
+                        pull_revids[None][0])
                 pull_branch.pristine_upstream_branch.tags.merge_to(
                         self.pristine_upstream_branch.tags)
         # FIXME: What about other versions ?
@@ -1129,7 +1143,7 @@ class DistributionBranch:
         if last_contained_version is None:
             parents = []
         else:
-            parents = [self.revid_of_version(last_contained_version)]
+            parents = [(self.revid_of_version(last_contained_version), "")]
         missing_versions = self.missing_versions(versions)
         for branch in (list(reversed(self.get_lesser_branches()))
                        + self.get_greater_branches()):
@@ -1137,12 +1151,12 @@ class DistributionBranch:
                 branch.contained_versions(missing_versions)
             if merged:
                 revid = branch.revid_of_version(merged[0])
-                parents.append(revid)
+                parents.append((revid, ""))
                 # FIXME: should this really be here?
                 self._fetch_from_branch(branch, revid)
         if (self.branch.last_revision() != NULL_REVISION
                 and not self.branch.last_revision() in parents):
-            parents.insert(0, self.branch.last_revision())
+            parents.insert(0, (self.branch.last_revision(), ""))
         return parents
 
     def _import_native_package(self, package, version, versions, debian_part,
@@ -1225,8 +1239,10 @@ class DistributionBranch:
         assert list(upstream_tips.keys()) == [None], \
             "Upstream tips: %r" % list(upstream_tips.keys())
         # TODO(jelmer): Use colocated branches rather than creating a copy.
+        if upstream_tips[None][1]:
+            raise Exception("subpaths are not yet supported")
         dir_to = source_branch.controldir.sprout(
-            to_location, revision_id=upstream_tips[None],
+            to_location, revision_id=upstream_tips[None][0],
             accelerator_tree=self.tree)
         try:
             self.pristine_upstream_tree = dir_to.open_workingtree()
@@ -1287,7 +1303,8 @@ class DistributionBranch:
         graph = self.branch.repository.get_graph(
             other_repository=upstream_repository)
         return all(graph.is_ancestor(upstream_revision, this_revision)
-                   for upstream_revision in upstream_revisions.values())
+                   for upstream_revision, upstream_subpath
+                   in upstream_revisions.values())
 
     def merge_upstream(self, tarball_filenames, package, version,
                        previous_version, upstream_branch=None,
@@ -1310,7 +1327,7 @@ class DistributionBranch:
             if upstream_branch is not None:
                 if upstream_revisions is None:
                     upstream_revisions = {
-                        None: upstream_branch.last_revision()}
+                        None: (upstream_branch.last_revision(), "")}
                 if (not force and
                         self.has_merged_upstream_revisions(
                             self.branch.last_revision(),
@@ -1327,7 +1344,9 @@ class DistributionBranch:
                 if (self.pristine_upstream_branch.last_revision()
                         != NULL_REVISION):
                     parents = {
-                        None: [self.pristine_upstream_branch.last_revision()]}
+                        None: [
+                            (self.pristine_upstream_branch.last_revision(), "")
+                        ]}
                 imported_revids = self.import_upstream(
                     tarball_dir, package, version, parents,
                     upstream_tarballs=upstream_tarballs,
@@ -1348,8 +1367,11 @@ class DistributionBranch:
                     # Use the previous upstream import as the from revision
                     if len(parents[None]) == 0:
                         from_revision = NULL_REVISION
+                        from_subpath = ""
                     else:
-                        from_revision = parents[None][0]
+                        from_revision, from_subpath = parents[None][0]
+                    if from_subpath:
+                        raise Exception('subpath not yet supported')
                     conflicts = self.tree.merge_from_branch(
                         self.pristine_upstream_branch,
                         merge_type=merge_type, from_revision=from_revision)

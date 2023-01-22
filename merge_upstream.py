@@ -108,7 +108,7 @@ def do_import(
       committer: Committer string to use
       files_excluded: Files to exclude
     Returns:
-      list with (component, tag, revid, pristine_tar_imported)
+      list with (component, tag, revid, pristine_tar_imported, subpath)
       tuples
     """
     db = DistributionBranch(tree.branch, tree.branch, tree=tree)
@@ -142,7 +142,7 @@ def do_import(
 
 
 def do_merge(
-        tree, subpath, tarball_filenames, package, version,
+        tree, tarball_filenames, package, version,
         current_version, upstream_branch, upstream_revisions, merge_type=None,
         force=False, force_pristine_tar=False, committer=None,
         files_excluded=None):
@@ -242,12 +242,12 @@ def get_upstream_branch_location(tree, subpath, config, trust_package=False):
 def get_existing_imported_upstream_revids(
         upstream_source, package, new_upstream_version):
     imported_revids = []
-    for component, revid in upstream_source.version_as_revisions(
-        package, new_upstream_version
-    ).items():
+    for (component,
+         (revid, subpath)) in upstream_source.version_as_revisions(
+             package, new_upstream_version).items():
         upstream_tag = upstream_source.tag_name(
             new_upstream_version, component
         )
         imported_revids.append(
-            (component, upstream_tag, revid, None))
+            (component, upstream_tag, revid, None, subpath))
     return imported_revids

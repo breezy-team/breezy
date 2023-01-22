@@ -105,7 +105,7 @@ class UpstreamSource:
 
     def version_as_revisions(
             self, package: str, version: str,
-            tarballs=None) -> dict[Optional[str], RevisionID]:
+            tarballs=None) -> dict[Optional[str], tuple[RevisionID, str]]:
         """Lookup the revision ids for a particular version.
 
         :param package: Package name

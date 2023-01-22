@@ -264,7 +264,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(
             db.pristine_upstream_source.version_as_revisions(
                 "package", version),
-            {None: revid})
+            {None: (revid, "")})
 
     def test_contained_versions(self):
         db = self.db1
@@ -337,7 +337,7 @@ class DistributionBranchTests(BuilddebTestCase):
         db.tag_version(version1)
         self.assertEqual(
             db.get_parents([version2, version1]),
-            [(db, version1, revid1)])
+            [(db, version1, revid1, "")])
 
     def test_get_parents_merge_from_lesser(self):
         """Merge with same upstream version gives merged as second parent."""
@@ -352,8 +352,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # test is that revid1 is second parent
         self.assertEqual(
             self.db2.get_parents(versions),
-            [(self.db2, version2, revid2),
-             (self.db1, version1, revid1)])
+            [(self.db2, version2, revid2, ""),
+             (self.db1, version1, revid1, "")])
 
     def test_get_parents_merge_from_greater(self):
         """Merge from greater is same as merge from lesser."""
@@ -368,8 +368,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # test is that revid2 is second parent
         self.assertEqual(
             self.db1.get_parents(versions), [
-                (self.db1, version1, revid1),
-                (self.db2, version2, revid2)])
+                (self.db1, version1, revid1, ""),
+                (self.db2, version2, revid2, "")])
 
     def test_get_parents_merge_from_two_lesser(self):
         """Should use greatest lesser when two candidates."""
@@ -386,8 +386,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # test is that revid2 and not revid1 is second parent
         self.assertEqual(
             self.db3.get_parents(versions),
-            [(self.db3, version2, revid3),
-             (self.db2, version1, revid2)])
+            [(self.db3, version2, revid3, ""),
+             (self.db2, version1, revid2, "")])
 
     def test_get_parents_merge_from_two_greater(self):
         """Should use least greater when two candidates."""
@@ -404,8 +404,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # test is that revid2 and not revid3 is second parent
         self.assertEqual(
                 self.db1.get_parents(versions),
-                [(self.db1, version1, revid1),
-                 (self.db2, version2, revid2)])
+                [(self.db1, version1, revid1, ""),
+                 (self.db2, version2, revid2, "")])
 
     def test_get_parents_merge_multiple_from_greater(self):
         """More than two parents correctly ordered."""
@@ -423,8 +423,9 @@ class DistributionBranchTests(BuilddebTestCase):
         # test is that revid2 is second, revid3 is third
         self.assertEqual(
             self.db1.get_parents(versions),
-            [(self.db1, version1, revid1), (self.db2, version2, revid2),
-             (self.db3, version3, revid3)])
+            [(self.db1, version1, revid1, ""),
+             (self.db2, version2, revid2, ""),
+             (self.db3, version3, revid3, "")])
 
     def test_get_parents_sync_when_diverged(self):
         version1 = Version("0.1-1")
@@ -442,8 +443,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # and the Debian upload as the second parent.
         self.assertEqual(
             self.db2.get_parents(versions),
-            [(self.db2, version2, revid2),
-             (self.db1, version3, revid3)])
+            [(self.db2, version2, revid2, ""),
+             (self.db1, version3, revid3, "")])
 
     def test_get_parents_skipped_version(self):
         version1 = Version("0.1-1")
@@ -456,7 +457,7 @@ class DistributionBranchTests(BuilddebTestCase):
         versions = [version3, version2, version1]
         self.assertEqual(
             self.db2.get_parents(versions),
-            [(self.db2, version2, revid2)])
+            [(self.db2, version2, revid2, "")])
 
     def test_get_parents_with_upstream_first_version(self):
         db = self.db1
@@ -466,14 +467,14 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(
             db.get_parents_with_upstream(
                 "package", version1, [version1], None),
-            [up_revid])
+            [(up_revid, "")])
         db = self.db2
         self.up_tree2.pull(self.up_tree1.branch)
         self.tag_upstream_version(db, version1.upstream_version)
         self.assertEqual(
             db.get_parents_with_upstream(
                 "package", version1, [version1], None),
-            [up_revid])
+            [(up_revid, "")])
 
     def test_get_parents_with_upstream_second_version(self):
         db = self.db1
@@ -485,7 +486,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.tag_upstream_version(db, version1.upstream_version)
         # No upstream parent
         self.assertEqual(db.get_parents_with_upstream(
-            "package", version2, [version2, version1], None), [revid1])
+            "package", version2, [version2, version1], None), [(revid1, "")])
 
     def test_get_parents_with_upstream_merge_from_lesser(self):
         version1 = Version("0.1-1")
@@ -502,7 +503,7 @@ class DistributionBranchTests(BuilddebTestCase):
         versions = [version3, version1, version2]
         # No upstream parent
         self.assertEqual(self.db2.get_parents_with_upstream(
-            "package", version3, versions, None), [revid2, revid1])
+            "package", version3, versions, None), [(revid2, ""), (revid1, "")])
 
     def test_get_parents_with_upstream_merge_from_greater(self):
         version1 = Version("0.1-1")
@@ -519,7 +520,7 @@ class DistributionBranchTests(BuilddebTestCase):
         versions = [version3, version2, version1]
         # No upstream parent
         self.assertEqual(self.db1.get_parents_with_upstream(
-            "package", version3, versions, None), [revid1, revid2])
+            "package", version3, versions, None), [(revid1, ""), (revid2, "")])
 
     def test_get_parents_with_upstream_new_upstream_import(self):
         version1 = Version("0.1-1")
@@ -535,7 +536,8 @@ class DistributionBranchTests(BuilddebTestCase):
         versions = [version2, version1]
         # Upstream parent as it is new upstream version
         self.assertEqual(self.db2.get_parents_with_upstream(
-            "package", version2, versions, None), [revid1, up_revid2])
+            "package", version2, versions, None),
+            [(revid1, ""), (up_revid2, "")])
 
     def test_get_parents_merge_new_upstream_from_lesser(self):
         version1 = Version("0.1-1")
@@ -559,7 +561,7 @@ class DistributionBranchTests(BuilddebTestCase):
         versions = [version4, version3, version2, version1]
         # no upstream parent as the lesser branch has already merged it
         self.assertEqual(self.db2.get_parents_with_upstream(
-            "package", version4, versions, None), [revid2, revid3])
+            "package", version4, versions, None), [(revid2, ""), (revid3, "")])
 
     def test_get_parents_with_upstream_force_upstream(self):
         version1 = Version("0.1-1")
@@ -575,7 +577,7 @@ class DistributionBranchTests(BuilddebTestCase):
         # upstream parent, but we are requiring one.
         self.assertEqual(self.db2.get_parents_with_upstream(
             "package", version2, versions, None, force_upstream_parent=True),
-            [revid1, up_revid2])
+            [(revid1, ""), (up_revid2, "")])
 
     def test_get_parents_with_upstream_sync_when_diverged(self):
         version1 = Version("0.1-1")
@@ -595,7 +597,7 @@ class DistributionBranchTests(BuilddebTestCase):
         # This is a sync but we are diverged so we should get two
         # parents
         self.assertEqual(self.db2.get_parents_with_upstream(
-            "package", version3, versions, None), [revid2, revid3])
+            "package", version3, versions, None), [(revid2, ""), (revid3, "")])
 
     def test_get_parents_with_upstream_sync_new_upstream(self):
         version1 = Version("0.1-1")
@@ -618,7 +620,7 @@ class DistributionBranchTests(BuilddebTestCase):
         # parents. There should be no upstream as the synced
         # version will already have it.
         self.assertEqual(self.db2.get_parents_with_upstream(
-            "package", version3, versions, None), [revid2, revid3])
+            "package", version3, versions, None), [(revid2, ""), (revid3, "")])
 
     def test_get_parents_with_upstream_sync_new_upstream_force(self):
         version1 = Version("0.1-1")
@@ -646,7 +648,7 @@ class DistributionBranchTests(BuilddebTestCase):
         # TODO: should the upstream parent be second or third?
         self.assertEqual(self.db2.get_parents_with_upstream(
             "package", version3, versions, None, force_upstream_parent=True),
-                [revid2, up_revid3, revid3])
+                [(revid2, ""), (up_revid3, ""), (revid3, "")])
 
     def test_branch_to_pull_version_from(self):
         """Test the check for pulling from a branch.
@@ -774,7 +776,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(self.db2.revid_of_version(version), revid)
         self.assertEqual(
             self.db2.pristine_upstream_source.version_as_revisions(
-                "package", version.upstream_version), {None: up_revid})
+                "package", version.upstream_version), {None: (up_revid, "")})
 
     def test_pull_from_lesser_branch_with_upstream(self):
         version = Version("0.1-1")
@@ -791,7 +793,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(self.db2.revid_of_version(version), revid)
         self.assertEqual(
             self.db2.pristine_upstream_source.version_as_revisions(
-                "package", version.upstream_version), {None: up_revid})
+                "package", version.upstream_version), {None: (up_revid, "")})
 
     def test_pull_upstream_from_branch(self):
         version = "0.1"
@@ -804,7 +806,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(
             self.db2.pristine_upstream_source.version_as_revisions(
                 "package", version),
-            {None: up_revid})
+            {None: (up_revid, "")})
 
     def check_changes(self, changes, added=[], removed=[], modified=[],
                       renamed=[]):
@@ -874,7 +876,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(revno, 1)
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
-                "package", version.upstream_version), {None: rev_id})
+                "package", version.upstream_version), {None: (rev_id, "")})
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
             rev.message,
@@ -909,7 +911,7 @@ class DistributionBranchTests(BuilddebTestCase):
         write_to_file(os.path.join(basedir, "NEWS"), b"")
         self.db1.import_upstream(
             basedir, "package", version2.upstream_version,
-            {None: [self.up_tree1.branch.last_revision()]},
+            {None: [(self.up_tree1.branch.last_revision(), "")]},
             [(None, None, None)])
         tree = self.up_tree1
         branch = tree.branch
@@ -918,7 +920,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
                 "package", version2.upstream_version),
-            {None: rev_id})
+            {None: (rev_id, "")})
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
             rev.message,
@@ -955,7 +957,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(revno, 1)
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
-                "package", version.upstream_version), {None: rev_id})
+                "package", version.upstream_version), {None: (rev_id, "")})
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
             rev.message,
@@ -987,7 +989,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(revno, 1)
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
-                "package", version.upstream_version), {None: rev_id})
+                "package", version.upstream_version), {None: (rev_id, "")})
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
             rev.message,
@@ -1037,7 +1039,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(revno, 1)
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
-                "package", version.upstream_version), {None: rev_id})
+                "package", version.upstream_version), {None: (rev_id, "")})
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(
             rev.message,
@@ -1491,7 +1493,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
                 "package", version1.upstream_version),
-            {None: up_rh1[0]})
+            {None: (up_rh1[0], "")})
         self.tree1.lock_read()
         self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
@@ -1542,11 +1544,11 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
                 "package", version1.upstream_version),
-            {None: up_rh1[0]})
+            {None: (up_rh1[0], "")})
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
                 "package", version3.upstream_version),
-            {None: up_rh1[1]})
+            {None: (up_rh1[1], "")})
         self.tree1.lock_read()
         self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
@@ -1596,11 +1598,11 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
                 "package", version1.upstream_version),
-            {None: up_rh1[0]})
+            {None: (up_rh1[0], "")})
         self.assertEqual(
             self.db1.pristine_upstream_source.version_as_revisions(
                 "package", version3.upstream_version),
-            {None: up_rh1[1]})
+            {None: (up_rh1[1], "")})
         self.tree1.lock_read()
         self.addCleanup(self.tree1.unlock)
         self.assertFalse(self.db1.is_version_native(version1))
@@ -1707,7 +1709,7 @@ class DistributionBranchTests(BuilddebTestCase):
         conflicts, imported_revids = db.merge_upstream(
             [(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
-            upstream_revisions={None: upstream_rev})
+            upstream_revisions={None: (upstream_rev, "")})
         self.assertFalse(conflicts)
 
     def test_merge_upstream_initial_with_removed_debian(self):
@@ -1745,7 +1747,7 @@ class DistributionBranchTests(BuilddebTestCase):
         conflicts, imported_revids = db.merge_upstream(
             [(tarball_filename, None)], "foo", "0.2", "0.1",
             upstream_branch=upstream_tree.branch,
-            upstream_revisions={None: upstream_rev})
+            upstream_revisions={None: (upstream_rev, "")})
         # ./debian conflicts.
         self.assertEqual(3, len(conflicts))
 
@@ -1789,7 +1791,7 @@ class DistributionBranchTests(BuilddebTestCase):
             [(builder.tar_name(), None)], "package", str(version2),
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
-            upstream_revisions={None: upstream_rev})
+            upstream_revisions={None: (upstream_rev, "")})
         revno1, rev_id1 = tree.branch.last_revision_info()
         self.assertEqual(2, revno1)
         packaging_upstream_tip = tree.get_parent_ids()[1]
@@ -1866,7 +1868,7 @@ class DistributionBranchTests(BuilddebTestCase):
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
-            upstream_revisions={None: upstream_rev2})
+            upstream_revisions={None: (upstream_rev2, "")})
         self.assertEqual(b"a-id", tree.path2id("b"))
 
     def test_merge_upstream_rename_on_top(self):
@@ -1904,7 +1906,7 @@ class DistributionBranchTests(BuilddebTestCase):
             version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
-            upstream_revisions={None: upstream_rev2})
+            upstream_revisions={None: (upstream_rev2, "")})
         self.assertEqual(b"a-id", tree.path2id("b"))
 
     def test_merge_upstream_rename_in_packaging_branch(self):

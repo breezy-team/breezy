@@ -421,16 +421,16 @@ def open_branch(
 
 def find_new_upstream(  # noqa: C901
     tree,
-    subpath,
+    subpath: str,
     config,
     package,
-    location=None,
+    location: Optional[str] = None,
     old_upstream_version=None,
     new_upstream_version=None,
-    trust_package=False,
+    trust_package: bool = False,
     version_kind: str = "release",
-    allow_ignore_upstream_branch=False,
-    top_level=False,
+    allow_ignore_upstream_branch: bool = False,
+    top_level: bool = False,
     create_dist=None,
     include_upstream_history: Optional[bool] = None,
     force_big_version_jump: bool = False,
@@ -478,15 +478,14 @@ def find_new_upstream(  # noqa: C901
         upstream_subpath = None  # noqa: F841
 
     if upstream_branch is not None:
-        if upstream_subpath:
-            raise MergingUpstreamSubpathUnsupported()
         try:
             upstream_branch_source = UpstreamBranchSource.from_branch(
                 upstream_branch,
                 config=config,
                 local_dir=tree.controldir,
                 create_dist=create_dist,
-                version_kind=version_kind
+                version_kind=version_kind,
+                subpath=upstream_subpath,
             )
         except InvalidHttpResponse as e:
             raise UpstreamBranchUnavailable(upstream_branch_location, str(e))
@@ -964,7 +963,6 @@ def merge_upstream(  # noqa: C901
             try:
                 conflicts, imported_revids = do_merge(
                     tree,
-                    subpath,
                     tarball_filenames,
                     package,
                     str(new_upstream_version),

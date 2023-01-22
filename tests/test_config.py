@@ -23,7 +23,6 @@ from ....branch import Branch
 from ..config import (
     BUILD_TYPE_MERGE,
     DebBuildConfig,
-    UpstreamMetadataSyntaxError,
     )
 from . import TestCaseWithTransport
 

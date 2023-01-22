@@ -34,8 +34,15 @@ from .info import (  # noqa: F401
     brz_plugin_version as version_info,
 )
 
+from ...directory_service import (
+    AliasDirectory,
+    directories,
+    )
 
 from ...i18n import load_plugin_translations
+from ...tag import tag_sort_methods
+from ...revisionspec import revspec_registry
+
 translation = load_plugin_translations("brz-debian")
 gettext = translation.gettext
 
@@ -66,11 +73,6 @@ default_orig_dir = '..'
 default_result_dir = '..'
 
 
-from ...directory_service import (
-    AliasDirectory,
-    directories,
-    )
-
 directories.register_lazy(
     "apt:", __name__ + '.directory',
     'AptDirectory',
@@ -89,12 +91,10 @@ AliasDirectory.branch_aliases.register_lazy(
     "upstream", __name__ + ".directory", "upstream_branch_alias",
     help="upstream branch (for packaging branches)")
 
-from ...tag import tag_sort_methods
 tag_sort_methods.register_lazy(
     "debversion", __name__ + ".tagging", "sort_debversion",
     "Sort like Debian versions.")
 
-from ...revisionspec import revspec_registry
 revspec_registry.register_lazy(
     "package:", __name__ + ".revspec", "RevisionSpec_package")
 revspec_registry.register_lazy(

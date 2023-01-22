@@ -953,7 +953,8 @@ class cmd_merge_upstream(Command):
                         "merge-upstream takes only a single --revision"))
                 upstream_revspec = revision[0]
                 upstream_revisions = {
-                    None: upstream_revspec.as_revision_id(upstream_branch)}
+                    None: (upstream_revspec.as_revision_id(upstream_branch),
+                           subpath)}
             else:
                 upstream_revisions = None
 
@@ -961,7 +962,7 @@ class cmd_merge_upstream(Command):
                 # Look up the version from the upstream revision
                 unmangled_version, version = (
                     upstream_branch_source.get_version(
-                        package, current_version, upstream_revisions[None]))
+                        package, current_version, upstream_revisions[None][0]))
             elif version is None and primary_upstream_source is not None:
                 unmangled_version, version = (
                     primary_upstream_source.get_latest_version(
@@ -1016,7 +1017,7 @@ class cmd_merge_upstream(Command):
                         % e.path) from e
                 try:
                     conflicts, imported_revids = do_merge(
-                        tree, subpath, tarball_filenames, package, version,
+                        tree, tarball_filenames, package, version,
                         current_version, upstream_branch, upstream_revisions,
                         merge_type, force=force,
                         force_pristine_tar=force_pristine_tar,
@@ -1228,11 +1229,13 @@ class cmd_import_upstream(Command):
             md5sum_filename,
             )
         # TODO: search for similarity etc.
-        branch, _ = Branch.open_containing('.')
+        branch, subpath = Branch.open_containing('.')
         if upstream_branch is None:
             upstream = None
+            upstream_subpath = ""
         else:
-            upstream = Branch.open(upstream_branch)
+            upstream, upstream_subpath = Branch.open_containing(
+                upstream_branch)
         self.add_cleanup(branch.lock_write().unlock)
         tempdir = self.enter_context(tempfile.TemporaryDirectory(
             dir=branch.controldir.root_transport.clone('..')
@@ -1255,10 +1258,13 @@ class cmd_import_upstream(Command):
                 # See bug lp:309682
                 for parent in base_revisions.values():
                     upstream.repository.fetch(branch.repository, parent)
-            db.extract_upstream_tree(base_revisions, tempdir)
+            db.extract_upstream_tree(
+                {comp: (revid, subpath)
+                 for comp, revid in base_revisions.items()},
+                tempdir)
             parents = {}
             for name, base_revid in base_revisions.items():
-                parents[name] = [base_revid]
+                parents[name] = [(base_revid, subpath)]
         else:
             parents = {}
             db.create_empty_upstream_tree(tempdir)
@@ -1276,9 +1282,9 @@ class cmd_import_upstream(Command):
                 ' one revision specifier.'))
         tarballs = [(location, None, md5sum_filename(location))]
         for (component, tag_name, revid,
-             pristine_tar_imported) in db.import_upstream_tarballs(
+             pristine_tar_imported, subpath) in db.import_upstream_tarballs(
                 tarballs, None, version, parents, upstream_branch=upstream,
-                upstream_revisions={None: upstream_revid},
+                upstream_revisions={None: (upstream_revid, upstream_subpath)},
                 force_pristine_tar=force_pristine_tar):
             if component is None:
                 self.outf.write(gettext(

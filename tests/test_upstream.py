@@ -489,10 +489,10 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             config=config)
         revid2 = self.tree.commit("msg")
         self.assertEqual(
-            revid2,
+            (revid2, ""),
             source.version_as_revision("foo", "2.1+bzr2"))
         self.assertEqual(
-            {None: revid1}, source.version_as_revisions("foo", "2.1"))
+            {None: (revid1, "")}, source.version_as_revisions("foo", "2.1"))
 
     def test_version_as_revision(self):
         revid1 = self.tree.commit("msg")
@@ -506,8 +506,9 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             config=config)
         revid2 = self.tree.commit("msg")
         self.assertEqual(
-            revid2, source.version_as_revision("foo", "2.1+bzr2"))
-        self.assertEqual(revid1, source.version_as_revision("foo", "2.1"))
+            (revid2, ""), source.version_as_revision("foo", "2.1+bzr2"))
+        self.assertEqual(
+            (revid1, ""), source.version_as_revision("foo", "2.1"))
 
     def test_version_as_revision_no_revspec(self):
         # There is no relevant revspec known
@@ -635,8 +636,9 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertIs(None, source._upstream_branch)
         revid2 = self.tree.commit("msg")
         self.assertEqual(
-            revid2, source.version_as_revision("foo", "2.1+bzr2"))
-        self.assertEqual(revid1, source.version_as_revision("foo", "2.1"))
+            (revid2, ""), source.version_as_revision("foo", "2.1+bzr2"))
+        self.assertEqual(
+            (revid1, ""), source.version_as_revision("foo", "2.1"))
         self.assertIsNot(None, source._upstream_branch)
 
 
@@ -1073,14 +1075,14 @@ upstream-tag = blah-%(version%~%-)s
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
         self.assertEqual(
-            {None: revid1},
+            {None: (revid1, "")},
             self.source.version_as_revisions(None, "2.1"))
 
     def test_version_component_as_revision(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid1)
         self.assertEqual(
-            revid1,
+            (revid1, ""),
             self.source.version_component_as_revision(None, "2.1", "lib"))
 
     # git doesn't support subtags
@@ -1091,7 +1093,7 @@ upstream-tag = blah-%(version%~%-)s
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
         self.assertEqual(
-            {None: revid1, "lib": revid2},
+            {None: (revid1, ""), "lib": (revid2, "")},
             self.source.version_as_revisions(None, "2.1", [
                 ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
                 ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
@@ -1177,14 +1179,14 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
         self.assertEqual(
-            {None: revid1},
+            {None: (revid1, "")},
             self.source.version_as_revisions(None, "2.1"))
 
     def test_version_component_as_revision(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid1)
         self.assertEqual(
-            revid1,
+            (revid1, ""),
             self.source.version_component_as_revision(None, "2.1", "lib"))
 
     def test_version_as_revisions(self):
@@ -1193,7 +1195,7 @@ class BzrPristineTarSourceTests(TestCaseWithTransport):
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
         self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
         self.assertEqual(
-            {None: revid1, "lib": revid2},
+            {None: (revid1, ""), "lib": (revid2, "")},
             self.source.version_as_revisions(None, "2.1", [
                 ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
                 ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))

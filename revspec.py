@@ -109,7 +109,7 @@ class RevisionSpec_upstream(RevisionSpec):
             get_pristine_tar_source(tree, branch),
             ])
         try:
-            revision_id = upstream_source.version_as_revisions(
+            revision_id, subpath = upstream_source.version_as_revisions(
                 cl.package, version_spec)[None]
             return RevisionInfo.from_revision_id(
                 branch, revision_id)

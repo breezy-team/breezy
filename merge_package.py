@@ -80,8 +80,8 @@ def _upstream_version_data(branch, revid):
         None, uver)
     if list(upstream_revids.keys()) != [None]:
         raise MultipleUpstreamTarballsNotSupported()
-    upstream_revid = upstream_revids[None]
-    return (Version(uver), upstream_revid)
+    upstream_revid, upstream_subpath = upstream_revids[None]
+    return (Version(uver), upstream_revid, upstream_subpath)
 
 
 def fix_ancestry_as_needed(tree, source, source_revid=None):
@@ -137,9 +137,13 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
         with tree.lock_write():
             # "Unpack" the upstream versions and revision ids for the merge
             # source and target branch respectively.
-            (us_ver, us_revid) = _upstream_version_data(source, source_revid)
-            (ut_ver, ut_revid) = _upstream_version_data(
+            (us_ver, us_revid, us_subpath) = _upstream_version_data(
+                source, source_revid)
+            (ut_ver, ut_revid, ut_subpath) = _upstream_version_data(
                 target, target.last_revision())
+
+            if us_subpath or ut_subpath:
+                raise Exception("subpaths not yet supported")
 
             # Did the upstream branches of the merge source/target diverge?
             graph = source.repository.get_graph(target.repository)
@@ -156,7 +160,8 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                     dir=os.path.join(tree.basedir, '..')) as tempdir:
                 # Extract the merge target's upstream tree into a temporary
                 # directory.
-                db.extract_upstream_tree({None: ut_revid}, tempdir)
+                db.extract_upstream_tree(
+                    {None: (ut_revid, ut_subpath)}, tempdir)
                 tmp_target_utree = db.pristine_upstream_tree
 
                 # Merge upstream branch tips to obtain a shared upstream

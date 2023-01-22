@@ -51,7 +51,7 @@ from ....errors import (
     )
 from ....memorybranch import MemoryBranch
 from ..repack_tarball import get_filetype, repack_tarball
-from ....revision import NULL_REVISION
+from ....revision import NULL_REVISION, RevisionID
 from ....revisionspec import RevisionSpec
 from ....trace import note, mutter, warning
 from ....tree import Tree
@@ -409,7 +409,7 @@ class UpstreamBranchSource(UpstreamSource):
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
                  config=None, actual_branch=None, create_dist=None,
-                 other_repository=None, version_kind="auto"):
+                 other_repository=None, version_kind="auto", subpath=None):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
         self.create_dist = create_dist
@@ -417,13 +417,16 @@ class UpstreamBranchSource(UpstreamSource):
         self.version_kind = version_kind
         self.other_repository = other_repository
         self.upstream_revision_map = {}
+        if subpath is None:
+            subpath = ""
+        self.subpath = subpath
         if upstream_revision_map is not None:
             self.upstream_revision_map.update(upstream_revision_map.items())
 
     @classmethod
     def from_branch(cls, upstream_branch, upstream_revision_map=None,
                     config=None, local_dir=None, create_dist=None,
-                    version_kind="auto"):
+                    version_kind="auto", subpath: Optional[str] = None):
         """Create a new upstream branch source from a branch.
 
         This will optionally fetch into a local directory.
@@ -449,7 +452,8 @@ class UpstreamBranchSource(UpstreamSource):
             actual_branch=actual_branch, create_dist=create_dist,
             version_kind=version_kind)
 
-    def version_as_revision(self, package, version, tarballs=None):
+    def version_as_revision(
+            self, package, version, tarballs=None) -> tuple[RevisionID, str]:
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]
         else:
@@ -458,7 +462,7 @@ class UpstreamBranchSource(UpstreamSource):
         if revspec is not None:
             try:
                 return RevisionSpec.from_string(
-                    revspec).as_revision_id(self.upstream_branch)
+                    revspec).as_revision_id(self.upstream_branch), self.subpath
             except (InvalidRevisionSpec, NoSuchTag) as e:
                 raise PackageVersionNotPresent(package, version, self) from e
         else:
@@ -466,17 +470,16 @@ class UpstreamBranchSource(UpstreamSource):
                 note(gettext('No upstream upstream-revision format '
                              'specified, trying %s') % revspec)
                 try:
-                    return RevisionSpec.from_string(
-                        revspec).as_revision_id(self.upstream_branch)
+                    return RevisionSpec.from_string(revspec)\
+                        .as_revision_id(self.upstream_branch), self.subpath
                 except (InvalidRevisionSpec, NoSuchTag):
                     pass
-            else:
-                raise PackageVersionNotPresent(package, version, self)
+            raise PackageVersionNotPresent(package, version, self)
         raise PackageVersionNotPresent(package, version, self)
 
     def revision_tree(self, package, version):
-        revid = self.version_as_revision(package, version)
-        return self.upstream_branch.repository.revision_tree(revid)
+        revid, subpath = self.version_as_revision(package, version)
+        return self.upstream_branch.repository.revision_tree(revid), subpath
 
     def version_as_revisions(self, package, version, tarballs=None):
         # FIXME: Support multiple upstream locations if there are multiple
@@ -536,7 +539,7 @@ class UpstreamBranchSource(UpstreamSource):
             graph = self.upstream_branch.repository.get_graph()
             if since_version is not None:
                 try:
-                    since_revision = self.version_as_revision(
+                    since_revision, _subpath = self.version_as_revision(
                         package, since_version)
                 except PackageVersionNotPresent as e:
                     raise PreviousVersionTagMissing(
@@ -574,9 +577,9 @@ class UpstreamBranchSource(UpstreamSource):
              getattr(self, '_actual_branch', self.upstream_branch).user_url)
         with self.upstream_branch.lock_read():
             if revisions is not None:
-                revid = revisions[None]
+                revid, subpath = revisions[None]
             else:
-                revid = self.version_as_revision(package, version)
+                revid, subpath = self.version_as_revision(package, version)
                 if revid is None:
                     raise PackageVersionNotPresent(package, version, self)
             if self.other_repository is not None:
@@ -590,17 +593,19 @@ class UpstreamBranchSource(UpstreamSource):
                 rev_tree = self.upstream_branch.repository.revision_tree(revid)
             if self.create_dist is not None:
                 with tempfile.TemporaryDirectory() as td:
-                    fn = self.create_dist(rev_tree, package, version, td)
+                    fn = self.create_dist(
+                        rev_tree, package, version, td, subpath=subpath)
                     if fn:
                         nfn = new_tarball_name(package, version, fn)
                         repack_tarball(os.path.join(td, fn), nfn, target_dir)
                         return [os.path.join(target_dir, nfn)]
-            tarball_base = "{}-{}".format(package, version)
+            tarball_base = f"{package}-{version}"
             target_filename = self._tarball_path(
                 package, version, None, target_dir)
             try:
                 export_with_nested(
-                    rev_tree, target_filename, format='tgz', root=tarball_base)
+                    rev_tree, target_filename, format='tgz', root=tarball_base,
+                    subdir=subpath)
             except UnsupportedOperation as e:
                 note('Not exporting revision from upstream branch: %s', e)
                 raise PackageVersionNotPresent(package, version, self) from e
@@ -621,13 +626,16 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
 
     def __init__(self, upstream_branch_url, upstream_revision_map=None,
                  config=None, create_dist=None, other_repository=None,
-                 version_kind="snapshot"):
+                 version_kind="snapshot", subpath=None):
         self.upstream_branch_url = upstream_branch_url
         self.version_kind = version_kind
         self._upstream_branch = None
         self.config = config
         self.create_dist = create_dist
         self.other_repository = other_repository
+        if subpath is None:
+            subpath = ""
+        self.subpath = subpath
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
         else:
