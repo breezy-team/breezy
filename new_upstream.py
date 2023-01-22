@@ -259,6 +259,10 @@ class ReleaseWithoutChanges(Exception):
         self.new_upstream_version = new_upstream_version
 
 
+class MergingUpstreamSubpathUnsupported(Exception):
+    """Merging an upstream branch with subpath is not yet supported."""
+
+
 RELEASE_BRANCH_NAME = "new-upstream-release"
 SNAPSHOT_BRANCH_NAME = "new-upstream-snapshot"
 DEFAULT_DISTRIBUTION = "unstable"
@@ -475,8 +479,7 @@ def find_new_upstream(  # noqa: C901
 
     if upstream_branch is not None:
         if upstream_subpath:
-            raise Exception(
-                'merging from upstream with subpath not yet supported')
+            raise MergingUpstreamSubpathUnsupported()
         try:
             upstream_branch_source = UpstreamBranchSource.from_branch(
                 upstream_branch,
@@ -1506,6 +1509,10 @@ def main(argv=None):
                 upstream_version=e.new_upstream_version, transient=False
             )
             return 1
+        except MergingUpstreamSubpathUnsupported as e:
+            report_fatal(
+                "unsupported-merging-upstream-with-subpath",
+                str(e), transient=False)
         except WatchSyntaxError as e:
             report_fatal('watch-syntax-error', str(e), transient=False)
             return 1
