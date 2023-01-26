@@ -65,40 +65,8 @@ def _expand_user(path, url, lp_login):
 
 
 def _update_url_scheme(url):
-    # Do ubuntu: and debianlp: expansions.
     scheme, netloc, path, query, fragment = urlsplit(url)
-    if scheme in ('ubuntu', 'debianlp'):
-        if scheme == 'ubuntu':
-            distro = 'ubuntu'
-        elif scheme == 'debianlp':
-            distro = 'debian'
-            # No shortcuts for Debian distroseries.
-        else:
-            raise AssertionError('scheme should be ubuntu: or debianlp:')
-        # Split the path.  It's either going to be 'project' or
-        # 'series/project', but recognize that it may be a series we don't
-        # know about.
-        path_parts = path.split('/')
-        if len(path_parts) == 1:
-            # It's just a project name.
-            lp_url_template = 'lp:%(distro)s/%(project)s'
-            project = path_parts[0]
-            series = None
-        elif len(path_parts) == 2:
-            # It's a series and project.
-            lp_url_template = 'lp:%(distro)s/%(series)s/%(project)s'
-            series, project = path_parts
-        else:
-            # There are either 0 or > 2 path parts, neither of which is
-            # supported for these schemes.
-            raise InvalidURL('Bad path: %s' % url)
-        # Hack the url and let the following do the final resolution.
-        url = lp_url_template % dict(
-            distro=distro,
-            series=series,
-            project=project)
-        scheme, netloc, path, query, fragment = urlsplit(url)
-    elif scheme == 'lp+bzr':
+    if scheme == 'lp+bzr':
         scheme = 'lp'
     return url, path
 
