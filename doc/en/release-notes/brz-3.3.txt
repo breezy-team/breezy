@@ -5,6 +5,20 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.3
+#########
+
+:3.3.3: UNRELEASED
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+* Drop support for the ubuntu: and debianlp: aliases.
+  These imports have long been broken.
+  (Jelmer Vernooĳ)
+
 brz 3.3.2
 #########
 
