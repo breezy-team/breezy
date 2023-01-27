@@ -19,6 +19,7 @@ from contextlib import ExitStack
 import json
 import logging
 import os
+import sys
 from urllib.parse import urlparse
 
 import breezy.bzr  # noqa: F401
@@ -372,6 +373,8 @@ def main(argv=None):
         report_fatal(
             "formatting-unpreservable",
             "unable to preserve formatting while editing %s" % e.path)
+        if hasattr(e, 'diff'):
+            sys.stderr.writelines(e.diff())
         return 1
     except (ChangeConflict, GeneratedFile) as e:
         report_fatal(
@@ -409,5 +412,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    import sys
     sys.exit(main(sys.argv[1:]))
