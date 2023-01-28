@@ -241,8 +241,17 @@ mutation ($pullRequestId: ID!) {
   }
 }
 """
-            self._gh._graphql_request(
-                graphql_query, pullRequestId=self._pr["node_id"])
+            try:
+                self._gh._graphql_request(
+                    graphql_query, pullRequestId=self._pr["node_id"])
+            except GraphqlErrors as e:
+                mutter('graphql errors: %r', e.errors)
+                first_error = e.errors[0]
+                if (first_error['type'] == 'UNPROCESSABLE' and
+                        first_error['path'] == 'enablePullRequestAutoMerge'):
+                    # TODO(jelmer): better exception type
+                    raise Exception(first_error['message'])
+                raise Exception(first_error['message'])
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
             data = {}
