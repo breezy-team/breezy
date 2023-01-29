@@ -328,7 +328,7 @@ class GitLabMergeProposal(MergeProposal):
             preferred_schemes=preferred_schemes)
 
     def set_target_branch_name(self, name):
-        self._update(branch=name)
+        self._update(target_branch=name)
 
     def _get_project_name(self, project_id):
         source_project = self.gl._get_project(project_id)
