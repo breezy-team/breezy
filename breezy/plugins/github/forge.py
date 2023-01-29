@@ -775,14 +775,14 @@ class GitHub(Forge):
             return json.loads(response.text)
         raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
 
-    def create_project(self, path, *, description=None, homepage=None,
+    def create_project(self, path, *, homepage=None,
                        private=False, has_issues=True, has_projects=False,
-                       has_wiki=False):
+                       has_wiki=False, summary=None):
         owner, name = path.split('/')
         path = 'repos'
         data = {
             "name": "name",
-            "description": description,
+            "description": summary,
             "homepage": homepage,
             "private": private,
             "has_issues": has_issues,
