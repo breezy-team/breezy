@@ -581,9 +581,9 @@ class Launchpad(Forge):
         mp = self.launchpad.load(api_url)
         return LaunchpadMergeProposal(mp)
 
-    def create_project(self, path):
+    def create_project(self, path, summary=None):
         self.launchpad.projects.new_project(
-            display_name=path, name=path, summary=path, title=path)
+            display_name=path, name=path, summary=summary, title=path)
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):

@@ -416,7 +416,7 @@ class Forge:
         """
         raise NotImplementedError(self.delete_project)
 
-    def create_project(self, name):
+    def create_project(self, name, summary=None):
         """Create a project.
         """
         raise NotImplementedError(self.create_project)
@@ -519,7 +519,7 @@ def get_proposal_by_url(url):
     raise UnsupportedForge(url)
 
 
-def create_project(url: str) -> None:
+def create_project(url: str, *, summary=None) -> None:
     """Create a project.
 
     Args:
@@ -533,7 +533,7 @@ def create_project(url: str) -> None:
         except UnsupportedForge:
             pass
         else:
-            hoster.create_project(parsed_url.path)
+            hoster.create_project(parsed_url.path, summary=summary)
             break
     else:
         raise UnsupportedForge(url)
