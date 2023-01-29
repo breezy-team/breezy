@@ -382,10 +382,11 @@ class BzrGitMapping(foreign.VcsMapping):
                 Tag.from_string(rev.properties[propname].encode('utf-8', 'surrogateescape')))
             i += 1
             propname = 'git-mergetag-%d' % i
+        extra = getattr(commit, "_extra", None) or getattr(commit, "extra", None)
         if 'git-extra' in rev.properties:
             for l in rev.properties['git-extra'].splitlines():
                 (k, v) = l.split(' ', 1)
-                commit.extra.append(
+                extra.append(
                     (k.encode('utf-8', 'surrogateescape'),
                      v.encode('utf-8', 'surrogateescape')))
         return commit
@@ -483,7 +484,8 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.parent_ids = list(parents)
         unknown_extra_fields = []
         extra_lines = []
-        for k, v in commit.extra:
+        extra = getattr(commit, "_extra", None) or getattr(commit, "extra", None)
+        for k, v in extra:
             if k == HG_RENAME_SOURCE:
                 extra_lines.append(
                     k.decode('utf-8', 'surrogateescape') + ' ' +
