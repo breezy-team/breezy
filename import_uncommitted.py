@@ -135,8 +135,12 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
         raise SnapshotDownloadError(
             srcfiles_url, e, transient=transient) from e
     except URLError as e:
+        if e.errno == errno.ENETUNREACH:
+            transient = True
+        else:
+            transient = None
         raise SnapshotDownloadError(
-            srcfiles_url, e, transient=None) from e
+            srcfiles_url, e, transient=transient) from e
 
     for hsh, entries in srcfiles["fileinfo"].items():
         for entry in entries:
@@ -163,6 +167,10 @@ def download_snapshot(package: str, version: Version, output_dir: str) -> str:
                     raise SnapshotDownloadError(
                         url, e, transient=transient) from e
                 except URLError as e:
+                    if e.errno == errno.ENETUNREACH:
+                        transient = True
+                    else:
+                        transient = None
                     raise SnapshotDownloadError(
                         url, e, transient=None) from e
     file_version = Version(version)
