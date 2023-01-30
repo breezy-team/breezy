@@ -1188,7 +1188,7 @@ class DistributionBranch:
         :param use_time_from_changelog: whether to use the current time or
             the one from the last changelog entry.
         """
-        with open(dsc_filename) as f:
+        with open(dsc_filename, 'rb') as f:
             dsc = deb822.Dsc(f.read())
         version = Version(dsc['Version'])
         with extract(dsc_filename, dsc,
