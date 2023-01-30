@@ -33,7 +33,7 @@ from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy import urlutils
-from breezy.errors import NotBranchError, NoSuchTag, ConflictsInTree
+from breezy.errors import NotBranchError, NoSuchTag, ConflictsInTree, NoSuchRevisionInTree
 from breezy.revision import RevisionID, NULL_REVISION
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
@@ -367,7 +367,10 @@ def import_uncommitted(
                 db.tree.update(revision=db.branch.tags.lookup_tag(e.tag_name))
             revid = db.branch.tags.lookup_tag(tag_name)
             if skip_noop and last_revid != NULL_REVISION:
-                last_tree = db.tree.revision_tree(last_revid)
+                try:
+                    last_tree = db.tree.revision_tree(last_revid)
+                except NoSuchRevisionInTree:
+                    last_tree = db.branch.repository.revision_tree(last_revid)
                 if is_noop_upload(tree, last_tree, subpath):
                     note('Skipping version %s without effective changes',
                          version)
