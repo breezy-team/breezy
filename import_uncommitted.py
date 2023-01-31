@@ -34,7 +34,8 @@ from debmutate.changelog import ChangelogEditor, distribution_is_unreleased
 import breezy.bzr  # noqa: F401
 import breezy.git  # noqa: F401
 from breezy import urlutils
-from breezy.errors import NotBranchError, NoSuchTag, ConflictsInTree, NoSuchRevisionInTree
+from breezy.errors import (
+    NotBranchError, NoSuchTag, ConflictsInTree, NoSuchRevisionInTree)
 from breezy.revision import RevisionID, NULL_REVISION
 from breezy.trace import note, warning
 from breezy.transform import MalformedTransform
