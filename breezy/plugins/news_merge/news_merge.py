@@ -16,10 +16,11 @@
 
 """Merge logic for news_merge plugin."""
 
-from .parser import simple_parse_lines
-from ... import merge
-from merge3 import Merge3
 import patiencediff
+from merge3 import Merge3
+
+from ... import merge
+from .parser import simple_parse_lines
 
 
 class NewsMerger(merge.ConfigurableFileMerger):

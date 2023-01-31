@@ -21,16 +21,10 @@ This is a fairly thin wrapper on regular file IO.
 
 import errno
 import os
-from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
+from stat import S_IMODE, S_ISDIR, ST_MODE
 
-from .. import (
-    osutils,
-    urlutils,
-    )
-
-from .. import transport
-
+from .. import osutils, transport, urlutils
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 _put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
@@ -435,6 +429,7 @@ class LocalTransport(transport.Transport):
         """
         if isinstance(other, LocalTransport):
             import shutil
+
             # Both from & to are on the local filesystem
             # Unfortunately, I can't think of anything faster than just
             # copying them across, one by one :(

@@ -16,8 +16,8 @@
 
 """Tests for the Command.encoding_type interface."""
 
+from ...commands import Command, plugin_cmds, register_command
 from .. import TestCaseWithMemoryTransport
-from ...commands import Command, register_command, plugin_cmds
 
 
 class cmd_echo_exact(Command):

@@ -35,10 +35,7 @@ including sections from a NEWS or ChangeLog file.
 
 from ... import version_info  # noqa: F401
 from ... import hooks
-from ...config import (
-    option_registry,
-    ListOption,
-    )
+from ...config import ListOption, option_registry
 
 option_registry.register(
     ListOption('commit.template_from_files', default=[], help="""\

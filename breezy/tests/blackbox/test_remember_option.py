@@ -16,13 +16,8 @@
 
 from typing import List
 
-from breezy import (
-    branch,
-    urlutils,
-    )
-from breezy.tests import (
-    script,
-    )
+from breezy import branch, urlutils
+from breezy.tests import script
 
 
 class TestRememberMixin:

@@ -23,9 +23,8 @@ The views are actually in the WorkingTree.views namespace, but these are
 
 from breezy import views as _mod_views
 from breezy.tests import TestNotApplicable, TestSkipped
-from breezy.workingtree import WorkingTree
-
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+from breezy.workingtree import WorkingTree
 
 
 class TestTreeViews(TestCaseWithWorkingTree):

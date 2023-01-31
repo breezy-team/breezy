@@ -16,15 +16,7 @@
 
 import re
 
-from .. import (
-    errors,
-    gpg,
-    mail_client,
-    merge_directive,
-    tests,
-    trace,
-    )
-
+from .. import errors, gpg, mail_client, merge_directive, tests, trace
 
 OUTPUT1 = b"""# Bazaar merge directive format 1
 # revision_id: example:

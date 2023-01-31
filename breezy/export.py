@@ -22,12 +22,7 @@ import os
 import sys
 import time
 
-from . import (
-    archive,
-    errors,
-    osutils,
-    trace,
-    )
+from . import archive, errors, osutils, trace
 
 
 def export(tree, dest, format=None, root=None, subdir=None,

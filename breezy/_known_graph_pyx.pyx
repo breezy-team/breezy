@@ -22,44 +22,21 @@
 cdef extern from "python-compat.h":
     pass
 
-from cpython.bytes cimport (
-    PyBytes_CheckExact,
-    )
-from cpython.dict cimport (
-    PyDict_CheckExact,
-    PyDict_DelItem,
-    PyDict_GetItem,
-    PyDict_Next,
-    PyDict_SetItem,
-    PyDict_Size,
-    )
-from cpython.list cimport (
-    PyList_Append,
-    PyList_CheckExact,
-    PyList_GET_SIZE,
-    PyList_GET_ITEM,
-    PyList_SetItem,
-    )
-from cpython.object cimport (
-    Py_LT,
-    PyObject,
-    PyObject_RichCompareBool,
-    )
-from cpython.ref cimport (
-    Py_INCREF,
-    )
-from cpython.tuple cimport (
-    PyTuple_CheckExact,
-    PyTuple_GET_SIZE,
-    PyTuple_GET_ITEM,
-    PyTuple_New,
-    PyTuple_SET_ITEM,
-    )
+from cpython.bytes cimport PyBytes_CheckExact
+from cpython.dict cimport (PyDict_CheckExact, PyDict_DelItem, PyDict_GetItem,
+                           PyDict_Next, PyDict_SetItem, PyDict_Size)
+from cpython.list cimport (PyList_Append, PyList_CheckExact, PyList_GET_ITEM,
+                           PyList_GET_SIZE, PyList_SetItem)
+from cpython.object cimport Py_LT, PyObject, PyObject_RichCompareBool
+from cpython.ref cimport Py_INCREF
+from cpython.tuple cimport (PyTuple_CheckExact, PyTuple_GET_ITEM,
+                            PyTuple_GET_SIZE, PyTuple_New, PyTuple_SET_ITEM)
 
 import collections
 import gc
 
 from . import errors, revision
+
 
 cdef object NULL_REVISION
 NULL_REVISION = revision.NULL_REVISION

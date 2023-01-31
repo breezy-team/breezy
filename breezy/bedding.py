@@ -21,6 +21,7 @@ import os
 import sys
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     osutils,
@@ -28,9 +29,7 @@ from breezy import (
     win32utils,
     )
 """)
-from . import (
-    errors,
-    )
+from . import errors
 
 
 def ensure_config_dir_exists(path=None):

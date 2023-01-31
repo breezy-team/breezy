@@ -62,11 +62,12 @@ ssh key. Your ``.ssh/authorized_key`` file should look something like this::
    command="/path/to/brz_access /path/to/brz /path/to/repository <username>",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
 """
 
-import ConfigParser
 import os
 import re
 import subprocess
 import sys
+
+import ConfigParser
 
 CONFIG_FILE = "brz_access.conf"
 SCRIPT_NAME = os.path.basename(sys.argv[0])

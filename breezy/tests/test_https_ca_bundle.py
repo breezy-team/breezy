@@ -19,11 +19,8 @@
 import os
 import sys
 
-from . import (
-    TestCaseInTempDir,
-    TestSkipped,
-    )
 from ..transport.http import ca_bundle
+from . import TestCaseInTempDir, TestSkipped
 
 
 class TestGetCAPath(TestCaseInTempDir):

@@ -16,16 +16,11 @@
 
 """Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
-from breezy import (
-    branch as _mod_branch,
-    controldir,
-    check,
-    errors,
-    )
+from breezy import branch as _mod_branch
+from breezy import check, controldir, errors
 from breezy.revision import NULL_REVISION
-from breezy.tests import fixtures, TestNotApplicable, transport_util
+from breezy.tests import TestNotApplicable, fixtures, transport_util
 from breezy.tests.per_branch import TestCaseWithBranch
-
 
 unstackable_format_errors = (
     _mod_branch.UnstackableBranchFormat,

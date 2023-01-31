@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from typing import List, Optional, Iterator, Callable, Iterable
+from typing import Callable, Iterable, Iterator, List, Optional
 
 
 class IterableFileBase:

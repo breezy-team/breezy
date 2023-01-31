@@ -25,10 +25,7 @@ import socket
 import sys
 from urllib.parse import urlparse
 
-from .. import (
-    osutils,
-    urlutils,
-)
+from .. import osutils, urlutils
 from . import test_server
 
 

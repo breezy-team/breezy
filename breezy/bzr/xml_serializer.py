@@ -24,20 +24,12 @@
 
 import re
 from typing import Dict, Union
+from xml.etree.ElementTree import (Element, ElementTree, ParseError,
+                                   SubElement, fromstring, fromstringlist,
+                                   tostring, tostringlist)
 
-from xml.etree.ElementTree import (
-    ElementTree, SubElement, Element,
-    fromstringlist, tostringlist, tostring,
-    fromstring, ParseError)
-
-from .. import (
-    errors,
-    lazy_regex,
-    )
-from . import (
-    inventory,
-    serializer,
-    )
+from .. import errors, lazy_regex
+from . import inventory, serializer
 
 
 class XMLSerializer(serializer.Serializer):

@@ -16,12 +16,8 @@
 
 """Tests for branch break-lock behaviour."""
 
-from breezy import (
-    branch as _mod_branch,
-    errors,
-    ui,
-    tests,
-    )
+from breezy import branch as _mod_branch
+from breezy import errors, tests, ui
 from breezy.tests import per_branch
 
 

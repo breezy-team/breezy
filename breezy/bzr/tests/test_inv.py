@@ -15,37 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from ... import (
-    errors,
-    osutils,
-    repository,
-    revision,
-    tests,
-    workingtree,
-    )
-from .. import (
-    chk_map,
-    groupcompress,
-    inventory,
-    )
-from ..inventory import (
-    CHKInventory,
-    DuplicateFileId,
-    Inventory,
-    ROOT_ID,
-    InventoryFile,
-    InventoryDirectory,
-    InventoryEntry,
-    InvalidEntryName,
-    TreeReference,
-    mutable_inventory_from_tree,
-    )
-from . import (
-    TestCase,
-    TestCaseWithTransport,
-    )
+from ... import errors, osutils, repository, revision, tests, workingtree
 from ...tests.scenarios import load_tests_apply_scenarios
-
+from .. import chk_map, groupcompress, inventory
+from ..inventory import (ROOT_ID, CHKInventory, DuplicateFileId,
+                         InvalidEntryName, Inventory, InventoryDirectory,
+                         InventoryEntry, InventoryFile, TreeReference,
+                         mutable_inventory_from_tree)
+from . import TestCase, TestCaseWithTransport
 
 load_tests = load_tests_apply_scenarios
 

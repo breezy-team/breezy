@@ -21,15 +21,9 @@
 import os
 
 from breezy import osutils
+from breezy.bzr.testament import StrictTestament, StrictTestament3, Testament
 from breezy.tests import TestCaseWithTransport
-from breezy.bzr.testament import (
-    Testament,
-    StrictTestament,
-    StrictTestament3,
-    )
-from breezy.tests.features import (
-    SymlinkFeature,
-    )
+from breezy.tests.features import SymlinkFeature
 
 
 class TestamentSetup(TestCaseWithTransport):

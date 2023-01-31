@@ -18,9 +18,7 @@
 """Tests for chunks_to_lines."""
 
 from .. import tests
-from . import (
-    features,
-    )
+from . import features
 
 
 def load_tests(loader, standard_tests, pattern):

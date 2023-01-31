@@ -14,14 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from io import StringIO
 import os
+from io import StringIO
 
-from .. import (
-    delta as _mod_delta,
-    revision as _mod_revision,
-    tests,
-    )
+from .. import delta as _mod_delta
+from .. import revision as _mod_revision
+from .. import tests
 from ..bzr.inventorytree import InventoryTreeChange
 
 

@@ -25,12 +25,8 @@ rather than in tests/per_branch/*.py.
 """
 
 from breezy.controldir import ControlDirFormat
-from breezy.tests import (
-    default_transport,
-    multiply_tests,
-    test_server,
-    TestCaseWithTransport,
-    )
+from breezy.tests import (TestCaseWithTransport, default_transport,
+                          multiply_tests, test_server)
 from breezy.transport import memory
 
 
@@ -88,6 +84,7 @@ def load_tests(loader, standard_tests, pattern):
         formats)
     # This will always add scenarios using the smart server.
     from breezy.bzr.remote import RemoteBzrDirFormat
+
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
     scenarios.extend(make_scenarios(

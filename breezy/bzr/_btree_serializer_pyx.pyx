@@ -22,66 +22,27 @@
 cdef extern from "python-compat.h":
     pass
 
-from libc.stdlib cimport (
-    strtoul,
-    strtoull,
-    )
-from libc.string cimport (
-    memcmp,
-    memcpy,
-    memchr,
-    strncmp,
-    )
+from cpython.bytes cimport (PyBytes_AS_STRING, PyBytes_AsString,
+                            PyBytes_CheckExact, PyBytes_FromFormat,
+                            PyBytes_FromStringAndSize, PyBytes_GET_SIZE,
+                            PyBytes_Size)
+from cpython.list cimport PyList_Append
+from cpython.mem cimport PyMem_Free, PyMem_Malloc
+from cpython.object cimport PyObject
+from cpython.ref cimport Py_INCREF
+from cpython.tuple cimport (PyTuple_CheckExact, PyTuple_GET_ITEM,
+                            PyTuple_GET_SIZE, PyTuple_New, PyTuple_SET_ITEM)
+from libc.stdlib cimport strtoul, strtoull
+from libc.string cimport memchr, memcmp, memcpy, strncmp
 
-from cpython.bytes cimport (
-    PyBytes_AsString,
-    PyBytes_AS_STRING,
-    PyBytes_CheckExact,
-    PyBytes_FromFormat,
-    PyBytes_FromStringAndSize,
-    PyBytes_GET_SIZE,
-    PyBytes_Size,
-    )
-from cpython.list cimport (
-    PyList_Append,
-    )
-from cpython.object cimport (
-    PyObject,
-    )
-from cpython.mem cimport (
-    PyMem_Malloc,
-    PyMem_Free,
-    )
-from cpython.ref cimport (
-    Py_INCREF,
-    )
-from cpython.tuple cimport (
-    PyTuple_CheckExact,
-    PyTuple_GET_ITEM,
-    PyTuple_GET_SIZE,
-    PyTuple_New,
-    PyTuple_SET_ITEM,
-    )
-
-from ._str_helpers cimport (
-    _my_memrchr,
-    safe_interned_string_from_size,
-    safe_string_from_size,
-    )
-
-from ._static_tuple_c cimport (
-    import_static_tuple_c,
-    StaticTuple,
-    StaticTuple_New,
-    StaticTuple_Intern,
-    StaticTuple_SET_ITEM,
-    StaticTuple_CheckExact,
-    StaticTuple_GET_SIZE,
-    StaticTuple_GET_ITEM,
-    )
+from ._static_tuple_c cimport (StaticTuple, StaticTuple_CheckExact,
+                               StaticTuple_GET_ITEM, StaticTuple_GET_SIZE,
+                               StaticTuple_Intern, StaticTuple_New,
+                               StaticTuple_SET_ITEM, import_static_tuple_c)
+from ._str_helpers cimport (_my_memrchr, safe_interned_string_from_size,
+                            safe_string_from_size)
 
 import sys
-
 
 # This sets up the StaticTuple C_API functionality
 import_static_tuple_c()

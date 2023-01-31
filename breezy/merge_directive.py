@@ -16,10 +16,11 @@
 
 import base64
 import contextlib
-from io import BytesIO
 import re
+from io import BytesIO
 
 from . import lazy_import
+
 lazy_import.lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
@@ -38,11 +39,7 @@ from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )
 """)
-from . import (
-    errors,
-    hooks,
-    registry,
-    )
+from . import errors, hooks, registry
 
 
 class IllegalMergeDirectivePayload(errors.BzrError):

@@ -21,15 +21,8 @@
 
 # TODO: `help commands --all` should show hidden commands
 
-from . import (
-    commands as _mod_commands,
-    errors,
-    help_topics,
-    osutils,
-    plugin,
-    ui,
-    utextwrap,
-    )
+from . import commands as _mod_commands
+from . import errors, help_topics, osutils, plugin, ui, utextwrap
 
 
 class NoHelpTopic(errors.BzrError):

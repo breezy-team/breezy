@@ -17,8 +17,8 @@
 """Test that all trees support Tree.list_files()"""
 
 from breezy import osutils
-from breezy.tests.per_tree import TestCaseWithTree
 from breezy.tests import TestNotApplicable
+from breezy.tests.per_tree import TestCaseWithTree
 
 
 class TestListFiles(TestCaseWithTree):

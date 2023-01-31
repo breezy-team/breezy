@@ -19,17 +19,13 @@
 See doc/developer/inventory.txt for more information.
 """
 
-from io import (
-    BytesIO,
-    )
+from io import BytesIO
+
 from ... import osutils
-from .. import (
-    inventory,
-    inventory_delta,
-    )
-from ..inventory_delta import InventoryDeltaError
-from ..inventory import Inventory
 from ...revision import NULL_REVISION
+from .. import inventory, inventory_delta
+from ..inventory import Inventory
+from ..inventory_delta import InventoryDeltaError
 from . import TestCase
 
 ### DO NOT REFLOW THESE TEXTS. NEW LINES ARE SIGNIFICANT. ###

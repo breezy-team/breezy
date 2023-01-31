@@ -18,12 +18,9 @@ import os
 import tempfile
 
 import breezy
-from .. import (
-    errors,
-    osutils,
-    tests,
-    )
-from ..osutils import relpath, pathjoin, abspath, realpath
+
+from .. import errors, osutils, tests
+from ..osutils import abspath, pathjoin, realpath, relpath
 
 
 class MoreTests(tests.TestCaseWithTransport):

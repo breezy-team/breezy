@@ -27,24 +27,13 @@ it.
 """
 
 import errno
-from io import BytesIO
 import sys
-from typing import Dict, Any, Callable, TypeVar
-
+from io import BytesIO
 from stat import S_ISDIR
+from typing import Any, Callable, Dict, TypeVar
 
-from ..trace import (
-    mutter,
-    )
-from .. import (
-    errors,
-    hooks,
-    registry,
-    osutils,
-    ui,
-    urlutils,
-    )
-
+from .. import errors, hooks, osutils, registry, ui, urlutils
+from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
 # transport defined.

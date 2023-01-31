@@ -22,6 +22,7 @@ import os
 import re
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 
 from breezy import (
@@ -29,14 +30,7 @@ from breezy import (
     )
 from breezy.i18n import gettext, ngettext
 """)
-from . import (
-    errors,
-    commands,
-    option,
-    osutils,
-    registry,
-    trace,
-    )
+from . import commands, errors, option, osutils, registry, trace
 
 
 class cmd_conflicts(commands.Command):

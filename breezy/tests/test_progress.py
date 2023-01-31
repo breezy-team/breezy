@@ -17,19 +17,10 @@
 import codecs
 import io
 
-from ..progress import (
-    ProgressTask,
-    )
-from ..ui.text import (
-    TextProgressView,
-    )
-
-from .. import (
-    tests,
-    )
-from . import (
-    ui_testing,
-    )
+from .. import tests
+from ..progress import ProgressTask
+from ..ui.text import TextProgressView
+from . import ui_testing
 
 
 class TestTextProgressView(tests.TestCase):

@@ -15,34 +15,22 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from io import BytesIO
-from shutil import rmtree, copy2, copytree
 import tarfile
 import tempfile
 import warnings
+from io import BytesIO
+from shutil import copy2, copytree, rmtree
 
-from .. import (
-    osutils,
-    revision as _mod_revision,
-    transform
-    )
+from .. import osutils
+from .. import revision as _mod_revision
+from .. import transform
 from ..controldir import ControlDir
 from ..export import export
-from ..upstream_import import (
-    common_directory,
-    get_archive_type,
-    import_archive,
-    import_tar,
-    import_zip,
-    import_dir,
-    NotArchiveType,
-    top_path,
-    ZipFileWrapper,
-)
-from . import (
-    TestCaseInTempDir,
-    TestCaseWithTransport,
-    )
+from ..upstream_import import (NotArchiveType, ZipFileWrapper,
+                               common_directory, get_archive_type,
+                               import_archive, import_dir, import_tar,
+                               import_zip, top_path)
+from . import TestCaseInTempDir, TestCaseWithTransport
 from .features import UnicodeFilenameFeature
 
 

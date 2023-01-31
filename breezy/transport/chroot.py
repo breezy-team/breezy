@@ -18,10 +18,7 @@
 root.
 """
 
-from . import (
-    pathfilter,
-    register_transport,
-    )
+from . import pathfilter, register_transport
 
 
 class ChrootServer(pathfilter.PathFilteringServer):

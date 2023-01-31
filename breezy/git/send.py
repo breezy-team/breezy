@@ -21,32 +21,19 @@
 """Support in "brz send" for git-am style patches."""
 
 import time
-from .. import __version__ as brz_version
-from .. import (
-    branch as _mod_branch,
-    diff as _mod_diff,
-    errors,
-    osutils,
-    revision as _mod_revision,
-    )
-
-from ..merge_directive import BaseMergeDirective
-
-from .mapping import (
-    object_mode,
-    )
-from .object_store import (
-    get_object_store,
-    )
-
 from io import BytesIO
-from dulwich import (
-    __version__ as dulwich_version,
-    )
-from dulwich.objects import (
-    Blob,
-    )
 
+from dulwich import __version__ as dulwich_version
+from dulwich.objects import Blob
+
+from .. import __version__ as brz_version
+from .. import branch as _mod_branch
+from .. import diff as _mod_diff
+from .. import errors, osutils
+from .. import revision as _mod_revision
+from ..merge_directive import BaseMergeDirective
+from .mapping import object_mode
+from .object_store import get_object_store
 
 version_tail = "Breezy %s, dulwich %d.%d.%d" % (
     (brz_version, ) + dulwich_version[:3])
@@ -133,7 +120,7 @@ class GitMergeDirective(BaseMergeDirective):
         store = get_object_store(repository)
         with store.lock_read():
             commit = store[repository.lookup_bzr_revision_id(revision_id)[0]]
-        from dulwich.patch import write_commit_patch, get_summary
+        from dulwich.patch import get_summary, write_commit_patch
         try:
             lhs_parent = repository.get_revision(revision_id).parent_ids[0]
         except IndexError:

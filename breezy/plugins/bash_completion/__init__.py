@@ -22,7 +22,6 @@ bash completion function for bzr. See its documentation for details.
 
 from ... import commands, version_info  # noqa: F401
 
-
 bzr_plugin_name = 'bash_completion'
 bzr_commands = ['bash-completion']
 

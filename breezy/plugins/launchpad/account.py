@@ -20,11 +20,7 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
-from ... import (
-    errors,
-    trace,
-    transport,
-    )
+from ... import errors, trace, transport
 from ...config import AuthenticationConfig, GlobalStack
 from ...i18n import gettext
 

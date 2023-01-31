@@ -20,18 +20,13 @@
 import os
 import re
 
-from breezy import (
-    ignores,
-    osutils,
-    )
 import breezy
+from breezy import ignores, osutils
 from breezy.branch import Branch
 from breezy.errors import CommandError
-from breezy.osutils import (
-    pathjoin,
-    )
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
+from breezy.osutils import pathjoin
 from breezy.tests import TestCaseWithTransport
+from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
 from breezy.workingtree import WorkingTree
 
 

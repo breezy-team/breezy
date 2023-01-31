@@ -16,13 +16,12 @@
 
 """Serializer object for CHK based inventory storage."""
 
-from io import (
-    BytesIO,
-    )
+from io import BytesIO
 
 import fastbencode as bencode
 
 from .. import lazy_import
+
 lazy_import.lazy_import(globals(),
                         """
 from breezy.bzr import (
@@ -30,14 +29,9 @@ from breezy.bzr import (
     xml_serializer,
     )
 """)
-from .. import (
-    cache_utf8,
-    errors,
-    revision as _mod_revision,
-    )
-from . import (
-    serializer,
-    )
+from .. import cache_utf8, errors
+from .. import revision as _mod_revision
+from . import serializer
 
 
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):

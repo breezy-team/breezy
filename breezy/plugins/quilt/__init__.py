@@ -25,8 +25,8 @@ This plugin adds support for three configuration options:
 
 """
 
-from ...errors import BzrError
 from ... import trace
+from ...errors import BzrError
 
 
 class QuiltUnapplyError(BzrError):
@@ -56,7 +56,7 @@ def pre_merge_quilt(merger):
             not merger.working_tree.is_versioned(".pc")):
         return
 
-    from .quilt import QuiltPatches, QuiltError
+    from .quilt import QuiltError, QuiltPatches
     quilt = QuiltPatches(merger.working_tree)
     from .merge import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
@@ -136,6 +136,7 @@ def post_build_tree_quilt(tree):
 
 
 from ...hooks import install_lazy_named_hook
+
 install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
     'pre_merge_quilt', pre_merge_quilt,
@@ -154,7 +155,8 @@ install_lazy_named_hook(
     'Applying quilt patches.')
 
 
-from ...config import option_registry, Option, bool_from_store
+from ...config import Option, bool_from_store, option_registry
+
 option_registry.register(
     Option('quilt.smart_merge', default=True, from_unicode=bool_from_store,
            help="Unapply quilt patches before merging."))

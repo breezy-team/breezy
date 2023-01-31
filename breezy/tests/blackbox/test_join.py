@@ -17,11 +17,7 @@
 
 import os
 
-from breezy import (
-    osutils,
-    tests,
-    workingtree,
-    )
+from breezy import osutils, tests, workingtree
 
 
 class TestJoin(tests.TestCaseWithTransport):

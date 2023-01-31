@@ -21,6 +21,7 @@ import os
 from ....branch import Branch
 from ....tests.blackbox import ExternalBase
 
+
 class TestRebaseSimple(ExternalBase):
 
     def make_file(self, name, contents):

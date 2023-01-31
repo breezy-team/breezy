@@ -21,14 +21,7 @@ See ``bzr help rules`` for details.
 
 import configobj
 
-from . import (
-    bedding,
-    cmdline,
-    errors,
-    globbing,
-    osutils,
-    )
-
+from . import bedding, cmdline, errors, globbing, osutils
 
 # Name of the file holding rules in a tree
 RULES_TREE_FILENAME = ".bzrrules"

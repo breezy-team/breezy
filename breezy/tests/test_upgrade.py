@@ -22,17 +22,9 @@ and then upgraded to the new format."""
 # TODO queue for upgrade:
 # test the error message when upgrading an unknown BzrDir format.
 
-from .. import (
-    branch,
-    controldir,
-    tests,
-    upgrade,
-    )
-from ..bzr import (
-    branch as bzrbranch,
-    workingtree,
-    workingtree_4,
-    )
+from .. import branch, controldir, tests, upgrade
+from ..bzr import branch as bzrbranch
+from ..bzr import workingtree, workingtree_4
 
 
 class TestUpgrade(tests.TestCaseWithTransport):

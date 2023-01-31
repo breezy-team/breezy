@@ -92,6 +92,7 @@ def branch_post_change_hook(params):
 
 def test_suite():
     from unittest import TestSuite
+
     from .tests import test_suite
     result = TestSuite()
     result.addTest(test_suite())
@@ -120,6 +121,7 @@ option_registry.register_lazy("revision_mail_headers",
                               "breezy.plugins.email.emailer", "opt_revision_mail_headers")
 
 from ...hooks import install_lazy_named_hook
+
 install_lazy_named_hook("breezy.branch", "Branch.hooks", 'post_commit',
                         branch_commit_hook, 'email')
 install_lazy_named_hook("breezy.branch", "Branch.hooks",

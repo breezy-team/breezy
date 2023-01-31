@@ -21,10 +21,7 @@ These test the conformance of all the lock variations to the expected API.
 
 from copy import deepcopy
 
-from breezy import (
-    lock,
-    tests,
-    )
+from breezy import lock, tests
 
 
 class TestCaseWithLock(tests.TestCaseWithTransport):

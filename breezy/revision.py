@@ -19,13 +19,9 @@
 
 __docformat__ = "google"
 
-from typing import List, Optional, Dict, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from . import (
-    errors,
-    osutils,
-    )
-
+from . import errors, osutils
 
 RevisionID = bytes
 
@@ -77,6 +73,7 @@ class Revision:
 
     def datetime(self):
         import datetime
+
         # TODO: Handle timezone.
         return datetime.datetime.fromtimestamp(self.timestamp)
 

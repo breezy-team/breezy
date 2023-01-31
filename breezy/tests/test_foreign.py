@@ -18,26 +18,11 @@
 """Tests for foreign VCS utility code."""
 
 
-from .. import (
-    branch,
-    controldir,
-    errors,
-    foreign,
-    lockable_files,
-    lockdir,
-    repository,
-    revision,
-    tests,
-    trace,
-    transport as _mod_transport,
-    )
-from ..bzr import (
-    branch as bzrbranch,
-    bzrdir,
-    vf_repository,
-    )
-
-from ..bzr import groupcompress_repo
+from .. import (branch, controldir, errors, foreign, lockable_files, lockdir,
+                repository, revision, tests, trace)
+from .. import transport as _mod_transport
+from ..bzr import branch as bzrbranch
+from ..bzr import bzrdir, groupcompress_repo, vf_repository
 from ..bzr.pack_repo import PackCommitBuilder
 
 # This is the dummy foreign revision control system, used

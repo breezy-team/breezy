@@ -24,16 +24,17 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 breezy/transport/smart/__init__.py.
 """
 
+import _thread
 import errno
 import io
 import os
 import sys
 import time
 
-import _thread
-
 import breezy
+
 from ...lazy_import import lazy_import
+
 lazy_import(globals(), """
 import select
 import socket
@@ -50,10 +51,7 @@ from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
 from breezy.transport import ssh
 """)
-from ... import (
-    errors,
-    osutils,
-    )
+from ... import errors, osutils
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.

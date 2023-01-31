@@ -19,12 +19,8 @@
 
 import os
 
-from ... import (
-    commands,
-    )
-from ..test_plugins import (
-    BaseTestPlugins,
-    )
+from ... import commands
+from ..test_plugins import BaseTestPlugins
 
 
 class TestPluginHelp(BaseTestPlugins):

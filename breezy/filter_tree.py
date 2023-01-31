@@ -19,13 +19,8 @@
 
 from io import BytesIO
 
-from . import (
-    tree,
-    )
-from .filters import (
-    ContentFilterContext,
-    filtered_output_bytes,
-    )
+from . import tree
+from .filters import ContentFilterContext, filtered_output_bytes
 
 
 class ContentFilterTree(tree.Tree):

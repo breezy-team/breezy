@@ -17,13 +17,9 @@
 
 import fastbencode as bencode
 
+from .. import errors, trace
+from .. import transport as _mod_transport
 from ..tag import Tags
-
-from .. import (
-    errors,
-    trace,
-    transport as _mod_transport,
-    )
 
 
 class BasicTags(Tags):

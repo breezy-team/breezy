@@ -15,21 +15,14 @@
 
 """Test the exporter."""
 
+import gzip
 import os
 import tempfile
-import gzip
 
 from .... import tests
-
-from ..exporter import (
-    _get_output_stream,
-    check_ref_format,
-    sanitize_ref_name_for_git
-    )
-
-from . import (
-    FastimportFeature,
-    )
+from ..exporter import (_get_output_stream, check_ref_format,
+                        sanitize_ref_name_for_git)
+from . import FastimportFeature
 
 
 class TestOutputStream(tests.TestCase):

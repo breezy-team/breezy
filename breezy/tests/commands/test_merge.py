@@ -15,10 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ...builtins import cmd_merge
-from .. import (
-    transport_util,
-    ui_testing,
-    )
+from .. import transport_util, ui_testing
 
 
 class TestMerge(transport_util.TestCaseWithConnectionHookedTransport):

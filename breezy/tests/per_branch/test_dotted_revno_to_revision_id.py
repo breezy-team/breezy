@@ -19,7 +19,6 @@
 from breezy import errors
 from breezy.bzr.fullhistory import FullHistoryBzrBranch
 from breezy.tests import TestNotApplicable
-
 from breezy.tests.per_branch import TestCaseWithBranch
 
 

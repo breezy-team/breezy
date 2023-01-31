@@ -16,30 +16,21 @@
 
 """Tests for version_info"""
 
-from io import (
-    BytesIO,
-    StringIO,
-    )
 import os
 import re
+from io import BytesIO, StringIO
+
 import yaml
 
-from .. import (
-    registry,
-    tests,
-    version_info_formats,
-    )
-from . import TestCaseWithTransport
+from .. import registry, tests, version_info_formats
 from ..bzr.rio import read_stanzas
-
-from ..version_info_formats.format_custom import (
-    CustomVersionInfoBuilder,
-    MissingTemplateVariable,
-    NoTemplate,
-    )
+from ..version_info_formats.format_custom import (CustomVersionInfoBuilder,
+                                                  MissingTemplateVariable,
+                                                  NoTemplate)
+from ..version_info_formats.format_python import PythonVersionInfoBuilder
 from ..version_info_formats.format_rio import RioVersionInfoBuilder
 from ..version_info_formats.format_yaml import YamlVersionInfoBuilder
-from ..version_info_formats.format_python import PythonVersionInfoBuilder
+from . import TestCaseWithTransport
 
 
 class VersionInfoTestCase(TestCaseWithTransport):

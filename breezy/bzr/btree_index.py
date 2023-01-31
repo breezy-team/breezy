@@ -20,6 +20,7 @@
 from io import BytesIO
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import bisect
 import math
@@ -27,21 +28,10 @@ import tempfile
 import zlib
 """)
 
-from .. import (
-    chunk_writer,
-    debug,
-    fifo_cache,
-    lru_cache,
-    osutils,
-    trace,
-    transport,
-    )
-from . import (
-    index,
-    static_tuple,
-    )
-from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
-
+from .. import (chunk_writer, debug, fifo_cache, lru_cache, osutils, trace,
+                transport)
+from . import index, static_tuple
+from .index import _OPTION_KEY_ELEMENTS, _OPTION_LEN, _OPTION_NODE_REFS
 
 _BTSIGNATURE = b"B+Tree Graph Index 2\n"
 _OPTION_ROW_LENGTHS = b"row_lengths="

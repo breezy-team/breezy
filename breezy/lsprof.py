@@ -3,14 +3,15 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
+import _thread
 import codecs
-import pickle
 import operator
 import os
+import pickle
 import sys
-import _thread
 import threading
 from typing import Dict, TextIO
+
 from _lsprof import Profiler, profiler_entry
 
 from . import errors

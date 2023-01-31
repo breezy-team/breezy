@@ -29,11 +29,6 @@ import difflib
 import doctest
 import errno
 import functools
-from io import (
-    BytesIO,
-    StringIO,
-    TextIOWrapper,
-    )
 import itertools
 import logging
 import math
@@ -51,11 +46,13 @@ import tempfile
 import threading
 import time
 import traceback
-from typing import Set, Callable
 import unittest
 import warnings
+from io import BytesIO, StringIO, TextIOWrapper
+from typing import Callable, Set
 
 import testtools
+
 # nb: check this before importing anything else from within it
 _testtools_version = getattr(testtools, '__version__', ())
 if _testtools_version < (0, 9, 5):
@@ -64,48 +61,26 @@ if _testtools_version < (0, 9, 5):
 from testtools import content
 
 import breezy
-from .. import (
-    branchbuilder,
-    controldir,
-    commands as _mod_commands,
-    config,
-    i18n,
-    debug,
-    errors,
-    hooks,
-    lock as _mod_lock,
-    lockdir,
-    osutils,
-    plugin as _mod_plugin,
-    pyutils,
-    ui,
-    urlutils,
-    registry,
-    symbol_versioning,
-    trace,
-    transport as _mod_transport,
-    workingtree,
-    )
-from breezy.bzr import (
-    chk_map,
-    )
+from breezy.bzr import chk_map
+
+from .. import branchbuilder
+from .. import commands as _mod_commands
+from .. import config, controldir, debug, errors, hooks, i18n
+from .. import lock as _mod_lock
+from .. import lockdir, osutils
+from .. import plugin as _mod_plugin
+from .. import pyutils, registry, symbol_versioning, trace
+from .. import transport as _mod_transport
+from .. import ui, urlutils, workingtree
+
 try:
     import breezy.lsprof
 except ModuleNotFoundError:
     # lsprof not available
     pass
 from ..bzr.smart import client, request
-from ..transport import (
-    memory,
-    pathfilter,
-    )
-from ..tests import (
-    fixtures,
-    test_server,
-    TestUtil,
-    treeshape,
-    ui_testing,
-    )
+from ..tests import TestUtil, fixtures, test_server, treeshape, ui_testing
+from ..transport import memory, pathfilter
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -987,6 +962,7 @@ class TestCase(testtools.TestCase):
     def debug(self):
         # debug a frame up.
         import pdb
+
         # The sys preserved stdin/stdout should allow blackbox tests debugging
         pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__
                 ).set_trace(sys._getframe().f_back)
@@ -2429,6 +2405,7 @@ class CapturedCall:
         """Capture the call with params and skip prefix_length stack frames."""
         self.call = params
         import traceback
+
         # The last 5 frames are the __init__, the hook frame, and 3 smart
         # client frames. Beyond this we could get more clever, but this is good
         # enough for now.
@@ -2800,6 +2777,7 @@ class TestCaseWithMemoryTransport(TestCase):
         self.hpss_connections = []
         self.hpss_calls = []
         import traceback
+
         # Skip the current stack down to the caller of
         # setup_smart_server_with_call_log
         prefix_length = len(traceback.extract_stack()) - 2

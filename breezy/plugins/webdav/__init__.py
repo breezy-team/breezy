@@ -21,10 +21,9 @@ handling of WebDAV to allow pushing on an http server.
 """
 
 import breezy
+from breezy import transport
 
 from ... import version_info  # noqa: F401
-
-from breezy import transport
 
 transport.register_urlparse_netloc_protocol('http+webdav')
 transport.register_urlparse_netloc_protocol('https+webdav')

@@ -22,15 +22,10 @@ import tempfile
 from typing import Type
 
 import breezy
-from . import (
-    config as _mod_config,
-    email_message,
-    errors,
-    msgeditor,
-    osutils,
-    urlutils,
-    registry,
-    )
+
+from . import config as _mod_config
+from . import email_message, errors, msgeditor, osutils, registry, urlutils
+
 
 class MailClientNotFound(errors.BzrError):
 

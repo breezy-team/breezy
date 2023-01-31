@@ -17,21 +17,13 @@
 """Test operations that check the repository for corruption"""
 
 
-from breezy import (
-    errors,
-    )
-from breezy.tests import (
-    TestNotApplicable,
-    )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from breezy import errors
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository,
-    all_repository_vf_format_scenarios,
-    )
-from breezy.bzr.tests.per_repository_vf.helpers import (
-    TestCaseWithBrokenRevisionIndex,
-    )
-
+    TestCaseWithRepository, all_repository_vf_format_scenarios)
+from breezy.bzr.tests.per_repository_vf.helpers import \
+    TestCaseWithBrokenRevisionIndex
+from breezy.tests import TestNotApplicable
+from breezy.tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 

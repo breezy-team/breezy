@@ -18,9 +18,5 @@
 
 import codecs
 
-from .. import (
-    tests,
-    )
-from . import (
-    fixtures,
-    )
+from .. import tests
+from . import fixtures

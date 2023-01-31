@@ -21,12 +21,8 @@
 import os
 import sys
 
-from .. import (
-    config,
-    trace,
-)
-from .. import tests
-from ..transport.http import ssl, opt_ssl_ca_certs
+from .. import config, tests, trace
+from ..transport.http import opt_ssl_ca_certs, ssl
 
 
 class CaCertsConfigTests(tests.TestCaseInTempDir):

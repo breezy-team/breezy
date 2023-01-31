@@ -17,19 +17,10 @@
 
 """Tests for generating multiple tests for scenarios."""
 
-from breezy.tests import (
-    TestCase,
-    TestLoader,
-    iter_suite_tests,
-    multiply_tests,
-    )
-
-from breezy.tests.scenarios import (
-    load_tests_apply_scenarios,
-    multiply_scenarios,
-    multiply_tests_by_their_scenarios,
-    )
-
+from breezy.tests import TestCase, TestLoader, iter_suite_tests, multiply_tests
+from breezy.tests.scenarios import (load_tests_apply_scenarios,
+                                    multiply_scenarios,
+                                    multiply_tests_by_their_scenarios)
 
 # There aren't any actually parameterized tests here, but this exists as a
 # demonstration; so that you can interactively observe them being multiplied;

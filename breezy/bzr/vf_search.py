@@ -18,17 +18,8 @@
 
 import itertools
 
-from .. import (
-    debug,
-    revision,
-    trace,
-    )
-
-from ..graph import (
-    DictParentsProvider,
-    Graph,
-    invert_parent_map,
-    )
+from .. import debug, revision, trace
+from ..graph import DictParentsProvider, Graph, invert_parent_map
 
 
 class AbstractSearchResult:

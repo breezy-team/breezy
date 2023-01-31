@@ -16,8 +16,8 @@
 
 """Python implementation of _search_key functions, etc."""
 
-import zlib
 import struct
+import zlib
 
 from .static_tuple import StaticTuple
 

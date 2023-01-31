@@ -18,8 +18,8 @@
 """Tests for the per file graph API."""
 
 
-from breezy.tests.per_repository import TestCaseWithRepository
 from breezy.tests import TestNotApplicable
+from breezy.tests.per_repository import TestCaseWithRepository
 
 
 class TestPerFileGraph(TestCaseWithRepository):

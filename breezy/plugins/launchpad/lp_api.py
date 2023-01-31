@@ -23,19 +23,9 @@
 
 import base64
 import re
-from urllib.parse import (
-    urlparse,
-    urlunparse,
-    )
+from urllib.parse import urlparse, urlunparse
 
-from ... import (
-    branch,
-    bedding,
-    errors,
-    osutils,
-    trace,
-    transport,
-    )
+from ... import bedding, branch, errors, osutils, trace, transport
 from ...i18n import gettext
 
 
@@ -53,15 +43,10 @@ try:
 except ModuleNotFoundError as e:
     raise LaunchpadlibMissing(e)
 
-from launchpadlib.credentials import (
-    RequestTokenAuthorizationEngine,
-    CredentialStore,
-    Credentials,
-    AccessToken,
-)
-from launchpadlib.launchpad import (
-    Launchpad,
-)
+from launchpadlib.credentials import (AccessToken, Credentials,
+                                      CredentialStore,
+                                      RequestTokenAuthorizationEngine)
+from launchpadlib.launchpad import Launchpad
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)

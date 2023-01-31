@@ -15,18 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Tests for the maptree code."""
 
-from ....tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
-from ....treebuilder import (
-    TreeBuilder,
-    )
-
-from ..maptree import (
-    MapTree,
-    map_file_ids,
-    )
+from ....tests import TestCase, TestCaseWithTransport
+from ....treebuilder import TreeBuilder
+from ..maptree import MapTree, map_file_ids
 
 
 class EmptyMapTreeTests(TestCaseWithTransport):

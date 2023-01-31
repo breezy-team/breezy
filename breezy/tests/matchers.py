@@ -35,14 +35,11 @@ __all__ = [
     'MatchesTreeChanges',
     ]
 
-from .. import (
-    osutils,
-    revision as _mod_revision,
-    )
+from testtools.matchers import Equals, Matcher, Mismatch
 
+from .. import osutils
+from .. import revision as _mod_revision
 from ..tree import InterTree, TreeChange
-
-from testtools.matchers import Equals, Mismatch, Matcher
 
 
 class ReturnsUnlockable(Matcher):

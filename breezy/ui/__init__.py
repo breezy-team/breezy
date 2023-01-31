@@ -49,7 +49,6 @@ breezy.ui.text.TextUIFactory
 
 import warnings
 
-
 _valid_boolean_strings = dict(yes=True, no=False,
                               y=True, n=False,
                               on=True, off=False,

@@ -22,10 +22,11 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from io import BytesIO
 import os
+from io import BytesIO
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import contextlib
 import errno
@@ -48,45 +49,22 @@ from breezy.bzr import (
     )
 """)
 
-from .. import (
-    errors,
-    revision as _mod_revision,
-    )
+from .. import errors
+from .. import revision as _mod_revision
 from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
-from .inventorytree import (
-    InventoryTree,
-    InterInventoryTree,
-    InventoryRevisionTree,
-    )
-from ..mutabletree import (
-    BadReferenceTarget,
-    MutableTree,
-    )
-from ..osutils import (
-    file_kind,
-    isdir,
-    pathjoin,
-    realpath,
-    safe_unicode,
-    )
-from ..transport import get_transport_from_path, NoSuchFile
+from ..mutabletree import BadReferenceTarget, MutableTree
+from ..osutils import file_kind, isdir, pathjoin, realpath, safe_unicode
+from ..transport import NoSuchFile, get_transport_from_path
 from ..transport.local import LocalTransport
-from ..tree import (
-    FileTimestampUnavailable,
-    InterTree,
-    MissingNestedTree,
-    )
-from ..workingtree import (
-    WorkingTree,
-    )
-from .inventory import Inventory, ROOT_ID, entry_factory
-from .workingtree import (
-    InventoryWorkingTree,
-    WorkingTreeFormatMetaDir,
-    )
+from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
+from ..workingtree import WorkingTree
 from . import dirstate
+from .inventory import ROOT_ID, Inventory, entry_factory
+from .inventorytree import (InterInventoryTree, InventoryRevisionTree,
+                            InventoryTree)
+from .workingtree import InventoryWorkingTree, WorkingTreeFormatMetaDir
 
 
 class DirStateWorkingTree(InventoryWorkingTree):

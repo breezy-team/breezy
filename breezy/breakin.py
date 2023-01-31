@@ -18,7 +18,6 @@ import os
 import signal
 from typing import Optional
 
-
 _breakin_signal_number: Optional[int] = None
 _breakin_signal_name: Optional[str] = None
 

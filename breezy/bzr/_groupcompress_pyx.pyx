@@ -22,26 +22,12 @@
 cdef extern from "python-compat.h":
     pass
 
-from libc.stdlib cimport (
-    free,
-    )
-from libc.string cimport (
-    memcpy,
-    )
-
-from cpython.bytes cimport (
-    PyBytes_AS_STRING,
-    PyBytes_CheckExact,
-    PyBytes_FromStringAndSize,
-    PyBytes_GET_SIZE,
-    )
-from cpython.object cimport (
-    PyObject,
-    )
-from cpython.mem cimport (
-    PyMem_Free,
-    PyMem_Malloc,
-    )
+from cpython.bytes cimport (PyBytes_AS_STRING, PyBytes_CheckExact,
+                            PyBytes_FromStringAndSize, PyBytes_GET_SIZE)
+from cpython.mem cimport PyMem_Free, PyMem_Malloc
+from cpython.object cimport PyObject
+from libc.stdlib cimport free
+from libc.string cimport memcpy
 
 
 cdef extern from "delta.h":
