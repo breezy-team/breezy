@@ -24,6 +24,7 @@ DEBUG = 0
 import base64
 import cgi
 import errno
+import http.client
 import os
 import re
 import socket
@@ -31,14 +32,16 @@ import ssl
 import sys
 import time
 import urllib
-import weakref
-
-import http.client
-
 import urllib.request
+import weakref
+from urllib.parse import urlencode, urljoin, urlparse
 
-from urllib.parse import urljoin, urlencode, urlparse
-
+from ... import __version__ as breezy_version
+from ... import config, debug, errors, osutils, trace, transport, ui, urlutils
+from ...bzr.smart import medium
+from ...trace import mutter, mutter_callsite
+from ...transport import ConnectedTransport, NoSuchFile, UnusableRedirect
+from . import default_user_agent, ssl
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
 
@@ -50,26 +53,7 @@ from .response import handle_response
 # actual code more or less do that, tests should be written to
 # ensure that.
 
-from ... import __version__ as breezy_version
-from ... import (
-    config,
-    debug,
-    errors,
-    osutils,
-    trace,
-    transport,
-    ui,
-    urlutils,
-)
-from ...bzr.smart import medium
-from ...trace import mutter, mutter_callsite
-from ...transport import (
-    ConnectedTransport,
-    UnusableRedirect,
-    NoSuchFile,
-    )
 
-from . import default_user_agent, ssl
 
 
 checked_kerberos = False
@@ -2519,16 +2503,10 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from breezy.tests import (
-        features,
-        http_server,
-        )
+    from breezy.tests import features, http_server
     permutations = [(HttpTransport, http_server.HttpServer), ]
     if features.HTTPSServerFeature.available():
-        from breezy.tests import (
-            https_server,
-            ssl_certs,
-            )
+        from breezy.tests import https_server, ssl_certs
 
         class HTTPS_transport(HttpTransport):
 

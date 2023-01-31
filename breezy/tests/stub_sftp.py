@@ -20,20 +20,15 @@ Adapted from the one in paramiko's unit tests.
 """
 
 import os
-import paramiko
 import socket
 import socketserver
 import sys
 import time
 
-from .. import (
-    osutils,
-    trace,
-    urlutils,
-    )
-from ..transport import (
-    ssh,
-    )
+import paramiko
+
+from .. import osutils, trace, urlutils
+from ..transport import ssh
 from . import test_server
 
 

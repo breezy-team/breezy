@@ -18,12 +18,9 @@ import os
 import re
 import unicodedata as ud
 
-from .. import tests, osutils
-from .._termcolor import color_string, FG
-
-from ..tests.features import (
-    UnicodeFilenameFeature,
-    )
+from .. import osutils, tests
+from .._termcolor import FG, color_string
+from ..tests.features import UnicodeFilenameFeature
 
 # NOTE: As bzr-grep optimizes PATTERN search to -F/--fixed-string
 # for patterns that are not alphanumeric+whitespace, we test grep

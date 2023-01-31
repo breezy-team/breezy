@@ -16,16 +16,10 @@
 
 """Tests for branch.create_clone behaviour."""
 
-from breezy import (
-    branch,
-    errors,
-    tests,
-    )
-from breezy.transport import FileExists, NoSuchFile
-from breezy.bzr import (
-    remote,
-    )
+from breezy import branch, errors, tests
+from breezy.bzr import remote
 from breezy.tests import per_branch
+from breezy.transport import FileExists, NoSuchFile
 
 
 class TestCreateClone(per_branch.TestCaseWithBranch):

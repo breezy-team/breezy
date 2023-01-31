@@ -18,23 +18,13 @@
 
 import zlib
 
-from ... import (
-    config,
-    errors,
-    osutils,
-    tests,
-    trace,
-    )
-from .. import (
-    btree_index,
-    groupcompress,
-    knit,
-    index as _mod_index,
-    versionedfile,
-    )
+from ... import config, errors, osutils, tests, trace
 from ...osutils import sha_string
-from .test__groupcompress import compiled_groupcompress_feature
 from ...tests.scenarios import load_tests_apply_scenarios
+from .. import btree_index, groupcompress
+from .. import index as _mod_index
+from .. import knit, versionedfile
+from .test__groupcompress import compiled_groupcompress_feature
 
 
 def group_compress_implementation_scenarios():

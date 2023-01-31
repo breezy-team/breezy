@@ -20,21 +20,12 @@ These were formats present in pre-1.0 version of Bazaar.
 """
 
 # Since we are a built-in plugin we share the breezy version
+from ... import branch as _mod_branch
 from ... import version_info  # noqa: F401
-
-from ... import (
-    branch as _mod_branch,
-    controldir,
-    repository as _mod_repository,
-    workingtree as _mod_workingtree,
-    )
-from ...bzr import (
-    serializer,
-    )
-from ...bzr import (
-    BzrProber,
-    register_metadir,
-    )
+from ... import controldir
+from ... import repository as _mod_repository
+from ... import workingtree as _mod_workingtree
+from ...bzr import BzrProber, register_metadir, serializer
 
 # Pre-0.8 formats that don't have a disk format string (because they are
 # versioned by the matching control directory). We use the control directories

@@ -21,15 +21,8 @@ import os
 import re
 import sys
 
-from .. import (
-    errors,
-    lazy_import,
-    osutils,
-    )
-from . import (
-    TestCase,
-    TestCaseInTempDir,
-    )
+from .. import errors, lazy_import, osutils
+from . import TestCase, TestCaseInTempDir
 
 
 class InstrumentedReplacer(lazy_import.ScopeReplacer):

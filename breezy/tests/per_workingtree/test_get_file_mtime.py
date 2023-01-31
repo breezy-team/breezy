@@ -19,9 +19,9 @@
 import os
 
 from breezy import errors, transport
-from breezy.tree import FileTimestampUnavailable
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+from breezy.tree import FileTimestampUnavailable
 
 
 class TestGetFileMTime(TestCaseWithWorkingTree):

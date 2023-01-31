@@ -18,10 +18,7 @@
 """
 
 
-from .. import (
-    progress,
-    ui,
-    )
+from .. import progress, ui
 
 
 class ProgressRecordingUIFactory(ui.UIFactory, progress.DummyProgress):

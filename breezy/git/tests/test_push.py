@@ -16,23 +16,11 @@
 
 """Tests for pushing revisions from Bazaar into Git."""
 
-from ...controldir import (
-    format_registry,
-    )
-from ...repository import (
-    InterRepository,
-    )
-from ...tests import (
-    TestCaseWithTransport,
-    )
-
-from ..mapping import (
-    BzrGitMappingExperimental,
-    BzrGitMappingv1,
-    )
-from ..interrepo import (
-    InterToGitRepository,
-    )
+from ...controldir import format_registry
+from ...repository import InterRepository
+from ...tests import TestCaseWithTransport
+from ..interrepo import InterToGitRepository
+from ..mapping import BzrGitMappingExperimental, BzrGitMappingv1
 
 
 class InterToGitRepositoryTests(TestCaseWithTransport):

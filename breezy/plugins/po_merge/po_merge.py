@@ -16,13 +16,10 @@
 
 """Merge logic for po_merge plugin."""
 
-from ... import (
-    config,
-    merge,
-    )
-
-
 from breezy.lazy_import import lazy_import
+
+from ... import config, merge
+
 lazy_import(globals(), """
 import fnmatch
 import subprocess

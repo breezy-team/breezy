@@ -21,24 +21,16 @@ partially the WebDAV protocol to push files.
 This should enable remote push operations.
 """
 
-from io import StringIO
 import os
 import random
 import sys
 import time
 import xml.sax
 import xml.sax.handler
+from io import StringIO
 
-
-from breezy import (
-    errors,
-    osutils,
-    trace,
-    transport,
-    )
-from breezy.transport.http import (
-    urllib,
-    )
+from breezy import errors, osutils, trace, transport
+from breezy.transport.http import urllib
 
 
 class DavResponseHandler(xml.sax.handler.ContentHandler):

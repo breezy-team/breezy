@@ -18,7 +18,6 @@
 
 from urllib.parse import urlparse, urlunparse
 
-
 # We use production as the default because edge has been deprecated circa
 # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
 DEFAULT_INSTANCE = 'production'

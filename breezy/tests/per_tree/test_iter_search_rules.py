@@ -16,9 +16,7 @@
 
 """Test that all Tree's implement iter_search_rules."""
 
-from breezy import (
-    rules,
-)
+from breezy import rules
 from breezy.tests.per_tree import TestCaseWithTree
 
 

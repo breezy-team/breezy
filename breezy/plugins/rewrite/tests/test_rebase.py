@@ -17,34 +17,18 @@
 """Tests for the rebase code."""
 
 from ....conflicts import ConflictList
-from ....errors import (
-    UnknownFormatError,
-    ConflictsInTree,
-    )
-from ....graph import (
-    Graph,
-    DictParentsProvider,
-    )
+from ....errors import ConflictsInTree, UnknownFormatError
+from ....graph import DictParentsProvider, Graph
 from ....revision import NULL_REVISION
 from ....tests import TestCase, TestCaseWithTransport
 from ....tests.matchers import RevisionHistoryMatches
-from ....transport import (
-    NoSuchFile,
-    )
-
-from ..rebase import (
-    marshall_rebase_plan,
-    unmarshall_rebase_plan,
-    CommitBuilderRevisionRewriter,
-    generate_simple_plan,
-    generate_transpose_plan,
-    rebase_todo,
-    REBASE_PLAN_FILENAME,
-    REBASE_CURRENT_REVID_FILENAME,
-    RebaseState1,
-    ReplaySnapshotError,
-    WorkingTreeRevisionRewriter,
-    )
+from ....transport import NoSuchFile
+from ..rebase import (REBASE_CURRENT_REVID_FILENAME, REBASE_PLAN_FILENAME,
+                      CommitBuilderRevisionRewriter, RebaseState1,
+                      ReplaySnapshotError, WorkingTreeRevisionRewriter,
+                      generate_simple_plan, generate_transpose_plan,
+                      marshall_rebase_plan, rebase_todo,
+                      unmarshall_rebase_plan)
 
 
 class RebasePlanReadWriterTests(TestCase):

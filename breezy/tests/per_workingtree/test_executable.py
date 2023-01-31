@@ -18,9 +18,7 @@
 
 import os
 
-from breezy import (
-    osutils,
-    )
+from breezy import osutils
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 

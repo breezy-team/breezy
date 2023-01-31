@@ -19,12 +19,13 @@
 
 import errno
 import os
-from subprocess import Popen, PIPE
 import sys
 import tempfile
+from subprocess import PIPE, Popen
 
-from .errors import NoDiff3, BzrError
+from .errors import BzrError, NoDiff3
 from .textfile import check_text_path
+
 
 class PatchFailed(BzrError):
 

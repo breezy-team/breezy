@@ -16,18 +16,13 @@
 
 
 import doctest
-from io import StringIO
 import os
 import sys
+from io import StringIO
 
 import breezy
-from .. import (
-    bedding,
-    crash,
-    osutils,
-    plugin,
-    tests,
-    )
+
+from .. import bedding, crash, osutils, plugin, tests
 from . import features
 
 

@@ -24,11 +24,9 @@ To get a fake nfs transport use get_transport('fakenfs+' + real_url)
 
 from stat import S_ISDIR
 
-from .. import (
-    errors,
-    transport as _mod_transport,
-    urlutils,
-    )
+from .. import errors
+from .. import transport as _mod_transport
+from .. import urlutils
 from . import decorator
 
 

@@ -19,6 +19,7 @@
 from io import BytesIO
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import itertools
 
@@ -50,37 +51,14 @@ from breezy.i18n import gettext
 from breezy.bzr.testament import Testament
 """)
 
-from .. import (
-    errors,
-    )
-from ..decorators import (
-    only_raises,
-    )
-from .inventory import (
-    Inventory,
-    ROOT_ID,
-    entry_factory,
-    )
-
-from ..repository import (
-    CommitBuilder,
-    FetchResult,
-    InterRepository,
-    Repository,
-    RepositoryFormat,
-    WriteGroup,
-    )
-from .repository import (
-    MetaDirRepository,
-    RepositoryFormatMetaDir,
-    )
-
-
-from ..trace import (
-    mutter,
-    note
-    )
+from .. import errors
+from ..decorators import only_raises
+from ..repository import (CommitBuilder, FetchResult, InterRepository,
+                          Repository, RepositoryFormat, WriteGroup)
+from ..trace import mutter, note
+from .inventory import ROOT_ID, Inventory, entry_factory
 from .inventorytree import InventoryTreeChange
+from .repository import MetaDirRepository, RepositoryFormatMetaDir
 
 
 class VersionedFileRepositoryFormat(RepositoryFormat):
@@ -2291,6 +2269,7 @@ class InterVersionedFileRepository(InterRepository):
                 from_format=self.source._format,
                 to_format=self.target._format)
         from breezy.bzr.fetch import RepoFetcher
+
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
             ui.ui_factory.show_user_warning(

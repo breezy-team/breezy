@@ -17,6 +17,7 @@
 __docformat__ = "google"
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import time
 
@@ -30,19 +31,13 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from . import (
-    controldir,
-    errors,
-    registry,
-    ui,
-    )
+from . import controldir, errors, registry, ui
 from .decorators import only_raises
 from .inter import InterObject
-from .lock import _RelockDebugMixin, LogicalLockResult
-from .trace import (
-    log_exception_quietly, note, mutter, mutter_callsite, warning)
+from .lock import LogicalLockResult, _RelockDebugMixin
 from .revisiontree import RevisionTree
-
+from .trace import (log_exception_quietly, mutter, mutter_callsite, note,
+                    warning)
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
@@ -929,6 +924,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           children are included.
         """
         from .tree import InterTree
+
         # Get the revision-ids of interest
         required_trees = set()
         for revision in revisions:

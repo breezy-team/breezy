@@ -23,14 +23,9 @@
 
 import breezy.bzr  # noqa: F401
 from breezy import controldir
-from ..commands import (
-    Command,
-    display_command,
-    )
-from ..option import (
-    Option,
-    RegistryOption,
-    )
+
+from ..commands import Command, display_command
+from ..option import Option, RegistryOption
 
 
 class cmd_git_import(Command):
@@ -76,33 +71,16 @@ class cmd_git_import(Command):
 
     def run(self, src_location, dest_location=None, colocated=False, dest_format=None):
         import os
-        from .. import (
-            controldir,
-            trace,
-            ui,
-            urlutils,
-            )
-        from ..controldir import (
-            ControlDir,
-            )
-        from ..errors import (
-            BzrError,
-            CommandError,
-            NoRepositoryPresent,
-            NotBranchError,
-            )
+
+        from .. import controldir, trace, ui, urlutils
+        from ..controldir import ControlDir
+        from ..errors import (BzrError, CommandError, NoRepositoryPresent,
+                              NotBranchError)
         from ..i18n import gettext
-        from ..repository import (
-            InterRepository,
-            Repository,
-            )
+        from ..repository import InterRepository, Repository
         from ..transport import get_transport
-        from .branch import (
-            LocalGitBranch,
-            )
-        from .refs import (
-            ref_to_branch_name,
-            )
+        from .branch import LocalGitBranch
+        from .refs import ref_to_branch_name
         from .repository import GitRepository
 
         if dest_format is None:
@@ -186,16 +164,10 @@ class cmd_git_object(Command):
 
     @display_command
     def run(self, sha1=None, directory=".", pretty=False):
-        from ..errors import (
-            CommandError,
-            )
-        from ..controldir import (
-            ControlDir,
-            )
-        from .object_store import (
-            get_object_store,
-            )
+        from ..controldir import ControlDir
+        from ..errors import CommandError
         from ..i18n import gettext
+        from .object_store import get_object_store
         controldir, _ = ControlDir.open_containing(directory)
         repo = controldir.find_repository()
         object_store = get_object_store(repo)
@@ -227,15 +199,9 @@ class cmd_git_refs(Command):
 
     @display_command
     def run(self, location="."):
-        from ..controldir import (
-            ControlDir,
-            )
-        from .refs import (
-            get_refs_container,
-            )
-        from .object_store import (
-            get_object_store,
-            )
+        from ..controldir import ControlDir
+        from .object_store import get_object_store
+        from .refs import get_refs_container
         controldir, _ = ControlDir.open_containing(location)
         repo = controldir.find_repository()
         object_store = get_object_store(repo)
@@ -267,6 +233,7 @@ class cmd_git_apply(Command):
         :param signoff: Add Signed-Off-By flag.
         """
         from dulwich.patch import git_am_patch_split
+
         from breezy.patch import patch_tree
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
@@ -303,18 +270,13 @@ class cmd_git_push_pristine_tar_deltas(Command):
 
     def run(self, target, package, directory='.'):
         from ..branch import Branch
-        from ..errors import (
-            CommandError,
-            NoSuchRevision,
-            )
-        from ..trace import warning
+        from ..errors import CommandError, NoSuchRevision
         from ..repository import Repository
+        from ..trace import warning
         from .mapping import encode_git_path
         from .object_store import get_object_store
-        from .pristine_tar import (
-            revision_pristine_tar_data,
-            store_git_pristine_tar_data,
-            )
+        from .pristine_tar import (revision_pristine_tar_data,
+                                   store_git_pristine_tar_data)
         source = Branch.open_containing(directory)[0]
         target_bzr = Repository.open(target)
         target = getattr(target_bzr, '_git', None)

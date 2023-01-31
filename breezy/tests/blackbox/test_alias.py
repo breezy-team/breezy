@@ -17,13 +17,8 @@
 
 """Tests of the 'brz alias' command."""
 
-from breezy import (
-    config,
-    tests,
-    )
-from breezy.tests import (
-    features,
-    )
+from breezy import config, tests
+from breezy.tests import features
 
 
 class TestAlias(tests.TestCaseWithTransport):

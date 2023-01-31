@@ -17,12 +17,7 @@
 
 """Tests for upgrades of various stacking situations."""
 
-from .. import (
-    controldir,
-    check,
-    errors,
-    tests,
-    )
+from .. import check, controldir, errors, tests
 from ..upgrade import upgrade
 from .scenarios import load_tests_apply_scenarios
 

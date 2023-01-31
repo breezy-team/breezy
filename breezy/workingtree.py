@@ -33,7 +33,7 @@ import contextlib
 import errno
 import os
 import sys
-from typing import Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
     from .branch import Branch
@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 import breezy
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import stat
 
@@ -50,23 +51,13 @@ from breezy import (
     )
 """)
 
-from . import (
-    errors,
-    revision as _mod_revision,
-    )
-from .controldir import (
-    ControlComponent,
-    ControlComponentFormatRegistry,
-    ControlComponentFormat,
-    ControlDir,
-    ControlDirFormat,
-    )
-from . import (
-    osutils,
-    )
+from . import errors, mutabletree, osutils
+from . import revision as _mod_revision
+from .controldir import (ControlComponent, ControlComponentFormat,
+                         ControlComponentFormatRegistry, ControlDir,
+                         ControlDirFormat)
 from .i18n import gettext
-from . import mutabletree
-from .symbol_versioning import deprecated_method, deprecated_in
+from .symbol_versioning import deprecated_in, deprecated_method
 from .trace import mutter, note
 from .transport import NoSuchFile
 
@@ -645,7 +636,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             of the branch when it is supplied. If None, to_revision defaults to
             branch.last_revision().
         """
-        from .merge import Merger, Merge3Merger
+        from .merge import Merge3Merger, Merger
         with self.lock_write():
             merger = Merger(self.branch, this_tree=self)
             # check that there are no local alterations

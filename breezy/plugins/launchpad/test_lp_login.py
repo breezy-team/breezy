@@ -16,8 +16,8 @@
 
 """Tests for the launchpad-login command."""
 
-from . import account
 from ...tests import TestCaseWithTransport
+from . import account
 
 
 class TestLaunchpadLogin(TestCaseWithTransport):

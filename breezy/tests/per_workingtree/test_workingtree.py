@@ -17,51 +17,26 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
-from io import StringIO
 import os
+from io import StringIO
 
-from ... import (
-    branch as _mod_branch,
-    config,
-    controldir,
-    errors,
-    merge,
-    osutils,
-    revision as _mod_revision,
-    tests,
-    trace,
-    transport as _mod_transport,
-    urlutils,
-    )
-from ...bzr import (
-    bzrdir,
-    )
-from ...errors import (
-    UnsupportedOperation,
-    PathsNotVersionedError,
-    )
+from ... import branch as _mod_branch
+from ... import config, controldir, errors, merge, osutils
+from ... import revision as _mod_revision
+from ... import tests, trace
+from ... import transport as _mod_transport
+from ... import urlutils
+from ...bzr import bzrdir
+from ...bzr.conflicts import ConflictList, ContentsConflict, TextConflict
 from ...bzr.inventory import Inventory
+from ...bzr.workingtree import InventoryWorkingTree
+from ...errors import PathsNotVersionedError, UnsupportedOperation
 from ...mutabletree import MutableTree
-from ...osutils import pathjoin, getcwd, supports_symlinks
-from .. import (
-    features,
-    TestSkipped,
-    TestNotApplicable,
-    )
+from ...osutils import getcwd, pathjoin, supports_symlinks
+from ...tree import TreeDirectory, TreeFile, TreeLink
+from ...workingtree import SettingFileIdUnsupported, WorkingTree
+from .. import TestNotApplicable, TestSkipped, features
 from . import TestCaseWithWorkingTree
-from ...bzr.workingtree import (
-    InventoryWorkingTree,
-    )
-from ...tree import (
-    TreeDirectory,
-    TreeFile,
-    TreeLink,
-    )
-from ...bzr.conflicts import ConflictList, TextConflict, ContentsConflict
-from ...workingtree import (
-    SettingFileIdUnsupported,
-    WorkingTree,
-    )
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):

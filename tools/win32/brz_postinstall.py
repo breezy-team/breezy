@@ -24,7 +24,6 @@ import os
 import shutil
 import sys
 
-
 ##
 # CONSTANTS
 
@@ -82,10 +81,10 @@ VERSION_FORMAT = "%-50s%s"
 def main():
     import ctypes
     import getopt
-    import re
-    import _winreg
-
     import locale
+    import re
+
+    import _winreg
     user_encoding = locale.getpreferredencoding() or 'ascii'
 
     import ctypes

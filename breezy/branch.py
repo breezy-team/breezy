@@ -16,9 +16,11 @@
 
 __docformat__ = "google"
 
-from typing import Optional, Tuple, List, cast, Dict, TextIO, TYPE_CHECKING, Union
+from typing import (TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union,
+                    cast)
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     ui,
@@ -33,27 +35,18 @@ from breezy.bzr import (
 import contextlib
 import itertools
 
-from . import (
-    config as _mod_config,
-    debug,
-    errors,
-    revision as _mod_revision,
-    repository,
-    registry,
-    urlutils,
-    )
-from .controldir import (
-    ControlDir,
-    ControlComponent,
-    ControlComponentFormat,
-    ControlComponentFormatRegistry,
-)
+from . import config as _mod_config
+from . import debug, errors, registry, repository
+from . import revision as _mod_revision
+from . import urlutils
+from .controldir import (ControlComponent, ControlComponentFormat,
+                         ControlComponentFormatRegistry, ControlDir)
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
 from .revision import RevisionID
-from .trace import mutter, mutter_callsite, note, is_quiet, warning
-from .transport import get_transport, Transport
+from .trace import is_quiet, mutter, mutter_callsite, note, warning
+from .transport import Transport, get_transport
 
 if TYPE_CHECKING:
     from .tag import TagConflict, TagUpdates
@@ -1952,6 +1945,7 @@ class BranchPushResult(_Result):
 
     def report(self, to_file: TextIO) -> None:
         from breezy.i18n import gettext, ngettext
+
         # TODO: This function gets passed a to_file, but then
         # ignores it and calls note() instead. This is also
         # inconsistent with PullResult(), which writes to stdout.

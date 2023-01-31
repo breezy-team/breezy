@@ -19,15 +19,10 @@
 
 import os
 import time
-from typing import Iterator, cast
 import warnings
+from typing import Iterator, cast
 
-from .. import (
-    errors,
-    pyutils,
-    registry,
-    trace,
-    )
+from .. import errors, pyutils, registry, trace
 
 
 class ArchiveFormatInfo:

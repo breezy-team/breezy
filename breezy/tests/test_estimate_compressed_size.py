@@ -16,13 +16,10 @@
 
 """Tests for our estimation of compressed content."""
 
-import zlib
 import hashlib
+import zlib
 
-from .. import (
-    estimate_compressed_size,
-    tests,
-    )
+from .. import estimate_compressed_size, tests
 
 
 class TestZLibEstimator(tests.TestCase):

@@ -16,25 +16,13 @@
 
 """Test that we can use smart_add on all Tree implementations."""
 
-from io import StringIO
 import os
 import sys
+from io import StringIO
 
-from ... import (
-    add as _mod_add,
-    errors,
-    ignores,
-    osutils,
-    tests,
-    trace,
-    transport,
-    workingtree,
-    )
-from .. import (
-    features,
-    per_workingtree,
-    test_smart_add,
-    )
+from ... import add as _mod_add
+from ... import errors, ignores, osutils, tests, trace, transport, workingtree
+from .. import features, per_workingtree, test_smart_add
 
 
 class RecordingAddAction(_mod_add.AddAction):

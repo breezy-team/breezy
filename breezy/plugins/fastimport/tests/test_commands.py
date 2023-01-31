@@ -15,22 +15,16 @@
 
 """Test the command implementations."""
 
+import gzip
 import os
 import re
 import tempfile
-import gzip
 
 from .... import tests
 from ....tests import features
 from ....tests.blackbox import ExternalBase
-
-from ..cmds import (
-    _get_source_stream,
-    )
-
-from . import (
-    FastimportFeature,
-    )
+from ..cmds import _get_source_stream
+from . import FastimportFeature
 
 
 class TestSourceStream(tests.TestCase):

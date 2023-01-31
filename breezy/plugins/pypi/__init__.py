@@ -17,9 +17,7 @@
 """Support for looking up URLs from pypi.
 """
 
-from ... import (
-    version_info,  # noqa: F401
-    )
+from ... import version_info  # noqa: F401
 from ...directory_service import directories
 
 directories.register_lazy('pypi:', __name__ + '.directory',

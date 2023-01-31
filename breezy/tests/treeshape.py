@@ -30,8 +30,8 @@ etc.
 import os
 import stat
 
-from ..trace import warning
 from ..osutils import pathjoin
+from ..trace import warning
 
 
 def build_tree_contents(template):

@@ -19,11 +19,9 @@
 Currently only tells the user to use fastimport/fastexport.
 """
 
+from breezy import controldir, errors
+
 from ... import version_info  # noqa: F401
-from breezy import (
-    controldir,
-    errors,
-    )
 
 
 class DarcsUnsupportedError(errors.UnsupportedVcs):

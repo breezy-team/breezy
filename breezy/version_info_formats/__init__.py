@@ -19,11 +19,9 @@
 import time
 from typing import Type
 
-from breezy.osutils import local_time_offset, format_date
-from breezy import (
-    registry,
-    revision as _mod_revision,
-    )
+from breezy import registry
+from breezy import revision as _mod_revision
+from breezy.osutils import format_date, local_time_offset
 
 
 def create_date_str(timestamp=None, offset=None):

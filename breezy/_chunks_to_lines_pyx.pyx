@@ -22,16 +22,9 @@
 cdef extern from "python-compat.h":
     pass
 
-from cpython.bytes cimport (
-    PyBytes_CheckExact,
-    PyBytes_FromStringAndSize,
-    PyBytes_AS_STRING,
-    PyBytes_GET_SIZE,
-    )
-from cpython.list cimport (
-    PyList_Append,
-    )
-
+from cpython.bytes cimport (PyBytes_AS_STRING, PyBytes_CheckExact,
+                            PyBytes_FromStringAndSize, PyBytes_GET_SIZE)
+from cpython.list cimport PyList_Append
 from libc.string cimport memchr
 
 

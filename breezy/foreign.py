@@ -16,15 +16,10 @@
 
 """Foreign branch utilities."""
 
-from .branch import (
-    Branch,
-    )
+from . import errors, registry
+from .branch import Branch
 from .repository import Repository
 from .revision import Revision
-from . import (
-    errors,
-    registry,
-    )
 
 
 class VcsMapping:

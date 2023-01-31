@@ -4,6 +4,7 @@ import ast
 
 from pyflakes.checker import Checker, ImportationFrom
 
+
 # Do some monkey patching..
 def CALL(self, node):
     if isinstance(node.func, ast.Name) and node.func.id == 'lazy_import':

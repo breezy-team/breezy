@@ -16,17 +16,13 @@
 
 """Helper classes for repository implementation tests."""
 
-from .... import (
-    osutils,
-    revision as _mod_revision,
-    )
+from .... import osutils
+from .... import revision as _mod_revision
 from ....repository import WriteGroup
-from ... import (
-    inventory,
-    )
-from ...knitrepo import RepositoryFormatKnit
-from ....tests.per_repository import TestCaseWithRepository
 from ....tests import TestNotApplicable
+from ....tests.per_repository import TestCaseWithRepository
+from ... import inventory
+from ...knitrepo import RepositoryFormatKnit
 
 
 class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):

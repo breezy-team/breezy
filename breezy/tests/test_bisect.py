@@ -16,16 +16,13 @@
 
 "Test suite for the bzr bisect plugin."
 
-from io import StringIO
 import os
 import shutil
+from io import StringIO
 
-from ..controldir import ControlDir
 from .. import bisect
-from . import (
-    TestCaseWithTransport,
-    TestSkipped,
-    )
+from ..controldir import ControlDir
+from . import TestCaseWithTransport, TestSkipped
 
 
 class BisectTestCase(TestCaseWithTransport):

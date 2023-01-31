@@ -16,14 +16,8 @@
 
 """Test branches with inaccessible parents."""
 
-from breezy import (
-    branch,
-    errors,
-    )
-from breezy.tests import (
-    per_branch,
-    test_server,
-    )
+from breezy import branch, errors
+from breezy.tests import per_branch, test_server
 
 
 class InaccessibleParentTests(per_branch.TestCaseWithBranch):

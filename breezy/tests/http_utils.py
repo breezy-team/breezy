@@ -15,25 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import base64
-from io import BytesIO
 import re
-from urllib.request import (
-    parse_http_list,
-    parse_keqv_list,
-    )
+from io import BytesIO
+from urllib.request import parse_http_list, parse_keqv_list
 
-
-from .. import (
-    errors,
-    osutils,
-    tests,
-    transport,
-    )
-from ..bzr.smart import (
-    medium,
-    )
-from . import http_server
+from .. import errors, osutils, tests, transport
+from ..bzr.smart import medium
 from ..transport import chroot
+from . import http_server
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):

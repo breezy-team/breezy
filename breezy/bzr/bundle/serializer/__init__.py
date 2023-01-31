@@ -18,18 +18,14 @@
 """
 
 import base64
-from io import BytesIO
 import re
+from io import BytesIO
 
-from .... import (
-    errors,
-    registry,
-    )
+from .... import errors, registry
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
 # For backwards-compatibility
-from ....timestamp import unpack_highres_date, format_highres_date
-
+from ....timestamp import format_highres_date, unpack_highres_date
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = b'# Bazaar revision bundle v'

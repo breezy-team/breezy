@@ -23,11 +23,8 @@ cached data, but we don't require that all WorkingTrees have such a cache,
 so these tests are testing that when there is a cache, it performs correctly.
 """
 
-from breezy import (
-    errors,
-    tests,
-    transport as _mod_transport,
-    )
+from breezy import errors, tests
+from breezy import transport as _mod_transport
 from breezy.tests import per_workingtree
 
 

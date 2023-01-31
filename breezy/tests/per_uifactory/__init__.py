@@ -35,17 +35,8 @@
 
 import unittest
 
-from ... import (
-    tests,
-    transport,
-    ui,
-    )
-
-from ..ui_testing import (
-    StringIOWithEncoding,
-    StringIOAsTTY,
-    TextUIFactory,
-    )
+from ... import tests, transport, ui
+from ..ui_testing import StringIOAsTTY, StringIOWithEncoding, TextUIFactory
 
 
 class UIFactoryTestMixin:

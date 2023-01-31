@@ -16,12 +16,8 @@
 
 """Tests for different inventory implementations"""
 
-from breezy import (
-    tests,
-    )
-from breezy.bzr import (
-    groupcompress,
-    )
+from breezy import tests
+from breezy.bzr import groupcompress
 
 
 def load_tests(loader, basic_tests, pattern):
@@ -29,7 +25,7 @@ def load_tests(loader, basic_tests, pattern):
     modules_to_test = [
         'breezy.bzr.tests.per_inventory.basics',
         ]
-    from breezy.bzr.inventory import Inventory, CHKInventory
+    from breezy.bzr.inventory import CHKInventory, Inventory
 
     def inv_to_chk_inv(test, inv):
         """CHKInventory needs a backing VF, so we create one."""

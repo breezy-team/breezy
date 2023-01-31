@@ -19,19 +19,13 @@
 import os
 import shutil
 
-from breezy import (
-    errors,
-    mutabletree,
-    tests,
-    )
-from breezy.tree import TreeChange
-from breezy.osutils import supports_symlinks
+from breezy import errors, mutabletree, tests
 from breezy.bzr.inventorytree import InventoryTreeChange
-from breezy.tests.per_intertree import TestCaseWithTwoTrees
-from breezy.tests import (
-    features,
-    )
+from breezy.osutils import supports_symlinks
+from breezy.tests import features
 from breezy.tests.matchers import MatchesTreeChanges
+from breezy.tests.per_intertree import TestCaseWithTwoTrees
+from breezy.tree import TreeChange
 
 # TODO: test the include_root option.
 # TODO: test that renaming a directory x->y does not emit a rename for the

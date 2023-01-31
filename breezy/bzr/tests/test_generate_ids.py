@@ -16,12 +16,8 @@
 
 """Tests for breezy/generate_ids.py"""
 
-from ... import (
-    tests,
-    )
-from .. import (
-    generate_ids,
-    )
+from ... import tests
+from .. import generate_ids
 
 
 class TestFileIds(tests.TestCase):

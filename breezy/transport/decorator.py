@@ -20,7 +20,7 @@ This does not change the transport behaviour at all, but provides all the
 stub functions to allow other decorators to be written easily.
 """
 
-from . import (Transport, get_transport)
+from . import Transport, get_transport
 
 
 class TransportDecorator(Transport):

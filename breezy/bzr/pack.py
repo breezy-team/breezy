@@ -20,11 +20,10 @@
 doc/developers/container-format.txt.
 """
 
-from io import BytesIO
 import re
+from io import BytesIO
 
 from .. import errors
-
 
 FORMAT_ONE = b"Bazaar pack format 1 (introduced in 0.18)"
 

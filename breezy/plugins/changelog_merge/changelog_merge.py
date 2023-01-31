@@ -17,14 +17,11 @@
 """Merge logic for changelog_merge plugin."""
 
 import difflib
-import patiencediff
 
-from ... import (
-    debug,
-    merge,
-    osutils,
-    )
+import patiencediff
 from merge3 import Merge3
+
+from ... import debug, merge, osutils
 from ...trace import mutter
 
 

@@ -1,6 +1,6 @@
-from ...tests import TestCase, TestCaseWithTransport
 from ...revision import Revision
-from .cmds import get_revisions_and_committers, collapse_by_person
+from ...tests import TestCase, TestCaseWithTransport
+from .cmds import collapse_by_person, get_revisions_and_committers
 
 
 class TestGetRevisionsAndCommitters(TestCaseWithTransport):

@@ -16,12 +16,10 @@
 
 """Knit-based pack repository formats."""
 
-from .. import (
-    errors,
-    transport as _mod_transport,
-    )
-
+from .. import errors
+from .. import transport as _mod_transport
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import time
 
@@ -47,31 +45,14 @@ from breezy.bzr.knit import (
     )
 """)
 
-from ..bzr import (
-    btree_index,
-    )
-from ..bzr.index import (
-    CombinedGraphIndex,
-    GraphIndex,
-    GraphIndexPrefixAdapter,
-    InMemoryGraphIndex,
-    )
-from .knitrepo import (
-    KnitRepository,
-    )
-from .pack_repo import (
-    _DirectPackAccess,
-    NewPack,
-    RepositoryFormatPack,
-    ResumedPack,
-    Packer,
-    PackCommitBuilder,
-    PackRepository,
-    RepositoryPackCollection,
-    )
-from ..bzr.vf_repository import (
-    StreamSource,
-    )
+from ..bzr import btree_index
+from ..bzr.index import (CombinedGraphIndex, GraphIndex,
+                         GraphIndexPrefixAdapter, InMemoryGraphIndex)
+from ..bzr.vf_repository import StreamSource
+from .knitrepo import KnitRepository
+from .pack_repo import (NewPack, PackCommitBuilder, Packer, PackRepository,
+                        RepositoryFormatPack, RepositoryPackCollection,
+                        ResumedPack, _DirectPackAccess)
 
 
 class KnitPackRepository(PackRepository, KnitRepository):

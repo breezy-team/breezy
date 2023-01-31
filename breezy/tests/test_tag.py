@@ -17,18 +17,9 @@
 """Tests for breezy.tag."""
 
 
-from breezy import (
-    controldir,
-    errors,
-    )
-from breezy.tag import (
-    DisabledTags,
-    MemoryTags,
-    )
-from breezy.tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
+from breezy import controldir, errors
+from breezy.tag import DisabledTags, MemoryTags
+from breezy.tests import TestCase, TestCaseWithTransport
 
 
 class TestTagRevisionRenames(TestCaseWithTransport):

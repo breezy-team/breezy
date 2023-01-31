@@ -16,14 +16,10 @@
 
 """Helper functions for adding files to working trees."""
 
-import sys
 import os
+import sys
 
-from . import (
-    errors,
-    osutils,
-    ui,
-    )
+from . import errors, osutils, ui
 from .i18n import gettext
 
 

@@ -17,7 +17,8 @@
 """MemoryBranch object.
 """
 
-from . import config as _mod_config, errors, osutils
+from . import config as _mod_config
+from . import errors, osutils
 from .branch import Branch, BranchWriteLockResult
 from .lock import LogicalLockResult, _RelockDebugMixin
 from .revision import NULL_REVISION

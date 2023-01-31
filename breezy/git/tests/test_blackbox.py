@@ -17,24 +17,16 @@
 
 """Black-box tests for bzr-git."""
 
-from dulwich.repo import (
-    Repo as GitRepo,
-    )
-
 import os
 
-from ...controldir import (
-    ControlDir,
-    )
+from dulwich.repo import Repo as GitRepo
 
+from ...controldir import ControlDir
 from ...tests.blackbox import ExternalBase
-from ...workingtree import WorkingTree
-
-from .. import (
-    tests,
-    )
-from ...tests.script import TestCaseWithTransportAndScript
 from ...tests.features import PluginLoadedFeature
+from ...tests.script import TestCaseWithTransportAndScript
+from ...workingtree import WorkingTree
+from .. import tests
 
 
 class TestGitBlackBox(ExternalBase):

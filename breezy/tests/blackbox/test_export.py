@@ -18,23 +18,16 @@
 """Black-box tests for brz export.
 """
 
-from io import BytesIO
 import os
 import stat
 import tarfile
 import time
 import zipfile
+from io import BytesIO
 
-
+from ... import export, osutils
 from ...archive import zip
-from ... import (
-    export,
-    osutils,
-    )
-from .. import (
-    features,
-    TestCaseWithTransport,
-    )
+from .. import TestCaseWithTransport, features
 
 
 class TestExport(TestCaseWithTransport):

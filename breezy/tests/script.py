@@ -28,11 +28,7 @@ import shlex
 import sys
 import textwrap
 
-from .. import (
-    osutils,
-    tests,
-    trace,
-    )
+from .. import osutils, tests, trace
 from ..tests import ui_testing
 
 

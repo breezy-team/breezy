@@ -20,13 +20,8 @@
 import pickle
 import threading
 
-from .. import (
-    errors,
-    osutils,
-    tests,
-    )
+from .. import errors, osutils, tests
 from ..tests import features
-
 
 lsprof = features.lsprof_feature.module
 

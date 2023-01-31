@@ -20,15 +20,8 @@ The tags are actually in the Branch.tags namespace, but these are
 1:1 with Branch implementations so can be tested from here.
 """
 
-from breezy import (
-    branch,
-    controldir,
-    errors,
-    tests,
-    )
-from breezy.bzr import (
-    branch as bzrbranch,
-    )
+from breezy import branch, controldir, errors, tests
+from breezy.bzr import branch as bzrbranch
 from breezy.tests import per_branch
 
 

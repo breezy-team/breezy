@@ -16,18 +16,11 @@
 
 """Tests for handling of ignore files"""
 
-from io import BytesIO
 import os
+from io import BytesIO
 
-from .. import (
-    bedding,
-    ignores,
-    )
-from . import (
-    TestCase,
-    TestCaseInTempDir,
-    TestCaseWithTransport,
-    )
+from .. import bedding, ignores
+from . import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
 class TestParseIgnoreFile(TestCase):

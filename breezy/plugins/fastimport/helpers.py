@@ -17,9 +17,7 @@
 
 import stat
 
-from ... import (
-    controldir,
-    )
+from ... import controldir
 
 
 def escape_commit_message(message):
@@ -82,6 +80,7 @@ def open_destination_directory(location, format=None, verbose=True):
     :return: BzrDir for the destination
     """
     import os
+
     from ... import controldir, errors, trace, transport
     try:
         control, relpath = controldir.ControlDir.open_containing(location)

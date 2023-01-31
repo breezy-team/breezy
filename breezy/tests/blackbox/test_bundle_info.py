@@ -15,10 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
-    merge_directive,
-    tests,
-    )
+from breezy import merge_directive, tests
 
 
 class TestBundleInfo(tests.TestCaseWithTransport):

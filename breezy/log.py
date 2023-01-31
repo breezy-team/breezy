@@ -48,16 +48,15 @@ all the changes since the previous revision that touched hello.c.
 """
 
 import codecs
-from io import BytesIO
 import itertools
 import re
 import sys
-from typing import Callable, List, Dict
-from warnings import (
-    warn,
-    )
+from io import BytesIO
+from typing import Callable, Dict, List
+from warnings import warn
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 
 from breezy import (
@@ -70,26 +69,15 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 
-from . import (
-    errors,
-    registry,
-    revision as _mod_revision,
-    revisionspec,
-    trace,
-    transport as _mod_transport,
-    )
-from .osutils import (
-    format_date,
-    format_date_with_offset_in_original_timezone,
-    get_diff_header_encoding,
-    get_terminal_encoding,
-    is_inside,
-    terminal_width,
-    )
-from .tree import (
-    find_previous_path,
-    InterTree,
-    )
+from . import errors, registry
+from . import revision as _mod_revision
+from . import revisionspec, trace
+from . import transport as _mod_transport
+from .osutils import (format_date,
+                      format_date_with_offset_in_original_timezone,
+                      get_diff_header_encoding, get_terminal_encoding,
+                      is_inside, terminal_width)
+from .tree import InterTree, find_previous_path
 
 
 def find_touching_revisions(repository, last_revision, last_tree, last_path):

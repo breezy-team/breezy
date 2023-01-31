@@ -32,14 +32,9 @@ import os
 import stat
 import time
 
-from .. import (
-    atomicfile,
-    errors,
-    filters as _mod_filters,
-    osutils,
-    trace,
-    )
-
+from .. import atomicfile, errors
+from .. import filters as _mod_filters
+from .. import osutils, trace
 
 FP_MTIME_COLUMN = 1
 FP_CTIME_COLUMN = 2

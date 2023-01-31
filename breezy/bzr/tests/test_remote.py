@@ -25,71 +25,35 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import base64
 import bz2
-from io import BytesIO
 import tarfile
 import zlib
+from io import BytesIO
 
 import fastbencode as bencode
 
-from ... import (
-    branch,
-    config,
-    controldir,
-    errors,
-    repository,
-    tests,
-    transport as _mod_transport,
-    treebuilder,
-    )
+from ... import branch, config, controldir, errors, repository, tests
+from ... import transport as _mod_transport
+from ... import treebuilder
 from ...branch import Branch
-from .. import (
-    bzrdir,
-    inventory,
-    inventory_delta,
-    remote,
-    versionedfile,
-    vf_search,
-    )
-from ..bzrdir import (
-    BzrDir,
-    BzrDirFormat,
-    )
-from .. import (
-    RemoteBzrProber,
-    )
-from ..chk_serializer import chk_bencode_serializer
-from ..remote import (
-    RemoteBranch,
-    RemoteBranchFormat,
-    RemoteBzrDir,
-    RemoteBzrDirFormat,
-    RemoteRepository,
-    RemoteRepositoryFormat,
-    UnknownErrorFromSmartServer,
-    )
-from .. import groupcompress_repo, knitpack_repo
-from ...revision import (
-    NULL_REVISION,
-    Revision,
-    )
-from ..smart import medium, request
-from ..smart.client import _SmartClient
-from ..smart.repository import (
-    SmartServerRepositoryGetParentMap,
-    SmartServerRepositoryGetStream_1_19,
-    _stream_to_byte_stream,
-    )
-from ...tests import (
-    test_server,
-    )
+from ...revision import NULL_REVISION, Revision
+from ...tests import test_server
 from ...tests.scenarios import load_tests_apply_scenarios
 from ...transport.memory import MemoryTransport
-from ...transport.remote import (
-    RemoteTransport,
-    RemoteSSHTransport,
-    RemoteTCPTransport,
-    )
-
+from ...transport.remote import (RemoteSSHTransport, RemoteTCPTransport,
+                                 RemoteTransport)
+from .. import (RemoteBzrProber, bzrdir, groupcompress_repo, inventory,
+                inventory_delta, knitpack_repo, remote, versionedfile,
+                vf_search)
+from ..bzrdir import BzrDir, BzrDirFormat
+from ..chk_serializer import chk_bencode_serializer
+from ..remote import (RemoteBranch, RemoteBranchFormat, RemoteBzrDir,
+                      RemoteBzrDirFormat, RemoteRepository,
+                      RemoteRepositoryFormat, UnknownErrorFromSmartServer)
+from ..smart import medium, request
+from ..smart.client import _SmartClient
+from ..smart.repository import (SmartServerRepositoryGetParentMap,
+                                SmartServerRepositoryGetStream_1_19,
+                                _stream_to_byte_stream)
 
 load_tests = load_tests_apply_scenarios
 

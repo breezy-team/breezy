@@ -157,8 +157,8 @@ class TestCat(tests.TestCaseWithTransport):
         # subprocess because we really need to patch in a plugin that
         # registers the filters. Instead, we patch in a custom
         # filter_stack and use run_bzr() ...
-        from ..test_filters import _stack_2
         from ...tree import Tree
+        from ..test_filters import _stack_2
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([
             ('README', b"junk\nline 1 of README\nline 2 of README\n"),

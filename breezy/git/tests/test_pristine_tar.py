@@ -16,26 +16,17 @@
 
 """Tests for pristine tar extraction code."""
 
+import stat
 from base64 import standard_b64encode
 
-from ..pristine_tar import (
-    get_pristine_tar_tree,
-    revision_pristine_tar_data,
-    read_git_pristine_tar_data,
-    store_git_pristine_tar_data,
-    )
+from dulwich.objects import Blob, Tree
+from dulwich.repo import MemoryRepo as GitMemoryRepo
 
 from ...revision import Revision
 from ...tests import TestCase
-
-from dulwich.objects import (
-    Blob,
-    Tree,
-    )
-from dulwich.repo import (
-    MemoryRepo as GitMemoryRepo,
-    )
-import stat
+from ..pristine_tar import (get_pristine_tar_tree, read_git_pristine_tar_data,
+                            revision_pristine_tar_data,
+                            store_git_pristine_tar_data)
 
 
 class RevisionPristineTarDataTests(TestCase):

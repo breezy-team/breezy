@@ -21,13 +21,11 @@ __docformat__ = "google"
 
 import optparse
 import re
-from typing import Dict, Callable
+from typing import Callable, Dict
 
-from . import (
-    errors,
-    registry as _mod_registry,
-    revisionspec,
-    )
+from . import errors
+from . import registry as _mod_registry
+from . import revisionspec
 
 
 class BadOptionValue(errors.BzrError):

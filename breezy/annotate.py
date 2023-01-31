@@ -29,6 +29,7 @@ import sys
 import time
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import patiencediff
 
@@ -36,16 +37,9 @@ from breezy import (
     tsort,
     )
 """)
-from . import (
-    config,
-    errors,
-    osutils,
-    )
+from . import config, errors, osutils
 from .repository import _strip_NULL_ghosts
-from .revision import (
-    CURRENT_REVISION,
-    Revision,
-    )
+from .revision import CURRENT_REVISION, Revision
 
 
 def annotate_file_tree(tree, path, to_file, verbose=False, full=False,

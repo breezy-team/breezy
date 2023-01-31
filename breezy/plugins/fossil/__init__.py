@@ -20,11 +20,7 @@ Currently only tells the user that Fossil is not supported.
 """
 
 from ... import version_info  # noqa: F401
-
-from ... import (
-    controldir,
-    errors,
-    )
+from ... import controldir, errors
 
 
 class FossilUnsupportedError(errors.UnsupportedVcs):

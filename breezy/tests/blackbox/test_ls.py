@@ -16,10 +16,7 @@
 
 """External tests of 'brz ls'"""
 
-from breezy import (
-    ignores,
-    tests,
-    )
+from breezy import ignores, tests
 
 
 class TestLS(tests.TestCaseWithTransport):

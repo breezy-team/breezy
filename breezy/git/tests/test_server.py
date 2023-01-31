@@ -16,20 +16,14 @@
 
 """Test for git server."""
 
-from dulwich.client import TCPGitClient
-from dulwich.repo import Repo
 import threading
 
-from ...transport import transport_server_registry
-from ...tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
+from dulwich.client import TCPGitClient
+from dulwich.repo import Repo
 
-from ..server import (
-    BzrBackend,
-    BzrTCPGitServer,
-    )
+from ...tests import TestCase, TestCaseWithTransport
+from ...transport import transport_server_registry
+from ..server import BzrBackend, BzrTCPGitServer
 
 
 class TestPresent(TestCase):

@@ -21,17 +21,15 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from ... import (
-    errors,
-    transport as _mod_transport,
-    )
-from ...commands import plugin_cmds
-
+from ... import errors
+from ... import transport as _mod_transport
 from ...bzr.bzrdir import BzrFormat
+from ...commands import plugin_cmds
 
 BzrFormat.register_feature(b"rebase-v1")
 
 from ...i18n import load_plugin_translations
+
 translation = load_plugin_translations("bzr-rewrite")
 gettext = translation.gettext
 
@@ -48,10 +46,7 @@ def show_rebase_summary(params):
         return
     if "rebase-v1" not in features:
         return
-    from .rebase import (
-        RebaseState1,
-        rebase_todo,
-        )
+    from .rebase import RebaseState1, rebase_todo
     state = RebaseState1(params.new_tree)
     try:
         replace_map = state.read_plan()[1]

@@ -22,8 +22,8 @@ The usual way to use this is via breezy.ui.ui_factory.nested_progress_bar which
 will manage a conceptual stack of nested activities.
 """
 
-import time
 import os
+import time
 
 
 def _supports_progress(f):

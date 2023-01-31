@@ -22,13 +22,8 @@ expressions.
 
 import re
 
-from . import (
-    lazy_regex,
-    )
-from .trace import (
-    mutter,
-    warning,
-    )
+from . import lazy_regex
+from .trace import mutter, warning
 
 
 class Replacer:

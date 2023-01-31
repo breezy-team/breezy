@@ -17,20 +17,17 @@
 """Export a Tree to a zip file.
 """
 
-from contextlib import closing
 import os
 import stat
 import sys
 import tempfile
 import time
 import zipfile
+from contextlib import closing
 
-from .. import (
-    osutils,
-    )
+from .. import osutils
 from ..export import _export_iter_entries
 from ..trace import mutter
-
 
 # Windows expects this bit to be set in the 'external_attr' section,
 # or it won't consider the entry a directory.

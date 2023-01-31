@@ -14,20 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import (
-    errors,
-    conflicts,
-    osutils,
-    revisiontree,
-    tests,
-    transport as _mod_transport,
-    )
-from breezy.tree import MissingNestedTree
-from breezy.bzr import (
-    workingtree_4,
-    )
+from breezy import conflicts, errors, osutils, revisiontree, tests
+from breezy import transport as _mod_transport
+from breezy.bzr import workingtree_4
 from breezy.tests import TestSkipped
 from breezy.tests.per_tree import TestCaseWithTree
+from breezy.tree import MissingNestedTree
 
 
 class TestAnnotate(TestCaseWithTree):

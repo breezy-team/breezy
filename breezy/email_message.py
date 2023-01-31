@@ -16,11 +16,12 @@
 
 """A convenience class around email.Message and email.MIMEMultipart."""
 
-from email.message import Message
 from email.header import Header
+from email.message import Message
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr, parseaddr
+
 from . import __version__ as _breezy_version
 from .errors import BzrBadParameterNotUnicode
 from .osutils import safe_unicode

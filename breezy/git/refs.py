@@ -17,21 +17,12 @@
 """Conversion between refs and Bazaar revision pointers."""
 
 from dulwich.objects import Tag, object_class
-from dulwich.refs import (
-    ANNOTATED_TAG_SUFFIX,
-    LOCAL_BRANCH_PREFIX,
-    LOCAL_TAG_PREFIX,
-    )
-from dulwich.repo import (
-    RefsContainer,
-    )
+from dulwich.refs import (ANNOTATED_TAG_SUFFIX, LOCAL_BRANCH_PREFIX,
+                          LOCAL_TAG_PREFIX)
+from dulwich.repo import RefsContainer
 
-from .. import (
-    controldir,
-    errors,
-    osutils,
-    revision as _mod_revision,
-    )
+from .. import controldir, errors, osutils
+from .. import revision as _mod_revision
 
 
 def is_tag(x):

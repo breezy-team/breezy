@@ -16,9 +16,7 @@
 
 """Tests for Repository.refresh_data."""
 
-from breezy import (
-    repository,
-    )
+from breezy import repository
 from breezy.tests.per_repository import TestCaseWithRepository
 
 

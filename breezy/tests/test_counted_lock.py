@@ -17,12 +17,7 @@
 """Tests for breezy.counted_lock"""
 
 from ..counted_lock import CountedLock
-from ..errors import (
-    LockError,
-    LockNotHeld,
-    ReadOnlyError,
-    TokenMismatch,
-    )
+from ..errors import LockError, LockNotHeld, ReadOnlyError, TokenMismatch
 from . import TestCase
 
 

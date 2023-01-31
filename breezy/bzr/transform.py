@@ -18,55 +18,29 @@
 import contextlib
 import errno
 import os
-from stat import S_IEXEC, S_ISREG
 import tempfile
 import time
+from stat import S_IEXEC, S_ISREG
 
-from .. import (
-    annotate,
-    conflicts,
-    controldir,
-    errors,
-    lock,
-    multiparent,
-    osutils,
-    revision as _mod_revision,
-    trace,
-    transport as _mod_transport,
-    tree,
-    ui,
-    urlutils,
-    )
-
-from ..filters import filtered_output_bytes, ContentFilterContext
+from .. import (annotate, conflicts, controldir, errors, lock, multiparent,
+                osutils)
+from .. import revision as _mod_revision
+from .. import trace
+from .. import transport as _mod_transport
+from .. import tree, ui, urlutils
+from ..filters import ContentFilterContext, filtered_output_bytes
 from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..progress import ProgressPhase
-from ..transform import (
-    ROOT_PARENT,
-    _FileMover,
-    _TransformResults,
-    joinpath,
-    NoFinalPath,
-    FinalPaths,
-    unique_add,
-    TreeTransform,
-    TransformRenameFailed,
-    ImmortalLimbo,
-    ReusingTransform,
-    MalformedTransform,
-    PreviewTree,
-    new_by_entry,
-    _reparent_children,
-    resolve_conflicts,
-    )
+from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
+                         MalformedTransform, NoFinalPath, PreviewTree,
+                         ReusingTransform, TransformRenameFailed,
+                         TreeTransform, _FileMover, _reparent_children,
+                         _TransformResults, joinpath, new_by_entry,
+                         resolve_conflicts, unique_add)
 from ..tree import find_previous_path
+from . import inventory, inventorytree
 from .conflicts import Conflict
-
-from . import (
-    inventory,
-    inventorytree,
-    )
 
 
 def _content_match(tree, entry, tree_path, kind, target_path):

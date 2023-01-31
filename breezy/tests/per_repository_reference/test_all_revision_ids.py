@@ -16,9 +16,8 @@
 
 """Tests for all_revision_ids on a repository with external references."""
 
-from breezy.tests.per_repository_reference import (
-    TestCaseWithExternalReferenceRepository,
-    )
+from breezy.tests.per_repository_reference import \
+    TestCaseWithExternalReferenceRepository
 
 
 class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):

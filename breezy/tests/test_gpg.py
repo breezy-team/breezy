@@ -17,23 +17,12 @@
 
 """Tests for signing and verifying blobs of data via gpg."""
 
-from io import BytesIO
-
 # import system imports here
 import sys
+from io import BytesIO
 
-from .. import (
-    config,
-    errors,
-    gpg,
-    tests,
-    trace,
-    ui,
-    )
-from . import (
-    TestCase,
-    features,
-    )
+from .. import config, errors, gpg, tests, trace, ui
+from . import TestCase, features
 
 
 class FakeConfig(config.MemoryStack):

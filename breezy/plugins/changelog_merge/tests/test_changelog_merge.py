@@ -14,13 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import (
-    merge,
-    tests,
-    )
-from breezy.tests import test_merge_core
+from breezy import merge, tests
 from breezy.plugins.changelog_merge import changelog_merge
-
+from breezy.tests import test_merge_core
 
 sample_base_entries = [
     b'Base entry B1',

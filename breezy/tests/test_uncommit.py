@@ -17,11 +17,7 @@
 """Test uncommit."""
 
 
-from .. import (
-    errors,
-    tests,
-    uncommit,
-    )
+from .. import errors, tests, uncommit
 
 
 class TestUncommit(tests.TestCaseWithTransport):

@@ -17,13 +17,10 @@
 """URL Conversion."""
 
 
-from .. import urlutils
-from .refs import (
-    ref_to_branch_name,
-    )
-
 from dulwich.client import parse_rsync_url
 
+from .. import urlutils
+from .refs import ref_to_branch_name
 
 KNOWN_GIT_SCHEMES = ['git+ssh', 'git', 'http', 'https', 'ftp', 'ssh']
 SCHEME_REPLACEMENT = {

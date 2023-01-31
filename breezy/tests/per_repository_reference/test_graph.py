@@ -18,13 +18,8 @@
 """Tests for graph operations on stacked repositories."""
 
 
-from breezy import (
-    tests,
-    urlutils,
-    )
-from breezy.bzr import (
-    remote,
-    )
+from breezy import tests, urlutils
+from breezy.bzr import remote
 from breezy.tests.per_repository import TestCaseWithRepository
 
 

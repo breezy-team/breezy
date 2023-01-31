@@ -15,14 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from io import BytesIO
-from .... import (
-    config,
-    errors,
-    osutils,
-    tests,
-    transport as _mod_transport,
-    )
 
+from .... import config, errors, osutils, tests
+from .... import transport as _mod_transport
 from ... import netrc_credential_store
 
 

@@ -29,8 +29,8 @@ ROOT_ID = b"TREE_ROOT"
 
 from collections import deque
 
-
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 
 from breezy.bzr import (
@@ -39,12 +39,7 @@ from breezy.bzr import (
     )
 """)
 
-from .. import (
-    errors,
-    lazy_regex,
-    osutils,
-    trace,
-    )
+from .. import errors, lazy_regex, osutils, trace
 from .static_tuple import StaticTuple
 
 

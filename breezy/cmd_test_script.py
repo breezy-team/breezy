@@ -22,10 +22,7 @@ This module should be importable even if testtools aren't available.
 
 import os
 
-from . import (
-    commands,
-    option,
-    )
+from . import commands, option
 
 
 class cmd_test_script(commands.Command):

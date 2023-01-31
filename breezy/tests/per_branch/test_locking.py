@@ -16,14 +16,8 @@
 
 """Test locks across all branch implemenations"""
 
-from breezy import (
-    errors,
-    tests,
-    )
-from breezy.tests import (
-    lock_helpers,
-    per_branch,
-    )
+from breezy import errors, tests
+from breezy.tests import lock_helpers, per_branch
 from breezy.tests.matchers import *
 
 

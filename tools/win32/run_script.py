@@ -5,8 +5,8 @@
 # This is only necessary for Windows, and only when the build process is
 # executed via a cygwin/*nix based make utility, which doesn't honor the
 # PATHEXT environment variable.
-import sys
 import os
+import sys
 
 if __name__ == '__main__':
     # clobber me, new sys.argv[0] is the script to run.

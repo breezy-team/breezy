@@ -20,11 +20,7 @@
 import os
 import sys
 
-from .. import (
-    bedding,
-    osutils,
-    tests,
-    )
+from .. import bedding, osutils, tests
 
 if sys.platform == "win32":
     from .. import win32utils

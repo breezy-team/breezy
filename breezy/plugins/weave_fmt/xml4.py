@@ -16,16 +16,12 @@
 
 from typing import List
 
-from ...bzr.xml_serializer import (
-    Element,
-    SubElement,
-    XMLSerializer,
-    escape_invalid_chars,
-    )
-from ...bzr.inventory import ROOT_ID, Inventory
 from ...bzr import inventory
-from ...revision import Revision
+from ...bzr.inventory import ROOT_ID, Inventory
+from ...bzr.xml_serializer import (Element, SubElement, XMLSerializer,
+                                   escape_invalid_chars)
 from ...errors import BzrError
+from ...revision import Revision
 
 
 class _Serializer_v4(XMLSerializer):

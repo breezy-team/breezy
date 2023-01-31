@@ -18,22 +18,11 @@
 
 from urllib.parse import urlsplit
 
-from ... import (
-    debug,
-    errors,
-    trace,
-    transport,
-    )
-from ...urlutils import InvalidURL
+from ... import debug, errors, trace, transport
 from ...i18n import gettext
-
-from .uris import (
-    DEFAULT_INSTANCE,
-    LAUNCHPAD_DOMAINS,
-    LPNET_SERVICE_ROOT,
-    )
+from ...urlutils import InvalidURL
 from .account import get_lp_login
-
+from .uris import DEFAULT_INSTANCE, LAUNCHPAD_DOMAINS, LPNET_SERVICE_ROOT
 
 # As breezy.transport.remote may not be loaded yet, make sure bzr+ssh
 # is counted as a netloc protocol.
