@@ -489,15 +489,15 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree.commit('first commit')
         rev2 = tree.commit('second commit')
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
-        self.assertTrue(rev2 in must_fetch)
+        self.assertIn(rev2, must_fetch)
 
     def test_heads_to_fetch_not_null_revision(self):
         # NULL_REVISION does not appear in the result of heads_to_fetch, even
         # for an empty branch.
         tree = self.make_branch_and_tree('a')
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
-        self.assertFalse(revision.NULL_REVISION in must_fetch)
-        self.assertFalse(revision.NULL_REVISION in should_fetch)
+        self.assertNotIn(revision.NULL_REVISION, must_fetch)
+        self.assertNotIn(revision.NULL_REVISION, should_fetch)
 
     def test_create_memorytree(self):
         tree = self.make_branch_and_tree('a')

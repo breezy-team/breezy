@@ -188,13 +188,17 @@ class TestMerge(TestCaseWithTransport):
         tree_a.commit(message="hello again")
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        self.assertTrue('All changes applied successfully.\n' not in
-                        self.get_log())
+        self.assertNotIn(
+            'All changes applied successfully.\n',
+            self.get_log()
+        )
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        self.assertTrue(
-            'All changes applied successfully.\n' in self.get_log())
+        self.assertIn(
+            'All changes applied successfully.\n',
+            self.get_log()
+        )
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -292,16 +296,25 @@ class TestMerge(TestCaseWithTransport):
 
     def test_merge_type_registry(self):
         merge_type_option = option.Option.OPTIONS['merge-type']
-        self.assertFalse('merge4' in [x[0] for x in
-                                      merge_type_option.iter_switches()])
+        self.assertNotIn(
+            'merge4',
+            [x[0] for x in
+                                      merge_type_option.iter_switches()]
+        )
         registry = _mod_merge.get_merge_type_registry()
         registry.register_lazy('merge4', 'breezy.merge', 'Merge4Merger',
                                'time-travelling merge')
-        self.assertTrue('merge4' in [x[0] for x in
-                                     merge_type_option.iter_switches()])
+        self.assertIn(
+            'merge4',
+            [x[0] for x in
+                                     merge_type_option.iter_switches()]
+        )
         registry.remove('merge4')
-        self.assertFalse('merge4' in [x[0] for x in
-                                      merge_type_option.iter_switches()])
+        self.assertNotIn(
+            'merge4',
+            [x[0] for x in
+                                      merge_type_option.iter_switches()]
+        )
 
     def test_merge_other_moves_we_deleted(self):
         tree_a = self.make_branch_and_tree('A')
@@ -1364,7 +1377,7 @@ class TestMergerInMemory(TestMergerBase):
         merger.merge_type = LCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, LCATreesMerger)
-        self.assertFalse('lca_trees' in merge_obj.kwargs)
+        self.assertNotIn('lca_trees', merge_obj.kwargs)
 
     def test_criss_cross_passed_to_merge_type(self):
         merger = self.make_Merger(self.setup_criss_cross_graph(), b'E-id')
@@ -1379,7 +1392,7 @@ class TestMergerInMemory(TestMergerBase):
         merger.merge_type = LoggingMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, LoggingMerger)
-        self.assertFalse('lca_trees' in merge_obj.kwargs)
+        self.assertNotIn('lca_trees', merge_obj.kwargs)
 
     def test_criss_cross_unsupported_merge_type(self):
         class UnsupportedLCATreesMerger(LoggingMerger):
@@ -1389,7 +1402,7 @@ class TestMergerInMemory(TestMergerBase):
         merger.merge_type = UnsupportedLCATreesMerger
         merge_obj = merger.make_merger()
         self.assertIsInstance(merge_obj, UnsupportedLCATreesMerger)
-        self.assertFalse('lca_trees' in merge_obj.kwargs)
+        self.assertNotIn('lca_trees', merge_obj.kwargs)
 
 
 class TestMergerEntriesLCA(TestMergerBase):

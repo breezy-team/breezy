@@ -195,7 +195,7 @@ class TestImport(TestCaseInTempDir):
 
     def test_common_directory(self):
         self.assertEqual(common_directory(['ab/c/d', 'ab/c/e']), 'ab')
-        self.assertIs(common_directory(['ab/c/d', 'ac/c/e']), None)
+        self.assertIsNone(common_directory(['ab/c/d', 'ac/c/e']))
         self.assertEqual('FEEDME', common_directory(['FEEDME']))
 
     def test_untar(self):

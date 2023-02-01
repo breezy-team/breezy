@@ -53,15 +53,15 @@ class TestRemerge(TestCaseWithTransport):
                      retcode=1, working_dir='this')
         with open('this/hello') as f:
             conflict_text = f.read()
-        self.assertTrue('|||||||' in conflict_text)
-        self.assertTrue('hi world' in conflict_text)
+        self.assertIn('|||||||', conflict_text)
+        self.assertIn('hi world', conflict_text)
 
         self.run_bzr_error(['conflicts encountered'], 'remerge',
                            retcode=1, working_dir='this')
         with open('this/hello') as f:
             conflict_text = f.read()
-        self.assertFalse('|||||||' in conflict_text)
-        self.assertFalse('hi world' in conflict_text)
+        self.assertNotIn('|||||||', conflict_text)
+        self.assertNotIn('hi world', conflict_text)
 
         os.unlink('this/hello.OTHER')
         os.unlink('this/question.OTHER')
@@ -87,8 +87,8 @@ class TestRemerge(TestCaseWithTransport):
         self.assertTrue('this/hello.BASE')
         with open('this/hello') as f:
             conflict_text = f.read()
-        self.assertFalse('|||||||' in conflict_text)
-        self.assertFalse('hi world' in conflict_text)
+        self.assertNotIn('|||||||', conflict_text)
+        self.assertNotIn('hi world', conflict_text)
 
         self.run_bzr_error(['Showing base is not supported.*Weave'],
                            'remerge . --merge-type weave --show-base',

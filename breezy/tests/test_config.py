@@ -421,10 +421,10 @@ class TestConfigObj(tests.TestCase):
 
     def test_get_bool(self):
         co = config.ConfigObj(BytesIO(bool_config))
-        self.assertIs(co.get_bool('DEFAULT', 'active'), True)
-        self.assertIs(co.get_bool('DEFAULT', 'inactive'), False)
-        self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
-        self.assertIs(co.get_bool('UPPERCASE', 'nonactive'), False)
+        self.assertTrue(co.get_bool('DEFAULT', 'active'))
+        self.assertFalse(co.get_bool('DEFAULT', 'inactive'))
+        self.assertTrue(co.get_bool('UPPERCASE', 'active'))
+        self.assertFalse(co.get_bool('UPPERCASE', 'nonactive'))
 
     def test_hash_sign_in_value(self):
         """
@@ -557,7 +557,7 @@ class TestIniConfigBuilding(TestIniConfig):
     def test_cached(self):
         my_config = config.IniBasedConfig.from_string(sample_config_text)
         parser = my_config._get_parser()
-        self.assertTrue(my_config._get_parser() is parser)
+        self.assertIs(my_config._get_parser(), parser)
 
     def _dummy_chown(self, path, uid, gid):
         self.path, self.uid, self.gid = path, uid, gid
@@ -570,8 +570,8 @@ class TestIniConfigBuilding(TestIniConfig):
         conf = config.IniBasedConfig(file_name='./foo.conf')
         conf._write_config_file()
         self.assertEqual(self.path, './foo.conf')
-        self.assertTrue(isinstance(self.uid, int))
-        self.assertTrue(isinstance(self.gid, int))
+        self.assertIsInstance(self.uid, int)
+        self.assertIsInstance(self.gid, int)
 
 
 class TestIniConfigSaving(tests.TestCaseInTempDir):
@@ -970,7 +970,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         """The Branch.get_config method works properly"""
         b = controldir.ControlDir.create_standalone_workingtree('.').branch
         my_config = b.get_config()
-        self.assertIs(my_config.get_user_option('wacky'), None)
+        self.assertIsNone(my_config.get_user_option('wacky'))
         my_config.set_user_option('wacky', 'unlikely')
         self.assertEqual(my_config.get_user_option('wacky'), 'unlikely')
 
@@ -1152,7 +1152,7 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_find_merge_tool_not_found(self):
         conf = self._get_sample_config()
         cmdline = conf.find_merge_tool('DOES NOT EXIST')
-        self.assertIs(cmdline, None)
+        self.assertIsNone(cmdline)
 
     def test_find_merge_tool_known(self):
         conf = self._get_empty_config()
@@ -1417,7 +1417,7 @@ other_url = /other-subdir
 
     def test_set_user_setting_sets_and_saves2(self):
         self.get_branch_config('/a/c')
-        self.assertIs(self.my_config.get_user_option('foo'), None)
+        self.assertIsNone(self.my_config.get_user_option('foo'))
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual(
             self.my_config.branch.control_files.files['branch.conf'].strip(),
@@ -2264,7 +2264,7 @@ class TestMutableSection(tests.TestCase):
         # The change appears in the shared section
         self.assertEqual('new_value', a_dict.get('foo'))
         # We keep track of the change
-        self.assertTrue('foo' in section.orig)
+        self.assertIn('foo', section.orig)
         self.assertEqual('bar', section.orig.get('foo'))
 
     def test_set_preserve_original_once(self):
@@ -2273,7 +2273,7 @@ class TestMutableSection(tests.TestCase):
         section.set('foo', 'first_value')
         section.set('foo', 'second_value')
         # We keep track of the original value
-        self.assertTrue('foo' in section.orig)
+        self.assertIn('foo', section.orig)
         self.assertEqual('bar', section.orig.get('foo'))
 
     def test_remove(self):
@@ -2284,9 +2284,9 @@ class TestMutableSection(tests.TestCase):
         self.assertEqual(None, section.get('foo'))
         # Or we just get the default value
         self.assertEqual('unknown', section.get('foo', 'unknown'))
-        self.assertFalse('foo' in section.options)
+        self.assertNotIn('foo', section.options)
         # We keep track of the deletion
-        self.assertTrue('foo' in section.orig)
+        self.assertIn('foo', section.orig)
         self.assertEqual('bar', section.orig.get('foo'))
 
     def test_remove_new_option(self):
@@ -2294,10 +2294,10 @@ class TestMutableSection(tests.TestCase):
         section = self.get_section(a_dict)
         section.set('foo', 'bar')
         section.remove('foo')
-        self.assertFalse('foo' in section.options)
+        self.assertNotIn('foo', section.options)
         # The option didn't exist initially so it we need to keep track of it
         # with a special value
-        self.assertTrue('foo' in section.orig)
+        self.assertIn('foo', section.orig)
         self.assertEqual(config._NewlyCreatedOption, section.orig['foo'])
 
 

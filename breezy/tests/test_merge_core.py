@@ -435,9 +435,9 @@ y
         builder.change_perms(name4, this=True)
         builder.remove_file(name4, base=True)
         builder.merge()
-        self.assertIs(builder.this.is_executable("name1"), False)
-        self.assertIs(builder.this.is_executable("name2"), True)
-        self.assertIs(builder.this.is_executable("name3"), False)
+        self.assertFalse(builder.this.is_executable("name1"))
+        self.assertTrue(builder.this.is_executable("name2"))
+        self.assertFalse(builder.this.is_executable("name3"))
         builder.cleanup()
 
     def test_new_suffix(self):

@@ -128,10 +128,10 @@ class TestHelp(tests.TestCaseWithTransport):
             return cmds
         commands = extract_cmd_names(help_commands)
         hidden = extract_cmd_names(help_hidden)
-        self.assertTrue('commit' in commands)
-        self.assertTrue('commit' not in hidden)
-        self.assertTrue('rocks' in hidden)
-        self.assertTrue('rocks' not in commands)
+        self.assertIn('commit', commands)
+        self.assertNotIn('commit', hidden)
+        self.assertIn('rocks', hidden)
+        self.assertNotIn('rocks', commands)
 
     def test_help_detail(self):
         dash_h = self.run_bzr('diff -h')[0]

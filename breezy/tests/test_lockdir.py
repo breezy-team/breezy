@@ -189,8 +189,11 @@ class TestLockDir(TestCaseWithTransport):
             after = time.time()
             # it should only take about 0.4 seconds, but we allow more time in
             # case the machine is heavily loaded
-            self.assertTrue(after - before <= 8.0,
-                            "took %f seconds to detect lock contention" % (after - before))
+            self.assertLessEqual(
+                after - before,
+                8.0,
+                "took %f seconds to detect lock contention" % (after - before)
+            )
         finally:
             lf1.unlock()
         self.assertEqual(1, len(self._logged_reports))
@@ -212,7 +215,7 @@ class TestLockDir(TestCaseWithTransport):
             before = time.time()
             lf1.wait_lock(timeout=0.4, poll=0.1)
             after = time.time()
-            self.assertTrue(after - before <= 1.0)
+            self.assertLessEqual(after - before, 1.0)
         finally:
             lf1.unlock()
         self.assertEqual([], self._logged_reports)

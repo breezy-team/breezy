@@ -359,7 +359,7 @@ class TestSimpleSet(tests.TestCase):
         # dummy values in there
         self.assertFillState(0, obj.fill, 0x3ff, obj)
         # but there should be fewer than 1/5th dummy entries
-        self.assertTrue(obj.fill < 1024 / 5)
+        self.assertLess(obj.fill, 1024 / 5)
 
     def test__iter__(self):
         obj = self.module.SimpleSet()
@@ -390,4 +390,4 @@ class TestSimpleSet(tests.TestCase):
         # us only the size of the object, and not its table. We know the table
         # is at least 4bytes*1024entries in size.
         obj = self.module.SimpleSet()
-        self.assertTrue(obj.__sizeof__() > 4096)
+        self.assertGreater(obj.__sizeof__(), 4096)

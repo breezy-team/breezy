@@ -72,7 +72,7 @@ class TestDefaultFormat(TestCase):
         old_default_help = controldir.format_registry.get_help('default')
         private_default = old_default().repository_format.__class__
         old_format = repository.format_registry.get_default()
-        self.assertTrue(isinstance(old_format, private_default))
+        self.assertIsInstance(old_format, private_default)
 
         def make_sample_bzrdir():
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
@@ -497,7 +497,7 @@ class TestRepositoryConverter(TestCaseWithTransport):
         with breezy.ui.ui_factory.nested_progress_bar() as pb:
             converter.convert(repo, pb)
         repo = repo_dir.open_repository()
-        self.assertTrue(isinstance(target_format, repo._format.__class__))
+        self.assertIsInstance(target_format, repo._format.__class__)
 
 
 class TestRepositoryFormatKnit3(TestCaseWithTransport):
@@ -637,8 +637,8 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         tree.branch.repository.pack(hint=combine)
         final = tree.branch.repository._pack_collection.names()
         self.assertLength(2, final)
-        self.assertFalse(combine[0] in final)
-        self.assertFalse(combine[1] in final)
+        self.assertNotIn(combine[0], final)
+        self.assertNotIn(combine[1], final)
         self.assertSubset(to_keep, final)
 
     def test_stream_source_to_gc(self):
@@ -1223,7 +1223,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                 packs._pack_transport, name, rev_index, inv_index, txt_index,
                 sig_index), pack_1)
         # and the same instance should be returned on successive calls.
-        self.assertTrue(pack_1 is packs.get_pack_by_name(name))
+        self.assertIs(pack_1, packs.get_pack_by_name(name))
 
     def test_reload_pack_names_new_entry(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo()
@@ -1370,16 +1370,16 @@ class TestPack(TestCaseWithTransport):
     """Tests for the Pack object."""
 
     def assertCurrentlyEqual(self, left, right):
-        self.assertTrue(left == right)
-        self.assertTrue(right == left)
-        self.assertFalse(left != right)
-        self.assertFalse(right != left)
+        self.assertEqual(left, right)
+        self.assertEqual(right, left)
+        self.assertEqual(left, right)
+        self.assertEqual(right, left)
 
     def assertCurrentlyNotEqual(self, left, right):
-        self.assertFalse(left == right)
-        self.assertFalse(right == left)
-        self.assertTrue(left != right)
-        self.assertTrue(right != left)
+        self.assertNotEqual(left, right)
+        self.assertNotEqual(right, left)
+        self.assertNotEqual(left, right)
+        self.assertNotEqual(right, left)
 
     def test___eq____ne__(self):
         left = pack_repo.ExistingPack('', '', '', '', '', '')
@@ -1438,9 +1438,9 @@ class TestNewPack(TestCaseWithTransport):
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
-        self.assertTrue(pack.upload_transport is upload_transport)
-        self.assertTrue(pack.index_transport is index_transport)
-        self.assertTrue(pack.pack_transport is pack_transport)
+        self.assertIs(pack.upload_transport, upload_transport)
+        self.assertIs(pack.index_transport, index_transport)
+        self.assertIs(pack.pack_transport, pack_transport)
         self.assertEqual(None, pack.index_sizes)
         self.assertEqual(20, len(pack.random_name))
         self.assertIsInstance(pack.random_name, str)

@@ -974,7 +974,7 @@ class LowLevelKnitIndexTests(TestCase):
         # Unicode revision_ids.
         self.assertEqual({(utf8_revision_id,): ()},
                          index.get_parent_map(index.keys()))
-        self.assertFalse((unicode_revision_id,) in index.keys())
+        self.assertNotIn((unicode_revision_id,), index.keys())
 
     def test_read_utf8_parents(self):
         unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
@@ -1366,7 +1366,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         res = ann._expand_record(rev_key, (parent_key,), parent_key,
                                  record, details)
         self.assertEqual(None, res)
-        self.assertTrue(parent_key in ann._pending_deltas)
+        self.assertIn(parent_key, ann._pending_deltas)
         pending = ann._pending_deltas[parent_key]
         self.assertEqual(1, len(pending))
         self.assertEqual((rev_key, (parent_key,), record, details), pending[0])
@@ -1388,7 +1388,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         # num_compression_children entry
         res = ann._expand_record(rev2_key, (parent_key,), parent_key,
                                  record, details)
-        self.assertFalse(parent_key in ann._content_objects)
+        self.assertNotIn(parent_key, ann._content_objects)
         self.assertEqual({}, ann._num_compression_children)
         # We should not cache the content_objects for rev2 and rev, because
         # they do not have compression children of their own.
@@ -1452,8 +1452,8 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         ann._annotations_cache[p1_key] = [(p1_key,)] * 2
         res = ann._process_pending(p1_key)
         self.assertEqual([], res)
-        self.assertFalse(p1_key in ann._pending_deltas)
-        self.assertTrue(p2_key in ann._pending_annotation)
+        self.assertNotIn(p1_key, ann._pending_deltas)
+        self.assertIn(p2_key, ann._pending_annotation)
         self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
                          ann._pending_annotation)
         # Now fill in parent 2, and pending annotation should be satisfied

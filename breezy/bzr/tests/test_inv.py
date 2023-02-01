@@ -1279,7 +1279,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
         self.assertIsInstance(ie2.name, str)
-        self.assertIs(ie2.parent_id, None)
+        self.assertIsNone(ie2.parent_id)
         self.assertEqual((b'dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1529,15 +1529,15 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         inv = self.make_simple_inventory()
         # Reading from disk
         self.assert_Getitems([b'dir1-id'], inv, [b'dir1-id'])
-        self.assertTrue(b'dir1-id' in inv._fileid_to_entry_cache)
-        self.assertFalse(b'sub-file2-id' in inv._fileid_to_entry_cache)
+        self.assertIn(b'dir1-id', inv._fileid_to_entry_cache)
+        self.assertNotIn(b'sub-file2-id', inv._fileid_to_entry_cache)
         # From cache
         self.assert_Getitems([b'dir1-id'], inv, [b'dir1-id'])
         # Mixed
         self.assert_Getitems([b'dir1-id', b'sub-file2-id'], inv,
                              [b'dir1-id', b'sub-file2-id'])
-        self.assertTrue(b'dir1-id' in inv._fileid_to_entry_cache)
-        self.assertTrue(b'sub-file2-id' in inv._fileid_to_entry_cache)
+        self.assertIn(b'dir1-id', inv._fileid_to_entry_cache)
+        self.assertIn(b'sub-file2-id', inv._fileid_to_entry_cache)
 
     def test_single_file(self):
         inv = self.make_simple_inventory()

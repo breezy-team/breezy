@@ -130,14 +130,20 @@ added:
                                                         diff=True,
                                                         output_encoding='utf8')
 
-        self.assertTrue(b"""\
+        self.assertIn(
+            b"""\
 @@ -0,0 +1,1 @@
 +contents of hello
-""" in template)
-        self.assertTrue("""\
+""",
+            template
+        )
+        self.assertIn(
+            """\
 added:
   hell\u00d8
-""".encode() in template)
+""".encode(),
+            template
+        )
 
     def make_do_nothing_editor(self, basename='fed'):
         if sys.platform == "win32":

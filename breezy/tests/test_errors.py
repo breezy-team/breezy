@@ -46,9 +46,12 @@ class TestErrors(tests.TestCase):
             fmt = getattr(c, '_fmt', None)
             if init:
                 args = inspect.getfullargspec(init)[0]
-                self.assertFalse('message' in args,
-                                 ('Argument name "message" not allowed for '
-                                  '"errors.%s.__init__"' % c.__name__))
+                self.assertNotIn(
+                    'message',
+                    args,
+                    'Argument name "message" not allowed for '
+                                  '"errors.%s.__init__"' % c.__name__
+                )
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(True, ('"message" not allowed in '
                                         '"errors.%s._fmt"' % c.__name__))

@@ -113,7 +113,7 @@ class TestTransport(tests.TestCase):
         transport.register_lazy_transport(
             'foo', 'breezy.tests.test_transport', 'BadTransportHandler')
         t = transport.get_transport_from_url('foo://fooserver/foo')
-        self.assertTrue(isinstance(t, BackupTransportHandler))
+        self.assertIsInstance(t, BackupTransportHandler)
 
     def test_ssh_hints(self):
         """Transport ssh:// should raise an error pointing out bzr+ssh://"""
@@ -239,11 +239,11 @@ class TestMemoryServer(tests.TestCase):
         server = memory.MemoryServer()
         server.start_server()
         url = server.get_url()
-        self.assertTrue(url in transport.transport_list_registry)
+        self.assertIn(url, transport.transport_list_registry)
         t = transport.get_transport_from_url(url)
         del t
         server.stop_server()
-        self.assertFalse(url in transport.transport_list_registry)
+        self.assertNotIn(url, transport.transport_list_registry)
         self.assertRaises(UnsupportedProtocol,
                           transport.get_transport, url)
 
@@ -255,7 +255,7 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_clone(self):
         t = memory.MemoryTransport()
-        self.assertTrue(isinstance(t, memory.MemoryTransport))
+        self.assertIsInstance(t, memory.MemoryTransport)
         self.assertEqual("memory:///", t.clone("/").base)
 
     def test_abspath(self):
@@ -429,16 +429,20 @@ class TestChrootServer(tests.TestCase):
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
         self.addCleanup(server.stop_server)
-        self.assertTrue(server.scheme
-                        in transport._get_protocol_handlers().keys())
+        self.assertIn(
+            server.scheme,
+            transport._get_protocol_handlers().keys()
+        )
 
     def test_stop_server(self):
         backing_transport = memory.MemoryTransport()
         server = chroot.ChrootServer(backing_transport)
         server.start_server()
         server.stop_server()
-        self.assertFalse(server.scheme
-                         in transport._get_protocol_handlers().keys())
+        self.assertNotIn(
+            server.scheme,
+            transport._get_protocol_handlers().keys()
+        )
 
     def test_get_url(self):
         backing_transport = memory.MemoryTransport()
@@ -457,8 +461,11 @@ class TestHooks(tests.TestCase):
     def test_transporthooks_initialisation(self):
         """Check all expected transport hook points are set up"""
         hookpoint = transport.TransportHooks()
-        self.assertTrue("post_connect" in hookpoint,
-                        "post_connect not in {}".format(hookpoint))
+        self.assertIn(
+            "post_connect",
+            hookpoint,
+            "post_connect not in {}".format(hookpoint)
+        )
 
     def test_post_connect(self):
         """Ensure the post_connect hook is called when _set_transport is"""
@@ -845,8 +852,8 @@ class TestConnectedTransport(tests.TestCase):
         self.assertEqual(t._parsed_url.host, 'simple.example.com')
         self.assertEqual(t._parsed_url.port, None)
         self.assertEqual(t._parsed_url.path, '/home/source/')
-        self.assertTrue(t._parsed_url.user is None)
-        self.assertTrue(t._parsed_url.password is None)
+        self.assertIsNone(t._parsed_url.user)
+        self.assertIsNone(t._parsed_url.password)
 
         self.assertEqual(t.base, 'http://simple.example.com/home/source/')
 
@@ -961,8 +968,8 @@ class TestTransportTrace(tests.TestCase):
     def test_clone_preserves_activity(self):
         t = transport.get_transport_from_url('trace+memory://')
         t2 = t.clone('.')
-        self.assertTrue(t is not t2)
-        self.assertTrue(t._activity is t2._activity)
+        self.assertIsNot(t, t2)
+        self.assertIs(t._activity, t2._activity)
 
     # the following specific tests are for the operations that have made use of
     # logging in tests; we could test every single operation but doing that

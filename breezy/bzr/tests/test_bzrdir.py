@@ -359,7 +359,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         format = SampleBzrDirFormat()
         branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url(),
                                                       format=format)
-        self.assertTrue(isinstance(branch, SampleBranch))
+        self.assertIsInstance(branch, SampleBranch)
 
     def test_create_branch_and_repo_under_shared(self):
         # creating a branch and repo in a shared repo uses the
@@ -809,7 +809,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.make_branch('topdir/foo')
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             'topdir/foo')
-        self.assertIs(tree, None)
+        self.assertIsNone(tree)
         self.assertEqual(os.path.realpath('topdir/foo'),
                          self.local_branch_path(branch))
         self.assertEqual('', relpath)
@@ -829,7 +829,7 @@ class ChrootedTests(TestCaseWithTransport):
         # without a tree:
         self.make_branch('topdir/foo')
         tree, branch = bzrdir.BzrDir.open_tree_or_branch('topdir/foo')
-        self.assertIs(tree, None)
+        self.assertIsNone(tree)
         self.assertEqual(os.path.realpath('topdir/foo'),
                          self.local_branch_path(branch))
 
@@ -1063,14 +1063,14 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         """
         mydir = controldir.format_registry.make_controldir('knit')
         self.assertEqual(mydir, mydir)
-        self.assertFalse(mydir != mydir)
+        self.assertEqual(mydir, mydir)
         otherdir = controldir.format_registry.make_controldir('knit')
         self.assertEqual(otherdir, mydir)
-        self.assertFalse(otherdir != mydir)
+        self.assertEqual(otherdir, mydir)
         otherdir2 = controldir.format_registry.make_controldir(
             'development-subtree')
         self.assertNotEqual(otherdir2, mydir)
-        self.assertFalse(otherdir2 == mydir)
+        self.assertNotEqual(otherdir2, mydir)
 
     def test_with_features(self):
         tree = self.make_branch_and_tree('tree', format='2a')

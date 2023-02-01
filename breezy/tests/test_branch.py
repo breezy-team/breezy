@@ -98,7 +98,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         branch = BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
         self.log("branch instance is %r" % branch)
-        self.assertTrue(isinstance(branch, BzrBranch5))
+        self.assertIsInstance(branch, BzrBranch5)
         self.assertIsDirectory('.', t)
         self.assertIsDirectory('.bzr/branch', t)
         self.assertIsDirectory('.bzr/branch/lock', t)
@@ -543,19 +543,34 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
-        self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
-        self.assertTrue("post_commit" in hooks,
-                        "post_commit not in %s" % hooks)
-        self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
-        self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
-        self.assertTrue("post_uncommit" in hooks,
-                        "post_uncommit not in %s" % hooks)
-        self.assertTrue("post_change_branch_tip" in hooks,
-                        "post_change_branch_tip not in %s" % hooks)
-        self.assertTrue("post_branch_init" in hooks,
-                        "post_branch_init not in %s" % hooks)
-        self.assertTrue("post_switch" in hooks,
-                        "post_switch not in %s" % hooks)
+        self.assertIn("post_push", hooks, "post_push not in %s" % hooks)
+        self.assertIn(
+            "post_commit",
+            hooks,
+            "post_commit not in %s" % hooks
+        )
+        self.assertIn("pre_commit", hooks, "pre_commit not in %s" % hooks)
+        self.assertIn("post_pull", hooks, "post_pull not in %s" % hooks)
+        self.assertIn(
+            "post_uncommit",
+            hooks,
+            "post_uncommit not in %s" % hooks
+        )
+        self.assertIn(
+            "post_change_branch_tip",
+            hooks,
+            "post_change_branch_tip not in %s" % hooks
+        )
+        self.assertIn(
+            "post_branch_init",
+            hooks,
+            "post_branch_init not in %s" % hooks
+        )
+        self.assertIn(
+            "post_switch",
+            hooks,
+            "post_switch not in %s" % hooks
+        )
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""

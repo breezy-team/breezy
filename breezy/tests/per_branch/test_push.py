@@ -451,7 +451,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         # [BzrDir.open, BzrDir.open_branch, BzrDir.find_repositoryV2,
         # Branch.get_stacked_on_url, get, get, Branch.lock_write,
         # Branch.last_revision_info, Branch.unlock]
-        self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
+        self.assertLessEqual(len(self.hpss_calls), 9, self.hpss_calls)
 
 
 class TestLossyPush(per_branch.TestCaseWithBranch):

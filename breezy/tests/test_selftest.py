@@ -172,7 +172,7 @@ class TestTransportScenarios(tests.TestCase):
         from .per_transport import transport_test_permutations
         scenarios = transport_test_permutations()
         # there are at least that many builtin transports
-        self.assertTrue(len(scenarios) > 6)
+        self.assertGreater(len(scenarios), 6)
         one_scenario = scenarios[0]
         self.assertIsInstance(one_scenario[0], str)
         self.assertTrue(issubclass(one_scenario[1]["transport_class"],
@@ -1871,7 +1871,7 @@ class TestTestCaseLogDetails(tests.TestCase):
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
         test = skips[0]
-        self.assertFalse('log' in test.getDetails())
+        self.assertNotIn('log', test.getDetails())
 
     def test_missing_feature_has_no_log(self):
         # testtools doesn't know about addNotSupported, so it just gets
@@ -1882,7 +1882,7 @@ class TestTestCaseLogDetails(tests.TestCase):
         skips = reasons[str(missing_feature)]
         self.assertEqual(1, len(skips))
         test = skips[0]
-        self.assertFalse('log' in test.getDetails())
+        self.assertNotIn('log', test.getDetails())
 
     def test_xfail_has_no_log(self):
         result = self._run_test('test_xfail')
@@ -1899,7 +1899,7 @@ class TestTestCaseLogDetails(tests.TestCase):
         # expectedFailures is a list of reasons?
         test = result.unexpectedSuccesses[0]
         details = test.getDetails()
-        self.assertTrue('log' in details)
+        self.assertIn('log', details)
 
 
 class TestTestCloning(tests.TestCase):
@@ -2461,10 +2461,10 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
         # which calls apply_redirected.
         self.run_bzr(['foo', 'bar'], stdin='gam')
         self.assertEqual('gam', self.stdin.read())
-        self.assertTrue(self.stdin is self.factory_stdin)
+        self.assertIs(self.stdin, self.factory_stdin)
         self.run_bzr(['foo', 'bar'], stdin='zippy')
         self.assertEqual('zippy', self.stdin.read())
-        self.assertTrue(self.stdin is self.factory_stdin)
+        self.assertIs(self.stdin, self.factory_stdin)
 
     def test_ui_factory(self):
         # each invocation of self.run_bzr should get its
@@ -2473,7 +2473,7 @@ class TestRunBzrCaptured(tests.TestCaseWithTransport):
         # stdout and stderr of the invoked run_bzr
         current_factory = breezy.ui.ui_factory
         self.run_bzr(['foo'])
-        self.assertFalse(current_factory is self.factory)
+        self.assertIsNot(current_factory, self.factory)
         self.assertNotEqual(sys.stdout, self.factory.stdout)
         self.assertNotEqual(sys.stderr, self.factory.stderr)
         self.assertEqual('foo\n', self.factory.stdout.getvalue())
@@ -2669,7 +2669,7 @@ class TestStartBzrSubProcess(tests.TestCase):
         self.assertEqual([], command[2:])
 
     def test_set_env(self):
-        self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
+        self.assertNotIn('EXISTANT_ENV_VAR', os.environ)
         # set in the child
 
         def check_environment():
@@ -2678,14 +2678,14 @@ class TestStartBzrSubProcess(tests.TestCase):
         self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'EXISTANT_ENV_VAR': 'set variable'})
         # not set in theparent
-        self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
+        self.assertNotIn('EXISTANT_ENV_VAR', os.environ)
 
     def test_run_brz_subprocess_env_del(self):
         """run_brz_subprocess can remove environment variables too."""
-        self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
+        self.assertNotIn('EXISTANT_ENV_VAR', os.environ)
 
         def check_environment():
-            self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
+            self.assertNotIn('EXISTANT_ENV_VAR', os.environ)
         os.environ['EXISTANT_ENV_VAR'] = 'set variable'
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
@@ -2695,10 +2695,10 @@ class TestStartBzrSubProcess(tests.TestCase):
         del os.environ['EXISTANT_ENV_VAR']
 
     def test_env_del_missing(self):
-        self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
+        self.assertNotIn('NON_EXISTANT_ENV_VAR', os.environ)
 
         def check_environment():
-            self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
+            self.assertNotIn('NON_EXISTANT_ENV_VAR', os.environ)
         self.check_popen_state = check_environment
         self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           env_changes={'NON_EXISTANT_ENV_VAR': None})
@@ -2793,7 +2793,7 @@ class TestSelftestFiltering(tests.TestCase):
             self.suite, lambda x: x.id() == excluded_name)
         self.assertEqual(len(self.all_names) - 1,
                          filtered_suite.countTestCases())
-        self.assertFalse(excluded_name in _test_ids(filtered_suite))
+        self.assertNotIn(excluded_name, _test_ids(filtered_suite))
         remaining_names = list(self.all_names)
         remaining_names.remove(excluded_name)
         self.assertEqual(remaining_names, _test_ids(filtered_suite))
@@ -2806,7 +2806,7 @@ class TestSelftestFiltering(tests.TestCase):
                          'test_exclude_tests_by_re')
         self.assertEqual(len(self.all_names) - 1,
                          filtered_suite.countTestCases())
-        self.assertFalse(excluded_name in _test_ids(filtered_suite))
+        self.assertNotIn(excluded_name, _test_ids(filtered_suite))
         remaining_names = list(self.all_names)
         remaining_names.remove(excluded_name)
         self.assertEqual(remaining_names, _test_ids(filtered_suite))
@@ -2880,7 +2880,7 @@ class TestSelftestFiltering(tests.TestCase):
         filtered_name = ('breezy.tests.test_selftest.TestSelftestFiltering.'
                          'test_filter_suite_by_re')
         self.assertEqual([filtered_name], _test_ids(split_suite[0]))
-        self.assertFalse(filtered_name in _test_ids(split_suite[1]))
+        self.assertNotIn(filtered_name, _test_ids(split_suite[1]))
         remaining_names = list(self.all_names)
         remaining_names.remove(filtered_name)
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
@@ -2892,7 +2892,7 @@ class TestSelftestFiltering(tests.TestCase):
         filtered_name = ('breezy.tests.test_selftest.TestSelftestFiltering.'
                          'test_filter_suite_by_re')
         self.assertEqual([filtered_name], _test_ids(split_suite[0]))
-        self.assertFalse(filtered_name in _test_ids(split_suite[1]))
+        self.assertNotIn(filtered_name, _test_ids(split_suite[1]))
         remaining_names = list(self.all_names)
         remaining_names.remove(filtered_name)
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
@@ -3605,7 +3605,7 @@ class TestUncollectedWarningsForked(_ForkedSelftest, TestUncollectedWarnings):
 class TestEnvironHandling(tests.TestCase):
 
     def test_overrideEnv_None_called_twice_doesnt_leak(self):
-        self.assertFalse('MYVAR' in os.environ)
+        self.assertNotIn('MYVAR', os.environ)
         self.overrideEnv('MYVAR', '42')
         # We use an embedded test to make sure we fix the _captureVar bug
 
@@ -3644,13 +3644,13 @@ class TestIsolatedEnv(tests.TestCase):
     def test_basics(self):
         # Make sure we know the definition of BRZ_HOME: not part of os.environ
         # for tests.TestCase.
-        self.assertTrue('BRZ_HOME' in tests.isolated_environ)
+        self.assertIn('BRZ_HOME', tests.isolated_environ)
         self.assertEqual(None, tests.isolated_environ['BRZ_HOME'])
         # Being part of isolated_environ, BRZ_HOME should not appear here
-        self.assertFalse('BRZ_HOME' in os.environ)
+        self.assertNotIn('BRZ_HOME', os.environ)
         # Make sure we know the definition of LINES: part of os.environ for
         # tests.TestCase
-        self.assertTrue('LINES' in tests.isolated_environ)
+        self.assertIn('LINES', tests.isolated_environ)
         self.assertEqual('25', tests.isolated_environ['LINES'])
         self.assertEqual('25', os.environ['LINES'])
 
@@ -3660,7 +3660,7 @@ class TestIsolatedEnv(tests.TestCase):
         tests.override_os_environ(test, {'BRZ_HOME': 'foo'})
         self.assertEqual('foo', os.environ['BRZ_HOME'])
         tests.restore_os_environ(test)
-        self.assertFalse('BRZ_HOME' in os.environ)
+        self.assertNotIn('BRZ_HOME', os.environ)
 
     def test_injecting_known_variable(self):
         test = self.ScratchMonkey('test_me')
@@ -3674,7 +3674,7 @@ class TestIsolatedEnv(tests.TestCase):
         test = self.ScratchMonkey('test_me')
         # LINES is known to be present in os.environ
         tests.override_os_environ(test, {'LINES': None})
-        self.assertTrue('LINES' not in os.environ)
+        self.assertNotIn('LINES', os.environ)
         tests.restore_os_environ(test)
         self.assertEqual('25', os.environ['LINES'])
 
@@ -3813,7 +3813,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
         result = unittest.TestResult()
         test.run(result)
         self.assertTrue(hasattr(test, '_counters'))
-        self.assertTrue('myhook' in test._counters)
+        self.assertIn('myhook', test._counters)
         self.assertEqual(expected_calls, test._counters['myhook'])
 
     def test_no_hook(self):

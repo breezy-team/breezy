@@ -321,7 +321,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         transport = self.get_transport()
         transport.has('not me')  # Force connection by issuing a request
         with_latency_knob_time = time.time() - start_time
-        self.assertTrue(with_latency_knob_time > 0.4)
+        self.assertGreater(with_latency_knob_time, 0.4)
 
     def test_default(self):
         # This test is potentially brittle: under extremely high machine load
@@ -331,7 +331,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         transport = self.get_transport()
         transport.has('not me')  # Force connection by issuing a request
         regular_time = time.time() - start_time
-        self.assertTrue(regular_time < 0.5)
+        self.assertLess(regular_time, 0.5)
 
 
 class FakeSocket:

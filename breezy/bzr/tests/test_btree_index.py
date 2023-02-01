@@ -320,7 +320,7 @@ class TestBTreeBuilder(BTreeTestCase):
         # in the second node it points at
         pos = index._row_offsets[2] + internal_node2.offset + 1
         leaf = index._get_leaf_nodes([pos])[pos]
-        self.assertTrue(internal_node2.keys[0] in leaf)
+        self.assertIn(internal_node2.keys[0], leaf)
 
     def test_2_leaves_2_2(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
@@ -652,7 +652,7 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual([1, 4], index._row_lengths)
         self.assertIsNot(None, index._root_node)
         internal_node_pre_clear = set(index._internal_node_cache)
-        self.assertTrue(len(index._leaf_node_cache) > 0)
+        self.assertGreater(len(index._leaf_node_cache), 0)
         index.clear_cache()
         # We don't touch _root_node or _internal_node_cache, both should be
         # small, and can save a round trip or two
@@ -819,36 +819,46 @@ class TestBTreeIndex(BTreeTestCase):
         # two indices are equal when constructed with the same parameters:
         t1 = transport.get_transport_from_url('trace+' + self.get_url(''))
         t2 = self.get_transport()
-        self.assertTrue(
+        self.assertEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', None),
             btree_index.BTreeGraphIndex(t1, 'index', None)
-            == btree_index.BTreeGraphIndex(t1, 'index', None))
-        self.assertTrue(
+        )
+        self.assertEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', 20),
             btree_index.BTreeGraphIndex(t1, 'index', 20)
-            == btree_index.BTreeGraphIndex(t1, 'index', 20))
-        self.assertFalse(
+        )
+        self.assertNotEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', 20),
+            btree_index.BTreeGraphIndex(t2, 'index', 20)
+        )
+        self.assertNotEqual(
+            btree_index.BTreeGraphIndex(t1, 'inde1', 20),
+            btree_index.BTreeGraphIndex(t1, 'inde2', 20)
+        )
+        self.assertNotEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', 10),
             btree_index.BTreeGraphIndex(t1, 'index', 20)
-            == btree_index.BTreeGraphIndex(t2, 'index', 20))
-        self.assertFalse(
-            btree_index.BTreeGraphIndex(t1, 'inde1', 20)
-            == btree_index.BTreeGraphIndex(t1, 'inde2', 20))
-        self.assertFalse(
-            btree_index.BTreeGraphIndex(t1, 'index', 10)
-            == btree_index.BTreeGraphIndex(t1, 'index', 20))
-        self.assertFalse(
+        )
+        self.assertEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', None),
             btree_index.BTreeGraphIndex(t1, 'index', None)
-            != btree_index.BTreeGraphIndex(t1, 'index', None))
-        self.assertFalse(
+        )
+        self.assertEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', 20),
             btree_index.BTreeGraphIndex(t1, 'index', 20)
-            != btree_index.BTreeGraphIndex(t1, 'index', 20))
-        self.assertTrue(
+        )
+        self.assertNotEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', 20),
+            btree_index.BTreeGraphIndex(t2, 'index', 20)
+        )
+        self.assertNotEqual(
+            btree_index.BTreeGraphIndex(t1, 'inde1', 20),
+            btree_index.BTreeGraphIndex(t1, 'inde2', 20)
+        )
+        self.assertNotEqual(
+            btree_index.BTreeGraphIndex(t1, 'index', 10),
             btree_index.BTreeGraphIndex(t1, 'index', 20)
-            != btree_index.BTreeGraphIndex(t2, 'index', 20))
-        self.assertTrue(
-            btree_index.BTreeGraphIndex(t1, 'inde1', 20)
-            != btree_index.BTreeGraphIndex(t1, 'inde2', 20))
-        self.assertTrue(
-            btree_index.BTreeGraphIndex(t1, 'index', 10)
-            != btree_index.BTreeGraphIndex(t1, 'index', 20))
+        )
 
     def test_key_too_big(self):
         # the size that matters here is the _compressed_ size of the key, so we can't
@@ -887,7 +897,7 @@ class TestBTreeIndex(BTreeTestCase):
         found_nodes = self.time(list, index.iter_all_entries())
         bare_nodes = []
         for node in found_nodes:
-            self.assertTrue(node[0] is index)
+            self.assertIs(node[0], index)
             bare_nodes.append(node[1:])
         self.assertEqual(3, len(index._row_lengths),
                          "Not enough rows: %r" % index._row_lengths)
@@ -932,7 +942,7 @@ class TestBTreeIndex(BTreeTestCase):
         found_nodes = list(index.iter_entries([nodes[30][0]]))
         bare_nodes = []
         for node in found_nodes:
-            self.assertTrue(node[0] is index)
+            self.assertIs(node[0], index)
             bare_nodes.append(node[1:])
         # Should be as long as the nodes we supplied
         self.assertEqual(1, len(found_nodes))
@@ -1134,7 +1144,7 @@ class TestBTreeIndex(BTreeTestCase):
         l2 = nodes[2]
         min_l2_key = l2.min_key
         max_l1_key = l1.max_key
-        self.assertTrue(max_l1_key < min_l2_key)
+        self.assertLess(max_l1_key, min_l2_key)
         parents_min_l2_key = l2[min_l2_key][1][0]
         self.assertEqual((l1.max_key,), parents_min_l2_key)
         # Now, whatever key we select that would fall on the second page,
@@ -1183,7 +1193,7 @@ class TestBTreeIndex(BTreeTestCase):
         # We have an internal node
         self.assertEqual(2, len(index._row_lengths))
         # We have at least 2 leaf nodes
-        self.assertTrue(index._row_lengths[-1] >= 2)
+        self.assertGreaterEqual(index._row_lengths[-1], 2)
         self.assertIsInstance(index._leaf_node_cache, lru_cache.LRUCache)
         self.assertEqual(btree_index._NODE_CACHE_SIZE,
                          index._leaf_node_cache._max_cache)

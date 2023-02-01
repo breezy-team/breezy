@@ -255,14 +255,14 @@ class TestAuthHeader(tests.TestCase):
             dict(user=user, password=password), None)
         # https://bugs.launchpad.net/bzr/+bug/1606203 was caused by incorrectly
         # creating a header value with an embedded '\n'
-        self.assertFalse('\n' in header)
+        self.assertNotIn('\n', header)
 
     def test_basic_extract_realm(self):
         scheme, remainder = self.parse_header(
             'Basic realm="Thou should not pass"',
             BasicAuthHandler)
         match, realm = self.auth_handler.extract_realm(remainder)
-        self.assertTrue(match is not None)
+        self.assertIsNotNone(match)
         self.assertEqual('Thou should not pass', realm)
 
     def test_digest_header(self):
@@ -328,8 +328,8 @@ class TestHTTPServer(tests.TestCase):
         server = http_server.HttpServer()
         self.addCleanup(server.stop_server)
         server.start_server()
-        self.assertTrue(server.server is not None)
-        self.assertTrue(server.server.serving is not None)
+        self.assertIsNotNone(server.server)
+        self.assertIsNotNone(server.server.serving)
         self.assertTrue(server.server.serving)
 
     def test_create_http_server_one_zero(self):
@@ -450,9 +450,12 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             fp.read(),
             b'contents of foo/bar\n')
         self.assertEqual(len(server.logs), 1)
-        self.assertTrue(server.logs[0].find(
+        self.assertGreater(
+            server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/%s'
-            % breezy.__version__) > -1)
+            % breezy.__version__),
+            -1
+        )
 
     def test_has_on_bogus_host(self):
         # Get a free address and don't 'accept' on it, so that we
@@ -498,10 +501,14 @@ class TestPost(tests.TestCase):
         code, response = http_transport._post(b'abc def end-of-body')
         self.assertTrue(
             server.received_bytes.startswith(b'POST /.bzr/smart HTTP/1.'))
-        self.assertTrue(
-            b'content-length: 19\r' in server.received_bytes.lower())
-        self.assertTrue(b'content-type: application/octet-stream\r'
-                        in server.received_bytes.lower())
+        self.assertIn(
+            b'content-length: 19\r',
+            server.received_bytes.lower()
+        )
+        self.assertIn(
+            b'content-type: application/octet-stream\r',
+            server.received_bytes.lower()
+        )
         # The transport should not be assuming that the server can accept
         # chunked encoding the first time it connects, because HTTP/1.1, so we
         # check for the literal string.
@@ -1144,13 +1151,13 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
         request = self._proxied_request()
-        self.assertFalse('Proxy-authorization' in request.headers)
+        self.assertNotIn('Proxy-authorization', request.headers)
 
     def test_user_with_at(self):
         self.overrideEnv('http_proxy',
                          'http://username@domain:password@proxy_host:1234')
         request = self._proxied_request()
-        self.assertFalse('Proxy-authorization' in request.headers)
+        self.assertNotIn('Proxy-authorization', request.headers)
 
     def test_invalid_proxy(self):
         """A proxy env variable without scheme"""
@@ -1277,7 +1284,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
         coalesce = t._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
         code, data = t._get(relpath, coalesced)
-        self.assertTrue(code in (200, 206), '_get returns: %d' % code)
+        self.assertIn(code, (200, 206), '_get returns: %d' % code)
         for start, end in ranges:
             data.seek(start)
             yield data.read(end - start + 1)
@@ -1285,7 +1292,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     def _file_tail(self, relpath, tail_amount):
         t = self.get_readonly_transport()
         code, data = t._get(relpath, [], tail_amount)
-        self.assertTrue(code in (200, 206), '_get returns: %d' % code)
+        self.assertIn(code, (200, 206), '_get returns: %d' % code)
         data.seek(-tail_amount, 2)
         return data.read(tail_amount)
 

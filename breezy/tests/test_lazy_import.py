@@ -259,7 +259,7 @@ class TestScopeReplacer(TestCase):
         InstrumentedReplacer(scope=globals(), name='test_class2',
                              factory=factory)
 
-        self.assertFalse(test_class2 is TestClass)
+        self.assertIsNot(test_class2, TestClass)
         obj = test_class2()
         self.assertIs(test_class2, TestClass)
         self.assertIsInstance(obj, TestClass)
@@ -291,7 +291,7 @@ class TestScopeReplacer(TestCase):
         InstrumentedReplacer(scope=globals(), name='test_func1',
                              factory=factory)
 
-        self.assertFalse(test_func1 is func)
+        self.assertIsNot(test_func1, func)
         val = test_func1(1, 2, c='3')
         self.assertIs(test_func1, func)
 

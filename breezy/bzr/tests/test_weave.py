@@ -68,9 +68,9 @@ class WeaveContains(TestBase):
 
     def runTest(self):
         k = Weave(get_scope=lambda: None)
-        self.assertFalse(b'foo' in k)
+        self.assertNotIn(b'foo', k)
         k.add_lines(b'foo', [], TEXT_1)
-        self.assertTrue(b'foo' in k)
+        self.assertIn(b'foo', k)
 
 
 class Easy(TestBase):

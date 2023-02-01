@@ -123,7 +123,7 @@ class TestMerge(tests.TestCaseWithTransport):
         a_tree.revert(backups=False)
         out, err = self.run_bzr('merge -r revno:1:./hello', retcode=3,
                                 working_dir='a')
-        self.assertTrue("Not a branch" in err)
+        self.assertIn("Not a branch", err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
                      % (ancestor, b.revno()), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
@@ -575,12 +575,12 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a = self.make_branch_and_tree('a')
         tree_a.commit('rev1')
         tree_b = tree_a.controldir.sprout('b').open_workingtree()
-        self.assertIs(tree_b.branch.get_submit_branch(), None)
+        self.assertIsNone(tree_b.branch.get_submit_branch())
 
         # Remember should not happen if using default from parent
         out, err = self.run_bzr(['merge', '-d', 'b'])
         refreshed = workingtree.WorkingTree.open('b')
-        self.assertIs(refreshed.branch.get_submit_branch(), None)
+        self.assertIsNone(refreshed.branch.get_submit_branch())
 
         # Remember should happen if user supplies location
         out, err = self.run_bzr(['merge', '-d', 'b', 'a'])
@@ -594,7 +594,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('rev1')
         tree_b = tree_a.controldir.sprout('b').open_workingtree()
-        self.assertIs(tree_b.branch.get_submit_branch(), None)
+        self.assertIsNone(tree_b.branch.get_submit_branch())
 
         # Remember should not happen if using default from parent
         out, err = self.run_bzr(['merge', '-d', 'b', '--no-remember'])

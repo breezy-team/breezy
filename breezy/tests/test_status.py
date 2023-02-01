@@ -137,9 +137,12 @@ class TestHooks(TestCaseWithTransport):
         """Check that creating a StatusHooks instance has the right defaults.
         """
         hooks = _mod_status.StatusHooks()
-        self.assertTrue("post_status" in hooks,
-                        "post_status not in %s" % hooks)
-        self.assertTrue("pre_status" in hooks, "pre_status not in %s" % hooks)
+        self.assertIn(
+            "post_status",
+            hooks,
+            "post_status not in %s" % hooks
+        )
+        self.assertIn("pre_status", hooks, "pre_status not in %s" % hooks)
 
     def test_installed_hooks_are_StatusHooks(self):
         """The installed hooks object should be a StatusHooks.

@@ -64,8 +64,8 @@ class TestFormat5(TestCaseWithTransport):
             ctrl_1 = dir.open_repository().control_files
             ctrl_2 = dir.open_branch().control_files
             ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
+            self.assertIs(ctrl_1, ctrl_2)
+            self.assertIs(ctrl_2, ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
         dir = controldir.ControlDir.open(self.get_url())
@@ -99,8 +99,8 @@ class TestFormat6(TestCaseWithTransport):
             ctrl_1 = dir.open_repository().control_files
             ctrl_2 = dir.open_branch().control_files
             ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
+            self.assertIs(ctrl_1, ctrl_2)
+            self.assertIs(ctrl_2, ctrl_3)
         check_dir_components_use_same_lock(dir)
         # and if we open it normally.
         dir = controldir.ControlDir.open(self.get_url())

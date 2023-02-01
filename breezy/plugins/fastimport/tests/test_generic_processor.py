@@ -132,9 +132,12 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 expected_renamed_entry = (
                     expected_renamed_entry[0].decode('utf-8'),
                     expected_renamed_entry[1].decode('utf-8'))
-                self.assertTrue(expected_renamed_entry in renamed_files,
-                                "{} is not renamed, {} are".format(expected_renamed_entry,
-                                                               renamed_files))
+                self.assertIn(
+                    expected_renamed_entry,
+                    renamed_files,
+                    "{} is not renamed, {} are".format(expected_renamed_entry,
+                                                               renamed_files)
+                )
         if expected_added is not None:
             self.assertEqual(len(added), len(expected_added),
                               "%s is added" % str(added))
@@ -142,9 +145,12 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             for expected_added_entry in expected_added:
                 expected_added_entry = (
                     expected_added_entry[0].decode('utf-8'), )
-                self.assertTrue(expected_added_entry in added_files,
-                                "{} is not added, {} are".format(expected_added_entry,
-                                                             added_files))
+                self.assertIn(
+                    expected_added_entry,
+                    added_files,
+                    "{} is not added, {} are".format(expected_added_entry,
+                                                             added_files)
+                )
         if expected_removed is not None:
             self.assertEqual(len(removed), len(expected_removed),
                               "%s is removed" % str(removed))
@@ -152,9 +158,12 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             for expected_removed_entry in expected_removed:
                 expected_removed_entry = (
                     expected_removed_entry[0].decode('utf-8'), )
-                self.assertTrue(expected_removed_entry in removed_files,
-                                "{} is not removed, {} are".format(expected_removed_entry,
-                                                               removed_files))
+                self.assertIn(
+                    expected_removed_entry,
+                    removed_files,
+                    "{} is not removed, {} are".format(expected_removed_entry,
+                                                               removed_files)
+                )
         if expected_modified is not None:
             self.assertEqual(len(modified), len(expected_modified),
                               "%s is modified" % str(modified))
@@ -162,9 +171,12 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             for expected_modified_entry in expected_modified:
                 expected_modified_entry = (
                     expected_modified_entry[0].decode('utf-8'), )
-                self.assertTrue(expected_modified_entry in modified_files,
-                                "{} is not modified, {} are".format(
-                                    expected_modified_entry, modified_files))
+                self.assertIn(
+                    expected_modified_entry,
+                    modified_files,
+                    "{} is not modified, {} are".format(
+                                    expected_modified_entry, modified_files)
+                )
         if expected_kind_changed is not None:
             self.assertEqual(len(kind_changed), len(expected_kind_changed),
                               "{} is kind-changed, expected {}".format(kind_changed,
@@ -174,9 +186,12 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             for expected_kind_changed_entry in expected_kind_changed:
                 expected_kind_changed_entry = (
                     expected_kind_changed_entry[0].decode('utf-8'), ) + expected_kind_changed_entry[1:]
-                self.assertTrue(expected_kind_changed_entry in
-                                kind_changed_files, "{} is not kind-changed, {} are".format(
-                                    expected_kind_changed_entry, kind_changed_files))
+                self.assertIn(
+                    expected_kind_changed_entry,
+                    kind_changed_files,
+                    "{} is not kind-changed, {} are".format(
+                                    expected_kind_changed_entry, kind_changed_files)
+                )
 
     def assertContent(self, branch, tree, path, content):
         with branch.lock_read():

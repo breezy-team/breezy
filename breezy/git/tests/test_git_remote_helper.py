@@ -90,7 +90,7 @@ class FetchTests(TestCaseWithTransport):
         out = self.fetch([(git_sha1, 'HEAD')])
         self.assertEqual(out, b"\n")
         r = Repo('local')
-        self.assertTrue(git_sha1 in r.object_store)
+        self.assertIn(git_sha1, r.object_store)
         self.assertEqual({}, r.get_refs())
 
 
@@ -136,7 +136,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = b"fetch\noption\npush\n"
-        self.assertTrue(capabs in (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs)
+        self.assertIn(capabs, (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()

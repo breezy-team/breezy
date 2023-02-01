@@ -96,5 +96,5 @@ class TestDistutilsVersion(tests.TestCase):
         # We really care about two pyrex specific versions and our ability to
         # detect them
         lv = version.LooseVersion
-        self.assertTrue(lv("0.9.4.1") < lv('0.17.beta1'))
-        self.assertTrue(lv("0.9.6.3") < lv('0.10'))
+        self.assertLess(lv("0.9.4.1"), lv('0.17.beta1'))
+        self.assertLess(lv("0.9.6.3"), lv('0.10'))

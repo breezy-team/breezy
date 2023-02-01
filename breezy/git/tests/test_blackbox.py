@@ -147,10 +147,10 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone tree (format: git)" in output)
-        self.assertTrue("control: Local Git Repository" in output)
-        self.assertTrue("branch: Local Git Branch" in output)
-        self.assertTrue("repository: Git Repository" in output)
+        self.assertIn("Standalone tree (format: git)", output)
+        self.assertIn("control: Local Git Repository", output)
+        self.assertIn("branch: Local Git Branch", output)
+        self.assertIn("repository: Git Repository", output)
 
     def test_push_roundtripping(self):
         self.knownFailure("roundtripping is not yet supported")
@@ -234,9 +234,11 @@ class TestGitBlackBox(ExternalBase):
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log'])
         self.assertEqual(error, '')
-        self.assertTrue(
-            '<The commit message>' in output,
-            "Commit message was not found in output:\n{}".format(output))
+        self.assertIn(
+            '<The commit message>',
+            output,
+            "Commit message was not found in output:\n{}".format(output)
+        )
 
     def test_log_verbose(self):
         # Smoke test for "bzr log -v" in a git repository.
@@ -425,8 +427,8 @@ class TestGitBlackBox(ExternalBase):
         tree.branch.tags.set_tag("atag", revid)
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
         self.assertEqual(stderr, "")
-        self.assertTrue("refs/tags/atag -> " in stdout)
-        self.assertTrue("HEAD -> " in stdout)
+        self.assertIn("refs/tags/atag -> ", stdout)
+        self.assertIn("HEAD -> ", stdout)
 
     def test_check(self):
         r = GitRepo.init("gitr", mkdir=True)

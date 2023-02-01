@@ -160,12 +160,15 @@ class TestNonAscii(tests.TestCaseWithTransport):
     def test_cat_revision(self):
         committer = self.info['committer']
         txt = self.run_bzr_decode('cat-revision -r 1')
-        self.assertTrue(committer in txt,
-                        'failed to find {!r} in {!r}'.format(committer, txt))
+        self.assertIn(
+            committer,
+            txt,
+            'failed to find {!r} in {!r}'.format(committer, txt)
+        )
 
         msg = self.info['message']
         txt = self.run_bzr_decode('cat-revision -r 2')
-        self.assertTrue(msg in txt, 'failed to find {!r} in {!r}'.format(msg, txt))
+        self.assertIn(msg, txt, 'failed to find {!r} in {!r}'.format(msg, txt))
 
     def test_mkdir(self):
         txt = self.run_bzr_decode(['mkdir', self.info['directory']])

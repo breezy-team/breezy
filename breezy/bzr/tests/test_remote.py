@@ -3647,8 +3647,8 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         dest_url = self.get_vfs_only_url('repo2')
         dest_bzrdir = BzrDir.create(dest_url)
         dest_repo = dest_bzrdir.create_repository()
-        self.assertFalse(isinstance(dest_repo, RemoteRepository))
-        self.assertTrue(isinstance(src_repo, RemoteRepository))
+        self.assertNotIsInstance(dest_repo, RemoteRepository)
+        self.assertIsInstance(src_repo, RemoteRepository)
         src_repo.copy_content_into(dest_repo)
 
 
@@ -4222,7 +4222,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         local.repository.fetch(remote_branch.repository)
         self.hpss_calls = []
         remote_branch.copy_content_into(local)
-        self.assertFalse(b'Branch.revision_history' in self.hpss_calls)
+        self.assertNotIn(b'Branch.revision_history', self.hpss_calls)
 
     def test_fetch_everything_needs_just_one_call(self):
         local = self.make_branch('local')
@@ -4279,7 +4279,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.assertLength(1, verb_log)
         # more than one HPSS call is needed, but because it's a VFS callback
         # its hard to predict exactly how many.
-        self.assertTrue(len(self.hpss_calls) > 1)
+        self.assertGreater(len(self.hpss_calls), 1)
 
 
 class TestUpdateBoundBranchWithModifiedBoundLocation(

@@ -137,17 +137,17 @@ class TestDiff(tests.TestCase):
         ## "expected no-nl, got %r" % lines[5]
 
     def check_patch(self, lines):
-        self.assertTrue(len(lines) > 1)
+        self.assertGreater(len(lines), 1)
         ## "Not enough lines for a file header for patch:\n%s" % "".join(lines)
         self.assertTrue(lines[0].startswith(b'---'))
         ## 'No orig line for patch:\n%s' % "".join(lines)
         self.assertTrue(lines[1].startswith(b'+++'))
         ## 'No mod line for patch:\n%s' % "".join(lines)
-        self.assertTrue(len(lines) > 2)
+        self.assertGreater(len(lines), 2)
         ## "No hunks for patch:\n%s" % "".join(lines)
         self.assertTrue(lines[2].startswith(b'@@'))
         ## "No hunk header for patch:\n%s" % "".join(lines)
-        self.assertTrue(b'@@' in lines[2][2:])
+        self.assertIn(b'@@', lines[2][2:])
         ## "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
     def test_binary_lines(self):

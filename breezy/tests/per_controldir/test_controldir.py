@@ -1604,8 +1604,11 @@ class TestControlDir(TestCaseWithControlDir):
             # if its default updatable there must be an updater
             # (we force the latest known format as downgrades may not be
             # available
-            self.assertTrue(isinstance(dir._format.get_converter(
-                format=dir._format), controldir.Converter))
+            self.assertIsInstance(
+                dir._format.get_converter(
+                format=dir._format),
+                controldir.Converter
+            )
         dir.needs_format_conversion(
             controldir.ControlDirFormat.get_default_format())
 
@@ -1769,10 +1772,11 @@ class TestTransportConfig(TestCaseWithControlDir):
             config.set_default_stack_on('http://example.com')
         except errors.BzrError as e:
             if 'Cannot set config' in str(e):
-                self.assertFalse(
-                    isinstance(
-                        my_dir, (_mod_bzrdir.BzrDirMeta1, RemoteBzrDir)),
-                    "%r should support configs" % my_dir)
+                self.assertNotIsInstance(
+                    my_dir,
+                    (_mod_bzrdir.BzrDirMeta1, RemoteBzrDir),
+                    "%r should support configs" % my_dir
+                )
                 raise TestNotApplicable(
                     'This BzrDir format does not support configs.')
             else:
