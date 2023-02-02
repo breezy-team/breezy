@@ -380,7 +380,7 @@ class InterDummy(repository.InterRepository):
     """An inter-repository optimised code path for DummyRepository.
 
     This is for use during testing where we use DummyRepository as repositories
-    so that none of the default regsitered inter-repository classes will
+    so that none of the default registered inter-repository classes will
     MATCH.
     """
 

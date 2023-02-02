@@ -39,7 +39,7 @@ of ``bzr`` is to default to ``getpass.get_user()``.
 Any implementation of this specification should respect that behaviour.
 
 This specification also proposes a way to describe credentials so that several
-remote branches can use the same definition. This is particularily important
+remote branches can use the same definition. This is particularly important
 for users handling a lot of passwords and who need to update them on a regular
 basis.
 
@@ -121,7 +121,7 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
   * ``password``: can be empty (for security reasons, a user may use the
     definitions without storing the passwords but want to be prompted ; or the
     password will be provided by an external plugin via the
-    ``password_encoding`` mechanism decribed below). Must be left empty for
+    ``password_encoding`` mechanism described below). Must be left empty for
     ``ssh``.
 
   * ``password_encoding``: can be empty (default is ``plaintext``).
@@ -190,7 +190,7 @@ reasons:
 
   * while ``locations.conf`` is organized around *local* branches,
     ``authentication.conf`` is organized around *remote* branches or more
-    generally servers. The same authentification definition can even be used
+    generally servers. The same authentication definition can even be used
     for several schemes for servers providing those schemes.
 
 ``~/.config/breezy//authentication.conf`` will use the same file format as

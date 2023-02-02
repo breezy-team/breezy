@@ -1135,7 +1135,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         # .../work/.bzr/checkout/limbo/new-1: [Errno 13] Permission denied"
         # This test isn't concerned with exactly what the error looks like,
         # and the strerror will vary across OS and locales, but the assert
-        # that the exeception attributes are what we expect
+        # that the exception attributes are what we expect
         self.assertEqual(e.errno, errno.EACCES)
         if os.name == "posix":
             self.assertEndsWith(e.to_path, "/first-dir/newname")
@@ -1411,7 +1411,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def test_iter_changes_move_missing(self):
         """Test moving ids with no files around"""
-        # Need two steps because versioning a non-existant file is a conflict.
+        # Need two steps because versioning a non-existent file is a conflict.
         transform, root = self.transform()
         transform.new_directory('floater', root, b'floater-id')
         transform.apply()

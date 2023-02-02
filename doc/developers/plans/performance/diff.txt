@@ -10,7 +10,7 @@ Reuse of historical comparisons
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 A significant part of the work done by diff is sequence matching.  This
 scales O(n^2) with the number of lines in the file.  Therefore, it
-is worthwile to avoid content comparisons as much as possible.
+is worthwhile to avoid content comparisons as much as possible.
 
 Our current knit format contains content comparisons, and this data can
 be converted into lists of matching blocks.  Other future formats such as
@@ -39,13 +39,13 @@ Historical Tree Against Historical Tree
 This operation should be strictly proportional to the amount of change, because
 a comparison has already been done at commit time.  Achieving that performance
 requires the committed data to be properly structured, so that the comparison
-can be extracted and combined with other comparisons.  This comparision
+can be extracted and combined with other comparisons.  This comparison
 extraction should be possible at the inventory and file-content levels.
 
 Minimum work:
 
 1. Extract and combine inventory comparisons
-2. Extract and combine text comparisions for modified texts
+2. Extract and combine text comparisons for modified texts
 
 Basis Against Historical Tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -101,7 +101,7 @@ This probably entails:
  - WorkingTree.store_comparison(file_id, revision_id, sha1, comparison)
  - WorkingTree.get_comparison(file_id, revision_id, sha1)
  - Repository.get_comparision(file_id, revision_id, revision_id)
- - merge_comparisions(comparison, comparision)
+ - merge_comparisions(comparison, comparison)
 
 Storage considerations
 ----------------------

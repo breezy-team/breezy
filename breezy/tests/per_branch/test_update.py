@@ -42,7 +42,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         try:
             child_tree.branch.bind(master_tree.branch)
         except branch.BindingUnsupported:
-            # old branch, cant test.
+            # old branch, can't test.
             return
         # commit to the child to make the last rev not-None.
         child_tree.commit('foo', rev_id=b'foo', allow_pointless=True)
@@ -60,7 +60,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         try:
             child_tree.branch.bind(master_tree.branch)
         except branch.BindingUnsupported:
-            # old branch, cant test.
+            # old branch, can't test.
             return
         # commit to the child to make the last rev not-None and skew it from master.
         child_tree.commit('foo', rev_id=b'foo',
@@ -84,7 +84,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         try:
             tree2.branch.bind(readonly_branch1)
         except branch.BindingUnsupported:
-            # old branch, cant test.
+            # old branch, can't test.
             raise tests.TestNotApplicable("only triggered in bound branches")
         rev2 = tree1.commit('two')
         tree2.update()

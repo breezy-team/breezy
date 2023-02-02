@@ -575,7 +575,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # single result from the readv layer:
         # .... single-read (readv-minimum-size) ...
         # which then trims the start and end so the parsed size is < readv
-        # miniumum.
+        # minimum.
         # then a dual lookup (or a reference lookup for that matter) which
         # abuts or overlaps the parsed region on both sides will need to
         # discard the data in the middle, but parse the end as well.
@@ -1462,7 +1462,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([b'2', b'4', b'1', b'3'], idx._index_names)
 
     def test_reorder_propagates_to_siblings(self):
-        # Two CombinedGraphIndex objects, with the same number of indicies with
+        # Two CombinedGraphIndex objects, with the same number of indices with
         # matching names.
         cgi1 = _mod_index.CombinedGraphIndex([])
         cgi2 = _mod_index.CombinedGraphIndex([])

@@ -410,7 +410,7 @@ class CommitBuilderRevisionRewriter:
         return tuple([p for p in revids if self.repository.has_revision(p)])
 
     def __call__(self, oldrevid, newrevid, new_parents):
-        """Replay a commit by simply commiting the same snapshot with different
+        """Replay a commit by simply committing the same snapshot with different
         parents.
 
         :param oldrevid: Revision id of the revision to copy.

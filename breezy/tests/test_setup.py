@@ -68,7 +68,7 @@ class TestSetup(tests.TestCaseInTempDir):
         self.run_setup([
             'build', '-b', build_dir,
             'install', '--root', install_dir])
-        # Install layout is platform dependant
+        # Install layout is platform dependent
         self.assertPathExists(install_dir)
         self.run_setup(['clean', '-b', build_dir])
 

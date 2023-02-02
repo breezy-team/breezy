@@ -136,7 +136,7 @@ class VersionedFileStore(TransportStore):
         if _filename is None:
             _filename = self.filename(file_id)
         try:
-            # we try without making the directory first because thats optimising
+            # we try without making the directory first because that's optimising
             # for the common case.
             weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
                                               get_scope=self.get_scope, **self._versionedfile_kwargs)

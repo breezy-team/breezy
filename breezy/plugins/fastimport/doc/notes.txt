@@ -85,7 +85,7 @@ Parsing
 -------
 
 These enhancements over the specification are provided in order
-to read data produced by some verisons of git-fast-export:
+to read data produced by some versions of git-fast-export:
 
 * A person's name may be empty
 

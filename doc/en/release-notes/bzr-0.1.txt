@@ -211,7 +211,7 @@ Improvements
 
 * Adding a file whose parent directory is not versioned will
   implicitly add the parent, and so on up to the root. This means
-  you should never need to explictly add a directory, they'll just
+  you should never need to explicitly add a directory, they'll just
   get added when you add a file in the directory.  Contributed by
   Michael Ellerman.
 
@@ -324,7 +324,7 @@ New Features
 
 * New 'bzr mkdir' command.
 
-* Commit mesage is fetched from an editor if not given on the
+* Commit message is fetched from an editor if not given on the
   command line; patch from Torsten Marek.
 
 * ``bzr log -m FOO`` displays commits whose message matches regexp
@@ -562,7 +562,7 @@ Enhancements
 * Roll over ~/.bzr.log if it gets too large.
 
 * Command abbreviations 'ci', 'st', 'stat', '?' based on a patch
-  by Jason Diamon.
+  by Jason Diamond.
 
 * New 'bzr help commands' based on a patch from Denys Duchier.
 

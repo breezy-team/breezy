@@ -299,7 +299,7 @@ New Features
    (Jelmer Vernooĳ)
 
  * The ``grep`` plugin has been merged into Breezy.
-   (Parth Malwankar, Martin Packman, Jelmer Vernooĳ)
+   (Path Malwankar, Martin Packman, Jelmer Vernooĳ)
 
  * The 'stats' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
@@ -366,7 +366,7 @@ Improvements
  * Branches with symlinks are now supported on Windows. Symlinks are
    ignored by operations like branch, diff etc. with a warning as Symlinks
    are not created on Windows.
-   (Parth Malwankar, #81689)
+   (Path Malwankar, #81689)
 
  * New ``lp+bzr://`` URL scheme for Bazaar-only branches on Launchpad.
    (Jelmer Vernooĳ)
@@ -470,7 +470,7 @@ API Changes
  * bzrlib has been renamed to breezy. (Martin Packman, Jelmer Vernooĳ)
 
  * Signature of ``load_tests`` used by ``TestLoader`` changed to be
-   compatible with standard libarary unittest.  (Martin Packman)
+   compatible with standard library unittest.  (Martin Packman)
 
  * All previously deprecated functionality has been removed.
    (Jelmer Vernooĳ)

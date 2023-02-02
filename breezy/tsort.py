@@ -382,7 +382,7 @@ class MergeSorter:
         # stack stores the parents we have not yet checked for the node at the
         # matching depth in _node_name_stack
         self._pending_parents_stack = []
-        # When we first look at a node we assign it a seqence number from its
+        # When we first look at a node we assign it a sequence number from its
         # leftmost parent.
         self._first_child_stack = []
         # this is a set of the nodes who have been completely analysed for fast

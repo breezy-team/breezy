@@ -606,7 +606,7 @@ class NewPack(Pack):
 class AggregateIndex:
     """An aggregated index for the RepositoryPackCollection.
 
-    AggregateIndex is reponsible for managing the PackAccess object,
+    AggregateIndex is responsible for managing the PackAccess object,
     Index-To-Pack mapping, and all indices list for a specific type of index
     such as 'revision index'.
 
@@ -636,7 +636,7 @@ class AggregateIndex:
     def add_index(self, index, pack):
         """Add index to the aggregate, which is an index for Pack pack.
 
-        Future searches on the aggregate index will seach this new index
+        Future searches on the aggregate index will search this new index
         before all previously inserted indices.
 
         :param index: An Index for the pack.

@@ -113,7 +113,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
                 set(action.adds))
 
     def test_skip_nested_trees(self):
-        """Test smart-adding a nested tree ignors it and warns."""
+        """Test smart-adding a nested tree ignores it and warns."""
         wt = self.make_branch_and_tree('.')
         nested_wt = self.make_branch_and_tree('nested')
         warnings = []

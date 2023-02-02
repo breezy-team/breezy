@@ -153,7 +153,7 @@ alpha releases
 --------------
 
 3.0.0 will start to be released as alpha as integrating plugins and porting
-to python3 (while maintaining python2 compatiblity) desserve to be testing
+to python3 (while maintaining python2 compatibility) desserve to be testing
 in the wild by people understanding the risks.
 
 That being said, the whole test suite has been preserved and enriched in the
@@ -414,7 +414,7 @@ This matters more for ``lp:brz`` than for ``lp:brz/x.y``, ``lp:brz`` should
 always be open for landing, so you should do `At the start of a release
 cycle`_ as soon as possible (i.e. update the version number in ``brz`` and
 ``breezy/__init__``, create/update the news files and create/update the
-milestone for the next relase).
+milestone for the next release).
 
 You may also need to do `At the start of a series cycle`_ if you're starting
 a new series.
@@ -658,7 +658,7 @@ board for the `MicroReleaseExceptions
 category so that whole bugfix releases can more easily be
 approved.
 
-Progress on these realeases is tracked on the `SRU wiki
+Progress on these releases is tracked on the `SRU wiki
 <http://wiki.breezy-vcs.org/UbuntuStableReleaseUpdates>`_
 page.
 

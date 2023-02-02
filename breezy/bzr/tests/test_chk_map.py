@@ -497,7 +497,7 @@ class TestMap(TestCaseWithStore):
         chkmap = CHKMap(chk_bytes, root_key)
         self.assertRaises(errors.InconsistentDelta, chkmap.apply_delta,
                           [(None, (b"a",), b"b")])
-        # As an error occured, the update should have left us without changing
+        # As an error occurred, the update should have left us without changing
         # anything (the root should be unchanged).
         self.assertEqual(root_key, chkmap._root_node._key)
 
@@ -1725,7 +1725,7 @@ class TestInternalNode(TestCaseWithStore):
         child.map(None, (b"foo",), b"bar")
         node.add_node(b"foo", child)
         # Note that node isn't strictly valid now as a tree (only one child),
-        # but thats ok for this test.
+        # but that's ok for this test.
         # The first child defines the node's width:
         self.assertEqual(3, node._node_width)
         # We should be able to iterate over the contents without doing IO.
@@ -2701,7 +2701,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         # Test that when a node found through the interesting_keys iteration
         # for *some roots* and also via the old keys iteration, that
         # it is still scanned for old refs and items, because its
-        # not truely new. This requires 2 levels of InternalNodes to expose,
+        # not truly new. This requires 2 levels of InternalNodes to expose,
         # because of the way the bootstrap in _find_children_info works.
         # This suggests that the code is probably amenable to/benefit from
         # consolidation.

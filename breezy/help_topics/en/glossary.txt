@@ -39,14 +39,14 @@ Glossary
 
   cherry-pick
     A cherrypick is an operation in which the delta between two revisions is
-    applied to a working tree. The process is roughly similiar to generating a
+    applied to a working tree. The process is roughly similar to generating a
     diff between two revisions and applying it to a working tree.
 
     A cherrypick is a merge in which a range of revisions are selected and
     merged into a working tree . Performing a limited merge is different than a
     normal merge because normal merges imply all missing revisions should be
     merged. One of the results of cherrypicking is the creation of intransitive
-    ancestors, which are revisons that are missing one or more of their
+    ancestors, which are revisions that are missing one or more of their
     ancestors.
 
     A cherrypick in Bazaar is a bit more advanced than the cherrypick with some

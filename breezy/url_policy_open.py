@@ -317,7 +317,7 @@ class BranchOpener:
     def follow_reference(self, url):
         """Get the branch-reference value at the specified url.
 
-        This exists as a separate method only to be overriden in unit tests.
+        This exists as a separate method only to be overridden in unit tests.
         """
         controldir = self._open_dir(url)
         return controldir.get_branch_reference()

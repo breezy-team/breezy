@@ -982,7 +982,7 @@
 +
  def help_aliases(tree):
 -    print """Auto-generated aliases
-- acur : The latest revision in the archive of the tree-version.  You can specfy
+- acur : The latest revision in the archive of the tree-version.  You can specify
 -        a different version like so: acur:foo--bar--0 (aliases can be used)
 - tcur : (tree current) The latest revision in the tree of the tree-version.
 -        You can specify a different version like so: tcur:foo--bar--0 (aliases

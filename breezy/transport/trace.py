@@ -163,7 +163,7 @@ class TransportTraceDecorator(decorator.TransportDecorator):
         return self._decorated.lock_write(relpath)
 
     def _trace(self, operation_tuple):
-        """Record that a transport operation occured.
+        """Record that a transport operation occurred.
 
         :param operation: Tuple of transport call name and arguments.
         """

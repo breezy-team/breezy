@@ -103,7 +103,7 @@ To allow multiple users to access Bazaar over ssh we can allow ssh access to a c
 account that only allows users to run a specific command.  Using a single account
 simplifies deployment as no permissions management issues exist for the filesystem.
 All users are the same user at the server level.  Bazaar labels the commits with
-each users details so seperate server accounts are not required.
+each users details so separate server accounts are not required.
 
 To enable this configuration we update the ``~/.ssh/authorized_keys`` to include 
 command restrictions for connecting users.
@@ -118,7 +118,7 @@ This command allows the user to access only brz and disables other SSH use.  Wri
 access to each repository in the directory ``/srv/bzr`` has been granted with ``--allow-writes``
 and can be removed for individual users that should only require read access.  The root of
 the directory structure can be altered for each user to allow them to see only a subet
-of the repositories available.  The example below assumes two seperate repositories
+of the repositories available.  The example below assumes two separate repositories
 for Alice and Bob.  This method will not allow you to restrict access to part
 of a repository, you may only restrict access to a single part of the directory structure::
 

@@ -28,7 +28,7 @@ renamed to e.g. 'development0', 'development1' etc.
 
 When a release of bzr is done, all the older numbered development
 formats will be removed from 'bzr.dev', so we will not be carrying the
-code for them around indefinately.
+code for them around indefinitely.
 
 Support for upgrade and migration
 ---------------------------------
@@ -149,7 +149,7 @@ As a reminder, any of the above approaches can fail if the source branch
 has inconsistent data within it and hasn't been reconciled yet. Please
 be sure to check that before reporting problems.
 
-Develoment formats for bzr-svn users
+Development formats for bzr-svn users
 ------------------------------------
 
 If you are using ``bzr-svn`` or are testing the prototype subtree support,

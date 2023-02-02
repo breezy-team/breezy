@@ -738,7 +738,7 @@ class GraphIndex:
             self._buffer_all()
 
         # We fit about 20 keys per minimum-read (4K), so if we are looking for
-        # more than 1/20th of the index its likely (assuming homogenous key
+        # more than 1/20th of the index its likely (assuming homogeneous key
         # spread) that we'll read the entire index. If we're going to do that,
         # buffer the whole thing. A better analysis might take key spread into
         # account - but B+Tree indices are better anyway.
@@ -1043,7 +1043,7 @@ class GraphIndex:
         """
         # default is to use all data
         trim_end = None
-        # accomodate overlap with data before this.
+        # accommodate overlap with data before this.
         if offset < self._parsed_byte_map[index][1]:
             # overlaps the lower parsed region
             # skip the parsed data
@@ -1895,7 +1895,7 @@ def _iter_entries_prefix(index_or_builder, nodes_by_key, keys):
                 key_dict = key_dict[elements[0]]
                 elements.pop(0)
         except KeyError:
-            # a non-existant lookup.
+            # a non-existent lookup.
             continue
         if len(elements):
             dicts = [key_dict]

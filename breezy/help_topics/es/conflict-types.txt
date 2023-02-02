@@ -5,9 +5,9 @@ Manejo de Conflictos
 Algunas operaciones, como merge, revert y pull, modifican el contenido de su
 working tree. Estas modificaciones son generadas automaticamente, con lo cual
 pueden tener conflictos con el estado actual de su working tree.  Muchos tipos
-de cambios pueden ser combinados automaticamentem pero a veces solo algunos
+de cambios pueden set combinados automaticamentem pero a veces solo algunos
 humanos pueden determinar la decision correcta a tomar.  Cuando esto sucede,
-Bazaar lo informara que hay un conflict y pedira que lo resuelva. El comando
+Bazaar lo informara que hay un conflict y pedira que lo resuelva. El commando
 para resolverlo es ``resolve``, pero debe realizar alguna accion antes de
 ejecutarlo.
 
@@ -21,9 +21,9 @@ Mensaje comun::
 
   Text conflict in ARCHIVO
 
-Estos se producen cuando el texto a unificar no puede ser completamente
+Estos se producen cuando el texto a unificar no puede set completamente
 reconciliado entre dos cambios. Bazaar emitira archivos para cada version con
-extensiones THIS, OTHER, y BASE.  THIS es la version del archivo del tree
+extensions THIS, OTHER, y BASE.  THIS es la version del archivo del tree
 de destino, por ejemplo, el tree al que estan unificando los cambios. OTHER
 es la version que estan uniendo al tree de destino. BASE es la version
 anterior que es usado como base para la comparacion.
@@ -66,11 +66,11 @@ Mensaje comun::
 
 Este conflicto sucede cuando hay cambios que crean conflictos en el tree de
 destino y el fuente a unificar, pero los items con conflictos no son archivos
-de texto.  Pueden ser archivos binarios, symlinks o directorios.  Pueden suceder
+de texto.  Pueden set archivos binarios, symlinks o directorios.  Pueden suceder
 con archivos que fueron eliminados en un lado, y modificados en el otro.
 
 Como los conflictos de texto, Bazaar creara archivos THIS, OTHER y BASE.
-(pueden ser archivos normales, symlinks o directorios).  Esto no incluira
+(pueden set archivos normals, symlinks o directorios).  Esto no incluira
 la "copia principal" del archivo con marcadores "herringbone".  Parecera que la
 "copia principal" fue renombrado a THIS o OTHER.
 
@@ -87,7 +87,7 @@ Mensaje comun::
   Conflict adding file ARCHIVO.  Moved existing file to ARCHIVO.moved.
 
 Bazaar a veces intentara crear un archivo usando la ruta que ya fue usada.
-El archivo existente ser renombrado a "ARCHIVO.moved".  Si lo desea, puede
+El archivo existente set renombrado a "ARCHIVO.moved".  Si lo desea, puede
 renombrar cualquiera de estos archivos, o combinar su contenido. Cuando
 este satisfecho, puede ejecutar "bzr resolve ARCHIVO" para marcar que el
 conflicto fue resuelto.
@@ -178,8 +178,8 @@ ejecute "bzr resolve ARCHIVO" para marcar el conflicto como resuelto.
 
 MalformedTransform
 ==================
-Es posible (aunque muy raro) que Bazaar de una excepcion MalformedTransform.
+Es possible (aunque muy raro) que Bazaar de una excepcion MalformedTransform.
 Esto quiere decir que Bazaar encontro un conflicto en el sistema de archivos
-que no le fue posible resolver.  Esto usualmente indica un bug.  Por favor
+que no le fue possible resolver.  Esto usualmente indica un bug.  Por favor
 haganoslo saber si se encuentra en esta situacion. Nuestro sistema de bugs
 se encuentra en https://launchpad.net/bzr/+bugs

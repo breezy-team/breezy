@@ -139,7 +139,7 @@ really require new layers to be exposed.
 Design elements to achieve the goals in a future inventory implementation
 -------------------------------------------------------------------------
 
- * Split up the logical document into smaller serialised fragements. For
+ * Split up the logical document into smaller serialised fragments. For
    instance hash buckets or nodes in a tree of some sort. By serialising in
    smaller units, we can increase the number of smaller units rather than
    their size as the tree grows; as long as two similar trees have similar
@@ -188,14 +188,14 @@ Overview
 --------
 
 We store two maps - fileid:inventory_entry and path:fileid, in a stable
-hash trie, stored in densly packed fragments. We pack keys into the map
+hash trie, stored in densely packed fragments. We pack keys into the map
 densely up the tree, with a single canonical form for any given tree. This is
 more stable than simple fixed size buckets, which prevents corner cases where
 the tree size varies right on a bucket size border. (Note that such cases are
 not a fatal flaw - the two forms would both be present in the repository, so
 only a small amount of data would be written at each transition - but a full
 tree reprocess would be needed at each tree operation across the boundary, and
-thats undesirable.)
+that's undesirable.)
 
 Goal satisfaction
 -----------------
@@ -408,7 +408,7 @@ larger than maximum_size. The minimum size constraint is only applied when
 there are enough entries under a prefix to meet that minimum. The maximum
 size constraint is always applied except when a node with a single entry
 is larger than the maximum size. Loosely, the maximum size constraint wins
-over the minimum size constraint, and if the minimum size contraint is to
+over the minimum size constraint, and if the minimum size constraint is to
 be ignored, a deeper prefix can be chosen to pack the containing node more
 densely, as long as no additional minimum sizes checks on child nodes are
 violated.
@@ -537,7 +537,7 @@ An interesting aspect of delta inconsistencies is when we notice them:
 
 The minimum safe level for our application logic would be to catch all errors
 during application. Making generation never generate inconsistent deltas is
-a seperate but necessary condition for robust code.
+a separate but necessary condition for robust code.
 
 An inconsistent delta is one which:
  - after application to an inventory the inventory is an impossible state.

@@ -154,7 +154,7 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         # FIXME: test_put_file_unicode makes us emit a traceback because a
         # UnicodeEncodeError occurs after the request headers have been sent
         # but before the body can be send. It's harmless and does not make the
-        # test fails. Adressing that will mean protecting all reads from the
+        # test fails. Addressing that will mean protecting all reads from the
         # socket, which is too heavy for now -- vila 20070917
         path = self.translate_path(self.path)
         trace.mutter("do_PUT rel: [{}], abs: [{}]".format(self.path, path))

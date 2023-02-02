@@ -962,7 +962,7 @@ class DiffTree:
 
         :param old_tree: Tree to show as old in the comparison
         :param new_tree: Tree to show as new in the comparison
-        :param to_file: File to write comparision to
+        :param to_file: File to write comparison to
         :param path_encoding: Character encoding to write paths in
         :param diff_text: DiffPath-type object to use as a last resort for
             diffing text files.

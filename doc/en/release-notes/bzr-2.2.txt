@@ -41,7 +41,7 @@ bzr 2.2.5
 :2.2.5: 2011-09-01
 
 This is a bugfix release. One regression introduced in 2.2b1 has been fixed
-for some rare conflict resolutions. Also a warning is now emmitted when
+for some rare conflict resolutions. Also a warning is now emitted when
 branching an out-of-date ubuntu packaging branch. Upgrading is recommended
 for all users on earlier 2.2 releases.
 
@@ -161,7 +161,7 @@ Bug Fixes
   and at worst can trigger infinite loops in callers.  (Andrew Bennetts)
   
 * Skip tests that needs a bzr source tree when there isn't one. This is
-  needed to succesfully run the test suite for installed versions.
+  needed to successfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
 
 * Skip the tests that requires respecting the chmod bits when running as
@@ -216,7 +216,7 @@ Bug Fixes
 
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
+  (Path Malwankar, #262450)
 
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
@@ -341,7 +341,7 @@ Compatibility Breaks
   as an argument for __init__ or in _fmt format specification as this
   breaks in some Python versions. errors.LockError.__init__ argument
   is now named "msg" instead of earlier "message".
-  (Parth Malwankar, #603461)
+  (Path Malwankar, #603461)
 
 * The old ``bzr selftest --benchmark`` option has been removed.
   <https://launchpad.net/bzr-usertest> is an actively-maintained
@@ -354,7 +354,7 @@ Bug Fixes
 * ``bzr ignore PATTERNS`` exits with error if a bad pattern is supplied.
   ``InvalidPattern`` exception error message now shows faulting
   regular expression.
-  (Parth Malwankar #300062)
+  (Path Malwankar #300062)
 
 * Configuration files in ``${BZR_HOME}`` are now written in an atomic
   way which should help avoid problems with concurrent writers.
@@ -372,7 +372,7 @@ Bug Fixes
   they finish.  (Martin Pool, #611127)
 
 * Recursive binding for checkouts is now detected by bzr. A clear error
-  message is shown to the user. (Parth Malwankar, #405192)
+  message is shown to the user. (Path Malwankar, #405192)
 
 Improvements
 ************
@@ -389,7 +389,7 @@ Documentation
 
 * ``bzr help patterns`` now explains case insensitive patterns and
   points to Python regular expression documentation.
-  (Parth Malwankar, #594386)
+  (Path Malwankar, #594386)
 
 API Changes
 ***********
@@ -401,7 +401,7 @@ Testing
 
 * Unit test added to ensure that "message" is not uses as a format variable
   name in BzrError subclasses as this conflicts with some Python versions.
-  (Parth Malwankar, #603461)
+  (Path Malwankar, #603461)
 
 bzr 2.2b4
 #########
@@ -461,7 +461,7 @@ Bug Fixes
 
 * ``bzr init`` does not recursively scan directory contents anymore
   leading to faster init for directories with existing content.
-  (Martin [gz], Parth Malwankar, #501307)
+  (Martin [gz], Path Malwankar, #501307)
 
 * ``bzr log --exclude-common-ancestry`` is now taken into account for
   linear ancetries. (Vincent Ladeuil, #575631)
@@ -501,7 +501,7 @@ Bug Fixes
 
 * Invalid patterns supplied to ``Globster`` or ``lazy_regex`` now raise
   ``InvalidPattern`` exception showing clear error message to the user.
-  (Parth Malwankar #300062)
+  (Path Malwankar #300062)
 
 * Progress output is cleaned up when exiting.  (Aaron Bentley)
 
@@ -524,7 +524,7 @@ Bug Fixes
 * URL displayed for use with ``break-lock`` when smart server sees lock
   contention are now valid. Default timeout for lock contention retry is
   now 30 seconds instead of 300 seconds.
-  (Parth Malwankar, #250451)
+  (Path Malwankar, #250451)
 
 * ``walkdirs`` now raises a useful message when the filenames are not using
   the filesystem encoding. (Eric Moritz, #488519)
@@ -594,7 +594,7 @@ API Changes
 * ``bzrlib.re_compile_checked`` is now deprecated. Caller should handle
   ``bzrlib.errors.InvalidPattern`` exception thrown by ``re.match`` in
   case the default error message not suitable for the use case.
-  (Parth Malwankar)
+  (Path Malwankar)
 
 * ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
   one method ``check_output``, and we now recommend checking command
@@ -666,8 +666,8 @@ Compatibility Breaks
   (Robert Collins)
 
 * ``bzr`` does not try to guess the username as ``username@hostname``
-  and requires it to be explictly set. This can be set using ``bzr
-  whoami``. (Parth Malwankar, #549310)
+  and requires it to be explicitly set. This can be set using ``bzr
+  whoami``. (Path Malwankar, #549310)
 
 * ``bzrlib.commands.Command`` will now raise ValueError during
   construction if there is no __doc__ set. (Note, this will be reverted in
@@ -682,17 +682,17 @@ New Features
 
 * ``bzr commit`` accepts ``-p`` (for "patch") as a shorter name for
   ``--show-diff``.
-  (Parth Malwankar, #571467)
+  (Path Malwankar, #571467)
   
 * ``bzr ignore`` now supports a ``--default-rules`` option that displays
   the default ignore rules used by bzr. The flag ``--old-default-rules``
   is no longer supported by ``ignore``.
-  (Parth Malwankar, #538703)
+  (Path Malwankar, #538703)
 
 * ``bzr pack`` now supports a ``--clean-obsolete-packs`` option that
   can save disk space by deleting obsolete pack files created during the
   pack operation.
-  (Parth Malwankar, #304320)
+  (Path Malwankar, #304320)
 
 * New command line option ``--authors`` to ``bzr log`` allows users to
   select which of the apparent authors and committer should be
@@ -720,12 +720,12 @@ Bug Fixes
 
 * Alias information shown by ``bzr help`` is now accurate. This
   was showing an internal object name for some plugin aliases.
-  (Parth Malwankar, #584650)
+  (Path Malwankar, #584650)
 
 * ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
   group ownership from the containing directory. This allow bzr to work
   better with sudo.
-  (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
+  (Martin <gzlist@googlemail.com>, Path Malwankar, #376388)
 
 * ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
   support of bzr-externals and scmproj plugins.
@@ -742,7 +742,7 @@ Bug Fixes
 * ``bzr lp-propose`` which was switched to use production Launchpad API
   servers a few commits ago has been reverted to use edge: there is a
   problem with using production which isn't trivially obvious, so we've
-  filed a bug to track it, and until thats fixed will be using edge.
+  filed a bug to track it, and until that's fixed will be using edge.
   (Robert Collins, #583667)
 
 * ``bzr rm`` should not refuse to delete directories which contained a file
@@ -773,7 +773,7 @@ Bug Fixes
 
 * Improved progress bar for fetch (2a format only). Bazaar now shows an
   estimate of the number of records to be fetched vs actually fetched.
-  (Parth Malwankar, #374740, #538868)
+  (Path Malwankar, #374740, #538868)
 
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
@@ -800,12 +800,12 @@ Bug Fixes
   (John Arbash Meinel, #582656)
 
 * Unicode characters in aliases are now handled correctly and do not cause
-  UnicodeEncodeError exception. (Parth Malwankar, #529930)
+  UnicodeEncodeError exception. (Path Malwankar, #529930)
 
 * Unicode commit messages that are the same as a file name no longer cause
   UnicodeEncodeError. ``ui.text.show_warning`` now handles unicode
   messages.
-  (Parth Malwankar, #563646)
+  (Path Malwankar, #563646)
 
 * When passing a file to ``UTF8DirReader`` make sure to close the current
   directory file handle after the chdir fails. Otherwise when passing many
@@ -825,7 +825,7 @@ Improvements
 
 * ``bzr ls`` now supports short options for existing long options.
   ``-k/--kind``, ``-i/--ignored``, ``-u/--unknown`` and ``-0/--null``.
-  (Parth Malwankar, #181124)
+  (Path Malwankar, #181124)
 
 * ``Config.get_user_option_as_bool`` will now warn if a value cannot
   be interpreted as a boolean.
@@ -891,7 +891,7 @@ Internals
   (Martin <gzlist@googlemail.com>)
 
 * No longer require zlib headers to build extensions, and remove the need
-  for seperate copy of zlib library on windows.
+  for separate copy of zlib library on windows.
   (John Arbash Meinel, Martin <gzlist@googlemail.com>, #566923)
 
 Testing
@@ -942,7 +942,7 @@ Bug Fixes
 * ``bzr export`` to tar file does not fail if any parent directory
   contains unicode characters. This works around upstream Python bug
   http://bugs.python.org/issue8396 .
-  (Parth Malwankar, #413406)
+  (Path Malwankar, #413406)
 
 * ``bzr switch`` does not die if a ConfigurableFileMerger is used.
   (Aaron Bentley, #559436)
@@ -1178,12 +1178,12 @@ Bug Fixes
 
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
+  (Path Malwankar, #262450)
 
 * ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
   of ``backup.bzr``. This directory is ignored by bzr commands such as
   ``add``.
-  (Parth Malwankar, #335033, #300001)
+  (Path Malwankar, #335033, #300001)
 
 * Cope with non-utf8 characters inside ``.bzrignore``.
   (Jason Spashett, #183504)
@@ -1193,7 +1193,7 @@ Bug Fixes
   (Martin Pool, #528722)
 
 * DirStateRevisionTree.kind() was returning wrong result when 'kind'
-  changes occured between the workingtree and one of its parents.
+  changes occurred between the workingtree and one of its parents.
   (Vincent Ladeuil, #535547)
 
 * Fix ``log`` to better check ancestors even if merged revisions are involved.
@@ -1223,7 +1223,7 @@ Bug Fixes
   present.  (John Arbash Meinel, #303275)
 
 * ``bzr mkdir DIR`` will not create DIR unless DIR's parent is a versioned
-   directory. (Parth Malwankar, #138600)
+   directory. (Path Malwankar, #138600)
 
 * SSH child processes will now ignore SIGQUIT on nix systems so breaking into
   the debugger won't kill the session.
@@ -1234,7 +1234,7 @@ Bug Fixes
 
 * ``update -r`` now supports updating to revisions that are not on
   mainline (i.e. it supports dotted revisions).
-  (Parth Malwankar, #517800)
+  (Path Malwankar, #517800)
 
 * Use first apparent author not committer in GNU Changelog format.
   (Martin von Gagern, #513322)

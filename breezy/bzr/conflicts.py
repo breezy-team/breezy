@@ -538,7 +538,7 @@ class ParentLoop(HandledPathConflict):
     format = 'Conflict moving %(path)s into %(conflict_path)s. %(action)s.'
 
     def action_take_this(self, tree):
-        # just acccept brz proposal
+        # just accept brz proposal
         pass
 
     def action_take_other(self, tree):
@@ -589,7 +589,7 @@ class MissingParent(HandledConflict):
         tree.remove([self.path], force=True, keep_files=False)
 
     def action_take_other(self, tree):
-        # just acccept brz proposal
+        # just accept brz proposal
         pass
 
 
@@ -608,7 +608,7 @@ class DeletingParent(HandledConflict):
     # MissingParent from the *user* pov.
 
     def action_take_this(self, tree):
-        # just acccept brz proposal
+        # just accept brz proposal
         pass
 
     def action_take_other(self, tree):

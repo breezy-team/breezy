@@ -302,7 +302,7 @@ class SocketDelay:
     def __init__(self, sock, latency, bandwidth=1.0,
                  really_sleep=True):
         """
-        :param bandwith: simulated bandwith (MegaBit)
+        :param bandwidth: simulated bandwidth (MegaBit)
         :param really_sleep: If set to false, the SocketDelay will just
         increase a counter, instead of calling time.sleep. This is useful for
         unittesting the SocketDelay.
@@ -584,5 +584,5 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     def create_server(self):
         # FIXME: Can't we do that in a cleaner way ? -- vila 20100623
         server = super().create_server()
-        server._server_homedir = '/dev/noone/runs/tests/here'
+        server._server_homedir = '/dev/no one/runs/tests/here'
         return server

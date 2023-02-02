@@ -68,7 +68,7 @@ class _OutputHandler:
             self.index_lines.append(False)
             self.out_lines.append(line[start_index:start_index + next_len])
             # We don't index long lines, because we won't be able to match
-            # a line split across multiple inserts anway
+            # a line split across multiple inserts anyway
             self.index_lines.append(False)
 
     def add_insert(self, lines):

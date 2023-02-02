@@ -119,7 +119,7 @@ Control Formats
 Because disk format detection for formats that bzr does not understand at
 all can be useful, we allow a declarative description of the shape of a
 control directory. Each description has a name for showing to users, and a
-dictonary of relative paths, and the content needed at each path. Paths
+dictionary of relative paths, and the content needed at each path. Paths
 that end in '/' are required to be directories and the value for that key
 is ignored. Other paths are required to be regular files, and the value
 for that key is either None, in which case the file is statted but the

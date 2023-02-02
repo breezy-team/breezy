@@ -68,7 +68,7 @@ class TestTransport(tests.TestCase):
         transport._clear_protocol_handlers()
 
         class SampleHandler:
-            """I exist, isnt that enough?"""
+            """I exist, isn't that enough?"""
         transport._clear_protocol_handlers()
         transport.register_transport_proto('foo')
         transport.register_lazy_transport('foo',

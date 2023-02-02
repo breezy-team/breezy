@@ -41,7 +41,7 @@ class BashCodeGen:
 # Known to work with bash 2.05a as well as bash 4.1.2, and probably
 # all versions in between as well.
 
-# Based originally on the svn bash completition script.
+# Based originally on the svn bash completion script.
 # Customized by Sven Wilhelm/Icecrash.com
 # Adjusted for automatic generation by Martin von Gagern
 

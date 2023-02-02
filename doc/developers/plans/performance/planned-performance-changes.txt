@@ -73,7 +73,7 @@ thus do not pose a significant migration issue.
    without solving it versioning of .iso and other large objects will continue
    to be extremely painful.
 
- * Add an API for per-file graph access that alllows incremental access and is
+ * Add an API for per-file graph access that allows incremental access and is
    suitable for on-demand generation if desired.
 
  * Repository stacking API. Allowing multiple databases to be stacked to give a
@@ -140,10 +140,10 @@ Possibly non-interoperable disk changes
 
    However, some of the data that is technically derived, like the per-file
    merge graph, is both considered core, and can be generated differently when
-   certain circumstances arive, by bzr 0.16. Any change to the 'core' status of
+   certain circumstances arrive, by bzr 0.16. Any change to the 'core' status of
    that data will discard data that cannot be recreated and thus lead to the
    inability to export from a format where that is derived data to bzr 0.16's
-   formats without errors occuring in those circumstances. Some of the data
+   formats without errors occurring in those circumstances. Some of the data
    that may be considered for this includes:
 
    * Per file merge graphs

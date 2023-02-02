@@ -180,7 +180,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
-            #       newer formats do support this, and nothin can done to
+            #       newer formats do support this, and nothing can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
                 raise tests.TestSkipped('Old repository formats do not'
@@ -383,7 +383,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
             main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
-            #       newer formats do support this, and nothin can done to
+            #       newer formats do support this, and nothing can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
                 raise tests.TestSkipped('Old repository formats do not'

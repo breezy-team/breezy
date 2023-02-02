@@ -256,7 +256,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             repository, body_lines)
         if error is not None:
             return error
-        # TODO might be nice to start up the search again; but thats not
+        # TODO might be nice to start up the search again; but that's not
         # written or tested yet.
         client_seen_revs = set(search_result.get_keys())
         # Always include the requested ids.

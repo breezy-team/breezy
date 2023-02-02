@@ -69,34 +69,34 @@ class TestSourceHelper(TestCase):
 class TestApiUsage(TestSourceHelper):
 
     def find_occurences(self, rule, filename):
-        """Find the number of occurences of rule in a file."""
-        occurences = 0
+        """Find the number of occurrences of rule in a file."""
+        occurrences = 0
         source = open(filename)
         for line in source:
             if line.find(rule) > -1:
-                occurences += 1
-        return occurences
+                occurrences += 1
+        return occurrences
 
     def test_branch_working_tree(self):
         """Test that the number of uses of working_tree in branch is stable."""
-        occurences = self.find_occurences('self.working_tree()',
+        occurrences = self.find_occurences('self.working_tree()',
                                           self.source_file_name(breezy.branch))
         # do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
         # Note that this is an exact equality so that when the number drops,
         # it is not given a buffer but rather has this test updated immediately.
-        self.assertEqual(0, occurences)
+        self.assertEqual(0, occurrences)
 
     def test_branch_WorkingTree(self):
         """Test that the number of uses of working_tree in branch is stable."""
-        occurences = self.find_occurences('WorkingTree',
+        occurrences = self.find_occurences('WorkingTree',
                                           self.source_file_name(breezy.branch))
         # Do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
         # As of 20070809, there are no longer any mentions at all.
-        self.assertEqual(0, occurences)
+        self.assertEqual(0, occurrences)
 
 
 class TestSource(TestSourceHelper):

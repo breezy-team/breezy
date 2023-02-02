@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Server-side bzrdir related request implmentations."""
+"""Server-side bzrdir related request implementations."""
 
 import fastbencode as bencode
 
@@ -50,7 +50,7 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
             # The client is trying to ask about a path that they have no access
             # to.
             # Ideally we'd return a FailedSmartServerResponse here rather than
-            # a "successful" negative, but we want to be compatibile with
+            # a "successful" negative, but we want to be compatible with
             # clients that don't anticipate errors from this method.
             answer = b'no'
         else:
@@ -259,7 +259,7 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
 
         This operates precisely like 'bzrdir.create_branch'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions (and
         this method should only be called after establishing that a bzr dir
         exists anyway).
@@ -401,7 +401,7 @@ class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
 
         This operates precisely like 'bzrdir.find_repository'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions.
 
         This is the third edition of this method introduced in bzr 1.13, which

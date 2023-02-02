@@ -910,7 +910,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                          entry[1][0])
         state.save()
 
-        # If it is cachable (the clock has moved forward) but new it still
+        # If it is cacheable (the clock has moved forward) but new it still
         # won't calculate the sha or cache it.
         state.adjust_time(+20)
         del state._log[:]

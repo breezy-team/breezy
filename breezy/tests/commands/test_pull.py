@@ -34,7 +34,7 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = builtins.cmd_pull()
-        # We don't care about the ouput but 'outf' should be defined
+        # We don't care about the output but 'outf' should be defined
         cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url('branch1'), directory='branch2')
         self.assertEqual(1, len(self.connections))
@@ -52,7 +52,7 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         pull = builtins.cmd_pull()
-        # We don't care about the ouput but 'outf' should be defined
+        # We don't care about the output but 'outf' should be defined
         pull.outf = ui_testing.StringIOWithEncoding()
         pull.run(self.get_url('remote'), directory='local')
         self.assertEqual(2, len(self.connections))

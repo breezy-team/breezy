@@ -524,7 +524,7 @@ class InterKnitRepo(InterSameDataRepository):
                 result_set = required_revisions
             else:
                 # if we just grabbed the possibly available ids, then
-                # we only have an estimate of whats available and need to validate
+                # we only have an estimate of what's available and need to validate
                 # that against the revision records.
                 result_set = set(
                     self.source._eliminate_revisions_not_present(required_revisions))

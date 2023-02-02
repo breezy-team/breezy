@@ -29,7 +29,7 @@ class TestPush(transport_util.TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_push()
-        # We don't care about the ouput but 'outf' should be defined
+        # We don't care about the output but 'outf' should be defined
         cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url('remote'), directory='branch')
         self.assertEqual(1, len(self.connections))

@@ -398,7 +398,7 @@ Bug Fixes
   exist. (Jonathan Riddell, Jelmer Vernooij, #314314)
 
 * Fallback to the slower ``bzr log`` implementation when displaying a range
-  of revisions whose ancestry is not obviously on the same developement
+  of revisions whose ancestry is not obviously on the same development
   line. (Vincent Ladeuil, #904744)
 
 * Make lazy imports resilient when resolved concurrently from multiple
@@ -1147,7 +1147,7 @@ Bug Fixes
 * Branching from a stacked branch no longer does a ``get_parent_map``
   request for each revisions that is in the stacked-on repository while
   determining what revisions need to be fetched. This mostly impacts
-  branching initialy into an empty shared repository when the source is
+  branching initially into an empty shared repository when the source is
   not the development focus.  (John Arbash Meinel, #388269)
 
 * Decode ``BZR_HOME`` with fs encoding on posix platforms to avoid unicode

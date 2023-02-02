@@ -13,7 +13,7 @@ Bundle Creation
     3. emit diff [O(e * e) * O(f) + O(h)] **O(i)**
     4. base64 encode O(g)
 
-3. **emit overal diff (or maybe do interdiff) O(e * e) * O(f)**
+3. **emit overall diff (or maybe do interdiff) O(e * e) * O(f)**
 
 :a: nodes in revision graph
 :b: number of descendants of common ancestor

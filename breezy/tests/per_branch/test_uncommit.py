@@ -72,7 +72,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
         try:
             tree.branch.bind(master)
         except branch.BindingUnsupported:
-            # cant bind this format, the test is irrelevant.
+            # can't bind this format, the test is irrelevant.
             return
         tree.lock_write()
         tree.add('')

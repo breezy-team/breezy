@@ -4093,7 +4093,7 @@ class cmd_selftest(Command):
     If --exclude is given, tests that match that regular expression are
     excluded, regardless of whether they match --first or not.
 
-    To help catch accidential dependencies between tests, the --randomize
+    To help catch accidental dependencies between tests, the --randomize
     option is useful. In most cases, the argument used is the word 'now'.
     Note that the seed used for the random number generator is displayed
     when this option is used. The seed can be explicitly passed as the
@@ -5844,7 +5844,7 @@ class cmd_send(Command):
     merge, has the same effect as merging from the source branch.
 
     By default the merge directive is self-contained and can be applied to any
-    branch containing submit_branch in its ancestory without needing access to
+    branch containing submit_branch in its ancestry without needing access to
     the source branch.
 
     If --no-bundle is specified, then Breezy doesn't send the contents of the
@@ -6023,7 +6023,7 @@ class cmd_tag(Command):
     It is an error to give a tag name that already exists unless you pass
     --force, in which case the tag is moved to point to the new revision.
 
-    To rename a tag (change the name but keep it on the same revsion), run ``brz
+    To rename a tag (change the name but keep it on the same revision), run ``brz
     tag new-name -r tag:old-name`` and then ``brz tag --delete oldname``.
 
     If no tag name is specified it will be determined through the
@@ -6872,7 +6872,7 @@ class cmd_fetch_ghosts(Command):
     hidden = True
     aliases = ['fetch-missing']
     takes_args = ['branch?']
-    takes_options = [Option('no-fix', help="Skip additional synchonization.")]
+    takes_options = [Option('no-fix', help="Skip additional synchronization.")]
 
     def run(self, branch=None, no_fix=False):
         from .fetch_ghosts import GhostFetcher
@@ -6901,7 +6901,7 @@ class cmd_grep(Command):
     revision, use the '-r -1' or '-r last:1' option.
 
     Unversioned files are not searched unless explicitly specified on the
-    command line. Unversioned directores are not searched.
+    command line. Unversioned directories are not searched.
 
     When searching a pattern, the output is shown in the 'filepath:string'
     format. If a revision is explicitly searched, the output is shown as

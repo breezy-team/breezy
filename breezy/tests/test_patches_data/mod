@@ -119,7 +119,7 @@ class Help(BaseCommand):
     Lists commands, prints help messages.
     """
     def __init__(self):
-        self.description="Prints help mesages"
+        self.description="Prints help messages"
         self.parser = None
 
     def do_command(self, cmdargs):
@@ -276,7 +276,7 @@ class Changes(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "changes" command.
+        Master function that performs the "changes" command.
         """
         try:
             options, a_spec, b_spec = self.parse_commandline(cmdargs);
@@ -512,7 +512,7 @@ class Update(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "update" command.
+        Master function that performs the "update" command.
         """
         tree=arch.tree_root()
         try:
@@ -606,7 +606,7 @@ class Commit(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "commit" command.
+        Master function that performs the "commit" command.
         """
         tree=arch.tree_root()
         options, version, files = self.parse_commandline(cmdargs, tree)
@@ -755,7 +755,7 @@ class CatLog(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "cat-log" command.
+        Master function that performs the "cat-log" command.
         """
         parser=self.get_parser()
         (options, args) = parser.parse_args(cmdargs)
@@ -844,7 +844,7 @@ class Revert(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "revert" command.
+        Master function that performs the "revert" command.
         """
         parser=self.get_parser()
         (options, args) = parser.parse_args(cmdargs)
@@ -993,7 +993,7 @@ class Revision(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "revision" command.
+        Master function that performs the "revision" command.
         """
         parser=self.get_parser()
         (options, args) = parser.parse_args(cmdargs)
@@ -1075,7 +1075,7 @@ class Revisions(BaseCommand):
     
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "revision" command.
+        Master function that performs the "revision" command.
         """
         (options, args) = self.get_parser().parse_args(cmdargs)
         if len(args) > 1:
@@ -1228,7 +1228,7 @@ class Get(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "get" command.
+        Master function that performs the "get" command.
         """
         (options, args) = self.parser.parse_args(cmdargs)
         if len(args) < 1:
@@ -1625,7 +1625,7 @@ class AddID(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "revision" command.
+        Master function that performs the "revision" command.
         """
         parser=self.get_parser()
         (options, args) = parser.parse_args(cmdargs)
@@ -1784,7 +1784,7 @@ class Merge(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "merge" command.
+        Master function that performs the "merge" command.
         """
         parser=self.get_parser()
         (options, args) = parser.parse_args(cmdargs)
@@ -1931,7 +1931,7 @@ class ELog(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "elog" command.
+        Master function that performs the "elog" command.
         """
         parser=self.get_parser()
         (options, args) = parser.parse_args(cmdargs)
@@ -2020,7 +2020,7 @@ class MirrorArchive(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "revision" command.
+        Master function that performs the "revision" command.
         """
 
         parser=self.get_parser()
@@ -2158,7 +2158,7 @@ class Inventory(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "revision" command.
+        Master function that performs the "revision" command.
         """
 
         parser=self.get_parser()
@@ -2269,7 +2269,7 @@ class Alias(BaseCommand):
 
     def do_command(self, cmdargs):
         """
-        Master function that perfoms the "revision" command.
+        Master function that performs the "revision" command.
         """
 
         parser=self.get_parser()

@@ -64,7 +64,7 @@ Internals
   (John Arbash Meinel)
 
 * ``TestCase.run_bzr_subprocess`` defaults to supplying the
-  ``--no-plugins`` parameter to ensure test reproducability, and avoid
+  ``--no-plugins`` parameter to ensure test reproducibility, and avoid
   problems with system-wide installed plugins. (John Arbash Meinel)
 
 * Unique tree root ids are now supported. Newly created trees still

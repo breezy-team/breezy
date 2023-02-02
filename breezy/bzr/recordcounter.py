@@ -47,7 +47,7 @@ class RecordCounter:
         This is just an estimate.
         """
         # Note: The magic number below is based of empirical data
-        # based on 3 seperate projects. Estimatation can probably
+        # based on 3 separate projects. Estimatation can probably
         # be improved but this should work well for most cases.
         # The project used for the estimate (with approx. numbers) were:
         # lp:bzr with records_fetched = 7 * revs_required

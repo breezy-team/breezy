@@ -468,7 +468,7 @@ Using the ``open(..).read(..)`` or ``open(..).write(..)`` style chaining
 of methods for reading or writing file content relies on garbage collection
 to close the file which may keep the file open for an undefined period of
 time. This may break some follow up operations like rename on Windows.
-Use ``try/finally`` to explictly close the file. E.g.::
+Use ``try/finally`` to explicitly close the file. E.g.::
 
     f = open('foo.txt', 'w')
     try:

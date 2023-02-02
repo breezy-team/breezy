@@ -18,7 +18,7 @@
 """Repository implementation tests for CHK support.
 
 These tests check the conformance of the chk index some repositories support.
-All repository formats are tested - those that do not suppport chk indices
+All repository formats are tested - those that do not support chk indices
 have the test_unsupported tests run; the others have the test_supported tests
 run.
 """

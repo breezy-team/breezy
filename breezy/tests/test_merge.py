@@ -850,7 +850,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
             list(plan))
 
     def test_plan_merge_criss_cross(self):
-        # This is specificly trying to trigger problems when using limited
+        # This is specifically trying to trigger problems when using limited
         # ancestry and weaves. The ancestry graph looks like:
         #       XX      unused ancestor, should not show up in the weave
         #       |
@@ -916,7 +916,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
             list(plan))
 
     def test_criss_cross_flip_flop(self):
-        # This is specificly trying to trigger problems when using limited
+        # This is specifically trying to trigger problems when using limited
         # ancestry and weaves. The ancestry graph looks like:
         #       XX      unused ancestor, should not show up in the weave
         #       |

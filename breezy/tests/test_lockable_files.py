@@ -335,7 +335,7 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
     def setUp(self):
         super().setUp()
         # can only get a RemoteLockDir with some RemoteObject...
-        # use a branch as thats what we want. These mixin tests test the end
+        # use a branch as that's what we want. These mixin tests test the end
         # to end behaviour, so stubbing out the backend and simulating would
         # defeat the purpose. We test the protocol implementation separately
         # in test_remote and test_smart as usual.

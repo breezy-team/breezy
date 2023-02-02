@@ -131,7 +131,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         This includes merge-only changes. It is the core for the --unchanged
         detection in commit.
 
-        :return: True if any changes have occured.
+        :return: True if any changes have occurred.
         """
         return self._any_changes
 

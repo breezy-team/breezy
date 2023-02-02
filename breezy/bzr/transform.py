@@ -2347,7 +2347,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             # Check if tree inventory has content. If so, we populate
             # existing_files with the directory content. If there are no
             # entries we skip populating existing_files as its not used.
-            # This improves performance and unncessary work on large
+            # This improves performance and unnecessary work on large
             # directory trees. (#501307)
             if total > 0:
                 existing_files = set()

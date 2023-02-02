@@ -238,7 +238,7 @@ class AbstractHTTPConnection:
     response_class = Response
 
     # When we detect a server responding with the whole file to range requests,
-    # we want to warn. But not below a given thresold.
+    # we want to warn. But not below a given threshold.
     _range_warning_thresold = 1024 * 1024
 
     def __init__(self, report_activity=None):
@@ -577,7 +577,7 @@ class AbstractHTTPHandler(urllib.request.AbstractHTTPHandler):
         just have to translate them.
 
         http.client can raise exceptions of transport level (badly
-        formatted dialog, loss of connexion or socket level
+        formatted dialog, loss of connection or socket level
         problems). In that case we should issue the request again
         (http.client will close and reopen a new connection if
         needed).
@@ -841,7 +841,7 @@ class HTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
         # 306: Unused (if the RFC says so...)
 
         # If the code is 302 and the request is HEAD, some may
-        # think that it is a sufficent hint that the file exists
+        # think that it is a sufficient hint that the file exists
         # and that we MAY avoid following the redirections. But
         # if we want to be sure, we MUST follow them.
 
@@ -1047,7 +1047,7 @@ class ProxyHandler(urllib.request.ProxyHandler):
 
         if request.proxy_auth == {}:
             # No proxy auth parameter are available, we are handling the first
-            # proxied request, intialize.  scheme (the authentication scheme)
+            # proxied request, initialize.  scheme (the authentication scheme)
             # and realm will be set by the AuthHandler
             request.proxy_auth = {
                 'host': parsed_url.host,
@@ -1157,7 +1157,7 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         """
         # Don't try  to authenticate endlessly
         if self._retry_count is None:
-            # The retry being recusrsive calls, None identify the first retry
+            # The retry being recursive calls, None identify the first retry
             self._retry_count = 1
         else:
             self._retry_count += 1
@@ -1265,11 +1265,11 @@ class AbstractAuthHandler(urllib.request.BaseHandler):
         raise NotImplementedError(self.build_auth_header)
 
     def auth_successful(self, request, response):
-        """The authentification was successful for the request.
+        """The authentication was successful for the request.
 
         Additional infos may be available in the response.
 
-        :param request: The succesfully authenticated request.
+        :param request: The successfully authenticated request.
         :param response: The server response (may contain auth info).
         """
         # It may happen that we need to reconnect later, let's be ready

@@ -61,7 +61,7 @@ class ResponseFile:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return False  # propogate exceptions.
+        return False  # propagate exceptions.
 
     def read(self, size=None):
         """Read size bytes from the current position in the file.

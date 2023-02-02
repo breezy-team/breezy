@@ -129,7 +129,7 @@ class MutableTree(tree.Tree):
             return committed_id
 
     def has_changes(self, _from_tree=None):
-        """Quickly check that the tree contains at least one commitable change.
+        """Quickly check that the tree contains at least one committable change.
 
         :param _from_tree: tree to compare against to find changes (default to
             the basis tree and is intended to be used by tests).

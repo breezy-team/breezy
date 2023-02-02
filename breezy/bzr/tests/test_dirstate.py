@@ -932,7 +932,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
 
     def test_set_path_id_no_parents(self):
-        """The id of a path can be changed trivally with no parents."""
+        """The id of a path can be changed trivially with no parents."""
         state = dirstate.DirState.initialize('dirstate')
         try:
             # check precondition to be sure the state does change appropriately.

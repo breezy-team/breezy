@@ -203,7 +203,7 @@ class Stanza:
         to_file.writelines(self.to_lines())
 
     def get(self, tag):
-        """Return the value for a field wih given tag.
+        """Return the value for a field with given tag.
 
         If there is more than one value, only the first is returned.  If the
         tag is not present, KeyError is raised.

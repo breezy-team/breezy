@@ -494,7 +494,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertPathExists('branch_b/file1')
         branch_b.commit('merged branch_a', rev_id=b'rev3b')
 
-        # It works if the revid has an interger revno
+        # It works if the revid has an integer revno
         self.run_bzr('merge -d target -r revid:rev2a branch_a')
         self.assertPathExists('target/file1')
         self.assertPathDoesNotExist('target/file2')

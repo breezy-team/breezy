@@ -188,7 +188,7 @@ class UIFactory:
         self.clear_term() is needed when the UIFactory is finished with.
         """
         self.clear_term()
-        return False  # propogate exceptions.
+        return False  # propagate exceptions.
 
     def be_quiet(self, state):
         """Tell the UI to be more quiet, or not.
@@ -334,8 +334,8 @@ class UIFactory:
           choices: list of choices, with the individual choices separated
             by '\n', e.g.: choose("Save changes?", "&Yes\n&No\n&Cancel"). The
             letter after the '&' is the shortcut key for that choice. Thus you
-            can type 'c' to select "Cancel".  Shorcuts are case insensitive.
-            The shortcut does not need to be the first letter. If a shorcut key
+            can type 'c' to select "Cancel".  Shortcuts are case insensitive.
+            The shortcut does not need to be the first letter. If a shortcut key
             is not provided, the first letter for the choice will be used.
 
           default: default choice (index), returned for example when enter

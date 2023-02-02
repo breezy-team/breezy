@@ -284,7 +284,7 @@ Internals
 * New options to read only the table-of-contents of a weave.
   (Denys Duchier)
 
-* Raise NoSuchFile when someone tries to add a non-existant file.
+* Raise NoSuchFile when someone tries to add a non-existent file.
   (Michael Ellerman)
 
 * Simplify handling of DivergedBranches in ``cmd_pull()``.

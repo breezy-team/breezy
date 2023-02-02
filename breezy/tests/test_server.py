@@ -255,7 +255,7 @@ class TestThread(cethread.CatchingExceptionThread):
         super().join(timeout)
         if timeout and self.is_alive():
             # The timeout expired without joining the thread, the thread is
-            # therefore stucked and that's a failure as far as the test is
+            # therefore stuck and that's a failure as far as the test is
             # concerned. We used to hang here.
 
             # FIXME: we need to kill the thread, but as far as the test is
@@ -464,7 +464,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         t.set_ignored_exceptions(self.ignored_exceptions)
         t.start()
         started.wait()
-        # If an exception occured during the thread start, it will get raised.
+        # If an exception occurred during the thread start, it will get raised.
         t.pending_exception()
         if debug_threads():
             sys.stderr.write('Client thread {} started\n'.format(t.name))
@@ -532,7 +532,7 @@ class TestingTCPServerInAThread(transport.Server):
         if debug_threads():
             sys.stderr.write('Server thread %s started\n'
                              % (self._server_thread.name,))
-        # If an exception occured during the server start, it will get raised,
+        # If an exception occurred during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
         # From now on, we'll use a different event to ensure the server can set

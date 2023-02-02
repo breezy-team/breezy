@@ -139,7 +139,7 @@ class CommitBuilder:
         This includes merge-only changes. It is the core for the --unchanged
         detection in commit.
 
-        Returns: True if any changes have occured.
+        Returns: True if any changes have occurred.
         """
         raise NotImplementedError(self.any_changes)
 
@@ -298,7 +298,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             allowing them to propagate.  Defaults to False.
         """
         if self._write_group is not self.get_transaction():
-            # has an unlock or relock occured ?
+            # has an unlock or relock occurred ?
             if suppress_errors:
                 mutter(
                     '(suppressed) mismatched lock context and write group. %r, %r',
@@ -325,8 +325,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         finished and should cleanup any internal state accrued during the write
         group. There is no requirement that data handed to the repository be
         *not* made available - this is not a rollback - but neither should any
-        attempt be made to ensure that data added is fully commited. Abort is
-        invoked when an error has occured so futher disk or network operations
+        attempt be made to ensure that data added is fully committed. Abort is
+        invoked when an error has occurred so further disk or network operations
         may not be possible or may error and if possible should not be
         attempted.
         """
@@ -460,7 +460,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def lock_write(self, token=None):
         """Lock this repository for writing.
 
-        This causes caching within the repository obejct to start accumlating
+        This causes caching within the repository object to start accumulating
         data during reads, and allows a 'write_group' to be obtained. Write
         groups must be used for actual data insertion.
 
@@ -654,7 +654,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         Returns: it may return an opaque hint that can be passed to 'pack'.
         """
         if self._write_group is not self.get_transaction():
-            # has an unlock or relock occured ?
+            # has an unlock or relock occurred ?
             raise errors.BzrError('mismatched lock context %r and '
                                   'write group %r.' %
                                   (self.get_transaction(), self._write_group))
@@ -1384,7 +1384,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 
         Args:
           controldir: The controldir to put the new repository in it.
-          shared: The repository should be initialized as a sharable one.
+          shared: The repository should be initialized as a shareable one.
 
         Returns:
           The new repository object.

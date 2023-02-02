@@ -1082,7 +1082,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertEqual(b"required", dir._format.features.get(b"bar"))
         tree.controldir.update_feature_flags({
             b"bar": None,
-            b"nonexistant": None})
+            b"nonexistent": None})
         dir = bzrdir.BzrDir.open('tree')
         self.assertEqual({}, dir._format.features)
 

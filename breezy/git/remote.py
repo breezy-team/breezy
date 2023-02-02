@@ -950,7 +950,7 @@ class GitRemoteRevisionTree(RevisionTree):
             self.get_revision_id())[0]
         from tempfile import SpooledTemporaryFile
         f = SpooledTemporaryFile(max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-')
-        # git-upload-archive(1) generaly only supports refs. So let's see if we
+        # git-upload-archive(1) generally only supports refs. So let's see if we
         # can find one.
         reverse_refs = {
             v: k for (k, v) in

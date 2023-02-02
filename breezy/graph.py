@@ -278,7 +278,7 @@ class Graph:
         common ancestors.  This is done by searching the ancestries of each
         border ancestor.
 
-        Phase 2 is perfomed on the principle that a border ancestor that is
+        Phase 2 is performed on the principle that a border ancestor that is
         not an ancestor of any other border ancestor is a least common
         ancestor.
 

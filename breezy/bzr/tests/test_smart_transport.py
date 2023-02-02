@@ -477,7 +477,7 @@ class SmartClientMediumTests(tests.TestCase):
 
     def test_ssh_client_disconnect_allows_reconnection(self):
         # calling disconnect on the client terminates the connection, but should
-        # not prevent additional connections occuring.
+        # not prevent additional connections occurring.
         # we test this by initiating a second connection after doing a
         # disconnect.
         input = BytesIO()
@@ -842,7 +842,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def create_pipe_context(self, to_server_bytes, transport):
         """Create a SmartServerSocketStreamMedium.
 
-        This differes from create_pipe_medium, in that we initialize the
+        This differs from create_pipe_medium, in that we initialize the
         request that is sent to the server, and return the BytesIO class that
         will hold the response.
         """
@@ -2076,7 +2076,7 @@ class CommonSmartProtocolTestMixin:
 
 class TestVersionOneFeaturesInProtocolOne(
         TestSmartProtocol, CommonSmartProtocolTestMixin):
-    """Tests for version one smart protocol features as implemeted by version
+    """Tests for version one smart protocol features as implemented by version
     one."""
 
     client_protocol_class = protocol.SmartClientRequestProtocolOne
@@ -2344,7 +2344,7 @@ class TestVersionOneFeaturesInProtocolOne(
 
 class TestVersionOneFeaturesInProtocolTwo(
         TestSmartProtocol, CommonSmartProtocolTestMixin):
-    """Tests for version one smart protocol features as implemeted by version
+    """Tests for version one smart protocol features as implemented by version
     two.
     """
 
@@ -2853,7 +2853,7 @@ class TestProtocolThree(TestSmartProtocol):
 
     def test_repeated_excess(self):
         """Repeated calls to accept_bytes after the message end has been parsed
-        accumlates the bytes in the unused_data attribute.
+        accumulates the bytes in the unused_data attribute.
         """
         output = BytesIO()
         headers = b'\0\0\0\x02de'  # length-prefixed, bencoded empty dict

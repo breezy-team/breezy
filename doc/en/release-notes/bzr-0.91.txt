@@ -88,7 +88,7 @@ Features
   generating output. (Ian Clatworthy)
 
 * ``Branch.hooks`` now supports ``pre_commit`` hook. The hook's signature
-  is documented in BranchHooks constructor. (Nam T. Nguyen, #102747)
+  is documented in BranchHooks constructor. (Name T. Nguyen, #102747)
 
 * New ``Repository.stream_knit_data_for_revisions`` request added to the
   network protocol for greatly reduced roundtrips when retrieving a set of
@@ -348,7 +348,7 @@ Internals
   The existing ``be_quiet`` and ``is_quiet`` routines have been
   integrated into this new scheme. (Ian Clatworthy)
 
-* Options can now be delcared with a ``custom_callback`` parameter. If
+* Options can now be declared with a ``custom_callback`` parameter. If
   set, this routine is called after the option is processed. This feature
   is now used by the standard options ``verbose`` and ``quiet`` so that
   setting one implicitly resets the other. (Ian Clatworthy)

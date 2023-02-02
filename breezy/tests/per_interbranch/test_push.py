@@ -111,7 +111,7 @@ class TestPush(TestCaseWithInterBranch):
         try:
             checkout.branch.bind(master_tree.branch)
         except BindingUnsupported:
-            # cant bind this format, the test is irrelevant.
+            # can't bind this format, the test is irrelevant.
             return
         rev1 = checkout.commit('master')
 
@@ -135,7 +135,7 @@ class TestPush(TestCaseWithInterBranch):
         try:
             checkout.branch.bind(master_tree.branch)
         except BindingUnsupported:
-            # cant bind this format, the test is irrelevant.
+            # can't bind this format, the test is irrelevant.
             return
         other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
         other = other_bzrdir.open_workingtree()
@@ -273,7 +273,7 @@ class TestPush(TestCaseWithInterBranch):
 
         The new branch will preserve the repo format (even if it isn't the
         default for the branch), and will be stacked when the repo format
-        allows (which means that the branch format isn't necessarly preserved).
+        allows (which means that the branch format isn't necessarily preserved).
         """
         if isinstance(self.branch_format_from, bzrbranch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but

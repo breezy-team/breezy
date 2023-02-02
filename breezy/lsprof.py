@@ -128,7 +128,7 @@ class Stats:
         self.threads = threads
 
     def sort(self, crit="inlinetime", reverse=True):
-        """Sort the data by the supplied critera.
+        """Sort the data by the supplied criteria.
 
         :param crit: the data attribute used as the sort key."""
         if crit not in profiler_entry.__dict__ or crit == 'code':

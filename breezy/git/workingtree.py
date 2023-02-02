@@ -1509,7 +1509,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
         # merge in the working tree to preserve the user existing work.  we
-        # cant set that until we update the working trees last revision to be
+        # can't set that until we update the working trees last revision to be
         # one from the new branch, because it will just get absorbed by the
         # parent de-duplication logic.
         #

@@ -660,7 +660,7 @@ class TestBTreeIndex(BTreeTestCase):
         # NOTE: We don't want to affect the _internal_node_cache, as we expect
         #       it will be small, and if we ever do touch this index again, it
         #       will save round-trips.  This assertion isn't very strong,
-        #       becuase without a 3-level index, we don't have any internal
+        #       because without a 3-level index, we don't have any internal
         #       nodes cached.
         self.assertEqual(internal_node_pre_clear,
                          set(index._internal_node_cache))

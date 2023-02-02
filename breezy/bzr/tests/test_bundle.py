@@ -911,7 +911,7 @@ class BundleTester:
 
         bundle = self.get_valid_bundle(b'white-3', b'white-4')
 
-        # Now test a complet roll-up
+        # Now test a complete roll-up
         bundle = self.get_valid_bundle(b'null:', b'white-4')
 
     def test_alt_timezone_bundle(self):

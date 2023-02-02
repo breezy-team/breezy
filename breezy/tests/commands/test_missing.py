@@ -31,7 +31,7 @@ class TestMissing(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_missing()
-        # We don't care about the ouput but 'outf' should be defined
+        # We don't care about the output but 'outf' should be defined
         cmd.outf = self.make_utf8_encoded_stringio()
         cmd.run(self.get_url('branch2'))
         self.assertEqual(1, len(self.connections))

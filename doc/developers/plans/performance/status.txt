@@ -33,7 +33,7 @@ We need to do the following things at a minimum:
 1. Determine the tree differences between the two trees using the users paths
    to limit the scope, and resolving paths in the trees for any pending merges.
    We arguably don't care about tracking metadata for this - only the value of
-   the tree the user commited.
+   the tree the user committed.
 
 1. The entire contents of directories which are versioned when showing
    unknowns.

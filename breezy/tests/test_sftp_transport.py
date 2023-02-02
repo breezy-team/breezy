@@ -142,7 +142,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
         t = self.get_transport('')
         self.assertEqual('/~/', t._parsed_url.path)
         # the remote path should be relative to home dir
-        # (i.e. not begining with a '/')
+        # (i.e. not beginning with a '/')
         self.assertEqual('a', t._remote_path('a'))
 
 

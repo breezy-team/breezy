@@ -412,7 +412,7 @@ class TestBytesRecordReader(tests.TestCase):
         self.assertRaises(pack.InvalidRecordError, reader.read)
 
     def test_early_eof(self):
-        """Tests for premature EOF occuring during parsing Bytes records with
+        """Tests for premature EOF occurring during parsing Bytes records with
         BytesRecordReader.
 
         A incomplete container might be interrupted at any point.  The
@@ -484,7 +484,7 @@ class TestBytesRecordReader(tests.TestCase):
             pack.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_unparseable_length(self):
-        """An unparseable record length causes validate to fail."""
+        """An unparsable record length causes validate to fail."""
         reader = self.get_reader_for(b"\n\n")
         self.assertRaises(
             pack.InvalidRecordError, reader.validate)

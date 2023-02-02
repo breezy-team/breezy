@@ -30,7 +30,7 @@ Alias /bzr /srv/DAV
         # bzr directories ;)
         DavDepthInfinity on
         # The simplest auth scheme is basic, just given as an
-        # example, using https is recommanded with it, or at
+        # example, using https is recommended with it, or at
         # least digest if https is not possible.
 	AuthType Basic
 	AuthName bzr

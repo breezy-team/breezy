@@ -174,7 +174,7 @@ class FilteredByModuleTestLoader(TestLoader):
         """Constructor.
 
         :param needs_module: a callable taking a module name as a
-            parameter returing True if the module should be loaded.
+            parameter returning True if the module should be loaded.
         """
         TestLoader.__init__(self)
         self.needs_module = needs_module

@@ -270,7 +270,7 @@ class TreeTransform:
         raise NotImplementedError(self.fixup_new_roots)
 
     def assign_id(self):
-        """Produce a new tranform id"""
+        """Produce a new transform id"""
         new_id = "new-%s" % self._id_number
         self._id_number += 1
         return new_id

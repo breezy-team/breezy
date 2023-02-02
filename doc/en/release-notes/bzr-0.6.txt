@@ -185,7 +185,7 @@ Internals
 
 * bzrlib.transport.http has been modified so that only 404 urllib errors
   are returned as NoSuchFile. Other exceptions will propagate as normal.
-  This allows debuging of actual errors. (Robert Collins)
+  This allows debugging of actual errors. (Robert Collins)
 
 * bzrlib.transport.Transport now accepts *ONLY* URL-escaped relative paths
   to apis like 'put', 'get' and 'has'. This is to provide consistent

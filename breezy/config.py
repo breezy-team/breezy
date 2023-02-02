@@ -399,7 +399,7 @@ class Config:
         while True:
             raw_chunks = self.option_ref_re.split(result)
             if len(raw_chunks) == 1:
-                # Shorcut the trivial case: no refs
+                # Shortcut the trivial case: no refs
                 return result
             chunks = []
             list_value = False
@@ -946,7 +946,7 @@ class LockableConfig(IniBasedConfig):
     serialized.
 
     Daughter classes should use the self.lock_write() decorator method when
-    they upate a config (they call, directly or indirectly, the
+    they update a config (they call, directly or indirectly, the
     ``_write_config_file()`` method. These methods (typically ``set_option()``
     and variants must reload the config file from disk before calling
     ``_write_config_file()``), this can be achieved by calling the
@@ -1762,7 +1762,7 @@ class AuthenticationConfig:
                 password = None
         else:
             password = None
-        # Prompt user only if we could't find a password
+        # Prompt user only if we couldn't find a password
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
@@ -1909,7 +1909,7 @@ class Base64CredentialStore(CredentialStore):
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
-        #                should probably propogate as something more useful.
+        #                should probably propagate as something more useful.
         import base64
         return base64.standard_b64decode(credentials['password'])
 
@@ -2066,7 +2066,7 @@ class Option:
 
     Here we define various properties about the option itself, its default
     value, how to convert it from stores, what to do when invalid values are
-    encoutered, in which config files it can be stored.
+    encountered, in which config files it can be stored.
     """
 
     def __init__(self, name, override_from_env=None,

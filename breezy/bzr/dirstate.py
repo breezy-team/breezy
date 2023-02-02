@@ -17,7 +17,7 @@
 """DirState objects record the state of a directory and its bzr metadata.
 
 Pseudo EBNF grammar for the state file. Fields are separated by NULLs, and
-lines by NL. The field delimiters are ommitted in the grammar, line delimiters
+lines by NL. The field delimiters are omitted in the grammar, line delimiters
 are not - this is done for clarity of reading. All string data is in utf8.
 
 ::
@@ -149,7 +149,7 @@ format did not accommodate.
 ----
 
 Design priorities:
- 1. Fast end to end use for bzr's top 5 uses cases. (commmit/diff/status/merge/???)
+ 1. Fast end to end use for bzr's top 5 uses cases. (commit/diff/status/merge/???)
  2. fall back current object model as needed.
  3. scale usably to the largest trees known today - say 50K entries. (mozilla
     is an example of this)
@@ -164,7 +164,7 @@ Locking:
 
 Memory representation::
 
- vector of all directories, and vector of the childen ?
+ vector of all directories, and vector of the children ?
    i.e.
      root_entries = (direntry for root, [parent_direntries_for_root]),
      dirblocks = [
@@ -1728,7 +1728,7 @@ class DirState:
                         continue
                     if maybe_entry[0][2] == file_id:
                         raise AssertionError(
-                            '_find_entry_index didnt find a key match'
+                            '_find_entry_index didn't find a key match'
                             ' but walking the data did, for %s'
                             % (entry_key,))
                     basis_kind = maybe_entry[1][1][0]
@@ -2501,7 +2501,7 @@ class DirState:
         A dirstate in read only mode should be smart enough though to validate
         that the file has not changed, and otherwise discard its cache and
         start over, to allow for fine grained read lock duration, so 'status'
-        wont block 'commit' - for example.
+        won't block 'commit' - for example.
         """
         if self._changes_aborted:
             # Should this be a warning? For now, I'm expecting that places that
@@ -2642,7 +2642,7 @@ class DirState:
         # get deletes, and add them to the end.
         # During the update process we need to answer the following questions:
         # - find other keys containing a fileid in order to create cross-path
-        #   links. We dont't trivially use the inventory from other trees
+        #   links. We don't trivially use the inventory from other trees
         #   because this leads to either double touching, or to accessing
         #   missing keys,
         # - find other keys containing a path
@@ -2734,7 +2734,7 @@ class DirState:
                     # for the indexes from 0 to tree_index -1
                     new_details = []
                     for lookup_index in range(tree_index):
-                        # boundary case: this is the first occurence of file_id
+                        # boundary case: this is the first occurrence of file_id
                         # so there are no id_indexes, possibly take this out of
                         # the loop?
                         if not len(entry_keys):
@@ -3137,7 +3137,7 @@ class DirState:
             # Does the new state matter?
             block[entry_index][1][0] = new_details
             # parents cannot be affected by what we do.
-            # other occurences of this id can be found
+            # other occurrences of this id can be found
             # from the id index.
             # ---
             # tree index consistency: All other paths for this id in this tree
@@ -3809,7 +3809,7 @@ class ProcessEntryPython:
                     (None, False)), True
         elif source_minikind in _fdlt and target_minikind in b'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
-            # if its still on disk, *and* theres no other entry at this
+            # if its still on disk, *and* there's no other entry at this
             # path [we dont know this in this routine at the moment -
             # perhaps we should change this - then it would be an unknown.
             old_path = pathjoin(entry[0][0], entry[0][1])
@@ -3879,7 +3879,7 @@ class ProcessEntryPython:
         # sketch:
         # compare source_index and target_index at or under each element of search_specific_files.
         # follow the following comparison table. Note that we only want to do diff operations when
-        # the target is fdl because thats when the walkdirs logic will have exposed the pathinfo
+        # the target is fdl because that's when the walkdirs logic will have exposed the pathinfo
         # for the target.
         # cases:
         #
@@ -4207,7 +4207,7 @@ class ProcessEntryPython:
                             current_path_info = None
                         path_handled = False
                     else:
-                        advance_path = True  # reset the advance flagg.
+                        advance_path = True  # reset the advance flag.
                 if current_block is not None:
                     block_index += 1
                     if (block_index < len(self.state._dirblocks) and

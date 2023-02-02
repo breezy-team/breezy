@@ -141,7 +141,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
                 depth_adjustment = merge_depth
             if depth_adjustment:
                 if merge_depth < depth_adjustment:
-                    # From now on we reduce the depth adjustement, this can be
+                    # From now on we reduce the depth adjustment, this can be
                     # surprising for users. The alternative requires two passes
                     # which breaks the fast display of the first revision
                     # though.
@@ -254,7 +254,7 @@ def grep_diff(opts):
         if opts.revision:
             start_rev = opts.revision[0]
         else:
-            # if no revision is sepcified for diff grep we grep all changesets.
+            # if no revision is specified for diff grep we grep all changesets.
             opts.revision = [RevisionSpec.from_string('revno:1'),
                              RevisionSpec.from_string('last:1')]
             start_rev = opts.revision[0]
@@ -288,7 +288,7 @@ def grep_diff(opts):
                 given_revs = _graph_view_revisions(
                     branch, start_revid, end_revid)
         else:
-            # We do an optimization below. For grepping a specific revison
+            # We do an optimization below. For grepping a specific revision
             # We don't need to call _graph_view_revisions which is slow.
             # We create the start_rev_tuple for only that specific revision.
             # _graph_view_revisions is used only for revision range.
@@ -378,7 +378,7 @@ def versioned_grep(opts):
                 given_revs = _graph_view_revisions(
                     branch, start_revid, end_revid)
         else:
-            # We do an optimization below. For grepping a specific revison
+            # We do an optimization below. For grepping a specific revision
             # We don't need to call _graph_view_revisions which is slow.
             # We create the start_rev_tuple for only that specific revision.
             # _graph_view_revisions is used only for revision range.
@@ -683,7 +683,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
 
-    # GZ 2010-06-07: There's no actual guarentee the file contents will be in
+    # GZ 2010-06-07: There's no actual guarantee the file contents will be in
     #                the user encoding, but we have to guess something and it
     #                is a reasonable default without a better mechanism.
     file_encoding = _user_encoding

@@ -101,7 +101,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         paths in ignore list will be completely ignored.
 
         We ignore paths that represent data which is allowed to change during
-        a clone or sprout: for instance, inventory.knit contains gzip fragements
+        a clone or sprout: for instance, inventory.knit contains gzip fragments
         which have timestamps in them, and as we have read the inventory from
         the source knit, the already-read data is recompressed rather than
         reading it again, which leads to changed timestamps. This is ok though,

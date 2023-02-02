@@ -191,7 +191,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         """Insert a key into self.table.
 
         This is only meant to be used during times like '_resize',
-        as it makes a lot of assuptions about keys not already being present,
+        as it makes a lot of assumptions about keys not already being present,
         and there being no dummy entries.
         """
         cdef size_t i, n_lookup
@@ -483,7 +483,7 @@ cdef api PyObject **_SimpleSet_Lookup(object self, object key) except NULL:
     """Find the slot where 'key' would fit.
 
     This is the same as a dicts 'lookup' function. This is a private
-    api because mutating what you get without maintaing the other invariants
+    api because mutating what you get without maintaining the other invariants
     is a 'bad thing'.
 
     :param key: An object we are looking up

@@ -2219,7 +2219,7 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         client.add_expected_call(
             b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
             b'error', (b'error', b'GhostRevisionsHaveNoRevno',
-                       b'The reivison {revid} was not found because there was '
+                       b'The revision {revid} was not found because there was '
                        b'a ghost at {ghost-revid}'))
         client.add_expected_call(
             b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
@@ -2604,7 +2604,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_get_parent_map_caching(self):
         # get_parent_map returns from cache until unlock()
-        # setup a reponse with two revisions
+        # setup a response with two revisions
         r1 = '\u0e33'.encode()
         r2 = '\u0dab'.encode()
         lines = [b' '.join([r2, r1]), r1]
@@ -3600,7 +3600,7 @@ class TestRepositoryInsertStream_1_19(TestRepositoryInsertStreamBase):
 
 class TestRepositoryTarball(TestRemoteRepository):
 
-    # This is a canned tarball reponse we can validate against
+    # This is a canned tarball response we can validate against
     tarball_content = base64.b64decode(
         'QlpoOTFBWSZTWdGkj3wAAWF/k8aQACBIB//A9+8cIX/v33AACEAYABAECEACNz'
         'JqsgJJFPTSnk1A3qh6mTQAAAANPUHkagkSTEkaA09QaNAAAGgAAAcwCYCZGAEY'

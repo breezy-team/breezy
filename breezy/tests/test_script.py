@@ -210,7 +210,7 @@ class TestExecution(script.TestCaseWithTransportAndScript):
         story = """
 $ mkdir dir
 $ cd dir
-The cd command ouputs nothing
+The cd command outputs nothing
 """
         self.assertRaises(AssertionError, self.run_script, story)
 
@@ -572,7 +572,7 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
     def test_confirm_action(self):
         """You can write tests that demonstrate user confirmation.
 
-        Specifically, ScriptRunner does't care if the output line for the
+        Specifically, ScriptRunner doesn't care if the output line for the
         prompt isn't terminated by a newline from the program; it's implicitly
         terminated by the input.
         """

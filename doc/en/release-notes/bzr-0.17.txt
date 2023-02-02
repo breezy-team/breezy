@@ -73,7 +73,7 @@ Improvements
   understanding what changes have occurred
   (John Arbash Meinel, #83887)
 
-* TreeTransform avoids many renames when contructing large trees,
+* TreeTransform avoids many renames when constructing large trees,
   improving speed.  3.25x speedups have been observed for construction of
   kernel-sized-trees, and checkouts are 1.28x faster.  (Aaron Bentley)
 

@@ -117,7 +117,7 @@ class FullHistoryBzrBranch(BzrBranch):
 
         :param revision_id: the new tip to use.
         :param last_rev: The previous last_revision. If not None, then this
-            must be a ancestory of revision_id, or DivergedBranches is raised.
+            must be a ancestry of revision_id, or DivergedBranches is raised.
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """

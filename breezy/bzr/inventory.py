@@ -1042,7 +1042,7 @@ class Inventory(CommonInventory):
         self.revision_id = revision_id
 
     def __repr__(self):
-        # More than one page of ouput is not useful anymore to debug
+        # More than one page of output is not useful anymore to debug
         max_len = 2048
         closing = '...}'
         contents = repr(self._byid)
@@ -1614,7 +1614,7 @@ class CHKInventory(CommonInventory):
             ie = cache[file_id]
             if ie.kind == 'directory':
                 ie = ie.copy()  # We create a copy to depopulate the .children attribute
-            # TODO: depending on the uses of 'other' we should probably alwyas
+            # TODO: depending on the uses of 'other' we should probably always
             #       '.copy()' to prevent someone from mutating other and
             #       invaliding our internal cache
             other.add(ie)

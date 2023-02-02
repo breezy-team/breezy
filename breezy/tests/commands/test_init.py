@@ -29,7 +29,7 @@ class TestInit(transport_util.TestCaseWithConnectionHookedTransport):
 
     def test_init(self):
         cmd = cmd_init()
-        # We don't care about the ouput but 'outf' should be defined
+        # We don't care about the output but 'outf' should be defined
         cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url())
         self.assertEqual(1, len(self.connections))

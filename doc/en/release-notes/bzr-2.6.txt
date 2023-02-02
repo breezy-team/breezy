@@ -58,7 +58,7 @@ Improvements
 
 * Local configurations files (i.e. accessed on the local file system like
   ``bazaar.conf`` and ``locations.conf``) are now shared, reducing the
-  number of IOs when querying a configuation option. (Vincent Ladeuil,
+  number of IOs when querying a configuration option. (Vincent Ladeuil,
   #832042)
 
 * ``bzr lp-propose --approve`` now correctly specifies the approved revision

@@ -172,7 +172,7 @@ bzr 1.18rc1
 
 This release of Bazaar marches on towards the 2.0 release in which the 2a
 'brisbane-core' format becomes generally recommended.  Most of the work in
-this release now focusses on bug fixes and stabilization, covering both 2a
+this release now focuses on bug fixes and stabilization, covering both 2a
 and previous formats.  There is a new text-mode interactive merge feature,
 a new guide to migration to 2a format in the user documentation, and
 pushing branches to a smart server is now much faster.  

@@ -109,7 +109,7 @@ A branch can only be bound to a single location, so multiple backups cannot
 be created using this method.  
 
 Using the `automirror`_ plugin mentioned under `Hooks and Plugins <hooks-plugins.html>`_, one can
-also make a push-type backup system that more naturally handles mutliple
+also make a push-type backup system that more naturally handles multiple
 backups.  Simply set the ``post_commit_mirror`` option to multiple URLs
 separated by commas.  In order to backup to the backup server and a 
 remote location, one could do

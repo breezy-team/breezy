@@ -87,7 +87,7 @@ StaticTuple_Intern(StaticTuple *self)
      */
     canonical_tuple = SimpleSet_Add(_interned_tuples, (PyObject *)self);
     if (!canonical_tuple) {
-        // Some sort of exception, propogate it.
+        // Some sort of exception, propagate it.
         return NULL;
     }
     if (canonical_tuple != (PyObject *)self) {

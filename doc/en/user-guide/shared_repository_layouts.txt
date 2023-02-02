@@ -210,7 +210,7 @@ So you would end up with a layout something like::
    |    ...
    +- merged/            # Container indicating these branches have been merged
    |   +- bugfix-12      # Bugfix which has already been merged.
-   +- abandonded/        # Branches which are considered 'dead-end'
+   +- abandoned/        # Branches which are considered 'dead-end'
 
 
 This has a couple benefits and drawbacks.

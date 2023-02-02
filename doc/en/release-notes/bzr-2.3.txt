@@ -486,7 +486,7 @@ Bug Fixes
 *********
 
 * Better message if there is an error while setting ownership of
-  ``.bazaar`` directory. (Parth Malwankar, #657553)
+  ``.bazaar`` directory. (Path Malwankar, #657553)
 
 * ``bzr config`` properly displays list values. (Vincent Ladeuil, #672382)
 
@@ -712,10 +712,10 @@ New Features
 * ``bzr status`` now displays a summary of existing shelves after
   the other status information. This is done using a ``post_status``
   hook.
-  (Parth Malwankar, #403687)
+  (Path Malwankar, #403687)
 
 * GNU lsh is now a supported lsh client; just set BZR_SSH to 'lsh'.
-  Also, bzr will recognize if the 'ssh' comand is a symlink to lsh.
+  Also, bzr will recognize if the 'ssh' command is a symlink to lsh.
   (Matthew Gordon, #374700)
 
 * The ``pull`` and ``update`` commands now take a ``--show-base``
@@ -866,7 +866,7 @@ New Features
 
 * Added ``pre_status`` and ``post_status`` hooks. This allows plugins
   to register custom handlers which will be invoked before/after the
-  standard status output is displayed. (Parth Malwankar)
+  standard status output is displayed. (Path Malwankar)
 
 * ``bzr break-lock --config [location]`` can now break config files
   locks. (Vincent Ladeuil, #525571)
@@ -954,7 +954,7 @@ Bug Fixes
 
 * ``bzr clean-tree`` issues a warning if it is unable to delete a file
   due to ``errno.EACCES`` instead of exiting with an error on Windows.
-  (Parth Malwankar, #430785)
+  (Path Malwankar, #430785)
 
 * ``bzr commit SYMLINK`` now works, rather than trying to commit the
   target of the symlink.
@@ -963,11 +963,11 @@ Bug Fixes
 * ``bzr ignore PATTERNS`` exits with error if a bad pattern is supplied.
   ``InvalidPattern`` exception error message now shows faulting
   regular expression.
-  (Parth Malwankar #300062)
+  (Path Malwankar #300062)
 
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
+  (Path Malwankar, #262450)
 
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
@@ -1138,7 +1138,7 @@ API Changes
   as an argument for __init__ or in _fmt format specification as this
   breaks in some Python versions. errors.LockError.__init__ argument
   is now named "msg" instead of earlier "message".
-  (Parth Malwankar, #603461)
+  (Path Malwankar, #603461)
 
 * Configuration files should now use the ``from_string`` constructor rather
   than the ``file`` parameter of the ``_get_parser`` method. The later has

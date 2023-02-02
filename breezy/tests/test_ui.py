@@ -135,7 +135,7 @@ class TestTextUIFactory(tests.TestCase):
         with ui_testing.TextUIFactory("") as factory:
             factory.choose("prompt", "yes\nNo\nmore info")
             self.assertEqual(
-                "prompt ([y]es, [N]o, [m]ore info): \n",
+                "prompt ([y]es, [N]o, [m]or info): \n",
                 factory.stderr.getvalue())
 
     def test_text_ui_choose_return_values(self):

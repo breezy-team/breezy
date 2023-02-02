@@ -93,7 +93,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         try:
             tree.branch.bind(master)
         except branch.BindingUnsupported:
-            # cant bind this format, the test is irrelevant.
+            # can't bind this format, the test is irrelevant.
             return
         branch.Branch.hooks.install_named_hook(
             'post_commit', self.capture_post_commit_hook, None)

@@ -71,7 +71,7 @@ signatures it will give a summary of the number of commits which are invalid,
 having missing keys or are not signed.
 
 The ``verify-signatures`` command can be given a comma separated list of key
-patters to specify a list of acceptable keys.  It can also take a range of
+patterns to specify a list of acceptable keys.  It can also take a range of
 commits to verify in the current branch.  Finally using the verbose option will
 list each key that is valid or authors for commits which failed::
 

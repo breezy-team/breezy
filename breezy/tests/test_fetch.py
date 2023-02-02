@@ -93,7 +93,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
 
     br_a3 = self.make_branch('br_a3')
     # pulling a branch with no revisions grabs nothing, regardless of
-    # whats in the inventory.
+    # what's in the inventory.
     br_a3.fetch(br_a2)
     for revno in range(4):
         self.assertFalse(
@@ -259,7 +259,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
     def find_get_record_stream(self, calls, expected_count=1):
         """In a list of calls, find the last 'get_record_stream'.
 
-        :param expected_count: The number of calls we should exepect to find.
+        :param expected_count: The number of calls we should expect to find.
             If a different number is found, an assertion is raised.
         """
         get_record_call = None

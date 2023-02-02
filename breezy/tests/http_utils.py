@@ -107,7 +107,7 @@ class TestCaseWithWebserver(tests.TestCaseWithTransport):
     backed by regular disk files.
     """
 
-    # These attributes can be overriden or parametrized by daughter clasess if
+    # These attributes can be overridden or parametrized by daughter clasess if
     # needed, but must exist so that the create_transport_readonly_server()
     # method (or any method creating an http(s) server) can propagate it.
     _protocol_version = None
@@ -340,7 +340,7 @@ class BasicAuthRequestHandler(AuthRequestHandler):
 
 
 # FIXME: We could send an Authentication-Info header too when
-# the authentication is succesful
+# the authentication is successful
 
 class DigestAuthRequestHandler(AuthRequestHandler):
     """Implements the digest authentication of a request.

@@ -137,14 +137,14 @@ class TestErrors(tests.TestCase):
                              str(error))
 
     def test_no_such_id(self):
-        error = errors.NoSuchId("atree", "anid")
-        self.assertEqualDiff("The file id \"anid\" is not present in the tree "
+        error = errors.NoSuchId("atree", "and")
+        self.assertEqualDiff("The file id \"and\" is not present in the tree "
                              "atree.",
                              str(error))
 
     def test_no_such_revision_in_tree(self):
-        error = errors.NoSuchRevisionInTree("atree", "anid")
-        self.assertEqualDiff("The revision id {anid} is not present in the"
+        error = errors.NoSuchRevisionInTree("atree", "and")
+        self.assertEqualDiff("The revision id {and} is not present in the"
                              " tree atree.", str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
 

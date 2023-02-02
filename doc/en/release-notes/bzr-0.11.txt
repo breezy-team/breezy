@@ -210,7 +210,7 @@ Internals
 Testing
 *******
 
-* New test helper classs MemoryTree. This is typically accessed via
+* New test helper class MemoryTree. This is typically accessed via
   ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
 
 * Add ``start_bzr_subprocess`` and ``stop_bzr_subprocess`` to allow test

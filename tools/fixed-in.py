@@ -118,7 +118,7 @@ class NewsParser:
             if self.try_date():
                 continue # The release date has been seen
             if self.add_line_to_entry():
-                continue # accumulate in self.enrty
+                continue # accumulate in self.entry
             yield from self.extract_bugs_from_entry()
 
 def main():

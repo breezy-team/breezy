@@ -317,12 +317,12 @@ class GPGStrategy:
             if isinstance(email, bytes):
                 email = email.decode('utf-8')
             return (SIGNATURE_VALID, name + " <" + email + ">", plain_output)
-        # Sigsum_red indicates a problem, unfortunatly I have not been able
+        # Sigsum_red indicates a problem, unfortunately I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None, plain_output
         # Summary isn't set if sig is valid but key is untrusted but if user
-        # has explicity set the key as acceptable we can validate it.
+        # has explicitly set the key as acceptable we can validate it.
         if (result.signatures[0].summary == 0 and
                 self.acceptable_keys is not None):
             if fingerprint in self.acceptable_keys:

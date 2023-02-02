@@ -55,7 +55,7 @@ class RelpathSetter:
     """WSGI middleware to set 'breezy.relpath' in the environ.
 
     Different servers can invoke a SmartWSGIApp in different ways.  This
-    middleware allows an adminstrator to configure how to the SmartWSGIApp will
+    middleware allows an administrator to configure how to the SmartWSGIApp will
     determine what path it should be serving for a given request for many common
     situations.
 

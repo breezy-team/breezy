@@ -982,8 +982,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         os.mkdir('a')
         os.chdir('a')
         # You can't rename the working directory
-        # doing rename non-existant . usually
-        # just raises ENOENT, since non-existant
+        # doing rename non-existent . usually
+        # just raises ENOENT, since non-existent
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
@@ -1523,7 +1523,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertPathCompare("/z", "/a/a")
         # except if the deeper dir should be output first
         self.assertPathCompare("/a/b/c", "/d/g")
-        # lexical betwen dirs of the same height
+        # lexical between dirs of the same height
         self.assertPathCompare("/a/z", "/z/z")
         self.assertPathCompare("/a/c/z", "/a/d/e")
 
@@ -1537,7 +1537,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertPathCompare("z", "a/a")
         # except if the deeper dir should be output first
         self.assertPathCompare("a/b/c", "d/g")
-        # lexical betwen dirs of the same height
+        # lexical between dirs of the same height
         self.assertPathCompare("a/z", "z/z")
         self.assertPathCompare("a/c/z", "a/d/e")
 
@@ -1574,7 +1574,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(
             dir_sorted_paths,
             sorted(original_paths, key=osutils.path_prefix_key))
-        # using the comparison routine shoudl work too:
+        # using the comparison routine should work too:
         self.assertEqual(
             dir_sorted_paths,
             sorted(original_paths, key=osutils.path_prefix_key))

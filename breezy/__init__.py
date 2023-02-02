@@ -186,7 +186,7 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
 
     More options may be added in future so callers should use named arguments.
 
-    The object returned by this function can be used as a contex manager
+    The object returned by this function can be used as a context manager
     through the 'with' statement to automatically shut down when the process
     is finished with breezy.  However it's not necessary to
     separately enter the context as well as starting brz: breezy is ready to

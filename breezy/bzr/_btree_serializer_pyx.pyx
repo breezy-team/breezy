@@ -569,7 +569,7 @@ cdef class GCCHKSHA1LeafNode:
         # follow that up with bisecting, since multiple keys can be in one
         # spot
         # Bisecting dropped us from 7000 comparisons to 582 (4.8/key), using
-        # the offset array dropped us from 23us to 20us and 156 comparisions
+        # the offset array dropped us from 23us to 20us and 156 comparisons
         # (1.3/key)
         offset = self._offset_for_sha1(sha1)
         lo = self.offsets[offset]

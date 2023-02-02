@@ -36,7 +36,7 @@ class FakeReadFile:
         return data
 
     def get_max_read_size(self):
-        """Returns the maximum read size or None if no reads have occured."""
+        """Returns the maximum read size or None if no reads have occurred."""
         return self.max_read_size
 
     def get_read_count(self):

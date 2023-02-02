@@ -156,7 +156,7 @@ class TestsNeedingReweave(TestReconcile):
         self.checkNoBackupInventory(d)
 
     def test_reconcile_empty(self):
-        # in an empty repo, theres nothing to do.
+        # in an empty repo, there's nothing to do.
         self.checkEmptyReconcile()
 
     def test_repo_has_reconcile_does_inventory_gc_attribute(self):

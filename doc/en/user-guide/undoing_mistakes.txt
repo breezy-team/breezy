@@ -81,7 +81,7 @@ to undo it like this::
   brz uncommit
 
 Unlike ``revert``, ``uncommit`` leaves the content of your working tree
-exactly as it is. That's really handy if you make a commit and accidently
+exactly as it is. That's really handy if you make a commit and accidentally
 provide the wrong error message. For example::
 
   brz commit -m "Fix bug #11"

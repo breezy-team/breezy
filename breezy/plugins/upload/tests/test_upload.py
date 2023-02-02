@@ -57,7 +57,7 @@ def get_transport_scenarios():
 
 
 def load_tests(loader, standard_tests, pattern):
-    """Multiply tests for tranport implementations."""
+    """Multiply tests for transport implementations."""
     result = loader.suiteClass()
 
     # one for each transport implementation
@@ -755,7 +755,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
         super().setUp()
         if self._will_escape_isolation(self.transport_server):
             # FIXME: Some policy search ends up above the user home directory
-            # and are seen as attemps to escape test isolation
+            # and are seen as attempts to escape test isolation
             raise tests.TestNotApplicable('Escaping test isolation')
         self.remote_branch_url = self.make_remote_branch_without_working_tree()
 

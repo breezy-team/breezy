@@ -63,7 +63,7 @@ canonical format of a file or tree, use ``brz cat`` or ``brz export``
 respectively.
 
 Note: ``brz commit`` does not implicitly apply write converters after
-comitting files. If this makes sense for a given plugin providing
+committing files. If this makes sense for a given plugin providing
 a content filter, the plugin can usually achieve this effect by using a
 ``start_commit`` or ``post_commit`` hook say. See :doc:`hooks-help`
 for more information on hooks.

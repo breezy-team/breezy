@@ -1245,7 +1245,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
                     raise errors.ForbiddenControlFileError(filename=f)
                 fp = osutils.splitpath(f)
             # fill out file kinds for all files [not needed when we stop
-            # caring about the instantaneous file kind within a uncommmitted tree
+            # caring about the instantaneous file kind within a uncommitted tree
             #
             self._gather_kinds(files, kinds)
             for (path, kind) in zip(files, kinds):
@@ -1699,7 +1699,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         return GitTreeTransform(self, pb=pb)
 
     def has_changes(self, _from_tree=None):
-        """Quickly check that the tree contains at least one commitable change.
+        """Quickly check that the tree contains at least one committable change.
 
         :param _from_tree: tree to compare against to find changes (default to
             the basis tree and is intended to be used by tests).

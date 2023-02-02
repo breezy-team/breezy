@@ -623,7 +623,7 @@ class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
 
     def setUp(self):
         super().setUp()
-        self._override_home = '/dev/noone/runs/tests/here'
+        self._override_home = '/dev/no one/runs/tests/here'
 
 
 class SFTPTestsRelative(TestCaseWithSFTPServer, RemoteTests):

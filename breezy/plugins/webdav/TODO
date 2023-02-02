@@ -37,12 +37,12 @@
       -DBIG_SECURITY_HOLE for those who didn't get the message).
 
    That means this transport will do no better. May be the file
-   mode should be a file property handled explicitely inside the
+   mode should be a file property handled explicitly inside the
    repositories and applied by bzr in the working trees. That
    implies a mean to store file properties, apply them, detecting
    their changes, etc.
 
    It may be possible to use PROPPATCH to handle mode bits, but
    bzr doesn't try to handle remote working trees. So until the
-   neeed arises, this will remain as is.
+   need arises, this will remain as is.
 

@@ -179,7 +179,7 @@ class VersionedFileRepoReconciler:
     def _check_garbage_inventories(self):
         """Check for garbage inventories which we cannot trust
 
-        We cant trust them because their pre-requisite file data may not
+        We can't trust them because their pre-requisite file data may not
         be present - all we know is that their revision was not installed.
         """
         if not self.thorough:

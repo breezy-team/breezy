@@ -262,7 +262,7 @@ for 100M keys when using 10 bytes.)
 Given that the only cost for a collision is reading a second page and ensuring
 the sha hash actually matches we could actually use a fairly "high" collision
 rate. A chance of 1 in 1000 that you will collide in an index with 1M keys is
-certainly acceptible.  (note that isn't 1 in 1000 of those keys will be a
+certainly acceptable.  (note that isn't 1 in 1000 of those keys will be a
 collision, but 1 in 1000 that you will have a *single* collision).  Using a
 collision chance of 10^-3, and number of keys 10^6, means we need (12+3)*0.4 =
 6 bytes. For 10M keys, you need (14+3)*0.4 = 6.8 aka 7. We get that extra byte

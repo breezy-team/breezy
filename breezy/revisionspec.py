@@ -403,7 +403,7 @@ class RevisionSpec_revno(RevisionSpec):
 
         if branch_spec:
             from .branch import Branch
-            # the user has overriden the branch to look in.
+            # the user has overridden the branch to look in.
             branch = Branch.open(branch_spec)
 
         if dotted:

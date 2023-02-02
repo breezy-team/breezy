@@ -502,7 +502,7 @@ class _LazyGroupContentManager:
 
     _max_cut_fraction = 0.75  # We allow a block to be trimmed to 75% of
     # current size, and still be considered
-    # resuable
+    # reusable
     _full_block_size = 4 * 1024 * 1024
     _full_mixed_block_size = 2 * 1024 * 1024
     _full_enough_block_size = 3 * 1024 * 1024  # size at which we won't repack
@@ -1013,12 +1013,12 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
 
     * there is no junk, we want a minimal edit not a human readable diff.
     * we don't filter very common lines (because we don't know where a good
-      range will start, and after the first text we want to be emitting minmal
+      range will start, and after the first text we want to be emitting minimal
       edits only.
     * we chain the left side, not the right side
     * we incrementally update the adjacency matrix as new lines are provided.
     * we look for matches in all of the left side, so the routine which does
-      the analagous task of find_longest_match does not need to filter on the
+      the analogous task of find_longest_match does not need to filter on the
       left side.
     """
 

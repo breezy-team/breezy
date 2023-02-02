@@ -318,7 +318,7 @@ def _extract_dir_content(url, infile):
 class DavResponse(urllib.Response):
     """Custom HTTPResponse.
 
-    DAV have some reponses for which the body is of no interest.
+    DAV have some responses for which the body is of no interest.
     """
     _body_ignored_responses = (
         urllib.Response._body_ignored_responses
@@ -610,7 +610,7 @@ class HttpDavTransport(urllib.HttpTransport):
             # As we don't want  to accept overwriting abs_to, 204
             # (meaning  abs_to  was   existing  (but  empty,  the
             # non-empty case is 412))  will be an error, a server
-            # bug  even,  since  we  require explicitely  to  not
+            # bug  even,  since  we  require explicitly  to  not
             # overwrite.
             self._raise_http_error(abs_from, response,
                                    'unable to rename to %r' % (abs_to))

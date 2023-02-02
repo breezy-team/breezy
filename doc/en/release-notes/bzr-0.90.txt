@@ -17,7 +17,7 @@ Improvements
   added for different languages or locales. Added the Mini Tutorial
   and Quick Start Summary (en) documents from the Wiki, improving the
   content and readability of the former. Formatted NEWS as Release Notes
-  complete with a Table of Conents, one heading per release. Moved the
+  complete with a Table of Contents, one heading per release. Moved the
   Developer Guide into the main document catalog and provided a link
   from the developer document catalog back to the main one.
   (Ian Clatworthy, Sabin Iacob, Alexander Belchenko)
@@ -152,7 +152,7 @@ Improvements
 * Log errors from the smart server in the trace file, to make debugging
   test failures (and live failures!) easier.  (Andrew Bennetts)
 
-* The HTML version of the man page has been superceded by a more
+* The HTML version of the man page has been superseded by a more
   comprehensive manual called the Bazaar User Reference. This manual
   is completed generated from the online help topics. As part of this
   change, limited reStructuredText is now explicitly supported in help

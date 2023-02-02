@@ -144,7 +144,7 @@ This is just a bullet list of things to consider when expanding a request.
 
 * At the moment, we assume that we don't have an idea of where in the next
   layer the keys might fall. We *could* use a predictive algorithm assuming
-  homogenous distribution. When reading the root node, we could assume an even
+  homogeneous distribution. When reading the root node, we could assume an even
   distribution from 'a-z', so that a key starting with 'a' would tend to fall
   in the first few pages of the next layer, while a key starting with 'z' would
   fall at the end of the next layer.

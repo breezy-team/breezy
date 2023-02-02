@@ -82,7 +82,7 @@ new features like Stacked Branches, improved weave merge, and an updated
 server protocol (now on v3) which will allow for better cross version
 compatibility. With this release we have deprecated Knit format
 repositories, and recommend that users upgrade them, we will continue to
-support reading and writing them for the forseeable future, but we will
+support reading and writing them for the foreseeable future, but we will
 not be tuning them for performance as pack repositories have proven to be
 better at scaling. This will also be the first release to bundle
 TortoiseBzr in the standalone Windows installer.
@@ -147,7 +147,7 @@ Bug Fixes
   than 1/20th of their keyspace is requested in a single operation.
   This largely mitigates a performance regression in ``bzr log FILE``
   and completely corrects the performance regression in ``bzr log``.
-  The regression was caused by removing an accomodation which had been
+  The regression was caused by removing an accommodation which had been
   supporting the index format in use. A newer index format is in
   development which is substantially faster. (Robert Collins)
 
@@ -201,7 +201,7 @@ bzr 1.6rc1
 This release candidate for bzr 1.6 solidifies the new branch stacking
 feature.  Bazaar now recommends that users upgrade all knit repositories,
 because later formats are much faster.  However, we plan to continue read/write and
-upgrade support for knit repostories for the forseeable future.  Several
+upgrade support for knit repositories for the foreseeable future.  Several
 other bugs and performance issues were fixed.
 
 Changes
@@ -281,7 +281,7 @@ Bug Fixes
 API Changes
 ***********
 
-* ``MutableTree.commit`` has an extra optional keywork parameter
+* ``MutableTree.commit`` has an extra optional keyword parameter
   ``exclude`` that will be unconditionally supplied by the command
   line UI - plugins that add tree formats may need an update.
   (Robert Collins)
@@ -293,8 +293,8 @@ API Changes
 * The generic fetch code now uses three attributes on Repository objects
   to control fetch. The streams requested are controlled via :
   ``_fetch_order`` and ``_fetch_uses_deltas``. Setting these
-  appropriately allows different repository implementations to recieve
-  data in their optimial form. If the ``_fetch_reconcile`` is set then
+  appropriately allows different repository implementations to receive
+  data in their optimal form. If the ``_fetch_reconcile`` is set then
   a reconcile operation is triggered at the end of the fetch.
   (Robert Collins)
 
@@ -728,7 +728,7 @@ Documentation
   and about use of Python reprs.
   (Martin Pool, Martin Albisetti)
 
-* Updated Tortise strategy document. (Mark Hammond)
+* Updated Tortoise strategy document. (Mark Hammond)
 
 Testing
 *******

@@ -111,7 +111,7 @@ garbage""")
         resp = conn.getresponse()
         # Read part of the response
         self.assertEqual(b'0123456789\n', resp.read(11))
-        # Override the thresold to force the warning emission
+        # Override the threshold to force the warning emission
         conn._range_warning_thresold = 6  # There are 7 bytes pending
         conn.cleanup_pipe()
         self.assertContainsRe(self.get_log(), 'Got a 200 response when asking')
@@ -283,7 +283,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     fact) in real uses but may lead to hard to track bugs.
     """
 
-    # The following is used to represent the boundary paramter defined
+    # The following is used to represent the boundary parameter defined
     # in HTTP response headers and the boundary lines that separate
     # multipart content.
 

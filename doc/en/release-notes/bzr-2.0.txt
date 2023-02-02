@@ -82,7 +82,7 @@ Bug Fixes
 
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
+  (Path Malwankar, #262450)
 
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
@@ -173,7 +173,7 @@ Bug Fixes
 
 * Running ``bzr`` command without any arguments now shows bzr
   version number along with rest of the help text.
-  (Parth Malwankar, #369501)
+  (Path Malwankar, #369501)
 
 * Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
   errors.
@@ -208,7 +208,7 @@ Bug Fixes
   fails with an ``ObjectNotLocked`` error.  (Andrew Bennetts, #496590)
 
 * ``bzr export dir`` now requests all file content as a record stream,
-  rather than requsting the file content one file-at-a-time. This can make
+  rather than requesting the file content one file-at-a-time. This can make
   exporting over the network significantly faster (54min => 9min in one
   case). (John Arbash Meinel, #343218)
 

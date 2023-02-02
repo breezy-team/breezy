@@ -452,7 +452,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
 
-        self.assertBranchAnnotate('1   committ | hello\n', tree1.branch,
+        self.assertBranchAnnotate('1   commit | hello\n', tree1.branch,
                                   'a', b'rev-1')
 
         self.assertBranchAnnotate('2   author@ | bye\n', tree1.branch,

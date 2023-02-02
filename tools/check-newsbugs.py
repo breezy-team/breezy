@@ -60,11 +60,11 @@ def read_news_bugnos(path):
         for l in f.readlines():
             if l.strip() == "":
                 try:
-                    parenthesed = section.rsplit("(", 1)[1]
+                    parenthesized = section.rsplit("(", 1)[1]
                 except IndexError:
-                    parenthesed = ""
+                    parenthesized = ""
                 # Empty line, next section begins
-                for bugno in [int(m) for m in bug_pattern.findall(parenthesed)]:
+                for bugno in [int(m) for m in bug_pattern.findall(parenthesized)]:
                     ret.add((bugno, section))
                 section = ""
             else:

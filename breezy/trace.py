@@ -632,7 +632,7 @@ class Config:
         return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return False  # propogate exceptions.
+        return False  # propagate exceptions.
 
 
 class DefaultConfig(Config):
@@ -650,4 +650,4 @@ class DefaultConfig(Config):
         pop_log_file(self._original_state)
         global _brz_log_filename
         _brz_log_filename = self._original_filename
-        return False  # propogate exceptions.
+        return False  # propagate exceptions.

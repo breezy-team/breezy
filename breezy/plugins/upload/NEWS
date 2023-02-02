@@ -92,7 +92,7 @@ Testing
 
 * Use assertPathDoesNotExist and assertPathExist instead of failIfExists and
   failUnlessExists in the test suite. This requires bzr-2.4 to run the tests
-  but doesn't affect the plugin compatibility itself with previous verions
+  but doesn't affect the plugin compatibility itself with previous versions
   of bzr. (Vincent Ladeuil)
 
 
@@ -122,7 +122,7 @@ New Features
   (Vincent Ladeuil, #423331)
 
 * Upload now checks that the revision we are uploading is a descendent
-  from the revision that was uploaded, and hence that the branchs that
+  from the revision that was uploaded, and hence that the branches that
   they were uploaded from have not diverged. This can be ignored by passing
   the --overwrite option. (Gary van der Merwe)
 

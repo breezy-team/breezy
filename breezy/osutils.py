@@ -338,7 +338,7 @@ def _win32_rename(old, new):
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError as e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
-            # If we try to rename a non-existant file onto cwd, we get
+            # If we try to rename a non-existent file onto cwd, we get
             # EPERM or EACCES instead of ENOENT, this will raise ENOENT
             # if the old path doesn't exist, sometimes we get EACCES
             # On Linux, we seem to get EBUSY, on Mac we get EINVAL
@@ -1497,7 +1497,7 @@ def terminal_width():
 
 def _win32_terminal_size(width, height):
     width, height = win32utils.get_console_size(
-        defaultx=width, defaulty=height)
+        defaultx=width, default=height)
     return width, height
 
 
@@ -1693,7 +1693,7 @@ class DirReader:
     def read_dir(self, prefix, top):
         """Read a specific dir.
 
-        :param prefix: A utf8 prefix to be preprended to the path basenames.
+        :param prefix: A utf8 prefix to be prepended to the path basenames.
         :param top: A natively encoded path to read.
         :return: A list of the directories contents. Each item contains:
             (utf8_relpath, utf8_name, kind, lstatvalue, native_abspath)
@@ -2439,7 +2439,7 @@ class MtabFilesystemFinder(FilesystemFinder):
     def from_mtab(cls):
         """Create a FilesystemFinder from an mtab-style file.
 
-        Note that this will silenty ignore mtab if it doesn't exist or can not
+        Note that this will silently ignore mtab if it doesn't exist or can not
         be opened.
         """
         # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and

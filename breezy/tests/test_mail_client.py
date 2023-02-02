@@ -252,7 +252,7 @@ class TestClaws(tests.TestCase):
 class TestEditor(tests.TestCase):
 
     def test_get_merge_prompt_unicode(self):
-        """Prompt, to and subject are unicode, the attachement is binary"""
+        """Prompt, to and subject are unicode, the attachment is binary"""
         editor = mail_client.Editor(None)
         prompt = editor._get_merge_prompt('foo\u1234',
                                           'bar\u1234',

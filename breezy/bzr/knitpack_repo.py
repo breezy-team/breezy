@@ -851,7 +851,7 @@ class KnitPacker(Packer):
             # need to get line output too, so we check separately, and as we're
             # going to buffer everything anyway, we check beforehand, which
             # saves reading knit data over the wire when we know there are
-            # mising records.
+            # missing records.
             text_nodes = set(text_nodes)
             present_text_keys = {_node[1] for _node in text_nodes}
             missing_text_keys = set(self._text_filter) - present_text_keys

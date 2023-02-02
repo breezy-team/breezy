@@ -52,7 +52,7 @@ Install Packages
 3) Configure 'distutils' for the compiler that you will be using. For python
    2.4 and 2.5 we use gcc-mingw32, for 2.6 we use Visual Studio 2008.
 
-   Edit ``D:\Python25\Lib\disutils\distutils.cfg`` (you have to create the
+   Edit ``D:\Python25\Lib\distutils\distutils.cfg`` (you have to create the
    file). You want to add a section like::
 
      [build]

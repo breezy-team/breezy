@@ -5,7 +5,7 @@ Using profilers
 ---------------
 
 Bazaar has some built-in support for collecting and saving profiling
-information. In the simpliest case, the ``--lsprof`` option can be used as
+information. In the simplest case, the ``--lsprof`` option can be used as
 shown below::
 
   brz --lsprof ...

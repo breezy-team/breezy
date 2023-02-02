@@ -151,7 +151,7 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file('c').read(), b'c2')
         # THIS wins
         self.assertEqual(this.wt.get_file('d').read(), b'd2')
-        # Ambigious clean merge
+        # Ambiguous clean merge
         self.assertEqual(this.wt.get_file('e').read(), b'e2')
         # No change
         self.assertEqual(this.wt.get_file('f').read(), b'f')

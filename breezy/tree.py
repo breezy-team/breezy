@@ -669,7 +669,7 @@ class Tree:
          - directory-path-from-root is the containing dirs path from /
          - relpath is the relative path within the subtree being walked.
          - basename is the basename
-         - kind is the kind of the file now. If unknonwn then the file is not
+         - kind is the kind of the file now. If unknown then the file is not
            present within the tree - but it may be recorded as versioned. See
            versioned_kind.
          - lstat is the stat data *if* the file was statted.

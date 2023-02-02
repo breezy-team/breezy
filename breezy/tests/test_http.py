@@ -1664,7 +1664,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         with t.get('b') as f:
             self.assertEqual(b'contents of b\n', f.read())
         # Only one 'Authentication Required' error should have
-        # occured so far
+        # occurred so far
         self.assertEqual(1, self.server.auth_required_errors)
         # The server invalidates the current nonce
         self.server.auth_nonce = self.server.auth_nonce + '. No, now!'
@@ -1705,7 +1705,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(True, t.has('a'))
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
-        # Since the authentification succeeded, there should be a corresponding
+        # Since the authentication succeeded, there should be a corresponding
         # debug line
         sent_auth_headers = [line for line in self.mutters
                              if line.startswith('> {}'.format(self._auth_header))]

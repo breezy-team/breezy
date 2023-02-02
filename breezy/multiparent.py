@@ -169,7 +169,7 @@ class MultiParent:
         yield parent_len, self.num_lines(), 0
 
     def to_lines(self, parents=()):
-        """Contruct a fulltext from this diff and its parents"""
+        """Construct a fulltext from this diff and its parents"""
         mpvf = MultiMemoryVersionedFile()
         for num, parent in enumerate(parents):
             mpvf.add_version(BytesIO(parent).readlines(), num, [])

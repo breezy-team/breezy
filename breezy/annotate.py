@@ -311,7 +311,7 @@ def _old_break_annotation_tie(annotated_lines):
     # sort lexicographically so that we always get a stable result.
 
     # TODO: while 'sort' is the easiest (and nearly the only possible solution)
-    # with the current implementation, chosing the oldest revision is known to
+    # with the current implementation, choosing the oldest revision is known to
     # provide better results (as in matching user expectations). The most
     # common use case being manual cherry-pick from an already existing
     # revision.

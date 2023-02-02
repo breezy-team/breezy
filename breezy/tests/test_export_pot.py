@@ -182,11 +182,11 @@ class TestModuleContext(tests.TestCase):
             pass
         cls_lines = {"A": 5, "B": 7}
         context = export_pot._ModuleContext(path, _source_info=(cls_lines, {}))
-        contextA = context.from_class(A)
-        self.check_context(contextA, path, 5)
+        context = context.from_class(A)
+        self.check_context(context, path, 5)
         contextB1 = context.from_class(B)
         self.check_context(contextB1, path, 7)
-        contextB2 = contextA.from_class(B)
+        contextB2 = context.from_class(B)
         self.check_context(contextB2, path, 7)
         self.check_context(context, path, 1)
         self.assertEqual("", self.get_log())
@@ -201,10 +201,10 @@ class TestModuleContext(tests.TestCase):
         class M:
             pass
         context = export_pot._ModuleContext(path, 3, ({"A": 15}, {}))
-        contextA = context.from_class(A)
+        context = context.from_class(A)
         contextM1 = context.from_class(M)
         self.check_context(contextM1, path, 3)
-        contextM2 = contextA.from_class(M)
+        contextM2 = context.from_class(M)
         self.check_context(contextM2, path, 15)
         self.assertContainsRe(self.get_log(), "Definition of <.*M'> not found")
 

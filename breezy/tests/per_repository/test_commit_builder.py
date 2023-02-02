@@ -140,7 +140,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertTrue(tree.branch.repository.has_revision(revision_id))
         # the revision id must be set on the inventory when saving it. This
         # does not precisely test that - a repository that wants to can add it
-        # on deserialisation, but thats all the current contract guarantees
+        # on deserialisation, but that's all the current contract guarantees
         # anyway.
         self.assertEqual(
             revision_id,
@@ -256,7 +256,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             return trees
 
     def test_last_modified_revision_after_commit_root_unchanged(self):
-        # commiting without changing the root does not change the
+        # committing without changing the root does not change the
         # last modified except on non-rich-root-repositories.
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('rev1')
@@ -547,7 +547,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         return rev2
 
     def assertFileGraph(self, expected_graph, tree, tip):
-        # all the changes that have occured should be in the ancestry
+        # all the changes that have occurred should be in the ancestry
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)

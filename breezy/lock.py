@@ -254,8 +254,8 @@ if have_fcntl:
                 if e.errno in (errno.EAGAIN, errno.EACCES):
                     # We couldn't grab the lock
                     self.unlock()
-                # we should be more precise about whats a locking
-                # error and whats a random-other error
+                # we should be more precise about what's a locking
+                # error and what's a random-other error
                 raise errors.LockContention(self.filename, e)
 
         def unlock(self):
@@ -285,8 +285,8 @@ if have_fcntl:
                 # lock right away.
                 fcntl.lockf(self.f, fcntl.LOCK_SH | fcntl.LOCK_NB)
             except OSError as e:
-                # we should be more precise about whats a locking
-                # error and whats a random-other error
+                # we should be more precise about what's a locking
+                # error and what's a random-other error
                 raise errors.LockContention(self.filename, e)
 
         def unlock(self):

@@ -42,7 +42,7 @@ Working on a posix system without a locale
 Previously bzr needed a valid locale set to work with branches containing
 non-ascii filenames. It will now use utf-8 rather than ascii as a fallback
 encoding for interacting with the filesystem. This makes creating a working
-tree and commiting to it possible for such branches in most environments.
+tree and committing to it possible for such branches in most environments.
 
 SSL Certificate Verification Support in urllib HTTPS backend
 ************************************************************

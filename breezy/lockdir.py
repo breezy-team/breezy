@@ -462,7 +462,7 @@ class LockDir(lock.Lock):
             to check that the lock hasn't changed between reading the (corrupt)
             info file and calling force_break_corrupt.
         """
-        # XXX: this copes with unparseable info files, but what about missing
+        # XXX: this copes with unparsable info files, but what about missing
         # info files?  Or missing lock dirs?
         self._check_not_locked()
         tmpname = '{}/broken.{}.tmp'.format(self.path, rand_chars(20))
@@ -675,7 +675,7 @@ class LockDir(lock.Lock):
         """
         # At the moment Branches are commonly locked for read, but
         # we can't rely on that remotely.  Once this is cleaned up,
-        # reenable this warning to prevent it coming back in
+        # re-enable this warning to prevent it coming back in
         # -- mbp 20060303
         # warn("LockDir.lock_read falls back to write lock")
         if self._lock_held or self._fake_read_lock:

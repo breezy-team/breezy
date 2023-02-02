@@ -147,7 +147,7 @@ Internals
 *********
 
 * New AuthenticationConfig.set_credentials method allows easy programmatic
-  configuration of authetication credentials.
+  configuration of authentication credentials.
 
 
 ..

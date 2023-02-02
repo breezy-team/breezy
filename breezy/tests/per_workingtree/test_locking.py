@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the (un)lock interfaces on all working tree implemenations."""
+"""Tests for the (un)lock interfaces on all working tree implementations."""
 
 import sys
 
@@ -138,8 +138,8 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         getattr(tree, methodname)()
         # note that we dont have a try:finally here because of two reasons:
         # firstly there will only be errors reported if the test fails, and
-        # when it fails thats ok as long as the test suite cleanup still works,
-        # which it will as the lock objects are released (thats where the
+        # when it fails that's ok as long as the test suite cleanup still works,
+        # which it will as the lock objects are released (that's where the
         # warning comes from.  Secondly, it is hard in this test to be
         # sure that we've got the right interactions between try:finally
         # and the lock/unlocks we are doing.

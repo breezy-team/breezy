@@ -3,7 +3,7 @@ breezy.bzr.tests.test_smart_transport.SmartClientMediumTests.test_simple_pipes__
 breezy.bzr.tests.test_smart_transport.SmartClientMediumTests.test_simple_pipes__read_bytes_subprocess_closed
 breezy.git.tests.test_git_remote_helper.ExecuteRemoteHelperTests.test_run
 
-# Missing warning about unsuported locale
+# Missing warning about unsupported locale
 breezy.tests.blackbox.test_locale.TestLocale.test_log_BOGUS
 
 # Case sensitivity

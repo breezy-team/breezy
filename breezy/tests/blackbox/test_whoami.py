@@ -67,8 +67,8 @@ class TestWhoami(tests.TestCaseWithTransport):
 
         # Verify that the environment variable overrides the value
         # in the file
-        self.overrideEnv('BRZ_EMAIL', 'Different ID <other@environ.ment>')
-        self.assertWhoAmI('Different ID <other@environ.ment>')
+        self.overrideEnv('BRZ_EMAIL', 'Different ID <other@environ.meant>')
+        self.assertWhoAmI('Different ID <other@environ.meant>')
         self.assertWhoAmI('other@environ.ment', '--email')
 
     def test_whoami_utf8(self):

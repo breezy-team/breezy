@@ -962,7 +962,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         if not wt.supports_setting_file_ids():
             self.skip("format does not support setting file ids")
         self.build_tree(["repo/foo"], line_endings='binary')
-        # add file with id containing wierd characters
+        # add file with id containing weird characters
         wt.add(['foo'], ids=[FOO_ID])
         rev1 = wt.commit('this is my new commit')
         # now access over vfat; should be safe

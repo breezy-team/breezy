@@ -1919,7 +1919,7 @@ def _plan_annotate_merge(annotated_a, annotated_b, ancestors_a, ancestors_b):
 class _PlanMergeBase:
 
     def __init__(self, a_rev, b_rev, vf, key_prefix):
-        """Contructor.
+        """Constructor.
 
         :param a_rev: Revision-id of one revision to merge
         :param b_rev: Revision-id of the other revision to merge

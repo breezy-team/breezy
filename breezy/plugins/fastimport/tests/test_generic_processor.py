@@ -1245,7 +1245,7 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
 
 
 class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
-    """Test rename of a path then modfy the new-path in the same commit."""
+    """Test rename of a path then modify the new-path in the same commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
 
@@ -1365,7 +1365,7 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
 
 
 class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
-    """Test rename of to a deleted path then modfy the new-path in the same commit."""
+    """Test rename of to a deleted path then modify the new-path in the same commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
 

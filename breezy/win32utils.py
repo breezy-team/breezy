@@ -110,12 +110,12 @@ def debug_memory_win32api(message='', short=True):
     trace.note(gettext('PageFaultCount    %8d'), info.get('PageFaultCount', 0))
 
 
-def get_console_size(defaultx=80, defaulty=25):
+def get_console_size(defaultx=80, default=25):
     """Return size of current console.
 
     This function try to determine actual size of current working
     console window and return tuple (sizex, sizey) if success,
-    or default size (defaultx, defaulty) otherwise.
+    or default size (defaultx, default) otherwise.
     """
     # To avoid problem with redirecting output via pipe
     # we need to use stderr instead of stdout
@@ -131,7 +131,7 @@ def get_console_size(defaultx=80, defaulty=25):
         sizey = bottom - top + 1
         return (sizex, sizey)
     else:
-        return (defaultx, defaulty)
+        return (defaultx, default)
 
 
 def _get_sh_special_folder_path(csidl):
@@ -312,7 +312,7 @@ def get_app_path(appname):
 
     :param  appname:    name of application (if no filename extension
                         is specified, .exe used)
-    :return:    full path to aplication executable from registry,
+    :return:    full path to application executable from registry,
                 or appname itself if nothing found.
     """
     import winreg

@@ -56,7 +56,7 @@ def _load_data_py(kndx, fp):
             # even to apply a delta to the wrong base and decode
             # incorrectly. its therefore not usable, and because we have
             # encountered a situation where a new knit index had this
-            # corrupt we can't asssume that no other rows referring to the
+            # corrupt we can't assume that no other rows referring to the
             # index of this record actually mean the subsequent uncorrupt
             # one, so we error.
             raise KnitCorrupt(kndx._filename, "line {!r}: {}".format(rec, e))

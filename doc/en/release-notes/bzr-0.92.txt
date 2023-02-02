@@ -28,7 +28,7 @@ Changes
   3 if a normal error occurred.  (Martin Pool)
 
 * ``pull``, ``merge`` and ``push`` will no longer silently correct some
-  repository index errors that occured as a result of the Weave disk format.
+  repository index errors that occurred as a result of the Weave disk format.
   Instead the ``reconcile`` command needs to be run to correct those
   problems if they exist (and it has been able to fix most such problems
   since bzr 0.8). Some new problems have been identified during this release

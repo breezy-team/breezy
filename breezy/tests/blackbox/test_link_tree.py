@@ -53,5 +53,5 @@ class TestLinkTreeCommand(tests.TestCaseWithTransport):
         self.parent_tree.unlock()
         self.run_bzr('link-tree ../parent')
         self.assertTrue(self.hardlinked())
-        # want teh addCleanup to work properly
+        # want the addCleanup to work properly
         self.parent_tree.lock_write()

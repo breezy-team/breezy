@@ -262,7 +262,7 @@ Testing
 
 * The test suite should now be able to run under weird environments where
   ``/etc/passwd`` doesn't contain the ``uid`` for the user running selftest
-  or where ``fakeroot`` is used but ``/root`` is inacessible.
+  or where ``fakeroot`` is used but ``/root`` is inaccessible.
   (Vincent Ladeuil, #825027)
 
 bzr 2.4.0

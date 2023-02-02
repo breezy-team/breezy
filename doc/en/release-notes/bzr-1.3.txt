@@ -136,7 +136,7 @@ Bugfixes
   hundreds of MB of ram consumption.
   (Ian Clatworthy, John Arbash Meinel)
 
-* Cherrypicking when using ``--format=merge3`` now explictly excludes
+* Cherrypicking when using ``--format=merge3`` now explicitly excludes
   BASE lines. (John Arbash Meinel, #151731)
 
 * Disable plink's interactive prompt for password.

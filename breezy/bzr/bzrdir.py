@@ -94,7 +94,7 @@ class FeatureAlreadyRegistered(errors.BzrError):
 
 
 class BzrDir(controldir.ControlDir):
-    """A .bzr control diretory.
+    """A .bzr control directory.
 
     BzrDir instances let you create or open any of the things that can be
     found within .bzr - checkouts, branches and repositories.

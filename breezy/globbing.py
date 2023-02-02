@@ -242,7 +242,7 @@ class Globster:
                 if match:
                     return patterns[match.lastindex - 1]
         except lazy_regex.InvalidPattern as e:
-            # We can't show the default e.msg to the user as thats for
+            # We can't show the default e.msg to the user as that's for
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
             mutter('Invalid pattern found in regex: %s.', e.msg)

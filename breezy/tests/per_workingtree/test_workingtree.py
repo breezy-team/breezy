@@ -488,7 +488,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # also test that the content is merged
         # and conflicts recorded.
         # This should merge between the trees - local edits should be preserved
-        # but other changes occured.
+        # but other changes occurred.
         # we test this by having one file that does
         # not change between two revisions, and another that does -
         # if the changed one is not changed, fail,
@@ -695,7 +695,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # work locally
         tree.commit('foo', allow_pointless=True, local=True)
         bar = tree.commit('bar', allow_pointless=True, local=True)
-        # sync with master prepatory to committing
+        # sync with master preparatory to committing
         tree.update()
         # which should have pivoted the local tip into a merge
         self.assertEqual([master_tip, bar], tree.get_parent_ids())

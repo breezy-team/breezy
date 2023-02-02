@@ -176,7 +176,7 @@ class VersionedFileTestMixIn:
     """A mixin test class for testing VersionedFiles.
 
     This is not an adaptor-style test at this point because
-    theres no dynamic substitution of versioned file implementations,
+    there's no dynamic substitution of versioned file implementations,
     they are strictly controlled by their owning repositories.
     """
 
@@ -369,7 +369,7 @@ class VersionedFileTestMixIn:
         # for VersionedFile does not allow forcing a specific chain length, we
         # just use a small base to get the first snapshot, then a much longer
         # first line for the next add (which will make the third add snapshot)
-        # and so on. 20 has been chosen as an aribtrary figure - knits use 200
+        # and so on. 20 has been chosen as an arbitrary figure - knits use 200
         # as a capped delta length, but ideally we would have some way of
         # tuning the test to the store (e.g. keep going until a snapshot
         # happens).
@@ -1024,7 +1024,7 @@ class MergeCasesMixin:
         """
 
         #######################################
-        # skippd, not working yet
+        # skipped, not working yet
         return
 
         self.doMerge([b'aaa', b'bbb', b'ccc'],

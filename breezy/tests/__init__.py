@@ -179,7 +179,7 @@ isolated_environ = {
     'BZR_REMOTE_PATH': None,
     'BRZ_SSH': None,
     # Generally speaking, we don't want apport reporting on crashes in
-    # the test envirnoment unless we're specifically testing apport,
+    # the test environment unless we're specifically testing apport,
     # so that it doesn't leak into the real system environment.  We
     # use an env var so it propagates to subprocesses.
     'APPORT_DISABLE': '1',
@@ -2684,7 +2684,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if (t.get_bytes('.bzr/checkout/dirstate') !=
                 TestCaseWithMemoryTransport._SAFETY_NET_PRISTINE_DIRSTATE):
             # The current test have modified the /bzr directory, we need to
-            # recreate a new one or all the followng tests will fail.
+            # recreate a new one or all the following tests will fail.
             # If you need to inspect its content uncomment the following line
             # import pdb; pdb.set_trace()
             _rmtree_temp_dir(root + '/.bzr', test_id=self.id())
@@ -3871,7 +3871,7 @@ class TestIdList:
     Relying on the assumption that test ids are built as:
     <module>[.<class>.<method>][(<param>+)], <module> being in python dotted
     notation, this class offers methods to :
-    - avoid building a test suite for modules not refered to in the test list,
+    - avoid building a test suite for modules not referred to in the test list,
     - keep only the tests listed from the module test suite.
     """
 
@@ -3912,7 +3912,7 @@ class TestIdList:
 class TestPrefixAliasRegistry(registry.Registry):
     """A registry for test prefix aliases.
 
-    This helps implement shorcuts for the --starting-with selftest
+    This helps implement shortcuts for the --starting-with selftest
     option. Overriding existing prefixes is not allowed but not fatal (a
     warning will be emitted).
     """
@@ -3922,7 +3922,7 @@ class TestPrefixAliasRegistry(registry.Registry):
         """See Registry.register.
 
         Trying to override an existing alias causes a warning to be emitted,
-        not a fatal execption.
+        not a fatal exception.
         """
         try:
             super().register(
@@ -4466,7 +4466,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
 
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
-    Return first successfull match.
+    Return first successful match.
 
     :return:  (unicode value, encoded plain string value) or (None, None)
     """

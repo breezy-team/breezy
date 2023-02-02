@@ -409,12 +409,12 @@ class ForeignRevisionTests(tests.TestCase):
     """Tests for the ForeignRevision class."""
 
     def test_create(self):
-        mapp = DummyForeignVcsMapping(DummyForeignVcs())
+        map = DummyForeignVcsMapping(DummyForeignVcs())
         rev = foreign.ForeignRevision((b"a", b"foreign", b"revid"),
-                                      mapp, b"roundtripped-revid")
+                                      map, b"roundtripped-revid")
         self.assertEqual(b"", rev.inventory_sha1)
         self.assertEqual((b"a", b"foreign", b"revid"), rev.foreign_revid)
-        self.assertEqual(mapp, rev.mapping)
+        self.assertEqual(map, rev.mapping)
 
 
 class DummyForeignVcsTests(tests.TestCaseWithTransport):

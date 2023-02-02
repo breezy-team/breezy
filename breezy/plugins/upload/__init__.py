@@ -112,7 +112,7 @@ specifying it with the --directory option:
 This, together with --auto, can be used to upload when you push to your
 central branch, rather than when you commit to your local branch.
 
-Note that you will consume more bandwith this way than uploading from a local
+Note that you will consume more bandwidth this way than uploading from a local
 branch.
 
 Ignoring certain files

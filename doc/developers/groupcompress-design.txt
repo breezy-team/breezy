@@ -41,7 +41,7 @@ Things to remove
 Index scatter gather IO. Doing hundreds or thousands of index lookups is very
 expensive, and doing that per file just adds insult to injury.
 
-Partioned compression amongst files.
+Partitioned compression amongst files.
 
 Scatter gather IO when reconstructing texts: linear forward IO is better.
 
@@ -53,7 +53,7 @@ add new text to existing files and remove some text from the same. Getting
 high compression means reading some base and then a chain of deltas (could
 be a tree) to gain access to the thing that the final delta was made against,
 and that delta. Rather than composing all these deltas, we can just just
-perform the final diff against the base text and the serialised invidual
+perform the final diff against the base text and the serialised individual
 deltas. If the diff algorithm can reuse out of order lines from previous
 texts (e.g. storing AB -> BA as pointers rather than delete and add, then
 the presence of any previously stored line in a single chain can be reused.
@@ -87,7 +87,7 @@ directory.
 
 Unfortunately, just using entropy compression forces a lot of data to be output
 by the decompressor - e.g. 420MB in the NEWS sample corpus. When we only want
-a single 55K text thats inefficient. (An initial test took several seconds with
+a single 55K text that's inefficient. (An initial test took several seconds with
 lzma.)
 
 The fastest to implement approach is probably just 'diff output to date and add

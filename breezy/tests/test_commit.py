@@ -212,7 +212,7 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(b.revno(), 1)
 
     def test_commit_empty(self):
-        """Commiting an empty tree works."""
+        """Committing an empty tree works."""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         wt.commit(message='empty tree', allow_pointless=True)
@@ -901,7 +901,7 @@ create_signatures=when-possible
     def test_author_with_newline_rejected(self):
         tree = self.make_branch_and_tree('foo')
         self.assertRaises(AssertionError, tree.commit, 'commit 1',
-                          authors=['John\nDoe <jdoe@example.com>'])
+                          authors=['John\node <jdoe@example.com>'])
 
     def test_commit_with_checkout_and_branch_sharing_repo(self):
         repo = self.make_repository('repo', shared=True)

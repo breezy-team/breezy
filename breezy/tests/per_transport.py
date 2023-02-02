@@ -86,7 +86,7 @@ def transport_test_permutations():
 
 
 def load_tests(loader, standard_tests, pattern):
-    """Multiply tests for tranport implementations."""
+    """Multiply tests for transport implementations."""
     result = loader.suiteClass()
     scenarios = transport_test_permutations()
     return multiply_tests(standard_tests, scenarios, result)
@@ -1551,7 +1551,7 @@ class TransportTests(TestTransportImplementation):
         # the adjust for latency flag expands the data region returned
         # according to a per-transport heuristic, so testing is a little
         # tricky as we need more data than the largest combining that our
-        # transports do. To accomodate this we generate random data and cross
+        # transports do. To accommodate this we generate random data and cross
         # reference the returned data with the random data. To avoid doing
         # multiple large random byte look ups we do several tests on the same
         # backing data.
@@ -1696,7 +1696,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual("%s,arm=board" % orig_base, transport.base)
         self.assertEqual({"arm": "board"}, transport.get_segment_parameters())
         transport.set_segment_parameter("arm", None)
-        transport.set_segment_parameter("nonexistant", None)
+        transport.set_segment_parameter("nonexistent", None)
         self.assertEqual({}, transport.get_segment_parameters())
         self.assertEqual(orig_base, transport.base)
 
@@ -1740,7 +1740,7 @@ class TransportTests(TestTransportImplementation):
         Transport.hooks.install_named_hook("post_connect", log.append, None)
         t = self.get_transport()
         self.assertEqual([], log)
-        t.has("non-existant")
+        t.has("non-existent")
         if isinstance(t, RemoteTransport):
             self.assertEqual([t.get_smart_medium()], log)
         elif isinstance(t, ConnectedTransport):

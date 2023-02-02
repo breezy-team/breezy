@@ -113,7 +113,7 @@ class TestInstall(tests.TestCase):
 
     def test_custom_languages(self):
         i18n.install('nl:fy')
-        # Whether we found a valid tranlsation or not doesn't matter, we got
+        # Whether we found a valid translation or not doesn't matter, we got
         # one and _translations is not None anymore.
         self.assertIsInstance(i18n._translations,
                               i18n._gettext.NullTranslations)
@@ -124,7 +124,7 @@ class TestInstall(tests.TestCase):
         self.overrideEnv('LC_MESSAGES', None)
         self.overrideEnv('LANG', None)
         i18n.install()
-        # Whether we found a valid tranlsation or not doesn't matter, we got
+        # Whether we found a valid translation or not doesn't matter, we got
         # one and _translations is not None anymore.
         self.assertIsInstance(i18n._translations,
                               i18n._gettext.NullTranslations)

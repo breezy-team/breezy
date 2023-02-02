@@ -63,7 +63,7 @@ class CommitTemplate:
             return self.merge_message(content)
         else:
             # Get a diff. XXX Is this hookable? I thought it was, can't find it
-            # though.... add DiffTree.diff_factories. Sadly thats not at the
+            # though.... add DiffTree.diff_factories. Sadly that's not at the
             # right level: we want to identify the changed lines, not have the
             # final diff: because we want to grab the sections for regions
             # changed in new version of the file. So for now a direct diff

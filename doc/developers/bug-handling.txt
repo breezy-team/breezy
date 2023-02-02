@@ -223,7 +223,7 @@ Assigning a bug to yourself, or someone else, indicates a real intention
 to work on that bug soon.
 
 
-Targetting Bugs
+Targeting Bugs
 ***************
 
 It's possible to target a bug to a milestone, eg

@@ -33,7 +33,7 @@ class NonAsciiTest(TestCaseWithTransport):
         try:
             wt = self.make_branch_and_tree(br_dir)
         except UnicodeEncodeError:
-            raise TestSkipped("filesystem can't accomodate nonascii names")
+            raise TestSkipped("filesystem can't accommodate nonascii names")
             return
         with open(pathjoin(br_dir, "a"), "w") as f:
             f.write("hello")

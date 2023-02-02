@@ -142,7 +142,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.run_send(['--from', 'foo', '../bar'], wd='foo')
 
     def test_content_options(self):
-        """--no-patch and --no-bundle should work and be independant"""
+        """--no-patch and --no-bundle should work and be independent"""
         md = self.get_MD([])
         self.assertIsNot(None, md.bundle)
         self.assertIsNot(None, md.patch)

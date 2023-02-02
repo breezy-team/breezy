@@ -189,7 +189,7 @@ class TestInventoryReads(TestInventory):
         ie, resolved, remaining = inv.get_entry_by_path_partial('external/blah')
         self.assertEqual((ie.file_id, resolved, remaining), (b'other-root', ['external'], ['blah']))
 
-        # Nonexistant paths
+        # Nonexistent paths
         ie, resolved, remaining = inv.get_entry_by_path_partial('foo.c')
         self.assertEqual((ie, resolved, remaining), (None, None, None))
 

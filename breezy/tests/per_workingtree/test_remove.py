@@ -156,7 +156,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_remove_unknown_files(self):
-        """Unknown files shuld be backed up"""
+        """Unknown files should be backed up"""
         tree = self.get_tree(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)

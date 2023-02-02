@@ -90,7 +90,7 @@ Bug Fixes
   path on windows from symlink support addition. (Martin [gz], #686611)
 
 * Skip tests that needs a bzr source tree when there isn't one. This is
-  needed to succesfully run the test suite for installed versions.
+  needed to successfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
 
 * Skip the tests that requires respecting the chmod bits when running as root.
@@ -143,7 +143,7 @@ Bug Fixes
 
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
+  (Path Malwankar, #262450)
 
 * Configuration files in ``${BZR_HOME}`` are now written in an atomic
   way which should help avoid problems with concurrent writers.
@@ -709,7 +709,7 @@ New Features
 * New option ``bzr unshelve --keep`` applies the changes and leaves them
   on the shelf.  (Martin Pool, Oscar Fuentes, #492091)
 
-* The ``BZR_COLUMNS`` envrionment variable can be set to force bzr to
+* The ``BZR_COLUMNS`` environment variable can be set to force bzr to
   respect a given terminal width. This can be useful when output is
   redirected or in obscure cases where the default value is not
   appropriate. Pagers can use it to get a better control of the line
@@ -914,7 +914,7 @@ Bug Fixes
 * Using ``Repository.get_commit_builder().record_iter_changes()`` now
   correctly sets ``self.inv_sha1`` to a sha1 string and
   ``self.new_inventory`` to an Inventory instance after calling
-  ``self.finish_inventory()``. (Previously it accidently set both values
+  ``self.finish_inventory()``. (Previously it accidentally set both values
   as a tuple on ``self.inv_sha1``. This was missed because
   ``repo.add_revision`` ignores the supplied inventory sha1 and recomputes
   the sha1 from the repo directly. (John Arbash Meinel)
@@ -961,7 +961,7 @@ Testing
 * TestNotApplicable is now handled within the TestCase.run method rather
   than being looked for within ``ExtendedTestResult.addError``. This
   provides better handling with other ``TestResult`` objects, degrading to
-  sucess rather than error. (Robert Collins)
+  success rather than error. (Robert Collins)
 
 * The private method ``_testConcluded`` on ``ExtendedTestResult`` has been
   removed - it was empty and unused. (Robert Collins)

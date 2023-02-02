@@ -293,7 +293,7 @@ Testing
   failing test.  Be aware that using this feature is likely to cause
   spurious test failures if used with the full suite. (Andrew Bennetts)
 
-* selftest --load-list now uses a new more agressive test loader that will
+* selftest --load-list now uses a new more aggressive test loader that will
   avoid loading unneeded modules and building their tests. Plugins can use
   this new loader by defining a load_tests function instead of a test_suite
   function. (a forthcoming patch will provide many examples on how to

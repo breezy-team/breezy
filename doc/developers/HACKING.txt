@@ -127,7 +127,7 @@ Alternatively, after pushing you can use the ``propose`` command to
 create the merge proposal.
 
 Using a meaningful name for your branch will help you and the reviewer(s)
-better track the submission. Use a very succint description of your submission
+better track the submission. Use a very succinct description of your submission
 and prefix it with bug number if needed (lp:~mbp/bzr/484558-merge-directory
 for example). Alternatively, you can suffix with the bug number
 (lp:~jameinel/bzr/export-file-511987).
@@ -521,7 +521,7 @@ What is a Core Developer?
 -------------------------
 
 While everyone in the Breezy community is welcome and encouraged to
-propose and submit changes, a smaller team is reponsible for pulling those
+propose and submit changes, a smaller team is responsible for pulling those
 changes together into a cohesive whole. In addition to the general developer
 stuff covered above, "core" developers have responsibility for:
 
@@ -549,7 +549,7 @@ There are numerous ways to do this:
 #. Mention it on the mailing list
 #. Mention it on IRC
 
-As well as the email notifcations that occur when merge requests are sent
+As well as the email notifications that occur when merge requests are sent
 and reviewed, you can keep others informed of where you're spending your
 energy by emailing the **bazaar-commits** list implicitly. To do this,
 install and configure the Email plugin. One way to do this is add these

@@ -549,7 +549,7 @@ class BzrFastExporter:
         # In a nutshell, there are several nasty cases:
         #
         # 1) bzr rm a; bzr mv b a; bzr commit
-        # 2) bzr mv x/y z; bzr rm x; commmit
+        # 2) bzr mv x/y z; bzr rm x; commit
         #
         # The first must come out with the delete first like this:
         #

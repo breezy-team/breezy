@@ -719,7 +719,7 @@ class BTreeGraphIndex:
         Note: Asking for more nodes than the _node_cache can contain will
         result in some of the results being immediately discarded, to prevent
         this an assertion is raised if more nodes are asked for than are
-        cachable.
+        cacheable.
 
         :return: A dict of {node_pos: node}
         """
@@ -761,7 +761,7 @@ class BTreeGraphIndex:
             # This is the number of pages as defined by the header
             return self._row_offsets[-1]
         # This is the number of pages as defined by the size of the index. They
-        # should be indentical.
+        # should be identical.
         total_pages = int(math.ceil(self._size / _PAGE_SIZE))
         return total_pages
 
@@ -810,7 +810,7 @@ class BTreeGraphIndex:
         if self._root_node is None:
             # ATM on the first read of the root node of a large index, we don't
             # bother pre-reading any other pages. This is because the
-            # likelyhood of actually reading interesting pages is very low.
+            # likelihood of actually reading interesting pages is very low.
             # See doc/developers/btree_index_prefetch.txt for a discussion, and
             # a possible implementation when we are guessing that the second
             # layer index is small
@@ -1474,7 +1474,7 @@ class BTreeGraphIndex:
         """
         # may be the byte string of the whole file
         bytes = None
-        # list of (offset, length) regions of the file that should, evenually
+        # list of (offset, length) regions of the file that should, eventually
         # be read in to data_ranges, either from 'bytes' or from the transport
         ranges = []
         base_offset = self._base_offset

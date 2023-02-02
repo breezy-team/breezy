@@ -102,7 +102,7 @@ class RemoteTransport(transport.ConnectedTransport):
                 and isinstance(_from_transport, RemoteTransport)):
             _client = _from_transport._client
         elif _from_transport is None:
-            # If no _from_transport is specified, we need to intialize the
+            # If no _from_transport is specified, we need to initialize the
             # shared medium.
             credentials = None
             if medium is None:
@@ -333,7 +333,7 @@ class RemoteTransport(transport.ConnectedTransport):
                                                 fudge_factor=self._bytes_to_read_before_seek,
                                                 max_size=self._max_readv_bytes))
 
-        # now that we've coallesced things, avoid making enormous requests
+        # now that we've coalesced things, avoid making enormous requests
         requests = []
         cur_request = []
         cur_len = 0
@@ -542,7 +542,7 @@ class RemoteHTTPTransport(RemoteTransport):
     def __init__(self, base, _from_transport=None, http_transport=None):
         if http_transport is None:
             # FIXME: the password may be lost here because it appears in the
-            # url only for an intial construction (when the url came from the
+            # url only for an initial construction (when the url came from the
             # command-line).
             http_url = base[len('bzr+'):]
             self._http_transport = transport.get_transport_from_url(http_url)

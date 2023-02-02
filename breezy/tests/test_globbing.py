@@ -375,7 +375,7 @@ class TestNormalizePattern(TestCase):
         self.assertEqual('/foo/bar', normalize_pattern('\\\\foo\\\\bar\\\\'))
 
     def test_forward_slashes(self):
-        """tests that multiple foward slashes are collapsed to single forward
+        """tests that multiple forward slashes are collapsed to single forward
         slashes and trailing forward slashes are removed"""
         self.assertEqual('/', normalize_pattern('/'))
         self.assertEqual('/', normalize_pattern('//'))

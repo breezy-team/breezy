@@ -51,7 +51,7 @@ class UTextWrapper(textwrap.TextWrapper):
       characters or zero-width characters.
     * Treats all asian character are line breakable. But it is not
       true because line breaking is prohibited around some characters.
-      (For example, breaking before punctation mark is prohibited.)
+      (For example, breaking before punctuation mark is prohibited.)
       See UAX # 14 "UNICODE LINE BREAKING ALGORITHM"
     """
 

@@ -496,7 +496,7 @@ class MergeSortTests(TestCase):
         # E 0
         # with a mainline of NONE,E,A (the inferred one) this will show the
         # merge depths above.
-        # with a overriden mainline of NONE,E,D,B,A it should show:
+        # with a overridden mainline of NONE,E,D,B,A it should show:
         # A 0
         # B 0
         # C 1

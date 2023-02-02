@@ -57,7 +57,7 @@ class TestGitShaMap:
         c.author = b"Jelmer <jelmer@samba.org>"
         c.author_time = 0
         c.author_timezone = 0
-        c.message = b"Teh foo bar"
+        c.message = b"The foo bar"
         c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
         return c
 
@@ -88,7 +88,7 @@ class TestGitShaMap:
         updater.add_object(self._get_test_commit(), {
                            "testament3-sha1": b"Test"}, None)
         b = Blob()
-        b.data = b"TEH BLOB"
+        b.data = b"THE BLOB"
         updater.add_object(b, (b"myfileid", b"myrevid"), None)
         updater.finish()
         self.map.commit_write_group()

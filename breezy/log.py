@@ -862,7 +862,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
                 depth_adjustment = merge_depth
             if depth_adjustment:
                 if merge_depth < depth_adjustment:
-                    # From now on we reduce the depth adjustement, this can be
+                    # From now on we reduce the depth adjustment, this can be
                     # surprising for users. The alternative requires two passes
                     # which breaks the fast display of the first revision
                     # though.

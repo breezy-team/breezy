@@ -202,7 +202,7 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
 
 class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
     """A scenario where a revision 'rev3' containing 'a-file' modified in
-    'rev3', and with a parent which is in the revision ancestory, but whose
+    'rev3', and with a parent which is in the revision ancestry, but whose
     inventory cannot be accessed at all.
 
     Reconcile should remove the file version parent whose inventory is

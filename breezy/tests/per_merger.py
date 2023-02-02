@@ -31,7 +31,7 @@ from .test_merge_core import MergeBuilder
 
 
 def load_tests(loader, standard_tests, pattern):
-    """Multiply tests for tranport implementations."""
+    """Multiply tests for transport implementations."""
     result = loader.suiteClass()
     scenarios = [
         (name, {'merge_type': merger})

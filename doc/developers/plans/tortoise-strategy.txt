@@ -103,7 +103,7 @@ The use of an external process to perform commands is fairly simplistic in
 terms of parent and modal windows. For example, when selecting "Commit", a
 new process starts and *usually* ends up as the foreground window, but it may
 occasionally be lost underneath the window which created it, and the user may
-accidently start many processes when they only need 1. Best I can tell, this
+accidentally start many processes when they only need 1. Best I can tell, this
 isn't necessarily a limitation of the approach, just the implementation.
 
 Advantages of using the external process is that it keeps all the UI code

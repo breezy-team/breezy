@@ -684,7 +684,7 @@ cdef class Reader:
             #       careful. We are relying on a bit of Pyrex
             #       automatic-conversion from 'int' to PyInt, and that doesn't
             #       play well with the StaticTuple_SET_ITEM macro.
-            #       Timing doesn't (yet) show a worthwile improvement in speed
+            #       Timing doesn't (yet) show a worthwhile improvement in speed
             #       versus complexity and maintainability.
             # tmp = StaticTuple_New(5)
             # Py_INCREF(minikind); StaticTuple_SET_ITEM(tmp, 0, minikind)
@@ -807,7 +807,7 @@ cdef unsigned long _time_to_unsigned(object t):  # cannot_raise
 cdef _pack_stat(stat_value):
     """return a string representing the stat value's key fields.
 
-    :param stat_value: A stat oject with st_size, st_mtime, st_ctime, st_dev,
+    :param stat_value: A stat object with st_size, st_mtime, st_ctime, st_dev,
         st_ino and st_mode fields.
     """
     cdef char result[6*4] # 6 long ints
@@ -1111,7 +1111,7 @@ cdef class ProcessEntryC:
             decode.
         :return: (iter_changes_result, changed). If the entry has not been
             handled then changed is None. Otherwise it is False if no content
-            or metadata changes have occured, and True if any content or
+            or metadata changes have occurred, and True if any content or
             metadata change has occurred. If self.include_unchanged is True then
             if changed is not None, iter_changes_result will always be a result
             tuple. Otherwise, iter_changes_result is None unless changed is
@@ -1357,7 +1357,7 @@ cdef class ProcessEntryC:
                        (None, False)), True
         elif _versioned_minikind(source_minikind) and target_minikind == b'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
-            # if its still on disk, *and* theres no other entry at this
+            # if its still on disk, *and* there's no other entry at this
             # path [we dont know this in this routine at the moment -
             # perhaps we should change this - then it would be an unknown.
             old_path = self.pathjoin(entry[0][0], entry[0][1])
@@ -1454,7 +1454,7 @@ cdef class ProcessEntryC:
         # sketch: 
         # compare source_index and target_index at or under each element of search_specific_files.
         # follow the following comparison table. Note that we only want to do diff operations when
-        # the target is fdl because thats when the walkdirs logic will have exposed the pathinfo 
+        # the target is fdl because that's when the walkdirs logic will have exposed the pathinfo 
         # for the target.
         # cases:
         # 
@@ -1757,7 +1757,7 @@ cdef class ProcessEntryC:
                 self.current_block_pos < PyList_GET_SIZE(self.current_block_list)):
                 current_entry = PyList_GET_ITEM(self.current_block_list,
                     self.current_block_pos)
-                # accomodate pyrex
+                # accommodate pyrex
                 Py_INCREF(current_entry)
             else:
                 current_entry = None
@@ -1765,10 +1765,10 @@ cdef class ProcessEntryC:
                 self.path_index < PyList_GET_SIZE(self.current_dir_list)):
                 current_path_info = PyList_GET_ITEM(self.current_dir_list,
                     self.path_index)
-                # accomodate pyrex
+                # accommodate pyrex
                 Py_INCREF(current_path_info)
                 disk_kind = PyTuple_GET_ITEM(current_path_info, 2)
-                # accomodate pyrex
+                # accommodate pyrex
                 Py_INCREF(disk_kind)
                 if disk_kind == "directory":
                     current_path_info = self._maybe_tree_ref(current_path_info)

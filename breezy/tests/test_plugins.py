@@ -727,7 +727,7 @@ class TestDisablePlugin(BaseTestPlugins):
             'ugly': None,
         })
         # Ensure there are no warnings about plugins not being imported as
-        # the user has explictly requested they be disabled.
+        # the user has explicitly requested they be disabled.
         self.assertNotContainsRe(self.get_log(), r"Unable to load plugin")
 
 

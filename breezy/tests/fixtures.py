@@ -96,7 +96,7 @@ class RecordingContextManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._calls.append('__exit__')
-        return False  # propogate exceptions.
+        return False  # propagate exceptions.
 
 
 def build_branch_with_non_ancestral_rev(branch_builder):

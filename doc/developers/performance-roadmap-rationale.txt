@@ -35,7 +35,7 @@ I've heard this from numerous other folk. So anything that will remove
 that should be considered a last resort.
 
 Similarly our relatively excellent cross platform support is critical
-for projects that are themselves cross platform, and thats a
+for projects that are themselves cross platform, and that's a
 considerable number these days.
 
 And of course, our focus on doing the right thing is what differentiates

@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate lazy_static;
+extern create lazy_static;
 
 use pyo3::prelude::*;
 use regex::Regex;

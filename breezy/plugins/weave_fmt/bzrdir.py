@@ -562,7 +562,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.controldir.transport.delete('ancestry.weave')
         except NoSuchFile:
             pass
-        # find out whats there
+        # find out what's there
         self.step(gettext('Finding branch files'))
         last_revision = self.controldir.open_branch().last_revision()
         bzrcontents = self.controldir.transport.list_dir('.')

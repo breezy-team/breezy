@@ -342,7 +342,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         """Get an empty inventory.
 
         Note that tests should not depend on the revision of the root for
-        setting up test conditions, as it has to be flexible to accomodate non
+        setting up test conditions, as it has to be flexible to accommodate non
         rich root repositories.
 
         :param reference_inv: If not None, get the revision for the root from

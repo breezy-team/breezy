@@ -68,13 +68,13 @@ which will be stored into the current user's S3 account.
 We'll (probably) have one shared account for running builds which is also
 an administrator for ease of installing software.
 
-You do need to have an RSA keypair to get the initial password for a
+You do need to have an RSA key pair to get the initial password for a
 Windows machine, even though you can't use it to log in later.
 ``ec2-get-password`` takes the full path to the private key to obtain the
-password from Amazon, and ``ec2-add-keypair`` creates a named keypair at
-Amazon and returns the private path. One keypair is all that is needed.
+password from Amazon, and ``ec2-add-key pair`` creates a named key pair at
+Amazon and returns the private path. One key pair is all that is needed.
 This is distinct from the account identifier - likely due to the different
-toolchains in use (the keypairs are used for unix SSH keys, and I (Robert)
+toolchains in use (the key pairs are used for unix SSH keys, and I (Robert)
 suspect a rather unix friendly core at Amazon).
 Once a custom image is made with a saved password, you can skip using
 ``ec2-get-password`` (which is only needed for Windows anyway).

@@ -264,7 +264,7 @@ cdef class Win32ReadDir:
             if result == 0:
                 last_err = GetLastError()
                 # TODO: We should probably raise an exception if FindClose
-                #       returns an error, however, I don't want to supress an
+                #       returns an error, however, I don't want to suppress an
                 #       earlier Exception, so for now, I'm ignoring this
         dirblock.sort(key=operator.itemgetter(1))
         return dirblock

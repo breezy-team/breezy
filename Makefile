@@ -207,7 +207,7 @@ doc/developers/performance.png: doc/developers/performance.dot
 
 # make all the installers completely from scratch, using zc.buildout
 # to fetch the dependencies
-# These are files that need to be copied into the build location to boostrap
+# These are files that need to be copied into the build location to bootstrap
 # the build process.
 # Note that the path is relative to tools/win32
 BUILDOUT_FILES = buildout.cfg \

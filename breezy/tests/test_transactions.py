@@ -74,7 +74,7 @@ class TestReadOnlyTransaction(TestCase):
         self.transaction.finish()
 
     def test_finish_does_not_tell_versioned_file_finished(self):
-        # read only transactions never write, so theres no
+        # read only transactions never write, so there's no
         # need to inform versioned files about finishing
         weave = DummyWeave('a weave')
         self.transaction.finish()

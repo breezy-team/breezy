@@ -238,7 +238,7 @@ def plugin_command_names():
     return plugin_cmds.keys()
 
 
-# Overrides for common mispellings that heuristics get wrong
+# Overrides for common misspellings that heuristics get wrong
 _GUESS_OVERRIDES = {
     'ic': {'ci': 0},  # heuristic finds nick
     }
@@ -1373,7 +1373,7 @@ class HelpCommandIndex:
 
 
 class Provider:
-    """Generic class to be overriden by plugins"""
+    """Generic class to be overridden by plugins"""
 
     def plugin_for_command(self, cmd_name):
         """Takes a command and returns the information for that plugin

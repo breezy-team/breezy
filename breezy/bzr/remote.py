@@ -3741,7 +3741,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             # repository into a new repository object without the fallbacks.
             #
             # XXX: See <https://launchpad.net/bugs/397286> - this may not be
-            # correct for CHKMap repostiories
+            # correct for CHKMap repositories
             old_repository = self.repository
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError(

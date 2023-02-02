@@ -318,7 +318,7 @@ class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
     def register_lazy(self, key, module_name, member_name,
                       help=None, info=None,
                       override_existing=False):
-        # Overridden to allow capturing registrations to two seperate
+        # Overridden to allow capturing registrations to two separate
         # registries in a single call.
         Registry.register_lazy(self, key, module_name, member_name,
                                help=help, info=info, override_existing=override_existing)

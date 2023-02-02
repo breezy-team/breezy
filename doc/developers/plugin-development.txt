@@ -138,7 +138,7 @@ Configuration settings are often stored in ``branch.conf``,
 ``locations.conf`` or ``bazaar.conf``.
 
 User-visible data for a plugin called xxx should be stored in
-``.bzrmeta/xxx``. If mutiple files are desirable, make ``.bzrmeta/xxx``
+``.bzrmeta/xxx``. If multiple files are desirable, make ``.bzrmeta/xxx``
 a directory or give them a common prefix within ``.bzrmeta``, e.g.
 ``xxx-foo``, ``xxx-bar``.
 
@@ -158,7 +158,7 @@ To do this, define ``version_info`` in ``__init__.py`` like this::
 
   version_info = (1, 2, 0, 'beta', 1)
 
-Plugins can also declare other useful metadata such as a mimimum
+Plugins can also declare other useful metadata such as a minimum
 breezy version, new transports and storage formats. See
 `Plugin API <plugin-api>`_ for details.
 

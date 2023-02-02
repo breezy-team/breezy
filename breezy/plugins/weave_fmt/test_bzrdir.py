@@ -72,7 +72,7 @@ class TestFormat5(TestCaseWithTransport):
         check_dir_components_use_same_lock(dir)
 
     def test_can_convert(self):
-        # format 5 dirs are convertable
+        # format 5 dirs are convertible
         dir = BzrDirFormat5().initialize(self.get_url())
         self.assertTrue(dir.can_convert_format())
 
@@ -107,7 +107,7 @@ class TestFormat6(TestCaseWithTransport):
         check_dir_components_use_same_lock(dir)
 
     def test_can_convert(self):
-        # format 6 dirs are convertable
+        # format 6 dirs are convertible
         dir = BzrDirFormat6().initialize(self.get_url())
         self.assertTrue(dir.can_convert_format())
 

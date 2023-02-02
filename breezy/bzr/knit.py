@@ -38,7 +38,7 @@ version robertc@robertcollins.net-20051003014215-ee2990904cc4c7ad 7 c7d23b2a5bd6
 end robertc@robertcollins.net-20051003014215-ee2990904cc4c7ad
 
 
-whats in an index:
+what's in an index:
 09:33 < jrydberg> lifeless: each index is made up of a tuple of; version id, options, position, size, parents
 09:33 < jrydberg> lifeless: the parents are currently dictionary compressed
 09:33 < jrydberg> lifeless: (meaning it currently does not support ghosts)
@@ -543,7 +543,7 @@ class KnitContent:
         for tag, i1, i2, j1, j2 in s.get_opcodes():
             if tag == 'equal':
                 continue
-            # ofrom, oto, length, data
+            # from, oto, length, data
             yield i1, i2, j2 - j1, new_lines._lines[j1:j2]
 
     def line_delta(self, new_lines):
@@ -2052,7 +2052,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """Read text records from data file and yield raw data.
 
         This unpacks enough of the text record to validate the id is
-        as expected but thats all.
+        as expected but that's all.
 
         Each item the iterator yields is (key, bytes,
             expected_sha1_of_full_text).
@@ -2587,7 +2587,7 @@ class _KndxIndex:
         """
         prefix = key[:-1]
         version_id = key[-1]
-        # last-element only for compatibilty with the C load_data.
+        # last-element only for compatibility with the C load_data.
         parents = tuple(parent[-1] for parent in parent_keys)
         for parent in parent_keys:
             if parent[:-1] != prefix:

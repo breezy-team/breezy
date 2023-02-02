@@ -69,7 +69,7 @@ def unpack_highres_date(date):
     Where timestamp is in real UTC since epoch seconds, and timezone is an
     integer number of seconds offset.
 
-    :param date: A date formated by format_highres_date
+    :param date: A date formatted by format_highres_date
     :type date: string
 
     """

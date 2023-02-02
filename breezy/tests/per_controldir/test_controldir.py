@@ -1680,7 +1680,7 @@ class TestBreakLock(TestCaseWithControlDir):
         try:
             repo.controldir.break_lock()
         except NotImplementedError:
-            # this bzrdir does not implement break_lock - so we cant test it.
+            # this bzrdir does not implement break_lock - so we can't test it.
             repo.unlock()
             raise TestNotApplicable("format does not support breaking locks")
         lock_repo.lock_write()
@@ -1692,7 +1692,7 @@ class TestBreakLock(TestCaseWithControlDir):
         # and not directly try the repository.
         # we test this by making a branch reference to a branch
         # and repository in another bzrdir
-        # for pre-metadir formats this will fail, thats ok.
+        # for pre-metadir formats this will fail, that's ok.
         master = self.make_branch('branch')
         thisdir = self.make_controldir('this')
         try:

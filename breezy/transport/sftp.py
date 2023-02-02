@@ -164,7 +164,7 @@ class _SFTPReadvHelper:
         could try something larger (openssh supports 64kB), but then we have to
         handle requests that fail.
         So instead, we just break up our maximum chunks into 32kB chunks, and
-        asyncronously requests them.
+        asynchronously requests them.
         Newer versions of paramiko would do the chunking for us, but we want to
         start processing results right away, so we do it ourselves.
         """

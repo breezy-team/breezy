@@ -27,7 +27,7 @@ from ..tests.features import (
 
 # NOTE: As bzr-grep optimizes PATTERN search to -F/--fixed-string
 # for patterns that are not alphanumeric+whitespace, we test grep
-# specfically with patterns that have special characters so that
+# specifically with patterns that have special characters so that
 # regex path is tested. alphanumeric patterns test the -F path.
 
 
@@ -79,7 +79,7 @@ class TestGrep(GrepTestBase):
     """Core functional tests for grep."""
 
     def test_basic_unknown_file(self):
-        """Search for pattern in specfic file.
+        """Search for pattern in specific file.
 
         If specified file is unknown, grep it anyway."""
         wd = 'foobar0'
@@ -95,18 +95,18 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 10)
 
-        # unknown file is not grepped unless explicitely specified
+        # unknown file is not grepped unless explicitly specified
         out, err = self.run_bzr(['grep', 'line1'])
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 0)
 
-        # unknown file is not grepped unless explicitely specified
+        # unknown file is not grepped unless explicitly specified
         out, err = self.run_bzr(['grep', 'line1$'])
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 0)
 
     def test_ver_basic_file(self):
-        """(versioned) Search for pattern in specfic file.
+        """(versioned) Search for pattern in specific file.
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -130,7 +130,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 10)
 
     def test_wtree_basic_file(self):
-        """(wtree) Search for pattern in specfic file.
+        """(wtree) Search for pattern in specific file.
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -1323,7 +1323,7 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file0.txt~3:1:v3", flags=TestGrep._reflags)
 
     def test_revno_versioned_file_in_dir(self):
-        """Grep specific version of file withing dir.
+        """Grep specific version of file within dir.
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -1433,7 +1433,7 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 3)
 
     def test_revno_range_versioned_file_in_dir(self):
-        """Grep rev-range for pattern for file withing a dir.
+        """Grep rev-range for pattern for file within a dir.
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -2265,7 +2265,7 @@ class TestColorGrep(GrepTestBase):
             ]), ""))
 
     def test_ver_basic_file(self):
-        """(versioned) Search for pattern in specfic file.
+        """(versioned) Search for pattern in specific file.
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -2332,7 +2332,7 @@ class TestColorGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_basic_file(self):
-        """(wtree) Search for pattern in specfic file.
+        """(wtree) Search for pattern in specific file.
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)

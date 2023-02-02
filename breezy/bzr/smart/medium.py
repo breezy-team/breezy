@@ -841,7 +841,7 @@ class SmartClientMedium(SmartMedium):
         it is for.  In those cases, this method should return False.
 
         But some HTTP transports can sometimes fail to carry smart requests,
-        but still be usuable for accessing remote bzrdirs via plain file
+        but still be usable for accessing remote bzrdirs via plain file
         accesses.  So for those transports, their media should return True here
         so that RemoteBzrDirFormat can determine if it is appropriate for that
         transport.

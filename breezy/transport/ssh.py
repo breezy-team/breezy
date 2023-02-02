@@ -348,7 +348,7 @@ class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
 
     # In general stderr should be inherited from the parent process so prompts
-    # are visible on the terminal. This can be overriden to another file for
+    # are visible on the terminal. This can be overridden to another file for
     # tests, but beware of using PIPE which may hang due to not being read.
     _stderr_target = None
 

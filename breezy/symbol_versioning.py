@@ -148,7 +148,7 @@ def deprecated_passed(parameter_value):
     # it would need to handle positional and *args and **kwargs parameters,
     # which means some mechanism to describe how the parameter was being
     # passed before deprecation, and some way to deprecate parameters that
-    # were not at the end of the arg list. Thats needed for __init__ where
+    # were not at the end of the arg list. That's needed for __init__ where
     # we cannot just forward to a new method name.I.e. in the following
     # examples we would want to have callers that pass any value to 'bad' be
     # given a warning - because we have applied:

@@ -50,11 +50,11 @@ Sample brz_access.conf::
 
    [groups]
    admins = alpha
-   devels = beta, gamma, delta
+   delves = beta, gamma, delta
    
    [/]
    @admins = rw
-   @devels = r
+   @delves = r
 
 This allows you to set up a single SSH user, and customize the access based on
 ssh key. Your ``.ssh/authorized_key`` file should look something like this::

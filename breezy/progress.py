@@ -108,7 +108,7 @@ class ProgressTask:
             self.msg)
 
     def update(self, msg, current_cnt=None, total_cnt=None):
-        """Report updated task message and if relevent progress counters
+        """Report updated task message and if relevant progress counters
 
         The message given must be unicode, not a byte string.
         """

@@ -1350,7 +1350,7 @@ other_url = /other-subdir
         self.get_branch_config('http://www.example.com/a/b/c')
         self.assertEqual('append/a/b/c',
                          self.my_config.get_user_option('appendpath_option'))
-        # Overriden for http://www.example.com/dir, where it is a
+        # Overridden for http://www.example.com/dir, where it is a
         # normal option:
         self.get_branch_config('http://www.example.com/dir/a/b/c')
         self.assertEqual('normal',
@@ -1488,7 +1488,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                          my_config.get_user_option('user_global_option'))
 
     def test_config_precedence(self):
-        # FIXME: eager test, luckily no persitent config file makes it fail
+        # FIXME: eager test, luckily no persistent config file makes it fail
         # -- vila 20100716
         my_config = self.get_branch_config(global_config=precedence_global)
         self.assertEqual(my_config.get_user_option('option'), 'global')
@@ -1534,7 +1534,7 @@ class TestMailAddressExtraction(tests.TestCase):
 class TestTreeConfig(tests.TestCaseWithTransport):
 
     def test_get_value(self):
-        """Test that retreiving a value from a section is possible"""
+        """Test that retrieving a value from a section is possible"""
         branch = self.make_branch('.')
         tree_config = config.TreeConfig(branch)
         tree_config.set_option('value', 'key', 'SECTION')
@@ -1611,7 +1611,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
              'nonexisting:///control.conf.'])
 
     def test_get_value(self):
-        """Test that retreiving a value from a section is possible"""
+        """Test that retrieving a value from a section is possible"""
         bzrdir_config = config.TransportConfig(self.get_transport('.'),
                                                'control.conf')
         bzrdir_config.set_option('value', 'key', 'SECTION')
@@ -1868,7 +1868,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         conf = remote_bzrdir._get_config()
         conf.set_option('remotedir', 'file')
         # We get one call for the server and one call for the client, this is
-        # caused by the differences in implementations betwen
+        # caused by the differences in implementations between
         # SmartServerBzrDirRequestConfigFile (in smart/bzrdir.py) and
         # SmartServerBranchGetConfigFile (in smart/branch.py)
         self.assertLoadHook(
@@ -2332,7 +2332,7 @@ class TestCommandLineStore(tests.TestCase):
         self.store._from_cmdline(['l=1,2,3'])
         val = self.get_section().get('l')
         self.assertEqual('1,2,3', val)
-        # Reminder: lists should be registered as such explicitely, otherwise
+        # Reminder: lists should be registered as such explicitly, otherwise
         # the conversion needs to be done afterwards.
         self.assertEqual(['1', '2', '3'],
                          opt.convert_from_unicode(self.store, val))
@@ -4491,7 +4491,7 @@ user=jim
         # the user is prompted
         self.assertEqual(entered_password,
                          conf.get_password('ssh', 'bar.org', user='jim'))
-        # No warning shoud be emitted since there is no password. We are only
+        # No warning should be emitted since there is no password. We are only
         # providing "user".
         self.assertNotContainsRe(
             self.get_log(),

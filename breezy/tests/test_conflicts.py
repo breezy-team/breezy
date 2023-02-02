@@ -1016,7 +1016,7 @@ $ brz merge ../trunk
     def test_take_this(self):
         self.run_script("""
 $ brz rm -q foo.new --no-backup
-# FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
+# FIXME: Isn't it weird that foo is now unknown even if foo.new has been put
 # aside ? -- vila 090916
 $ brz add -q foo
 $ brz resolve foo.new

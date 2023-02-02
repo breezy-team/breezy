@@ -71,7 +71,7 @@ Ideally we can make our data access for commands such as branch to
 dovetail well with the native storage in the repository, in the common
 case. Doing this may require choosing the behaviour of some commands to
 allow us to have a smaller range of access patterns which we can optimise
-more heavily. Alternatively if each command is very predicable in its
+more heavily. Alternatively if each command is very predictable in its
 data access pattern we may be able to hint to the low level layers which
 pattern is needed on a per command basis to get efficient behaviour.
 
@@ -224,7 +224,7 @@ to me for illustration.
 
 A key element is to consider when indices are updated. I think that the
 update style proposed for pack based repositories - write once, then when
-we group data again rewrite a new single index - is sufficent.
+we group data again rewrite a new single index - is sufficient.
 
 Replace .kndx
 ^^^^^^^^^^^^^
@@ -300,7 +300,7 @@ increase the packedness of the local repo.
 Choosing compression/delta support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Caching and writeing of data
+Caching and writing of data
 ============================
 
 Repositories try to provide a consistent view of the data within them

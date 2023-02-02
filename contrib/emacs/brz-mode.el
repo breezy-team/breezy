@@ -148,7 +148,7 @@ BUFFER-NAME is the command's output buffer."
 
 ;;;; Hook setup
 ;;;
-;;; Automaticaly enter brz-mode when we open a file that's under brz
+;;; Automatically enter brz-mode when we open a file that's under brz
 ;;; control, i.e. if the .bzr directory can be found.
 
 (defun brz-find-file-hook ()

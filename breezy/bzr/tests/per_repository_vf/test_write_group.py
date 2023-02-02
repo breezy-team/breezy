@@ -558,7 +558,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         stream = source_repo.texts.get_record_stream(
             [key_delta], 'unordered', False)
         repo.texts.insert_record_stream(stream)
-        # It's either not commitable due to the missing compression parent, or
+        # It's either not committable due to the missing compression parent, or
         # the stacked location has already filled in the fulltext.
         try:
             repo.commit_write_group()
@@ -572,7 +572,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
                                                             'unordered', True))
             self.assertEqual(b'more\nlines\n', record.get_bytes_as('fulltext'))
             return
-        # Merely suspending and resuming doesn't make it commitable either.
+        # Merely suspending and resuming doesn't make it committable either.
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)

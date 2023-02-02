@@ -393,7 +393,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         :param protocol_version: if specified, will override the protocol
             version of the request handler.
         """
-        # Depending on the protocol version, we will create the approriate
+        # Depending on the protocol version, we will create the appropriate
         # server
         if protocol_version is None:
             # Use the request handler one

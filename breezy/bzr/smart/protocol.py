@@ -122,7 +122,7 @@ class Requester:
 class SmartProtocolBase:
     """Methods common to client and server"""
 
-    # TODO: this only actually accomodates a single block; possibly should
+    # TODO: this only actually accommodates a single block; possibly should
     # support multiple chunks?
     def _encode_bulk_data(self, body):
         """Encode body as a bulk data chunk."""
@@ -1079,7 +1079,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         if self.state_accept == self._state_accept_reading_unused:
             return 0
         elif self.decoding_failed:
-            # An exception occured while processing this message, probably from
+            # An exception occurred while processing this message, probably from
             # self.message_handler.  We're not sure that this state machine is
             # in a consistent state, so just signal that we're done (i.e. give
             # up).

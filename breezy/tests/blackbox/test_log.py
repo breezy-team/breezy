@@ -611,7 +611,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 
     # FIXME: We need specific tests for each LogFormatter about how the diffs
     # are displayed: --long indent them by depth, --short use a fixed
-    # indent and --line does't display them. -- vila 10019
+    # indent and --line doesn't display them. -- vila 10019
 
     def setUp(self):
         super().setUp()

@@ -204,7 +204,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 clear = False
             state = self._current_dirstate()
             if state._lock_token is not None:
-                # we already have it locked. sheese, cant break our own lock.
+                # we already have it locked. sheese, can't break our own lock.
                 raise errors.LockActive(self.basedir)
             else:
                 try:
@@ -1625,7 +1625,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         return self._get_matchingcontroldir()
 
     def _get_matchingcontroldir(self):
-        """Overrideable method to get a bzrdir for testing."""
+        """Overridable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return controldir.format_registry.make_controldir(
             'development-subtree')
@@ -1709,7 +1709,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
         return True
 
     def _get_matchingcontroldir(self):
-        """Overrideable method to get a bzrdir for testing."""
+        """Overridable method to get a bzrdir for testing."""
         # We use 'development-subtree' instead of '2a', because we have a
         # few tests that want to test tree references
         return controldir.format_registry.make_controldir('development-subtree')
@@ -2355,7 +2355,7 @@ class Converter3to4:
 
     def convert(self, tree):
         # lock the control files not the tree, so that we dont get tree
-        # on-unlock behaviours, and so that noone else diddles with the
+        # on-unlock behaviours, and so that no one else diddles with the
         # tree during upgrade.
         tree._control_files.lock_write()
         try:

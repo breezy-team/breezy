@@ -1014,7 +1014,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, next, search)
 
     def assertSeenAndResult(self, instructions, search, next):
-        """Check the results of .seen and get_result() for a seach.
+        """Check the results of .seen and get_result() for a search.
 
         :param instructions: A list of tuples:
             (seen, recipe, included_keys, starts, stops).
@@ -1713,7 +1713,7 @@ class TestStackedParentsProvider(tests.TestCase):
                          stacked.get_parent_map([b'rev1', b'rev1']))
 
     def test_stacked_parents_provider_overlapping(self):
-        # rev2 is availible in both providers.
+        # rev2 is available in both providers.
         # 1
         # |
         # 2

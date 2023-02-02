@@ -52,7 +52,7 @@ class Mergeable:
 
 
 def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
-    """Read mergable object from a given URL.
+    """Read mergeable object from a given URL.
 
     :return: An object supporting get_target_revision.  Raises NotABundle if
         the target is not a mergeable type.

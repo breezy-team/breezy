@@ -78,11 +78,11 @@ no access at all.  A sample of ``bzr_access.conf`` could be::
 
    [groups]
    admins = alpha
-   devels = beta, gamma, delta
+   delves = beta, gamma, delta
    
    [/]
    @admins = rw
-   @devels = r
+   @delves = r
    upsilon = 
 
 where the user whose key is associated with `alpha` would have read-write

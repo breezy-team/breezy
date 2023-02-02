@@ -8,7 +8,7 @@ people writing plugins.  People writing plugins may also like to read the
 guide to `Integrating with Breezy <integration.html>`_ for some specific recipes.
 
 There's some overlap between this and the `Core Concepts`_ section of the
-user guide, but this document is targetted to people interested in the
+user guide, but this document is targeted to people interested in the
 internals.  In particular the user guide doesn't go any deeper than
 "revision", because regular users don't care about lower-level details
 like inventories, but this guide does.

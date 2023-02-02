@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Server-side pack repository related request implmentations."""
+"""Server-side pack repository related request implementations."""
 
 from .request import (
     SuccessfulSmartServerResponse,

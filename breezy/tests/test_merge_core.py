@@ -557,7 +557,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertPathExists('tree/foo.BASE')
 
     def test_merge_unrelated(self):
-        """Sucessfully merges unrelated branches with no common names"""
+        """Successfully merges unrelated branches with no common names"""
         wta = self.make_branch_and_tree('a')
         a = wta.branch
         with open('a/a_file', 'wb') as f:
@@ -575,7 +575,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_unrelated_conflicting(self):
-        """Sucessfully merges unrelated branches with common names"""
+        """Successfully merges unrelated branches with common names"""
         wta = self.make_branch_and_tree('a')
         a = wta.branch
         with open('a/file', 'wb') as f:

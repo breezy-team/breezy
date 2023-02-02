@@ -155,7 +155,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         :param inv: The inventory to set.
         :param dirty: A boolean indicating whether the inventory is the same
-            logical inventory as whats on disk. If True the inventory is not
+            logical inventory as what's on disk. If True the inventory is not
             the same and should be written to disk or data will be lost, if
             False then the inventory is the same as that on disk and any
             serialisation would be unneeded overhead.
@@ -1415,7 +1415,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """Determines for each from-to pair if both inventory and working tree
         or only the inventory has to be changed.
 
-        Also does basic plausability tests.
+        Also does basic plausibility tests.
         """
         # FIXME: Handling of nested trees
         inv = self.root_inventory
@@ -1728,7 +1728,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _walkdirs(self, prefix=""):
         """Walk the directories of this tree.
 
-        :param prefix: is used as the directrory to start with.
+        :param prefix: is used as the directory to start with.
         :returns: a generator which yields items in the form::
 
             ((curren_directory_path, fileid),
@@ -1861,7 +1861,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             path, possible_transports=possible_transports)
 
     def has_changes(self, _from_tree=None):
-        """Quickly check that the tree contains at least one commitable change.
+        """Quickly check that the tree contains at least one committable change.
 
         :param _from_tree: tree to compare against to find changes (default to
             the basis tree and is intended to be used by tests).
@@ -1966,7 +1966,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
         # merge in the working tree to preserve the user existing work.  we
-        # cant set that until we update the working trees last revision to be
+        # can't set that until we update the working trees last revision to be
         # one from the new branch, because it will just get absorbed by the
         # parent de-duplication logic.
         #

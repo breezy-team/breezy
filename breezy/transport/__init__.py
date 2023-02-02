@@ -675,7 +675,7 @@ class Transport:
         Args:
           relpath: The path to read data from.
           offsets: A list of (offset, size) tuples.
-          adjust_for_latency: Adjust the requested offsets to accomodate
+          adjust_for_latency: Adjust the requested offsets to accommodate
             transport latency. This may re-order the offsets, expand them to
             grab adjacent data when there is likely a high cost to requesting
             data relative to delivering it.
@@ -1479,7 +1479,7 @@ class ConnectedTransport(Transport):
     def _update_credentials(self, credentials):
         """Update the credentials of the current connection.
 
-        Some protocols can renegociate the credentials within a connection,
+        Some protocols can renegotiate the credentials within a connection,
         this method allows daughter classes to share updated credentials.
 
         :param credentials: the updated credentials.
@@ -1534,7 +1534,7 @@ class ConnectedTransport(Transport):
     def disconnect(self):
         """Disconnect the transport.
 
-        If and when required the transport willl reconnect automatically.
+        If and when required the transport will reconnect automatically.
         """
         raise NotImplementedError(self.disconnect)
 
@@ -1630,7 +1630,7 @@ def do_catching_redirections(
     """Execute an action with given transport catching redirections.
 
     This is a facility provided for callers needing to follow redirections
-    silently. The silence is relative: it is the caller responsability to
+    silently. The silence is relative: it is the caller responsibility to
     inform the user about each redirection or only inform the user of a user
     via the exception parameter.
 

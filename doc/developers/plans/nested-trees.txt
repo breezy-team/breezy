@@ -169,7 +169,7 @@ without having to load and scan all nested trees for ``file_id_b``.
 Branches
 ~~~~~~~~
 A new branch format, "subbranches", is introduced which provides multiple
-sub-branches, with their data referenced by file-id.  A new branch refrerence
+sub-branches, with their data referenced by file-id.  A new branch reference
 format, "subbranch-reference", is introduced which refers to sub-branches in a
 "subbranches" branch.
 
@@ -215,7 +215,7 @@ Repository changes
 
  fetch provides a list of tree-reference revision ids/file-id pairs for the
  revisions that were fetched.  Fetch automatically fetches all revisions
- associted with tree-references that were fetched.
+ associated with tree-references that were fetched.
 
 Use Cases
 *********
@@ -461,7 +461,7 @@ Next, he adds two new files: foobar/baz and foobar/bar/qux::
     # This adds qux to foobar/bar and adds baz to foobar.
     $ bzr add foobar
 
-Since foobar/bar/qux is in a commitable state and foobar/baz is not, he invokes
+Since foobar/bar/qux is in a committable state and foobar/baz is not, he invokes
 ::
 
     $ bzr commit foobar/bar
@@ -913,7 +913,7 @@ the user is actively committing to, and the subtrees are mainly libraries that
 are being mirrored.  So a behaviour that forced every update to be a merge
 would be undesirable for the mirrored subtrees, but an update that is a pull
 wouldn't suit the changing top tree.  And the existing "merge --pull" (that can
-renumber revisions) isn't desireable for either the top tree or subtrees in
+renumber revisions) isn't desirable for either the top tree or subtrees in
 this case.
 
 

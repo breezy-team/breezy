@@ -121,4 +121,4 @@ class BzrLibraryState:
         self._trace.__exit__(None, None, None)
         ui.ui_factory = self._orig_ui
         breezy._global_state = None
-        return False  # propogate exceptions.
+        return False  # propagate exceptions.

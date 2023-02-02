@@ -163,7 +163,7 @@ release packages is as simple as::
   export PACKAGE="bzr"
   export UBUNTU_RELEASES="dapper hardy intrepid jaunty karmic"
   ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
-  * Optionaly merge debian unstable. 
+  * Optionally merge debian unstable. 
   ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-control.sh 1.16 1.17 1.18
   ~/dev/bzr/bzr.dev/tools/packaging/build-packages.sh
@@ -215,7 +215,7 @@ Long Form
 
       tools/packaging/update-packaging-branches.sh
 
-#. Optionaly, merge the Debian unstable branch into each of the packaging
+#. Optionally, merge the Debian unstable branch into each of the packaging
    branches. You can find the Debian unstable branch here:
    http://bzr.debian.org/pkg-bazaar/
 

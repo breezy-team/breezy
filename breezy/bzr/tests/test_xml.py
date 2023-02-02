@@ -184,14 +184,14 @@ newline in it</property>
 
 
 
-_inventory_utf8_v5 = b"""<inventory file_id="TRE&#233;_ROOT" format="5"
+_inventory_utf8_v5 = b"""<inventory file_id="TREE&#233;_ROOT" format="5"
                                    revision_id="erik@b&#229;gfors-02">
 <file file_id="b&#229;r-01"
-      name="b&#229;r" parent_id="TRE&#233;_ROOT"
+      name="b&#229;r" parent_id="TREE&#233;_ROOT"
       revision="erik@b&#229;gfors-01"/>
 <directory name="s&#181;bdir"
            file_id="s&#181;bdir-01"
-           parent_id="TRE&#233;_ROOT"
+           parent_id="TREE&#233;_ROOT"
            revision="erik@b&#229;gfors-01"/>
 <file executable="yes" file_id="b&#229;r-02"
       name="b&#229;r" parent_id="s&#181;bdir-01"

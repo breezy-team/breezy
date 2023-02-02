@@ -2,7 +2,7 @@
 #
 # Modify reStructuredText 'image' directives by adding a percentage 'width'
 # attribute so that the images are scaled to fit on the page when the document
-# is renderd to LaTeX, and add a center alignment.
+# is rendered to LaTeX, and add a center alignment.
 #
 # Also convert references to PNG images to use PDF files generated from SVG
 # files if available.

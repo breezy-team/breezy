@@ -21,7 +21,7 @@ Scaling analysys of Merge
 :e: number of lines in the text
 :f: number of files requiring text merge
 :g: number of conflicts (g <= c)
-:h: humber of uncommon ancestors
+:h: number of uncommon ancestors
 :i: number of revisions between base and other
 
 Needs

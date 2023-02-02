@@ -220,7 +220,7 @@ can do so in ``locations.conf``.
 General format
 ~~~~~~~~~~~~~~
 
-An ini file has three types of contructs: section headers, section
+An ini file has three types of constructs: section headers, section
 options and comments.
 
 Comments
@@ -233,7 +233,7 @@ Breezy when parsing ini files.
 Section headers
 ^^^^^^^^^^^^^^^
 
-A section header is a word enclosed in brackets that starts at the begining
+A section header is a word enclosed in brackets that starts at the beginning
 of a line.  A typical section header looks like this::
 
     [DEFAULT]
@@ -299,7 +299,7 @@ Section local options
 ^^^^^^^^^^^^^^^^^^^^^
 
 Some options are defined automatically inside a given section and can be
-refered to in this section only. 
+referred to in this section only. 
 
 For example, the ``appendpath`` policy can be used like this::
 
@@ -356,7 +356,7 @@ The main configuration file, breezy.conf
 ``breezy.conf`` allows two sections: ``[DEFAULT]`` and ``[ALIASES]``.
 The default section contains the default
 configuration options for all branches. The default section can be
-overriden by providing a branch-specific section in ``locations.conf``.
+overridden by providing a branch-specific section in ``locations.conf``.
 
 A typical ``breezy.conf`` section often looks like the following::
 
@@ -609,7 +609,7 @@ output_encoding
 
 A Python unicode encoding name for text output from bzr, such as log
 information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default
-is the terminal encoding prefered by the operating system.
+is the terminal encoding preferred by the operating system.
 
 
 Branch type specific options

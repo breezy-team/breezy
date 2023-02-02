@@ -219,7 +219,7 @@ Internals
   extend it, and perhaps even a bit easier to read.  (Jonathan Lange)
 
 * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
-  formatters to retrict the output.
+  formatters to restrict the output.
   (Vincent Ladeuil)
 
 

@@ -1040,7 +1040,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # not versionable or diffable. For now, we simply stop cold when they
         # are detected (because we don't know how far through the code the
         # assumption 'fifo's do not exist' goes). In future we could report
-        # the kind change and have commit refuse to go futher, or something
+        # the kind change and have commit refuse to go further, or something
         # similar. One particular reason for choosing this approach is that
         # there is no minikind for 'fifo' in dirstate today, so we can't
         # actually update records that way.

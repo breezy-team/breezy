@@ -328,7 +328,7 @@ class Unshelver:
         """Constructor.
 
         :param tree: The tree to apply the changes to.
-        :param base_tree: The basis to apply the tranform to.
+        :param base_tree: The basis to apply the transform to.
         :param message: A message from the shelved transform.
         """
         self.tree = tree
@@ -429,7 +429,7 @@ class ShelfManager:
     def read_shelf(self, shelf_id):
         """Return the file associated with a shelf_id for reading.
 
-        :param shelf_id: The id of the shelf to retrive the file for.
+        :param shelf_id: The id of the shelf to retrieve the file for.
         """
         filename = self.get_shelf_filename(shelf_id)
         try:

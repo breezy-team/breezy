@@ -445,7 +445,7 @@ def _translate_error(err):
         # with a plain string
         str_or_unicode = err.object
         if isinstance(str_or_unicode, str):
-            # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
+            # XXX: UTF-8 might have \x01 (our protocol v1 and v2 separator
             # byte) in it, so this encoding could cause broken responses.
             # Newer clients use protocol v3, so will be fine.
             val = 'u:' + str_or_unicode.encode('utf-8')

@@ -54,7 +54,7 @@ disk case strategy
 Pull: receive initial pull command, specifying format
 
 Pull client complexity: O(a), memory cost O(1)
-Push client complexity: procesing and memory cost same as disk case
+Push client complexity: processing and memory cost same as disk case
 
 Dumb Network Case
 -----------------

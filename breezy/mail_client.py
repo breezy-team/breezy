@@ -55,7 +55,7 @@ class NoMailAddressSpecified(errors.BzrError):
 
 
 class MailClient:
-    """A mail client that can send messages with attachements."""
+    """A mail client that can send messages with attachments."""
 
     def __init__(self, config):
         self.config = config

@@ -230,7 +230,7 @@ mutation ($pullRequestId: ID!) {
     pullRequestId: $pullRequestId,
     mergeMethod: MERGE
   }) {
-    pullRequest {
+    pull request {
       autoMergeRequest {
         enabledAt
         enabledBy {

@@ -279,7 +279,7 @@ If the RESP_STATUS is success ("S"), the arguments are the
 method-dependent result.
 
 For errors (where the Status byte of a response or a streamed body is
-"E"), the situation is analagous to requests.  The first item in the
+"E"), the situation is analogous to requests.  The first item in the
 encoded sequence must be a string of the error name.  The other arguments
 supply details about the error, and their number and types will depend on
 the type of error (as identified by the error name).
@@ -355,7 +355,7 @@ Early error returns
 
   *(Discussion)* It would be nice if the server could notify the client of
   errors even before a streaming request has finished.  This could cover
-  situtaions such as the server not understanding the request, it being
+  situations such as the server not understanding the request, it being
   unable to open the requested location, or it finding that some of the
   revisions being sent are not actually needed.
 

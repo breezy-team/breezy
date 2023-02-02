@@ -521,7 +521,7 @@ class TestPush(tests.TestCaseWithTransport):
 
         The new branch will preserve the repo format (even if it isn't the
         default for the branch), and will be stacked when the repo format
-        allows (which means that the branch format isn't necessarly preserved).
+        allows (which means that the branch format isn't necessarily preserved).
         """
         self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local', format='pack-0.92')

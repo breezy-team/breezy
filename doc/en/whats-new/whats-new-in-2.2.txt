@@ -71,7 +71,7 @@ Local performance
 
 * ``bzr init`` does not recursively scan directory contents anymore
   leading to faster init for directories with existing content.
-  (Martin [gz], Parth Malwankar, #501307)
+  (Martin [gz], Path Malwankar, #501307)
 
 * Less code is loaded at startup, so there's less overhead on running all
   bzr commands.
@@ -130,17 +130,17 @@ Command improvements
 
 * ``bzr commit`` accepts ``-p`` (for "patch") as a shorter name for
   ``--show-diff``.
-  (Parth Malwankar, #571467)
+  (Path Malwankar, #571467)
   
 * ``bzr ignore`` now supports a ``--default-rules`` option that displays
   the default ignore rules used by bzr. The flag ``--old-default-rules``
   is no longer supported by ``ignore``.
-  (Parth Malwankar, #538703)
+  (Path Malwankar, #538703)
 
 * ``bzr pack`` now supports a ``--clean-obsolete-packs`` option that
   can save disk space by deleting obsolete pack files created during the
   pack operation.
-  (Parth Malwankar, #304320)
+  (Path Malwankar, #304320)
 
 * New command line option ``--authors`` to ``bzr log`` allows users to
   select which of the apparent authors and committer should be
@@ -196,7 +196,7 @@ Better documentation
 
 * ``bzr help patterns`` now explains case insensitive patterns and
   points to Python regular expression documentation.
-  (Parth Malwankar, #594386)
+  (Path Malwankar, #594386)
 
 * Numerous improvements have been made to the developer documentation.
 
@@ -271,7 +271,7 @@ API changes
   as an argument for __init__ or in _fmt format specification as this
   breaks in some Python versions. errors.LockError.__init__ argument
   is now named "msg" instead of earlier "message".
-  (Parth Malwankar, #603461)
+  (Path Malwankar, #603461)
 
 * The old ``bzr selftest --benchmark`` option has been removed.
   <https://launchpad.net/bzr-usertest> is an actively-maintained

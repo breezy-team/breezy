@@ -30,7 +30,7 @@ def create_date_str(timestamp=None, offset=None):
     """Just a wrapper around format_date to provide the right format.
 
     We don't want to use '%a' in the time string, because it is locale
-    dependant. We also want to force timezone original, and show_offset
+    dependent. We also want to force timezone original, and show_offset
 
     Without parameters this function yields the current date in the local
     time zone.

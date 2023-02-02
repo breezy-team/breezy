@@ -160,7 +160,7 @@ class ReportCommitToLog(NullCommitReporter):
             # self._note goes to the console too; so while we want to log the
             # rev_id, we can't trivially only log it. (See bug 526425). Long
             # term we should rearrange the reporting structure, but for now
-            # we just mutter seperately. We mutter the revid and revno together
+            # we just mutter separately. We mutter the revid and revno together
             # so that concurrent bzr invocations won't lead to confusion.
             mutter('Committed revid %s as revno %d.', rev_id, revno)
         else:
@@ -636,7 +636,7 @@ class Commit:
             # show the running hook in the progress bar. As hooks may
             # end up doing nothing (e.g. because they are not configured by
             # the user) this is still showing progress, not showing overall
-            # actions - its up to each plugin to show a UI if it want's to
+            # actions - its up to each plugin to show a UI if it wants to
             # (such as 'Emailing diff to foo@example.com').
             self.pb_stage_name = "Running %s hooks [%s]" % \
                 (hook_name, Branch.hooks.get_hook_name(hook))

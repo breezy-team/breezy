@@ -41,7 +41,7 @@ def set_trace():
 
     When debugging blackbox tests, sys.stdin and sys.stdout are captured for
     test purposes and cannot be used for interactive debugging. This class uses
-    the origianl stdin/stdout to allow such use.
+    the original stdin/stdout to allow such use.
 
     Instead of doing:
 

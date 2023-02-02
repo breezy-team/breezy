@@ -184,7 +184,7 @@ class GioTransport(ConnectedTransport):
         elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
             # Don't know how common this case is, but anyway
             # a DOMAIN and a username prompt should be the
-            # same so I will missuse the ui_factory get_username
+            # same so I will misuse the ui_factory get_username
             # a little bit here.
             prompt = ('{}'.format(parsed_url.scheme.upper()) +
                       ' %(host)s DOMAIN')
