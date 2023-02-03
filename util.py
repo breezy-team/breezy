@@ -26,6 +26,7 @@ import subprocess
 import tempfile
 import os
 import re
+from typing import Optional
 
 from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError
@@ -883,3 +884,12 @@ def export_with_nested(tree, dest, **kwargs):
             if os.path.isfile(dest):
                 os.unlink(dest)
             raise
+
+
+def debsign(path: str, keyid: Optional[str] = None) -> None:
+    (bd, changes_file) = os.path.split(path)
+    args = ["debsign"]
+    if keyid:
+        args.append("-k%s" % keyid)
+    args.append(changes_file)
+    subprocess.check_call(args, cwd=bd)

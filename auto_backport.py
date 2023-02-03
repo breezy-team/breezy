@@ -39,6 +39,7 @@ from breezy.plugins.debian.info import (
 )
 from breezy.plugins.debian.util import (
     dput_changes,
+    debsign,
     find_changelog,
 )
 from breezy.workspace import check_clean_tree
@@ -65,15 +66,6 @@ class ChangelogGeneratedFile(Exception):
         self.template_type = template_type
 
 
-def debsign(path, keyid=None):
-    (bd, changes_file) = os.path.split(path)
-    args = ["debsign"]
-    if keyid:
-        args.append("-k%s" % keyid)
-    args.append(changes_file)
-    subprocess.check_call(args, cwd=bd)
-
-
 # See https://backports.debian.org/Contribute/
 
 
@@ -91,14 +83,13 @@ def backport_suffix(release):
     return "bpo%s" % version
 
 
-def backport_distribution(release):
+def backport_distribution(release: str) -> str:
     distro_info = DebianDistroInfo()
     if distro_info.codename("stable") == release:
-        return "%s-backports" % release
-    elif distro_info.codename("oldstable") == release:
-        return "%s-backports-sloppy" % release
-    else:
-        raise Exception("unable to determine target suite for %s" % release)
+        return f"{release}-backports"
+    if distro_info.codename("oldstable") == release:
+        return f"{release}-backports-sloppy"
+    raise Exception("unable to determine target suite for %s" % release)
 
 
 def create_bpo_version(orig_version, bpo_suffix):
@@ -109,7 +100,7 @@ def create_bpo_version(orig_version, bpo_suffix):
     else:
         base = str(orig_version)
         buildno = 1
-    return "%s~%s+%d" % (base, bpo_suffix, buildno)
+    return f"{base}~{bpo_suffix}+{buildno}"
 
 
 def backport_package(local_tree, subpath, target_release, author=None):
