@@ -205,7 +205,7 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
                           export_upstream_revision=None,
                           trust_package=True,
                           guess_upstream_branch_url=False,
-                          apt=None):
+                          apt=None, skip_signatures=False):
     from .upstream import (
         AptSource,
         SelfSplitSource,
@@ -221,7 +221,7 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
     yield AptSource(apt=apt)
     yield get_pristine_tar_source(local_tree, packaging_branch)
     try:
-        yield UScanSource.from_tree(local_tree, subpath, top_level)
+        yield UScanSource.from_tree(local_tree, subpath, top_level, skip_signatures=skip_signatures)
     except NoWatchFile:
         pass
 
@@ -260,7 +260,7 @@ def _get_distiller(
         orig_dir=default_orig_dir, use_existing=False,
         export_upstream=None, export_upstream_revision=None,
         guess_upstream_branch_url=False,
-        apt=None):
+        apt=None, skip_signatures=False):
     from .util import (
         guess_build_type,
         )
@@ -288,7 +288,7 @@ def _get_distiller(
         top_level=top_level, export_upstream=export_upstream,
         export_upstream_revision=export_upstream_revision,
         guess_upstream_branch_url=guess_upstream_branch_url,
-        apt=apt))
+        apt=apt, skip_signatures=skip_signatures))
 
     upstream_provider = UpstreamProvider(
         changelog.package, changelog.version.upstream_version, orig_dir,
@@ -778,7 +778,9 @@ class cmd_merge_upstream(Command):
         distribution_opt, directory_opt, last_version_opt,
         force_opt, 'revision', 'merge-type',
         snapshot_opt, force_pristine_tar_opt,
-        dist_command_opt, guess_upstream_branch_url_opt, release_opt]
+        dist_command_opt, guess_upstream_branch_url_opt, release_opt,
+        Option('skip-signatures',
+               help='Allow signatures for e.g. upstream tarball to be missing')]
 
     def run(self, location: Optional[str] = None,
             upstream_branch: Optional[str] = None,
@@ -790,7 +792,8 @@ class cmd_merge_upstream(Command):
             release: Optional[bool] = None,
             force_pristine_tar: bool = False,
             dist_command: Optional[str] = None,
-            guess_upstream_branch_url: bool = False):
+            guess_upstream_branch_url: bool = False,
+            skip_signatures: bool = False):
         from debian.changelog import Version
 
         from .hooks import run_hook
@@ -934,7 +937,7 @@ class cmd_merge_upstream(Command):
                 else:
                     try:
                         primary_upstream_source = UScanSource.from_tree(
-                            tree, subpath, top_level)
+                            tree, subpath, top_level, skip_signatures=skip_signatures)
                     except NoWatchFile as e:
                         if upstream_branch_source is None:
                             raise BzrCommandError(gettext(
