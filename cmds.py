@@ -221,7 +221,8 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
     yield AptSource(apt=apt)
     yield get_pristine_tar_source(local_tree, packaging_branch)
     try:
-        yield UScanSource.from_tree(local_tree, subpath, top_level, skip_signatures=skip_signatures)
+        yield UScanSource.from_tree(
+            local_tree, subpath, top_level, skip_signatures=skip_signatures)
     except NoWatchFile:
         pass
 
@@ -780,7 +781,8 @@ class cmd_merge_upstream(Command):
         snapshot_opt, force_pristine_tar_opt,
         dist_command_opt, guess_upstream_branch_url_opt, release_opt,
         Option('skip-signatures',
-               help='Allow signatures for e.g. upstream tarball to be missing')]
+               help=('Allow signatures for e.g. upstream tarball '
+                     'to be missing'))]
 
     def run(self, location: Optional[str] = None,
             upstream_branch: Optional[str] = None,
@@ -937,7 +939,8 @@ class cmd_merge_upstream(Command):
                 else:
                     try:
                         primary_upstream_source = UScanSource.from_tree(
-                            tree, subpath, top_level, skip_signatures=skip_signatures)
+                            tree, subpath, top_level,
+                            skip_signatures=skip_signatures)
                     except NoWatchFile as e:
                         if upstream_branch_source is None:
                             raise BzrCommandError(gettext(
