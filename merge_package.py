@@ -320,7 +320,9 @@ def create_bpo_version(orig_version, bpo_suffix):
     return f"{base}~{bpo_suffix}+{buildno}"
 
 
-def auto_backport(argv):
+def auto_backport(argv=None):
+    if argv is None:
+        argv = sys.argv
     return main(argv + ['--backport'])
 
 
@@ -363,7 +365,7 @@ def main(argv=None):
 
     parser.add_argument('vcs_url', type=str, nargs='?')
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     logging.basicConfig(format='%(message)s', level=logging.INFO)
 
