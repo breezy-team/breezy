@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import re
+import sys
 import tempfile
 
 from debian.changelog import Version, Changelog
@@ -606,5 +607,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    import sys
     sys.exit(main(sys.argv[1:]))
