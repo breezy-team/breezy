@@ -27,26 +27,48 @@ import os
 import re
 import tempfile
 
-from debian.changelog import Version
+from debian.changelog import Version, Changelog
 from debian.deb822 import Deb822
 
 from breezy.errors import (
     BzrError,
     ConflictsInTree,
+    DivergedBranches,
     NoSuchTag,
     UnrelatedBranches,
     )
+from breezy.transport import NoSuchFile
 from breezy.workingtree import (
     PointlessMerge,
     )
 
+from debian.changelog import format_date, get_maintainer
+from debmutate.changelog import (
+    ChangelogEditor, changeblock_add_line, increment_version)
+from debmutate.reformatting import GeneratedFile
+
 from .changelog import debcommit
+from .cmds import _build_helper
 from .directory import vcs_field_to_bzr_url_converters
 from .errors import (
     MultipleUpstreamTarballsNotSupported,
 )
 from .import_dsc import DistributionBranch
-from .util import find_changelog
+from .util import (
+    dput_changes,
+    debsign,
+    find_changelog,
+    MissingChangelogError,
+)
+
+
+class ChangelogGeneratedFile(Exception):
+    """The changelog file is generated."""
+
+    def __init__(self, path, template_path, template_type):
+        self.path = path
+        self.template_path = template_path
+        self.template_type = template_type
 
 
 class SharedUpstreamConflictsWithTargetPackaging(BzrError):
@@ -212,16 +234,107 @@ def report_fatal(code, description, *, hint=None):
         logging.info('%s', hint)
 
 
+def find_origins(source):
+    for field, value in source.items():
+        m = re.match(r'XS\-(.*)\-Vcs\-(.*)', field, re.I)
+        if not m:
+            continue
+        vcs_type = m.group(2)
+        if vcs_type == 'Browser':
+            continue
+        vcs_url = dict(
+            vcs_field_to_bzr_url_converters)[vcs_type](value)
+        origin = m.group(1)
+        yield origin, vcs_type, vcs_url
+
+
+def update_changelog(wt, subpath, target_distribution, version_fn,
+                     summary, author=None):
+    changes = []
+    # TODO(jelmer): Iterate Build-Depends and verify that depends are
+    # satisfied by target_distribution
+    # TODO(jelmer): Update Vcs-Git/Vcs-Browser header?
+    clp = wt.abspath(os.path.join(subpath, "debian/changelog"))
+
+    if author is None:
+        author = "%s <%s>" % get_maintainer()
+
+    try:
+        with ChangelogEditor(clp) as cl:
+            # TODO(jelmer): If there was an existing backport, use that version
+            cl.new_block(
+                package=cl[0].package,
+                distributions=target_distribution,
+                urgency="low",
+                author=author,
+                date=format_date(),
+                version=version_fn(cl[0].version),
+                changes=[''],
+            )
+            changeblock_add_line(
+                cl[0],
+                [summary] +
+                [" +" + line for line in changes],
+            )
+    except FileNotFoundError:
+        raise MissingChangelogError([clp])
+    except GeneratedFile as e:
+        raise ChangelogGeneratedFile(e.path, e.template_path, e.template_type)
+
+    debcommit(wt, subpath=subpath)
+
+
+def backport_suffix(release):
+    from distro_info import DebianDistroInfo
+    distro_info = DebianDistroInfo()
+    if release in ('stable', 'oldstable'):
+        release = distro_info.codename(release)
+    version = distro_info.version(release)
+    assert version is not None
+    return "bpo%s" % version
+
+
+def determine_distribution(release: str, backport=False) -> str:
+    if backport:
+        if release.endswith('-backports'):
+            return release
+        from distro_info import DebianDistroInfo
+        distro_info = DebianDistroInfo()
+        if release == "stable" or distro_info.codename("stable") == release:
+            return f"{distro_info.codename('stable')}-backports"
+        if (release == "oldstable" or
+                distro_info.codename("oldstable") == release):
+            return f"{distro_info.codename('oldstable')}-backports-sloppy"
+        raise Exception(f"unable to determine target suite for {release}")
+    return release
+
+
+def create_bpo_version(orig_version, bpo_suffix):
+    m = re.fullmatch(r"(.*)\~" + bpo_suffix + r"\+([0-9]+)", str(orig_version))
+    if m:
+        base = m.group(1)
+        buildno = int(m.group(2)) + 1
+    else:
+        base = str(orig_version)
+        buildno = 1
+    return f"{base}~{bpo_suffix}+{buildno}"
+
+
+def auto_backport(argv):
+    return main(argv + ['--backport'])
+
+
 def main(argv=None):
+    DEFAULT_BUILDER = "sbuild --no-clean-source"
     import argparse
     import breezy.bzr  # noqa: F401
     import breezy.git  # noqa: F401
     from breezy.workingtree import WorkingTree
+    from breezy.workspace import check_clean_tree
     from breezy.branch import Branch
 
-    from .apt_repo import RemoteApt
+    from .apt_repo import RemoteApt, LocalApt
     from .directory import source_package_vcs_url
-    from .import_dsc import DistributionBranch
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--directory', '-d', type=str, help="Working directory")
@@ -233,91 +346,150 @@ def main(argv=None):
                         help='Version to use')
     parser.add_argument("--vendor", type=str,
                         help="Name of vendor to merge from")
+    parser.add_argument("--backport", action="store_true")
+    parser.add_argument("--package", type=str)
+    parser.add_argument("--target-release", type=str)
+    parser.add_argument('--build', action='store_true')
+    # TODO(jelmer): add --revision argument
+    parser.add_argument(
+        "--builder",
+        type=str,
+        help="Build command",
+        default=(
+            DEFAULT_BUILDER + " --source --source-only-changes "
+            "--debbuildopt=-v${LAST_VERSION}"
+        ),
+    )
+
+    parser.add_argument('vcs_url', type=str, nargs='?')
+
     args = parser.parse_args()
 
     logging.basicConfig(format='%(message)s', level=logging.INFO)
 
     wt, subpath = WorkingTree.open_containing(args.directory)
 
+    check_clean_tree(wt, subpath=subpath)
+
     vendor = args.vendor
-    origin = vendor
 
-    if args.apt_repository is not None:
-        apt = RemoteApt.from_string(
-            args.apt_repository, args.apt_repository_key)
+    try:
+        cl, _larstiq = find_changelog(wt, subpath=subpath)
+    except MissingChangelogError:
+        cl = None
+        since_version = None
     else:
-        apt = None
+        since_version = cl[0].version
+        if not args.target_release:
+            args.target_release = cl[0].distributions
 
-    cl, _ignore = find_changelog(wt, subpath)
-
-    if apt:
-        logging.info('Using apt repository %r', apt)
-
-        with apt:
-            versions = []
-            for source in apt.iter_source_by_name(cl.package):
-                versions.append((source['Version'], source))
-
-        versions.sort()
-        try:
-            version, source = versions[-1]
-        except IndexError:
+    if args.vcs_url:
+        branch_url = args.vcs_url
+        vcs_type = None
+        package = None
+    elif args.package:
+        package = args.package
+        branch_url = None
+        vcs_type = None
+    else:
+        if cl is None:
             report_fatal(
-                'not-present-in-apt',
-                f'The APT repository {apt} does not contain {cl.package}')
+                'missing-changelog',
+                'Need either --package, vcs url or existing debian package')
             return 1
-    else:
-        with wt.get_file(os.path.join(subpath, 'debian/control')) as f:
-            source = Deb822(f)
-            for field, value in source.items():
-                m = re.match(r'XS\-(.*)\-Vcs\-(.*)', field, re.I)
-                if not m:
-                    continue
-                vcs_type = m.group(2)
-                if vcs_type == 'Browser':
-                    continue
-                vcs_url = dict(
-                    vcs_field_to_bzr_url_converters)[vcs_type](value)
-                origin = m.group(1)
-                break
+        package = cl.package
+        branch_url = None
+        vcs_type = None
+
+    if branch_url is None:
+        try:
+            with wt.get_file(os.path.join(subpath, 'debian/control')) as f:
+                source = Deb822(f)
+                origins = list(find_origins(source))
+                if not origins:
+                    report_fatal(
+                        'no-upstream-vcs-url',
+                        'Source package not have any Xs-*-Vcs-* fields')
+                    return 1
+                if len(origins) > 1:
+                    logging.warning('More than one origin: %r', origins)
+                    origin, vcs_type, branch_url = origins[0]
+                else:
+                    [(vendor, vcs_type, branch_url)] = origins
+        except NoSuchFile:
+            if args.apt_repository is not None:
+                apt = RemoteApt.from_string(
+                    args.apt_repository, args.apt_repository_key)
+                origin = apt.distribution
             else:
+                apt = LocalApt()
+                origin = None
+
+            logging.info('Using apt repository %r', apt)
+
+            with apt:
+                versions = []
+                for source in apt.iter_source_by_name(package):
+                    versions.append((source['Version'], source))
+
+            versions.sort()
+            try:
+                version, source = versions[-1]
+            except IndexError:
                 report_fatal(
-                    'no-upstream-vcs-url',
-                    'Source package not have any Xs-*-Vcs-* fields')
+                    'not-present-in-apt',
+                    f'The APT repository {apt} does not contain {package}')
                 return 1
-        version = None
 
-    if args.version:
-        version = args.version
+            source = next(apt.iter_source_by_name(package))
+            vcs_type, branch_url = source_package_vcs_url(source)
+            logging.info('Resolved apt repository to %s', branch_url)
+            if not args.version:
+                args.version = source['Version']
 
-    if version is not None and Version(version) == cl.version:
+    assert branch_url
+
+    branch = Branch.open(branch_url)
+
+    if args.version is None:
+        to_merge = branch.last_revision()
+        wt.branch.repository.fetch(
+            branch.repository, revision_id=to_merge)
+        revtree = wt.branch.repository.revision_tree(to_merge)
+        with revtree.get_file(os.path.join(subpath, 'debian/changelog')) as f:
+            cl = Changelog(f, max_blocks=1)
+        package = cl.package
+        version = cl.version
+    else:
+        to_merge = None
+
+    version = Version(args.version)
+
+    if cl and version == cl.version:
         report_fatal(
             'tree-version-is-newer',
             f'Local tree already contains remote version {cl.version}')
         return 1
 
-    if version is not None and Version(version) < cl.version:
+    if cl and version < cl.version:
         report_fatal(
             'nothing-to-do',
             f'Local tree contains newer version ({cl.version}) '
             f'than apt repo ({version})')
         return 1
 
-    logging.info('Importing version: %s (current: %s)', version, cl.version)
+    if cl and cl.version is not None:
+        logging.info(
+            'Importing version: %s (current: %s)', version, cl.version)
+    else:
+        logging.info('Importing version: %s', version)
 
-    vcs_type, vcs_url = source_package_vcs_url(source)
-
-    logging.info('Found vcs %s %s', vcs_type, vcs_url)
-
-    source_branch = Branch.open(vcs_url)
-
-    db = DistributionBranch(source_branch, None)
-
-    if version is not None:
+    if to_merge is None:
+        remote_db = DistributionBranch(branch, None)
         # Find the appropriate tag
-        for tag_name in db.possible_tags(version, vendor=vendor):
+        for tag_name in remote_db.possible_tags(version, vendor=vendor):
             try:
-                to_merge = db.branch.tags.lookup_tag(tag_name)
+                to_merge = remote_db.branch.tags.lookup_tag(tag_name)
             except NoSuchTag:
                 pass
             else:
@@ -326,58 +498,92 @@ def main(argv=None):
             report_fatal(
                 'missing-remote-tag',
                 'Unable to find tag for version {} in branch {}'.format(
-                    version, db.branch))
+                    version, remote_db.branch))
             return 1
         logging.info('Merging tag %s', tag_name)
-    else:
-        # TODO(jelmer): merge latest tag rather than latest revision?
-        to_merge = None
-        logging.info('Merging latest revision from %s', source_branch.user_url)
 
-    try:
-        wt.merge_from_branch(source_branch, to_revision=to_merge)
-    except ConflictsInTree as e:
-        report_fatal('merged-conflicted', str(e))
-        return 1
-    except PointlessMerge as e:
-        report_fatal('nothing-to-do', str(e))
-        return 1
-    except UnrelatedBranches:
-        if apt:
-            logging.info(
-                'Upstream branch %r does not share history with this one.',
-                source_branch)
-            logging.info('Falling back to importing dsc.')
-            with tempfile.TemporaryDirectory() as td:
-                apt.retrieve_source(
-                    cl.package, td, source_version=cl.version, tar_only=False)
-                for entry in os.scandir(td):
-                    if entry.name.endswith('.dsc'):
-                        dsc_path = entry.path
-                        break
+    with wt.lock_write():
+        try:
+            wt.pull(branch, stop_revision=to_merge)
+        except DivergedBranches:
+            try:
+                wt.merge_from_branch(branch, to_revision=to_merge)
+            except ConflictsInTree as e:
+                report_fatal('merged-conflicted', str(e))
+                return 1
+            except PointlessMerge as e:
+                report_fatal('nothing-to-do', str(e))
+                return 1
+            except UnrelatedBranches:
+                if apt:
+                    logging.info(
+                        'Upstream branch %r does not share history '
+                        'with this one.', branch)
+                    logging.info('Falling back to importing dsc.')
+                    with tempfile.TemporaryDirectory() as td:
+                        apt.retrieve_source(
+                            cl.package, td, source_version=cl.version,
+                            tar_only=False)
+                        for entry in os.scandir(td):
+                            if entry.name.endswith('.dsc'):
+                                dsc_path = entry.path
+                                break
+                        else:
+                            raise AssertionError(
+                                f'{apt} did not actually '
+                                'download dsc file') from None
+                        local_db = DistributionBranch(wt.branch, None)
+                        tag_name = local_db.import_package(dsc_path)
+                        to_merge = wt.branch.tags.lookup_tag(tag_name)
+                        try:
+                            wt.merge_from_branch(
+                                wt.branch, to_revision=to_merge)
+                        except ConflictsInTree as e:
+                            report_fatal('merged-conflicted', str(e))
+                            return 1
                 else:
-                    raise AssertionError(
-                        f'{apt} did not actually download dsc file')
-                tag_name = db.import_package(dsc_path)
-                to_merge = wt.branch.tags.lookup_tag(tag_name)
-                try:
-                    wt.merge_from_branch(source_branch, to_revision=to_merge)
-                except ConflictsInTree as e:
-                    report_fatal('merged-conflicted', str(e))
+                    report_fatal(
+                        'unrelated-branches',
+                        f'Upstream branch {branch} does not share '
+                        'history with this one, and no apt repository '
+                        'specified.')
                     return 1
-        else:
-            report_fatal(
-                'unrelated-branches',
-                'Upstream branch %r does not share history with this one, '
-                'and no apt repository specified.' % source_branch)
-            return 1
 
-    if vendor is None:
-        revtree = wt.revision_tree(to_merge)
-        mcl, _ignore = find_changelog(revtree)
-        if origin is None:
-            origin = mcl.distributions
-    debcommit(wt, subpath=subpath, message=f"Sync with {origin}.")
+        target_distribution = determine_distribution(
+                args.target_release, args.backport)
+        if args.backport:
+            version_suffix = backport_suffix(args.target_release)
+
+            def version_fn(imported_version):
+                return create_bpo_version(imported_version, version_suffix)
+            summary = f"Backport to {args.target_release}."
+        else:
+            if origin is not None:
+                summary = f'Merge from {origin}.'
+            else:
+                origin = f'Merge {version}'
+
+            version_fn = increment_version
+
+        logging.info(
+            "Using target distribution %s, version suffix %s",
+            target_distribution,
+            version_suffix,
+        )
+        update_changelog(wt, subpath, target_distribution=target_distribution,
+                         version_fn=version_fn, summary=summary)
+
+    if args.build:
+        with tempfile.TemporaryDirectory() as td:
+            builder = args.builder.replace(
+                "${LAST_VERSION}", str(since_version))
+            target_changes = _build_helper(
+                wt, subpath, wt.branch, td, builder=builder
+            )
+            debsign(target_changes['source'])
+
+            if not args.dry_run:
+                dput_changes(target_changes['source'])
 
     if os.environ.get('SVP_API') == '1':
         with open(os.environ['SVP_RESULT'], 'w') as f:
@@ -389,10 +595,9 @@ def main(argv=None):
                     'vendor': vendor,
                     'origin': origin,
                     'vcs_type': vcs_type,
-                    'vcs_url': vcs_url,
-                    'package': cl.package,
-                    'distributions': mcl.distributions,
-                    'version': version,
+                    'branch_url': branch_url,
+                    'version': str(version),
+                    'revision_id': to_merge.decode('utf-8'),
                     'tag': tag_name,
                 },
             }, f)
