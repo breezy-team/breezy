@@ -323,7 +323,7 @@ def create_bpo_version(orig_version, bpo_suffix):
 
 def auto_backport(argv=None):
     if argv is None:
-        argv = sys.argv
+        argv = sys.argv[1:]
     return main(argv + ['--backport'])
 
 
