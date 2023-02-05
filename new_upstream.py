@@ -328,7 +328,7 @@ def detect_include_upstream_history(
     # Simple heuristic: Find the old upstream version and see if it's present
     # in the history of the packaging branch
     try:
-        revision = upstream_branch_source.version_as_revision(
+        (revision, _subpath) = upstream_branch_source.version_as_revision(
             package, old_upstream_version
         )
     except PackageVersionNotPresent:
