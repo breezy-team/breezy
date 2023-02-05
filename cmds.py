@@ -909,9 +909,11 @@ class cmd_merge_upstream(Command):
                         upstream_branch = None
 
             if dist_command:
-                def create_dist(tree, package, version, target_dir):
+                def create_dist(
+                        tree, package, version, target_dir, subpath=''):
                     return run_dist_command(
-                        tree, package, version, target_dir, dist_command)
+                        tree, package, version, target_dir, dist_command,
+                        subpath=subpath)
             else:
                 create_dist = None
 

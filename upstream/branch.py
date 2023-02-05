@@ -687,7 +687,8 @@ def _dupe_vcs_tree(tree, directory):
 def run_dist_command(
         rev_tree: Tree, package: Optional[str], version: Version,
         target_dir: str, dist_command: str,
-        include_controldir: bool = False) -> bool:
+        include_controldir: bool = False,
+        subpath='') -> bool:
 
     def _run_and_interpret(command, env, dir):
         try:
@@ -720,11 +721,14 @@ def run_dist_command(
         note('Running dist command: %s', dist_command)
         if include_controldir:
             _dupe_vcs_tree(rev_tree, package_dir)
+            package_fullpath = os.path.join(package_dir, subpath)
         else:
-            export_with_nested(rev_tree, package_dir, format='dir')
-        existing_files = os.listdir(package_dir)
+            export_with_nested(rev_tree, package_dir, format='dir',
+                               subpath=subpath)
+            package_fullpath = package_dir
+        existing_files = os.listdir(package_fullpath)
         try:
-            _run_and_interpret(dist_command, env, package_dir)
+            _run_and_interpret(dist_command, env, package_fullpath)
         except NotImplementedError:
             return None
         except DistCommandFailed as e:
@@ -733,27 +737,28 @@ def run_dist_command(
                     not include_controldir):
                 osutils.rmtree(package_dir)
                 _dupe_vcs_tree(rev_tree, package_dir)
-                existing_files = os.listdir(package_dir)
-                _run_and_interpret(dist_command, env, package_dir)
+                package_fullpath = os.path.join(package_dir, subpath)
+                existing_files = os.listdir(package_fullpath)
+                _run_and_interpret(dist_command, env, package_fullpath)
             else:
                 raise
-        new_files = os.listdir(package_dir)
+        new_files = os.listdir(package_fullpath)
         diff_files = set(new_files) - set(existing_files)
         diff = [n for n in diff_files if get_filetype(n) is not None]
         if len(diff) == 1:
             note('Found tarball %s in package directory.', diff[0])
             os.rename(
-                os.path.join(package_dir, diff[0]),
+                os.path.join(package_fullpath, diff[0]),
                 os.path.join(target_dir, diff[0]))
             return diff[0]
         if 'dist' in diff_files:
-            for entry in os.scandir(os.path.join(package_dir, 'dist')):
+            for entry in os.scandir(os.path.join(package_fullpath, 'dist')):
                 if get_filetype(entry.name) is not None:
                     note('Found tarball %s in dist directory.', entry.name)
                     os.rename(entry.path, os.path.join(target_dir, entry.name))
                     return entry.name
             note('No tarballs found in dist directory.')
-        diff = set(os.listdir(td)) - {os.path.basename(package_dir)}
+        diff = set(os.listdir(td)) - {os.path.basename(package_fullpath)}
         if len(diff) == 1:
             fn = diff.pop()
             note('Found tarball %s in parent directory.', fn)

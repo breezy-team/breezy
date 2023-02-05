@@ -1205,10 +1205,11 @@ def main(argv=None):
 
         if args.dist_command:
 
-            def create_dist(tree, package, version, target_dir):
+            def create_dist(tree, package, version, target_dir, subpath=''):
                 try:
                     return run_dist_command(
-                        tree, package, version, target_dir, args.dist_command)
+                        tree, package, version, target_dir, args.dist_command,
+                        subpath=subpath)
                 except MissingNestedTree as e:
                     raise DistMissingNestedTree(e.path) from e
         else:
