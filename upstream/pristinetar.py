@@ -813,7 +813,8 @@ class GitPristineTarSource(BasePristineTarSource):
         basis_tree = tree.branch.repository.revision_tree(base_revid)
         with tree.lock_write():
             builder = tree.branch.get_commit_builder(
-                    parents=parent_ids, revprops=revprops, timestamp=timestamp,
+                    parents=[revid for revid, parent in parent_ids],
+                    revprops=revprops, timestamp=timestamp,
                     timezone=timezone, committer=committer)
             try:
                 changes = [c for c in tree.iter_changes(basis_tree) if
