@@ -16,8 +16,6 @@
 
 """bzr-upload command implementations."""
 
-from __future__ import absolute_import
-
 from ... import (
     commands,
     config,
@@ -39,9 +37,6 @@ from breezy import (
     )
 """)
 
-from ...sixish import (
-    text_type,
-    )
 
 auto_option = config.Option(
     'upload_auto', default=False, from_unicode=config.bool_from_store,
@@ -59,7 +54,7 @@ location_option = config.Option(
 The url to upload the working tree to.
 """)
 revid_location_option = config.Option(
-    'upload_revid_location', default=u'.bzr-upload.revid',
+    'upload_revid_location', default='.bzr-upload.revid',
     help="""\
 The relative path to be used to store the uploaded revid.
 
@@ -91,7 +86,7 @@ branch.conf file:
 # 'upload_revid_location'
 
 
-class BzrUploader(object):
+class BzrUploader:
 
     def __init__(self, branch, to_transport, outf, tree, rev_id,
                  quiet=False):
@@ -143,7 +138,7 @@ class BzrUploader(object):
                 ).get('upload_revid_location')
             try:
                 self._uploaded_revid = self._up_get_bytes(revid_path)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 # We have not uploaded to here.
                 self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
@@ -153,7 +148,7 @@ class BzrUploader(object):
             try:
                 ignore_file_path = '.bzrignore-upload'
                 ignore_file = self.tree.get_file(ignore_file_path)
-            except errors.NoSuchFile:
+            except transport.NoSuchFile:
                 ignored_patterns = []
             else:
                 ignored_patterns = ignores.parse_ignore_file(ignore_file)
@@ -190,12 +185,12 @@ class BzrUploader(object):
             if stat.S_ISDIR(st.st_mode):
                 # A simple rmdir may not be enough
                 if not self.quiet:
-                    self.outf.write('Clearing %s/%s\n' % (
+                    self.outf.write('Clearing {}/{}\n'.format(
                         self.to_transport.external_url(), relpath))
                 self._up_delete_tree(relpath)
             elif stat.S_ISLNK(st.st_mode):
                 if not self.quiet:
-                    self.outf.write('Clearing %s/%s\n' % (
+                    self.outf.write('Clearing {}/{}\n'.format(
                         self.to_transport.external_url(), relpath))
                 self._up_delete(relpath)
         except errors.PathError:
@@ -240,7 +235,7 @@ class BzrUploader(object):
             st = self._up_stat(relpath)
             if not stat.S_ISDIR(st.st_mode):
                 if not self.quiet:
-                    self.outf.write('Deleting %s/%s\n' % (
+                    self.outf.write('Deleting {}/{}\n'.format(
                         self.to_transport.external_url(), relpath))
                 self._up_delete(relpath)
             else:
@@ -299,7 +294,7 @@ class BzrUploader(object):
                                      os.getpid(),
                                      random.randint(0, 0x7FFFFFFF))
         if not self.quiet:
-            self.outf.write('Renaming %s to %s\n' % (old_relpath, new_relpath))
+            self.outf.write('Renaming {} to {}\n'.format(old_relpath, new_relpath))
         self._up_rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
 
@@ -483,7 +478,7 @@ class cmd_upload(commands.Command):
                       help='Branch to upload from, '
                       'rather than the one containing the working directory.',
                       short_name='d',
-                      type=text_type,
+                      type=str,
                       ),
         option.Option('auto',
                       'Trigger an upload from this branch whenever the tip '
@@ -494,7 +489,7 @@ class cmd_upload(commands.Command):
             directory=None, quiet=False, auto=None, overwrite=False
             ):
         if directory is None:
-            directory = u'.'
+            directory = '.'
 
         (wt, branch,
          relpath) = controldir.ControlDir.open_containing_tree_or_branch(

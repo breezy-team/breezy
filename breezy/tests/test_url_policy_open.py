@@ -16,6 +16,8 @@
 
 """Tests for the branch open with specific URL policy code."""
 
+from typing import List
+
 from .. import urlutils
 from ..branch import (
     Branch,
@@ -62,7 +64,7 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
     """Unit tests for `BranchOpener.check_and_follow_branch_reference`."""
 
     def setUp(self):
-        super(TestBranchOpenerCheckAndFollowBranchReference, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     class StubbedBranchOpener(BranchOpener):
@@ -157,7 +159,7 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
 class TrackingProber(BzrProber):
     """Subclass of BzrProber which tracks URLs it has been asked to open."""
 
-    seen_urls = []
+    seen_urls: List[str] = []
 
     @classmethod
     def probe_transport(klass, transport):
@@ -168,7 +170,7 @@ class TrackingProber(BzrProber):
 class TestBranchOpenerStacking(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestBranchOpenerStacking, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     def make_branch_opener(self, allowed_urls, probers=None):
@@ -319,7 +321,7 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
 class TestRedirects(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestRedirects, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     def setup_redirect(self, target_url):
@@ -362,7 +364,7 @@ class TestOpenOnlyScheme(TestCaseWithTransport):
     """Tests for `open_only_scheme`."""
 
     def setUp(self):
-        super(TestOpenOnlyScheme, self).setUp()
+        super().setUp()
         BranchOpener.install_hook()
 
     def test_hook_does_not_interfere(self):

@@ -45,14 +45,12 @@ This extra metadata is stored in so-called "supplements":
   * TreeSupplement
 """
 
-from __future__ import absolute_import
-
 from .. import osutils
 
 from io import BytesIO
 
 
-class CommitSupplement(object):
+class CommitSupplement:
     """Supplement for a Bazaar revision roundtripped into Git.
 
     :ivar revision_id: Revision id, as string
@@ -74,7 +72,7 @@ class CommitSupplement(object):
                     self.explicit_parent_ids)
 
 
-class TreeSupplement(object):
+class TreeSupplement:
     """Supplement for a Bazaar tree roundtripped into Git.
 
     This provides file ids (if they are different from the mapping default)

@@ -16,9 +16,8 @@
 
 """Weave-era branch implementations."""
 
-from __future__ import absolute_import
-
 from ... import (
+    controldir as _mod_controldir,
     errors,
     lockable_files,
     )
@@ -30,6 +29,7 @@ from ...lock import LogicalLockResult
 from ...trace import mutter
 
 from ...branch import (
+    BindingUnsupported,
     BranchFormat,
     BranchWriteLockResult,
     )
@@ -107,7 +107,7 @@ class BzrBranch4(FullHistoryBzrBranch):
         raise errors.UpgradeRequired(self.user_url)
 
     def bind(self, other):
-        raise errors.UpgradeRequired(self.user_url)
+        raise BindingUnsupported(self)
 
     def set_bound_location(self, location):
         raise NotImplementedError(self.set_bound_location)
@@ -144,7 +144,7 @@ class BzrBranchFormat4(BranchFormat):
             raise errors.UpgradeRequired(a_controldir.user_url)
         if repository is not None:
             raise NotImplementedError(
-                "initialize(repository=<not None>) on %r" % (self,))
+                "initialize(repository=<not None>) on {!r}".format(self))
         if not [isinstance(a_controldir._format, format) for format in
                 self._compatible_bzrdirs]:
             raise errors.IncompatibleFormat(self, a_controldir._format)
@@ -176,7 +176,7 @@ class BzrBranchFormat4(BranchFormat):
         return branch
 
     def __init__(self):
-        super(BzrBranchFormat4, self).__init__()
+        super().__init__()
         from .bzrdir import (
             BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
             )
@@ -197,7 +197,7 @@ class BzrBranchFormat4(BranchFormat):
         if name is None:
             name = a_controldir._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise _mod_controldir.NoColocatedBranchSupport(self)
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError

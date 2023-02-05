@@ -16,8 +16,6 @@
 
 """Launchpad plugin commands."""
 
-from __future__ import absolute_import
-
 from ... import (
     branch as _mod_branch,
     controldir,
@@ -35,9 +33,6 @@ from ...option import (
     Option,
     ListOption,
     )
-from ...sixish import (
-    text_type,
-    )
 
 
 class cmd_launchpad_open(Command):
@@ -51,42 +46,10 @@ class cmd_launchpad_open(Command):
         ]
     takes_args = ['location?']
 
-    def _possible_locations(self, location):
-        """Yield possible external locations for the branch at 'location'."""
-        yield location
-        try:
-            branch = _mod_branch.Branch.open_containing(location)[0]
-        except NotBranchError:
-            return
-        branch_url = branch.get_public_branch()
-        if branch_url is not None:
-            yield branch_url
-        branch_url = branch.get_push_location()
-        if branch_url is not None:
-            yield branch_url
-
-    def _get_web_url(self, service, location):
-        from .lp_registration import (
-            InvalidURL,
-            NotLaunchpadBranch)
-        for branch_url in self._possible_locations(location):
-            try:
-                return service.get_web_url_from_branch_url(branch_url)
-            except (NotLaunchpadBranch, InvalidURL):
-                pass
-        raise NotLaunchpadBranch(branch_url)
-
     def run(self, location=None, dry_run=False):
-        from .lp_registration import (
-            LaunchpadService)
-        if location is None:
-            location = u'.'
-        web_url = self._get_web_url(LaunchpadService(), location)
-        trace.note(gettext('Opening %s in web browser') % web_url)
-        if not dry_run:
-            import webbrowser   # this import should not be lazy
-            # otherwise brz.exe lacks this module
-            webbrowser.open(web_url)
+        trace.warning('lp-open is deprecated. Please use web-open instead')
+        from breezy.plugins.propose.cmds import cmd_web_open
+        return cmd_web_open().run(location=location, dry_run=dry_run)
 
 
 class cmd_launchpad_login(Command):
@@ -111,9 +74,12 @@ class cmd_launchpad_login(Command):
         'verbose',
         Option('no-check',
                "Don't check that the user name is valid."),
+        Option('service-root', type=str,
+               help="Launchpad service root to connect to"),
         ]
 
-    def run(self, name=None, no_check=False, verbose=False):
+    def run(self, name=None, no_check=False, verbose=False,
+            service_root='production'):
         # This is totally separate from any launchpadlib login system.
         from . import account
         check_account = not no_check
@@ -141,6 +107,10 @@ class cmd_launchpad_login(Command):
             if verbose:
                 self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
                                 (name,))
+        if check_account:
+            from .lp_api import connect_launchpad
+            from .uris import lookup_service_root
+            connect_launchpad(lookup_service_root(service_root))
 
 
 class cmd_launchpad_logout(Command):
@@ -167,70 +137,6 @@ class cmd_launchpad_logout(Command):
                 old_username)
 
 
-class cmd_lp_propose_merge(Command):
-    __doc__ = """Propose merging a branch on Launchpad.
-
-    This will open your usual editor to provide the initial comment.  When it
-    has created the proposal, it will open it in your default web browser.
-
-    The branch will be proposed to merge into SUBMIT_BRANCH.  If SUBMIT_BRANCH
-    is not supplied, the remembered submit branch will be used.  If no submit
-    branch is remembered, the development focus will be used.
-
-    By default, the SUBMIT_BRANCH's review team will be requested to review
-    the merge proposal.  This can be overriden by specifying --review (-R).
-    The parameter the launchpad account name of the desired reviewer.  This
-    may optionally be followed by '=' and the review type.  For example:
-
-      brz lp-propose-merge --review jrandom --review review-team=qa
-
-    This will propose a merge,  request "jrandom" to perform a review of
-    unspecified type, and request "review-team" to perform a "qa" review.
-    """
-
-    hidden = True
-    takes_options = [Option('staging',
-                            help='Propose the merge on staging.'),
-                     Option('message', short_name='m', type=text_type,
-                            help='Commit message.'),
-                     Option('approve',
-                            help=('Mark the proposal as approved immediately, '
-                                  'setting the approved revision to tip.')),
-                     Option('fixes', 'The bug this proposal fixes.', str),
-                     ListOption('review', short_name='R', type=text_type,
-                                help='Requested reviewer and optional type.')]
-
-    takes_args = ['submit_branch?']
-
-    aliases = ['lp-submit', 'lp-propose']
-
-    def run(self, submit_branch=None, review=None, staging=False,
-            message=None, approve=False, fixes=None):
-        from . import lp_propose
-        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
-            '.')
-        if review is None:
-            reviews = None
-        else:
-            reviews = []
-            for review in review:
-                if '=' in review:
-                    reviews.append(review.split('=', 2))
-                else:
-                    reviews.append((review, ''))
-            if submit_branch is None:
-                submit_branch = branch.get_submit_branch()
-        if submit_branch is None:
-            target = None
-        else:
-            target = _mod_branch.Branch.open(submit_branch)
-        proposer = lp_propose.Proposer(tree, branch, target, message,
-                                       reviews, staging, approve=approve,
-                                       fixes=fixes)
-        proposer.check_proposal()
-        proposer.create_proposal()
-
-
 class cmd_lp_find_proposal(Command):
 
     __doc__ = """Find the proposal to merge this revision.
@@ -251,7 +157,7 @@ class cmd_lp_find_proposal(Command):
 
     def run(self, revision=None):
         from ... import ui
-        from . import lp_api
+        from . import uris
         import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
         with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
@@ -264,11 +170,10 @@ class cmd_lp_find_proposal(Command):
                 raise CommandError(gettext('No review found.'))
             trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
-                webbrowser.open(lp_api.canonical_url(mp))
+                webbrowser.open(uris.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
-        from launchpadlib import uris
-        from . import lp_api
+        from . import uris, lp_api
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
         lp_base_url = uris.LPNET_SERVICE_ROOT
         launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')

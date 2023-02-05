@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 __all__ = ['show_bzrdir_info']
 
 from io import StringIO
@@ -38,16 +36,16 @@ from .errors import (NoWorkingTree, NotBranchError,
 from .missing import find_unmerged
 
 
-def plural(n, base=u'', pl=None):
+def plural(n, base='', pl=None):
     if n == 1:
         return base
     elif pl is not None:
         return pl
     else:
-        return u's'
+        return 's'
 
 
-class LocationList(object):
+class LocationList:
 
     def __init__(self, base_path):
         self.locs = []
@@ -113,7 +111,7 @@ def gather_location_info(repository=None, branch=None, working=None,
             if working_path == master_path_base:
                 locs['checkout of co-located branch'] = params['branch']
             elif 'branch' in params:
-                locs['checkout of branch'] = "%s, branch %s" % (
+                locs['checkout of branch'] = "{}, branch {}".format(
                     master_path_base, params['branch'])
             else:
                 locs['checkout of branch'] = master_path
@@ -402,7 +400,7 @@ def show_component_info(control, repository, branch=None, working=None,
         verbose = 2
     layout = describe_layout(repository, branch, working, control)
     format = describe_format(control, repository, branch, working)
-    outfile.write("%s (format: %s)\n" % (layout, format))
+    outfile.write("{} (format: {})\n".format(layout, format))
     _show_location_info(
         gather_location_info(control=control, repository=repository,
                              branch=branch, working=working),
@@ -487,7 +485,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
                     phrase = "Checkout"
         if independence != "":
             phrase = phrase.lower()
-        return "%s%s" % (independence, phrase)
+        return "{}{}".format(independence, phrase)
 
 
 def describe_format(control, repository, branch, tree):
@@ -537,7 +535,7 @@ class InfoHooks(_mod_hooks.Hooks):
     """Hooks for the info command."""
 
     def __init__(self):
-        super(InfoHooks, self).__init__("breezy.info", "hooks")
+        super().__init__("breezy.info", "hooks")
         self.add_hook(
             'repository',
             "Invoked when displaying the statistics for a repository. "

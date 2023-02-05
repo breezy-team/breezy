@@ -40,9 +40,6 @@ from ..lockdir import (
     LockDir,
     LockHeldInfo,
     )
-from ..sixish import (
-    text_type,
-    )
 from . import (
     features,
     TestCase,
@@ -170,7 +167,7 @@ class TestLockDir(TestCaseWithTransport):
         self.addCleanup(lf1.unlock)
         info2 = lf2.peek()
         self.assertTrue(info2)
-        self.assertEqual(info2.get('nonce'), lf1.nonce)
+        self.assertEqual(info2.nonce, lf1.nonce)
 
     def test_30_lock_wait_fail(self):
         """Wait on a lock, then fail
@@ -431,8 +428,8 @@ class TestLockDir(TestCaseWithTransport):
             info_list = ld1.peek().to_readable_dict()
         finally:
             ld1.unlock()
-        self.assertEqual(info_list['user'], u'jrandom@example.com')
-        self.assertContainsRe(info_list['pid'], '^\\d+$')
+        self.assertEqual(info_list['user'], 'jrandom@example.com')
+        self.assertIsInstance(info_list['pid'], int)
         self.assertContainsRe(info_list['time_ago'], '^\\d+ seconds? ago$')
 
     def test_lock_without_email(self):
@@ -569,7 +566,7 @@ class TestLockDir(TestCaseWithTransport):
 class TestLockDirHooks(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestLockDirHooks, self).setUp()
+        super().setUp()
         self._calls = []
 
     def get_lock(self):
@@ -668,7 +665,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
 
     def test_unicode(self):
         info = LockHeldInfo.for_this_process(None)
-        self.assertContainsRe(text_type(info),
+        self.assertContainsRe(str(info),
                               r'held by .* on .* \(process #\d+\), acquired .* ago')
 
     def test_is_locked_by_this_process(self):

@@ -33,8 +33,6 @@ be used in the help text, producing sensible input to a manual while
 rendering on the screen naturally.
 """
 
-from __future__ import absolute_import
-
 import breezy
 from breezy import (
     config,
@@ -68,7 +66,7 @@ class HelpTopicRegistry(registry.Registry):
         """
         # The detail is stored as the 'object' and the metadata as the info
         info = (summary, section)
-        super(HelpTopicRegistry, self).register(topic, detail, info=info)
+        super().register(topic, detail, info=info)
 
     def register_lazy(self, topic, module_name, member_name, summary,
                       section=SECT_LIST):
@@ -82,7 +80,7 @@ class HelpTopicRegistry(registry.Registry):
         """
         # The detail is stored as the 'object' and the metadata as the info
         info = (summary, section)
-        super(HelpTopicRegistry, self).register_lazy(topic, module_name,
+        super().register_lazy(topic, module_name,
                                                      member_name, info=info)
 
     def get_detail(self, topic):
@@ -141,7 +139,7 @@ def _load_from_file(topic_name):
 
     Topics are expected to be txt files in breezy.help_topics.
     """
-    resource_name = osutils.pathjoin("en", "%s.txt" % (topic_name,))
+    resource_name = osutils.pathjoin("en", "{}.txt".format(topic_name))
     return osutils.resource_string('breezy.help_topics', resource_name)
 
 
@@ -203,8 +201,8 @@ The keywords used as revision selection methods are the following:
 
         # Note: The leading : here are HACKs to get reStructuredText
         # 'field' formatting - we know that the prefix ends in a ':'.
-        out.append(":%s\n\t%s" % (i.prefix, summary))
-        details.append(":%s\n%s" % (i.prefix, doc))
+        out.append(":{}\n\t{}".format(i.prefix, summary))
+        details.append(":{}\n{}".format(i.prefix, doc))
 
     return '\n'.join(out + details)
 
@@ -846,7 +844,7 @@ topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
                         SECT_CONCEPT)
 
 
-class HelpTopicIndex(object):
+class HelpTopicIndex:
     """A index for brz help that returns topics."""
 
     def __init__(self):
@@ -876,7 +874,7 @@ def _format_see_also(see_also):
     return result
 
 
-class RegisteredTopic(object):
+class RegisteredTopic:
     """A help topic which has been registered in the HelpTopicRegistry.
 
     These topics consist of nothing more than the name of the topic - all
@@ -929,7 +927,7 @@ def help_as_plain_text(text):
     return "\n".join(result) + "\n"
 
 
-class ConfigOptionHelpIndex(object):
+class ConfigOptionHelpIndex:
     """A help index that returns help topics for config options."""
 
     def __init__(self):

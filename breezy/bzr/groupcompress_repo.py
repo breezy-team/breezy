@@ -16,8 +16,6 @@
 
 """Repository formats using CHK inventories and groupcompress compression."""
 
-from __future__ import absolute_import
-
 import time
 
 from .. import (
@@ -59,11 +57,7 @@ from .pack_repo import (
 from ..bzr.vf_repository import (
     StreamSource,
     )
-from ..sixish import (
-    viewitems,
-    viewvalues,
-    )
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 
 class GCPack(NewPack):
@@ -199,7 +193,7 @@ class GCCHKPacker(Packer):
 
     def __init__(self, pack_collection, packs, suffix, revision_ids=None,
                  reload_func=None):
-        super(GCCHKPacker, self).__init__(pack_collection, packs, suffix,
+        super().__init__(pack_collection, packs, suffix,
                                           revision_ids=revision_ids,
                                           reload_func=reload_func)
         self._pack_collection = pack_collection
@@ -287,7 +281,7 @@ class GCCHKPacker(Packer):
                 next_keys = set()
 
                 def handle_internal_node(node):
-                    for prefix, value in viewitems(node._items):
+                    for prefix, value in node._items.items():
                         # We don't want to request the same key twice, and we
                         # want to order it by the first time it is seen.
                         # Even further, we don't want to request a key which is
@@ -409,7 +403,7 @@ class GCCHKPacker(Packer):
     def _copy_stream(self, source_vf, target_vf, keys, message, vf_to_stream,
                      pb_offset):
         trace.mutter('repacking %d %s', len(keys), message)
-        self.pb.update('repacking %s' % (message,), pb_offset)
+        self.pb.update('repacking {}'.format(message), pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
             for _, _ in target_vf._insert_record_stream(
@@ -525,7 +519,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
     """
 
     def __init__(self, *args, **kwargs):
-        super(GCCHKReconcilePacker, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._data_changed = False
         self._gather_text_refs = True
 
@@ -548,8 +542,8 @@ class GCCHKReconcilePacker(GCCHKPacker):
         revision_vf = self._build_vf('revision', True, False, for_write=True)
         ancestor_keys = revision_vf.get_parent_map(revision_vf.keys())
         # Strip keys back into revision_ids.
-        ancestors = dict((k[0], tuple([p[0] for p in parents]))
-                         for k, parents in viewitems(ancestor_keys))
+        ancestors = {k[0]: tuple([p[0] for p in parents])
+                         for k, parents in ancestor_keys.items()}
         del ancestor_keys
         # TODO: _generate_text_key_index should be much cheaper to generate from
         #       a chk repository, rather than the current implementation
@@ -612,7 +606,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
     """
 
     def __init__(self, *args, **kwargs):
-        super(GCCHKCanonicalizingPacker, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._data_changed = False
 
     def _exhaust_stream(self, source_vf, keys, message, vf_to_stream, pb_offset):
@@ -620,7 +614,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
 
         This is useful to get the side-effects of generating a stream.
         """
-        self.pb.update('scanning %s' % (message,), pb_offset)
+        self.pb.update('scanning {}'.format(message), pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             list(vf_to_stream(source_vf, keys, message, child_pb))
 
@@ -671,7 +665,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if search_key_name is None:
                     # Find the name corresponding to the search_key_func
                     search_key_reg = chk_map.search_key_registry
-                    for search_key_name, func in viewitems(search_key_reg):
+                    for search_key_name, func in search_key_reg.items():
                         if func == chk_inv.id_to_entry._search_key_func:
                             break
                 canonical_inv = inventory.CHKInventory.from_inventory(
@@ -748,7 +742,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # any present parent inventories, which may be used when calculating
         # deltas for streaming.
         all_inv_keys = set(corresponding_invs)
-        for parent_inv_keys in viewvalues(inv_parent_map):
+        for parent_inv_keys in inv_parent_map.values():
             all_inv_keys.update(parent_inv_keys)
         # Filter out ghost parents.
         all_inv_keys.intersection_update(
@@ -811,7 +805,7 @@ class CHKInventoryRepository(PackRepository):
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
                  _serializer):
         """Overridden to change pack collection class."""
-        super(CHKInventoryRepository, self).__init__(_format, a_controldir,
+        super().__init__(_format, a_controldir,
                                                      control_files, _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
@@ -952,7 +946,7 @@ class CHKInventoryRepository(PackRepository):
             resulting inventory.
         """
         if not self.is_in_write_group():
-            raise AssertionError("%r not in write group" % (self,))
+            raise AssertionError("{!r} not in write group".format(self))
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = None
         if basis_inv is None or not isinstance(basis_inv, inventory.CHKInventory):
@@ -1013,7 +1007,7 @@ class CHKInventoryRepository(PackRepository):
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)
-        present_inventory_keys = set(k for k in parent_map)
+        present_inventory_keys = {k for k in parent_map}
         return present_inventory_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
@@ -1118,7 +1112,7 @@ class CHKInventoryRepository(PackRepository):
             # Actually, this test is just slightly looser than exact so that
             # CHK2 <-> 2a transfers will work.
             return GroupCHKStreamSource(self, to_format)
-        return super(CHKInventoryRepository, self)._get_source(to_format)
+        return super()._get_source(to_format)
 
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         """Find revisions with different parent lists in the revision object
@@ -1157,7 +1151,7 @@ class GroupCHKStreamSource(StreamSource):
 
     def __init__(self, from_repository, to_format):
         """Create a StreamSource streaming from from_repository."""
-        super(GroupCHKStreamSource, self).__init__(from_repository, to_format)
+        super().__init__(from_repository, to_format)
         self._revision_keys = None
         self._text_keys = None
         self._text_fetch_order = 'groupcompress'
@@ -1319,11 +1313,10 @@ class GroupCHKStreamSource(StreamSource):
                                          allow_absent=True)
         # We use the empty set for excluded_revision_keys, to make it clear
         # that we want to transmit all referenced chk pages.
-        for stream_info in self._get_filtered_chk_streams(set()):
-            yield stream_info
+        yield from self._get_filtered_chk_streams(set())
 
 
-class _InterestingKeyInfo(object):
+class _InterestingKeyInfo:
     def __init__(self):
         self.interesting_root_keys = set()
         self.interesting_pid_root_keys = set()

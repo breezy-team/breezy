@@ -36,8 +36,6 @@ repeated reads cannot be obtained if the object is ejected, or that
 the object is an expensive one for obtaining.
 """
 
-from __future__ import absolute_import
-
 import sys
 
 from . import errors as errors
@@ -45,14 +43,21 @@ from .identitymap import IdentityMap, NullIdentityMap
 from .trace import mutter
 
 
-class ReadOnlyTransaction(object):
+class Transaction:
+    """Base class for transactions."""
+
+    def writeable(self) -> bool:
+        raise NotImplementedError(self.writeable)
+
+
+class ReadOnlyTransaction(Transaction):
     """A read only unit of work for data objects."""
 
     def finish(self):
         """Clean up this transaction."""
 
     def __init__(self):
-        super(ReadOnlyTransaction, self).__init__()
+        super().__init__()
         self.map = IdentityMap()
         self._clean_objects = set()
         self._clean_queue = []
@@ -100,8 +105,12 @@ class ReadOnlyTransaction(object):
             # the map backwards
             # _clean_objects
             # _clean_queue
-            # 1 missing ?
-            if (sys.getrefcount(self._clean_queue[offset]) <= 7
+            if sys.version_info >= (3, 11):
+                ref_threshold = 6
+            else:
+                # 1 missing on Python < 3.11
+                ref_threshold = 7
+            if (sys.getrefcount(self._clean_queue[offset]) <= ref_threshold
                     and not self._clean_queue[offset] in self._precious_objects):
                 removed = self._clean_queue[offset]
                 self._clean_objects.remove(removed)
@@ -114,6 +123,7 @@ class ReadOnlyTransaction(object):
 
     def writeable(self):
         """Read only transactions do not allow writes."""
+        return False
 
 
 class WriteTransaction(ReadOnlyTransaction):
@@ -132,7 +142,7 @@ class WriteTransaction(ReadOnlyTransaction):
                 callback()
 
     def __init__(self):
-        super(WriteTransaction, self).__init__()
+        super().__init__()
         self._dirty_objects = set()
 
     def is_dirty(self, an_object):
@@ -157,7 +167,7 @@ class WriteTransaction(ReadOnlyTransaction):
         return True
 
 
-class PassThroughTransaction(object):
+class PassThroughTransaction(Transaction):
     """A pass through transaction
 
     - nothing is cached.
@@ -172,7 +182,7 @@ class PassThroughTransaction(object):
                 callback()
 
     def __init__(self):
-        super(PassThroughTransaction, self).__init__()
+        super().__init__()
         self.map = NullIdentityMap()
         self._dirty_objects = set()
 

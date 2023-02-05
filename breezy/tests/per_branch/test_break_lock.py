@@ -28,7 +28,7 @@ from breezy.tests import per_branch
 class TestBreakLock(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestBreakLock, self).setUp()
+        super().setUp()
         self.unused_branch = self.make_branch('branch')
         self.branch = _mod_branch.Branch.open(self.unused_branch.base)
 
@@ -80,7 +80,7 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
         master = self.make_branch('master')
         try:
             self.branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             # this branch does not support binding.
             return
         master.lock_write()

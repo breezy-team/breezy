@@ -16,8 +16,6 @@
 
 """Read in a bundle stream, and process it into a BundleReader object."""
 
-from __future__ import absolute_import
-
 import base64
 from io import BytesIO
 import os
@@ -43,9 +41,6 @@ from ..inventory import (
 from ..inventorytree import InventoryTree
 from ...osutils import sha_string, sha_strings, pathjoin
 from ...revision import Revision, NULL_REVISION
-from ...sixish import (
-    viewitems,
-    )
 from ..testament import StrictTestament
 from ...trace import mutter, warning
 from ...tree import (
@@ -55,7 +50,7 @@ from ...tree import (
 from ..xml5 import serializer_v5
 
 
-class RevisionInfo(object):
+class RevisionInfo:
     """Gets filled out for each revision object that is read.
     """
 
@@ -113,11 +108,11 @@ class RevisionInfo(object):
         revision_info.timestamp = revision.timestamp
         revision_info.message = revision.message.split('\n')
         revision_info.properties = [': '.join(p) for p in
-                                    viewitems(revision.properties)]
+                                    revision.properties.items()]
         return revision_info
 
 
-class BundleInfo(object):
+class BundleInfo:
     """This contains the meta information. Stuff that allows you to
     recreate the revision or inventory XML.
     """
@@ -261,7 +256,7 @@ class BundleInfo(object):
 
         count = 0
         missing = {}
-        for revision_id, sha1 in viewitems(rev_to_sha):
+        for revision_id, sha1 in rev_to_sha.items():
             if repository.has_revision(revision_id):
                 testament = StrictTestament.from_revision(repository,
                                                           revision_id)
@@ -639,7 +634,7 @@ class BundleTree(InventoryTree):
 
         if file_patch.startswith(b'\\'):
             raise ValueError(
-                'Malformed patch for %s, %r' % (file_id, file_patch))
+                'Malformed patch for {}, {!r}'.format(file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
     def get_symlink_target(self, path):
@@ -770,7 +765,7 @@ class BundleTree(InventoryTree):
 
     def sorted_path_id(self):
         paths = []
-        for result in viewitems(self._new_id):
+        for result in self._new_id.items():
             paths.append(result)
         for id in self.base_tree.all_file_ids():
             try:

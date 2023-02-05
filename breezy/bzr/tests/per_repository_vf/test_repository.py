@@ -217,7 +217,7 @@ class TestRepository(TestCaseWithRepository):
         # Make a repo with one revision and one versioned file.
         tree = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
-        tree.add('foo', b'file1')
+        tree.add('foo', ids=b'file1')
         tree.commit('message', rev_id=b'rev_id')
         repo = tree.branch.repository
         repo.lock_write()
@@ -270,7 +270,7 @@ class TestRepository(TestCaseWithRepository):
         file_key = (file_id,)
         with tree.lock_write():
             self.assertEqual(set(), set(repo.texts.keys()))
-            tree.add(['foo'], [file_id], ['file'])
+            tree.add(['foo'], ['file'], [file_id])
             tree.put_file_bytes_non_atomic(
                 'foo', b'content\n')
             try:
@@ -322,7 +322,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
     scenarios = all_repository_vf_format_scenarios()
 
     def setUp(self):
-        super(TestCaseWithComplexRepository, self).setUp()
+        super().setUp()
         tree_a = self.make_branch_and_tree('a')
         self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'
@@ -389,7 +389,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
     scenarios = all_repository_vf_format_scenarios()
 
     def setUp(self):
-        super(TestCaseWithCorruptRepository, self).setUp()
+        super().setUp()
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')

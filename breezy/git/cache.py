@@ -16,18 +16,14 @@
 
 """Map from Git sha's to Bazaar objects."""
 
-from __future__ import absolute_import
-
-from dulwich.objects import (
-    sha_to_hex,
-    hex_to_sha,
-    )
 import os
 import threading
 
 from dulwich.objects import (
+    sha_to_hex,
+    hex_to_sha,
     ShaFile,
-    )
+)
 
 from .. import (
     bedding,
@@ -35,20 +31,17 @@ from .. import (
     osutils,
     registry,
     trace,
-    )
+)
 from ..bzr import (
     btree_index as _mod_btree_index,
     index as _mod_index,
     versionedfile,
-    )
-from ..sixish import (
-    viewitems,
-    viewkeys,
-    viewvalues,
-    )
+)
 from ..transport import (
     get_transport_from_path,
-    )
+    FileExists,
+    NoSuchFile,
+)
 
 
 def get_cache_dir():
@@ -72,30 +65,6 @@ def get_remote_cache_transport(repository):
     return get_transport_from_path(path)
 
 
-def check_pysqlite_version(sqlite3):
-    """Check that sqlite library is compatible.
-
-    """
-    if (sqlite3.sqlite_version_info[0] < 3
-            or (sqlite3.sqlite_version_info[0] == 3 and
-                sqlite3.sqlite_version_info[1] < 3)):
-        trace.warning('Needs at least sqlite 3.3.x')
-        raise bzr_errors.BzrError("incompatible sqlite library")
-
-
-try:
-    try:
-        import sqlite3
-        check_pysqlite_version(sqlite3)
-    except (ImportError, bzr_errors.BzrError):
-        from pysqlite2 import dbapi2 as sqlite3
-        check_pysqlite_version(sqlite3)
-except BaseException:
-    trace.warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
-                  'module')
-    raise bzr_errors.BzrError("missing sqlite library")
-
-
 _mapdbs = threading.local()
 
 
@@ -108,7 +77,7 @@ def mapdbs():
         return _mapdbs.cache
 
 
-class GitShaMap(object):
+class GitShaMap:
     """Git<->Bzr revision id mapping database."""
 
     def lookup_git_sha(self, sha):
@@ -164,7 +133,7 @@ class GitShaMap(object):
         """Abort any pending changes."""
 
 
-class ContentCache(object):
+class ContentCache:
     """Object that can cache Git objects."""
 
     def add(self, object):
@@ -181,7 +150,7 @@ class ContentCache(object):
         raise NotImplementedError(self.__getitem__)
 
 
-class BzrGitCacheFormat(object):
+class BzrGitCacheFormat:
     """Bazaar-Git Cache Format."""
 
     def get_format_string(self):
@@ -206,7 +175,7 @@ class BzrGitCacheFormat(object):
         try:
             format_name = transport.get_bytes('format')
             format = formats.get(format_name)
-        except bzr_errors.NoSuchFile:
+        except NoSuchFile:
             format = formats.get('default')
             format.initialize(transport)
         return format.open(transport)
@@ -236,7 +205,7 @@ class BzrGitCacheFormat(object):
             else:
                 try:
                     repo_transport.mkdir('git')
-                except bzr_errors.FileExists:
+                except FileExists:
                     pass
                 transport = repo_transport.clone('git')
         else:
@@ -246,7 +215,7 @@ class BzrGitCacheFormat(object):
         return cls.from_transport(transport)
 
 
-class CacheUpdater(object):
+class CacheUpdater:
     """Base class for objects that can update a bzr-git cache."""
 
     def add_object(self, obj, bzr_key_data, path):
@@ -263,7 +232,7 @@ class CacheUpdater(object):
         raise NotImplementedError(self.finish)
 
 
-class BzrGitCache(object):
+class BzrGitCache:
     """Caching backend."""
 
     def __init__(self, idmap, cache_updater_klass):
@@ -336,8 +305,7 @@ class DictGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         if not isinstance(sha, bytes):
             raise TypeError(sha)
-        for entry in viewvalues(self._by_sha[sha]):
-            yield entry
+        yield from self._by_sha[sha].values()
 
     def lookup_tree_id(self, fileid, revision):
         return self._by_fileid[revision][fileid]
@@ -346,13 +314,13 @@ class DictGitShaMap(GitShaMap):
         return self._by_revid[revid]
 
     def revids(self):
-        for key, entries in viewitems(self._by_sha):
-            for (type, type_data) in viewvalues(entries):
+        for key, entries in self._by_sha.items():
+            for (type, type_data) in entries.values():
                 if type == "commit":
                     yield type_data[0]
 
     def sha1s(self):
-        return viewkeys(self._by_sha)
+        return self._by_sha.keys()
 
 
 class SqliteCacheUpdater(CacheUpdater):
@@ -425,6 +393,7 @@ class SqliteGitShaMap(GitShaMap):
     """Bazaar GIT Sha map that uses a sqlite database for storage."""
 
     def __init__(self, path=None):
+        import sqlite3
         self.path = path
         if path is None:
             self.db = sqlite3.connect(":memory:")
@@ -465,7 +434,7 @@ class SqliteGitShaMap(GitShaMap):
             pass  # Column already exists.
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.path)
+        return "{}({!r})".format(self.__class__.__name__, self.path)
 
     def lookup_commit(self, revid):
         cursor = self.db.execute("select sha1 from commits where revid = ?",
@@ -666,7 +635,7 @@ class TdbGitShaMap(GitShaMap):
         self.db.transaction_cancel()
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.path)
+        return "{}({!r})".format(self.__class__.__name__, self.path)
 
     def lookup_commit(self, revid):
         try:
@@ -711,10 +680,7 @@ class TdbGitShaMap(GitShaMap):
         return ret
 
     def _keys(self):
-        try:
-            return self.db.keys()
-        except AttributeError:  # python < 3
-            return self.db.iterkeys()
+        return self.db.keys()
 
     def revids(self):
         """List the revision ids known."""
@@ -787,7 +753,7 @@ class IndexBzrGitCache(BzrGitCache):
 
     def __init__(self, transport=None):
         shamap = IndexGitShaMap(transport.clone('index'))
-        super(IndexBzrGitCache, self).__init__(shamap, IndexCacheUpdater)
+        super().__init__(shamap, IndexCacheUpdater)
 
 
 class IndexGitCacheFormat(BzrGitCacheFormat):
@@ -796,7 +762,7 @@ class IndexGitCacheFormat(BzrGitCacheFormat):
         return b'bzr-git sha map with git object cache version 1\n'
 
     def initialize(self, transport):
-        super(IndexGitCacheFormat, self).initialize(transport)
+        super().initialize(transport)
         transport.mkdir('index')
         transport.mkdir('objects')
         from .transportgit import TransportObjectStore
@@ -840,14 +806,14 @@ class IndexGitShaMap(GitShaMap):
         if transport is not None:
             try:
                 transport.mkdir('git')
-            except bzr_errors.FileExists:
+            except FileExists:
                 pass
             return cls(transport.clone('git'))
         return cls(get_transport_from_path(get_cache_dir()))
 
     def __repr__(self):
         if self._transport is not None:
-            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
+            return "{}({!r})".format(self.__class__.__name__, self._transport.base)
         else:
             return "%s()" % (self.__class__.__name__)
 
@@ -856,8 +822,8 @@ class IndexGitShaMap(GitShaMap):
             raise bzr_errors.BzrError('builder already open')
         self.start_write_group()
         self._builder.add_nodes(
-            ((key, value) for (_, key, value) in
-                self._index.iter_all_entries()))
+            (key, value)
+            for (_, key, value) in self._index.iter_all_entries())
         to_remove = []
         for name in self._transport.list_dir('.'):
             if name.endswith('.rix'):
@@ -967,8 +933,8 @@ class IndexGitShaMap(GitShaMap):
     def missing_revisions(self, revids):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
-        for _, key, value in self._index.iter_entries((
-                (b"commit", revid, b"X") for revid in revids)):
+        for _, key, value in self._index.iter_entries(
+                (b"commit", revid, b"X") for revid in revids):
             missing_revids.remove(key[1])
         return missing_revids
 
@@ -978,7 +944,7 @@ class IndexGitShaMap(GitShaMap):
             yield key[1]
 
 
-formats = registry.Registry()
+formats = registry.Registry[str, BzrGitCacheFormat]()
 formats.register(TdbGitCacheFormat().get_format_string(),
                  TdbGitCacheFormat())
 formats.register(SqliteGitCacheFormat().get_format_string(),
@@ -998,7 +964,7 @@ def migrate_ancient_formats(repo_transport):
         return
     try:
         repo_transport.mkdir("git")
-    except bzr_errors.FileExists:
+    except FileExists:
         return
     # Prefer migrating git.db over git.tdb, since the latter may not
     # be openable on some platforms.

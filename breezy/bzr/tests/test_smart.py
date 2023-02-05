@@ -29,8 +29,9 @@ from io import BytesIO
 import tarfile
 import zlib
 
+import fastbencode as bencode
+
 from breezy import (
-    bencode,
     branch as _mod_branch,
     controldir,
     errors,
@@ -86,7 +87,7 @@ class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
 
     def setUp(self):
         self.vfs_transport_factory = memory.MemoryServer
-        super(TestCaseWithChrootedTransport, self).setUp()
+        super().setUp()
         self._chroot_server = None
 
     def get_transport(self, relpath=None):
@@ -103,7 +104,7 @@ class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
 class TestCaseWithSmartMedium(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
-        super(TestCaseWithSmartMedium, self).setUp()
+        super().setUp()
         # We're allowed to set  the transport class here, so that we don't use
         # the default or a parameterized class, but rather use the
         # TestCaseWithTransport infrastructure to set up a smart server and
@@ -178,17 +179,17 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         self.assertRaises(
             errors.PathNotChild, request.translate_client_path, b'bar/')
         self.assertEqual('./baz', request.translate_client_path(b'foo/baz'))
-        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
+        e_acute = '\N{LATIN SMALL LETTER E WITH ACUTE}'
         self.assertEqual(
-            u'./' + urlutils.escape(e_acute),
+            './' + urlutils.escape(e_acute),
             request.translate_client_path(b'foo/' + e_acute.encode('utf-8')))
 
     def test_translate_client_path_vfs(self):
         """VfsRequests receive escaped paths rather than raw UTF-8."""
         transport = self.get_transport()
         request = vfs.VfsRequest(transport, 'foo/')
-        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
-        escaped = urlutils.escape(u'foo/' + e_acute)
+        e_acute = '\N{LATIN SMALL LETTER E WITH ACUTE}'
+        escaped = urlutils.escape('foo/' + e_acute)
         self.assertEqual(
             './' + urlutils.escape(e_acute),
             request.translate_client_path(escaped.encode('ascii')))
@@ -529,7 +530,7 @@ class TestSmartServerRequestInitializeBzrDir(
         """Initializing a missing directory should fail like the bzrdir api."""
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestInitializeBzrDir(backing)
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(transport.NoSuchFile,
                           request.execute, b'subdir')
 
     def test_initialized_dir(self):
@@ -570,7 +571,7 @@ class TestSmartServerRequestBzrDirInitializeEx(
         backing = self.get_transport()
         name = self.make_controldir('reference')._format.network_name()
         request = smart_dir.SmartServerRequestBzrDirInitializeEx(backing)
-        self.assertRaises(errors.NoSuchFile, request.execute, name,
+        self.assertRaises(transport.NoSuchFile, request.execute, name,
                           b'subdir/dir', b'False', b'False', b'False', b'',
                           b'', b'', b'', b'False')
 
@@ -580,7 +581,7 @@ class TestSmartServerRequestBzrDirInitializeEx(
         name = self.make_controldir('reference')._format.network_name()
         request = smart_dir.SmartServerRequestBzrDirInitializeEx(backing)
         self.make_controldir('subdir')
-        self.assertRaises(errors.FileExists, request.execute, name, b'subdir',
+        self.assertRaises(transport.FileExists, request.execute, name, b'subdir',
                           b'False', b'False', b'False', b'', b'', b'', b'',
                           b'False')
 
@@ -837,7 +838,7 @@ class TestSmartServerRequestRevisionHistory(tests.TestCaseWithMemoryTransport):
         tree.lock_write()
         tree.add('')
         r1 = tree.commit('1st commit')
-        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
+        r2 = tree.commit('2nd commit', rev_id='\xc8'.encode())
         tree.unlock()
         self.assertEqual(
             smart_req.SmartServerResponse((b'ok', ), (b'\x00'.join([r1, r2]))),
@@ -898,7 +899,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        rev_id_utf8 = '\xc8'.encode()
         tree.commit('1st commit')
         tree.commit('2nd commit', rev_id=rev_id_utf8)
         tree.unlock()
@@ -1045,7 +1046,7 @@ class TestSmartServerBranchRequestSetConfigOptionDict(TestLockedBranch):
         self.encoded_value_dict = (
             b'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde')
         self.value_dict = {
-            'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
+            'ascii': 'a', 'unicode \N{WATCH}': '\N{INTERROBANG}'}
 
     def test_value_name(self):
         branch = self.make_branch('.')
@@ -1114,7 +1115,7 @@ class SetLastRevisionTestBase(TestLockedBranch):
     """Base test case for verbs that implement set_last_revision."""
 
     def setUp(self):
-        super(SetLastRevisionTestBase, self).setUp()
+        super().setUp()
         backing_transport = self.get_transport()
         self.request = self.request_class(backing_transport)
         self.tree = self.make_branch_and_memory_tree('.')
@@ -1138,7 +1139,7 @@ class SetLastRevisionTestBase(TestLockedBranch):
                          response)
 
 
-class TestSetLastRevisionVerbMixin(object):
+class TestSetLastRevisionVerbMixin:
     """Mixin test case for verbs that implement set_last_revision."""
 
     def test_set_null_to_null(self):
@@ -1157,7 +1158,7 @@ class TestSetLastRevisionVerbMixin(object):
     def make_tree_with_two_commits(self):
         self.tree.lock_write()
         self.tree.add('')
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        rev_id_utf8 = '\xc8'.encode()
         self.tree.commit('1st commit', rev_id=rev_id_utf8)
         self.tree.commit('2nd commit', rev_id=b'rev-2')
         self.tree.unlock()
@@ -1169,7 +1170,7 @@ class TestSetLastRevisionVerbMixin(object):
         # Make a branch with an empty revision history, but two revisions in
         # its repository.
         self.make_tree_with_two_commits()
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        rev_id_utf8 = '\xc8'.encode()
         self.tree.branch.set_last_revision_info(0, b'null:')
         self.assertEqual(
             (0, b'null:'), self.tree.branch.last_revision_info())
@@ -1184,7 +1185,7 @@ class TestSetLastRevisionVerbMixin(object):
         current tip.
         """
         self.make_tree_with_two_commits()
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        rev_id_utf8 = '\xc8'.encode()
         self.assertEqual(
             (2, b'rev-2'), self.tree.branch.last_revision_info())
         self.assertRequestSucceeds(rev_id_utf8, 1)
@@ -1195,7 +1196,7 @@ class TestSetLastRevisionVerbMixin(object):
         """If a pre_change_branch_tip hook raises TipChangeRejected, the verb
         returns TipChangeRejected.
         """
-        rejection_message = u'rejection message\N{INTERROBANG}'
+        rejection_message = 'rejection message\N{INTERROBANG}'
 
         def hook_that_rejects(params):
             raise errors.TipChangeRejected(rejection_message)
@@ -1257,7 +1258,7 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         current tip, but only if allow_overwrite_descendant is passed.
         """
         self.make_tree_with_two_commits()
-        rev_id_utf8 = u'\xc8'.encode('utf-8')
+        rev_id_utf8 = '\xc8'.encode()
         self.assertEqual(
             (2, b'rev-2'), self.tree.branch.last_revision_info())
         # If allow_overwrite_descendant flag is 0, then trying to set the tip
@@ -1439,8 +1440,8 @@ class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
         branch = self.make_branch('.', format='knit')
         repository = branch.repository
         response = request.execute(b'')
-        branch_nonce = branch.control_files._lock.peek().get('nonce')
-        repository_nonce = repository.control_files._lock.peek().get('nonce')
+        branch_nonce = branch.control_files._lock.peek().nonce
+        repository_nonce = repository.control_files._lock.peek().nonce
         self.assertEqual(smart_req.SmartServerResponse(
             (b'ok', branch_nonce, repository_nonce)),
             response)
@@ -1746,7 +1747,7 @@ class TestSmartServerRepositoryGetRevisionGraph(
         tree.lock_write()
         tree.add('')
         r1 = tree.commit('1st commit')
-        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
+        r2 = tree.commit('2nd commit', rev_id='\xc8'.encode())
         tree.unlock()
 
         # the lines of revision_id->revision_parent_list has no guaranteed
@@ -1765,9 +1766,9 @@ class TestSmartServerRepositoryGetRevisionGraph(
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        rev_id_utf8 = u'\xc9'.encode('utf-8')
+        rev_id_utf8 = '\xc9'.encode()
         tree.commit('1st commit', rev_id=rev_id_utf8)
-        tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
+        tree.commit('2nd commit', rev_id='\xc8'.encode())
         tree.unlock()
 
         self.assertEqual(smart_req.SmartServerResponse((b'ok', ), rev_id_utf8),
@@ -1797,8 +1798,8 @@ class TestSmartServerRepositoryGetRevIdForRevno(
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        rev1_id_utf8 = u'\xc8'.encode('utf-8')
-        rev2_id_utf8 = u'\xc9'.encode('utf-8')
+        rev1_id_utf8 = '\xc8'.encode()
+        rev2_id_utf8 = '\xc9'.encode()
         tree.commit('1st commit', rev_id=rev1_id_utf8)
         tree.commit('2nd commit', rev_id=rev2_id_utf8)
         tree.unlock()
@@ -1819,7 +1820,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(
         request = smart_repo.SmartServerRepositoryGetRevIdForRevno(backing)
         parent = self.make_branch_and_memory_tree('parent', format='1.9')
         parent.lock_write()
-        parent.add([''], [b'TREE_ROOT'])
+        parent.add([''], ids=[b'TREE_ROOT'])
         parent.commit(message='first commit')
         r2 = parent.commit(message='second commit')
         parent.unlock()
@@ -1885,7 +1886,7 @@ class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
         tree.lock_write()
         tree.add('')
         r1 = tree.commit('1st commit')
-        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
+        r2 = tree.commit('2nd commit', rev_id='\xc8'.encode())
         tree.unlock()
         repo = tree.branch.repository
         return repo, r1, r2
@@ -1949,7 +1950,7 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
         tree.add('')
-        rev_id_utf8 = u'\xc8abc'.encode('utf-8')
+        rev_id_utf8 = '\xc8abc'.encode()
         tree.commit('a commit', rev_id=rev_id_utf8)
         tree.unlock()
         self.assertTrue(tree.branch.repository.has_revision(rev_id_utf8))
@@ -1965,7 +1966,7 @@ class TestSmartServerRepositoryIterFilesBytes(tests.TestCaseWithTransport):
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", b"somecontents")])
-        t.add(["file"], [b"thefileid"])
+        t.add(["file"], ids=[b"thefileid"])
         t.commit(rev_id=b'somerev', message="add file")
         self.assertIs(None, request.execute(b''))
         response = request.do_body(b"thefileid\0somerev\n")
@@ -2050,7 +2051,7 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
     def test_revid_with_committers(self):
         """For a revid we get more infos."""
         backing = self.get_transport()
-        rev_id_utf8 = u'\xc8abc'.encode('utf-8')
+        rev_id_utf8 = '\xc8abc'.encode()
         request = smart_repo.SmartServerRepositoryGatherStats(backing)
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
@@ -2072,7 +2073,7 @@ class TestSmartServerRepositoryGatherStats(tests.TestCaseWithMemoryTransport):
     def test_not_empty_repository_with_committers(self):
         """For a revid and requesting committers we get the whole thing."""
         backing = self.get_transport()
-        rev_id_utf8 = u'\xc8abc'.encode('utf-8')
+        rev_id_utf8 = '\xc8abc'.encode()
         request = smart_repo.SmartServerRepositoryGatherStats(backing)
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
@@ -2176,7 +2177,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         request = smart_repo.SmartServerRepositoryLockWrite(backing)
         repository = self.make_repository('.', format='knit')
         response = request.execute(b'')
-        nonce = repository.control_files._lock.peek().get('nonce')
+        nonce = repository.control_files._lock.peek().nonce
         self.assertEqual(smart_req.SmartServerResponse(
             (b'ok', nonce)), response)
         # The repository is now locked.  Verify that with a new repository
@@ -2514,7 +2515,7 @@ class TestSmartServerVfsGet(tests.TestCaseWithMemoryTransport):
 
     def test_unicode_path(self):
         """VFS requests expect unicode paths to be escaped."""
-        filename = u'foo\N{INTERROBANG}'
+        filename = 'foo\N{INTERROBANG}'
         filename_escaped = urlutils.escape(filename)
         backing = self.get_transport()
         request = vfs.GetRequest(backing)
@@ -2534,7 +2535,7 @@ class TestHandlers(tests.TestCase):
             try:
                 item = smart_req.request_handlers.get(key)
             except AttributeError as e:
-                raise AttributeError('failed to get %s: %s' % (key, e))
+                raise AttributeError('failed to get {}: {}'.format(key, e))
 
     def assertHandlerEqual(self, verb, handler):
         self.assertEqual(smart_req.request_handlers.get(verb), handler)
@@ -2665,7 +2666,7 @@ class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
     """Tests for SmartTCPServer hooks."""
 
     def setUp(self):
-        super(SmartTCPServerHookTests, self).setUp()
+        super().setUp()
         self.server = server.SmartTCPServer(self.get_transport())
 
     def test_run_server_started_hooks(self):
@@ -2742,7 +2743,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         t = self.make_branch_and_tree('.', format='2a')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", b"somecontents")])
-        t.add(["file"], [b"thefileid"])
+        t.add(["file"], ids=[b"thefileid"])
         t.commit(rev_id=b'somerev', message="add file")
         self.assertIs(None, request.execute(b'', b'unordered'))
         response = request.do_body(b"somerev\n")
@@ -2763,7 +2764,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         t = self.make_branch_and_tree('.', format='2a')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", b"somecontents")])
-        t.add(["file"], [b"thefileid"])
+        t.add(["file"], ids=[b"thefileid"])
         t.commit(rev_id=b'somerev', message="add file")
         self.assertIs(None, request.execute(b'', b'unordered'))
         response = request.do_body(b"")
@@ -2806,7 +2807,7 @@ class TestSmartServerRepositoryRevisionArchive(tests.TestCaseWithTransport):
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", b"somecontents")])
-        t.add(["file"], [b"thefileid"])
+        t.add(["file"], ids=[b"thefileid"])
         t.commit(rev_id=b'somerev', message="add file")
         response = request.execute(b'', b"somerev", b"tar", b"foo.tar", b"foo")
         self.assertTrue(response.is_successful())
@@ -2824,7 +2825,7 @@ class TestSmartServerRepositoryAnnotateFileRevision(tests.TestCaseWithTransport)
         t = self.make_branch_and_tree('.')
         self.addCleanup(t.lock_write().unlock)
         self.build_tree_contents([("file", b"somecontents\nmorecontents\n")])
-        t.add(["file"], [b"thefileid"])
+        t.add(["file"], ids=[b"thefileid"])
         t.commit(rev_id=b'somerev', message="add file")
         response = request.execute(b'', b"somerev", b"file")
         self.assertTrue(response.is_successful())
@@ -2847,3 +2848,4 @@ class TestSmartServerBranchRequestGetAllReferenceInfo(TestLockedBranch):
         self.assertEqual(
             [[b'some/path', b'http://www.example.com/', b'']],
             bencode.bdecode(response.body))
+

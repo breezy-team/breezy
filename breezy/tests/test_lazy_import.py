@@ -67,7 +67,7 @@ class InstrumentedImportReplacer(lazy_import.ImportReplacer):
         return lazy_import.ScopeReplacer.__call__(self, *args, **kwargs)
 
 
-class TestClass(object):
+class TestClass:
     """Just a simple test class instrumented for the test cases"""
 
     class_member = 'class_member'
@@ -94,7 +94,7 @@ class TestScopeReplacer(TestCase):
     """
 
     def setUp(self):
-        super(TestScopeReplacer, self).setUp()
+        super().setUp()
         # These tests assume we will not be proxying, so make sure proxying is
         # disabled.
         orig_proxy = lazy_import.ScopeReplacer._should_proxy
@@ -458,7 +458,7 @@ class ImportReplacerHelper(TestCaseInTempDir):
     """Test the ability to have a lazily imported module or object"""
 
     def setUp(self):
-        super(ImportReplacerHelper, self).setUp()
+        super().setUp()
         self.create_modules()
         base_path = self.test_dir + '/base'
 
@@ -972,7 +972,7 @@ class TestImportProcessor(TestCase):
                         '    two,\n'
                         '    )\n')
 
-    def test_from_one_import_two(self):
+    def test_from_one_import_two_two(self):
         exp = {'two': (['one'], 'two', {})}
         self.check(exp, 'from one import two\n')
         self.check(exp, 'from one import (two)\n')
@@ -1058,7 +1058,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         else:
             self.fail('root6 was not supposed to exist yet')
 
-        text = 'import %s as root6' % (self.root_name,)
+        text = 'import {} as root6'.format(self.root_name)
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
         proc.lazy_import(scope=globals(), text=text)
 
@@ -1118,7 +1118,7 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         else:
             self.fail('root8 was not supposed to exist yet')
         lazy_import.lazy_import(globals(),
-                                'import %s as root8' % (self.root_name,),
+                                'import {} as root8'.format(self.root_name),
                                 lazy_import_class=InstrumentedImportReplacer)
 
         self.assertEqual(InstrumentedImportReplacer,

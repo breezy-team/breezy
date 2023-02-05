@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (C) 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -41,16 +39,11 @@
 
 """Core engine for the fast-export command."""
 
-from __future__ import absolute_import
-
 # TODO: if a new_git_branch below gets merged repeatedly, the tip of the branch
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-try:
-    from email.utils import parseaddr
-except ImportError:  # python < 3
-    from email.Utils import parseaddr
+from email.utils import parseaddr
 import sys
 import time
 import re
@@ -65,11 +58,7 @@ from ... import (
     osutils,
     progress,
     trace,
-    )
-from ...sixish import (
-    int2byte,
-    PY3,
-    viewitems,
+    transport as _mod_transport,
     )
 
 from . import (
@@ -140,13 +129,14 @@ def sanitize_ref_name_for_git(refname):
     :param refname: refname to rewrite
     :return: new refname
     """
+    import struct
     new_refname = re.sub(
         # '/.' in refname or startswith '.'
         br"/\.|^\."
         # '..' in refname
         br"|\.\."
         # ord(c) < 040
-        br"|[" + b"".join([int2byte(x) for x in range(0o40)]) + br"]"
+        br"|[" + b"".join([bytes([x]) for x in range(0o40)]) + br"]"
         # c in '\177 ~^:?*['
         br"|[\177 ~^:?*[]"
         # last char in "/."
@@ -161,7 +151,7 @@ def sanitize_ref_name_for_git(refname):
     return new_refname
 
 
-class BzrFastExporter(object):
+class BzrFastExporter:
 
     def __init__(self, source, outf, ref=None, checkpoint=-1,
                  import_marks_file=None, export_marks_file=None, revision=None,
@@ -211,8 +201,8 @@ class BzrFastExporter(object):
         if self.import_marks_file:
             marks_info = marks_file.import_marks(self.import_marks_file)
             if marks_info is not None:
-                self.revid_to_mark = dict((r, m) for m, r in
-                                          marks_info.items())
+                self.revid_to_mark = {r: m for m, r in
+                                          marks_info.items()}
                 # These are no longer included in the marks file
                 #self.branch_names = marks_info[1]
 
@@ -234,8 +224,8 @@ class BzrFastExporter(object):
         # revisions to exclude now ...
         if start_rev_id is not None:
             self.note("Calculating the revisions to exclude ...")
-            self.excluded_revisions = set(
-                [rev_id for rev_id, _, _, _ in self.branch.iter_merge_sorted_revisions(start_rev_id)])
+            self.excluded_revisions = {
+                rev_id for rev_id, _, _, _ in self.branch.iter_merge_sorted_revisions(start_rev_id)}
             if self.baseline:
                 # needed so the first relative commit knows its parent
                 self.excluded_revisions.remove(start_rev_id)
@@ -284,12 +274,12 @@ class BzrFastExporter(object):
 
     def note(self, msg, *args):
         """Output a note but timestamp it."""
-        msg = "%s %s" % (self._time_of_day(), msg)
+        msg = "{} {}".format(self._time_of_day(), msg)
         trace.note(msg, *args)
 
     def warning(self, msg, *args):
         """Output a warning but timestamp it."""
-        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
+        msg = "{} WARNING: {}".format(self._time_of_day(), msg)
         trace.warning(msg, *args)
 
     def _time_of_day(self):
@@ -309,7 +299,7 @@ class BzrFastExporter(object):
                 rate_str = "at %.0f/minute " % rate
             else:
                 rate_str = "at %.1f/minute " % rate
-            self.note("%s commits exported %s%s" % (counts, rate_str, details))
+            self.note("{} commits exported {}{}".format(counts, rate_str, details))
 
     def dump_stats(self):
         time_required = progress.str_tdelta(time.time() - self._start_time)
@@ -319,14 +309,11 @@ class BzrFastExporter(object):
                   time_required)
 
     def print_cmd(self, cmd):
-        if PY3:
-            self.outf.write(b"%s\n" % cmd)
-        else:
-            self.outf.write(b"%r\n" % cmd)
+        self.outf.write(b"%s\n" % cmd)
 
     def _save_marks(self):
         if self.export_marks_file:
-            revision_ids = dict((m, r) for r, m in self.revid_to_mark.items())
+            revision_ids = {m: r for r, m in self.revid_to_mark.items()}
             marks_file.export_marks(self.export_marks_file, revision_ids)
 
     def is_empty_dir(self, tree, path):
@@ -334,7 +321,7 @@ class BzrFastExporter(object):
         try:
             if tree.kind(path) != 'directory':
                 return False
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
                          (path,))
             return False
@@ -510,13 +497,12 @@ class BzrFastExporter(object):
         file_cmds, rd_modifies, renamed = self._process_renames_and_deletes(
             changes.renamed, changes.removed, tree_new.get_revision_id(), tree_old)
 
-        for cmd in file_cmds:
-            yield cmd
+        yield from file_cmds
 
         # Map kind changes to a delete followed by an add
         for change in changes.kind_changed:
             path = self._adjust_path_for_renames(
-                path, renamed, tree_new.get_revision_id())
+                change.path[0], renamed, tree_new.get_revision_id())
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
@@ -581,7 +567,7 @@ class BzrFastExporter(object):
 
         must_be_renamed = {}
         old_to_new = {}
-        deleted_paths = set([change.path[0] for change in deletes])
+        deleted_paths = {change.path[0] for change in deletes}
         for change in renames:
             emit = change.kind[1] != 'directory' or not self.plain_format
             if change.path[1] in deleted_paths:
@@ -590,7 +576,7 @@ class BzrFastExporter(object):
                         change.path[1].encode("utf-8")))
                 deleted_paths.remove(change.path[1])
             if (self.is_empty_dir(tree_old, change.path[0])):
-                self.note("Skipping empty dir %s in rev %s" % (change.path[0],
+                self.note("Skipping empty dir {} in rev {}".format(change.path[0],
                                                                revision_id))
                 continue
             # oldpath = self._adjust_path_for_renames(oldpath, renamed,
@@ -620,7 +606,7 @@ class BzrFastExporter(object):
             for old_child_path in sorted(still_to_be_renamed):
                 new_child_path = must_be_renamed[old_child_path]
                 if self.verbose:
-                    self.note("implicitly renaming %s => %s" % (old_child_path,
+                    self.note("implicitly renaming {} => {}".format(old_child_path,
                                                                 new_child_path))
                 file_cmds.append(commands.FileRenameCommand(old_child_path.encode("utf-8"),
                                                             new_child_path.encode("utf-8")))
@@ -650,7 +636,7 @@ class BzrFastExporter(object):
         return path
 
     def emit_tags(self):
-        for tag, revid in viewitems(self.branch.tags.get_tag_dict()):
+        for tag, revid in self.branch.tags.get_tag_dict().items():
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:

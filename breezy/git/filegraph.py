@@ -17,13 +17,13 @@
 
 """File graph access."""
 
-from __future__ import absolute_import
-
+import posixpath
 import stat
 
 from dulwich.errors import (
     NotTreeError,
     )
+from dulwich.objects import SubmoduleEncountered
 from dulwich.object_store import (
     tree_lookup_path,
     )
@@ -37,7 +37,7 @@ from .mapping import (
     )
 
 
-class GitFileLastChangeScanner(object):
+class GitFileLastChangeScanner:
 
     def __init__(self, repository):
         self.repository = repository
@@ -46,9 +46,20 @@ class GitFileLastChangeScanner(object):
     def find_last_change_revision(self, path, commit_id):
         if not isinstance(path, bytes):
             raise TypeError(path)
-        commit = self.store[commit_id]
-        target_mode, target_sha = tree_lookup_path(self.store.__getitem__,
-                                                   commit.tree, path)
+        store = self.store
+        while True:
+            commit = store[commit_id]
+            try:
+                target_mode, target_sha = tree_lookup_path(
+                    store.__getitem__, commit.tree, path)
+            except SubmoduleEncountered as e:
+                revid = self.repository.lookup_foreign_revision_id(commit_id)
+                revtree = self.repository.revision_tree(revid)
+                store = revtree._get_submodule_store(e.path)
+                commit_id = e.sha
+                path = posixpath.relpath(path, e.path)
+            else:
+                break
         if path == b'':
             target_mode = stat.S_IFDIR
         if target_mode is None:
@@ -56,11 +67,12 @@ class GitFileLastChangeScanner(object):
                                  (target_sha, path, commit_id))
         while True:
             parent_commits = []
-            for parent_commit in [self.store[c] for c in commit.parents]:
+            for parent_id in commit.parents:
                 try:
-                    mode, sha = tree_lookup_path(self.store.__getitem__,
+                    parent_commit = store[parent_id]
+                    mode, sha = tree_lookup_path(store.__getitem__,
                                                  parent_commit.tree, path)
-                except (NotTreeError, KeyError):
+                except (KeyError, NotTreeError):
                     continue
                 else:
                     parent_commits.append(parent_commit)
@@ -70,14 +82,14 @@ class GitFileLastChangeScanner(object):
                 # or is a directory that didn't previously exist.
                 if mode != target_mode or (
                         not stat.S_ISDIR(target_mode) and sha != target_sha):
-                    return (path, commit.id)
+                    return (store, path, commit.id)
             if parent_commits == []:
                 break
             commit = parent_commits[0]
-        return (path, commit.id)
+        return (store, path, commit.id)
 
 
-class GitFileParentProvider(object):
+class GitFileParentProvider:
 
     def __init__(self, change_scanner):
         self.change_scanner = change_scanner
@@ -94,7 +106,7 @@ class GitFileParentProvider(object):
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = (
+                (store, path, text_parent) = (
                     self.change_scanner.find_last_change_revision(
                         path, commit_parent))
             except KeyError:

@@ -22,10 +22,7 @@ Adapted from the one in paramiko's unit tests.
 import os
 import paramiko
 import socket
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
+import socketserver
 import sys
 import time
 
@@ -48,11 +45,11 @@ class StubServer(paramiko.ServerInterface):
 
     def check_auth_password(self, username, password):
         # all are allowed
-        self.log('sftpserver - authorizing: %s' % (username,))
+        self.log('sftpserver - authorizing: {}'.format(username))
         return paramiko.AUTH_SUCCESSFUL
 
     def check_channel_request(self, kind, chanid):
-        self.log('sftpserver - channel request: %s, %s' % (kind, chanid))
+        self.log('sftpserver - channel request: {}, {}'.format(kind, chanid))
         return paramiko.OPEN_SUCCEEDED
 
 
@@ -191,7 +188,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             fstr = 'rb'
         try:
             f = os.fdopen(fd, fstr)
-        except (IOError, OSError) as e:
+        except OSError as e:
             return paramiko.SFTPServer.convert_errno(e.errno)
         fobj = StubSFTPHandle()
         fobj.filename = path
@@ -281,7 +278,7 @@ nvuQES5C9BMHjF39LZiGH1iLQy7FgdHyoP+eodI7
 """
 
 
-class SocketDelay(object):
+class SocketDelay:
     """A socket decorator to make TCP appear slower.
 
     This changes recv, send, and sendall to add a fixed latency to each python
@@ -397,7 +394,7 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
         # interpreter shutdown (when all module globals get set to None, leading
         # to confusing errors like "'NoneType' object has no attribute 'error'".
 
-        class FakeChannel(object):
+        class FakeChannel:
             def get_transport(self):
                 return self
 
@@ -422,7 +419,7 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
         try:
             sftp_server.start_subsystem(
                 'sftp', None, ssh.SocketAsChannelAdapter(self.request))
-        except socket.error as e:
+        except OSError as e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly
                 # (bug in paramiko 1.6: it should absorb this exception)
@@ -436,8 +433,8 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             # seems to be the best we can do.
             # FIXME: All interpreter shutdown errors should have been related
             # to daemon threads, cleanup needed -- vila 20100623
-            sys_stderr.write('\nEXCEPTION %r: ' % (e.__class__,))
-            sys_stderr.write('%s\n\n' % (e,))
+            sys_stderr.write('\nEXCEPTION {!r}: '.format(e.__class__))
+            sys_stderr.write('{}\n\n'.format(e))
 
     def finish(self):
         self.sftp_server.finish_subsystem()
@@ -457,7 +454,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
     def __init__(self, server_interface=StubServer):
         self.host = '127.0.0.1'
         self.port = 0
-        super(SFTPServer, self).__init__((self.host, self.port),
+        super().__init__((self.host, self.port),
                                          TestingSFTPServer,
                                          TestingSFTPConnectionHandler)
         self._original_vendor = None
@@ -472,7 +469,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
-        return "sftp://foo:bar@%s:%s/%s" % (self.host, self.port, path)
+        return "sftp://foo:bar@{}:{}/{}".format(self.host, self.port, path)
 
     def log(self, message):
         """StubServer uses this to log when a new server is created."""
@@ -516,11 +513,11 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         self._root = '/'
         if sys.platform == 'win32':
             self._root = ''
-        super(SFTPServer, self).start_server()
+        super().start_server()
 
     def stop_server(self):
         try:
-            super(SFTPServer, self).stop_server()
+            super().stop_server()
         finally:
             ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 
@@ -550,11 +547,11 @@ class SFTPServerWithoutSSH(SFTPServer):
     """An SFTP server that uses a simple TCP socket pair rather than SSH."""
 
     def __init__(self):
-        super(SFTPServerWithoutSSH, self).__init__()
+        super().__init__()
         self._vendor = ssh.LoopbackVendor()
         self.request_handler_class = TestingSFTPWithoutSSHConnectionHandler
 
-    def get_host_key():
+    def get_host_key(self):
         return None
 
 
@@ -586,6 +583,6 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
 
     def create_server(self):
         # FIXME: Can't we do that in a cleaner way ? -- vila 20100623
-        server = super(SFTPSiblingAbsoluteServer, self).create_server()
+        server = super().create_server()
         server._server_homedir = '/dev/noone/runs/tests/here'
         return server

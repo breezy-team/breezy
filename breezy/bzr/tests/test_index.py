@@ -21,7 +21,6 @@ from ... import (
     tests,
     transport,
     )
-from ...sixish import int2byte
 from .. import (
     index as _mod_index,
     )
@@ -309,7 +308,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
         builder = _mod_index.GraphIndexBuilder()
         for bad_char in bytearray(b'\t\n\x0b\x0c\r\x00 '):
             self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
-                              (b'a%skey' % int2byte(bad_char), ), b'data')
+                              (b'a%skey' % bytes([bad_char]), ), b'data')
         self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                           (), b'data')
         self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
@@ -324,7 +323,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
         builder = _mod_index.GraphIndexBuilder(key_elements=2)
         for bad_char in bytearray(b'\t\n\x0b\x0c\r\x00 '):
             self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
-                              (b'prefix', b'a%skey' % int2byte(bad_char)), b'data')
+                              (b'prefix', b'a%skey' % bytes([bad_char])), b'data')
 
     def test_add_node_bad_data(self):
         builder = _mod_index.GraphIndexBuilder()
@@ -1033,7 +1032,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         missing_key = (b'missing',)
         index = self.make_index(ref_lists=2, nodes=[
             ((b'key',), b'value', ([], [missing_key]))])
-        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set(), index.external_references(0))
         self.assertEqual({missing_key}, index.external_references(1))
 
     def test_external_references_two_records(self):
@@ -1041,7 +1040,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
             ((b'key-1',), b'value', ([(b'key-2',)],)),
             ((b'key-2',), b'value', ([],)),
             ])
-        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set(), index.external_references(0))
 
     def test__find_ancestors(self):
         key1 = (b'key-1',)
@@ -1168,7 +1167,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_clear_cache(self):
         log = []
 
-        class ClearCacheProxy(object):
+        class ClearCacheProxy:
 
             def __init__(self, index):
                 self._index = index
@@ -1333,7 +1332,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         idx, reload_counter = self.make_combined_index_with_missing()
         idx._reload_func = None
         # Without a _reload_func we just raise the exception
-        self.assertRaises(errors.NoSuchFile, idx.key_count)
+        self.assertRaises(transport.NoSuchFile, idx.key_count)
 
     def test_key_count_reloads_and_fails(self):
         # We have deleted all underlying indexes, so we will try to reload, but
@@ -1341,7 +1340,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         # loop trying to reload
         idx, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertRaises(errors.NoSuchFile, idx.key_count)
+        self.assertRaises(transport.NoSuchFile, idx.key_count)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_iter_entries_reloads(self):
@@ -1369,12 +1368,12 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         index, reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
         # Without a _reload_func we just raise the exception
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries, [('3',)])
 
     def test_iter_entries_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries, [('3',)])
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_iter_all_entries_reloads(self):
@@ -1399,12 +1398,12 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_iter_all_entries_no_reload(self):
         index, reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
-        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
+        self.assertListRaises(transport.NoSuchFile, index.iter_all_entries)
 
     def test_iter_all_entries_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
+        self.assertListRaises(transport.NoSuchFile, index.iter_all_entries)
 
     def test_iter_entries_prefix_reloads(self):
         index, reload_counter = self.make_combined_index_with_missing()
@@ -1426,13 +1425,13 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_iter_entries_prefix_no_reload(self):
         index, reload_counter = self.make_combined_index_with_missing()
         index._reload_func = None
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries_prefix,
                               [(b'1',)])
 
     def test_iter_entries_prefix_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
+        self.assertListRaises(transport.NoSuchFile, index.iter_entries_prefix,
                               [(b'1',)])
 
     def make_index_with_simple_nodes(self, name, num_nodes=1):
@@ -1441,7 +1440,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         Nodes will have a value of '' and no references.
         """
         nodes = [
-            ((('index-%s-key-%s' % (name, n)).encode('ascii'),), b'', ())
+            ((('index-{}-key-{}'.format(name, n)).encode('ascii'),), b'', ())
             for n in range(1, num_nodes + 1)]
         return self.make_index('index-%s' % name, 0, nodes=nodes)
 
@@ -1490,12 +1489,12 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_validate_no_reload(self):
         idx, reload_counter = self.make_combined_index_with_missing()
         idx._reload_func = None
-        self.assertRaises(errors.NoSuchFile, idx.validate)
+        self.assertRaises(transport.NoSuchFile, idx.validate)
 
     def test_validate_reloads_and_fails(self):
         idx, reload_counter = self.make_combined_index_with_missing(
             ['1', '2', '3'])
-        self.assertRaises(errors.NoSuchFile, idx.validate)
+        self.assertRaises(transport.NoSuchFile, idx.validate)
 
     def test_find_ancestors_across_indexes(self):
         key1 = (b'key-1',)

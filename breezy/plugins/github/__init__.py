@@ -16,16 +16,14 @@
 
 """Support for GitHub."""
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_github_login", ["gh-login"], __name__ + ".cmds")
 
 
-from ...propose import hosters
-hosters.register_lazy("github", __name__ + '.hoster', "GitHub")
+from ...forge import forges
+forges.register_lazy("github", __name__ + '.forge', "GitHub")
 
 
 def test_suite():

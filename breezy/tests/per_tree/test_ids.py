@@ -24,13 +24,13 @@ from breezy.tests.per_tree import TestCaseWithTree
 class Path2IdTests(TestCaseWithTree):
 
     def setUp(self):
-        super(Path2IdTests, self).setUp()
+        super().setUp()
         work_a = self.make_branch_and_tree('wta')
         if not work_a.supports_setting_file_ids():
             self.skipTest("working tree does not support setting file ids")
         self.build_tree(['wta/bla', 'wta/dir/', 'wta/dir/file'])
         work_a.add(['bla', 'dir', 'dir/file'],
-                   [b'bla-id', b'dir-id', b'file-id'])
+                   ids=[b'bla-id', b'dir-id', b'file-id'])
         work_a.commit('add files')
         self.tree_a = self.workingtree_to_test_tree(work_a)
 
@@ -109,5 +109,5 @@ class Path2IdsTests(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(set([]), tree.paths2ids(['file'],
+        self.assertEqual(set(), tree.paths2ids(['file'],
                                                  require_versioned=False))

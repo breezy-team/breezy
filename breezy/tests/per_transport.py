@@ -20,6 +20,7 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
+from io import BytesIO
 import os
 import stat
 import sys
@@ -33,16 +34,10 @@ from .. import (
     urlutils,
     )
 from ..errors import (ConnectionError,
-                      FileExists,
-                      NoSuchFile,
                       PathError,
                       TransportNotPossible,
                       )
 from ..osutils import getcwd
-from ..sixish import (
-    BytesIO,
-    zip,
-    )
 from . import (
     TestSkipped,
     TestNotApplicable,
@@ -52,6 +47,8 @@ from . import test_server
 from .test_transport import TestTransportImplementation
 from ..transport import (
     ConnectedTransport,
+    NoSuchFile,
+    FileExists,
     Transport,
     _get_transport_modules,
     )
@@ -77,7 +74,7 @@ def transport_test_permutations():
             permutations = get_transport_test_permutations(
                 pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
-                scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
+                scenario = ('{},{}'.format(klass.__name__, server_factory.__name__),
                             {"transport_class": klass,
                              "transport_server": server_factory})
                 result.append(scenario)
@@ -98,7 +95,7 @@ def load_tests(loader, standard_tests, pattern):
 class TransportTests(TestTransportImplementation):
 
     def setUp(self):
-        super(TransportTests, self).setUp()
+        super().setUp()
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
@@ -109,6 +106,7 @@ class TransportTests(TestTransportImplementation):
         """.ensure_base() should create the directory if it doesn't exist"""
         t = self.get_transport()
         t_a = t.clone('a')
+        self.assertFalse(t.ensure_base())
         if t_a.is_readonly():
             self.assertRaises(TransportNotPossible,
                               t_a.ensure_base)
@@ -234,14 +232,6 @@ class TransportTests(TestTransportImplementation):
     def test_get_bytes_unknown_file(self):
         t = self.get_transport()
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
-
-    def test_get_with_open_write_stream_sees_all_content(self):
-        t = self.get_transport()
-        if t.is_readonly():
-            return
-        with t.open_write_stream('foo') as handle:
-            handle.write(b'b')
-            self.assertEqual(b'b', t.get_bytes('foo'))
 
     def test_get_bytes_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
@@ -489,7 +479,7 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             return
-        unicode_string = u'\u1234'
+        unicode_string = '\u1234'
         self.assertRaises(TypeError, t.put_bytes, 'foo', unicode_string)
 
     def test_mkdir(self):
@@ -1445,12 +1435,12 @@ class TransportTests(TestTransportImplementation):
         # '\xe5' and '\xe4' actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [u'\xe5.1',  # a w/ circle iso-8859-1
-                 u'\xe4.2',  # a w/ dots iso-8859-1
-                 u'\u017d',  # Z with umlat iso-8859-2
-                 u'\u062c',  # Arabic j
-                 u'\u0410',  # Russian A
-                 u'\u65e5',  # Kanji person
+        files = ['\xe5.1',  # a w/ circle iso-8859-1
+                 '\xe4.2',  # a w/ dots iso-8859-1
+                 '\u017d',  # Z with umlat iso-8859-2
+                 '\u062c',  # Arabic j
+                 '\u0410',  # Russian A
+                 '\u65e5',  # Kanji person
                  ]
 
         no_unicode_support = getattr(self._server, 'no_unicode_support', False)

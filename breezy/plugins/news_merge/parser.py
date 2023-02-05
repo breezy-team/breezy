@@ -24,9 +24,6 @@ it will print the parsed form of a file (a series of 2-tuples, see
 simple_parse's docstring).
 """
 
-from __future__ import absolute_import
-
-
 def simple_parse_lines(lines):
     """Same as simple_parse, but takes an iterable of strs rather than a single
     str.
@@ -66,6 +63,7 @@ def simple_parse(content):
 
 if __name__ == '__main__':
     import sys
-    content = open(sys.argv[1], 'rb').read()
+    with open(sys.argv[1], 'rb') as f:
+        content = f.read()
     for result in simple_parse(content):
         print(result)

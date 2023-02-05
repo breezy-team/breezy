@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Breezy plugin support.
 
 Which plugins to load can be configured by setting these environment variables:
@@ -34,39 +36,23 @@ See the plugin-api developer documentation for information about writing
 plugins.
 """
 
-from __future__ import absolute_import
-
 import os
 import re
 import sys
 
-import breezy
-from . import osutils
-
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-import imp
 from importlib import util as importlib_util
 
-from breezy import (
-    bedding,
+import breezy
+from . import (
     debug,
-    help_topics,
+    errors,
+    osutils,
     trace,
     )
-""")
-
-from . import (
-    errors,
-    )
-
 
 _MODULE_PREFIX = "breezy.plugins."
 
-if __debug__ or sys.version_info > (3,):
-    COMPILED_EXT = ".pyc"
-else:
-    COMPILED_EXT = ".pyo"
+COMPILED_EXT = ".pyc"
 
 
 def disable_plugins(state=None):
@@ -74,7 +60,8 @@ def disable_plugins(state=None):
 
     Future calls to load_plugins() will be ignored.
 
-    :param state: The library state object that records loaded plugins.
+    Args:
+      state: The library state object that records loaded plugins.
     """
     if state is None:
         state = breezy.get_global_state()
@@ -89,9 +76,10 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
     files (and whatever other extensions are used in the platform,
     such as `*.pyd`).
 
-    :param path: The list of paths to search for plugins.  By default,
+    Args:
+      path: The list of paths to search for plugins.  By default,
         it is populated from the __path__ of the breezy.plugins package.
-    :param state: The library state object that records loaded plugins.
+      state: The library state object that records loaded plugins.
     """
     if state is None:
         state = breezy.get_global_state()
@@ -116,12 +104,17 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
 
 def _load_plugins_from_entrypoints(state):
     try:
-        import pkg_resources
-    except ImportError:
-        # No pkg_resources, no entrypoints.
+        from importlib.metadata import entry_points
+    except ModuleNotFoundError:
+        # No importlib.metadata, no entrypoints.
         pass
     else:
-        for ep in pkg_resources.iter_entry_points('breezy.plugin'):
+        try:
+            eps = entry_points(group='breezy.plugin')
+        except TypeError:  # python < 3.10 didn't support group argument
+            eps = [ep[0] for ep in entry_points().values()
+                    if ep[0].group == 'breezy.plugin']
+        for ep in eps:
             fullname = _MODULE_PREFIX + ep.name
             if fullname in sys.modules:
                 continue
@@ -170,13 +163,13 @@ class _Path(list):
     """
 
     def __init__(self, package_name, blocked, extra, paths):
-        super(_Path, self).__init__(paths)
+        super().__init__(paths)
         self.package_name = package_name
         self.blocked_names = blocked
         self.extra_details = extra
 
     def __repr__(self):
-        return "%s(%r, %r, %r, %s)" % (
+        return "{}({!r}, {!r}, {!r}, {})".format(
             self.__class__.__name__, self.package_name, self.blocked_names,
             self.extra_details, list.__repr__(self))
 
@@ -198,7 +191,7 @@ def _expect_identifier(name, env_key, env_value):
 def _env_disable_plugins(key='BRZ_DISABLE_PLUGINS'):
     """Gives list of names for plugins to disable from environ key."""
     disabled_names = []
-    env = osutils.path_from_environ(key)
+    env = os.environ.get(key)
     if env:
         for name in env.split(os.pathsep):
             name = _expect_identifier(name, key, env)
@@ -210,7 +203,7 @@ def _env_disable_plugins(key='BRZ_DISABLE_PLUGINS'):
 def _env_plugins_at(key='BRZ_PLUGINS_AT'):
     """Gives list of names and paths of specific plugins from environ key."""
     plugin_details = []
-    env = osutils.path_from_environ(key)
+    env = os.environ.get(key)
     if env:
         for pair in env.split(os.pathsep):
             if '@' in pair:
@@ -220,7 +213,7 @@ def _env_plugins_at(key='BRZ_PLUGINS_AT'):
                 name = osutils.basename(path).split('.', 1)[0]
             name = _expect_identifier(name, key, env)
             if name is not None:
-                plugin_details.append((name, path))
+                plugin_details.append((name, os.path.abspath(path)))
     return plugin_details
 
 
@@ -231,7 +224,7 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
     'path', or None and one of the values 'user', 'core', 'entrypoints', 'site'.
     """
     path_details = []
-    env = osutils.path_from_environ(key)
+    env = os.environ.get(key)
     defaults = {
         "user": not env,
         "core": True,
@@ -262,7 +255,7 @@ def _iter_plugin_paths(paths_from_env, core_paths):
     # GZ 2017-06-02: This is kinda horrid, should make better.
     for path, context in paths_from_env:
         if context == 'path':
-            yield path
+            yield os.path.abspath(path)
         elif context == 'user':
             path = get_user_plugin_path()
             if os.path.isdir(path):
@@ -289,6 +282,12 @@ def _load_plugins_from_path(state, paths):
     imported_names = set()
     for name, path in _iter_possible_plugins(paths):
         if name not in imported_names:
+            if not valid_plugin_name(name):
+                sanitised_name = sanitise_plugin_name(name)
+                trace.warning("Unable to load %r in %r as a plugin because the "
+                              "file path isn't a valid module name; try renaming "
+                              "it to %r." % (name, path, sanitised_name))
+                continue
             msg = _load_plugin_module(name, path)
             if msg is not None:
                 state.plugin_warnings.setdefault(name, []).append(msg)
@@ -318,16 +317,14 @@ def _get_package_init(package_path):
 def _iter_possible_plugins(plugin_paths):
     """Generate names and paths of possible plugins from plugin_paths."""
     # Inspect any from BRZ_PLUGINS_AT first.
-    for name, path in getattr(plugin_paths, "extra_details", ()):
-        yield name, path
+    yield from getattr(plugin_paths, "extra_details", ())
     # Then walk over files and directories in the paths from the package.
     for path in plugin_paths:
         if os.path.isfile(path):
             if path.endswith(".zip"):
                 trace.mutter("Don't yet support loading plugins from zip.")
         else:
-            for name, path in _walk_modules(path):
-                yield name, path
+            yield from _walk_modules(path)
 
 
 def _walk_modules(path):
@@ -354,9 +351,12 @@ def describe_plugins(show_paths=False, state=None):
 
     Includes both those that have loaded, and those that failed to load.
 
-    :param show_paths: If true, include the plugin path.
-    :param state: The library state object to inspect.
-    :returns: Iterator of text lines (including newlines.)
+    Args:
+      show_paths: If true, include the plugin path.
+      state: The library state object to inspect.
+
+    Returns:
+      Iterator of text lines (including newlines.)
     """
     if state is None:
         state = breezy.get_global_state()
@@ -369,7 +369,7 @@ def describe_plugins(show_paths=False, state=None):
             version = plugin.__version__
             if version == 'unknown':
                 version = ''
-            yield '%s %s\n' % (name, version)
+            yield '{} {}\n'.format(name, version)
             d = plugin.module.__doc__
             if d:
                 doc = d.split('\n')[0]
@@ -403,7 +403,7 @@ def _get_core_plugin_paths(existing_paths):
             osutils.dirname(__file__), '../../../plugins'))
     else:     # don't look inside library.zip
         for path in existing_paths:
-            yield path
+            yield osutils.abspath(path)
 
 
 def _get_site_plugin_paths(sys_paths):
@@ -414,7 +414,8 @@ def _get_site_plugin_paths(sys_paths):
 
 
 def get_user_plugin_path():
-    return osutils.pathjoin(bedding.config_dir(), 'plugins')
+    from breezy.bedding import config_dir
+    return osutils.pathjoin(config_dir(), 'plugins')
 
 
 def record_plugin_warning(warning_message):
@@ -422,11 +423,23 @@ def record_plugin_warning(warning_message):
     return warning_message
 
 
+def valid_plugin_name(name):
+    return not re.search('\\.|-| ', name)
+
+
+def sanitise_plugin_name(name):
+    sanitised_name = re.sub('[-. ]', '_', name)
+    if sanitised_name.startswith('brz_'):
+        sanitised_name = sanitised_name[len('brz_'):]
+    return sanitised_name
+
+
 def _load_plugin_module(name, dir):
     """Load plugin by name.
 
-    :param name: The plugin name in the breezy.plugins namespace.
-    :param dir: The directory the plugin is loaded from for error messages.
+    Args:
+      name: The plugin name in the breezy.plugins namespace.
+      dir: The directory the plugin is loaded from for error messages.
     """
     if _MODULE_PREFIX + name in sys.modules:
         return
@@ -442,18 +455,8 @@ def _load_plugin_module(name, dir):
         trace.log_exception_quietly()
         if 'error' in debug.debug_flags:
             trace.print_exception(sys.exc_info(), sys.stderr)
-        # GZ 2017-06-02: Move this name checking up a level, no point trying
-        # to import things with bad names.
-        if re.search('\\.|-| ', name):
-            sanitised_name = re.sub('[-. ]', '_', name)
-            if sanitised_name.startswith('brz_'):
-                sanitised_name = sanitised_name[len('brz_'):]
-            trace.warning("Unable to load %r in %r as a plugin because the "
-                          "file path isn't a valid module name; try renaming "
-                          "it to %r." % (name, dir, sanitised_name))
-        else:
-            return record_plugin_warning(
-                'Unable to load plugin %r from %r: %s' % (name, dir, e))
+        return record_plugin_warning(
+            'Unable to load plugin {!r} from {!r}: {}'.format(name, dir, e))
 
 
 def plugins():
@@ -496,7 +499,7 @@ def format_concise_plugin_list(state=None):
     return ', '.join(items)
 
 
-class PluginsHelpIndex(object):
+class PluginsHelpIndex:
     """A help index that returns help topics for plugins."""
 
     def __init__(self):
@@ -507,9 +510,12 @@ class PluginsHelpIndex(object):
 
         This will not trigger loading of new plugins.
 
-        :param topic: A topic to search for.
-        :return: A list which is either empty or contains a single
-            RegisteredTopic entry.
+        Args:
+          topic: A topic to search for.
+
+        Returns:
+          A list which is either empty or contains a single
+          RegisteredTopic entry.
         """
         if not topic:
             return []
@@ -524,22 +530,25 @@ class PluginsHelpIndex(object):
             return [ModuleHelpTopic(module)]
 
 
-class ModuleHelpTopic(object):
+class ModuleHelpTopic:
     """A help topic which returns the docstring for a module."""
 
     def __init__(self, module):
         """Constructor.
 
-        :param module: The module for which help should be generated.
+        Args:
+          module: The module for which help should be generated.
         """
         self.module = module
 
     def get_help_text(self, additional_see_also=None, verbose=True):
         """Return a string with the help for this topic.
 
-        :param additional_see_also: Additional help topics to be
+        Args:
+          additional_see_also: Additional help topics to be
             cross-referenced.
         """
+        from . import help_topics
         if not self.module.__doc__:
             result = "Plugin '%s' has no docstring.\n" % self.module.__name__
         else:
@@ -554,7 +563,7 @@ class ModuleHelpTopic(object):
         return self.module.__name__[len(_MODULE_PREFIX):]
 
 
-class PlugIn(object):
+class PlugIn:
     """The breezy representation of a plugin.
 
     The PlugIn object provides a way to manipulate a given plugin module.
@@ -580,7 +589,7 @@ class PlugIn(object):
             return repr(self.module)
 
     def __repr__(self):
-        return "<%s.%s name=%s, module=%s>" % (
+        return "<{}.{} name={}, module={}>".format(
             self.__class__.__module__, self.__class__.__name__,
             self.name, self.module)
 
@@ -594,7 +603,8 @@ class PlugIn(object):
     def load_plugin_tests(self, loader):
         """Return the adapted plugin's test suite.
 
-        :param loader: The custom loader that should be used to load additional
+        Args:
+          loader: The custom loader that should be used to load additional
             tests.
         """
         if getattr(self.module, 'load_tests', None) is not None:
@@ -631,15 +641,15 @@ class PlugIn(object):
         return version_string
 
 
-class _PluginsAtFinder(object):
+class _PluginsAtFinder:
     """Meta path finder to support BRZ_PLUGINS_AT configuration."""
 
     def __init__(self, prefix, names_and_paths):
         self.prefix = prefix
-        self.names_to_path = dict((prefix + n, p) for n, p in names_and_paths)
+        self.names_to_path = {prefix + n: p for n, p in names_and_paths}
 
     def __repr__(self):
-        return "<%s %r>" % (self.__class__.__name__, self.prefix)
+        return "<{} {!r}>".format(self.__class__.__name__, self.prefix)
 
     def find_spec(self, fullname, paths, target=None):
         """New module spec returning find method."""
@@ -651,54 +661,6 @@ class _PluginsAtFinder(object):
             if path is None:
                 # GZ 2017-06-02: Any reason to block loading of the name from
                 # further down the path like this?
-                raise ImportError("Not loading namespace package %s as %s" % (
+                raise ImportError("Not loading namespace package {} as {}".format(
                     path, fullname))
         return importlib_util.spec_from_file_location(fullname, path)
-
-    def find_module(self, fullname, path):
-        """Old PEP 302 import hook find_module method."""
-        if fullname not in self.names_to_path:
-            return None
-        return _LegacyLoader(self.names_to_path[fullname])
-
-
-class _LegacyLoader(object):
-    """Source loader implementation for Python versions without importlib."""
-
-    def __init__(self, filepath):
-        self.filepath = filepath
-
-    def __repr__(self):
-        return "<%s %r>" % (self.__class__.__name__, self.filepath)
-
-    def load_module(self, fullname):
-        """Load a plugin from a specific directory (or file)."""
-        plugin_path = self.filepath
-        loading_path = None
-        if os.path.isdir(plugin_path):
-            init_path = _get_package_init(plugin_path)
-            if init_path is not None:
-                loading_path = plugin_path
-                suffix = ''
-                mode = ''
-                kind = imp.PKG_DIRECTORY
-        else:
-            for suffix, mode, kind in imp.get_suffixes():
-                if plugin_path.endswith(suffix):
-                    loading_path = plugin_path
-                    break
-        if loading_path is None:
-            raise ImportError('%s cannot be loaded from %s'
-                              % (fullname, plugin_path))
-        if kind is imp.PKG_DIRECTORY:
-            f = None
-        else:
-            f = open(loading_path, mode)
-        try:
-            mod = imp.load_module(fullname, f, loading_path,
-                                  (suffix, mode, kind))
-            mod.__package__ = fullname
-            return mod
-        finally:
-            if f is not None:
-                f.close()

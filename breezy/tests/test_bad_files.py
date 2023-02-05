@@ -17,13 +17,11 @@
 
 """Tests being able to ignore bad filetypes."""
 
+from io import StringIO
 import os
 
 from .. import (
     errors,
-    )
-from ..sixish import (
-    StringIO,
     )
 from ..status import show_tree_status
 from . import TestCaseWithTransport
@@ -52,7 +50,7 @@ class TestBadFiles(TestCaseWithTransport):
         files = ['one', 'two', 'three']
         file_ids = [b'one-id', b'two-id', b'three-id']
         self.build_tree(files)
-        wt.add(files, file_ids)
+        wt.add(files, ids=file_ids)
         wt.commit("Commit one", rev_id=b"a@u-0-0")
 
         # We should now have a few files, lets try to

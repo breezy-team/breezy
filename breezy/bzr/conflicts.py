@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
 import os
 import re
@@ -26,7 +24,6 @@ lazy_import(globals(), """
 from breezy import (
     cache_utf8,
     errors,
-    rio,
     transform,
     osutils,
     )
@@ -36,7 +33,10 @@ from ..conflicts import (
     Conflict as BaseConflict,
     ConflictList as BaseConflictList,
     )
-from ..sixish import text_type
+from .. import transport as _mod_transport
+from . import (
+    rio,
+    )
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
@@ -49,10 +49,10 @@ class Conflict(BaseConflict):
     has_files = False
 
     def __init__(self, path, file_id=None):
-        super(Conflict, self).__init__(path)
+        super().__init__(path)
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
-        if isinstance(file_id, text_type):
+        if isinstance(file_id, str):
             file_id = cache_utf8.encode(file_id)
         self.file_id = file_id
 
@@ -64,20 +64,17 @@ class Conflict(BaseConflict):
         return s
 
     def _cmp_list(self):
-        return [type(self), self.path, self.file_id]
+        return [self.typestring, self.path, self.file_id]
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if getattr(other, "_cmp_list", None) is None:
-            return -1
+            return False
         x = self._cmp_list()
         y = other._cmp_list()
-        return (x > y) - (x < y)
+        return x == y
 
     def __hash__(self):
         return hash((type(self), self.path, self.file_id))
-
-    def __eq__(self, other):
-        return self.__cmp__(other) == 0
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -261,7 +258,7 @@ class PathConflict(Conflict):
                 revid = tt._tree.get_parent_ids()[-1]
         else:
             # Programmer error
-            raise AssertionError('bad winner: %r' % (winner,))
+            raise AssertionError('bad winner: {!r}'.format(winner))
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
             tree = self._revision_tree(tt._tree, revid)
@@ -349,7 +346,7 @@ class ContentsConflict(PathConflict):
             # suffix_to_remove
             tt.delete_contents(
                 tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # There are valid cases where 'item.suffix_to_remove' either
             # never existed or was already deleted (including the case
             # where the user deleted it)
@@ -429,7 +426,7 @@ class TextConflict(Conflict):
         #                can't be auto resolved does not seem ideal.
         try:
             kind = tree.kind(self.path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return
         if kind != 'file':
             raise NotImplementedError("Conflict is not a file")
@@ -485,7 +482,7 @@ class HandledPathConflict(HandledConflict):
         self.conflict_path = conflict_path
         # the factory blindly transfers the Stanza values to __init__,
         # so they can be unicode.
-        if isinstance(conflict_file_id, text_type):
+        if isinstance(conflict_file_id, str):
             conflict_file_id = cache_utf8.encode(conflict_file_id)
         self.conflict_file_id = conflict_file_id
 

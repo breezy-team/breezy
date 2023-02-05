@@ -16,8 +16,6 @@
 
 """Fetching from git into bzr."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Commit,
     Tag,
@@ -51,11 +49,11 @@ from ..revision import (
     NULL_REVISION,
     )
 from ..bzr.inventorytree import InventoryRevisionTree
-from ..sixish import text_type
 from ..bzr.testament import (
     StrictTestament3,
     )
 from ..tree import InterTree
+from ..transport import NoSuchFile
 from ..tsort import (
     topo_sort,
     )
@@ -130,7 +128,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
         intertree = InterTree.get(ptree, base_bzr_tree)
         try:
             ppath = intertree.find_source_paths(decoded_path, recurse='none')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             continue
         if ppath is None:
             continue
@@ -219,7 +217,7 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree,
     :param lookup_object: Lookup a git object by its SHA1
     :return: Inventory delta, as list
     """
-    if not isinstance(path, text_type):
+    if not isinstance(path, str):
         raise TypeError(path)
     ret = []
     for name, mode, hexsha in base_tree.iteritems():
@@ -338,13 +336,13 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                                  unusual_modes, verifiers):
     new_unusual_modes = mapping.export_unusual_file_modes(rev)
     if new_unusual_modes != unusual_modes:
-        raise AssertionError("unusual modes don't match: %r != %r" % (
+        raise AssertionError("unusual modes don't match: {!r} != {!r}".format(
             unusual_modes, new_unusual_modes))
     # Verify that we can reconstruct the commit properly
     rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True,
                                                             verifiers)
     if rec_o != o:
-        raise AssertionError("Reconstructed commit differs: %r != %r" % (
+        raise AssertionError("Reconstructed commit differs: {!r} != {!r}".format(
             rec_o, o))
     diff = []
     new_objs = {}
@@ -371,7 +369,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                     new_obj = new_objs[path]
                     break
         raise AssertionError(
-            "objects differ for %s: %r != %r" % (path, old_obj, new_obj))
+            "objects differ for {}: {!r} != {!r}".format(path, old_obj, new_obj))
 
 
 def ensure_inventories_in_repo(repo, trees):
@@ -538,7 +536,7 @@ def import_git_objects(repo, mapping, object_iter,
     return pack_hints, last_imported
 
 
-class DetermineWantsRecorder(object):
+class DetermineWantsRecorder:
 
     def __init__(self, actual):
         self.actual = actual

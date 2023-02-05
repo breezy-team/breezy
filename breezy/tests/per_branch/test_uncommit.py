@@ -31,7 +31,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestUncommitHook, self).setUp()
+        super().setUp()
 
     def capture_post_uncommit_hook(self, local, master, old_revno,
                                    old_revid, new_revno, new_revid):
@@ -71,7 +71,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_memory_tree('local')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         tree.lock_write()

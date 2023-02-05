@@ -65,7 +65,7 @@ class TestTransportLog(TestCaseWithMemoryTransport):
                          [(0, 'abcdefghij')])
 
 
-class DummyReadvTransport(object):
+class DummyReadvTransport:
 
     base = 'dummy:///'
 

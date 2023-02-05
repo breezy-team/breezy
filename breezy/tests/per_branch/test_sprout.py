@@ -161,7 +161,7 @@ class TestSprout(TestCaseWithBranch):
         # Since the trigger function seems to be set_parent_trees, there exists
         # also a similar test, with name test_unicode_symlink, in class
         # TestSetParents at file per_workingtree/test_parents.py
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
@@ -169,8 +169,8 @@ class TestSprout(TestCaseWithBranch):
         # The link points to a file whose name is an omega
         # U+03A9 GREEK CAPITAL LETTER OMEGA
         # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
-        target = u'\u03a9'
-        link_name = u'\N{Euro Sign}link'
+        target = '\u03a9'
+        link_name = '\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
         tree.add([link_name])
 

@@ -18,8 +18,6 @@
 
 """Weave - storage of related text file versions"""
 
-from __future__ import absolute_import
-
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
 # property.
@@ -67,6 +65,7 @@ from __future__ import absolute_import
 # FIXME: the conflict markers should be *7* characters
 
 from copy import copy
+from io import BytesIO
 import os
 import patiencediff
 
@@ -77,6 +76,7 @@ from breezy import tsort
 from .. import (
     errors,
     osutils,
+    transport as _mod_transport,
     )
 from ..errors import (
     RevisionAlreadyPresent,
@@ -84,9 +84,6 @@ from ..errors import (
     )
 from ..osutils import dirname, sha, sha_strings, split_lines
 from ..revision import NULL_REVISION
-from ..sixish import (
-    BytesIO,
-    )
 from ..trace import mutter
 from .versionedfile import (
     AbsentContentFactory,
@@ -292,7 +289,7 @@ class Weave(VersionedFile):
             for detecting when this weave goes out of scope (should stop
             answering requests or allowing mutation).
         """
-        super(Weave, self).__init__()
+        super().__init__()
         self._weave = []
         self._parents = []
         self._sha1s = []
@@ -599,7 +596,7 @@ class Weave(VersionedFile):
         if isinstance(version_ids, bytes):
             version_ids = [version_ids]
         i = self._inclusions([self._lookup(v) for v in version_ids])
-        return set(self._idx_to_name(v) for v in i)
+        return {self._idx_to_name(v) for v in i}
 
     def _check_versions(self, indexes):
         """Check everything in the sequence of indexes is valid"""
@@ -876,7 +873,7 @@ class Weave(VersionedFile):
         update_text = 'checking weave'
         if self._weave_name:
             short_name = os.path.basename(self._weave_name)
-            update_text = 'checking %s' % (short_name,)
+            update_text = 'checking {}'.format(short_name)
             update_text = update_text[:25]
 
         for lineno, insert, deleteset, line in self._walk_internal():
@@ -974,14 +971,14 @@ class WeaveFile(Weave):
 
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope,
+        super().__init__(name, access_mode, get_scope=get_scope,
                                         allow_reserved=False)
         self._transport = transport
         self._filemode = filemode
         try:
-            f = self._transport.get(name + WeaveFile.WEAVE_SUFFIX)
-            _read_weave_v5(BytesIO(f.read()), self)
-        except errors.NoSuchFile:
+            with self._transport.get(name + WeaveFile.WEAVE_SUFFIX) as f:
+                _read_weave_v5(BytesIO(f.read()), self)
+        except _mod_transport.NoSuchFile:
             if not create:
                 raise
             # new file, save it
@@ -992,7 +989,7 @@ class WeaveFile(Weave):
                    check_content):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
-        result = super(WeaveFile, self)._add_lines(
+        result = super()._add_lines(
             version_id, parents, lines, parent_texts, left_matching_blocks,
             nostore_sha, random_id, check_content)
         self._save()
@@ -1016,7 +1013,7 @@ class WeaveFile(Weave):
         path = self._weave_name + WeaveFile.WEAVE_SUFFIX
         try:
             self._transport.put_bytes(path, bytes, self._filemode)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             self._transport.mkdir(dirname(path))
             self._transport.put_bytes(path, bytes, self._filemode)
 
@@ -1026,7 +1023,7 @@ class WeaveFile(Weave):
         return [WeaveFile.WEAVE_SUFFIX]
 
     def insert_record_stream(self, stream):
-        super(WeaveFile, self).insert_record_stream(stream)
+        super().insert_record_stream(stream)
         self._save()
 
 

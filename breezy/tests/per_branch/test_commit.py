@@ -47,7 +47,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestCommitHook, self).setUp()
+        super().setUp()
 
     def capture_post_commit_hook(self, local, master, old_revno,
                                  old_revid, new_revno, new_revid):
@@ -92,7 +92,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_memory_tree('local')
         try:
             tree.branch.bind(master)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # cant bind this format, the test is irrelevant.
             return
         branch.Branch.hooks.install_named_hook(
@@ -197,15 +197,11 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         with tree.lock_write():
             # setting up a playground
             tree.add('rootfile')
-            rootfile_id = tree.path2id('rootfile')
             tree.put_file_bytes_non_atomic('rootfile', b'abc')
             tree.add('dir')
-            dir_id = tree.path2id('dir')
             tree.add('dir/subfile')
-            dir_subfile_id = tree.path2id('dir/subfile')
             tree.put_file_bytes_non_atomic('to_be_unversioned', b'blah')
             tree.add(['to_be_unversioned'])
-            to_be_unversioned_id = tree.path2id('to_be_unversioned')
             tree.put_file_bytes_non_atomic('dir/subfile', b'def')
             revid1 = tree.commit('first revision')
 
@@ -215,7 +211,6 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             tree.rename_one('dir/subfile', 'dir/subfile_renamed')
             tree.unversion(['to_be_unversioned'])
             tree.mkdir('added_dir')
-            added_dir_id = tree.path2id('added_dir')
             # start to capture pre_commit delta
             branch.Branch.hooks.install_named_hook(
                 "pre_commit", self.capture_pre_commit_hook, None)

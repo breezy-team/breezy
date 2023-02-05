@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-from __future__ import absolute_import
-
 import operator
 
 from ... import (
@@ -218,7 +216,7 @@ def display_info(info, to_file, gather_class_stats=None):
                 if fname == '':
                     to_file.write("''\n")
                 else:
-                    to_file.write("%s\n" % (fname,))
+                    to_file.write("{}\n".format(fname))
         if len(sorted_emails) > 1:
             to_file.write('     Other email addresses:\n')
             for count, email in sorted_emails:
@@ -226,7 +224,7 @@ def display_info(info, to_file, gather_class_stats=None):
                 if email == '':
                     to_file.write("''\n")
                 else:
-                    to_file.write("%s\n" % (email,))
+                    to_file.write("{}\n".format(email))
         if gather_class_stats is not None:
             to_file.write('     Contributions:\n')
             classes, total = gather_class_stats(revs)

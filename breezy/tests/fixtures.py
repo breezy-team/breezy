@@ -24,7 +24,7 @@ should live only for the duration of a single test, and its tearDown method
 should be passed to `addCleanup` on the test.
 """
 
-
+from contextlib import ExitStack
 import itertools
 
 
@@ -37,14 +37,14 @@ def generate_unicode_names():
     >>> n1 = next(gen)
     >>> n2 = next(gen)
     >>> type(n1)
-    <type 'unicode'>
+    <class 'str'>
     >>> n1 == n2
     False
     >>> n1.encode('ascii', 'replace') == n1
     False
     """
     # include a mathematical symbol unlikely to be in 8-bit encodings
-    return (u"\N{SINE WAVE}%d" % x for x in itertools.count())
+    return ("\N{SINE WAVE}%d" % x for x in itertools.count())
 
 
 interesting_encodings = [
@@ -84,7 +84,7 @@ def generate_unicode_encodings(universal_encoding=None):
     return itertools.cycle(iter(e))
 
 
-class RecordingContextManager(object):
+class RecordingContextManager:
     """A context manager that records."""
 
     def __init__(self):
@@ -136,25 +136,45 @@ def make_branch_and_populated_tree(testcase):
     # 20110705
     tree = testcase.make_branch_and_tree('t')
     testcase.build_tree_contents([('t/hello', b'hello world')])
-    tree.add(['hello'], [b'hello-id'])
+    tree.add(['hello'], ids=[b'hello-id'])
     return tree
 
 
-class TimeoutFixture(object):
+class TimeoutException(Exception):
+    """Timeout expired"""
+
+
+class TimeoutFixture:
     """Kill a test with sigalarm if it runs too long.
 
     Only works on Unix at present.
     """
 
-    def __init__(self, timeout_secs):
+    def __init__(self, timeout_secs, gentle=True):
         import signal
         self.timeout_secs = timeout_secs
         self.alarm_fn = getattr(signal, 'alarm', None)
+        self.gentle = gentle
+        self._es = ExitStack()
+
+    def signal_handler(self, signum, frame):
+        raise TimeoutException(self.timeout_secs)
 
     def setUp(self):
-        if self.alarm_fn is not None:
-            self.alarm_fn(self.timeout_secs)
+        import signal
+        if self.alarm_fn is None:
+            return
+        if self.gentle:
+            # Install a handler for SIGARLM so we can raise an exception rather
+            # than the default handler executing, which kills the process.
+            old_handler = signal.signal(signal.SIGALRM, self.signal_handler)
+        # We add the alarm cleanup before the cleanup for the signal handler,
+        # otherwise there is a race condition where the signal handler is
+        # cleaned up but the alarm still fires.
+        self._es.callback(self.alarm_fn, 0)
+        self.alarm_fn(self.timeout_secs)
+        if self.gentle:
+            self._es.callback(signal.signal, signal.SIGALRM, old_handler)
 
     def cleanUp(self):
-        if self.alarm_fn is not None:
-            self.alarm_fn(0)
+        self._es.close()

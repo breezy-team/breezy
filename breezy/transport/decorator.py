@@ -20,8 +20,6 @@ This does not change the transport behaviour at all, but provides all the
 stub functions to allow other decorators to be written easily.
 """
 
-from __future__ import absolute_import
-
 from . import (Transport, get_transport)
 
 
@@ -55,7 +53,7 @@ class TransportDecorator(Transport):
             self._decorated = get_transport(not_decorated_url)
         else:
             self._decorated = _decorated
-        super(TransportDecorator, self).__init__(prefix + self._decorated.base)
+        super().__init__(prefix + self._decorated.base)
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
@@ -165,7 +163,8 @@ class TransportDecorator(Transport):
         self._decorated.segment_parameters = value
 
     segment_parameters = property(_get_segment_parameters,
-                                  _set_segment_parameters, "See Transport.segment_parameters")
+                                  _set_segment_parameters,
+                                  doc="See Transport.segment_parameters")
 
     def stat(self, relpath):
         """See Transport.stat()."""

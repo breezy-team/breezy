@@ -20,8 +20,7 @@ For interface tests see tests/per_repository/*.py.
 
 """
 
-from __future__ import absolute_import
-
+from io import BytesIO
 from stat import S_ISDIR
 import sys
 
@@ -30,7 +29,6 @@ from ...bzr.bzrdir import (
     )
 from ...errors import (
     IllegalPath,
-    NoSuchFile,
     )
 from ...repository import (
     InterRepository,
@@ -39,12 +37,12 @@ from ...repository import (
 from ...bzr.serializer import (
     format_registry as serializer_format_registry,
     )
-from ...sixish import (
-    BytesIO,
-    )
 from ...tests import (
     TestCase,
     TestCaseWithTransport,
+    )
+from ...transport import (
+    NoSuchFile,
     )
 
 from . import xml4
@@ -142,7 +140,7 @@ class TestFormat7(TestCaseWithTransport):
         # disk.
         control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], [b'Foo:Bar'], ['file'])
+        tree.add(['foo'], ['file'], ids=[b'Foo:Bar'])
         tree.put_file_bytes_non_atomic('foo', b'content\n')
         try:
             tree.commit('first post', rev_id=b'first')

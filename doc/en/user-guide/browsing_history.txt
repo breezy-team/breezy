@@ -87,17 +87,9 @@ Graphical history viewers
 
 History browsing is one area where GUI tools really make life easier.
 Breezy has numerous plug-ins that provide this capability including
-QBzr and brz-gtk. See `Using plugins <plugins.html>`_ for details on how to install
+QBzr. See `Using plugins <plugins.html>`_ for details on how to install
 these if they are not already installed.
 
 To use the graphical viewer from QBzr::
 
   brz qlog
-
-To use the graphical viewer from brz-gtk::
-
-  brz viz
-
-``viz`` is actually a built-in alias for ``visualize`` so use the longer
-command name if you prefer.
-

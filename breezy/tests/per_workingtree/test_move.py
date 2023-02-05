@@ -289,9 +289,9 @@ class TestMove(TestCaseWithWorkingTree):
 
         # TODO: jam 20070225 I would usually use 'rb', but assertFileEqual
         #       uses 'r'.
-        with open('a', 'r') as a_file:
+        with open('a') as a_file:
             a_text = a_file.read()
-        with open('b/a', 'r') as ba_file:
+        with open('b/a') as ba_file:
             ba_text = ba_file.read()
 
         self.assertTreeLayout(['', 'a', 'b/'], tree)
@@ -528,23 +528,23 @@ class TestMove(TestCaseWithWorkingTree):
         """Check error when moving to unversioned non-ascii directory"""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["a", u"\xA7/"])
+        self.build_tree(["a", "\xA7/"])
         tree.add(["a"])
         if tree.has_versioned_directories():
             e = self.assertRaises(errors.BzrMoveFailedError,
-                                  tree.move, ["a"], u"\xA7")
+                                  tree.move, ["a"], "\xA7")
             self.assertIsInstance(e.extra, errors.NotVersionedError)
-            self.assertEqual(e.extra.path, u"\xA7")
+            self.assertEqual(e.extra.path, "\xA7")
         else:
-            tree.move(["a"], u"\xA7")
+            tree.move(["a"], "\xA7")
 
     def test_move_unversioned_non_ascii(self):
         """Check error when moving an unversioned non-ascii file"""
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
-        self.build_tree([u"\xA7", "dir/"])
+        self.build_tree(["\xA7", "dir/"])
         tree.add("dir")
         e = self.assertRaises(errors.BzrMoveFailedError,
-                              tree.move, [u"\xA7"], "dir")
+                              tree.move, ["\xA7"], "dir")
         self.assertIsInstance(e.extra, errors.NotVersionedError)
-        self.assertEqual(e.extra.path, u"\xA7")
+        self.assertEqual(e.extra.path, "\xA7")

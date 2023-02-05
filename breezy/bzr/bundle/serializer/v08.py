@@ -17,10 +17,9 @@
 """Serializer factory for reading and writing bundles.
 """
 
-from __future__ import absolute_import
-
 from .... import (
     errors,
+    transport as _mod_transport,
     ui,
     )
 from . import (
@@ -34,7 +33,6 @@ from ..bundle_data import (
     )
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
-from ....sixish import text_type
 from ...testament import StrictTestament
 from ....timestamp import (
     format_highres_date,
@@ -45,7 +43,7 @@ from ....trace import mutter
 bool_text = {True: 'yes', False: 'no'}
 
 
-class Action(object):
+class Action:
     """Represent an action"""
 
     def __init__(self, name, parameters=None, properties=None):
@@ -166,7 +164,7 @@ class BundleSerializerV08(BundleSerializer):
             f.write(b': ')
             f.write(value)
             f.write(b'\n')
-        elif isinstance(value, text_type):
+        elif isinstance(value, str):
             f.write(b': ')
             f.write(value.encode('utf-8'))
             f.write(b'\n')
@@ -271,7 +269,7 @@ class BundleSerializerV08(BundleSerializer):
             def tree_lines(tree, path, require_text=False):
                 try:
                     tree_file = tree.get_file(path)
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     return []
                 else:
                     if require_text is True:
@@ -344,7 +342,7 @@ class BundleSerializerV08(BundleSerializer):
                 action.write(self.to_file)
 
 
-class BundleReader(object):
+class BundleReader:
     """This class reads in a bundle from a file, and returns
     a Bundle object, which can then be applied against a tree.
     """
@@ -451,7 +449,7 @@ class BundleReader(object):
         if line is None:
             return
         key, value = self._read_next_entry(line, indent=1)
-        mutter('_handle_next %r => %r' % (key, value))
+        mutter('_handle_next {!r} => {!r}'.format(key, value))
         if key is None:
             return
 

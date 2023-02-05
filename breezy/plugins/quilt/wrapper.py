@@ -19,8 +19,6 @@
 
 """Quilt patch handling."""
 
-from __future__ import absolute_import
-
 import errno
 import os
 import signal
@@ -29,6 +27,7 @@ from ... import (
     errors,
     osutils,
     trace,
+    transport as _mod_transport,
     )
 
 
@@ -84,7 +83,10 @@ def run_quilt(
         stderr = subprocess.STDOUT
     else:
         stderr = subprocess.PIPE
-    command = ["quilt"] + args
+    quilt_path = osutils.find_executable_on_path("quilt")
+    if quilt_path is None:
+        raise QuiltNotInstalled()
+    command = [quilt_path] + args
     trace.mutter("running: %r", command)
     if not os.path.isdir(working_dir):
         raise AssertionError("%s is not a valid directory" % working_dir)
@@ -93,10 +95,8 @@ def run_quilt(
             command, cwd=working_dir, env=env,
             stdin=subprocess.PIPE, preexec_fn=subprocess_setup,
             stdout=subprocess.PIPE, stderr=stderr)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
-        raise QuiltNotInstalled()
+    except FileNotFoundError as e:
+        raise QuiltNotInstalled() from e
     (stdout, stderr) = proc.communicate()
     if proc.returncode not in (0, 2):
         if stdout is not None:
@@ -207,12 +207,12 @@ def quilt_applied(tree):
 
     """
     try:
-        return [patch.rstrip(b"\n").decode(osutils._fs_enc)
+        return [os.fsdecode(patch.rstrip(b"\n"))
                 for patch in tree.get_file_lines(".pc/applied-patches")
                 if patch.strip() != b""]
-    except errors.NoSuchFile:
+    except _mod_transport.NoSuchFile:
         return []
-    except (IOError, OSError) as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             # File has already been removed
             return []
@@ -236,7 +236,7 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
             series_file=series_file).splitlines()
         patch_names = []
         for patch in unapplied_patches:
-            patch = patch.decode(osutils._fs_enc)
+            patch = os.fsdecode(patch)
             patch_names.append(os.path.relpath(patch, patches_dir))
         return patch_names
     except QuiltError as e:
@@ -251,13 +251,13 @@ def quilt_series(tree, series_path):
     :param tree: Tree to read from
     """
     try:
-        return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
+        return [os.fsdecode(patch.rstrip(b"\n")) for patch in
                 tree.get_file_lines(series_path)
                 if patch.strip() != b""]
-    except (IOError, OSError) as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             # File has already been removed
             return []
         raise
-    except errors.NoSuchFile:
+    except _mod_transport.NoSuchFile:
         return []

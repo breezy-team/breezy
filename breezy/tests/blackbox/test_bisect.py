@@ -17,8 +17,6 @@
 
 """Tests of the 'brz bisect' command."""
 
-from __future__ import absolute_import
-
 import os
 import shutil
 import stat
@@ -43,10 +41,10 @@ class BisectTestCase(TestCaseWithTransport):
                         1.3: "one dot three", 2: "two", 3: "three",
                         4: "four", 5: "five"}
 
-        test_file = open("test_file")
-        content = test_file.read().strip()
+        with open("test_file") as test_file:
+            content = test_file.read().strip()
         if content != rev_contents[rev]:
-            rev_ids = dict((rev_contents[k], k) for k in rev_contents.keys())
+            rev_ids = {rev_contents[k]: k for k in rev_contents.keys()}
             found_rev = rev_ids[content]
             raise AssertionError("expected rev %0.1f, found rev %0.1f"
                                  % (rev, found_rev))
@@ -62,14 +60,12 @@ class BisectTestCase(TestCaseWithTransport):
 
         self.tree = self.make_branch_and_tree(".")
 
-        test_file = open("test_file", "w")
-        test_file.write("one")
-        test_file.close()
+        with open("test_file", "w") as test_file:
+            test_file.write("one")
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
                                                      'test_file')))
-        test_file_append = open("test_file_append", "a")
-        test_file_append.write("one\n")
-        test_file_append.close()
+        with open("test_file_append", "a") as test_file_append:
+            test_file_append.write("one\n")
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
                                                      'test_file_append')))
         self.tree.commit(message="add test files")
@@ -78,22 +74,18 @@ class BisectTestCase(TestCaseWithTransport):
         clone_controldir = ControlDir.open("../temp-clone")
         clone_tree = clone_controldir.open_workingtree()
         for content in ["one dot one", "one dot two", "one dot three"]:
-            test_file = open("../temp-clone/test_file", "w")
-            test_file.write(content)
-            test_file.close()
-            test_file_append = open("../temp-clone/test_file_append", "a")
-            test_file_append.write(content + "\n")
-            test_file_append.close()
+            with open("../temp-clone/test_file", "w") as test_file:
+                test_file.write(content)
+            with open("../temp-clone/test_file_append", "a") as test_file_append:
+                test_file_append.write(content + "\n")
             clone_tree.commit(message="make branch test change")
             saved_subtree_revid = clone_tree.branch.last_revision()
 
         self.tree.merge_from_branch(clone_tree.branch)
-        test_file = open("test_file", "w")
-        test_file.write("two")
-        test_file.close()
-        test_file_append = open("test_file_append", "a")
-        test_file_append.write("two\n")
-        test_file_append.close()
+        with open("test_file", "w") as test_file:
+            test_file.write("two")
+        with open("test_file_append", "a") as test_file_append:
+            test_file_append.write("two\n")
         self.tree.commit(message="merge external branch")
         shutil.rmtree("../temp-clone")
 
@@ -101,12 +93,10 @@ class BisectTestCase(TestCaseWithTransport):
 
         file_contents = ["three", "four", "five"]
         for content in file_contents:
-            test_file = open("test_file", "w")
-            test_file.write(content)
-            test_file.close()
-            test_file_append = open("test_file_append", "a")
-            test_file_append.write(content + "\n")
-            test_file_append.close()
+            with open("test_file", "w") as test_file:
+                test_file.write(content)
+            with open("test_file_append", "a") as test_file_append:
+                test_file_append.write(content + "\n")
             self.tree.commit(message="make test change")
 
     def testWorkflow(self):
@@ -207,16 +197,14 @@ class BisectTestCase(TestCaseWithTransport):
         # Check that reset doesn't do anything unless there's a
         # bisection in progress.
 
-        test_file = open("test_file", "w")
-        test_file.write("keep me")
-        test_file.close()
+        with open("test_file", "w") as test_file:
+            test_file.write("keep me")
 
         out, err = self.run_bzr(['bisect', 'reset'], retcode=3)
         self.assertIn("No bisection in progress.", err)
 
-        test_file = open("test_file")
-        content = test_file.read().strip()
-        test_file.close()
+        with open("test_file") as test_file:
+            content = test_file.read().strip()
         self.assertEqual(content, "keep me")
 
     def testLog(self):
@@ -250,10 +238,9 @@ class BisectTestCase(TestCaseWithTransport):
 
     def testRunScript(self):
         """Make a test script and run it."""
-        test_script = open("test_script", "w")
-        test_script.write("#!/bin/sh\n"
-                          "grep -q '^four' test_file_append\n")
-        test_script.close()
+        with open("test_script", "w") as test_script:
+            test_script.write("#!/bin/sh\n"
+                              "grep -q '^four' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
         self.run_bzr(['bisect', 'start'])
         self.run_bzr(['bisect', 'yes'])
@@ -265,10 +252,9 @@ class BisectTestCase(TestCaseWithTransport):
         """Make a test script and run it."""
         if sys.platform == "win32":
             raise TestSkipped("Unable to run shell script on windows")
-        test_script = open("test_script", "w")
-        test_script.write("#!/bin/sh\n"
-                          "grep -q '^two' test_file_append\n")
-        test_script.close()
+        with open("test_script", "w") as test_script:
+            test_script.write("#!/bin/sh\n"
+                              "grep -q '^two' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
         self.run_bzr(['bisect', 'start'])
         self.run_bzr(['bisect', 'yes'])
@@ -284,10 +270,9 @@ class BisectTestCase(TestCaseWithTransport):
         """Make a test script and run it."""
         if sys.platform == "win32":
             raise TestSkipped("Unable to run shell script on windows")
-        test_script = open("test_script", "w")
-        test_script.write("#!/bin/sh\n"
-                          "grep -q '^one dot two' test_file_append\n")
-        test_script.close()
+        with open("test_script", "w") as test_script:
+            test_script.write("#!/bin/sh\n"
+                              "grep -q '^one dot two' test_file_append\n")
         os.chmod("test_script", stat.S_IRWXU)
         self.run_bzr(['bisect', 'start'])
         self.run_bzr(['bisect', 'yes'])

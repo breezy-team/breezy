@@ -1,0 +1,211 @@
+####################
+Breezy Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+brz 3.2.3
+#########
+
+:Codename: Nirvana
+:3.2.3: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+* Breezy now uses the system version of the ``merge3`` module.
+  (Jelmer Vernooĳ)
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+
+brz 3.2.2
+#########
+
+:3.2.2: 2022-03-19
+
+External Compatibility Breaks
+*****************************
+
+ * Breezy now relies on an external fastbencode Python module.
+   (Jelmer Vernooĳ)
+
+New Features
+************
+
+ * Basic support for nested trees in Git repositories, in the form
+   of Git submodules. (Jelmer Vernooĳ)
+
+Improvements
+************
+
+ * Improved parsing of remote Git errors, converting those
+   to equivalent Breezy exceptions.
+   (Jelmer Vernooĳ)
+
+ * When yielding hosters in ``breezy.propose``
+   avoid accessing the hoster until the user
+   needs that. (Jelmer Vernooĳ)
+
+ * Pull in new version of ``DirtyTracker`` from lintian-brush,
+   adding support for tracking just subpaths of a tree
+   as well as several bug fixes. (Jelmer Vernooĳ)
+
+ * Add support for finding filesystem types on Windows.
+   (Aleksandr Smyshliaev, Jelmer Vernooĳ)
+
+ * Require that AppData is known on Windows.
+   (Aleksandr Smyshliaev, Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+ * Several improvements to error handling in the
+   gitlab plugin. (Jelmer Vernooĳ)
+
+ * Cope with invalid Git submodules when iterating over
+   nested trees.  (Jelmer Vernooĳ)
+
+ * Fix pulling of revisions that are ancestors of tip in Git. Previously,
+   Breezy would incorrectly raise a DivergedBranches error.
+   (Jelmer Vernooĳ)
+
+ * Fix handling of ``git-extra`` revision properties in Git support,
+   mostly relevant for hg-git commits with additional properties.
+   (Jelmer Vernooĳ)
+
+ * Properly close git repositories when unlocking.
+   (Jelmer Vernooĳ)
+
+ * git: Fix handling of invalid formatted authors field with multiple
+   authors. (Jelmer Vernooĳ)
+
+ * Fix win32utils on Python 3. (Aleksandr Smyshliaev)
+
+ * Fix accidental creation of "ssh:" urls for local paths on Windows.
+   (Aleksandr Smyshliaev)
+
+ * Let osutils path functions on Windows accept byte strings as well as
+   unicode strings. (Aleksandr Smyshliaev)
+
+ * Make "make installer" pass on Windows. (Aleksandr Smyshliaev)
+
+ * Fix compatibility with newer versions of Dulwich.
+   (Jelmer Vernooĳ)
+
+Documentation
+*************
+
+ * Updated various references to Windows support, mentioning
+   that Windows is currently not supported. See
+   https://pad.lv/1951124 for details.
+   (Jelmer Vernooĳ)
+
+API Changes
+***********
+
+ * Remove ``breezy.osutils.host_os_deferences_symlinks``.
+   (Aleksandr Smyshliaev)
+
+ * Remove unnecessary ``osutils.open_file``.
+   (Aleksandr Smyshliaev)
+
+ * Remove ``breezy.osutils.has_symlinks`` and
+   ``breezy.osutils.has_hardlinks`` in favour of
+   ``breezy.osutils.supports_hardlinks`` and
+   ``breezy.osutils.supports_symlinks``, which
+   take a path argument and run filesystem-specific
+   results. (Jelmer Vernooĳ)
+
+ * Support passing in probers to
+   ``ControlDir.open_containing_from_transport``.
+   (Jelmer Vernooĳ)
+
+ * Pass along headers in ``UnexpectedHttpStatus``.
+   (Jelmer Vernooĳ)
+
+ * Drop support for writing/reading rio to unicode.
+   (Jelmer Vernooĳ)
+
+Internals
+*********
+
+ * Run flake8 as a separate command. The API is not stable
+   enough to invoke it from the testsuite. (Jelmer Vernooĳ)
+
+ * Drop unused symbol and token imports.
+   (Jelmer Vernooĳ)
+
+ * Support nested trees in Tree.get_file_mtime.
+   (Jelmer Vernooĳ)
+
+ * Use same formatting style for versions that distutils uses, silencing a
+   warning. (Jelmer Vernooĳ)
+
+ * Drop old and outdated RPM README file.
+   (Jelmer Vernooĳ)
+
+Testing
+*******
+
+ * test_source: Avoid using the ``parser`` module, which
+   has been removed in Python 3.10.
+   (Jelmer Vernooĳ, #1956500)
+
+ * test_import_tariff: Forbid ctypes during basic operations.
+   (Jelmer Vernooĳ)
+
+ * Preserve sys.path when running bzr subprocesses, rather than
+   accidentally importing the system Breezy.
+   (Jelmer Vernooĳ)
+
+ * Various fixes for plugin tests on newer versions of Python.
+
+ * Extend test certificate expiry to 1000 years.
+   (Bernhard M. Wiedemann, #1926151)
+
+..
+   vim: tw=74 ft=rst ff=unix

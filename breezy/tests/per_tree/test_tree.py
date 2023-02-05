@@ -20,6 +20,7 @@ from breezy import (
     osutils,
     revisiontree,
     tests,
+    transport as _mod_transport,
     )
 from breezy.tree import MissingNestedTree
 from breezy.bzr import (
@@ -105,7 +106,7 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(
-            [u'subtree'],
+            ['subtree'],
             list(tree.iter_references()))
 
     def test_get_nested_tree(self):
@@ -120,6 +121,8 @@ class TestReference(TestCaseWithTree):
     def test_get_root_id(self):
         # trees should return some kind of root id; it can be none
         tree = self.make_branch_and_tree('tree')
+        if not tree.supports_file_ids:
+            raise tests.TestNotApplicable('file ids not supported')
         root_id = tree.path2id('')
         if root_id is not None:
             self.assertIsInstance(root_id, bytes)
@@ -138,15 +141,18 @@ class TestReference(TestCaseWithTree):
 
 class TestFileIds(TestCaseWithTree):
 
+    def setUp(self):
+        super().setUp()
+        if not self.workingtree_format.supports_setting_file_ids:
+            raise tests.TestNotApplicable("working tree does not support setting file ids")
+
     def test_id2path(self):
         # translate from file-id back to path
         work_tree = self.make_branch_and_tree('wt')
-        if not work_tree.supports_setting_file_ids():
-            self.skipTest("working tree does not support setting file ids")
         tree = self.get_tree_no_parents_abc_content(work_tree)
         a_id = tree.path2id('a')
         with tree.lock_read():
-            self.assertEqual(u'a', tree.id2path(a_id))
+            self.assertEqual('a', tree.id2path(a_id))
             # other ids give an error- don't return None for this case
             self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
 
@@ -155,13 +161,9 @@ class TestFileIds(TestCaseWithTree):
         tree = self.get_tree_no_parents_abc_content(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        try:
-            self.assertEqual(tree.all_file_ids(),
-                             {tree.path2id('a'), tree.path2id(''),
-                              tree.path2id('b'), tree.path2id('b/c')})
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable(
-                'Tree does not support all_file_ids')
+        self.assertEqual(tree.all_file_ids(),
+                         {tree.path2id('a'), tree.path2id(''),
+                          tree.path2id('b'), tree.path2id('b/c')})
 
 
 class TestStoredKind(TestCaseWithTree):
@@ -181,7 +183,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Test lookup without path works
@@ -195,7 +196,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_context_manager(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         with tree.get_file('a') as f:
@@ -204,7 +204,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by path
@@ -213,7 +212,6 @@ class TestFileContent(TestCaseWithTree):
     def test_get_file_lines(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)
-        a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by path
@@ -241,14 +239,14 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        extracted = dict((i, b''.join(b)) for i, b in
+        extracted = {i: b''.join(b) for i, b in
                          tree.iter_files_bytes([('foo', 'id1'),
                                                 ('bar', 'id2'),
-                                                ('baz', 'id3')]))
+                                                ('baz', 'id3')])}
         self.assertEqual(b'foo', extracted['id1'])
         self.assertEqual(b'bar', extracted['id2'])
         self.assertEqual(b'baz', extracted['id3'])
-        self.assertRaises(errors.NoSuchFile, lambda: list(
+        self.assertRaises(_mod_transport.NoSuchFile, lambda: list(
                           tree.iter_files_bytes(
                               [('qux', 'file1-notpresent')])))
 
@@ -291,7 +289,7 @@ class TestIterChildEntries(TestCaseWithTree):
         self.build_tree(['a/'])
         work_tree.add(['a'])
         tree = self._convert_tree(work_tree)
-        self.assertRaises(errors.NoSuchFile, lambda:
+        self.assertRaises(_mod_transport.NoSuchFile, lambda:
                           list(tree.iter_child_entries('unknown')))
 
 
@@ -375,3 +373,11 @@ class TestSupportsVersionableKind(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('tree')
         tree = self._convert_tree(work_tree)
         self.assertFalse(tree.versionable_kind('unknown'))
+
+
+class TestSpecialFilename(TestCaseWithTree):
+
+    def test_is_special_path(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertFalse(tree.is_special_path('foo'))

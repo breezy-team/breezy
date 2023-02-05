@@ -54,8 +54,6 @@ To report bugs or publish enhancements, visit the bzr-fastimport project
 page on Launchpad, https://launchpad.net/bzr-fastimport.
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
@@ -64,7 +62,7 @@ def load_fastimport():
     """Load the fastimport module or raise an appropriate exception."""
     try:
         import fastimport
-    except ImportError as e:
+    except ModuleNotFoundError as e:
         from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
                                    "fastimport requires the fastimport python module")

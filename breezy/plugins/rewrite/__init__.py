@@ -21,9 +21,10 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from __future__ import absolute_import
-
-from ... import errors
+from ... import (
+    errors,
+    transport as _mod_transport,
+    )
 from ...commands import plugin_cmds
 
 from ...bzr.bzrdir import BzrFormat
@@ -54,7 +55,7 @@ def show_rebase_summary(params):
     state = RebaseState1(params.new_tree)
     try:
         replace_map = state.read_plan()[1]
-    except errors.NoSuchFile:
+    except _mod_transport.NoSuchFile:
         return
     todo = list(rebase_todo(params.new_tree.branch.repository, replace_map))
     params.to_file.write('Rebase in progress. (%d revisions left)\n' % len(todo))
@@ -72,5 +73,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests

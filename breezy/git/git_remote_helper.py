@@ -19,8 +19,6 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
-from __future__ import absolute_import
-
 CAPABILITIES = ["fetch", "option", "push"]
 
 import os
@@ -28,7 +26,6 @@ import os
 from ..controldir import ControlDir
 from ..errors import NotBranchError, NoRepositoryPresent
 from ..repository import InterRepository
-from ..sixish import viewitems
 from ..transport import get_transport_from_path
 
 from . import (
@@ -54,7 +51,7 @@ from ..plugins.fastimport import exporter as fastexporter
 
 try:
     import fastimport  # noqa: F401
-except ImportError:
+except ModuleNotFoundError:
     pass
 else:
     CAPABILITIES.append("import")
@@ -99,7 +96,7 @@ def push(outf, wants, shortname, remote_dir, local_dir):
     outf.write(b"\n")
 
 
-class RemoteHelper(object):
+class RemoteHelper:
     """Git remote helper."""
 
     def __init__(self, local_dir, shortname, remote_dir):
@@ -120,7 +117,7 @@ class RemoteHelper(object):
         object_store = get_object_store(repo)
         with object_store.lock_read():
             refs = get_refs_container(self.remote_dir, object_store)
-            for ref, git_sha1 in viewitems(refs.as_dict()):
+            for ref, git_sha1 in refs.as_dict().items():
                 ref = ref.replace(b"~", b"_")
                 outf.write(b"%s %s\n" % (git_sha1, ref))
             outf.write(b"\n")

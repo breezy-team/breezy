@@ -14,27 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import base64
+import contextlib
+from io import BytesIO
 import re
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
-    cleanup,
     diff,
     email_message,
     gpg,
-    hooks,
-    registry,
     revision as _mod_revision,
-    rio,
     timestamp,
     trace,
     )
 from breezy.bzr import (
+    rio,
     testament,
     )
 from breezy.bzr.bundle import (
@@ -43,9 +40,8 @@ from breezy.bzr.bundle import (
 """)
 from . import (
     errors,
-    )
-from .sixish import (
-    BytesIO,
+    hooks,
+    registry,
     )
 
 
@@ -59,7 +55,7 @@ class IllegalMergeDirectivePayload(errors.BzrError):
         self.start = start
 
 
-class MergeRequestBodyParams(object):
+class MergeRequestBodyParams:
     """Parameter object for the merge_request_body hook."""
 
     def __init__(self, body, orig_body, directive, to, basename, subject,
@@ -88,7 +84,7 @@ class MergeDirectiveHooks(hooks.Hooks):
             " provided to the next.", (1, 15, 0))
 
 
-class BaseMergeDirective(object):
+class BaseMergeDirective:
     """A request to perform a merge into a branch.
 
     This is the base class that all merge directive implementations
@@ -212,7 +208,6 @@ class BaseMergeDirective(object):
             patch = None
         else:
             submit_revision_id = submit_branch.last_revision()
-            submit_revision_id = _mod_revision.ensure_null(submit_revision_id)
             repository.fetch(submit_branch.repository, submit_revision_id)
             graph = repository.get_graph()
             ancestor_id = graph.find_unique_lca(revision_id,
@@ -247,7 +242,7 @@ class BaseMergeDirective(object):
             except errors.NoSuchRevision:
                 revno = ['merge']
         nick = re.sub('(\\W+)', '-', branch.nick).strip('-')
-        return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
+        return '{}-{}'.format(nick, '.'.join(str(n) for n in revno))
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
@@ -315,8 +310,8 @@ class BaseMergeDirective(object):
                     except errors.NotBranchError:
                         raise errors.TargetNotBranch(self.target_branch)
                     missing_revisions = []
-                    bundle_revisions = set(r.revision_id for r in
-                                           info.real_revisions)
+                    bundle_revisions = {r.revision_id for r in
+                                           info.real_revisions}
                     for revision in info.real_revisions:
                         for parent_id in revision.parent_ids:
                             if (parent_id not in bundle_revisions
@@ -609,7 +604,7 @@ class MergeDirective2(BaseMergeDirective):
         If the message is not supplied, the message from revision_id will be
         used for the commit.
         """
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(repository.lock_write())
             t_revision_id = revision_id
             if revision_id == b'null:':
@@ -624,7 +619,6 @@ class MergeDirective2(BaseMergeDirective):
             if submit_branch.get_public_branch() is not None:
                 target_branch = submit_branch.get_public_branch()
             submit_revision_id = submit_branch.last_revision()
-            submit_revision_id = _mod_revision.ensure_null(submit_revision_id)
             graph = repository.get_graph(submit_branch.repository)
             ancestor_id = graph.find_unique_lca(revision_id,
                                                 submit_revision_id)

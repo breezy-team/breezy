@@ -17,8 +17,6 @@
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
-from __future__ import absolute_import
-
 import errno
 import os
 import re
@@ -32,7 +30,6 @@ from breezy import (
 from breezy.i18n import gettext, ngettext
 """)
 from . import (
-    cache_utf8,
     errors,
     commands,
     option,
@@ -40,7 +37,6 @@ from . import (
     registry,
     trace,
     )
-from .sixish import text_type
 
 
 class cmd_conflicts(commands.Command):
@@ -64,7 +60,7 @@ class cmd_conflicts(commands.Command):
         ]
     _see_also = ['resolve', 'conflict-types']
 
-    def run(self, text=False, directory=u'.'):
+    def run(self, text=False, directory='.'):
         wt = workingtree.WorkingTree.open_containing(directory)[0]
         for conflict in wt.conflicts():
             if text:
@@ -72,10 +68,10 @@ class cmd_conflicts(commands.Command):
                     continue
                 self.outf.write(conflict.path + '\n')
             else:
-                self.outf.write(text_type(conflict) + '\n')
+                self.outf.write(str(conflict) + '\n')
 
 
-resolve_action_registry = registry.Registry()
+resolve_action_registry = registry.Registry[str, str]()
 
 
 resolve_action_registry.register(
@@ -94,7 +90,7 @@ resolve_action_registry.default_key = 'done'
 class ResolveActionOption(option.RegistryOption):
 
     def __init__(self):
-        super(ResolveActionOption, self).__init__(
+        super().__init__(
             'action', 'How to resolve the conflict.',
             value_switches=True,
             registry=resolve_action_registry)
@@ -127,7 +123,7 @@ class cmd_resolve(commands.Command):
                 raise errors.CommandError(gettext("If --all is specified,"
                                                   " no FILE may be provided"))
             if directory is None:
-                directory = u'.'
+                directory = '.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
             if action is None:
                 action = 'done'
@@ -149,7 +145,7 @@ class cmd_resolve(commands.Command):
                     before - after)
                 trace.note(gettext('Remaining conflicts:'))
                 for conflict in tree.conflicts():
-                    trace.note(text_type(conflict))
+                    trace.note(str(conflict))
                 return 1
             else:
                 trace.note(gettext('All conflicts resolved.'))
@@ -229,7 +225,7 @@ def restore(filename):
         raise errors.NotConflicted(filename)
 
 
-class ConflictList(object):
+class ConflictList:
     """List of conflicts.
 
     Typically obtained from WorkingTree.conflicts()
@@ -269,7 +265,7 @@ class ConflictList(object):
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
-            yield text_type(conflict)
+            yield str(conflict)
 
     def remove_files(self, tree):
         """Remove the THIS, BASE and OTHER files for listed conflicts"""
@@ -312,10 +308,10 @@ class ConflictList(object):
         return new_conflicts, selected_conflicts
 
 
-class Conflict(object):
+class Conflict:
     """Base class for conflicts."""
 
-    typestring = None
+    typestring: str
 
     def __init__(self, path):
         self.path = path

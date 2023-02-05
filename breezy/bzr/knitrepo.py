@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+from typing import Type
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -32,6 +32,7 @@ from breezy import (
 from breezy.bzr import (
     knit as _mod_knit,
     versionedfile,
+    serializer,
     xml5,
     xml6,
     xml7,
@@ -39,15 +40,18 @@ from breezy.bzr import (
 """)
 from .. import (
     errors,
+    transport as _mod_transport,
     )
 from ..repository import (
     InterRepository,
     IsInWriteGroupError,
+    Repository,
     )
-from ..bzr.repository import (
+from .repository import (
     RepositoryFormatMetaDir,
     )
-from ..bzr.vf_repository import (
+from .serializer import Serializer
+from .vf_repository import (
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -55,7 +59,7 @@ from ..bzr.vf_repository import (
     )
 
 
-class _KnitParentsProvider(object):
+class _KnitParentsProvider:
 
     def __init__(self, knit):
         self._knit = knit
@@ -84,7 +88,7 @@ class _KnitParentsProvider(object):
         return parent_map
 
 
-class _KnitsParentsProvider(object):
+class _KnitsParentsProvider:
 
     def __init__(self, knit, prefix=()):
         """Create a parent provider for string keys mapped to tuple keys."""
@@ -119,12 +123,12 @@ class KnitRepository(MetaDirVersionedFileRepository):
     # them to None ensures that if the constructor is changed to not initialize
     # them, or a subclass fails to call the constructor, that an error will
     # occur rather than the system working but generating incorrect data.
-    _commit_builder_class = None
-    _serializer = None
+    _commit_builder_class: Type[VersionedFileCommitBuilder]
+    _serializer: Serializer
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
                  _serializer):
-        super(KnitRepository, self).__init__(
+        super().__init__(
             _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
@@ -142,14 +146,14 @@ class KnitRepository(MetaDirVersionedFileRepository):
         t.copy('inventory.new.kndx', 'inventory.kndx')
         try:
             t.copy('inventory.new.knit', 'inventory.knit')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # empty inventories knit
             t.delete('inventory.knit')
         # delete the temp inventory
         t.delete('inventory.new.kndx')
         try:
             t.delete('inventory.new.knit')
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # empty inventories knit
             pass
         # Force index reload (sanity check)
@@ -175,7 +179,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
         for suffix in ('.kndx', '.knit'):
             try:
                 t.delete(rel_url + suffix)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
 
     def _temp_inventories(self):
@@ -232,11 +236,11 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
 
     # Set this attribute in derived classes to control the repository class
     # created by open and initialize.
-    repository_class = None
+    repository_class: Type[Repository]
     # Set this attribute in derived classes to control the
     # _commit_builder_class that the repository objects will have passed to
     # their constructor.
-    _commit_builder_class = None
+    _commit_builder_class: Type[VersionedFileCommitBuilder]
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
 

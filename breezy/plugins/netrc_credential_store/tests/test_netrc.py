@@ -14,14 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import BytesIO
 from .... import (
     config,
     errors,
     osutils,
     tests,
-    )
-from ....sixish import (
-    BytesIO,
+    transport as _mod_transport,
     )
 
 from ... import netrc_credential_store
@@ -30,7 +29,7 @@ from ... import netrc_credential_store
 class TestNetrcCSNoNetrc(tests.TestCaseInTempDir):
 
     def test_home_netrc_does_not_exist(self):
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(_mod_transport.NoSuchFile,
                           config.credential_store_registry.get_credential_store,
                           'netrc')
 
@@ -38,7 +37,7 @@ class TestNetrcCSNoNetrc(tests.TestCaseInTempDir):
 class TestNetrcCS(tests.TestCaseInTempDir):
 
     def setUp(self):
-        super(TestNetrcCS, self).setUp()
+        super().setUp()
         # Create a .netrc file
         netrc_content = b"""
 machine host login joe password secret

@@ -16,14 +16,12 @@
 
 """Tests for handling of ignore files"""
 
+from io import BytesIO
 import os
 
 from .. import (
     bedding,
     ignores,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from . import (
     TestCase,
@@ -47,19 +45,19 @@ class TestParseIgnoreFile(TestCase):
             b'!RE:^\\.z.*\n'
             b'!!./.zcompdump\n'
             ))
-        self.assertEqual({u'./rootdir',
-                          u'randomfile*',
-                          u'path/from/ro?t',
-                          u'unicode\xb5',
-                          u'dos',
-                          u' xx ',
-                          u'!RE:^\\.z.*',
-                          u'!!./.zcompdump',
+        self.assertEqual({'./rootdir',
+                          'randomfile*',
+                          'path/from/ro?t',
+                          'unicode\xb5',
+                          'dos',
+                          ' xx ',
+                          '!RE:^\\.z.*',
+                          '!!./.zcompdump',
                           }, ignored)
 
     def test_parse_empty(self):
         ignored = ignores.parse_ignore_file(BytesIO(b''))
-        self.assertEqual(set([]), ignored)
+        self.assertEqual(set(), ignored)
 
     def test_parse_non_utf8(self):
         """Lines with non utf 8 characters should be discarded."""
@@ -69,8 +67,8 @@ class TestParseIgnoreFile(TestCase):
             b'utf8filename_b\n'
             ))
         self.assertEqual({
-            u'utf8filename_a',
-            u'utf8filename_b',
+            'utf8filename_a',
+            'utf8filename_b',
             }, ignored)
 
 
@@ -106,7 +104,7 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertPathDoesNotExist(ignore_path)
 
     def test_use_existing(self):
-        patterns = [u'*.o', u'*.py[co]', u'\xe5*']
+        patterns = ['*.o', '*.py[co]', '\xe5*']
         ignores._set_user_ignores(patterns)
 
         user_ignores = ignores.get_user_ignores()
@@ -117,7 +115,7 @@ class TestUserIgnores(TestCaseInTempDir):
         ignore_path = bedding.user_ignore_config_path()
         self.check_file_contents(ignore_path, b'')
 
-        self.assertEqual(set([]), ignores.get_user_ignores())
+        self.assertEqual(set(), ignores.get_user_ignores())
 
     def test_set(self):
         patterns = ['*.py[co]', '*.py[oc]']
@@ -134,7 +132,7 @@ class TestUserIgnores(TestCaseInTempDir):
         # Create an empty file
         ignores._set_user_ignores([])
 
-        patterns = ['foo', './bar', u'b\xe5z']
+        patterns = ['foo', './bar', 'b\xe5z']
         added = ignores.add_unique_user_ignores(patterns)
         self.assertEqual(patterns, added)
         self.assertEqual(set(patterns), ignores.get_user_ignores())
@@ -153,12 +151,12 @@ class TestUserIgnores(TestCaseInTempDir):
     def test_add_unique(self):
         """Test that adding will not duplicate ignores"""
         ignores._set_user_ignores(
-            ['foo', './bar', u'b\xe5z', 'dir1/', 'dir3\\'])
+            ['foo', './bar', 'b\xe5z', 'dir1/', 'dir3\\'])
 
         added = ignores.add_unique_user_ignores(
             ['xxx', './bar', 'xxx', 'dir1/', 'dir2/', 'dir3\\'])
         self.assertEqual(['xxx', 'dir2'], added)
-        self.assertEqual({'foo', './bar', u'b\xe5z',
+        self.assertEqual({'foo', './bar', 'b\xe5z',
                           'xxx', 'dir1', 'dir2', 'dir3'},
                          ignores.get_user_ignores())
 
@@ -166,7 +164,7 @@ class TestUserIgnores(TestCaseInTempDir):
 class TestRuntimeIgnores(TestCase):
 
     def setUp(self):
-        super(TestRuntimeIgnores, self).setUp()
+        super().setUp()
 
         # For the purposes of these tests, we must have no
         # runtime ignores
@@ -197,7 +195,7 @@ class TestTreeIgnores(TestCaseWithTransport):
 
     def test_new_file(self):
         tree = self.make_branch_and_tree(".")
-        ignores.tree_ignores_add_patterns(tree, [u"myentry"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry"])
         self.assertTrue(tree.has_filename(".bzrignore"))
         self.assertPatternsEquals(["myentry"])
 
@@ -205,14 +203,14 @@ class TestTreeIgnores(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([('.bzrignore', b"myentry1\n")])
         tree.add([".bzrignore"])
-        ignores.tree_ignores_add_patterns(tree, [u"myentry2", u"foo"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
         self.assertPatternsEquals(["myentry1", "myentry2", "foo"])
 
     def test_adds_ending_newline(self):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([('.bzrignore', b"myentry1")])
         tree.add([".bzrignore"])
-        ignores.tree_ignores_add_patterns(tree, [u"myentry2"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry2"])
         self.assertPatternsEquals(["myentry1", "myentry2"])
         with open(".bzrignore") as f:
             text = f.read()
@@ -222,16 +220,16 @@ class TestTreeIgnores(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([('.bzrignore', b"myentry\n")])
         tree.add([".bzrignore"])
-        ignores.tree_ignores_add_patterns(tree, [u"myentry"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry"])
         self.assertPatternsEquals(["myentry"])
 
     def test_non_ascii(self):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([('.bzrignore',
-                                   u"myentry\u1234\n".encode('utf-8'))])
+                                   "myentry\u1234\n".encode())])
         tree.add([".bzrignore"])
-        ignores.tree_ignores_add_patterns(tree, [u"myentry\u5678"])
-        self.assertPatternsEquals([u"myentry\u1234", u"myentry\u5678"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry\u5678"])
+        self.assertPatternsEquals(["myentry\u1234", "myentry\u5678"])
 
     def test_crlf(self):
         tree = self.make_branch_and_tree(".")

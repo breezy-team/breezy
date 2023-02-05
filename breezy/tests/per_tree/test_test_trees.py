@@ -16,8 +16,10 @@
 
 """Tests for the test trees used by the per_tree tests."""
 
+import shutil
+
 from breezy import errors
-from breezy.sixish import text_type
+from breezy.tree import MissingNestedTree
 from breezy.tests import per_tree
 from breezy.tests import (
     TestNotApplicable,
@@ -37,9 +39,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
         self.assertEqual([''], list(tree.all_versioned_paths()))
-        self.assertEqual(
-            [('', tree.path2id(''))],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        if tree.supports_file_ids:
+            self.assertEqual(
+                [('', tree.path2id(''))],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                [''],
+                [path for path, node in tree.iter_entries_by_dir()])
 
     def test_abc_tree_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -56,9 +63,15 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertTrue(tree.is_versioned('a'))
         self.assertTrue(tree.is_versioned('b'))
         self.assertTrue(tree.is_versioned('b/c'))
-        self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        if tree.supports_file_ids:
+            self.assertEqual(
+                [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                ['', 'a', 'b', 'b/c'],
+                [path for path, node in tree.iter_entries_by_dir()])
+
         self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertFalse(tree.is_executable('b/c'))
 
@@ -74,13 +87,22 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             {'', 'a', 'b', 'b/c'},
             set(tree.all_versioned_paths()))
-        self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['b']],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir(
-                specific_files=['b'])])
+        if tree.supports_file_ids:
+            self.assertEqual(
+                [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+            self.assertEqual(
+                [(p, tree.path2id(p)) for p in ['b']],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir(
+                    specific_files=['b'])])
+        else:
+            self.assertEqual(
+                ['', 'a', 'b', 'b/c'],
+                [path for path, node in tree.iter_entries_by_dir()])
+            self.assertEqual(
+                ['b'],
+                [path for path, node in tree.iter_entries_by_dir(
+                    specific_files=['b'])])
         self.assertEqualDiff(b'foobar\n', tree.get_file_text('a'))
         self.assertFalse(tree.is_executable('b//c'))
         self.assertFalse(tree.is_executable('b/c'))
@@ -97,9 +119,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             {'', 'a', 'b', 'b/c'},
             set(tree.all_versioned_paths()))
-        self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        if tree.supports_file_ids:
+            self.assertEqual(
+                [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                ['', 'a', 'b', 'b/c'],
+                [path for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertTrue(tree.is_executable('b/c'))
 
@@ -115,9 +142,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             {'', 'b', 'd', 'b/c'},
             set(tree.all_versioned_paths()))
-        self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        if tree.supports_file_ids:
+            self.assertEqual(
+                [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                ['', 'b', 'd', 'b/c'],
+                [path for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff(b'contents of a\n', tree.get_file_text('d'))
         self.assertFalse(tree.is_executable('b/c'))
 
@@ -133,9 +165,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             {'', 'd', 'b', 'b/c'},
             set(tree.all_versioned_paths()))
-        self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        if tree.supports_file_ids:
+            self.assertEqual(
+                [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                ['', 'b', 'd', 'b/c'],
+                [path for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff(b'bar\n', tree.get_file_text('d'))
         self.assertFalse(tree.is_executable('b/c'))
 
@@ -155,9 +192,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             set(expected_paths),
             set(tree.all_versioned_paths()))
-        self.assertEqual(
-            [(p, tree.path2id(p)) for p in expected_paths],
-            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        if tree.supports_file_ids:
+            self.assertEqual(
+                [(p, tree.path2id(p)) for p in expected_paths],
+                [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        else:
+            self.assertEqual(
+                expected_paths,
+                [path for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertTrue(tree.is_executable('e'))
 
@@ -165,7 +207,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -173,17 +215,18 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
-        tree_root = tree.path2id('')
         try:
             all_file_ids = set(tree.all_file_ids())
-        except errors.UnsupportedOperation:
+            tree_root = tree.path2id('')
+        except AttributeError:
+            # doesn't support file ids
             all_file_ids = None
         if tree.has_versioned_directories():
             if all_file_ids is not None:
                 self.assertEqual(
                     {tree.path2id(p) for p in [
                         '', '0file', '1top-dir', '1top-dir/1dir-in-1topdir',
-                        '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
+                        '1top-dir/0file-in-1topdir', 'symlink', '2utf\u1234file']},
                     set(tree.all_file_ids()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -191,7 +234,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('symlink', 'symlink'),
                  ('1top-dir/0file-in-1topdir', 'file'),
                  ('1top-dir/1dir-in-1topdir', 'directory')],
@@ -202,7 +245,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                     {tree.path2id(p) for p in [
                         '', '0file', '1top-dir',
                         '1top-dir/0file-in-1topdir', 'symlink',
-                        u'2utf\u1234file']},
+                        '2utf\u1234file']},
                     set(tree.all_file_ids()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -210,7 +253,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('symlink', 'symlink'),
                  ('1top-dir/0file-in-1topdir', 'file')],
                 [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
@@ -227,11 +270,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
-        tree_root = tree.path2id('')
         if tree.has_versioned_directories():
             self.assertEqual(
                 {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
-                 '1top-dir/1dir-in-1topdir', u'2utf\u1234file'},
+                 '1top-dir/1dir-in-1topdir', '2utf\u1234file'},
                 set(tree.all_versioned_paths()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -239,14 +281,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('1top-dir/0file-in-1topdir', 'file'),
                  ('1top-dir/1dir-in-1topdir', 'directory')],
                 [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
         else:
             self.assertEqual(
                 {'', '0file', '1top-dir', '1top-dir/0file-in-1topdir',
-                 u'2utf\u1234file'},
+                 '2utf\u1234file'},
                 set(tree.all_versioned_paths()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
@@ -254,7 +296,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 [('', 'directory'),
                  ('0file', 'file'),
                  ('1top-dir', 'directory'),
-                 (u'2utf\u1234file', 'file'),
+                 ('2utf\u1234file', 'file'),
                  ('1top-dir/0file-in-1topdir', 'file')],
                 [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
 
@@ -265,10 +307,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # checks (as performed by some file systems (OSX) are outside the scope
         # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
         # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
-        paths = [u'',
-                 u'fo\N{Euro Sign}o',
-                 u'ba\N{Euro Sign}r/',
-                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+        paths = ['',
+                 'fo\N{Euro Sign}o',
+                 'ba\N{Euro Sign}r/',
+                 'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                  ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
@@ -278,23 +320,23 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                     b'ba\xe2\x82\xacz-id',
                     ]
         self.build_tree(paths[1:])
-        if tree.path2id('') is None:
+        if not tree.is_versioned(''):
             # Some trees do not have a root yet.
-            tree.add(paths, file_ids)
+            tree.add(paths, ids=file_ids)
         else:
             # Some trees will already have a root
             if tree.supports_setting_file_ids():
                 tree.set_root_id(file_ids[0])
-                tree.add(paths[1:], file_ids[1:])
+                tree.add(paths[1:], ids=file_ids[1:])
             else:
                 tree.add(paths[1:])
         if tree.branch.repository._format.supports_setting_revision_ids:
             try:
-                tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
+                tree.commit('in\xedtial', rev_id='r\xe9v-1'.encode())
             except errors.NonAsciiRevisionId:
                 raise TestSkipped('non-ascii revision ids not supported')
         else:
-            tree.commit(u'in\xedtial')
+            tree.commit('in\xedtial')
 
         return tree
 
@@ -307,15 +349,15 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         tree = self.workingtree_to_test_tree(tree)
 
-        revision_id = u'r\xe9v-1'.encode('utf8')
+        revision_id = 'r\xe9v-1'.encode()
         root_id = b'TREE_ROOT'
-        bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
-        foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
-        baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
-        path_and_ids = [(u'', root_id, None, None),
-                        (u'ba\N{Euro Sign}r', bar_id, root_id, revision_id),
-                        (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id),
-                        (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+        bar_id = 'ba\N{Euro Sign}r-id'.encode()
+        foo_id = 'fo\N{Euro Sign}o-id'.encode()
+        baz_id = 'ba\N{Euro Sign}z-id'.encode()
+        path_and_ids = [('', root_id, None, None),
+                        ('ba\N{Euro Sign}r', bar_id, root_id, revision_id),
+                        ('fo\N{Euro Sign}o', foo_id, root_id, revision_id),
+                        ('ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                          baz_id, bar_id, revision_id),
                         ]
         with tree.lock_read():
@@ -323,7 +365,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
             self.assertEqual(expected[0], path)  # Paths should match
-            self.assertIsInstance(path, text_type)
+            self.assertIsInstance(path, str)
             self.assertEqual(expected[1], ie.file_id)
             self.assertIsInstance(ie.file_id, bytes)
             self.assertEqual(expected[2], ie.parent_id)
@@ -350,41 +392,41 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self._create_tree_with_utf8(wt)
 
         tree2 = wt.controldir.sprout('tree2').open_workingtree()
-        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+        self.build_tree(['tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
         if wt.supports_setting_file_ids():
-            tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
-                      [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
+            tree2.add(['ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
+                      ids=['qu\N{Euro Sign}x-id'.encode()])
         else:
-            tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+            tree2.add(['ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
         if wt.branch.repository._format.supports_setting_revision_ids:
-            tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
+            tree2.commit('to m\xe9rge', rev_id='r\xe9v-2'.encode())
         else:
-            tree2.commit(u'to m\xe9rge')
+            tree2.commit('to m\xe9rge')
 
         self.assertTrue(tree2.is_versioned(
-            u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
+            'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
         wt.merge_from_branch(tree2.branch)
-        self.assertTrue(wt.is_versioned(u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
+        self.assertTrue(wt.is_versioned('ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
 
         if wt.branch.repository._format.supports_setting_revision_ids:
-            wt.commit(u'm\xe9rge', rev_id=u'r\xe9v-3'.encode('utf8'))
+            wt.commit('m\xe9rge', rev_id='r\xe9v-3'.encode())
         else:
-            wt.commit(u'm\xe9rge')
+            wt.commit('m\xe9rge')
         tree = self.workingtree_to_test_tree(wt)
 
-        revision_id_1 = u'r\xe9v-1'.encode('utf8')
-        revision_id_2 = u'r\xe9v-2'.encode('utf8')
+        revision_id_1 = 'r\xe9v-1'.encode()
+        revision_id_2 = 'r\xe9v-2'.encode()
         root_id = b'TREE_ROOT'
-        bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
-        foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
-        baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
-        qux_id = u'qu\N{Euro Sign}x-id'.encode('utf8')
-        path_and_ids = [(u'', root_id, None, None),
-                        (u'ba\N{Euro Sign}r', bar_id, root_id, revision_id_1),
-                        (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id_1),
-                        (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+        bar_id = 'ba\N{Euro Sign}r-id'.encode()
+        foo_id = 'fo\N{Euro Sign}o-id'.encode()
+        baz_id = 'ba\N{Euro Sign}z-id'.encode()
+        qux_id = 'qu\N{Euro Sign}x-id'.encode()
+        path_and_ids = [('', root_id, None, None),
+                        ('ba\N{Euro Sign}r', bar_id, root_id, revision_id_1),
+                        ('fo\N{Euro Sign}o', foo_id, root_id, revision_id_1),
+                        ('ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                          baz_id, bar_id, revision_id_1),
-                        (u'ba\N{Euro Sign}r/qu\N{Euro Sign}x',
+                        ('ba\N{Euro Sign}r/qu\N{Euro Sign}x',
                          qux_id, bar_id, revision_id_2),
                         ]
         with tree.lock_read():
@@ -393,7 +435,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
             self.assertEqual(epath, path)  # Paths should match
-            self.assertIsInstance(path, text_type)
+            self.assertIsInstance(path, str)
             self.assertIsInstance(ie.file_id, bytes)
             if wt.supports_setting_file_ids():
                 self.assertEqual(efid, ie.file_id)
@@ -401,7 +443,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             if eparent is not None:
                 self.assertIsInstance(ie.parent_id, bytes)
         self.assertEqual(len(path_and_ids), len(path_entries),
-                         "%r vs %r" % (
+                         "{!r} vs {!r}".format(
                              [p for (p, f, pf, r) in path_and_ids],
                              [p for (p, e) in path_entries]))
         get_revision_id = getattr(tree, 'get_revision_id', None)
@@ -450,3 +492,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             actual = [(path, ie.kind)
                       for path, ie in path_entries]
         self.assertEqual(expected, actual)
+
+    def test_iter_entries_with_missing_reference(self):
+        tree, subtree = self.create_nested()
+        shutil.rmtree('wt/subtree')
+        expected = [
+            ('', 'directory'),
+            ('subtree', 'tree-reference')]
+        with tree.lock_read():
+            self.assertRaises(
+                MissingNestedTree, list, tree.iter_entries_by_dir(recurse_nested=True))

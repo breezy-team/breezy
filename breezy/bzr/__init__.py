@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+from typing import TYPE_CHECKING
 
 from .. import (
     config,
@@ -22,7 +22,12 @@ from .. import (
     controldir,
     pyutils,
     registry,
+    transport as _mod_transport,
     )
+
+
+if TYPE_CHECKING:
+    from .bzrdir import BzrDirFormat
 
 
 class LineEndingError(errors.BzrError):
@@ -37,7 +42,7 @@ class LineEndingError(errors.BzrError):
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
-    formats = registry.FormatRegistry(controldir.network_format_registry)
+    formats = registry.FormatRegistry["BzrDirFormat"](controldir.network_format_registry)
     """The known .bzr formats."""
 
     @classmethod
@@ -49,11 +54,11 @@ class BzrProber(controldir.Prober):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         except errors.BadHttpRequest as e:
             if e.reason == 'no such method: .bzr':
-                # hgweb 
+                # hgweb
                 raise errors.NotBranchError(path=transport.base)
             raise
 
@@ -166,7 +171,7 @@ def register_metadir(registry, key,
         try:
             factory = pyutils.get_named_object(mod_name, factory_name)
         except ImportError as e:
-            raise ImportError('failed to load %s: %s' % (full_name, e))
+            raise ImportError('failed to load {}: {}'.format(full_name, e))
         except AttributeError:
             raise AttributeError('no factory %s in module %r'
                                  % (full_name, sys.modules[mod_name]))

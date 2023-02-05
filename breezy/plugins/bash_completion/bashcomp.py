@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ... import (
     cmdline,
     commands,
@@ -24,15 +22,12 @@ from ... import (
     option,
     plugin,
 )
-from ...sixish import (
-    text_type,
-    )
 import breezy
 import re
 import sys
 
 
-class BashCodeGen(object):
+class BashCodeGen:
     """Generate a bash script for given completion data."""
 
     def __init__(self, data, function_name='_brz', debug=False):
@@ -53,16 +48,16 @@ class BashCodeGen(object):
 # Generated using the bash_completion plugin.
 # See https://launchpad.net/bzr-bash-completion for details.
 
-# Commands and options of brz %(brz_version)s
+# Commands and options of brz {brz_version}
 
 shopt -s progcomp
-%(function)s
-complete -F %(function_name)s -o default brz
-""" % {
-            "function_name": self.function_name,
-            "function": self.function(),
-            "brz_version": self.brz_version(),
-        })
+{function}
+complete -F {function_name} -o default brz
+""".format(
+            function_name=self.function_name,
+            function=self.function(),
+            brz_version=self.brz_version(),
+        ))
 
     def function(self):
         return ("""\
@@ -214,7 +209,7 @@ complete -F %(function_name)s -o default brz
                 case += "\t\t# %s\n" % message
             if option.registry_keys:
                 for key in option.registry_keys:
-                    options.append("%s=%s" % (option, key))
+                    options.append("{}={}".format(option, key))
                 enums.append("%s) optEnums=( %s ) ;;" %
                              (option, ' '.join(option.registry_keys)))
             else:
@@ -233,7 +228,7 @@ complete -F %(function_name)s -o default brz
         return case
 
 
-class CompletionData(object):
+class CompletionData:
 
     def __init__(self):
         self.plugins = {}
@@ -242,11 +237,10 @@ class CompletionData(object):
 
     def all_command_aliases(self):
         for c in self.commands:
-            for a in c.aliases:
-                yield a
+            yield from c.aliases
 
 
-class CommandData(object):
+class CommandData:
 
     def __init__(self, name):
         self.name = name
@@ -256,7 +250,7 @@ class CommandData(object):
         self.fixed_words = None
 
 
-class PluginData(object):
+class PluginData:
 
     def __init__(self, name, version=None):
         if version is None:
@@ -270,10 +264,10 @@ class PluginData(object):
     def __str__(self):
         if self.version == 'unknown':
             return self.name
-        return '%s %s' % (self.name, self.version)
+        return '{} {}'.format(self.name, self.version)
 
 
-class OptionData(object):
+class OptionData:
 
     def __init__(self, name):
         self.name = name
@@ -283,14 +277,11 @@ class OptionData(object):
     def __str__(self):
         return self.name
 
-    def __cmp__(self, other):
-        return cmp(self.name, other.name)
-
     def __lt__(self, other):
         return self.name < other.name
 
 
-class DataCollector(object):
+class DataCollector:
 
     def __init__(self, no_plugins=False, selected_plugins=None):
         self.data = CompletionData()
@@ -426,13 +417,13 @@ class cmd_bash_completion(commands.Command):
     """
 
     takes_options = [
-        option.Option("function-name", short_name="f", type=text_type, argname="name",
+        option.Option("function-name", short_name="f", type=str, argname="name",
                       help="Name of the generated function (default: _brz)"),
         option.Option("function-only", short_name="o", type=None,
                       help="Generate only the shell function, don't enable it"),
         option.Option("debug", type=None, hidden=True,
                       help="Enable shell code useful for debugging"),
-        option.ListOption("plugin", type=text_type, argname="name",
+        option.ListOption("plugin", type=str, argname="name",
                           # param_name="selected_plugins", # doesn't work, bug #387117
                           help="Enable completions for the selected plugin"
                           + " (default: all plugins)"),

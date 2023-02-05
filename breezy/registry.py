@@ -16,14 +16,28 @@
 
 """Classes to provide name-to-object registry-like support."""
 
-from __future__ import absolute_import
+from typing import (
+    TypeVar,
+    Generic,
+    Optional,
+    Any,
+    cast,
+    Union,
+    Callable,
+    Dict,
+    List,
+    Iterator,
+    Tuple,
+    Callable,
+)
 
 from .pyutils import get_named_object
 
-from .sixish import viewitems
+
+T = TypeVar('T')
 
 
-class _ObjectGetter(object):
+class _ObjectGetter(Generic[T]):
     """Maintain a reference to an object, and return the object on request.
 
     This is used by Registry to make plain objects function similarly
@@ -35,19 +49,21 @@ class _ObjectGetter(object):
 
     __slots__ = ['_obj']
 
+    _obj: T
+
     def __init__(self, obj):
         self._obj = obj
 
-    def get_module(self):
+    def get_module(self) -> str:
         """Get the module the object was loaded from."""
         return self._obj.__module__
 
-    def get_obj(self):
+    def get_obj(self) -> T:
         """Get the object that was saved at creation time"""
         return self._obj
 
 
-class _LazyObjectGetter(_ObjectGetter):
+class _LazyObjectGetter(_ObjectGetter[T]):
     """Keep a record of a possible object.
 
     When requested, load and return it.
@@ -59,14 +75,14 @@ class _LazyObjectGetter(_ObjectGetter):
         self._module_name = module_name
         self._member_name = member_name
         self._imported = False
-        super(_LazyObjectGetter, self).__init__(None)
+        super().__init__(None)
 
     def get_module(self):
         """Get the module the referenced object will be loaded from.
         """
         return self._module_name
 
-    def get_obj(self):
+    def get_obj(self) -> T:
         """Get the referenced object.
 
         Upon first request, the object will be imported. Future requests will
@@ -75,15 +91,19 @@ class _LazyObjectGetter(_ObjectGetter):
         if not self._imported:
             self._obj = get_named_object(self._module_name, self._member_name)
             self._imported = True
-        return super(_LazyObjectGetter, self).get_obj()
+        return super().get_obj()
 
     def __repr__(self):
-        return "<%s.%s object at %x, module=%r attribute=%r imported=%r>" % (
+        return "<{}.{} object at {:x}, module={!r} attribute={!r} imported={!r}>".format(
             self.__class__.__module__, self.__class__.__name__, id(self),
             self._module_name, self._member_name, self._imported)
 
 
-class Registry(object):
+K = TypeVar('K')
+V = TypeVar('V')
+
+
+class Registry(Generic[K, V]):
     """A class that registers objects to a name.
 
     There are many places that want to collect related objects and access them
@@ -99,27 +119,27 @@ class Registry(object):
     will return the entry for the default key.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create a new Registry."""
         self._default_key = None
-        # Map from key => (is_lazy, info)
-        self._dict = {}
-        self._aliases = {}
-        self._help_dict = {}
-        self._info_dict = {}
+        self._dict: Dict[K, _ObjectGetter[V]] = {}
+        self._aliases: Dict[K, K] = {}
+        self._help_dict: Dict[K, Union[Callable[[Registry[K, V], Optional[K]], str], str]] = {}
+        self._info_dict: Dict[K, Any] = {}
 
-    def aliases(self):
+    def aliases(self) -> Dict[K, K]:
         """Return a set of the format names which are aliases."""
-        return dict(viewitems(self._aliases))
+        return dict(self._aliases.items())
 
-    def alias_map(self):
-        ret = {}
-        for alias, target in viewitems(self._aliases):
+    def alias_map(self) -> Dict[K, List[K]]:
+        ret: Dict[K, List[K]] = {}
+        for alias, target in self._aliases.items():
             ret.setdefault(target, []).append(alias)
         return ret
 
-    def register(self, key, obj, help=None, info=None,
-                 override_existing=False):
+    def register(self, key: K, obj: V, help: Optional[str] = None,
+                 info: Optional[Any] = None,
+                 override_existing: bool = False):
         """Register a new object to a name.
 
         :param key: This is the key to use to request the object later.
@@ -138,12 +158,12 @@ class Registry(object):
         if not override_existing:
             if key in self._dict:
                 raise KeyError('Key %r already registered' % key)
-        self._dict[key] = _ObjectGetter(obj)
+        self._dict[key] = _ObjectGetter[V](obj)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_lazy(self, key, module_name, member_name,
-                      help=None, info=None,
-                      override_existing=False):
+    def register_lazy(self, key: K, module_name: str, member_name: str,
+                      help: Optional[str] = None, info: Optional[Any] = None,
+                      override_existing: bool = False) -> None:
         """Register a new object to be loaded on request.
 
         :param key: This is the key to use to request the object later.
@@ -162,10 +182,10 @@ class Registry(object):
         if not override_existing:
             if key in self._dict:
                 raise KeyError('Key %r already registered' % key)
-        self._dict[key] = _LazyObjectGetter(module_name, member_name)
+        self._dict[key] = _LazyObjectGetter[V](module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
-    def register_alias(self, key, target, info=None):
+    def register_alias(self, key: K, target: K, info: Optional[Any] = None):
         """Register an alias.
 
         :param key: Alias name
@@ -179,12 +199,12 @@ class Registry(object):
             info = self._info_dict[target]
         self._add_help_and_info(key, help=self._help_dict[target], info=info)
 
-    def _add_help_and_info(self, key, help=None, info=None):
+    def _add_help_and_info(self, key: K, help=None, info=None):
         """Add the help and information about this key"""
         self._help_dict[key] = help
         self._info_dict[key] = info
 
-    def get(self, key=None):
+    def get(self, key: Optional[K] = None) -> V:
         """Return the object register()'ed to the given key.
 
         May raise ImportError if the object was registered lazily and
@@ -201,7 +221,7 @@ class Registry(object):
         :raises AttributeError: If registered lazily, and the module does not
             contain the registered member.
         """
-        return self._dict[self._get_key_or_default(key)].get_obj()
+        return cast(V, self._dict[self._get_key_or_default(key)].get_obj())
 
     def _get_module(self, key):
         """Return the module the object will be or was loaded from.
@@ -231,7 +251,7 @@ class Registry(object):
         else:
             return self.default_key
 
-    def get_help(self, key=None):
+    def get_help(self, key: Optional[K] = None) -> Optional[str]:
         """Get the help text associated with the given key"""
         the_help = self._help_dict[self._get_key_or_default(key)]
         if callable(the_help):
@@ -256,7 +276,7 @@ class Registry(object):
         """Get a list of registered entries"""
         return sorted(self._dict)
 
-    def iteritems(self):
+    def iteritems(self) -> Iterator[Tuple[K, V]]:
         for key in self._dict:
             yield key, self._dict[key].get_obj()
 
@@ -279,11 +299,12 @@ class Registry(object):
                            " Can be set to any existing key.")
 
 
-class FormatRegistry(Registry):
+Format = TypeVar('Format')
+class FormatRegistry(Registry[str, Union[Format, Callable[[], Format]]]):
     """Registry specialised for handling formats."""
 
     def __init__(self, other_registry=None):
-        Registry.__init__(self)
+        super().__init__()
         self._other_registry = other_registry
 
     def register(self, key, obj, help=None, info=None,
@@ -306,7 +327,7 @@ class FormatRegistry(Registry):
                                                help=help, info=info, override_existing=override_existing)
 
     def remove(self, key):
-        Registry.remove(self, key)
+        super().remove(key)
         if self._other_registry is not None:
             self._other_registry.remove(key)
 

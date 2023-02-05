@@ -156,12 +156,12 @@ class TestPull(per_branch.TestCaseWithBranch):
         self.assertEqual(rev2a, tree_a.branch.last_revision())
         if tree_a.branch.repository._format.supports_unreferenced_revisions:
             self.assertTrue(tree_a.branch.repository.has_revision(rev2b))
-        tree_a.branch.pull(tree_b.branch, overwrite=set(['history']),
+        tree_a.branch.pull(tree_b.branch, overwrite={'history'},
                            stop_revision=rev2b)
         self.assertEqual(rev2b, tree_a.branch.last_revision())
         self.assertEqual(tree_b.branch.last_revision(),
                          tree_a.branch.last_revision())
-        tree_a.branch.pull(tree_b.branch, overwrite=set(['history', 'tags']),
+        tree_a.branch.pull(tree_b.branch, overwrite={'history', 'tags'},
                            stop_revision=rev2b)
 
     def test_pull_overwrite_set_tags(self):
@@ -187,13 +187,13 @@ class TestPull(per_branch.TestCaseWithBranch):
         self.assertEqual(tree_a.branch.tags.get_tag_dict(), {'tag1': rev1})
         if tree_a.branch.repository._format.supports_unreferenced_revisions:
             self.assertTrue(tree_a.branch.repository.has_revision(rev2b))
-        tree_a.branch.pull(tree_b.branch, overwrite=set(['history']),
+        tree_a.branch.pull(tree_b.branch, overwrite={'history'},
                            stop_revision=rev2b)
         self.assertEqual(rev2b, tree_a.branch.last_revision())
         self.assertEqual(tree_b.branch.last_revision(),
                          tree_a.branch.last_revision())
         self.assertEqual(rev1, tree_a.branch.tags.lookup_tag('tag1'))
-        tree_a.branch.pull(tree_b.branch, overwrite=set(['history', 'tags']),
+        tree_a.branch.pull(tree_b.branch, overwrite={'history', 'tags'},
                            stop_revision=rev2b)
         self.assertEqual(rev2b, tree_a.branch.tags.lookup_tag('tag1'))
 
@@ -249,7 +249,7 @@ class TestPullHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestPullHook, self).setUp()
+        super().setUp()
 
     def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
@@ -293,14 +293,18 @@ class TestPullHook(per_branch.TestCaseWithBranch):
         local = self.make_branch('local')
         try:
             local.bind(target)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # We can't bind this format to itself- typically it is the local
             # branch that doesn't support binding.  As of May 2007
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
             local = controldir.ControlDir.create_branch_convenience('local2')
-            local.bind(target)
+            try:
+                local.bind(target)
+            except branch.BindingUnsupported:
+                raise TestNotApplicable(
+                    'default format does not support binding')
         source = self.make_branch('source')
         branch.Branch.hooks.install_named_hook(
             'post_pull', self.capture_post_pull_hook, None)

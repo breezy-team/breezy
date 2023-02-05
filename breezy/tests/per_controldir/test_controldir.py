@@ -1111,7 +1111,7 @@ class TestControlDir(TestCaseWithControlDir):
         t = self.get_transport('dir')
         t.ensure_base()
         self.assertRaises(
-            errors.FileExists,
+            transport.FileExists,
             self.bzrdir_format.initialize_on_transport_ex, t,
             use_existing_dir=False)
 
@@ -1124,7 +1124,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestNotApplicable("format is not initializable")
         t = self.get_transport('missing/dir')
         self.assertRaises(
-            errors.NoSuchFile, self.assertInitializeEx, t,
+            transport.NoSuchFile, self.assertInitializeEx, t,
             create_prefix=False)
 
     def test_format_initialize_on_transport_ex_force_new_repo_True(self):
@@ -1423,7 +1423,7 @@ class TestControlDir(TestCaseWithControlDir):
             made_tree = made_control.create_workingtree()
         except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped(
-                "Can't initialize %r on transport %r" % (
+                "Can't initialize {!r} on transport {!r}".format(
                     self.bzrdir_format, t))
         opened_tree = made_control.open_workingtree()
         self.assertEqual(made_control, opened_tree.controldir)
@@ -1457,7 +1457,7 @@ class TestControlDir(TestCaseWithControlDir):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         dir = controldir.ControlDir.open(t.base)
-        self.assertEqual(u"", dir._get_selected_branch())
+        self.assertEqual("", dir._get_selected_branch())
 
     def test_root_transport(self):
         dir = self.make_controldir('.')

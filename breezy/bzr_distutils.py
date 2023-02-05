@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007, 2009, 2011 Canonical Ltd.
 #
@@ -20,14 +19,13 @@
 
 """build_mo command for setup.py"""
 
-from __future__ import absolute_import
-
 from distutils import log
 from distutils.core import Command
 from distutils.dep_util import newer
 from distutils.spawn import find_executable
 import os
 import re
+from typing import Optional, List
 
 
 class build_mo(Command):
@@ -48,17 +46,21 @@ class build_mo(Command):
                     ]
 
     boolean_options = ['force']
+    source_dir: Optional[str]
+    build_dir: Optional[str]
+    output_base: Optional[str]
+    lang: Optional[List[str]]
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         self.build_dir = None
         self.output_base = None
-        self.source_dir = None
+        self.source_dir = None  # type: ignore
         self.force = None
         self.lang = None
 
     def finalize_options(self):
         self.set_undefined_options('build', ('force', 'force'))
-        self.prj_name = self.distribution.get_name()
+        self.prj_name = self.distribution.get_name()  # type: ignore
         if self.build_dir is None:
             self.build_dir = 'breezy/locale'
         if not self.output_base:
@@ -112,5 +114,5 @@ class build_mo(Command):
             self.mkpath(dir_)
             mo = os.path.join(dir_, basename)
             if self.force or newer(po, mo):
-                log.info('Compile: %s -> %s' % (po, mo))
+                log.info('Compile: {} -> {}'.format(po, mo))
                 self.spawn(['msgfmt', '-o', mo, po])

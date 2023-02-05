@@ -18,10 +18,12 @@
 """Tests for plugins"""
 
 import importlib
+from io import StringIO
 import logging
 import os
 import sys
 import types
+from typing import Dict, List, Any
 
 import breezy
 from .. import (
@@ -29,11 +31,7 @@ from .. import (
     plugin,
     tests,
     )
-from ..tests.features import pkg_resources_feature
-from ..sixish import (
-    StringIO,
-    viewkeys,
-    )
+from ..tests.features import importlib_metadata_feature
 
 
 # TODO: Write a test for plugin decoration of commands.
@@ -45,7 +43,7 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
     """TestCase that isolates plugin imports and cleans up on completion."""
 
     def setUp(self):
-        super(BaseTestPlugins, self).setUp()
+        super().setUp()
         self.module_name = "breezy.testingplugins"
         self.module_prefix = self.module_name + "."
         self.module = types.ModuleType(self.module_name)
@@ -102,9 +100,9 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
             dir = name
         if source is None:
             source = '''\
-"""This is the doc for %s"""
-dir_source = '%s'
-''' % (name, dir)
+"""This is the doc for {}"""
+dir_source = '{}'
+'''.format(name, dir)
         os.makedirs(dir)
         self.create_plugin(name, source, dir,
                            file_name='__init__.py')
@@ -139,8 +137,8 @@ dir_source = '%s'
 
     def assertPluginModules(self, plugin_dict):
         self.assertEqual(
-            dict((k[len(self.module_prefix):], sys.modules[k])
-                 for k in sys.modules if k.startswith(self.module_prefix)),
+            {k[len(self.module_prefix):]: sys.modules[k]
+                 for k in sys.modules if k.startswith(self.module_prefix)},
             plugin_dict)
 
     def assertPluginUnknown(self, name):
@@ -148,13 +146,15 @@ dir_source = '%s'
         self.assertFalse(self.module_prefix + name in sys.modules)
 
     def assertPluginKnown(self, name):
-        self.assertTrue(getattr(self.module, name, None) is not None)
+        self.assertTrue(
+            getattr(self.module, name, None) is not None,
+            'plugins known: %r' % dir(self.module))
         self.assertTrue(self.module_prefix + name in sys.modules)
 
 
 class TestLoadingPlugins(BaseTestPlugins):
 
-    activeattributes = {}
+    activeattributes: Dict[str, List[Any]] = {}
 
     def test_plugins_with_the_same_name_are_not_loaded(self):
         # This test tests that having two plugins in different directories does
@@ -302,7 +302,7 @@ class TestLoadingPlugins(BaseTestPlugins):
                     "raise IncompatibleVersion(breezy, [(1, 0, 0)], (0, 0, 5))\n")
         log = self.load_and_capture(name, warn_load_problems=False)
         self.assertNotContainsRe(log, r"It supports breezy version")
-        self.assertEqual({'wants100'}, viewkeys(self.plugin_warnings))
+        self.assertEqual({'wants100'}, self.plugin_warnings.keys())
         self.assertContainsRe(
             self.plugin_warnings['wants100'][0],
             r"It supports breezy version")
@@ -312,10 +312,11 @@ class TestLoadingPlugins(BaseTestPlugins):
         name = 'brz-bad plugin-name..py'
         open(name, 'w').close()
         log = self.load_and_capture(name)
-        self.assertContainsRe(log,
-                              r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
-                              "because the file path isn't a valid module name; try renaming "
-                              "it to 'bad_plugin_name_'\\.")
+        self.assertContainsRe(
+            log,
+            r"Unable to load 'brz-bad plugin-name\.' in '.*' as a plugin "
+            "because the file path isn't a valid module name; try renaming "
+            "it to 'bad_plugin_name_'\\.")
 
     def test_plugin_with_error_suppress(self):
         # The file name here invalid for a python module.
@@ -331,8 +332,9 @@ class TestLoadingPlugins(BaseTestPlugins):
         with open(name, 'w') as f:
             f.write('raise Exception("bad")\n')
         log = self.load_and_capture(name, warn_load_problems=True)
-        self.assertEqual(
-            'Unable to load plugin \'some_error\' from \'.\': bad\n', log)
+        self.assertContainsRe(
+            log,
+            'Unable to load plugin \'some_error\' from \'.*\': bad\n')
 
 
 class TestPlugins(BaseTestPlugins):
@@ -474,17 +476,17 @@ def load_tests(loader, standard_tests, pattern):
     def test_candidate__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'candidate', 1)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3rc1", plugin.__version__)
+        self.assertEqual("1.2.3.rc1", plugin.__version__)
 
     def test_dev__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 0)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev", plugin.__version__)
+        self.assertEqual("1.2.3.dev", plugin.__version__)
 
     def test_dev_fallback__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
         plugin = breezy.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev4", plugin.__version__)
+        self.assertEqual("1.2.3.dev4", plugin.__version__)
 
     def test_final__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'final', 0)")
@@ -551,7 +553,7 @@ class TestHelpIndex(tests.TestCase):
             del sys.modules['breezy.plugins.demo_module']
 
 
-class FakeModule(object):
+class FakeModule:
     """A fake module to test with."""
 
     def __init__(self, doc, name):
@@ -718,7 +720,7 @@ class TestDisablePlugin(BaseTestPlugins):
         self.create_plugin_package('ugly')
         self.overrideEnv('BRZ_DISABLE_PLUGINS', 'bad:ugly')
         self.load_with_paths(['.'])
-        self.assertEqual({'good'}, viewkeys(self.plugins))
+        self.assertEqual({'good'}, self.plugins.keys())
         self.assertPluginModules({
             'good': self.plugins['good'].module,
             'bad': None,
@@ -767,20 +769,23 @@ class TestEnvPluginsAt(tests.TestCase):
         self.assertEqual([], self._get_paths(''))
 
     def test_one_path(self):
-        self.assertEqual([('b', 'man')], self._get_paths('b@man'))
+        self.assertEqual([('b', os.path.abspath('man'))], self._get_paths('b@man'))
 
     def test_multiple(self):
         self.assertEqual(
-            [('tools', 'bzr-tools'), ('p', 'play.py')],
+            [('tools', os.path.abspath('bzr-tools')),
+             ('p', os.path.abspath('play.py'))],
             self._get_paths(os.pathsep.join(('tools@bzr-tools', 'p@play.py'))))
 
     def test_many_at(self):
         self.assertEqual(
-            [('church', 'StMichael@Plea@Norwich')],
+            [('church', os.path.abspath('StMichael@Plea@Norwich'))],
             self._get_paths('church@StMichael@Plea@Norwich'))
 
     def test_only_py(self):
-        self.assertEqual([('test', './test.py')], self._get_paths('./test.py'))
+        self.assertEqual(
+            [('test', os.path.abspath('test.py'))],
+            self._get_paths('./test.py'))
 
     def test_only_package(self):
         self.assertEqual([('py', '/opt/b/py')], self._get_paths('/opt/b/py'))
@@ -795,7 +800,7 @@ class TestEnvPluginsAt(tests.TestCase):
 class TestLoadPluginAt(BaseTestPlugins):
 
     def setUp(self):
-        super(TestLoadPluginAt, self).setUp()
+        super().setUp()
         # Create the same plugin in two directories
         self.create_plugin_package('test_foo', dir='non-standard-dir')
         # The "normal" directory, we use 'standard' instead of 'plugins' to
@@ -887,9 +892,9 @@ from . import test_bar
         plugin_file_name = 'iamtestfoo.py'
         plugin_path = osutils.pathjoin(plugin_dir, plugin_file_name)
         source = '''\
-"""This is the doc for %s"""
-dir_source = '%s'
-''' % ('test_foo', plugin_path)
+"""This is the doc for {}"""
+dir_source = '{}'
+'''.format('test_foo', plugin_path)
         self.create_plugin('test_foo', source=source,
                            dir=plugin_dir, file_name=plugin_file_name)
         self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@%s' % plugin_path)
@@ -900,10 +905,10 @@ dir_source = '%s'
 class TestDescribePlugins(BaseTestPlugins):
 
     def test_describe_plugins(self):
-        class DummyModule(object):
+        class DummyModule:
             __doc__ = 'Hi there'
 
-        class DummyPlugin(object):
+        class DummyPlugin:
             __version__ = '0.1.0'
             module = DummyModule()
         self.plugin_warnings = {'bad': ['Failed to load (just testing)']}
@@ -918,29 +923,40 @@ good 0.1.0
 """, ''.join(plugin.describe_plugins(state=self)))
 
 
-class DummyPlugin(object):
+class DummyPlugin:
     """Plugin."""
 
 
 class TestLoadEnvPlugin(BaseTestPlugins):
 
-    _test_needs_features = [pkg_resources_feature]
+    _test_needs_features = [importlib_metadata_feature]
 
     def setup_plugin(self, source=""):
         # This test tests a new plugin appears in breezy.plugin.plugins().
         # check the plugin is not loaded already
         self.assertPluginUnknown('plugin')
         # write a plugin that _cannot_ fail to load.
-        import pkg_resources
-        d = pkg_resources.Distribution(__file__)
-        ep = pkg_resources.EntryPoint.parse(
-            'plugin = ' + __name__ + ':DummyPlugin', dist=d)
-        d._ep_map = {'breezy.plugin': {'plugin': ep}}
-        pkg_resources.working_set.add(d, 'plugin', replace=True)
-        eps = list(pkg_resources.iter_entry_points('breezy.plugin'))
+        from importlib.metadata import Distribution, entry_points, EntryPoint
+        class DummyDistribution:
+
+            def __init__(self, name, entry_points):
+                self._normalized_name = self.name = name
+                self.entry_points = entry_points
+        ep = EntryPoint(name='plugin', group='breezy.plugin',
+                        value=__name__ + ':DummyPlugin')
+        d = DummyDistribution('lala', [ep])
+        old_discover = Distribution.discover
+        def override_discover(**kwargs):
+            yield from old_discover(**kwargs)
+            yield d
+        self.overrideAttr(Distribution, 'discover', override_discover)
+        try:
+            eps = entry_points(group='breezy.plugin')
+        except TypeError:  # python < 3.10
+            eps = [ep[0] for ep in entry_points().values()
+                   if ep[0].group == 'breezy.plugin']
         self.assertEqual(['plugin'], [ep.name for ep in eps])
         self.load_with_paths(['.'])
-        self.addCleanup(d._ep_map.clear)
 
     def test_plugin_loaded(self):
         self.assertPluginUnknown('plugin')

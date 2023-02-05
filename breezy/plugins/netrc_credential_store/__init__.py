@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
@@ -25,23 +23,21 @@ from ... import (
     config,
     errors,
     lazy_import,
+    transport as _mod_transport,
     )
-
-lazy_import.lazy_import(globals(), """
-import errno
-import netrc
-""")
 
 
 class NetrcCredentialStore(config.CredentialStore):
 
     def __init__(self):
-        super(NetrcCredentialStore, self).__init__()
+        super().__init__()
+        import netrc
+        import errno
         try:
             self._netrc = netrc.netrc()
-        except IOError as e:
+        except OSError as e:
             if e.args[0] == errno.ENOENT:
-                raise errors.NoSuchFile(e.filename)
+                raise _mod_transport.NoSuchFile(e.filename)
             else:
                 raise
 
@@ -68,5 +64,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests

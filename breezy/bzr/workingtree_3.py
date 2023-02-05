@@ -18,22 +18,21 @@
 
 """
 
-from __future__ import absolute_import
-
 import errno
 
 from . import (
     bzrdir,
+    hashcache,
     inventory,
     transform as bzr_transform,
     )
 
 from .. import (
     errors,
-    hashcache,
     osutils,
     revision as _mod_revision,
     trace,
+    transport as _mod_transport,
     )
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
@@ -48,7 +47,7 @@ from .workingtree import (
 class PreDirStateWorkingTree(InventoryWorkingTree):
 
     def __init__(self, basedir='.', *args, **kwargs):
-        super(PreDirStateWorkingTree, self).__init__(basedir, *args, **kwargs)
+        super().__init__(basedir, *args, **kwargs)
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache
@@ -88,7 +87,7 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         with self.lock_read():
             # To make sure NoSuchFile gets raised..
             if not self.is_versioned(path):
-                raise errors.NoSuchFile(path)
+                raise _mod_transport.NoSuchFile(path)
             return self._hashcache.get_sha1(path, stat_value)
 
 
@@ -107,7 +106,7 @@ class WorkingTree3(PreDirStateWorkingTree):
         with self.lock_read():
             try:
                 return self._transport.get_bytes('last-revision')
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
@@ -115,7 +114,7 @@ class WorkingTree3(PreDirStateWorkingTree):
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
             try:
                 self._transport.delete('last-revision')
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 pass
             return False
         else:
@@ -206,7 +205,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         else:
             branch = a_controldir.open_branch()
         if revision_id is None:
-            revision_id = _mod_revision.ensure_null(branch.last_revision())
+            revision_id = branch.last_revision()
         # WorkingTree3 can handle an inventory which has a unique root id.
         # as of bzr 0.12. However, bzr 0.11 and earlier fail to handle
         # those trees. And because there isn't a format bump inbetween, we

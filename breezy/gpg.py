@@ -17,28 +17,18 @@
 
 """GPG signing and checking logic."""
 
-from __future__ import absolute_import
-
 import os
+from typing import Optional, Dict, List
 
-from breezy.lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
+from . import (
     config,
+    errors,
     trace,
     ui,
     )
-from breezy.i18n import (
+from .i18n import (
     gettext,
     ngettext,
-    )
-""")
-
-from . import (
-    errors,
-    )
-from .sixish import (
-    text_type,
     )
 
 # verification results
@@ -114,7 +104,7 @@ def bulk_verify_signatures(repository, revids, strategy,
     return (count, result, all_verifiable)
 
 
-class DisabledGPGStrategy(object):
+class DisabledGPGStrategy:
     """A GPG Strategy that makes everything fail."""
 
     @staticmethod
@@ -135,7 +125,7 @@ disabled.')
         pass
 
 
-class LoopbackGPGStrategy(object):
+class LoopbackGPGStrategy:
     """A GPG Strategy that acts like 'cat' - data is just passed through.
     Used in tests.
     """
@@ -182,10 +172,10 @@ def _set_gpg_tty():
                      '  Is TTY exported?')
 
 
-class GPGStrategy(object):
+class GPGStrategy:
     """GPG Signing and checking facilities."""
 
-    acceptable_keys = None
+    acceptable_keys: Optional[List[str]] = None
 
     def __init__(self, config_stack):
         self._config_stack = config_stack
@@ -194,7 +184,7 @@ class GPGStrategy(object):
             self.context = gpg.Context()
             self.context.armor = True
             self.context.signers = self._get_signing_keys()
-        except ImportError:
+        except ModuleNotFoundError:
             pass  # can't use verify()
 
     def _get_signing_keys(self):
@@ -233,17 +223,17 @@ class GPGStrategy(object):
         try:
             import gpg  # noqa: F401
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
     def sign(self, content, mode):
         try:
             import gpg
-        except ImportError as error:
+        except ModuleNotFoundError as error:
             raise GpgNotInstalled(
                 'Set create_signatures=no to disable creating signatures.')
 
-        if isinstance(content, text_type):
+        if isinstance(content, str):
             raise errors.BzrBadParameterUnicode('content')
 
         plain_text = gpg.Data(content)
@@ -271,7 +261,7 @@ class GPGStrategy(object):
         """
         try:
             import gpg
-        except ImportError as error:
+        except ModuleNotFoundError as error:
             raise GpgNotInstalled(
                 'Set check_signatures=ignore to disable verifying signatures.')
 
@@ -326,7 +316,7 @@ class GPGStrategy(object):
             email = key.uids[0].email
             if isinstance(email, bytes):
                 email = email.decode('utf-8')
-            return (SIGNATURE_VALID, name + u" <" + email + u">", plain_output)
+            return (SIGNATURE_VALID, name + " <" + email + ">", plain_output)
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
@@ -377,45 +367,45 @@ class GPGStrategy(object):
 
 def valid_commits_message(count):
     """returns message for number of commits"""
-    return gettext(u"{0} commits with valid signatures").format(
+    return gettext("{0} commits with valid signatures").format(
         count[SIGNATURE_VALID])
 
 
 def unknown_key_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit with unknown key",
-                    u"{0} commits with unknown keys",
+    return ngettext("{0} commit with unknown key",
+                    "{0} commits with unknown keys",
                     count[SIGNATURE_KEY_MISSING]).format(
         count[SIGNATURE_KEY_MISSING])
 
 
 def commit_not_valid_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit not valid",
-                    u"{0} commits not valid",
+    return ngettext("{0} commit not valid",
+                    "{0} commits not valid",
                     count[SIGNATURE_NOT_VALID]).format(
         count[SIGNATURE_NOT_VALID])
 
 
 def commit_not_signed_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit not signed",
-                    u"{0} commits not signed",
+    return ngettext("{0} commit not signed",
+                    "{0} commits not signed",
                     count[SIGNATURE_NOT_SIGNED]).format(
         count[SIGNATURE_NOT_SIGNED])
 
 
 def expired_commit_message(count):
     """returns message for number of commits"""
-    return ngettext(u"{0} commit with key now expired",
-                    u"{0} commits with key now expired",
+    return ngettext("{0} commit with key now expired",
+                    "{0} commits with key now expired",
                     count[SIGNATURE_EXPIRED]).format(
         count[SIGNATURE_EXPIRED])
 
 
-def verbose_expired_key_message(result, repo):
+def verbose_expired_key_message(result, repo) -> List[str]:
     """takes a verify result and returns list of expired key info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     fingerprint_to_authors = {}
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_EXPIRED:
@@ -424,75 +414,75 @@ def verbose_expired_key_message(result, repo):
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
             fingerprint_to_authors[fingerprint] = authors
-    result = []
+    ret: List[str] = []
     for fingerprint, number in signers.items():
-        result.append(
-            ngettext(u"{0} commit by author {1} with key {2} now expired",
-                     u"{0} commits by author {1} with key {2} now expired",
+        ret.append(
+            ngettext("{0} commit by author {1} with key {2} now expired",
+                     "{0} commits by author {1} with key {2} now expired",
                      number).format(
                 number, fingerprint_to_authors[fingerprint], fingerprint))
-    return result
+    return ret
 
 
-def verbose_valid_message(result):
+def verbose_valid_message(result) -> List[str]:
     """takes a verify result and returns list of signed commits strings"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, uid in result:
         if validity == SIGNATURE_VALID:
             signers.setdefault(uid, 0)
             signers[uid] += 1
-    result = []
+    ret: List[str] = []
     for uid, number in signers.items():
-        result.append(ngettext(u"{0} signed {1} commit",
-                               u"{0} signed {1} commits",
-                               number).format(uid, number))
-    return result
+        ret.append(ngettext("{0} signed {1} commit",
+                            "{0} signed {1} commits",
+                            number).format(uid, number))
+    return ret
 
 
-def verbose_not_valid_message(result, repo):
+def verbose_not_valid_message(result, repo) -> List[str]:
     """takes a verify result and returns list of not valid commit info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_VALID:
             revision = repo.get_revision(rev_id)
             authors = ', '.join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
-    result = []
+    ret: List[str] = []
     for authors, number in signers.items():
-        result.append(ngettext(u"{0} commit by author {1}",
-                               u"{0} commits by author {1}",
-                               number).format(number, authors))
-    return result
+        ret.append(ngettext("{0} commit by author {1}",
+                            "{0} commits by author {1}",
+                            number).format(number, authors))
+    return ret
 
 
-def verbose_not_signed_message(result, repo):
+def verbose_not_signed_message(result, repo) -> List[str]:
     """takes a verify result and returns list of not signed commit info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, empty in result:
         if validity == SIGNATURE_NOT_SIGNED:
             revision = repo.get_revision(rev_id)
             authors = ', '.join(revision.get_apparent_authors())
             signers.setdefault(authors, 0)
             signers[authors] += 1
-    result = []
+    ret: List[str] = []
     for authors, number in signers.items():
-        result.append(ngettext(u"{0} commit by author {1}",
-                               u"{0} commits by author {1}",
-                               number).format(number, authors))
-    return result
+        ret.append(ngettext("{0} commit by author {1}",
+                            "{0} commits by author {1}",
+                            number).format(number, authors))
+    return ret
 
 
-def verbose_missing_key_message(result):
+def verbose_missing_key_message(result) -> List[str]:
     """takes a verify result and returns list of missing key info"""
-    signers = {}
+    signers: Dict[str, int] = {}
     for rev_id, validity, fingerprint in result:
         if validity == SIGNATURE_KEY_MISSING:
             signers.setdefault(fingerprint, 0)
             signers[fingerprint] += 1
-    result = []
+    ret: List[str] = []
     for fingerprint, number in list(signers.items()):
-        result.append(ngettext(u"Unknown key {0} signed {1} commit",
-                               u"Unknown key {0} signed {1} commits",
-                               number).format(fingerprint, number))
-    return result
+        ret.append(ngettext("Unknown key {0} signed {1} commit",
+                            "Unknown key {0} signed {1} commits",
+                            number).format(fingerprint, number))
+    return ret

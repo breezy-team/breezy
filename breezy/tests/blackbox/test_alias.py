@@ -52,7 +52,7 @@ class TestAlias(tests.TestCaseWithTransport):
         # XXX: strictly speaking, lack of unicode filenames doesn't imply that
         # unicode command lines aren't available.
         self.requireFeature(features.UnicodeFilenameFeature)
-        file_name = u'foo\xb6'
+        file_name = 'foo\xb6'
 
         tree = self.make_branch_and_tree('.')
         self.build_tree([file_name])
@@ -60,7 +60,7 @@ class TestAlias(tests.TestCaseWithTransport):
         tree.commit('added')
 
         config.GlobalConfig.from_string(
-            u'[ALIASES]\nust=st %s\n' % (file_name,), save=True)
+            '[ALIASES]\nust=st {}\n'.format(file_name), save=True)
 
         out, err = self.run_bzr('ust')
         self.assertEqual(err, '')

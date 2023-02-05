@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import itertools
 
 from . import (
@@ -26,14 +24,12 @@ from .. import (
     lockdir,
     lockable_files,
     revision as _mod_revision,
+    transport as _mod_transport,
     )
 from ..repository import (
     format_registry,
     Repository,
     RepositoryFormat,
-    )
-from ..sixish import (
-    viewvalues,
     )
 
 
@@ -44,8 +40,10 @@ class MetaDirRepository(Repository):
         typically pointing to .bzr/repository.
     """
 
+    _format: "RepositoryFormatMetaDir"
+
     def __init__(self, _format, a_bzrdir, control_files):
-        super(MetaDirRepository, self).__init__(
+        super().__init__(
             _format, a_bzrdir, control_files)
         self._transport = control_files._transport
 
@@ -66,7 +64,7 @@ class MetaDirRepository(Repository):
             if new_value:
                 try:
                     self._transport.delete('no-working-trees')
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     pass
             else:
                 self._transport.put_bytes(
@@ -94,8 +92,8 @@ class MetaDirRepository(Repository):
         :return: set of revisions that are parents of revision_ids which are
             not part of revision_ids themselves
         """
-        parent_ids = set(itertools.chain.from_iterable(viewvalues(
-            self.get_parent_map(revision_ids))))
+        parent_ids = set(itertools.chain.from_iterable(
+            self.get_parent_map(revision_ids).values()))
         parent_ids.difference_update(revision_ids)
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids
@@ -160,7 +158,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get_bytes("format")
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         return klass._find_format(format_registry, 'repository', format_string)
 

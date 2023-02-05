@@ -15,14 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+import fastbencode as bencode
 
 from ..tag import Tags
 
 from .. import (
-    bencode,
     errors,
     trace,
+    transport as _mod_transport,
     )
 
 
@@ -56,7 +56,7 @@ class BasicTags(Tags):
         with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
                               'This branch was probably created by bzr 0.15pre.  '
@@ -93,8 +93,8 @@ class BasicTags(Tags):
         return self.branch._set_tags_bytes(self._serialize_tag_dict(new_dict))
 
     def _serialize_tag_dict(self, tag_dict):
-        td = dict((k.encode('utf-8'), v)
-                  for k, v in tag_dict.items())
+        td = {k.encode('utf-8'): v
+                  for k, v in tag_dict.items()}
         return bencode.bencode(td)
 
     def _deserialize_tag_dict(self, tag_content):

@@ -20,8 +20,6 @@ This module shouldn't be accessed directly.  The classes defined here should be
 imported from breezy.bzr.smart.
 """
 
-from __future__ import absolute_import
-
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
 from io import BytesIO
@@ -37,11 +35,10 @@ from .. import (
 from ..bzr import (
     remote,
     )
-from ..sixish import PY3
 from ..bzr.smart import client, medium
 
 
-class _SmartStat(object):
+class _SmartStat:
 
     def __init__(self, size, mode):
         self.st_size = size
@@ -94,7 +91,7 @@ class RemoteTransport(transport.ConnectedTransport):
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
-        super(RemoteTransport, self).__init__(
+        super().__init__(
             url, _from_transport=_from_transport)
 
         # The medium is the connection, except when we need to share it with
@@ -254,7 +251,7 @@ class RemoteTransport(transport.ConnectedTransport):
         transport._file_streams[self.abspath(relpath)] = result
         return result
 
-    def put_bytes(self, relpath, raw_bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         if not isinstance(raw_bytes, bytes):
             raise TypeError(
                 'raw_bytes must be bytes string, not %s' % type(raw_bytes))
@@ -265,7 +262,7 @@ class RemoteTransport(transport.ConnectedTransport):
         self._ensure_ok(resp)
         return len(raw_bytes)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         """See Transport.put_bytes_non_atomic."""
@@ -375,11 +372,10 @@ class RemoteTransport(transport.ConnectedTransport):
                 response_handler.cancel_read_body()
                 raise errors.UnexpectedSmartServerResponse(resp)
 
-            for res in self._handle_response(offset_stack, cur_request,
+            yield from self._handle_response(offset_stack, cur_request,
                                              response_handler,
                                              data_map,
-                                             next_offset):
-                yield res
+                                             next_offset)
 
     def _handle_response(self, offset_stack, coalesced, response_handler,
                          data_map, next_offset):
@@ -472,13 +468,13 @@ class RemoteTransport(transport.ConnectedTransport):
     def list_dir(self, relpath):
         resp = self._call2(b'list_dir', self._remote_path(relpath))
         if resp[0] == b'names':
-            return [name.decode('utf-8') if PY3 else name for name in resp[1:]]
+            return [name.decode('utf-8') for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
     def iter_files_recursive(self):
         resp = self._call2(b'iter_files_recursive', self._remote_path(''))
         if resp[0] == b'names':
-            return [name.decode('utf-8') if PY3 else name for name in resp[1:]]
+            return [name.decode('utf-8') for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
 
@@ -552,7 +548,7 @@ class RemoteHTTPTransport(RemoteTransport):
             self._http_transport = transport.get_transport_from_url(http_url)
         else:
             self._http_transport = http_transport
-        super(RemoteHTTPTransport, self).__init__(
+        super().__init__(
             base, _from_transport=_from_transport)
 
     def _build_medium(self):
@@ -608,7 +604,7 @@ class HintingSSHTransport(transport.Transport):
     # other end is a git or bzr repository.
 
     def __init__(self, url):
-        raise errors.UnsupportedProtocol(
+        raise transport.UnsupportedProtocol(
             url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
             'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
 

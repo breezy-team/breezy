@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ... import (
     controldir,
+    )
+from ...bzr import (
     static_tuple,
     )
 from ...commands import (
@@ -34,7 +34,7 @@ class cmd_chk_used_by(Command):
     takes_args = ['key*']
     takes_options = ['directory']
 
-    def run(self, key_list, directory=u'.'):
+    def run(self, key_list, directory='.'):
         key_list = [static_tuple.StaticTuple(k) for k in key_list]
         if len(key_list) > 1:
             key_list = frozenset(key_list)

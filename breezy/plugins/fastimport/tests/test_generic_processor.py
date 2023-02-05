@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import
-
 import time
 
 from .... import (
@@ -127,49 +125,49 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         modified = changes.modified
         kind_changed = changes.kind_changed
         if expected_renamed is not None:
-            self.assertEquals(len(renamed), len(expected_renamed),
-                              "%s is renamed, expected %s" % (renamed, expected_renamed))
+            self.assertEqual(len(renamed), len(expected_renamed),
+                              "{} is renamed, expected {}".format(renamed, expected_renamed))
             renamed_files = [(item.path[0], item.path[1]) for item in renamed]
             for expected_renamed_entry in expected_renamed:
                 expected_renamed_entry = (
                     expected_renamed_entry[0].decode('utf-8'),
                     expected_renamed_entry[1].decode('utf-8'))
                 self.assertTrue(expected_renamed_entry in renamed_files,
-                                "%s is not renamed, %s are" % (expected_renamed_entry,
+                                "{} is not renamed, {} are".format(expected_renamed_entry,
                                                                renamed_files))
         if expected_added is not None:
-            self.assertEquals(len(added), len(expected_added),
+            self.assertEqual(len(added), len(expected_added),
                               "%s is added" % str(added))
             added_files = [(item.path[1],) for item in added]
             for expected_added_entry in expected_added:
                 expected_added_entry = (
                     expected_added_entry[0].decode('utf-8'), )
                 self.assertTrue(expected_added_entry in added_files,
-                                "%s is not added, %s are" % (expected_added_entry,
+                                "{} is not added, {} are".format(expected_added_entry,
                                                              added_files))
         if expected_removed is not None:
-            self.assertEquals(len(removed), len(expected_removed),
+            self.assertEqual(len(removed), len(expected_removed),
                               "%s is removed" % str(removed))
             removed_files = [(item.path[0],) for item in removed]
             for expected_removed_entry in expected_removed:
                 expected_removed_entry = (
                     expected_removed_entry[0].decode('utf-8'), )
                 self.assertTrue(expected_removed_entry in removed_files,
-                                "%s is not removed, %s are" % (expected_removed_entry,
+                                "{} is not removed, {} are".format(expected_removed_entry,
                                                                removed_files))
         if expected_modified is not None:
-            self.assertEquals(len(modified), len(expected_modified),
+            self.assertEqual(len(modified), len(expected_modified),
                               "%s is modified" % str(modified))
             modified_files = [(item.path[1],) for item in modified]
             for expected_modified_entry in expected_modified:
                 expected_modified_entry = (
                     expected_modified_entry[0].decode('utf-8'), )
                 self.assertTrue(expected_modified_entry in modified_files,
-                                "%s is not modified, %s are" % (
+                                "{} is not modified, {} are".format(
                                     expected_modified_entry, modified_files))
         if expected_kind_changed is not None:
-            self.assertEquals(len(kind_changed), len(expected_kind_changed),
-                              "%s is kind-changed, expected %s" % (kind_changed,
+            self.assertEqual(len(kind_changed), len(expected_kind_changed),
+                              "{} is kind-changed, expected {}".format(kind_changed,
                                                                    expected_kind_changed))
             kind_changed_files = [(item.path[1], item.kind[0], item.kind[1])
                                   for item in kind_changed]
@@ -177,7 +175,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                 expected_kind_changed_entry = (
                     expected_kind_changed_entry[0].decode('utf-8'), ) + expected_kind_changed_entry[1:]
                 self.assertTrue(expected_kind_changed_entry in
-                                kind_changed_files, "%s is not kind-changed, %s are" % (
+                                kind_changed_files, "{} is not kind-changed, {} are".format(
                                     expected_kind_changed_entry, kind_changed_files))
 
     def assertContent(self, branch, tree, path, content):
@@ -2059,7 +2057,7 @@ class TestCommitCommands(TestCaseForGenericProcessor):
                                          files_one)
         handler.process(command_list)
         rev = branch.repository.get_revision(branch.last_revision())
-        self.assertEquals(u"This is a funky character: \ufffd", rev.message)
+        self.assertEqual("This is a funky character: \ufffd", rev.message)
 
 
 class TestAddNonUtf8InBranch(TestCaseForGenericProcessor):
@@ -2083,4 +2081,4 @@ class TestAddNonUtf8InBranch(TestCaseForGenericProcessor):
         self.addCleanup(branch.unlock)
         rev_a = branch.last_revision()
         rtree_a = branch.repository.revision_tree(rev_a)
-        self.assertEqual(rev_a, rtree_a.get_file_revision(u'foo\ufffd'))
+        self.assertEqual(rev_a, rtree_a.get_file_revision('foo\ufffd'))

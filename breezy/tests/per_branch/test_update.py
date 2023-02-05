@@ -32,8 +32,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
     def test_update_unbound_works(self):
         b = self.make_branch('.')
         b.update()
-        self.assertEqual(_mod_revision.NULL_REVISION,
-                         _mod_revision.ensure_null(b.last_revision()))
+        self.assertEqual(_mod_revision.NULL_REVISION, b.last_revision())
 
     def test_update_prefix_returns_none(self):
         # update in a branch when its a prefix of the master should
@@ -42,7 +41,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         child_tree = self.make_branch_and_tree('child')
         try:
             child_tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # old branch, cant test.
             return
         # commit to the child to make the last rev not-None.
@@ -60,7 +59,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         child_tree = self.make_branch_and_tree('child')
         try:
             child_tree.branch.bind(master_tree.branch)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # old branch, cant test.
             return
         # commit to the child to make the last rev not-None and skew it from master.
@@ -84,7 +83,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         tree2 = tree1.controldir.sprout('tree2').open_workingtree()
         try:
             tree2.branch.bind(readonly_branch1)
-        except errors.UpgradeRequired:
+        except branch.BindingUnsupported:
             # old branch, cant test.
             raise tests.TestNotApplicable("only triggered in bound branches")
         rev2 = tree1.commit('two')

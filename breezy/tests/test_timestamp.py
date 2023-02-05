@@ -152,7 +152,7 @@ class UnpackHighresDateTests(tests.TestCase):
             t2, o2 = timestamp.unpack_highres_date(date)
             self.assertEqual(
                 t, t2,
-                'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2 - t))
+                'Failed on date {!r}, {},{} diff:{}'.format(date, t, o, t2 - t))
             self.assertEqual(
                 o, o2,
-                'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2 - t))
+                'Failed on date {!r}, {},{} diff:{}'.format(date, t, o, t2 - t))

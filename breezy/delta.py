@@ -14,19 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+from io import StringIO
 
 from breezy import (
     osutils,
     trace,
     )
-from .sixish import (
-    StringIO,
-    )
 from .bzr.inventorytree import InventoryTreeChange
 
 
-class TreeDelta(object):
+class TreeDelta:
     """Describes changes from one tree to another.
 
     Contains seven lists with TreeChange objects.
@@ -170,7 +167,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     return delta
 
 
-class _ChangeReporter(object):
+class _ChangeReporter:
     """Report changes between two trees"""
 
     def __init__(self, output=None, suppress_root_add=True,
@@ -408,7 +405,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
                 item.executable))
 
     def show_more_kind_changed(item):
-        to_file.write(' (%s => %s)' % (item.kind[0], item.kind[1]))
+        to_file.write(' ({} => {})'.format(item.kind[0], item.kind[1]))
 
     def show_path(path, kind, meta_modified,
                   default_format, with_file_id_format):

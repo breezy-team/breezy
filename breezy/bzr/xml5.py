@@ -14,10 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .. import (
-    cache_utf8,
     errors,
     osutils,
     )
@@ -54,7 +51,7 @@ class Serializer_v5(xml6.Serializer_v6):
                                       % format)
         data_revision_id = elt.get('revision_id')
         if data_revision_id is not None:
-            revision_id = cache_utf8.encode(data_revision_id)
+            revision_id = data_revision_id.encode('utf-8')
         inv = inventory.Inventory(root_id, revision_id=revision_id)
         # Optimizations tested
         #   baseline w/entry cache  2.85s
@@ -78,9 +75,9 @@ class Serializer_v5(xml6.Serializer_v6):
                 raise inventory.DuplicateFileId(ie.file_id, byid[ie.file_id])
             if ie.name in parent.children:
                 raise errors.BzrError(
-                    "%s is already versioned" % (
+                    "{} is already versioned".format(
                         osutils.pathjoin(
-                            inv.id2path(parent_id), ie.name).encode('utf-8'),))
+                            inv.id2path(parent_id), ie.name).encode('utf-8')))
             parent.children[ie.name] = ie
             byid[ie.file_id] = ie
         if revision_id is not None:

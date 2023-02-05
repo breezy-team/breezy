@@ -20,15 +20,14 @@ The user-visible behaviour of this module is described in
 configuring_bazaar.txt.
 """
 
-from __future__ import absolute_import
-
 import re
+from typing import List, Optional, Tuple
 
 
-_whitespace_match = re.compile(u'\\s', re.UNICODE).match
+_whitespace_match = re.compile('\\s', re.UNICODE).match
 
 
-class _PushbackSequence(object):
+class _PushbackSequence:
     def __init__(self, orig):
         self._iter = iter(orig)
         self._pushback_buffer = []
@@ -48,7 +47,7 @@ class _PushbackSequence(object):
         return self
 
 
-class _Whitespace(object):
+class _Whitespace:
     def process(self, next_char, context):
         if _whitespace_match(next_char):
             if len(context.token) > 0:
@@ -58,42 +57,42 @@ class _Whitespace(object):
         elif next_char in context.allowed_quote_chars:
             context.quoted = True
             return _Quotes(next_char, self)
-        elif next_char == u'\\':
+        elif next_char == '\\':
             return _Backslash(self)
         else:
             context.token.append(next_char)
             return _Word()
 
 
-class _Quotes(object):
+class _Quotes:
     def __init__(self, quote_char, exit_state):
         self.quote_char = quote_char
         self.exit_state = exit_state
 
     def process(self, next_char, context):
-        if next_char == u'\\':
+        if next_char == '\\':
             return _Backslash(self)
         elif next_char == self.quote_char:
-            context.token.append(u'')
+            context.token.append('')
             return self.exit_state
         else:
             context.token.append(next_char)
             return self
 
 
-class _Backslash(object):
+class _Backslash:
     # See http://msdn.microsoft.com/en-us/library/bb776391(VS.85).aspx
     def __init__(self, exit_state):
         self.exit_state = exit_state
         self.count = 1
 
     def process(self, next_char, context):
-        if next_char == u'\\':
+        if next_char == '\\':
             self.count += 1
             return self
         elif next_char in context.allowed_quote_chars:
             # 2N backslashes followed by a quote are N backslashes
-            context.token.append(u'\\' * (self.count // 2))
+            context.token.append('\\' * (self.count // 2))
             # 2N+1 backslashes follwed by a quote are N backslashes followed by
             # the quote which should not be processed as the start or end of
             # the quoted arg
@@ -108,7 +107,7 @@ class _Backslash(object):
         else:
             # N backslashes not followed by a quote are just N backslashes
             if self.count > 0:
-                context.token.append(u'\\' * self.count)
+                context.token.append('\\' * self.count)
                 self.count = 0
             # let exit_state handle next_char
             context.seq.pushback(next_char)
@@ -116,28 +115,28 @@ class _Backslash(object):
 
     def finish(self, context):
         if self.count > 0:
-            context.token.append(u'\\' * self.count)
+            context.token.append('\\' * self.count)
 
 
-class _Word(object):
+class _Word:
     def process(self, next_char, context):
         if _whitespace_match(next_char):
             return None
         elif next_char in context.allowed_quote_chars:
             return _Quotes(next_char, self)
-        elif next_char == u'\\':
+        elif next_char == '\\':
             return _Backslash(self)
         else:
             context.token.append(next_char)
             return self
 
 
-class Splitter(object):
+class Splitter:
     def __init__(self, command_line, single_quotes_allowed):
         self.seq = _PushbackSequence(command_line)
-        self.allowed_quote_chars = u'"'
+        self.allowed_quote_chars = '"'
         if single_quotes_allowed:
-            self.allowed_quote_chars += u"'"
+            self.allowed_quote_chars += "'"
 
     def __iter__(self):
         return self
@@ -150,17 +149,17 @@ class Splitter(object):
 
     next = __next__
 
-    def _get_token(self):
+    def _get_token(self) -> Tuple[bool, Optional[str]]:
         self.quoted = False
-        self.token = []
+        self.token: List[str] = []
         state = _Whitespace()
         for next_char in self.seq:
             state = state.process(next_char, self)
             if state is None:
                 break
-        if state is not None and not getattr(state, 'finish', None) is None:
+        if state is not None and hasattr(state, 'finish'):
             state.finish(self)
-        result = u''.join(self.token)
+        result: Optional[str] = ''.join(self.token)
         if not self.quoted and result == '':
             result = None
         return self.quoted, result

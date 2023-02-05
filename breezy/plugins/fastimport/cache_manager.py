@@ -15,8 +15,6 @@
 
 """A manager of caches."""
 
-from __future__ import absolute_import
-
 import atexit
 import os
 import shutil
@@ -35,7 +33,7 @@ from .helpers import (
     )
 
 
-class _Cleanup(object):
+class _Cleanup:
     """This class makes sure we clean up when CacheManager goes away.
 
     We use a helper class to ensure that we are never in a refcycle.
@@ -62,7 +60,7 @@ class _Cleanup(object):
             shutil.rmtree(self.tempdir)
 
 
-class CacheManager(object):
+class CacheManager:
 
     _small_blob_threshold = 25 * 1024
     _sticky_cache_size = 300 * 1024 * 1024

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ... import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy.bzr.smart import request as _mod_request
@@ -31,7 +29,7 @@ from ... import (
     )
 
 
-class _SmartClient(object):
+class _SmartClient:
 
     def __init__(self, medium, headers=None):
         """Constructor.
@@ -46,7 +44,7 @@ class _SmartClient(object):
             self._headers = dict(headers)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self._medium)
+        return '{}({!r})'.format(self.__class__.__name__, self._medium)
 
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
                                 body_stream=None, expect_response_body=True):
@@ -75,12 +73,12 @@ class _SmartClient(object):
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         if not isinstance(method, bytes):
-            raise TypeError('method must be a byte string, not %r' % (method,))
+            raise TypeError('method must be a byte string, not {!r}'.format(method))
         for arg in args:
             if not isinstance(arg, bytes):
-                raise TypeError('args must be byte strings, not %r' % (args,))
+                raise TypeError('args must be byte strings, not {!r}'.format(args))
         if not isinstance(body, bytes):
-            raise TypeError('body must be byte string, not %r' % (body,))
+            raise TypeError('body must be byte string, not {!r}'.format(body))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=False)
         return response
@@ -88,12 +86,12 @@ class _SmartClient(object):
     def call_with_body_bytes_expecting_body(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         if not isinstance(method, bytes):
-            raise TypeError('method must be a byte string, not %r' % (method,))
+            raise TypeError('method must be a byte string, not {!r}'.format(method))
         for arg in args:
             if not isinstance(arg, bytes):
-                raise TypeError('args must be byte strings, not %r' % (args,))
+                raise TypeError('args must be byte strings, not {!r}'.format(args))
         if not isinstance(body, bytes):
-            raise TypeError('body must be byte string, not %r' % (body,))
+            raise TypeError('body must be byte string, not {!r}'.format(body))
         response, response_handler = self._call_and_read_response(
             method, args, body=body, expect_response_body=True)
         return (response, response_handler)
@@ -119,7 +117,7 @@ class _SmartClient(object):
         return self._medium.remote_path_from_transport(transport).encode('utf-8')
 
 
-class _SmartClientRequest(object):
+class _SmartClientRequest:
     """Encapsulate the logic for a single request.
 
     This class handles things like reconnecting and sending the request a
@@ -331,10 +329,10 @@ class SmartClientHooks(hooks.Hooks):
                       "accessible.", None)
 
 
-_SmartClient.hooks = SmartClientHooks()
+_SmartClient.hooks = SmartClientHooks()  # type: ignore
 
 
-class CallHookParams(object):
+class CallHookParams:
 
     def __init__(self, method, args, body, readv_body, medium):
         self.method = method
@@ -344,9 +342,9 @@ class CallHookParams(object):
         self.medium = medium
 
     def __repr__(self):
-        attrs = dict((k, v) for k, v in self.__dict__.items()
-                     if v is not None)
-        return '<%s %r>' % (self.__class__.__name__, attrs)
+        attrs = {k: v for k, v in self.__dict__.items()
+                     if v is not None}
+        return '<{} {!r}>'.format(self.__class__.__name__, attrs)
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):

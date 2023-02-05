@@ -19,8 +19,6 @@
 The methods here allow for api symbol versioning.
 """
 
-from __future__ import absolute_import
-
 __all__ = ['deprecated_function',
            'deprecated_in',
            'deprecated_list',
@@ -76,14 +74,14 @@ def deprecation_string(a_callable, deprecation_version):
         a nice python symbol and then substituted into deprecation_version.
     """
     if getattr(a_callable, '__self__', None) is not None:
-        symbol = "%s.%s.%s" % (a_callable.__self__.__class__.__module__,
+        symbol = "{}.{}.{}".format(a_callable.__self__.__class__.__module__,
                                a_callable.__self__.__class__.__name__,
                                a_callable.__name__)
     elif getattr(a_callable, '__qualname__', None) is not None and '<' not in a_callable.__qualname__:
-        symbol = "%s.%s" % (a_callable.__module__,
+        symbol = "{}.{}".format(a_callable.__module__,
                             a_callable.__qualname__)
     else:
-        symbol = "%s.%s" % (a_callable.__module__,
+        symbol = "{}.{}".format(a_callable.__module__,
                             a_callable.__name__)
     return deprecation_version % symbol
 
@@ -126,11 +124,11 @@ def deprecated_method(deprecation_version):
             """This is the decorated method."""
             from . import trace
             if callable.__name__ == '__init__':
-                symbol = "%s.%s" % (self.__class__.__module__,
+                symbol = "{}.{}".format(self.__class__.__module__,
                                     self.__class__.__name__,
                                     )
             else:
-                symbol = "%s.%s.%s" % (self.__class__.__module__,
+                symbol = "{}.{}.{}".format(self.__class__.__module__,
                                        self.__class__.__name__,
                                        callable.__name__
                                        )
@@ -198,7 +196,7 @@ def _populate_decorated(callable, deprecation_version, label,
 def _dict_deprecation_wrapper(wrapped_method):
     """Returns a closure that emits a warning and calls the superclass"""
     def cb(dep_dict, *args, **kwargs):
-        msg = 'access to %s' % (dep_dict._variable_name, )
+        msg = 'access to {}'.format(dep_dict._variable_name)
         msg = dep_dict._deprecation_version % (msg,)
         if dep_dict._advice:
             msg += ' ' + dep_dict._advice
@@ -253,7 +251,7 @@ def deprecated_list(deprecation_version, variable_name,
     :param extra: Extra info to print when printing a warning
     """
 
-    subst_text = 'Modifying %s' % (variable_name,)
+    subst_text = 'Modifying {}'.format(variable_name)
     msg = deprecation_version % (subst_text,)
     if extra:
         msg += ' ' + extra
@@ -268,23 +266,23 @@ def deprecated_list(deprecation_version, variable_name,
             return func(self, *args, **kwargs)
 
         def append(self, obj):
-            """appending to %s is deprecated""" % (variable_name,)
+            """appending to {} is deprecated""".format(variable_name)
             return self._warn_deprecated(list.append, obj)
 
         def insert(self, index, obj):
-            """inserting to %s is deprecated""" % (variable_name,)
+            """inserting to {} is deprecated""".format(variable_name)
             return self._warn_deprecated(list.insert, index, obj)
 
         def extend(self, iterable):
-            """extending %s is deprecated""" % (variable_name,)
+            """extending {} is deprecated""".format(variable_name)
             return self._warn_deprecated(list.extend, iterable)
 
         def remove(self, value):
-            """removing from %s is deprecated""" % (variable_name,)
+            """removing from {} is deprecated""".format(variable_name)
             return self._warn_deprecated(list.remove, value)
 
         def pop(self, index=None):
-            """pop'ing from %s is deprecated""" % (variable_name,)
+            """pop'ing from {} is deprecated""".format(variable_name)
             if index:
                 return self._warn_deprecated(list.pop, index)
             else:

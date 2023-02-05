@@ -16,8 +16,6 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
-from __future__ import absolute_import
-
 # TODO: Remove the transport-based lock_read and lock_write methods.  They'll
 # then raise TransportNotPossible, which will break remote access to any
 # formats which rely on OS-level locks.  That should be fine as those formats
@@ -41,41 +39,25 @@ from .. import (
     errors,
     urlutils,
     )
-from ..errors import (FileExists,
-                      NoSuchFile,
-                      TransportError,
+from ..errors import (TransportError,
                       LockError,
                       PathError,
                       ParamikoNotPresent,
                       )
 from ..osutils import fancy_rename
-from ..sixish import (
-    zip,
-    )
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,
+    FileExists,
+    NoSuchFile,
     _file_streams,
     ssh,
     ConnectedTransport,
     )
 
-# Disable one particular warning that comes from paramiko in Python2.5; if
-# this is emitted at the wrong time it tends to cause spurious test failures
-# or at least noise in the test case::
-#
-# [1770/7639 in 86s, 1 known failures, 50 skipped, 2 missing features]
-# test_permissions.TestSftpPermissions.test_new_files
-# /var/lib/python-support/python2.5/paramiko/message.py:226: DeprecationWarning: integer argument expected, got float
-#  self.packet.write(struct.pack('>I', n))
-warnings.filterwarnings('ignore',
-                        'integer argument expected, got float',
-                        category=DeprecationWarning,
-                        module='paramiko.message')
-
 try:
     import paramiko
-except ImportError as e:
+except ModuleNotFoundError as e:
     raise ParamikoNotPresent(e)
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
@@ -122,7 +104,7 @@ else:
     _bad_asbytes.__code__ = _asbytes_for_broken_paramiko.__code__
 
 
-class SFTPLock(object):
+class SFTPLock:
     """This fakes a lock in a remote location.
 
     A present lock is indicated just by the existence of a file.  This
@@ -142,7 +124,7 @@ class SFTPLock(object):
             abspath = transport._remote_path(self.lock_path)
             self.lock_file = transport._sftp_open_exclusive(abspath)
         except FileExists:
-            raise LockError('File %r already locked' % (self.path,))
+            raise LockError('File {!r} already locked'.format(self.path))
 
     def unlock(self):
         if not self.lock_file:
@@ -156,7 +138,7 @@ class SFTPLock(object):
             pass
 
 
-class _SFTPReadvHelper(object):
+class _SFTPReadvHelper:
     """A class to help with managing the state of a readv request."""
 
     # See _get_requests for an explanation.
@@ -439,7 +421,7 @@ class SFTPTransport(ConnectedTransport):
             # stat result is about 20 bytes, let's say
             self._report_activity(20, 'read')
             return True
-        except IOError:
+        except OSError:
             return False
 
     def get(self, relpath):
@@ -454,7 +436,7 @@ class SFTPTransport(ConnectedTransport):
             if getattr(f, 'prefetch', None) is not None:
                 f.prefetch(size)
             return f
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': error retrieving',
                                          failure_exc=errors.ReadError)
 
@@ -482,7 +464,7 @@ class SFTPTransport(ConnectedTransport):
             if 'sftp' in debug.debug_flags:
                 mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets, relpath)
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': error retrieving')
 
     def recommended_page_size(self):
@@ -524,7 +506,7 @@ class SFTPTransport(ConnectedTransport):
             try:
                 fout.set_pipelined(True)
                 length = self._pump(f, fout)
-            except (IOError, paramiko.SSHException) as e:
+            except (OSError, paramiko.SSHException) as e:
                 self._translate_io_exception(e, tmp_abspath)
             # XXX: This doesn't truly help like we would like it to.
             #      The problem is that openssh strips sticky bits. So while we
@@ -580,7 +562,7 @@ class SFTPTransport(ConnectedTransport):
                     fout = self._get_sftp().file(abspath, mode='wb')
                     fout.set_pipelined(True)
                     writer(fout)
-                except (paramiko.SSHException, IOError) as e:
+                except (paramiko.SSHException, OSError) as e:
                     self._translate_io_exception(e, abspath,
                                                  ': unable to open')
 
@@ -631,7 +613,7 @@ class SFTPTransport(ConnectedTransport):
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
 
-    def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
         if not isinstance(raw_bytes, bytes):
@@ -682,7 +664,7 @@ class SFTPTransport(ConnectedTransport):
                                 ' environment on the server to use umask 0%03o.'
                                 % (abspath, 0o777 - mode))
                     self._get_sftp().chmod(abspath, mode=mode)
-        except (paramiko.SSHException, IOError) as e:
+        except (paramiko.SSHException, OSError) as e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                                          failure_exc=FileExists)
 
@@ -706,7 +688,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             handle = self._get_sftp().file(abspath, mode='wb')
             handle.set_pipelined(True)
-        except (paramiko.SSHException, IOError) as e:
+        except (paramiko.SSHException, OSError) as e:
             self._translate_io_exception(e, abspath,
                                          ': unable to open')
         _file_streams[self.abspath(relpath)] = handle
@@ -764,7 +746,7 @@ class SFTPTransport(ConnectedTransport):
             result = fout.tell()
             self._pump(f, fout)
             return result
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
     def rename(self, rel_from, rel_to):
@@ -772,7 +754,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             self._get_sftp().rename(self._remote_path(rel_from),
                                     self._remote_path(rel_to))
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, rel_from,
                                          ': unable to rename to %r' % (rel_to))
 
@@ -786,7 +768,7 @@ class SFTPTransport(ConnectedTransport):
             fancy_rename(abs_from, abs_to,
                          rename_func=sftp.rename,
                          unlink_func=sftp.remove)
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, abs_from,
                                          ': unable to rename to %r' % (abs_to))
 
@@ -801,7 +783,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             self._get_sftp().remove(path)
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to delete')
 
     def external_url(self):
@@ -825,7 +807,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             entries = self._get_sftp().listdir(path)
             self._report_activity(sum(map(len, entries)), 'read')
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
 
@@ -834,7 +816,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             return self._get_sftp().rmdir(path)
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': failed to rmdir')
 
     def stat(self, relpath):
@@ -842,7 +824,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             return self._get_sftp().lstat(path)
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to stat')
 
     def readlink(self, relpath):
@@ -850,7 +832,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             return self._get_sftp().readlink(self._remote_path(path))
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to readlink')
 
     def symlink(self, source, link_name):
@@ -858,7 +840,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             conn = self._get_sftp()
             sftp_retval = conn.symlink(source, self._remote_path(link_name))
-        except (IOError, paramiko.SSHException) as e:
+        except (OSError, paramiko.SSHException) as e:
             self._translate_io_exception(e, link_name,
                                          ': unable to create symlink to %r' % (source))
 
@@ -868,7 +850,7 @@ class SFTPTransport(ConnectedTransport):
         :return: A lock object, which has an unlock() member function
         """
         # FIXME: there should be something clever i can do here...
-        class BogusLock(object):
+        class BogusLock:
             def __init__(self, path):
                 self.path = path
 
@@ -926,7 +908,7 @@ class SFTPTransport(ConnectedTransport):
                 raise TransportError('Expected an SFTP handle')
             handle = msg.get_string()
             return SFTPFile(self._get_sftp(), handle, 'wb', -1)
-        except (paramiko.SSHException, IOError) as e:
+        except (paramiko.SSHException, OSError) as e:
             self._translate_io_exception(e, abspath, ': unable to open',
                                          failure_exc=FileExists)
 

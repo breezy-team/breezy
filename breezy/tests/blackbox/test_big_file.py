@@ -21,6 +21,7 @@ These are meant to ensure that Breezy never keeps full copies of files in
 memory.
 """
 
+import contextlib
 import errno
 import os
 import resource
@@ -41,9 +42,6 @@ BIG_FILE_CHUNK_SIZE = 1024
 RESOURCE = resource.RLIMIT_AS
 LIMIT = 1024 * 1024 * 100
 
-if sys.version_info[0] == 2:
-    range = xrange
-
 
 def make_big_file(path):
     blob_1mb = BIG_FILE_CHUNK_SIZE * b'\x0c'
@@ -55,21 +53,34 @@ def make_big_file(path):
         os.close(fd)
 
 
+@contextlib.contextmanager
+def limit_memory(size):
+    if sys.platform in ('win32', 'darwin'):
+        raise NotImplementedError
+    previous = resource.getrlimit(RESOURCE)
+    resource.setrlimit(RESOURCE, (LIMIT, -1))
+    yield
+    resource.setrlimit(RESOURCE, previous)
+
+
 class TestAdd(tests.TestCaseWithTransport):
 
     def writeBigFile(self, path):
         self.addCleanup(os.unlink, path)
         try:
             make_big_file(path)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == errno.ENOSPC:
                 self.skipTest('not enough disk space for big file')
 
     def setUp(self):
-        super(TestAdd, self).setUp()
-        previous = resource.getrlimit(RESOURCE)
-        self.addCleanup(resource.setrlimit, RESOURCE, previous)
-        resource.setrlimit(RESOURCE, (LIMIT, -1))
+        super().setUp()
+        cm = limit_memory(LIMIT)
+        try:
+            cm.__enter__()
+        except NotImplementedError:
+            self.skipTest('memory limits not supported on this platform')
+        self.addCleanup(cm.__exit__, None, None, None)
 
     def test_allocate(self):
         def allocate():

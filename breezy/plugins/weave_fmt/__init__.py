@@ -19,8 +19,6 @@
 These were formats present in pre-1.0 version of Bazaar.
 """
 
-from __future__ import absolute_import
-
 # Since we are a built-in plugin we share the breezy version
 from ... import version_info  # noqa: F401
 
@@ -128,5 +126,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests

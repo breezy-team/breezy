@@ -18,7 +18,6 @@
 
 from .. import TestCaseWithMemoryTransport
 from ...commands import Command, register_command, plugin_cmds
-from ...sixish import PY3
 
 
 class cmd_echo_exact(Command):
@@ -59,7 +58,7 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
             # Exact should fail to decode the string
             self.assertRaises(UnicodeEncodeError,
                               bzr,
-                              ['echo-exact', u'foo\xb5'])
+                              ['echo-exact', 'foo\xb5'])
             # Previously a non-ascii bytestring was also tested, as 'exact'
             # outputs bytes untouched, but needed buggy argv parsing to work
         finally:
@@ -73,10 +72,10 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
         register_command(cmd_echo_strict)
         try:
             self.assertEqual(b'foo', bzr('echo-strict foo'))
-            expected = u'foo\xb5'
+            expected = 'foo\xb5'
             expected = expected.encode('utf-8')
             self.assertEqual(expected,
-                             bzr(['echo-strict', u'foo\xb5']))
+                             bzr(['echo-strict', 'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-strict')
 
@@ -91,7 +90,7 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
             # ascii can't encode \xb5
             self.assertRaises(UnicodeEncodeError,
                               bzr,
-                              ['echo-strict', u'foo\xb5'])
+                              ['echo-strict', 'foo\xb5'])
         finally:
             plugin_cmds.remove('echo-strict')
 
@@ -103,8 +102,8 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
         register_command(cmd_echo_replace)
         try:
             self.assertEqual(b'foo', bzr('echo-replace foo'))
-            self.assertEqual(u'foo\xb5'.encode('utf-8'),
-                             bzr(['echo-replace', u'foo\xb5']))
+            self.assertEqual('foo\xb5'.encode(),
+                             bzr(['echo-replace', 'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-replace')
 
@@ -117,6 +116,6 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
         try:
             self.assertEqual(b'foo', bzr('echo-replace foo'))
             # ascii can't encode \xb5
-            self.assertEqual(b'foo?', bzr(['echo-replace', u'foo\xb5']))
+            self.assertEqual(b'foo?', bzr(['echo-replace', 'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-replace')

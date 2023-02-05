@@ -17,9 +17,7 @@
 
 """B+Tree index parsing."""
 
-from __future__ import absolute_import
-
-from .. import static_tuple
+from . import static_tuple
 
 
 def _parse_leaf_lines(data, key_length, ref_list_length):

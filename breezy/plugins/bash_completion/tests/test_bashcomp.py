@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
 import sys
 
 import breezy
@@ -24,7 +25,7 @@ from breezy.plugins.bash_completion.bashcomp import *
 import subprocess
 
 
-class BashCompletionMixin(object):
+class BashCompletionMixin:
     """Component for testing execution of a bash completion script."""
 
     _test_needs_features = [features.bash_feature]
@@ -38,11 +39,14 @@ class BashCompletionMixin(object):
         """
         if self.script is None:
             self.script = self.get_script()
+        env = dict(os.environ)
+        env['PYTHONPATH'] = ':'.join(sys.path)
         proc = subprocess.Popen([features.bash_feature.path,
                                  '--noprofile'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                stderr=subprocess.PIPE,
+                                env=env)
         if cword < 0:
             cword = len(words) + cword
         encoding = osutils.get_user_encoding()
@@ -157,14 +161,16 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
     """
 
     def setUp(self):
-        super(TestBashCompletionInvoking, self).setUp()
+        super().setUp()
         if sys.platform == 'win32':
             raise tests.KnownFailure(
                 'see bug #709104, completion is broken on windows')
 
     def get_script(self):
-        s = super(TestBashCompletionInvoking, self).get_script()
-        return s.replace("$(brz ", "$('%s' " % self.get_brz_path())
+        s = super().get_script()
+        s = s.replace("$(brz ", "$('%s' " % self.get_brz_path())
+        s = s.replace("2>/dev/null", "")
+        return s
 
     def test_revspec_tag_all(self):
         self.requireFeature(features.sed_feature)
@@ -286,7 +292,7 @@ class TestBashCodeGen(tests.TestCase):
 class TestDataCollector(tests.TestCase):
 
     def setUp(self):
-        super(TestDataCollector, self).setUp()
+        super().setUp()
         commands.install_bzr_command_hooks()
 
     def test_global_options(self):

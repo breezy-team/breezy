@@ -17,14 +17,11 @@
 """Whitebox tests for annotate functionality."""
 
 import codecs
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from .. import (
     annotate,
     tests,
-    )
-from ..sixish import (
-    StringIO,
     )
 from .ui_testing import StringIOWithEncoding
 
@@ -402,15 +399,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1 = self.make_branch_and_tree('tree1')
 
         self.build_tree_contents([('tree1/a', b'adi\xc3\xb3s')])
-        tree1.add(['a'], [b'a-id'])
+        tree1.add(['a'], ids=[b'a-id'])
         tree1.commit('a', rev_id=b'rev-1',
-                     committer=u'Pepe P\xe9rez <pperez@ejemplo.com>',
+                     committer='Pepe P\xe9rez <pperez@ejemplo.com>',
                      timestamp=1166046000.00, timezone=0)
 
         self.build_tree_contents([('tree1/b', b'bye')])
-        tree1.add(['b'], [b'b-id'])
+        tree1.add(['b'], ids=[b'b-id'])
         tree1.commit('b', rev_id=b'rev-2',
-                     committer=u'p\xe9rez',
+                     committer='p\xe9rez',
                      timestamp=1166046000.00, timezone=0)
 
         tree1.lock_read()
@@ -434,19 +431,19 @@ class TestAnnotate(tests.TestCaseWithTransport):
         to_file = StringIOWithEncoding()
         annotate.annotate_file_tree(revtree_2, 'b',
                                     to_file=to_file, branch=tree1.branch)
-        self.assertContainsRe(u'2   p\xe9rez   | bye\n', to_file.getvalue())
+        self.assertContainsRe('2   p\xe9rez   | bye\n', to_file.getvalue())
 
     def test_annotate_author_or_committer(self):
         tree1 = self.make_branch_and_tree('tree1')
 
         self.build_tree_contents([('tree1/a', b'hello')])
-        tree1.add(['a'], [b'a-id'])
+        tree1.add(['a'], ids=[b'a-id'])
         tree1.commit('a', rev_id=b'rev-1',
                      committer='Committer <committer@example.com>',
                      timestamp=1166046000.00, timezone=0)
 
         self.build_tree_contents([('tree1/b', b'bye')])
-        tree1.add(['b'], [b'b-id'])
+        tree1.add(['b'], ids=[b'b-id'])
         tree1.commit('b', rev_id=b'rev-2',
                      committer='Committer <committer@example.com>',
                      authors=['Author <author@example.com>'],

@@ -30,17 +30,7 @@ The plugin also provides the following commands:
     launchpad-login: Show or set the Launchpad user ID
     launchpad-open: Open a Launchpad branch page in your web browser
 
-As well as the following deprecated command:
-
-    lp-propose-merge: Propose merging a branch on Launchpad
-         (deprecated in favour of the more generic 'brz propose-merge')
-
 """
-
-from __future__ import absolute_import
-
-# The XMLRPC server address can be overridden by setting the environment
-# variable $BRZ_LP_XMLRPC_URL
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
@@ -62,7 +52,6 @@ for klsname, aliases in [
     ("cmd_launchpad_open", ["lp-open"]),
     ("cmd_launchpad_login", ["lp-login"]),
     ("cmd_launchpad_logout", ["lp-logout"]),
-    ("cmd_lp_propose_merge", ["lp-submit", "lp-propose"]),
         ("cmd_lp_find_proposal", [])]:
     plugin_cmds.register_lazy(klsname, aliases,
                               "breezy.plugins.launchpad.cmds")
@@ -90,15 +79,12 @@ _register_directory()
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_account',
-        'test_register',
         'test_lp_api',
         'test_lp_directory',
         'test_lp_login',
-        'test_lp_open',
-        'test_lp_service',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests
 
 
@@ -132,5 +118,5 @@ topic_registry.register('launchpad',
                         'Using Bazaar with Launchpad.net')
 
 
-from ...propose import hosters
-hosters.register_lazy("launchpad", __name__ + '.hoster', "Launchpad")
+from ...forge import forges
+forges.register_lazy("launchpad", __name__ + '.forge', "Launchpad")

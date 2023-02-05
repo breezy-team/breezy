@@ -16,24 +16,19 @@
 
 """bisect command implementations."""
 
-from __future__ import absolute_import
-
 import sys
 from .controldir import ControlDir
 from . import revision as _mod_revision
 from .commands import Command
 from .errors import CommandError
 from .option import Option
-from .sixish import (
-    text_type,
-    )
 from .trace import note
 
 BISECT_INFO_PATH = "bisect"
 BISECT_REV_PATH = "bisect_revid"
 
 
-class BisectCurrent(object):
+class BisectCurrent:
     """Bisect class for managing the current revision."""
 
     def __init__(self, controldir, filename=BISECT_REV_PATH):
@@ -74,7 +69,7 @@ class BisectCurrent(object):
         """Write the current revision's log entry to a file."""
         rev = self._branch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
-        outf.write("On revision %s (%s):\n%s\n" % (revno, rev.revision_id,
+        outf.write("On revision {} ({}):\n{}\n".format(revno, rev.revision_id,
                                                    rev.message))
 
     def switch(self, revid):
@@ -99,7 +94,7 @@ class BisectCurrent(object):
             self._controldir.control_transport.delete(BISECT_REV_PATH)
 
 
-class BisectLog(object):
+class BisectLog:
     """Bisect log file handler."""
 
     def __init__(self, controldir, filename=BISECT_INFO_PATH):
@@ -314,7 +309,7 @@ class cmd_bisect(Command):
 
     takes_args = ['subcommand', 'args*']
     takes_options = [Option('output', short_name='o',
-                            help='Write log to this file.', type=text_type),
+                            help='Write log to this file.', type=str),
                      'revision', 'directory']
 
     def _check(self, controldir):

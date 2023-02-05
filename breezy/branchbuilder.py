@@ -16,20 +16,15 @@
 
 """Utility for create branches with particular contents."""
 
-from __future__ import absolute_import
-
 from . import (
     controldir,
     commit,
     errors,
     revision,
     )
-from .sixish import (
-    viewitems,
-    )
 
 
-class BranchBuilder(object):
+class BranchBuilder:
     r"""A BranchBuilder aids creating Branches with particular shapes.
 
     The expected way to use BranchBuilder is to construct a
@@ -48,11 +43,11 @@ class BranchBuilder(object):
     ...     ('add', ('', b'root-id', 'directory', '')),
     ...     ('add', ('filename', b'f-id', 'file', b'content\n'))],
     ...     revision_id=b'rev-id')
-    'rev-id'
+    b'rev-id'
     >>> builder.build_snapshot([b'rev-id'],
     ...     [('modify', ('filename', b'new-content\n'))],
     ...     revision_id=b'rev2-id')
-    'rev2-id'
+    b'rev2-id'
     >>> builder.finish_series()
     >>> branch = builder.get_branch()
 
@@ -123,7 +118,7 @@ class BranchBuilder(object):
     def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
         if message is None and message_callback is None:
-            message = u'commit %d' % (self._branch.revno() + 1,)
+            message = 'commit %d' % (self._branch.revno() + 1,)
         return tree.commit(message, message_callback=message_callback,
                            reporter=reporter, **kwargs)
 
@@ -250,7 +245,7 @@ class BranchBuilder(object):
                     self._flush_pending(tree, pending)
                     pending = _PendingActions()
                 else:
-                    raise ValueError('Unknown build action: "%s"' % (action,))
+                    raise ValueError('Unknown build action: "{}"'.format(action))
             self._flush_pending(tree, pending)
             return self._do_commit(
                 tree, message=message, rev_id=revision_id,
@@ -266,16 +261,25 @@ class BranchBuilder(object):
                     # We're overwriting this path, no need to unversion
                     pending.to_unversion_paths.discard(path)
                 # Special case, because the path already exists
-                tree.add([path], [file_id], ['directory'])
+                if file_id is not None:
+                    tree.add([path], ['directory'], ids=[file_id])
+                else:
+                    tree.add([path], ['directory'])
             else:
-                tree.mkdir(path, file_id)
+                if file_id is not None:
+                    tree.mkdir(path, file_id)
+                else:
+                    tree.mkdir(path)
         for from_relpath, to_relpath in pending.to_rename:
             tree.rename_one(from_relpath, to_relpath)
         if pending.to_unversion_paths:
             tree.unversion(pending.to_unversion_paths)
-        tree.add(pending.to_add_files, pending.to_add_file_ids,
-                 pending.to_add_kinds)
-        for path, content in viewitems(pending.new_contents):
+        if tree.supports_file_ids:
+            tree.add(pending.to_add_files,
+                     pending.to_add_kinds, pending.to_add_file_ids)
+        else:
+            tree.add(pending.to_add_files, pending.to_add_kinds)
+        for path, content in pending.new_contents.items():
             tree.put_file_bytes_non_atomic(path, content)
 
     def get_branch(self):
@@ -283,7 +287,7 @@ class BranchBuilder(object):
         return self._branch
 
 
-class _PendingActions(object):
+class _PendingActions:
     """Pending actions for build_snapshot to take.
 
     This is just a simple class to hold a bunch of the intermediate state of

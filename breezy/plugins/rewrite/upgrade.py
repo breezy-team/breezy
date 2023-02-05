@@ -17,8 +17,6 @@
 
 """Upgrading revisions made with older versions of the mapping."""
 
-from __future__ import absolute_import
-
 from ... import (
     osutils,
     trace,
@@ -185,6 +183,6 @@ def upgrade_repository(repository, generate_rebase_map,
             revision_id=revision_id, allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
-                trace.note("%s -> %s" % (revid, plan[revid][0]))
+                trace.note("{} -> {}".format(revid, plan[revid][0]))
         rebase(repository, plan, CommitBuilderRevisionRewriter(repository))
         return revid_renames

@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for bzrdir implementations - push."""
+"""Tests for controldir implementations - push."""
 
+from ...controldir import NoColocatedBranchSupport
 from ...errors import (
     LossyPushToSameVCS,
     TagsNotSupported,
@@ -47,6 +48,59 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(dir.open_branch().base,
                          tree.branch.get_push_location())
 
+    def test_push_to_colocated_active(self):
+        tree, rev_1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
+        try:
+            result = dir.push_branch(tree.branch, name='colo')
+        except NoColocatedBranchSupport:
+            raise TestNotApplicable('no colocated branch support')
+        self.assertEqual(tree.branch, result.source_branch)
+        self.assertEqual(dir.open_branch(name='colo').base, result.target_branch.base)
+        self.assertEqual(dir.open_branch(name='colo').base,
+                         tree.branch.get_push_location())
+
+    def test_push_to_colocated_new_inactive(self):
+        tree, rev_1 = self.create_simple_tree()
+        target_tree = self.make_branch_and_tree('dir')
+        rev_o = target_tree.commit('another')
+        try:
+            result = target_tree.branch.controldir.push_branch(
+                tree.branch, name='colo')
+        except NoColocatedBranchSupport:
+            raise TestNotApplicable('no colocated branch support')
+        target_branch = target_tree.branch.controldir.open_branch(
+            name='colo')
+        self.assertEqual(tree.branch, result.source_branch)
+        self.assertEqual(target_tree.last_revision(), rev_o)
+        self.assertEqual(target_tree.branch.last_revision(), rev_o)
+        self.assertEqual(target_branch.base, result.target_branch.base)
+        self.assertEqual(target_branch.base, tree.branch.get_push_location())
+        self.assertNotEqual(
+            target_branch.controldir.open_branch(name='').name, 'colo')
+
+    def test_push_to_colocated_existing_inactive(self):
+        tree, rev_1 = self.create_simple_tree()
+        target_tree = self.make_branch_and_tree('dir')
+        rev_o = target_tree.commit('another')
+        try:
+            target_tree.branch.controldir.create_branch(name='colo')
+        except NoColocatedBranchSupport:
+            raise TestNotApplicable('no colocated branch support')
+
+        try:
+            result = target_tree.branch.controldir.push_branch(
+                tree.branch, name='colo')
+        except NoColocatedBranchSupport:
+            raise TestNotApplicable('no colocated branch support')
+        target_branch = target_tree.branch.controldir.open_branch(
+            name='colo')
+        self.assertEqual(tree.branch, result.source_branch)
+        self.assertEqual(target_tree.last_revision(), rev_o)
+        self.assertEqual(target_tree.branch.last_revision(), rev_o)
+        self.assertEqual(target_branch.base, result.target_branch.base)
+        self.assertEqual(target_branch.base, tree.branch.get_push_location())
+
     def test_push_no_such_revision(self):
         tree, rev_1 = self.create_simple_tree()
         dir = self.make_repository('dir').controldir
@@ -75,7 +129,7 @@ class TestPush(TestCaseWithControlDir):
         branch.get_config().set_user_option('branch.fetch_tags', True)
         result = dir.push_branch(branch)
         self.assertEqual(
-            set([rev_1, rev_2, rev_3]),
+            {rev_1, rev_2, rev_3},
             set(result.source_branch.repository.all_revision_ids()))
         self.assertEqual(
             {'atag': rev_2}, result.source_branch.tags.get_tag_dict())

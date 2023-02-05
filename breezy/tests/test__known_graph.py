@@ -337,7 +337,7 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
         # We should have an entry in sort_result for every entry present in the
         # graph.
         self.assertEqual(len(ancestry), len(sort_result))
-        node_idx = dict((node, idx) for idx, node in enumerate(sort_result))
+        node_idx = {node: idx for idx, node in enumerate(sort_result)}
         for node in sort_result:
             parents = ancestry[node]
             for parent in parents:

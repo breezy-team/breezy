@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+from io import BytesIO
 
 from . import (
     osutils,
@@ -23,15 +22,10 @@ from . import (
     trace,
     )
 from .i18n import gettext
-from .sixish import (
-    BytesIO,
-    viewitems,
-    viewvalues,
-    )
 from .ui import ui_factory
 
 
-class RenameMap(object):
+class RenameMap:
     """Determine a mapping of renames."""
 
     def __init__(self, tree):
@@ -107,7 +101,7 @@ class RenameMap(object):
             for num, path in enumerate(paths):
                 task.update(gettext('Determining hash hits'), num, len(paths))
                 hits = self.hitcounts(self.tree.get_file_lines(path))
-                all_hits.extend((v, path, k) for k, v in viewitems(hits))
+                all_hits.extend((v, path, k) for k, v in hits.items())
         return all_hits
 
     def file_match(self, paths):
@@ -146,7 +140,7 @@ class RenameMap(object):
                     break
                 required_parents.setdefault(path, []).append(child)
         require_ids = {}
-        for parent, children in viewitems(required_parents):
+        for parent, children in required_parents.items():
             child_file_ids = set()
             for child in children:
                 file_id = matches.get(child)
@@ -163,8 +157,8 @@ class RenameMap(object):
         parent directories.
         """
         all_hits = []
-        for file_id, file_id_children in viewitems(missing_parents):
-            for path, path_children in viewitems(required_parents):
+        for file_id, file_id_children in missing_parents.items():
+            for path, path_children in required_parents.items():
                 hits = len(path_children.intersection(file_id_children))
                 if hits > 0:
                     all_hits.append((hits, path, file_id))
@@ -239,9 +233,9 @@ class RenameMap(object):
 
     def _make_inventory_delta(self, matches):
         delta = []
-        file_id_matches = dict((f, p) for p, f in viewitems(matches))
+        file_id_matches = {f: p for p, f in matches.items()}
         file_id_query = []
-        for f in viewvalues(matches):
+        for f in matches.values():
             try:
                 file_id_query.append(self.tree.id2path(f))
             except errors.NoSuchId:

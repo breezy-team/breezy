@@ -46,7 +46,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
     # granularity as needed.
 
     def setUp(self):
-        super(TestBreakLock, self).setUp()
+        super().setUp()
         self.build_tree(
             ['master-repo/',
              'master-repo/master-branch/',
@@ -59,7 +59,11 @@ class TestBreakLock(tests.TestCaseWithTransport):
         controldir.ControlDir.create('repo').create_repository()
         local_branch = controldir.ControlDir.create_branch_convenience(
             'repo/branch')
-        local_branch.bind(self.master_branch)
+        try:
+            local_branch.bind(self.master_branch)
+        except branch.BindingUnsupported:
+            raise tests.TestNotApplicable(
+                'default format does not support bound branches')
         checkoutdir = controldir.ControlDir.create('checkout')
         checkoutdir.set_branch_reference(local_branch)
         self.wt = checkoutdir.create_workingtree()
@@ -107,7 +111,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
 class TestConfigBreakLock(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigBreakLock, self).setUp()
+        super().setUp()
         self.config_file_name = './my.conf'
         self.build_tree_contents([(self.config_file_name,
                                    b'[DEFAULT]\none=1\n')])
@@ -123,4 +127,3 @@ class TestConfigBreakLock(tests.TestCaseWithTransport):
                      % osutils.dirname(self.config_file_name),
                      stdin="y\n")
         self.assertRaises(errors.LockBroken, self.config.unlock)
-

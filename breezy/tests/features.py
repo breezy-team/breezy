@@ -17,8 +17,6 @@
 """A collection of commonly used 'Features' to optionally run tests.
 """
 
-from __future__ import absolute_import
-
 import importlib
 import os
 import subprocess
@@ -33,7 +31,7 @@ from .. import (
     )
 
 
-class Feature(object):
+class Feature:
     """An operating system Feature."""
 
     def __init__(self):
@@ -61,28 +59,31 @@ class Feature(object):
         return self.__class__.__name__
 
 
-class _SymlinkFeature(Feature):
+class SymlinkFeature(Feature):
+    """Whether symlinks can be created by the current user."""
+
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
 
     def _probe(self):
-        return osutils.has_symlinks()
+        return osutils.supports_symlinks(self.path)
 
     def feature_name(self):
         return 'symlinks'
 
 
-SymlinkFeature = _SymlinkFeature()
+class HardlinkFeature(Feature):
 
-
-class _HardlinkFeature(Feature):
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
 
     def _probe(self):
-        return osutils.has_hardlinks()
+        return osutils.supports_hardlinks(self.path)
 
     def feature_name(self):
         return 'hardlinks'
-
-
-HardlinkFeature = _HardlinkFeature()
 
 
 class _OsFifoFeature(Feature):
@@ -106,10 +107,10 @@ class _UnicodeFilenameFeature(Feature):
             # single non-unicode encoding. We use the characters
             # - greek small letter alpha (U+03B1) and
             # - braille pattern dots-123456 (U+283F).
-            os.stat(u'\u03b1\u283f')
+            os.stat('\u03b1\u283f')
         except UnicodeEncodeError:
             return False
-        except (IOError, OSError):
+        except OSError:
             # The filesystem allows the Unicode filename but the file doesn't
             # exist.
             return True
@@ -131,7 +132,7 @@ class _CompatabilityThunkFeature(Feature):
 
     def __init__(self, dep_version, module, name,
                  replacement_name, replacement_module=None):
-        super(_CompatabilityThunkFeature, self).__init__()
+        super().__init__()
         self._module = module
         if replacement_module is None:
             replacement_module = module
@@ -146,7 +147,7 @@ class _CompatabilityThunkFeature(Feature):
             from breezy import pyutils
             depr_msg = self._dep_version % ('%s.%s'
                                             % (self._module, self._name))
-            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
+            use_msg = ' Use {}.{} instead.'.format(self._replacement_module,
                                                self._replacement_name)
             symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning,
                                    stacklevel=5)
@@ -170,7 +171,7 @@ class ModuleAvailableFeature(Feature):
     """
 
     def __init__(self, module_name, ignore_warnings=None):
-        super(ModuleAvailableFeature, self).__init__()
+        super().__init__()
         self.module_name = module_name
         if ignore_warnings is None:
             ignore_warnings = ()
@@ -213,7 +214,7 @@ class PluginLoadedFeature(Feature):
     """
 
     def __init__(self, plugin_name):
-        super(PluginLoadedFeature, self).__init__()
+        super().__init__()
         self.plugin_name = plugin_name
 
     def _probe(self):
@@ -231,16 +232,13 @@ class PluginLoadedFeature(Feature):
 
 class _HTTPSServerFeature(Feature):
     """Some tests want an https Server, check if one is available.
-
-    Right now, the only way this is available is under python2.6 which provides
-    an ssl module.
     """
 
     def _probe(self):
         try:
             import ssl  # noqa: F401
             return True
-        except ImportError:
+        except ModuleNotFoundError:
             return False
 
     def feature_name(self):
@@ -266,7 +264,7 @@ class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 
     def _probe(self):
-        if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
+        if sys.getfilesystemencoding().upper() in ('UTF-8', 'UTF8'):
             return True
         return False
 
@@ -337,12 +335,12 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         from breezy import tests
 
         if tests.TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            root = tempfile.mkdtemp(prefix='testbzr-', suffix='.tmp')
             tests.TestCaseWithMemoryTransport.TEST_ROOT = root
         else:
             root = tests.TestCaseWithMemoryTransport.TEST_ROOT
-        tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-                               dir=root)
+        tdir = tempfile.mkdtemp(prefix='case-sensitive-probe-', suffix='',
+                                dir=root)
         name_a = osutils.pathjoin(tdir, 'a')
         name_A = osutils.pathjoin(tdir, 'A')
         os.mkdir(name_a)
@@ -405,7 +403,7 @@ testtools = ModuleAvailableFeature('testtools')
 flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
 lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
-pkg_resources_feature = ModuleAvailableFeature('pkg_resources')
+importlib_metadata_feature = ModuleAvailableFeature('importlib.metadata')
 
 pyinotify = ModuleAvailableFeature('pyinotify')
 
@@ -441,7 +439,7 @@ class ExecutableFeature(Feature):
     """Feature testing whether an executable of a given name is on the PATH."""
 
     def __init__(self, name):
-        super(ExecutableFeature, self).__init__()
+        super().__init__()
         self.name = name
         self._path = None
 
@@ -554,12 +552,12 @@ class _BackslashFilenameFeature(Feature):
 
         try:
             fileno, name = tempfile.mkstemp(prefix='bzr\\prefix')
-        except (IOError, OSError):
+        except OSError:
             return False
         else:
             try:
                 os.stat(name)
-            except (IOError, OSError):
+            except OSError:
                 # mkstemp succeeded but the file wasn't actually created
                 return False
             os.close(fileno)
@@ -574,7 +572,7 @@ class PathFeature(Feature):
     """Feature testing whether a particular path exists."""
 
     def __init__(self, path):
-        super(PathFeature, self).__init__()
+        super().__init__()
         self.path = path
 
     def _probe(self):

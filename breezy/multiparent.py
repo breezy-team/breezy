@@ -14,9 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
+from io import (
+    BytesIO,
+    )
 import os
 
 from .lazy_import import lazy_import
@@ -27,7 +28,6 @@ import itertools
 import patiencediff
 
 from breezy import (
-    bencode,
     ui,
     )
 """)
@@ -35,10 +35,6 @@ from . import (
     errors,
     )
 from .i18n import gettext
-from .sixish import (
-    BytesIO,
-    range,
-    )
 
 
 def topo_iter_keys(vf, keys=None):
@@ -84,7 +80,7 @@ def _topo_iter(parents, versions):
         cur = next
 
 
-class MultiParent(object):
+class MultiParent:
     """A multi-parent diff"""
 
     __slots__ = ['hunks']
@@ -189,8 +185,7 @@ class MultiParent(object):
     def to_patch(self):
         """Yield text lines for a patch"""
         for hunk in self.hunks:
-            for line in hunk.to_patch():
-                yield line
+            yield from hunk.to_patch()
 
     def patch_len(self):
         return len(b''.join(self.to_patch()))
@@ -226,7 +221,7 @@ class MultiParent(object):
                 if not (first_char == b'c'):
                     raise AssertionError(first_char)
                 parent, parent_pos, child_pos, num_lines =\
-                    [int(v) for v in cur_line.split(b' ')[1:]]
+                    (int(v) for v in cur_line.split(b' ')[1:])
                 hunks.append(ParentText(parent, parent_pos, child_pos,
                                         num_lines))
         return MultiParent(hunks)
@@ -270,7 +265,7 @@ class MultiParent(object):
         return (isinstance(self.hunks[0], NewText))
 
 
-class NewText(object):
+class NewText:
     """The contents of text that is introduced by this text"""
 
     __slots__ = ['lines']
@@ -288,12 +283,11 @@ class NewText(object):
 
     def to_patch(self):
         yield b'i %d\n' % len(self.lines)
-        for line in self.lines:
-            yield line
+        yield from self.lines
         yield b'\n'
 
 
-class ParentText(object):
+class ParentText:
     """A reference to text present in a parent text"""
 
     __slots__ = ['parent', 'parent_pos', 'child_pos', 'num_lines']
@@ -324,7 +318,7 @@ class ParentText(object):
                % self._as_dict())
 
 
-class BaseVersionedFile(object):
+class BaseVersionedFile:
     """Pseudo-VersionedFile skeleton for MultiParent"""
 
     def __init__(self, snapshot_interval=25, max_snapshots=None):
@@ -599,16 +593,20 @@ class MultiVersionedFile(BaseVersionedFile):
                 raise
 
     def save(self):
-        open(self._filename + '.mpidx', 'wb').write(bencode.bencode(
-            (self._parents, list(self._snapshots), self._diff_offset)))
+        import fastbencode as bencode
+        with open(self._filename + '.mpidx', 'wb') as f:
+            f.write(bencode.bencode(
+                (self._parents, list(self._snapshots), self._diff_offset)))
 
     def load(self):
-        self._parents, snapshots, self._diff_offset = bencode.bdecode(
-            open(self._filename + '.mpidx', 'rb').read())
+        import fastbencode as bencode
+        with open(self._filename + '.mpidx', 'rb') as f:
+            self._parents, snapshots, self._diff_offset = bencode.bdecode(
+                f.read())
         self._snapshots = set(snapshots)
 
 
-class _Reconstructor(object):
+class _Reconstructor:
     """Build a text from the diffs, ancestry graph and cached lines"""
 
     def __init__(self, diffs, lines, parents):

@@ -16,8 +16,6 @@
 
 """XML externalization support."""
 
-from __future__ import absolute_import
-
 # "XML is like violence: if it doesn't solve your problem, you aren't
 # using enough of it." -- various
 
@@ -25,31 +23,17 @@ from __future__ import absolute_import
 # ElementTree bits
 
 import re
+from typing import Dict, Union
 
-try:
-    import xml.etree.cElementTree as elementtree
-    from xml.etree.ElementTree import ParseError
-except ImportError:
-    # Fall back to pure python implementation if C extension is unavailable
-    import xml.etree.ElementTree as elementtree
-    try:
-        from xml.etree.ElementTree import ParseError
-    except ImportError:
-        from xml.parsers.expat import ExpatError as ParseError
-
-(ElementTree, SubElement, Element, fromstringlist, tostringlist, tostring,
- fromstring) = (
-    elementtree.ElementTree, elementtree.SubElement, elementtree.Element,
-    elementtree.fromstringlist, elementtree.tostringlist, elementtree.tostring,
-    elementtree.fromstring)
-
+from xml.etree.ElementTree import (
+    ElementTree, SubElement, Element,
+    fromstringlist, tostringlist, tostring,
+    fromstring, ParseError)
 
 from .. import (
-    cache_utf8,
     errors,
     lazy_regex,
     )
-from ..sixish import text_type, bytesintern
 from . import (
     inventory,
     serializer,
@@ -123,13 +107,13 @@ def escape_invalid_chars(message):
     # represented in well-formed XML; escape characters that
     # aren't listed in the XML specification
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
-    return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+    return re.subn('[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
                    lambda match: match.group(0).encode(
                        'unicode_escape').decode('ascii'),
                    message)
 
 
-def get_utf8_or_ascii(a_str, _encode_utf8=cache_utf8.encode):
+def get_utf8_or_ascii(a_str):
     """Return a cached version of the string.
 
     cElementTree will return a plain string if the XML is plain ascii. It only
@@ -144,14 +128,14 @@ def get_utf8_or_ascii(a_str, _encode_utf8=cache_utf8.encode):
     # This is fairly optimized because we know what cElementTree does, this is
     # not meant as a generic function for all cases. Because it is possible for
     # an 8-bit string to not be ascii or valid utf8.
-    if a_str.__class__ is text_type:
-        return _encode_utf8(a_str)
+    if a_str.__class__ is str:
+        return a_str.encode('utf-8')
     else:
-        return bytesintern(a_str)
+        return a_str
 
 
 _utf8_re = lazy_regex.lazy_compile(b'[&<>\'\"]|[\x80-\xff]+')
-_unicode_re = lazy_regex.lazy_compile(u'[&<>\'\"\u0080-\uffff]')
+_unicode_re = lazy_regex.lazy_compile('[&<>\'\"\u0080-\uffff]')
 
 
 _xml_escape_map = {
@@ -197,7 +181,7 @@ def _utf8_escape_replace(match, _map=_xml_escape_map):
                         for uni_chr in match.group().decode('utf8'))
 
 
-_to_escaped_map = {}
+_to_escaped_map: Dict[Union[bytes, str], str] = {}
 
 
 def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
@@ -206,10 +190,10 @@ def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_or_utf8_str)
     if text is None:
-        if isinstance(unicode_or_utf8_str, text_type):
+        if isinstance(unicode_or_utf8_str, str):
             # The alternative policy is to do a regular UTF8 encoding
             # and then escape only XML meta characters.
-            # Performance is equivalent once you use cache_utf8. *However*
+            # Performance is equivalent once you use codecs. *However*
             # this makes the serialized texts incompatible with old versions
             # of bzr. So no net gain. (Perhaps the read code would handle utf8
             # better than entity escapes, but cElementTree seems to do just
@@ -348,11 +332,10 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
     format = elt.get('format')
     if ((format is None and format_num is not None) or
             format.encode() != format_num):
-        raise serializer.UnexpectedInventoryFormat('Invalid format version %r'
-                                               % format)
+        raise serializer.UnexpectedInventoryFormat('Invalid format version %r' % format)
     revision_id = elt.get('revision_id')
     if revision_id is not None:
-        revision_id = cache_utf8.encode(revision_id)
+        revision_id = revision_id.encode('utf-8')
     inv = inventory.Inventory(root_id=None, revision_id=revision_id)
     for e in elt:
         ie = unpack_entry(e, entry_cache, return_from_cache)

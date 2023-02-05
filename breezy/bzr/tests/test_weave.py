@@ -21,15 +21,13 @@
 
 """test suite for weave algorithm"""
 
+from io import BytesIO
 from pprint import pformat
 
 from ... import (
     errors,
     )
 from ...osutils import sha_string
-from ...sixish import (
-    BytesIO,
-    )
 from . import TestCase, TestCaseInTempDir
 from ..weave import Weave, WeaveFormatError, WeaveInvalidChecksum
 from ..weavefile import write_weave, read_weave
@@ -533,7 +531,7 @@ class DivergedIncludes(TestBase):
                           b"alternative second line"])
 
         self.assertEqual(set(k.get_ancestry([b'2'])),
-                         set([b'0', b'2']))
+                         {b'0', b'2'})
 
 
 class ReplaceLine(TestBase):
@@ -582,7 +580,7 @@ class Merge(TestBase):
                           ])
 
         self.assertEqual(set(k.get_ancestry([b'merge'])),
-                         set([b'text0', b'text1', b'text2', b'merge']))
+                         {b'text0', b'text1', b'text2', b'merge'})
 
         self.log('k._weave=' + pformat(k._weave))
 
@@ -675,7 +673,7 @@ class Khayyam(TestBase):
 class JoinWeavesTests(TestBase):
 
     def setUp(self):
-        super(JoinWeavesTests, self).setUp()
+        super().setUp()
         self.weave1 = Weave()
         self.lines1 = [b'hello\n']
         self.lines3 = [b'hello\n', b'cruel\n', b'world\n']

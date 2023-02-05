@@ -16,8 +16,6 @@
 
 """Helper functions for adding files to working trees."""
 
-from __future__ import absolute_import
-
 import sys
 import os
 
@@ -29,7 +27,7 @@ from . import (
 from .i18n import gettext
 
 
-class AddAction(object):
+class AddAction:
     """A class which defines what action to take when adding a file."""
 
     def __init__(self, to_file=None, should_print=None):
@@ -102,7 +100,7 @@ class AddFromBaseAction(AddAction):
     """This class will try to extract file ids from another tree."""
 
     def __init__(self, base_tree, base_path, to_file=None, should_print=None):
-        super(AddFromBaseAction, self).__init__(to_file=to_file,
+        super().__init__(to_file=to_file,
                                                 should_print=should_print)
         self.base_tree = base_tree
         self.base_path = base_path
@@ -118,7 +116,7 @@ class AddFromBaseAction(AddAction):
         else:
             # we aren't doing anything special, so let the default
             # reporter happen
-            file_id = super(AddFromBaseAction, self).__call__(
+            file_id = super().__call__(
                 inv, parent_ie, path, kind)
         return file_id
 

@@ -16,8 +16,6 @@
 
 """A generator which creates a rio stanza of the current tree info"""
 
-from __future__ import absolute_import
-
 from breezy import (
     errors,
     hooks,
@@ -25,7 +23,7 @@ from breezy import (
 from breezy.revision import (
     NULL_REVISION,
     )
-from breezy.rio import RioWriter, Stanza
+from breezy.bzr.rio import RioWriter, Stanza
 
 from breezy.version_info_formats import (
     create_date_str,
@@ -75,23 +73,23 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 log.add('id', revision_id)
                 log.add('message', message)
                 log.add('date', create_date_str(timestamp, timezone))
-            info.add('revisions', log.to_unicode())
+            info.add('revisions', log)
 
         if self._include_file_revs:
             files = Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add('path', path)
                 files.add('revision', self._file_revisions[path])
-            info.add('file-revisions', files.to_unicode())
+            info.add('file-revisions', files)
 
-        to_file.write(info.to_unicode())
+        to_file.write(info.to_string())
 
 
 class RioVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for rio-formatted version-info output."""
 
     def __init__(self):
-        super(RioVersionInfoBuilderHooks, self).__init__(
+        super().__init__(
             "breezy.version_info_formats.format_rio", "RioVersionInfoBuilder.hooks")
         self.add_hook('revision',
                       "Invoked when adding information about a revision to the"
@@ -99,4 +97,4 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
                       " revision object and a RIO stanza.", (1, 15))
 
 
-RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()
+RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()  # type: ignore

@@ -22,8 +22,7 @@ from ... import (
 from .. import (
     chk_map,
     )
-from ...sixish import int2byte
-from ...static_tuple import StaticTuple
+from ..static_tuple import StaticTuple
 stuple = StaticTuple
 
 
@@ -42,7 +41,7 @@ class TestSearchKeys(tests.TestCase):
 
     def assertSearchKey255(self, expected, key):
         actual = self.module._search_key_255(key)
-        self.assertEqual(expected, actual, 'actual: %r' % (actual,))
+        self.assertEqual(expected, actual, 'actual: {!r}'.format(actual))
 
     def test_simple_16(self):
         self.assertSearchKey16(b'8C736521', stuple(b'foo',))
@@ -65,9 +64,9 @@ class TestSearchKeys(tests.TestCase):
         chars_used = set()
         for char_in in range(256):
             search_key = self.module._search_key_255(
-                stuple(int2byte(char_in),))
-            chars_used.update(map(int2byte, bytearray(search_key)))
-        all_chars = {int2byte(x) for x in range(256)}
+                stuple(bytes([char_in]),))
+            chars_used.update([bytes([x]) for x in search_key])
+        all_chars = {bytes([x]) for x in range(256)}
         unused_chars = all_chars.symmetric_difference(chars_used)
         self.assertEqual({b'\n'}, unused_chars)
 

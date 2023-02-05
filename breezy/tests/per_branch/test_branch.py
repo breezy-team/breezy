@@ -38,9 +38,6 @@ from breezy import (
 from breezy.bzr import (
     remote,
     )
-from breezy.sixish import (
-    text_type,
-    )
 from breezy.tests import (
     per_branch,
     )
@@ -278,8 +275,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         t.move('bzr.ab', 'integration')
         branch = _mod_branch.Branch.open(self.get_url('integration'))
         self.assertEqual(branch.nick, "Aaron's branch")
-        branch.nick = u"\u1234"
-        self.assertEqual(branch.nick, u"\u1234")
+        branch.nick = "\u1234"
+        self.assertEqual(branch.nick, "\u1234")
 
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
@@ -290,14 +287,14 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch = self.make_branch('bzr.dev')
         # An implicit nick name is set; what it is exactly depends on the
         # format.
-        self.assertIsInstance(branch.nick, text_type)
+        self.assertIsInstance(branch.nick, str)
         # Set the branch nick explicitly.
-        branch.nick = u"Aaron's branch"
+        branch.nick = "Aaron's branch"
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch".
-        self.assertEqual(branch.nick, u"Aaron's branch")
-        branch.nick = u"\u1234"
-        self.assertEqual(branch.nick, u"\u1234")
+        self.assertEqual(branch.nick, "Aaron's branch")
+        branch.nick = "\u1234"
+        self.assertEqual(branch.nick, "\u1234")
 
     def test_commit_nicks(self):
         """Nicknames are committed to the revision"""
@@ -544,7 +541,7 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
     """
 
     def setUp(self):
-        super(ChrootedTests, self).setUp()
+        super().setUp()
         if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
@@ -567,7 +564,7 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
         self.assertEqual('g/p/q', relpath)
 
 
-class InstrumentedTransaction(object):
+class InstrumentedTransaction:
 
     def finish(self):
         self.calls.append('finish')
@@ -576,7 +573,7 @@ class InstrumentedTransaction(object):
         self.calls = []
 
 
-class TestDecorator(object):
+class TestDecorator:
 
     def __init__(self):
         self._calls = []
@@ -609,7 +606,7 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
     def test_get_push_location_exact(self):
         b = self.get_branch()
         config.LocationConfig.from_string(
-            '[%s]\npush_location=foo\n' % (b.base,), b.base, save=True)
+            '[{}]\npush_location=foo\n'.format(b.base), b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
@@ -720,7 +717,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch2 = self.make_branch('2')
         try:
             branch.bind(branch2)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.assertTrue(branch.unbind())
         self.assertFalse(branch.unbind())
@@ -748,7 +745,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         tree_b.commit('rev2b')
         try:
             tree_b.branch.bind(tree_a.branch)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
 
     def test_unbind_clears_cached_master_branch(self):
@@ -757,7 +754,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -771,7 +768,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -787,7 +784,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         branch = self.make_branch('branch')
         try:
             branch.bind(master1)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Format does not support binding')
         self.addCleanup(branch.lock_write().unlock)
         self.assertNotEqual(None, branch.get_master_branch())
@@ -855,7 +852,7 @@ class TestBranchControlComponent(per_branch.TestCaseWithBranch):
         self.assertEqual(br.control_url, br.control_transport.base)
 
 
-class FakeShelfCreator(object):
+class FakeShelfCreator:
 
     def __init__(self, branch):
         self.branch = branch
@@ -878,7 +875,7 @@ def skip_if_storing_uncommitted_unsupported():
 class TestUncommittedChanges(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestUncommittedChanges, self).setUp()
+        super().setUp()
         if not self.branch_format.supports_store_uncommitted():
             raise tests.TestNotApplicable(
                 'Branch format does not support store_uncommitted')
@@ -886,7 +883,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
     def bind(self, branch, master):
         try:
             branch.bind(master)
-        except errors.UpgradeRequired:
+        except _mod_branch.BindingUnsupported:
             raise tests.TestNotApplicable('Branch cannot be bound.')
 
     def test_store_uncommitted(self):

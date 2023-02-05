@@ -24,8 +24,6 @@ This documentation documents the current best practice in using the library.
 For details on specific apis, see pydoc on the api, or read the source.
 """
 
-from __future__ import absolute_import
-
 import doctest
 import os
 
@@ -33,7 +31,7 @@ from breezy import tests
 
 
 def make_new_test_id(test):
-    new_id = '%s.DocFileTest(%s)' % (__name__, test.id())
+    new_id = '{}.DocFileTest({})'.format(__name__, test.id())
     return lambda: new_id
 
 

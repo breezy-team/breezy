@@ -59,7 +59,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
     """A test case base class that provides a sftp server on localhost."""
 
     def setUp(self):
-        super(TestCaseWithSFTPServer, self).setUp()
+        super().setUp()
         self.requireFeature(features.paramiko)
         set_test_transport_to_sftp(self)
 
@@ -135,7 +135,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
     def setUp(self):
         # Only SFTPHomeDirServer is tested here
         self._get_remote_is_absolute = False
-        super(SFTPTransportTestRelativeRoot, self).setUp()
+        super().setUp()
 
     def test__remote_path_relative_root(self):
         # relative paths are preserved
@@ -149,7 +149,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
 class SFTPNonServerTest(TestCase):
 
     def setUp(self):
-        super(SFTPNonServerTest, self).setUp()
+        super().setUp()
         self.requireFeature(features.paramiko)
 
     def test_parse_url_with_home_dir(self):
@@ -195,19 +195,19 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         t = controldir.ControlDir.create_standalone_workingtree('a')
         b = t.branch
         t.add('foo')
-        t.commit('foo', rev_id=b'a1')
+        revid1 = t.commit('foo')
 
         b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), b'a1')
+        self.assertEqual(b2.last_revision(), revid1)
 
-        with open('a/foo', 'wt') as f:
+        with open('a/foo', 'w') as f:
             f.write('something new in foo\n')
-        t.commit('new', rev_id=b'a2')
+        revid2 = t.commit('new')
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), b'a2')
+        self.assertEqual(b2.last_revision(), revid2)
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
@@ -226,7 +226,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
     """
 
     def setUp(self):
-        super(SSHVendorConnection, self).setUp()
+        super().setUp()
 
         def create_server():
             """Just a wrapper so that when created, it will set _vendor"""
@@ -272,7 +272,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def setUp(self):
         self.requireFeature(features.paramiko)
-        super(SSHVendorBadConnection, self).setUp()
+        super().setUp()
 
         # open a random port, so we know nobody else is using it
         # but don't actually listen on the port.
@@ -334,7 +334,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         self.assertTrue(regular_time < 0.5)
 
 
-class FakeSocket(object):
+class FakeSocket:
     """Fake socket object used to test the SocketDelay wrapper without
     using a real socket.
     """
@@ -364,7 +364,7 @@ class FakeSocket(object):
 class TestSocketDelay(TestCase):
 
     def setUp(self):
-        super(TestSocketDelay, self).setUp()
+        super().setUp()
         self.requireFeature(features.paramiko)
 
     def test_delay(self):
@@ -406,7 +406,7 @@ class TestSocketDelay(TestCase):
         self.assertAlmostEqual(t2 - t1, 100 + 7)
 
 
-class ReadvFile(object):
+class ReadvFile:
     """An object that acts like Paramiko's SFTPFile when readv() is used"""
 
     def __init__(self, data):

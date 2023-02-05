@@ -52,7 +52,7 @@ class SampleExtraComponentFormat(controldir.ControlComponentFormat):
 class TestMetaComponentFormatRegistry(tests.TestCase):
 
     def setUp(self):
-        super(TestMetaComponentFormatRegistry, self).setUp()
+        super().setUp()
         self.registry = controldir.ControlComponentFormatRegistry()
 
     def test_register_unregister_format(self):
@@ -101,7 +101,7 @@ class TestProber(tests.TestCaseWithTransport):
         for prober_cls in controldir.ControlDirFormat._probers]
 
     def setUp(self):
-        super(TestProber, self).setUp()
+        super().setUp()
         self.prober = self.prober_cls()
 
     def test_priority(self):

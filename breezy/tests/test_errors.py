@@ -28,10 +28,6 @@ from .. import (
     tests,
     urlutils,
     )
-from ..sixish import (
-    PY3,
-    text_type,
-    )
 
 
 class TestErrors(tests.TestCase):
@@ -49,23 +45,13 @@ class TestErrors(tests.TestCase):
             init = getattr(c, '__init__', None)
             fmt = getattr(c, '_fmt', None)
             if init:
-                if PY3:
-                    args = inspect.getfullargspec(init)[0]
-                else:
-                    args = inspect.getargspec(init)[0]
+                args = inspect.getfullargspec(init)[0]
                 self.assertFalse('message' in args,
                                  ('Argument name "message" not allowed for '
                                   '"errors.%s.__init__"' % c.__name__))
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(True, ('"message" not allowed in '
                                         '"errors.%s._fmt"' % c.__name__))
-
-    def test_bad_filename_encoding(self):
-        error = errors.BadFilenameEncoding(b'bad/filen\xe5me', 'UTF-8')
-        self.assertContainsRe(
-            str(error),
-            "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
-            " filesystem encoding UTF-8$")
 
     def test_duplicate_help_prefix(self):
         error = errors.DuplicateHelpPrefix('foo')
@@ -180,20 +166,13 @@ class TestErrors(tests.TestCase):
                              str(error))
         self.assertFalse(error.internal_error)
 
-    def test_too_many_concurrent_requests(self):
-        error = errors.TooManyConcurrentRequests("a medium")
-        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
-                             "request limit. Be sure to finish_writing and finish_reading on "
-                             "the currently open request.",
-                             str(error))
-
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
         self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
                              str(error))
 
     def test_unstackable_repository_format(self):
-        format = u'foo'
+        format = 'foo'
         url = "/foo"
         error = errors.UnstackableRepositoryFormat(format, url)
         self.assertEqualDiff(
@@ -209,7 +188,7 @@ class TestErrors(tests.TestCase):
 
     def test_read_error(self):
         # a unicode path to check that %r is being used.
-        path = u'a path'
+        path = 'a path'
         error = errors.ReadError(path)
         self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
 
@@ -283,7 +262,7 @@ class TestErrors(tests.TestCase):
         # An exception object can be passed rather than a string
         orig_error = ValueError('bad value')
         self.assertSocketConnectionError(
-            'Failed to connect to ahost; %s' % (str(orig_error),),
+            'Failed to connect to ahost; {}'.format(str(orig_error)),
             host='ahost', orig_error=orig_error)
 
         # And we can supply a custom failure message
@@ -307,47 +286,6 @@ class TestErrors(tests.TestCase):
             "Could not understand response from smart server: ('not yes',)",
             str(e))
 
-    def test_unknown_container_format(self):
-        """Test the formatting of UnknownContainerFormatError."""
-        e = errors.UnknownContainerFormatError('bad format string')
-        self.assertEqual(
-            "Unrecognised container format: 'bad format string'",
-            str(e))
-
-    def test_unexpected_end_of_container(self):
-        """Test the formatting of UnexpectedEndOfContainerError."""
-        e = errors.UnexpectedEndOfContainerError()
-        self.assertEqual(
-            "Unexpected end of container stream", str(e))
-
-    def test_unknown_record_type(self):
-        """Test the formatting of UnknownRecordTypeError."""
-        e = errors.UnknownRecordTypeError("X")
-        self.assertEqual(
-            "Unknown record type: 'X'",
-            str(e))
-
-    def test_invalid_record(self):
-        """Test the formatting of InvalidRecordError."""
-        e = errors.InvalidRecordError("xxx")
-        self.assertEqual(
-            "Invalid record: xxx",
-            str(e))
-
-    def test_container_has_excess_data(self):
-        """Test the formatting of ContainerHasExcessDataError."""
-        e = errors.ContainerHasExcessDataError("excess bytes")
-        self.assertEqual(
-            "Container has data after end marker: 'excess bytes'",
-            str(e))
-
-    def test_duplicate_record_name_error(self):
-        """Test the formatting of DuplicateRecordNameError."""
-        e = errors.DuplicateRecordNameError(b"n\xc3\xa5me")
-        self.assertEqual(
-            u"Container has multiple records with the same name: n\xe5me",
-            text_type(e))
-
     def test_check_error(self):
         e = errors.BzrCheckError('example check failure')
         self.assertEqual(
@@ -357,7 +295,7 @@ class TestErrors(tests.TestCase):
 
     def test_repository_data_stream_error(self):
         """Test the formatting of RepositoryDataStreamError."""
-        e = errors.RepositoryDataStreamError(u"my reason")
+        e = errors.RepositoryDataStreamError("my reason")
         self.assertEqual(
             "Corrupt or incompatible data stream: my reason", str(e))
 
@@ -387,37 +325,16 @@ class TestErrors(tests.TestCase):
         self.assertEqual("Unknown foo format: 'bar'", str(err))
 
     def test_tip_change_rejected(self):
-        err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
+        err = errors.TipChangeRejected('Unicode message\N{INTERROBANG}')
         self.assertEqual(
-            u'Tip change rejected: Unicode message\N{INTERROBANG}',
-            text_type(err))
+            'Tip change rejected: Unicode message\N{INTERROBANG}',
+            str(err))
 
     def test_error_from_smart_server(self):
         error_tuple = ('error', 'tuple')
         err = errors.ErrorFromSmartServer(error_tuple)
         self.assertEqual(
             "Error received from smart server: ('error', 'tuple')", str(err))
-
-    def test_untranslateable_error_from_smart_server(self):
-        error_tuple = ('error', 'tuple')
-        orig_err = errors.ErrorFromSmartServer(error_tuple)
-        err = errors.UnknownErrorFromSmartServer(orig_err)
-        self.assertEqual(
-            "Server sent an unexpected error: ('error', 'tuple')", str(err))
-
-    def test_smart_message_handler_error(self):
-        # Make an exc_info tuple.
-        try:
-            raise Exception("example error")
-        except Exception:
-            err = errors.SmartMessageHandlerError(sys.exc_info())
-        # GZ 2010-11-08: Should not store exc_info in exception instances.
-        try:
-            self.assertStartsWith(
-                str(err), "The message handler raised an exception:\n")
-            self.assertEndsWith(str(err), "Exception: example error\n")
-        finally:
-            del err
 
     def test_unresumable_write_group(self):
         repo = "dummy repo"
@@ -439,7 +356,7 @@ class TestErrors(tests.TestCase):
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_bzrdir_with_recursive_not_branch_error(self):
-        class FakeBzrDir(object):
+        class FakeBzrDir:
             def open_repository(self):
                 # str() on the NotBranchError will trigger a call to this,
                 # which in turn will another, identical NotBranchError.
@@ -452,14 +369,6 @@ class TestErrors(tests.TestCase):
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
                'Please use `brz unbind` to fix.')
         self.assertEqualDiff(msg, str(error))
-
-    def test_retry_with_new_packs(self):
-        fake_exc_info = ('{exc type}', '{exc value}', '{exc traceback}')
-        error = errors.RetryWithNewPacks(
-            '{context}', reload_occurred=False, exc_info=fake_exc_info)
-        self.assertEqual(
-            'Pack files have changed, reload and retry. context: '
-            '{context} {exc value}', str(error))
 
 
 class PassThroughError(errors.BzrError):
@@ -482,17 +391,14 @@ class ErrorWithNoFormat(errors.BzrError):
 class TestErrorFormatting(tests.TestCase):
 
     def test_always_str(self):
-        e = PassThroughError(u'\xb5', 'bar')
+        e = PassThroughError('\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
         # In Python 2 str(foo) *must* return a real byte string
         # not a Unicode string. The following line would raise a
         # Unicode error, because it tries to call str() on the string
         # returned from e.__str__(), and it has non ascii characters
         s = str(e)
-        if PY3:
-            self.assertEqual('Pass through \xb5 and bar', s)
-        else:
-            self.assertEqual('Pass through \xc2\xb5 and bar', s)
+        self.assertEqual('Pass through \xb5 and bar', s)
 
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')
@@ -530,8 +436,8 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
         dir = controldir.ControlDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1,
-                            str(error).find((dir.transport.clone('..').base)))
-        self.assertEqual(-1, str(error).find((dir.transport.base)))
+                            str(error).find(dir.transport.clone('..').base))
+        self.assertEqual(-1, str(error).find(dir.transport.base))
 
     def test_corrupt_repository(self):
         repo = self.make_repository('.')
@@ -555,7 +461,7 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
     def test_not_branch_laziness(self):
         real_bzrdir = self.make_controldir('path')
 
-        class FakeBzrDir(object):
+        class FakeBzrDir:
             def __init__(self):
                 self.calls = []
 

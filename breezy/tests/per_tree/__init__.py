@@ -25,8 +25,9 @@ Specific tests for individual variations are in other places such as:
  - tests/test_workingtree.py
 """
 
+import contextlib
+
 from breezy import (
-    cleanup,
     errors,
     tests,
     transform,
@@ -84,7 +85,7 @@ def preview_tree_post(testcase, tree):
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
     pp = None
-    es = cleanup.ExitStack()
+    es = contextlib.ExitStack()
     testcase.addCleanup(es.close)
     transform._prepare_revert_transform(es, basis, tree, tt, None, False, None,
                                         basis, {})
@@ -246,7 +247,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
                             Note: if you wish to automatically set this
                             parameters depending on underlying system,
                             please use value returned
-                            by breezy.osutils.has_symlinks() function.
+                            by breezy.osutils.supports_symlinks() function.
 
         The returned tree has the following inventory:
             ['',
@@ -266,7 +267,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
                  '1top-dir/',
-                 u'2utf\u1234file',
+                 '2utf\u1234file',
                  '1top-dir/0file-in-1topdir',
                  '1top-dir/1dir-in-1topdir/'
                  ]

@@ -18,7 +18,6 @@
 
 import re
 
-from breezy.sixish import PY3
 from breezy.bzr.tests.test_testament import (
     osutils,
     REV_1_SHORT,
@@ -50,7 +49,7 @@ class TestTestament(TestamentSetup):
         self.assertEqualDiff(out, REV_1_SHORT_STRICT.decode('ascii'))
 
     def test_testament_non_ascii(self):
-        self.wt.commit(u"Non \xe5ssci message")
+        self.wt.commit("Non \xe5ssci message")
         long_out, err = self.run_bzr_raw('testament --long', encoding='utf-8')
         self.assertEqualDiff(err, b'')
         long_out, err = self.run_bzr_raw('testament --long', encoding='ascii')

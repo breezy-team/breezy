@@ -1,5 +1,4 @@
 # Copyright (C) 2010-2018 Jelmer Vernooij <jelmer@jelmer.uk>
-# -*- encoding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,8 +16,6 @@
 
 
 """Tests for roundtripping text parsing."""
-
-from __future__ import absolute_import
 
 from ...tests import TestCase
 

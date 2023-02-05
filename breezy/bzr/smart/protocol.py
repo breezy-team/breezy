@@ -18,20 +18,16 @@
 client and server.
 """
 
-from __future__ import absolute_import
 
-try:
-    from collections.abc import deque
-except ImportError:  # python < 3.7
-    from collections import deque
+from collections import deque
 
+from io import BytesIO
 import struct
 import sys
-try:
-    import _thread
-except ImportError:
-    import thread as _thread
+import _thread
 import time
+
+from fastbencode import bdecode_as_tuple, bencode
 
 import breezy
 from ... import (
@@ -39,14 +35,8 @@ from ... import (
     errors,
     osutils,
     )
-from ...sixish import (
-    BytesIO,
-    reraise,
-)
 from . import message, request
-from ...sixish import text_type
 from ...trace import log_exception_quietly, mutter
-from ...bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -57,6 +47,21 @@ RESPONSE_VERSION_TWO = b'bzr response 2\n'
 
 MESSAGE_VERSION_THREE = b'bzr message 3 (bzr 1.6)\n'
 RESPONSE_VERSION_THREE = REQUEST_VERSION_THREE = MESSAGE_VERSION_THREE
+
+
+class SmartMessageHandlerError(errors.InternalBzrError):
+
+    _fmt = ("The message handler raised an exception:\n"
+            "%(traceback_text)s")
+
+    def __init__(self, exc_info):
+        import traceback
+        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
+        self.exc_type, self.exc_value, self.exc_tb = exc_info
+        self.exc_info = exc_info
+        traceback_strings = traceback.format_exception(
+            self.exc_type, self.exc_value, self.exc_tb)
+        self.traceback_text = ''.join(traceback_strings)
 
 
 def _recv_tuple(from_file):
@@ -75,12 +80,12 @@ def _decode_tuple(req_line):
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
     for arg in args:
-        if isinstance(arg, text_type):
+        if isinstance(arg, str):
             raise TypeError(args)
     return b'\x01'.join(args) + b'\n'
 
 
-class Requester(object):
+class Requester:
     """Abstract base class for an object that can issue requests on a smart
     medium.
     """
@@ -114,7 +119,7 @@ class Requester(object):
         raise NotImplementedError(self.set_headers)
 
 
-class SmartProtocolBase(object):
+class SmartProtocolBase:
     """Methods common to client and server"""
 
     # TODO: this only actually accomodates a single block; possibly should
@@ -178,7 +183,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 raise
             except errors.UnknownSmartMethod as err:
                 protocol_error = errors.SmartProtocolError(
-                    "bad request '%s'" % (err.verb.decode('ascii'),))
+                    "bad request '{}'".format(err.verb.decode('ascii')))
                 failure = request.FailedSmartServerResponse(
                     (b'error', str(protocol_error).encode('utf-8')))
                 self._send_response(failure)
@@ -333,7 +338,7 @@ class _NeedMoreBytes(Exception):
         self.count = count
 
 
-class _StatefulDecoder(object):
+class _StatefulDecoder:
     """Base class for writing state machines to decode byte streams.
 
     Subclasses should provide a self.state_accept attribute that accepts bytes
@@ -461,7 +466,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         elif self.state_accept == self._state_accept_expecting_header:
             return max(0, len('chunked\n') - self._in_buffer_len)
         else:
-            raise AssertionError("Impossible state: %r" % (self.state_accept,))
+            raise AssertionError("Impossible state: {!r}".format(self.state_accept))
 
     def read_next_chunk(self):
         try:
@@ -498,7 +503,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             self.state_accept = self._state_accept_expecting_length
         else:
             raise errors.SmartProtocolError(
-                'Bad chunked body header: "%s"' % (prefix,))
+                'Bad chunked body header: "{}"'.format(prefix))
 
     def _state_accept_expecting_length(self):
         prefix = self._extract_line()
@@ -810,7 +815,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         elif resp == (b'ok', b'2'):
             return 2
         else:
-            raise errors.SmartProtocolError("bad response %r" % (resp,))
+            raise errors.SmartProtocolError("bad response {!r}".format(resp))
 
     def _write_args(self, args):
         self._write_protocol_version()
@@ -923,7 +928,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             _StatefulDecoder.accept_bytes(self, bytes)
         except KeyboardInterrupt:
             raise
-        except errors.SmartMessageHandlerError as exception:
+        except SmartMessageHandlerError as exception:
             # We do *not* set self.decoding_failed here.  The message handler
             # has raised an error, but the decoder is still able to parse bytes
             # and determine when this message ends.
@@ -973,7 +978,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             decoded = bdecode_as_tuple(prefixed_bytes)
         except ValueError:
             raise errors.SmartProtocolError(
-                'Bytes %r not bencoded' % (prefixed_bytes,))
+                'Bytes {!r} not bencoded'.format(prefixed_bytes))
         return decoded
 
     def _extract_single_byte(self):
@@ -1010,12 +1015,12 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         decoded = self._extract_prefixed_bencoded_data()
         if not isinstance(decoded, dict):
             raise errors.SmartProtocolError(
-                'Header object %r is not a dict' % (decoded,))
+                'Header object {!r} is not a dict'.format(decoded))
         self.state_accept = self._state_accept_expecting_message_part
         try:
             self.message_handler.headers_received(decoded)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_message_part(self):
         message_part_kind = self._extract_single_byte()
@@ -1029,7 +1034,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             self.done()
         else:
             raise errors.SmartProtocolError(
-                'Bad message kind byte: %r' % (message_part_kind,))
+                'Bad message kind byte: {!r}'.format(message_part_kind))
 
     def _state_accept_expecting_one_byte(self):
         byte = self._extract_single_byte()
@@ -1037,7 +1042,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.byte_part_received(byte)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_bytes(self):
         # XXX: this should not buffer whole message part, but instead deliver
@@ -1047,7 +1052,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.bytes_part_received(prefixed_bytes)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_expecting_structure(self):
         structure = self._extract_prefixed_bencoded_data()
@@ -1055,7 +1060,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.structure_part_received(structure)
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def done(self):
         self.unused_data = self._get_in_buffer()
@@ -1064,7 +1069,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
         try:
             self.message_handler.end_received()
         except:
-            raise errors.SmartMessageHandlerError(sys.exc_info())
+            raise SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_reading_unused(self):
         self.unused_data += self._get_in_buffer()
@@ -1086,7 +1091,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
                 raise AssertionError("don't know how many bytes are expected!")
 
 
-class _ProtocolThreeEncoder(object):
+class _ProtocolThreeEncoder:
 
     response_marker = request_marker = MESSAGE_VERSION_THREE
     BUFFER_SIZE = 1024 * 1024  # 1 MiB buffer before flushing
@@ -1135,7 +1140,7 @@ class _ProtocolThreeEncoder(object):
         self._write_func(b's')
         utf8_args = []
         for arg in args:
-            if isinstance(arg, text_type):
+            if isinstance(arg, str):
                 utf8_args.append(arg.encode('utf8'))
             else:
                 utf8_args.append(arg)
@@ -1393,8 +1398,9 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_structure((b'error',))
                 self._write_end()
                 self._medium_request.finished_writing()
+                (exc_type, exc_val, exc_tb) = exc_info
                 try:
-                    reraise(*exc_info)
+                    raise exc_val
                 finally:
                     del exc_info
             else:

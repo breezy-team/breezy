@@ -27,6 +27,7 @@ from .. import (
     msgeditor,
     osutils,
     trace,
+    transport as _mod_transport,
     )
 from ..msgeditor import (
     make_commit_message_template_encoded,
@@ -59,7 +60,7 @@ class MsgEditorTest(TestCaseWithTransport):
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
         working_tree = self.make_branch_and_tree('.')
-        filename = u'hell\u00d8'
+        filename = 'hell\u00d8'
         try:
             self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
@@ -74,7 +75,7 @@ class MsgEditorTest(TestCaseWithTransport):
         template = msgeditor.make_commit_message_template(working_tree,
                                                           None)
         self.assertEqualDiff(template,
-                             u"""\
+                             """\
 added:
   hell\u00d8
 """)
@@ -102,7 +103,7 @@ added:
         working_tree = self.make_multiple_pending_tree()
         template = msgeditor.make_commit_message_template(working_tree, None)
         self.assertEqualDiff(template,
-                             u"""\
+                             """\
 pending merges:
   Bilbo Baggins 2009-01-29 Feature X finished.
     Bilbo Baggins 2009-01-28 Feature X work.
@@ -116,10 +117,10 @@ pending merges:
                                                         None,
                                                         output_encoding='utf8')
         self.assertEqualDiff(template,
-                             u"""\
+                             """\
 added:
   hell\u00d8
-""".encode("utf8"))
+""".encode())
 
     def test_commit_template_and_diff(self):
         """Test building a commit message template"""
@@ -133,10 +134,10 @@ added:
 @@ -0,0 +1,1 @@
 +contents of hello
 """ in template)
-        self.assertTrue(u"""\
+        self.assertTrue("""\
 added:
   hell\u00d8
-""".encode('utf8') in template)
+""".encode() in template)
 
     def make_do_nothing_editor(self, basename='fed'):
         if sys.platform == "win32":
@@ -183,9 +184,9 @@ if len(sys.argv) == 2:
     with open(fn, 'rb') as f:
         s = f.read()
     with open(fn, 'wb') as f:
-        f.write(%r)
+        f.write({!r})
         f.write(s)
-""" % (message, ))
+""".format(message))
         if sys.platform == "win32":
             # [win32] make batch file and set BRZ_EDITOR
             with open('fed.bat', 'w') as f:
@@ -197,7 +198,8 @@ if len(sys.argv) == 2:
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
             os.chmod('fed.py', 0o755)
-            self.overrideEnv('BRZ_EDITOR', './fed.py')
+            mutter('Setting BRZ_EDITOR to %r', '%s ./fed.py' % sys.executable)
+            self.overrideEnv('BRZ_EDITOR', '%s ./fed.py' % sys.executable)
 
     def test_edit_commit_message_without_infotext(self):
         self.make_uncommitted_tree()
@@ -229,7 +231,7 @@ if len(sys.argv) == 2:
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message(uni_val))
 
-        tmpl = edit_commit_message_encoded(u'\u1234'.encode("utf8"))
+        tmpl = edit_commit_message_encoded('\u1234'.encode())
         self.assertEqual('test message from fed\n', tmpl)
 
     def test_start_message(self):
@@ -251,7 +253,7 @@ if len(sys.argv) == 2:
             editor = 'rm'
         self.overrideEnv('BRZ_EDITOR', editor)
 
-        self.assertRaises((EnvironmentError, errors.NoSuchFile),
+        self.assertRaises((EnvironmentError, _mod_transport.NoSuchFile),
                           msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):

@@ -72,7 +72,8 @@ class TestAtomicFile(TestCaseInTempDir):
         f.write(b'foo\n')
         f.commit()
 
-        contents = open('test', 'rb').read()
+        with open('test', 'rb') as f:
+            contents = f.read()
         if sys.platform == 'win32':
             self.assertEqual(b'foo\r\n', contents)
         else:
@@ -96,9 +97,6 @@ class TestAtomicFile(TestCaseInTempDir):
 
     def test_mode_0664(self):
         self._test_mode(0o664)
-
-    def test_mode_0660(self):
-        self._test_mode(0o660)
 
     def test_mode_0660(self):
         self._test_mode(0o660)

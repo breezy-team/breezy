@@ -23,16 +23,11 @@
 # But those depend on its position within a particular inventory, and
 # it would be nice not to need to hold the backpointer here.
 
-from __future__ import absolute_import
-
 # This should really be an id randomly assigned when the tree is
 # created, but it's not for now.
 ROOT_ID = b"TREE_ROOT"
 
-try:
-    from collections.abc import deque
-except ImportError:  # python < 3.7
-    from collections import deque
+from collections import deque
 
 
 from ..lazy_import import lazy_import
@@ -50,13 +45,16 @@ from .. import (
     osutils,
     trace,
     )
-from ..sixish import (
-    bytesintern,
-    text_type,
-    viewitems,
-    viewvalues,
-    )
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
+
+
+class InvalidEntryName(errors.InternalBzrError):
+
+    _fmt = "Invalid entry name: %(name)s"
+
+    def __init__(self, name):
+        errors.BzrError.__init__(self)
+        self.name = name
 
 
 class DuplicateFileId(errors.BzrError):
@@ -69,7 +67,7 @@ class DuplicateFileId(errors.BzrError):
         self.entry = entry
 
 
-class InventoryEntry(object):
+class InventoryEntry:
     """Description of a versioned file.
 
     An InventoryEntry has the following fields, which are also
@@ -101,30 +99,30 @@ class InventoryEntry(object):
 
     >>> i = Inventory()
     >>> i.path2id('')
-    'TREE_ROOT'
+    b'TREE_ROOT'
     >>> i.add(InventoryDirectory(b'123', 'src', ROOT_ID))
-    InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
-    >>> i.add(InventoryFile(b'2323', 'hello.c', parent_id='123'))
-    InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None)
+    InventoryDirectory(b'123', 'src', parent_id=b'TREE_ROOT', revision=None)
+    >>> i.add(InventoryFile(b'2323', 'hello.c', parent_id=b'123'))
+    InventoryFile(b'2323', 'hello.c', parent_id=b'123', sha1=None, len=None, revision=None)
     >>> shouldbe = {0: '', 1: 'src', 2: 'src/hello.c'}
     >>> for ix, j in enumerate(i.iter_entries()):
-    ...   print (j[0] == shouldbe[ix], j[1])
+    ...   print(j[0] == shouldbe[ix], j[1])
     ...
-    (True, InventoryDirectory('TREE_ROOT', u'', parent_id=None, revision=None))
-    (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
-    (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None))
-    >>> i.add(InventoryFile('2324', 'bye.c', '123'))
-    InventoryFile('2324', 'bye.c', parent_id='123', sha1=None, len=None, revision=None)
-    >>> i.add(InventoryDirectory('2325', 'wibble', '123'))
-    InventoryDirectory('2325', 'wibble', parent_id='123', revision=None)
+    True InventoryDirectory(b'TREE_ROOT', '', parent_id=None, revision=None)
+    True InventoryDirectory(b'123', 'src', parent_id=b'TREE_ROOT', revision=None)
+    True InventoryFile(b'2323', 'hello.c', parent_id=b'123', sha1=None, len=None, revision=None)
+    >>> i.add(InventoryFile(b'2324', 'bye.c', b'123'))
+    InventoryFile(b'2324', 'bye.c', parent_id=b'123', sha1=None, len=None, revision=None)
+    >>> i.add(InventoryDirectory(b'2325', 'wibble', b'123'))
+    InventoryDirectory(b'2325', 'wibble', parent_id=b'123', revision=None)
     >>> i.path2id('src/wibble')
-    '2325'
-    >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
-    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None, revision=None)
-    >>> i.get_entry('2326')
-    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None, revision=None)
+    b'2325'
+    >>> i.add(InventoryFile(b'2326', 'wibble.c', b'2325'))
+    InventoryFile(b'2326', 'wibble.c', parent_id=b'2325', sha1=None, len=None, revision=None)
+    >>> i.get_entry(b'2326')
+    InventoryFile(b'2326', 'wibble.c', parent_id=b'2325', sha1=None, len=None, revision=None)
     >>> for path, entry in i.iter_entries():
-    ...     print path
+    ...     print(path)
     ...
     <BLANKLINE>
     src
@@ -228,13 +226,13 @@ class InventoryEntry(object):
         >>> e.name
         'hello.c'
         >>> e.file_id
-        '123'
+        b'123'
         >>> e = InventoryFile(b'123', 'src/hello.c', ROOT_ID)
         Traceback (most recent call last):
-        InvalidEntryName: Invalid entry name: src/hello.c
+        breezy.bzr.inventory.InvalidEntryName: Invalid entry name: src/hello.c
         """
-        if u'/' in name:
-            raise errors.InvalidEntryName(name=name)
+        if '/' in name:
+            raise InvalidEntryName(name=name)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         self.file_id = file_id
@@ -268,7 +266,7 @@ class InventoryEntry(object):
         if self.parent_id is not None:
             if not inv.has_id(self.parent_id):
                 raise errors.BzrCheckError(
-                    'missing parent {%s} in inventory for revision {%s}' % (
+                    'missing parent {{{}}} in inventory for revision {{{}}}'.format(
                         self.parent_id, rev_id))
         checker._add_entry_to_text_key_references(inv, self)
         self._check(checker, rev_id)
@@ -276,7 +274,7 @@ class InventoryEntry(object):
     def _check(self, checker, rev_id):
         """Check this inventory entry for kind specific errors."""
         checker._report_items.append(
-            'unknown entry kind %r in revision {%s}' % (self.kind, rev_id))
+            'unknown entry kind {!r} in revision {{{}}}'.format(self.kind, rev_id))
 
     def copy(self):
         """Clone this inventory entry."""
@@ -423,11 +421,11 @@ class InventoryDirectory(InventoryEntry):
         return other
 
     def __init__(self, file_id, name, parent_id):
-        super(InventoryDirectory, self).__init__(file_id, name, parent_id)
+        super().__init__(file_id, name, parent_id)
         self.children = {}
 
     def sorted_children(self):
-        return sorted(viewitems(self.children))
+        return sorted(self.children.items())
 
     def kind_character(self):
         """See InventoryEntry.kind_character."""
@@ -442,7 +440,7 @@ class InventoryFile(InventoryEntry):
     kind = 'file'
 
     def __init__(self, file_id, name, parent_id):
-        super(InventoryFile, self).__init__(file_id, name, parent_id)
+        super().__init__(file_id, name, parent_id)
         self.text_sha1 = None
         self.text_size = None
         self.text_id = None
@@ -456,7 +454,7 @@ class InventoryFile(InventoryEntry):
                                  self.text_sha1)
         if self.text_size is None:
             checker._report_items.append(
-                'fileid {%s} in {%s} has None for text_size' % (self.file_id,
+                'fileid {{{}}} in {{{}}} has None for text_size'.format(self.file_id,
                                                                 tree_revision_id))
 
     def copy(self):
@@ -528,7 +526,7 @@ class InventoryFile(InventoryEntry):
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(InventoryFile, self)._unchanged(previous_ie)
+        compatible = super()._unchanged(previous_ie)
         if self.text_sha1 != previous_ie.text_sha1:
             compatible = False
         else:
@@ -548,7 +546,7 @@ class InventoryLink(InventoryEntry):
     kind = 'symlink'
 
     def __init__(self, file_id, name, parent_id):
-        super(InventoryLink, self).__init__(file_id, name, parent_id)
+        super().__init__(file_id, name, parent_id)
         self.symlink_target = None
 
     def _check(self, checker, tree_revision_id):
@@ -610,7 +608,7 @@ class InventoryLink(InventoryEntry):
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(InventoryLink, self)._unchanged(previous_ie)
+        compatible = super()._unchanged(previous_ie)
         if self.symlink_target != previous_ie.symlink_target:
             compatible = False
         return compatible
@@ -643,7 +641,7 @@ class TreeReference(InventoryEntry):
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
-        compatible = super(TreeReference, self)._unchanged(previous_ie)
+        compatible = super()._unchanged(previous_ie)
         if self.reference_revision != previous_ie.reference_revision:
             compatible = False
         return compatible
@@ -653,7 +651,7 @@ class TreeReference(InventoryEntry):
         return '+'
 
 
-class CommonInventory(object):
+class CommonInventory:
     """Basic inventory logic, defined in terms of primitives like has_id.
 
     An inventory is the metadata about the contents of a tree.
@@ -676,8 +674,8 @@ class CommonInventory(object):
 
         >>> i = Inventory()
         >>> e = i.add(InventoryDirectory(b'src-id', 'src', ROOT_ID))
-        >>> e = i.add(InventoryFile(b'foo-id', 'foo.c', parent_id='src-id'))
-        >>> print i.id2path(b'foo-id')
+        >>> e = i.add(InventoryFile(b'foo-id', 'foo.c', parent_id=b'src-id'))
+        >>> print(i.id2path(b'foo-id'))
         src/foo.c
 
         :raises NoSuchId: If file_id is not present in the inventory.
@@ -704,13 +702,12 @@ class CommonInventory(object):
 
         # unrolling the recursive called changed the time from
         # 440ms/663ms (inline/total) to 116ms/116ms
-        children = sorted(viewitems(from_dir.children))
+        children = sorted(from_dir.children.items())
         if not recursive:
-            for name, ie in children:
-                yield name, ie
+            yield from children
             return
         children = deque(children)
-        stack = [(u'', children)]
+        stack = [('', children)]
         while stack:
             from_dir_relpath, children = stack[-1]
 
@@ -729,7 +726,7 @@ class CommonInventory(object):
                     continue
 
                 # But do this child first
-                new_children = sorted(viewitems(ie.children))
+                new_children = sorted(ie.children.items())
                 new_children = deque(new_children)
                 stack.append((path, new_children))
                 # Break out of inner loop, so that we start outer loop with child
@@ -783,7 +780,7 @@ class CommonInventory(object):
             from_dir = self.root
             if (specific_file_ids is None
                     or self.root.file_id in specific_file_ids):
-                yield u'', self.root
+                yield '', self.root
         elif isinstance(from_dir, bytes):
             from_dir = self.get_entry(from_dir)
         else:
@@ -809,12 +806,12 @@ class CommonInventory(object):
         else:
             parents = None
 
-        stack = [(u'', from_dir)]
+        stack = [('', from_dir)]
         while stack:
             cur_relpath, cur_dir = stack.pop()
 
             child_dirs = []
-            for child_name, child_ie in sorted(viewitems(cur_dir.children)):
+            for child_name, child_ie in sorted(cur_dir.children.items()):
 
                 child_relpath = cur_relpath + child_name
 
@@ -858,7 +855,7 @@ class CommonInventory(object):
         accum = []
 
         def descend(dir_ie, dir_path):
-            kids = sorted(viewitems(dir_ie.children))
+            kids = sorted(dir_ie.children.items())
             for name, ie in kids:
                 child_path = osutils.pathjoin(dir_path, name)
                 accum.append((child_path, ie))
@@ -866,7 +863,7 @@ class CommonInventory(object):
                     descend(ie, child_path)
 
         if self.root is not None:
-            descend(self.root, u'')
+            descend(self.root, '')
         return accum
 
     def get_entry_by_path_partial(self, relpath):
@@ -876,7 +873,7 @@ class CommonInventory(object):
             or as list of elements.
         :return: tuple with ie, resolved elements and elements left to resolve
         """
-        if isinstance(relpath, (str, text_type)):
+        if isinstance(relpath, str):
             names = osutils.splitpath(relpath)
         else:
             names = relpath
@@ -913,7 +910,7 @@ class CommonInventory(object):
 
         Returns None IFF the path is not found.
         """
-        if isinstance(relpath, (str, text_type)):
+        if isinstance(relpath, str):
             names = osutils.splitpath(relpath)
         else:
             names = relpath
@@ -1010,21 +1007,21 @@ class Inventory(CommonInventory):
 
     >>> inv = Inventory()
     >>> inv.add(InventoryFile(b'123-123', 'hello.c', ROOT_ID))
-    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
+    InventoryFile(b'123-123', 'hello.c', parent_id=b'TREE_ROOT', sha1=None, len=None, revision=None)
     >>> inv.get_entry(b'123-123').name
     'hello.c'
 
     Id's may be looked up from paths:
 
     >>> inv.path2id('hello.c')
-    '123-123'
+    b'123-123'
     >>> inv.has_id(b'123-123')
     True
 
     There are iterators over the contents:
 
     >>> [entry[0] for entry in inv.iter_entries()]
-    ['', u'hello.c']
+    ['', 'hello.c']
     """
 
     def __init__(self, root_id=ROOT_ID, revision_id=None):
@@ -1038,7 +1035,7 @@ class Inventory(CommonInventory):
         an id of None.
         """
         if root_id is not None:
-            self._set_root(InventoryDirectory(root_id, u'', None))
+            self._set_root(InventoryDirectory(root_id, '', None))
         else:
             self.root = None
             self._byid = {}
@@ -1051,7 +1048,7 @@ class Inventory(CommonInventory):
         contents = repr(self._byid)
         if len(contents) > max_len:
             contents = contents[:(max_len - len(closing))] + closing
-        return "<Inventory object at %x, contents=%r>" % (id(self), contents)
+        return "<Inventory object at {:x}, contents={!r}>".format(id(self), contents)
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
@@ -1195,7 +1192,7 @@ class Inventory(CommonInventory):
         """
         if self.root is None:
             return ()
-        return iter(viewvalues(self._byid))
+        return self._byid.values()
 
     def __len__(self):
         """Returns number of entries."""
@@ -1206,7 +1203,7 @@ class Inventory(CommonInventory):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile(b'123123', 'hello.c', ROOT_ID))
-        InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
+        InventoryFile(b'123123', 'hello.c', parent_id=b'TREE_ROOT', sha1=None, len=None, revision=None)
         >>> inv.get_entry(b'123123').name
         'hello.c'
         """
@@ -1233,7 +1230,7 @@ class Inventory(CommonInventory):
         self._byid[entry.file_id] = entry
         children = getattr(entry, 'children', {})
         if children is not None:
-            for child in viewvalues(children):
+            for child in children.values():
                 self._add_child(child)
         return entry
 
@@ -1288,7 +1285,7 @@ class Inventory(CommonInventory):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile(b'123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
+        InventoryFile(b'123', 'foo.c', parent_id=b'TREE_ROOT', sha1=None, len=None, revision=None)
         >>> inv.has_id(b'123')
         True
         >>> inv.delete(b'123')
@@ -1308,11 +1305,11 @@ class Inventory(CommonInventory):
         >>> i1 == i2
         True
         >>> i1.add(InventoryFile(b'123', 'foo', ROOT_ID))
-        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
+        InventoryFile(b'123', 'foo', parent_id=b'TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         False
         >>> i2.add(InventoryFile(b'123', 'foo', ROOT_ID))
-        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
+        InventoryFile(b'123', 'foo', parent_id=b'TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         True
         """
@@ -1383,7 +1380,7 @@ class Inventory(CommonInventory):
             ie = to_find_delete.pop()
             to_delete.append(ie.file_id)
             if ie.kind == 'directory':
-                to_find_delete.extend(viewvalues(ie.children))
+                to_find_delete.extend(ie.children.values())
         for file_id in reversed(to_delete):
             ie = self.get_entry(file_id)
             del self._byid[file_id]
@@ -1632,7 +1629,7 @@ class CHKInventory(CommonInventory):
         # to filter out empty names because of non rich-root...
         sections = data.split(b'\n')
         kind, file_id = sections[0].split(b': ')
-        return (sections[2], bytesintern(file_id), bytesintern(sections[3]))
+        return (sections[2], file_id, sections[3])
 
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
@@ -1660,8 +1657,8 @@ class CHKInventory(CommonInventory):
             result.reference_revision = sections[4]
         else:
             raise ValueError("Not a serialised entry %r" % bytes)
-        result.file_id = bytesintern(result.file_id)
-        result.revision = bytesintern(sections[3])
+        result.file_id = result.file_id
+        result.revision = sections[3]
         if result.parent_id == b'':
             result.parent_id = None
         self._fileid_to_entry_cache[result.file_id] = result
@@ -1805,7 +1802,7 @@ class CHKInventory(CommonInventory):
                 continue
             # This loop could potentially be better by using the id_basename
             # map to just get the child file ids.
-            for child in viewvalues(entry.children):
+            for child in entry.children.values():
                 if child.file_id not in altered:
                     raise errors.InconsistentDelta(self.id2path(child.file_id),
                                                    child.file_id, "Child not deleted or reparented when "
@@ -1817,7 +1814,7 @@ class CHKInventory(CommonInventory):
             # re-keying, but its simpler to just output that as a delete+add
             # to spend less time calculating the delta.
             delta_list = []
-            for key, (old_key, value) in viewitems(parent_id_basename_delta):
+            for key, (old_key, value) in parent_id_basename_delta.items():
                 if value is not None:
                     delta_list.append((old_key, key, value))
                 else:
@@ -1864,11 +1861,11 @@ class CHKInventory(CommonInventory):
                 raise errors.BzrError('Duplicate key in inventory: %r\n%r'
                                       % (key, bytes))
             info[key] = value
-        revision_id = bytesintern(info[b'revision_id'])
-        root_id = bytesintern(info[b'root_id'])
-        search_key_name = bytesintern(info.get(b'search_key_name', b'plain'))
-        parent_id_basename_to_file_id = bytesintern(info.get(
-            b'parent_id_basename_to_file_id', None))
+        revision_id = info[b'revision_id']
+        root_id = info[b'root_id']
+        search_key_name = info.get(b'search_key_name', b'plain')
+        parent_id_basename_to_file_id = info.get(
+            b'parent_id_basename_to_file_id', None)
         if not parent_id_basename_to_file_id.startswith(b'sha1:'):
             raise ValueError('parent_id_basename_to_file_id should be a sha1'
                              ' key not %r' % (parent_id_basename_to_file_id,))
@@ -2183,7 +2180,7 @@ class CHKInventory(CommonInventory):
     def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        if isinstance(relpath, (str, text_type)):
+        if isinstance(relpath, str):
             names = osutils.splitpath(relpath)
         else:
             names = relpath

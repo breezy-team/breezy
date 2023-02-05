@@ -30,7 +30,7 @@ class ProgressRecordingUIFactory(ui.UIFactory, progress.DummyProgress):
     This is overloaded as both the UIFactory and the progress model."""
 
     def __init__(self):
-        super(ProgressRecordingUIFactory, self).__init__()
+        super().__init__()
         self._calls = []
         self.depth = 0
 

@@ -16,8 +16,6 @@
 
 """Tests for pristine tar extraction code."""
 
-from __future__ import absolute_import
-
 from base64 import standard_b64encode
 
 from ..pristine_tar import (
@@ -49,7 +47,7 @@ class RevisionPristineTarDataTests(TestCase):
 
     def test_pristine_tar_delta_gz(self):
         rev = Revision(b"myrevid")
-        rev.properties[u"deb-pristine-delta"] = standard_b64encode(b"bla")
+        rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
         self.assertEqual((b"bla", "gz"), revision_pristine_tar_data(rev))
 
 

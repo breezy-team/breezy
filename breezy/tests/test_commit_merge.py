@@ -81,8 +81,8 @@ class TestCommitMerge(TestCaseWithTransport):
 
         self.build_tree(['x/ecks', 'y/why'])
 
-        wtx.add(['ecks'], [b'ecks-id'])
-        wty.add(['why'], [b'why-id'])
+        wtx.add(['ecks'], ids=[b'ecks-id'])
+        wty.add(['why'], ids=[b'why-id'])
 
         wtx.commit('commit one', rev_id=b'x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id=b'y@u-0-1', allow_pointless=True)
@@ -106,7 +106,7 @@ class TestCommitMerge(TestCaseWithTransport):
         check.check_dwim(by.base, False, True, True)
 
     def test_merge_with_symlink(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree_a = self.make_branch_and_tree('tree_a')
         os.symlink('target', osutils.pathjoin('tree_a', 'link'))
         tree_a.add('link')

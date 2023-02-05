@@ -49,11 +49,11 @@ def brz():
 def call_or_fail(*args, **kwargs):
     """Call a subprocess, and fail if the return code is not 0."""
     if DEBUG_SUBPROCESS:
-        print('  calling: "%s"' % (' '.join(args[0]),))
+        print('  calling: "{}"'.format(' '.join(args[0])))
     p = subprocess.Popen(*args, **kwargs)
     (out, err) = p.communicate()
     if p.returncode != 0:
-        raise RuntimeError('Failed to run: %s, %s' % (args, kwargs))
+        raise RuntimeError('Failed to run: {}, {}'.format(args, kwargs))
     return out
 
 
@@ -62,7 +62,7 @@ def get_target():
     global TARGET
     if TARGET is not None:
         return TARGET
-    out = call_or_fail([sys.executable, get_brz_dir() + '/brz',
+    out = call_or_fail([get_brz_dir() + '/brz',
                         'version', '--short'], stdout=subprocess.PIPE)
     version = out.strip()
     TARGET = os.path.abspath(TARGET_ROOT + '-' + version)
@@ -73,7 +73,7 @@ def clean_target():
     """Nuke the target directory so we know we are starting from scratch."""
     target = get_target()
     if os.path.isdir(target):
-        print("Deleting: %s" % (target,))
+        print("Deleting: {}".format(target))
         shutil.rmtree(target)
 
 def get_brz_dir():
@@ -86,47 +86,47 @@ def update_brz():
     if not os.path.isdir(brz_dir):
         brz_version = VERSIONS['brz']
         brz_url = 'lp:brz/' + brz_version
-        print("Getting brz release %s from %s" % (brz_version, brz_url))
+        print("Getting brz release {} from {}".format(brz_version, brz_url))
         call_or_fail([brz(), 'co', brz_url, brz_dir])
     else:
-        print("Ensuring %s is up-to-date" % (brz_dir,))
+        print("Ensuring {} is up-to-date".format(brz_dir))
         call_or_fail([brz(), 'update', brz_dir])
 
 
 def create_target():
     target = get_target()
-    print("Creating target dir: %s" % (target,))
+    print("Creating target dir: {}".format(target))
     call_or_fail([brz(), 'co', get_brz_dir(), target])
 
 
 def get_plugin_trunk_dir(plugin_name):
-    return '%s/trunk' % (plugin_name,)
+    return '{}/trunk'.format(plugin_name)
 
 
 def get_plugin_release_dir(plugin_name):
-    return '%s/%s' % (plugin_name, VERSIONS[plugin_name])
+    return '{}/{}'.format(plugin_name, VERSIONS[plugin_name])
 
 
 def get_plugin_trunk_branch(plugin_name):
-    return 'lp:%s' % (plugin_name,)
+    return 'lp:{}'.format(plugin_name)
 
 
 def update_plugin_trunk(plugin_name):
     trunk_dir = get_plugin_trunk_dir(plugin_name)
     if not os.path.isdir(trunk_dir):
         plugin_trunk = get_plugin_trunk_branch(plugin_name)
-        print("Getting latest %s trunk" % (plugin_name,))
+        print("Getting latest {} trunk".format(plugin_name))
         call_or_fail([brz(), 'co', plugin_trunk,
                       trunk_dir])
     else:
-        print("Ensuring %s is up-to-date" % (trunk_dir,))
+        print("Ensuring {} is up-to-date".format(trunk_dir))
         call_or_fail([brz(), 'update', trunk_dir])
     return trunk_dir
 
 
 def _plugin_tag_name(plugin_name):
     if plugin_name in ('bzr-svn', 'bzr-rewrite', 'subvertpy'):
-        return '%s-%s' % (plugin_name, VERSIONS[plugin_name])
+        return '{}-{}'.format(plugin_name, VERSIONS[plugin_name])
     # bzrtools and qbzr use 'release-X.Y.Z'
     return 'release-' + VERSIONS[plugin_name]
 
@@ -141,14 +141,14 @@ def update_plugin(plugin_name):
         else:
             os.mkdir(plugin_name)
     if os.path.isdir(release_dir):
-        print("Removing existing dir: %s" % (release_dir,))
+        print("Removing existing dir: {}".format(release_dir))
         shutil.rmtree(release_dir)
     # First update trunk
     trunk_dir = update_plugin_trunk(plugin_name)
     # Now create the tagged directory
     tag_name = _plugin_tag_name(plugin_name)
-    print("Creating the branch %s" % (release_dir,))
-    call_or_fail([brz(), 'co', '-rtag:%s' % (tag_name,),
+    print("Creating the branch {}".format(release_dir))
+    call_or_fail([brz(), 'co', '-rtag:{}'.format(tag_name),
                   trunk_dir, release_dir])
     return release_dir
 
@@ -158,9 +158,9 @@ def install_plugin(plugin_name):
     # at least bzrtools doesn't like you to call 'setup.py' unless you are in
     # that directory specifically, so we cd, rather than calling it from
     # outside
-    print("Installing %s" % (release_dir,))
+    print("Installing {}".format(release_dir))
     call_or_fail([sys.executable, 'setup.py', 'install', '-O1',
-                  '--install-lib=%s' % (get_target(),)],
+                  '--install-lib={}'.format(get_target())],
                  cwd=release_dir)
 
 
@@ -168,7 +168,7 @@ def update_tbzr():
     tbzr_loc = os.environ.get('TBZR', None)
     if tbzr_loc is None:
         raise ValueError('You must set TBZR to the location of tortoisebzr.')
-    print('Updating %s' % (tbzr_loc,))
+    print('Updating {}'.format(tbzr_loc))
     call_or_fail([brz(), 'update', tbzr_loc])
 
 
@@ -178,7 +178,7 @@ def build_installer():
     print()
     print('*' * 60)
     print('Building standalone installer')
-    call_or_fail(['make', 'PYTHON=%s' % (PYTHON,), 'installer'],
+    call_or_fail(['make', 'PYTHON={}'.format(PYTHON), 'installer'],
                  cwd=target)
 
 

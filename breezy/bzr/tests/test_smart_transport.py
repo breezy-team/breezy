@@ -19,12 +19,14 @@
 # all of this deals with byte strings so this is safe
 import doctest
 import errno
+from io import BytesIO
 import os
 import socket
 import subprocess
 import sys
 import threading
 import time
+from typing import Type, Optional
 
 from testtools.matchers import DocTestMatches
 
@@ -41,6 +43,7 @@ from ... import (
 from .. import (
     bzrdir,
     )
+from ..remote import UnknownErrorFromSmartServer
 from ..smart import (
     client,
     medium,
@@ -53,10 +56,6 @@ from ..smart import (
 from ...tests import (
     features,
     test_server,
-    )
-from ...sixish import (
-    BytesIO,
-    int2byte,
     )
 from ...transport import (
     local,
@@ -93,7 +92,7 @@ def portable_socket_pair():
     return server_sock, client_sock
 
 
-class BytesIOSSHVendor(object):
+class BytesIOSSHVendor:
     """A SSH vendor that uses BytesIO to buffer writes and answer reads."""
 
     def __init__(self, read_from, write_to):
@@ -114,7 +113,7 @@ class FirstRejectedBytesIOSSHVendor(BytesIOSSHVendor):
     """
 
     def __init__(self, read_from, write_to, fail_at_write=True):
-        super(FirstRejectedBytesIOSSHVendor, self).__init__(read_from,
+        super().__init__(read_from,
                                                             write_to)
         self.fail_at_write = fail_at_write
         self._first = True
@@ -698,7 +697,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         client_medium = medium.SmartSimplePipesClientMedium(
             None, output, 'base')
         client_medium._current_request = "a"
-        self.assertRaises(errors.TooManyConcurrentRequests,
+        self.assertRaises(medium.TooManyConcurrentRequests,
                           medium.SmartClientStreamMediumRequest, client_medium)
 
     def test_finished_read_clears_current_request(self):
@@ -767,7 +766,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         client_medium._socket = client_sock
         client_medium._connected = True
         req = client_medium.get_request()
-        self.assertRaises(errors.TooManyConcurrentRequests,
+        self.assertRaises(medium.TooManyConcurrentRequests,
                           client_medium.get_request)
         client_medium.reset()
         # The stream should be reset, marked as disconnected, though ready for
@@ -776,7 +775,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         self.assertIs(None, client_medium._socket)
         try:
             self.assertEqual('', client_sock.recv(1))
-        except socket.error as e:
+        except OSError as e:
             if e.errno not in (errno.EBADF,):
                 raise
         req = client_medium.get_request()
@@ -798,7 +797,7 @@ class RemoteTransportTests(test_smart.TestCaseWithSmartMedium):
         self.assertIsInstance(client_medium, medium.SmartClientMedium)
 
 
-class ErrorRaisingProtocol(object):
+class ErrorRaisingProtocol:
 
     def __init__(self, exception):
         self.exception = exception
@@ -807,7 +806,7 @@ class ErrorRaisingProtocol(object):
         raise self.exception
 
 
-class SampleRequest(object):
+class SampleRequest:
 
     def __init__(self, expected_bytes):
         self.accepted_bytes = b''
@@ -831,7 +830,7 @@ class SampleRequest(object):
 class TestSmartServerStreamMedium(tests.TestCase):
 
     def setUp(self):
-        super(TestSmartServerStreamMedium, self).setUp()
+        super().setUp()
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
 
     def create_pipe_medium(self, to_server, from_server, transport,
@@ -897,7 +896,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_response_to_canned_get_of_utf8(self):
         # wire-to-wire, using the whole stack, with a UTF-8 filename.
         transport = memory.MemoryTransport('memory:///')
-        utf8_filename = u'testfile\N{INTERROBANG}'.encode('utf-8')
+        utf8_filename = 'testfile\N{INTERROBANG}'.encode()
         # VFS requests use filenames, not raw UTF-8.
         hpss_path = urlutils.quote_from_bytes(utf8_filename)
         transport.put_bytes(hpss_path, b'contents\nof\nfile\n')
@@ -1323,12 +1322,12 @@ class TestSmartTCPServer(tests.TestCase):
         # don't need to try to connect to it. Not being set, though, the server
         # might still close the socket while we try to connect to it. So we
         # still have to catch the exception.
-        if server._stopped.isSet():
+        if server._stopped.is_set():
             return
         try:
             client_sock = self.connect_to_server(server)
             client_sock.close()
-        except socket.error as e:
+        except OSError as e:
             # If the server has hung up already, that is fine.
             pass
 
@@ -1348,7 +1347,7 @@ class TestSmartTCPServer(tests.TestCase):
         """Error reported by server with no specific representation"""
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
 
-        class FlakyTransport(object):
+        class FlakyTransport:
             base = 'a_url'
 
             def external_url(self):
@@ -1366,7 +1365,7 @@ class TestSmartTCPServer(tests.TestCase):
         self.addCleanup(smart_server.stop_server)
         t = remote.RemoteTCPTransport(smart_server.get_url())
         self.addCleanup(t.disconnect)
-        err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+        err = self.assertRaises(UnknownErrorFromSmartServer,
                                 t.get, 'something')
         self.assertContainsRe(str(err), 'some random exception')
 
@@ -1379,7 +1378,7 @@ class TestSmartTCPServer(tests.TestCase):
     def test_serve_conn_tracks_connections(self):
         server = _mod_server.SmartTCPServer(None, client_timeout=4.0)
         server_sock, client_sock = portable_socket_pair()
-        server.serve_conn(server_sock, '-%s' % (self.id(),))
+        server.serve_conn(server_sock, '-{}'.format(self.id()))
         self.assertEqual(1, len(server._active_connections))
         # We still want to talk on the connection. Polling should indicate it
         # is still active.
@@ -1473,7 +1472,7 @@ class TestSmartTCPServer(tests.TestCase):
         client_sock.close()
         server_side_thread.join()
         server_thread.join()
-        self.assertTrue(server._fully_stopped.isSet())
+        self.assertTrue(server._fully_stopped.is_set())
         log = self.get_log()
         self.assertThat(log, DocTestMatches("""\
     INFO  Requested to stop gracefully
@@ -1570,7 +1569,7 @@ class WritableEndToEndTests(SmartTCPTests):
     """Client to server tests that require a writable transport."""
 
     def setUp(self):
-        super(WritableEndToEndTests, self).setUp()
+        super().setUp()
         self.start_server()
 
     def test_start_tcp_server(self):
@@ -1598,7 +1597,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # for users.
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
         err = self.assertRaises(
-            errors.NoSuchFile, self.transport.get, 'not%20a%20file')
+            _mod_transport.NoSuchFile, self.transport.get, 'not%20a%20file')
         self.assertSubset([err.path], ['not%20a%20file', './not%20a%20file'])
 
     def test_simple_clone_conn(self):
@@ -1779,7 +1778,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     """Test that call directly into the handler logic, bypassing the network."""
 
     def setUp(self):
-        super(SmartServerRequestHandlerTests, self).setUp()
+        super().setUp()
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
 
     def build_handler(self, transport):
@@ -1938,10 +1937,10 @@ class TestSmartProtocol(tests.TestCase):
     Subclasses can override client_protocol_class and server_protocol_class.
     """
 
-    request_encoder = None
-    response_decoder = None
-    server_protocol_class = None
-    client_protocol_class = None
+    request_encoder: object
+    response_decoder: Type[protocol._StatefulDecoder]
+    server_protocol_class: Type[protocol.SmartProtocolBase]
+    client_protocol_class: Optional[Type[protocol.SmartProtocolBase]] = None
 
     def make_client_protocol_and_output(self, input_bytes=None):
         """
@@ -1983,7 +1982,7 @@ class TestSmartProtocol(tests.TestCase):
         return smart_protocol, out_stream
 
     def setUp(self):
-        super(TestSmartProtocol, self).setUp()
+        super().setUp()
         self.response_marker = getattr(
             self.client_protocol_class, 'response_marker', None)
         self.request_marker = getattr(
@@ -2047,7 +2046,7 @@ class TestSmartProtocol(tests.TestCase):
             expected_tuple, response_handler.read_response_tuple())
 
 
-class CommonSmartProtocolTestMixin(object):
+class CommonSmartProtocolTestMixin:
 
     def test_connection_closed_reporting(self):
         requester, response_handler = self.make_client_protocol()
@@ -2587,7 +2586,7 @@ class TestVersionOneFeaturesInProtocolTwo(
             errors.ConnectionReset, smart_protocol.read_body_bytes)
 
 
-class TestSmartProtocolTwoSpecificsMixin(object):
+class TestSmartProtocolTwoSpecificsMixin:
 
     def assertBodyStreamSerialisation(self, expected_serialisation,
                                       body_stream):
@@ -2787,10 +2786,10 @@ class TestVersionOneFeaturesInProtocolThree(
     # method.  So we make server_protocol_class be a static method, rather than
     # simply doing:
     # "server_protocol_class = protocol.build_server_protocol_three".
-    server_protocol_class = staticmethod(protocol.build_server_protocol_three)
+    server_protocol_class = staticmethod(protocol.build_server_protocol_three)  # type: ignore
 
     def setUp(self):
-        super(TestVersionOneFeaturesInProtocolThree, self).setUp()
+        super().setUp()
         self.response_marker = protocol.MESSAGE_VERSION_THREE
         self.request_marker = protocol.MESSAGE_VERSION_THREE
 
@@ -2805,7 +2804,7 @@ class TestVersionOneFeaturesInProtocolThree(
         self.assertEqual(4, smart_protocol.next_read_size())
 
 
-class LoggingMessageHandler(object):
+class LoggingMessageHandler:
 
     def __init__(self):
         self.event_log = []
@@ -2837,7 +2836,7 @@ class TestProtocolThree(TestSmartProtocol):
 
     request_encoder = protocol.ProtocolThreeRequester
     response_decoder = protocol.ProtocolThreeDecoder
-    server_protocol_class = protocol.ProtocolThreeDecoder
+    server_protocol_class = protocol.ProtocolThreeDecoder  # type: ignore
 
     def test_trivial_request(self):
         """Smoke test for the simplest possible v3 request: empty headers, no
@@ -2979,7 +2978,7 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
             list(response_handler.read_streamed_body()))
 
 
-class FakeResponder(object):
+class FakeResponder:
 
     response_sent = False
 
@@ -3085,7 +3084,7 @@ class TestMessageHandlerErrors(tests.TestCase):
         self.assertEqual(0, proto.next_read_size())
 
 
-class InstrumentedRequestHandler(object):
+class InstrumentedRequestHandler:
     """Test Double of SmartServerRequestHandler."""
 
     def __init__(self):
@@ -3113,7 +3112,7 @@ class InstrumentedRequestHandler(object):
         self.calls.append(('post_body_error_received', error_args))
 
 
-class StubRequest(object):
+class StubRequest:
 
     def finished_reading(self):
         pass
@@ -3171,7 +3170,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         decoder, response_handler = self.make_logging_response_decoder()
         for byte in bytearray(simple_response):
             self.assertNotEqual(0, decoder.next_read_size())
-            decoder.accept_bytes(int2byte(byte))
+            decoder.accept_bytes(bytes([byte]))
         # Now the response is complete
         self.assertEqual(0, decoder.next_read_size())
 
@@ -3209,7 +3208,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
 
     request_encoder = protocol.ProtocolThreeRequester
     response_decoder = protocol.ProtocolThreeDecoder
-    server_protocol_class = protocol.ProtocolThreeDecoder
+    server_protocol_class = protocol.ProtocolThreeDecoder  # type: ignore
 
     def make_client_encoder_and_output(self):
         result = self.make_client_protocol_and_output()
@@ -3355,7 +3354,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         self.assertEqual([False, True, True], flush_called)
 
 
-class StubMediumRequest(object):
+class StubMediumRequest:
     """A stub medium request that tracks the number of times accept_bytes is
     called.
     """
@@ -3430,7 +3429,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
     """
 
     def setUp(self):
-        super(TestResponseEncoderBufferingProtocolThree, self).setUp()
+        super().setUp()
         self.writes = []
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 
@@ -3500,15 +3499,15 @@ class TestSmartClientUnicode(tests.TestCase):
         self.assertEqual(None, client_medium._current_request)
 
     def test_call_with_body_bytes_unicode_method(self):
-        self.assertCallDoesNotBreakMedium(u'method', (b'args',), b'body')
+        self.assertCallDoesNotBreakMedium('method', (b'args',), b'body')
 
     def test_call_with_body_bytes_unicode_args(self):
-        self.assertCallDoesNotBreakMedium(b'method', (u'args',), b'body')
+        self.assertCallDoesNotBreakMedium(b'method', ('args',), b'body')
         self.assertCallDoesNotBreakMedium(
-            b'method', (b'arg1', u'arg2'), b'body')
+            b'method', (b'arg1', 'arg2'), b'body')
 
     def test_call_with_body_bytes_unicode_body(self):
-        self.assertCallDoesNotBreakMedium(b'method', (b'args',), u'body')
+        self.assertCallDoesNotBreakMedium(b'method', (b'args',), 'body')
 
 
 class MockMedium(medium.SmartClientMedium):
@@ -3528,7 +3527,7 @@ class MockMedium(medium.SmartClientMedium):
     """
 
     def __init__(self):
-        super(MockMedium, self).__init__('dummy base')
+        super().__init__('dummy base')
         self._mock_request = _MockMediumRequest(self)
         self._expected_events = []
 
@@ -3608,7 +3607,7 @@ class MockMedium(medium.SmartClientMedium):
         self._assertEvent('disconnect')
 
 
-class _MockMediumRequest(object):
+class _MockMediumRequest:
     """A mock ClientMediumRequest used by MockMedium."""
 
     def __init__(self, mock_medium):
@@ -3934,7 +3933,7 @@ class Test_SmartClientRequest(tests.TestCase):
                 if self._first:
                     self._first = False
                     return BytesIO.write(self, s)
-                raise IOError(errno.EINVAL, 'invalid file handle')
+                raise OSError(errno.EINVAL, 'invalid file handle')
         output = FailAfterFirstWrite()
 
         vendor = FirstRejectedBytesIOSSHVendor(response, output,
@@ -4257,7 +4256,7 @@ class TestFailedSmartServerResponse(tests.TestCase):
         self.assertEqual(False, response.is_successful())
 
 
-class FakeHTTPMedium(object):
+class FakeHTTPMedium:
     def __init__(self):
         self.written_request = None
         self._current_request = None
@@ -4270,7 +4269,7 @@ class FakeHTTPMedium(object):
 class HTTPTunnellingSmokeTest(tests.TestCase):
 
     def setUp(self):
-        super(HTTPTunnellingSmokeTest, self).setUp()
+        super().setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
 
@@ -4344,3 +4343,28 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'bzr://www.example.com/foo')
         self.assertNotEqual(type(r), type(t))
+
+
+class TestErrors(tests.TestCase):
+    def test_too_many_concurrent_requests(self):
+        error = medium.TooManyConcurrentRequests("a medium")
+        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
+                             "request limit. Be sure to finish_writing and finish_reading on "
+                             "the currently open request.",
+                             str(error))
+
+    def test_smart_message_handler_error(self):
+        # Make an exc_info tuple.
+        try:
+            raise Exception("example error")
+        except Exception:
+            err = protocol.SmartMessageHandlerError(sys.exc_info())
+        # GZ 2010-11-08: Should not store exc_info in exception instances.
+        try:
+            self.assertStartsWith(
+                str(err), "The message handler raised an exception:\n")
+            self.assertEndsWith(str(err), "Exception: example error\n")
+        finally:
+            del err
+
+

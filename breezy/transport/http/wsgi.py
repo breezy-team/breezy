@@ -20,8 +20,6 @@ For more information about WSGI, see PEP 333:
     http://www.python.org/dev/peps/pep-0333/
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ...bzr.smart import medium
@@ -53,7 +51,7 @@ def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
     return app
 
 
-class RelpathSetter(object):
+class RelpathSetter:
     """WSGI middleware to set 'breezy.relpath' in the environ.
 
     Different servers can invoke a SmartWSGIApp in different ways.  This
@@ -91,7 +89,7 @@ class RelpathSetter(object):
         return self.app(environ, start_response)
 
 
-class SmartWSGIApp(object):
+class SmartWSGIApp:
     """A WSGI application for the bzr smart server."""
 
     def __init__(self, backing_transport, root_client_path='/'):
@@ -137,9 +135,9 @@ class SmartWSGIApp(object):
         if relpath.startswith(self.root_client_path):
             # The relpath traverses all of the mandatory root client path.
             # Remove the root_client_path from the relpath, and set
-            # adjusted_tcp to None to tell the request handler that no further
+            # adjusted_rcp to None to tell the request handler that no further
             # path translation is required.
-            adjusted_rcp = '.'
+            adjusted_rcp = None
             adjusted_relpath = relpath[len(self.root_client_path):]
         elif self.root_client_path.startswith(relpath):
             # The relpath traverses some of the mandatory root client path.

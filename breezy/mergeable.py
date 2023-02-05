@@ -14,29 +14,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+from io import BytesIO
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-from breezy import (
-    transport as _mod_transport,
-    urlutils,
-    )
-from breezy.bzr.bundle import serializer as _serializer
-from breezy.merge_directive import MergeDirective
 from breezy.i18n import gettext
 """)
 
 from . import (
     errors,
-    )
-from .sixish import (
-    BytesIO,
+    urlutils,
     )
 from .trace import note
+from .transport import (
+    do_catching_redirections,
+    get_transport,
+    get_transport_from_url,
+    )
 
 
-class Mergeable(object):
+class Mergeable:
     """A mergeable object."""
 
     def install_revisions(self, repository):
@@ -60,8 +57,7 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
     :return: An object supporting get_target_revision.  Raises NotABundle if
         the target is not a mergeable type.
     """
-    child_transport = _mod_transport.get_transport(
-        url, possible_transports=possible_transports)
+    child_transport = get_transport(url, possible_transports=possible_transports)
     transport = child_transport.clone('..')
     filename = transport.relpath(child_transport.base)
     mergeable, transport = read_mergeable_from_transport(transport, filename,
@@ -79,10 +75,10 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
                                        exclude_trailing_slash=False)
         if not filename:
             raise errors.NotABundle(gettext('A directory cannot be a bundle'))
-        return _mod_transport.get_transport_from_url(url)
+        return get_transport_from_url(url)
 
     try:
-        bytef, transport = _mod_transport.do_catching_redirections(
+        bytef, transport = do_catching_redirections(
             get_bundle, transport, redirected_transport)
     except errors.TooManyRedirections:
         raise errors.NotABundle(transport.clone(filename).base)
@@ -90,7 +86,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         raise
     except (errors.TransportError, errors.PathError) as e:
         raise errors.NotABundle(str(e))
-    except (IOError,) as e:
+    except OSError as e:
         # jam 20060707
         # Abstraction leakage, SFTPTransport.get('directory')
         # doesn't always fail at get() time. Sometimes it fails
@@ -101,9 +97,11 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         raise errors.NotABundle(str(e))
 
     if _do_directive:
+        from .merge_directive import MergeDirective
         try:
             return MergeDirective.from_lines(bytef), transport
         except errors.NotAMergeDirective:
             bytef.seek(0)
 
+    from .bzr.bundle import serializer as _serializer
     return _serializer.read_bundle(bytef), transport

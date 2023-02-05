@@ -44,7 +44,7 @@ class TestRevert(TestCaseWithWorkingTree):
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def setUp(self):
-        super(TestApplyInventoryDelta, self).setUp()
+        super().setUp()
         if not self.bzrdir_format.repository_format.supports_full_versioned_files:
             raise tests.TestNotApplicable(
                 "format does not support inventory deltas")
@@ -66,7 +66,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar'])
-        wt.add(['foo', 'foo/bar'], [b'foo-id', b'bar-id'])
+        wt.add(['foo', 'foo/bar'], ids=[b'foo-id', b'bar-id'])
         wt.apply_inventory_delta([('foo', None, b'foo-id', None),
                                   ('foo/bar', None, b'bar-id', None)])
         self.assertFalse(wt.is_versioned('foo'))
@@ -78,7 +78,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar'])
         wt.add(['foo', 'foo/bar'],
-               [b'foo-id', b'bar-id'])
+               ids=[b'foo-id', b'bar-id'])
         wt.apply_inventory_delta([('foo', 'baz', b'foo-id',
                                    inventory.InventoryDirectory(b'foo-id', 'baz', root_id))])
         # foo/bar should have been followed the rename of its parent to baz/bar
@@ -92,7 +92,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar/', 'foo/bar/baz'])
         wt.add(['foo', 'foo/bar', 'foo/bar/baz'],
-               [b'foo-id', b'bar-id', b'baz-id'])
+               ids=[b'foo-id', b'bar-id', b'baz-id'])
         wt.apply_inventory_delta([('foo', 'quux', b'foo-id',
                                    inventory.InventoryDirectory(b'foo-id', 'quux', root_id))])
         # foo/bar/baz should have been followed the rename of its parent's
@@ -105,7 +105,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/'])
         wt.add(['foo', 'foo/bar', 'baz'],
-               [b'foo-id', b'bar-id', b'baz-id'])
+               ids=[b'foo-id', b'bar-id', b'baz-id'])
         wt.apply_inventory_delta([('foo/bar', 'baz/bar', b'bar-id',
                                    inventory.InventoryFile(b'bar-id', 'bar', b'baz-id'))])
         self.assertEqual('baz/bar', wt.id2path(b'bar-id'))
@@ -122,7 +122,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/', 'baz/qux'])
         wt.add(['foo', 'foo/bar', 'baz', 'baz/qux'],
-               [b'foo-id', b'bar-id', b'baz-id', b'qux-id'])
+               ids=[b'foo-id', b'bar-id', b'baz-id', b'qux-id'])
         wt.apply_inventory_delta([('foo', 'baz', b'foo-id',
                                    inventory.InventoryDirectory(b'foo-id', 'baz', root_id)),
                                   ('baz', 'foo', b'baz-id',
@@ -140,7 +140,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         root_id = wt.path2id('')
         self.build_tree(['dir/', 'dir/child', 'other/'])
         wt.add(['dir', 'dir/child', 'other'],
-               [b'dir-id', b'child-id', b'other-id'])
+               ids=[b'dir-id', b'child-id', b'other-id'])
         # this delta moves dir-id to dir2 and reparents
         # child-id to a parent of other-id
         wt.apply_inventory_delta([('dir', 'dir2', b'dir-id',
@@ -172,13 +172,13 @@ class TestTreeReference(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable("wt doesn't support nested trees")
         if base.has_versioned_directories():
             # We add it as a directory, but it becomes a tree-reference
-            base.add(['subdir'], [None], ['directory'])
+            base.add(['subdir'], ['directory'])
             subdir = self.make_branch_and_tree('base/subdir')
         else:
             subdir = self.make_branch_and_tree('base/subdir')
             subdir.commit('')
             # We add it as a directory, but it becomes a tree-reference
-            base.add(['subdir'], [None], ['tree-reference'])
+            base.add(['subdir'], ['tree-reference'])
         self.addCleanup(base.lock_read().unlock)
         # Note: we aren't strict about ie.kind being 'directory' here, what we
         # are strict about is that wt.inventory should match

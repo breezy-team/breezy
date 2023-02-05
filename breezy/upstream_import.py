@@ -16,8 +16,6 @@
 
 """Import upstream source into a branch"""
 
-from __future__ import absolute_import
-
 import errno
 from io import (
     BytesIO,
@@ -31,15 +29,12 @@ import zipfile
 from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
-from .errors import (BzrError, NoSuchFile, CommandError, NotBranchError)
+from .errors import (BzrError, CommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
-from .sixish import (
-    text_type,
-    )
 from .trace import warning
 from .transform import resolve_conflicts
-from .transport import get_transport
+from .transport import get_transport, NoSuchFile
 from .workingtree import WorkingTree
 
 
@@ -61,7 +56,7 @@ class NotArchiveType(BzrError):
         self.path = path
 
 
-class ZipFileWrapper(object):
+class ZipFileWrapper:
 
     def __init__(self, fileobj, mode):
         self.zipfile = zipfile.ZipFile(fileobj, mode)
@@ -83,7 +78,7 @@ class ZipFileWrapper(object):
         self.zipfile.close()
 
 
-class ZipInfoWrapper(object):
+class ZipInfoWrapper:
 
     def __init__(self, zipfile, info):
         self.info = info
@@ -101,7 +96,7 @@ class ZipInfoWrapper(object):
         return not self.isdir()
 
 
-class DirWrapper(object):
+class DirWrapper:
 
     def __init__(self, fileobj, mode='r'):
         if mode != 'r':
@@ -123,14 +118,13 @@ class DirWrapper(object):
             fi = FileInfo(self.root, child)
             yield fi
             if fi.isdir():
-                for v in self.getmembers(child):
-                    yield v
+                yield from self.getmembers(child)
 
     def extractfile(self, member):
         return open(member.fullpath, 'rb')
 
 
-class FileInfo(object):
+class FileInfo:
 
     def __init__(self, root, filepath):
         self.fullpath = pathjoin(root, filepath)
@@ -258,7 +252,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         # interpret relative to fs encoding, which would match native
         # behaviour better.
         relative_path = member.name
-        if not isinstance(relative_path, text_type):
+        if not isinstance(relative_path, str):
             relative_path = relative_path.decode('utf-8')
         if prefix is not None:
             relative_path = relative_path[len(prefix) + 1:]
@@ -287,7 +281,7 @@ def import_archive_to_transform(tree, archive_file, tt):
             tt.create_symlink(member.linkname, trans_id)
         else:
             continue
-        if tt.tree_file_id(trans_id) is None:
+        if not tt.final_is_versioned(trans_id):
             name = basename(member.name.rstrip('/'))
             file_id = generate_ids.gen_file_id(name)
             tt.version_file(trans_id, file_id=file_id)
@@ -346,7 +340,7 @@ def do_import(source, tree_directory=None):
                     elif external_compressor == 'lzma':
                         import lzma
                         tar_input = BytesIO(lzma.decompress(tar_input.read()))
-                except IOError as e:
+                except OSError as e:
                     if e.errno == errno.ENOENT:
                         raise NoSuchFile(source)
                 try:

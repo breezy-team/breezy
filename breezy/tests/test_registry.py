@@ -26,7 +26,6 @@ from breezy import (
     tests,
     )
 
-from ..sixish import viewitems
 
 
 class TestRegistry(tests.TestCase):
@@ -108,7 +107,7 @@ class TestRegistry(tests.TestCase):
 
         def generic_help(reg, key):
             help_calls.append(key)
-            return 'generic help for %s' % (key,)
+            return 'generic help for {}'.format(key)
         a_registry.register('three', 3, help=generic_help)
         a_registry.register_lazy('four', 'nonexistent_module', 'member2',
                                  help=generic_help)
@@ -118,7 +117,7 @@ class TestRegistry(tests.TestCase):
             obj = reg.get(key)
             return obj.help()
 
-        class SimpleObj(object):
+        class SimpleObj:
             def help(self):
                 return 'this is my help'
         a_registry.register('six', SimpleObj(), help=help_from_object)
@@ -218,7 +217,7 @@ class TestRegistry(tests.TestCase):
         self.assertEqual({'two': 'one', 'three': 'one'}, a_registry.aliases())
         self.assertEqual(
             {'one': ['three', 'two']},
-            {k: sorted(v) for (k, v) in viewitems(a_registry.alias_map())})
+            {k: sorted(v) for (k, v) in a_registry.alias_map().items()})
 
     def test_registry_alias_exists(self):
         a_registry = registry.Registry()
@@ -239,7 +238,7 @@ class TestRegistryIter(tests.TestCase):
     """
 
     def setUp(self):
-        super(TestRegistryIter, self).setUp()
+        super().setUp()
 
         # We create a registry with "official" objects and "hidden"
         # objects. The later represent the side effects that led to bug #277048
@@ -300,7 +299,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         are sure that it doesn't start in the plugin path.
         """
         os.mkdir('tmp')
-        plugin_name = 'bzr_plugin_a_%s' % (osutils.rand_chars(4),)
+        plugin_name = 'bzr_plugin_a_{}'.format(osutils.rand_chars(4))
         with open('tmp/' + plugin_name + '.py', 'wb') as f:
             f.write(contents)
         return plugin_name
@@ -378,7 +377,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
                          a_registry._get_module("obj"))
 
     def test_normal_get_module(self):
-        class AThing(object):
+        class AThing:
             """Something"""
         a_registry = registry.Registry()
         a_registry.register("obj", AThing())

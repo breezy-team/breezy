@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from .knit import KnitCorrupt
 
 
@@ -61,7 +59,7 @@ def _load_data_py(kndx, fp):
             # corrupt we can't asssume that no other rows referring to the
             # index of this record actually mean the subsequent uncorrupt
             # one, so we error.
-            raise KnitCorrupt(kndx._filename, "line %r: %s" % (rec, e))
+            raise KnitCorrupt(kndx._filename, "line {!r}: {}".format(rec, e))
 
         version_id, options, pos, size = rec[:4]
         try:

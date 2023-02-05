@@ -15,10 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
 """A grouping of Exceptions for bzr-git"""
-
-from __future__ import absolute_import
 
 from dulwich import errors as git_errors
 
@@ -27,25 +24,6 @@ from .. import errors as brz_errors
 
 class BzrGitError(brz_errors.BzrError):
     """The base-level exception for bzr-git errors."""
-
-
-class NoSuchRef(BzrGitError):
-    """Raised when a ref can not be found."""
-
-    _fmt = "The ref %(ref)s was not found in the repository at %(location)s."
-
-    def __init__(self, ref, location, present_refs=None):
-        self.ref = ref
-        self.location = location
-        self.present_refs = present_refs
-
-
-def convert_dulwich_error(error):
-    """Convert a Dulwich error to a Bazaar error."""
-
-    if isinstance(error, git_errors.HangupException):
-        raise brz_errors.ConnectionReset(error.msg, "")
-    raise error
 
 
 class NoPushSupport(brz_errors.BzrError):

@@ -14,14 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import os
 import re
 import unicodedata as ud
 
 from .. import tests, osutils
-from ..sixish import PY3
 from .._termcolor import color_string, FG
 
 from ..tests.features import (
@@ -386,27 +383,21 @@ class TestGrep(GrepTestBase):
         self._mk_versioned_file('file0.txt', total_lines=3)
 
         nref = ud.normalize(
-            u'NFC', u"file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
+            'NFC', "file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
 
         out, err = self.run_bzr(
             ['grep', '-r', 'last:1', '--null', 'line[1-3]'])
-        if not PY3:
-            out = out.decode('utf-8', 'ignore')
-        nout = ud.normalize(u'NFC', out)
+        nout = ud.normalize('NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '-Z', 'line[1-3]'])
-        if not PY3:
-            out = out.decode('utf-8', 'ignore')
-        nout = ud.normalize(u'NFC', out)
+        nout = ud.normalize('NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line'])
-        if not PY3:
-            out = out.decode('utf-8', 'ignore')
-        nout = ud.normalize(u'NFC', out)
+        nout = ud.normalize('NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
@@ -2184,33 +2175,33 @@ class TestNonAscii(GrepTestBase):
     def test_unicode_only_file(self):
         """Test filename and contents that requires a unicode encoding"""
         tree = self.make_branch_and_tree(".")
-        contents = [u"\u1234"]
+        contents = ["\u1234"]
         self.build_tree(contents)
         tree.add(contents)
         tree.commit("Initial commit")
-        as_utf8 = u"\u1234"
+        as_utf8 = "\u1234"
 
         # GZ 2010-06-07: Note we can't actually grep for \u1234 as the pattern
         #                is mangled according to the user encoding.
         streams = self.run_bzr_raw(["grep", "--files-with-matches",
-                                    u"contents"], encoding="UTF-8")
+                                    "contents"], encoding="UTF-8")
         as_utf8 = as_utf8.encode("UTF-8")
         self.assertEqual(streams, (as_utf8 + b"\n", b""))
 
         streams = self.run_bzr_raw(["grep", "-r", "1", "--files-with-matches",
-                                    u"contents"], encoding="UTF-8")
+                                    "contents"], encoding="UTF-8")
         self.assertEqual(streams, (as_utf8 + b"~1\n", b""))
 
         fileencoding = osutils.get_user_encoding()
         as_mangled = as_utf8.decode(fileencoding, "replace").encode("UTF-8")
 
         streams = self.run_bzr_raw(["grep", "-n",
-                                    u"contents"], encoding="UTF-8")
+                                    "contents"], encoding="UTF-8")
         self.assertEqual(streams, (b"%s:1:contents of %s\n" %
                                    (as_utf8, as_mangled), b""))
 
         streams = self.run_bzr_raw(["grep", "-n", "-r", "1",
-                                    u"contents"], encoding="UTF-8")
+                                    "contents"], encoding="UTF-8")
         self.assertEqual(streams, (b"%s~1:1:contents of %s\n" %
                                    (as_utf8, as_mangled), b""))
 

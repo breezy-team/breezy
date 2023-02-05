@@ -16,7 +16,7 @@
 
 """Tests for InterBranch.pull behaviour."""
 
-from breezy.branch import Branch
+from breezy.branch import Branch, BindingUnsupported
 from breezy.controldir import ControlDir
 from breezy import errors
 from breezy.revision import NULL_REVISION
@@ -204,7 +204,7 @@ class TestPullHook(TestCaseWithInterBranch):
 
     def setUp(self):
         self.hook_calls = []
-        super(TestPullHook, self).setUp()
+        super().setUp()
 
     def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
@@ -248,7 +248,7 @@ class TestPullHook(TestCaseWithInterBranch):
         local = self.make_from_branch('local')
         try:
             local.bind(target)
-        except errors.UpgradeRequired:
+        except BindingUnsupported:
             # We can't bind this format to itself- typically it is the local
             # branch that doesn't support binding.  As of May 2007
             # remotebranches can't be bound.  Let's instead make a new local

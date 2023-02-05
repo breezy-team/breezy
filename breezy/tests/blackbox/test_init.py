@@ -36,7 +36,7 @@ from breezy.workingtree import WorkingTree
 class TestInit(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestInit, self).setUp()
+        super().setUp()
         self._default_label = '2a'
 
     def test_init_with_format(self):
@@ -83,9 +83,9 @@ class TestInit(TestCaseWithTransport):
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(False)
         out, err = self.run_bzr('init repo')
-        self.assertEqual("""Created a repository tree (format: %s)
-Using shared repository: %s
-""" % (self._default_label, urlutils.local_path_from_url(
+        self.assertEqual("""Created a repository tree (format: {})
+Using shared repository: {}
+""".format(self._default_label, urlutils.local_path_from_url(
             repo.controldir.root_transport.external_url())), out)
         cwd = osutils.getcwd()
         self.assertEndsWith(out, cwd + '/repo/\n')
@@ -95,14 +95,14 @@ Using shared repository: %s
 
     def test_init_branch(self):
         out, err = self.run_bzr('init')
-        self.assertEqual("Created a standalone tree (format: %s)\n" % (
-            self._default_label,), out)
+        self.assertEqual("Created a standalone tree (format: {})\n".format(
+            self._default_label), out)
         self.assertEqual('', err)
 
         # Can it handle subdirectories of branches too ?
         out, err = self.run_bzr('init subdir1')
-        self.assertEqual("Created a standalone tree (format: %s)\n" % (
-            self._default_label,), out)
+        self.assertEqual("Created a standalone tree (format: {})\n".format(
+            self._default_label), out)
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
 
@@ -113,8 +113,8 @@ Using shared repository: %s
 
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
-        self.assertEqual("Created a standalone tree (format: %s)\n" % (
-            self._default_label,), out)
+        self.assertEqual("Created a standalone tree (format: {})\n".format(
+            self._default_label), out)
         self.assertEqual('', err)
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
@@ -153,16 +153,16 @@ Using shared repository: %s
     def test_init_unicode(self):
         # Make sure getcwd can handle unicode filenames
         try:
-            os.mkdir(u'mu-\xb5')
+            os.mkdir('mu-\xb5')
         except UnicodeError:
             raise TestSkipped("Unable to create Unicode filename")
         # try to init unicode dir
-        self.run_bzr(['init', '-q', u'mu-\xb5'])
+        self.run_bzr(['init', '-q', 'mu-\xb5'])
 
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], [b'a-id'])
+        tree.add(['a'], ids=[b'a-id'])
         tree.commit('one', rev_id=b'r1')
         return tree
 
@@ -183,7 +183,7 @@ Using shared repository: %s
 default_format = 1.9
 ''')
         g_store.save()
-        out, err = self.run_bzr_subprocess('init')
+        out, err = self.run_brz_subprocess('init')
         self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
@@ -199,7 +199,6 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
                          """Created a standalone branch (format: pack-0.92)\n""")
-        self.assertEqual('', err)
 
     def test_init_existing_branch(self):
         # when there is already a branch present, make mention

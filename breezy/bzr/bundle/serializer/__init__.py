@@ -17,9 +17,8 @@
 """Serializer factory for reading and writing bundles.
 """
 
-from __future__ import absolute_import
-
 import base64
+from io import BytesIO
 import re
 
 from .... import (
@@ -28,9 +27,6 @@ from .... import (
     )
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
-from ....sixish import (
-    BytesIO,
-    )
 # For backwards-compatibility
 from ....timestamp import unpack_highres_date, format_highres_date
 
@@ -41,9 +37,6 @@ BUNDLE_HEADER_RE = re.compile(
     br'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 CHANGESET_OLD_HEADER_RE = re.compile(
     br'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
-
-
-serializer_registry = registry.Registry()
 
 
 def _get_bundle_header(version):
@@ -122,7 +115,7 @@ def write_bundle(repository, revision_id, base_revision_id, out, format=None):
                                                    base_revision_id, out)
 
 
-class BundleSerializer(object):
+class BundleSerializer:
     """The base class for Serializers.
 
     Common functionality should be included here.
@@ -160,6 +153,8 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     base64.encode(temp, to_file)
     to_file.write(b'\n')
 
+
+serializer_registry = registry.Registry[str, BundleSerializer]()
 
 serializer_registry.register_lazy(
     '0.8', __name__ + '.v08', 'BundleSerializerV08')

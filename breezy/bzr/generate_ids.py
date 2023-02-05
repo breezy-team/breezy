@@ -16,8 +16,6 @@
 
 """Common code for generating file or revision ids."""
 
-from __future__ import absolute_import
-
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import time
@@ -31,7 +29,6 @@ from breezy import (
 from .. import (
     lazy_regex,
     )
-from ..sixish import text_type
 
 # the regex removes any weird characters; we don't escape them
 # but rather just pull them out
@@ -59,7 +56,7 @@ def _next_id_suffix():
     #           suffix forever.
     global _gen_file_id_suffix, _gen_file_id_serial
     if _gen_file_id_suffix is None:
-        _gen_file_id_suffix = ("-%s-%s-" % (
+        _gen_file_id_suffix = ("-{}-{}-".format(
             osutils.compact_date(time.time()), osutils.rand_chars(16))
             ).encode("ascii")
     _gen_file_id_serial += 1
@@ -71,7 +68,7 @@ def gen_file_id(name):
 
     The uniqueness is supplied from _next_id_suffix.
     """
-    if isinstance(name, text_type):
+    if isinstance(name, str):
         name = name.encode('ascii', 'replace')
     # The real randomness is in the _next_id_suffix, the
     # rest of the identifier is just to be nice.

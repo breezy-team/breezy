@@ -17,8 +17,6 @@
 
 """Foundation SSH support for SFTP and smart server."""
 
-from __future__ import absolute_import
-
 import errno
 import getpass
 import logging
@@ -26,6 +24,7 @@ import os
 import socket
 import subprocess
 import sys
+from typing import Tuple, Type, Set, Dict, Optional
 from binascii import hexlify
 
 from .. import (
@@ -39,10 +38,10 @@ from .. import (
 
 try:
     import paramiko
-except ImportError as e:
+except ModuleNotFoundError as e:
     # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
     # access
-    paramiko = None
+    paramiko = None  # type: ignore
 else:
     from paramiko.sftp_client import SFTPClient
 
@@ -51,11 +50,11 @@ class StrangeHostname(errors.BzrError):
     _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
 
 
-SYSTEM_HOSTKEYS = {}
-BRZ_HOSTKEYS = {}
+SYSTEM_HOSTKEYS: Dict[str, Dict[str, str]] = {}
+BRZ_HOSTKEYS: Dict[str, Dict[str, str]] = {}
 
 
-class SSHVendorManager(object):
+class SSHVendorManager:
     """Manager for manage SSH vendors."""
 
     # Note, although at first sign the class interface seems similar to
@@ -181,7 +180,7 @@ def _ignore_signals():
         signal.signal(signal.SIGQUIT, signal.SIG_IGN)
 
 
-class SocketAsChannelAdapter(object):
+class SocketAsChannelAdapter:
     """Simple wrapper for a socket that pretends to be a paramiko Channel."""
 
     def __init__(self, sock):
@@ -196,7 +195,7 @@ class SocketAsChannelAdapter(object):
     def recv(self, n):
         try:
             return self.__socket.recv(n)
-        except socket.error as e:
+        except OSError as e:
             if e.args[0] in (errno.EPIPE, errno.ECONNRESET, errno.ECONNABORTED,
                              errno.EBADF):
                 # Connection has closed.  Paramiko expects an empty string in
@@ -215,7 +214,7 @@ class SocketAsChannelAdapter(object):
         self.__socket.close()
 
 
-class SSHVendor(object):
+class SSHVendor:
     """Abstract base class for SSH vendor implementations."""
 
     def connect_sftp(self, username, password, host, port):
@@ -258,7 +257,7 @@ class LoopbackVendor(SSHVendor):
         sock = socket.socket()
         try:
             sock.connect((host, port))
-        except socket.error as e:
+        except OSError as e:
             self._raise_connection_error(host, port=port, orig_error=e)
         return SFTPClient(SocketAsChannelAdapter(sock))
 
@@ -281,7 +280,7 @@ class ParamikoVendor(SSHVendor):
             t = paramiko.Transport((host, port or 22))
             t.set_log_channel('bzr.paramiko')
             t.start_client()
-        except (paramiko.SSHException, socket.error) as e:
+        except (paramiko.SSHException, OSError) as e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
         server_key = t.get_remote_server_key()
@@ -310,7 +309,7 @@ class ParamikoVendor(SSHVendor):
             raise errors.TransportError(
                 'Host keys for %s do not match!  %s != %s' %
                 (host, our_server_key_hex, server_key_hex),
-                ['Try editing %s or %s' % (filename1, filename2)])
+                ['Try editing {} or {}'.format(filename1, filename2)])
 
         _paramiko_auth(username, password, host, port, t)
         return t
@@ -335,7 +334,7 @@ class ParamikoVendor(SSHVendor):
                                          msg='Unable to invoke remote bzr')
 
 
-_ssh_connection_errors = (EOFError, OSError, IOError, socket.error)
+_ssh_connection_errors: Tuple[Type[Exception], ...] = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
     vendor = ParamikoVendor()
     register_ssh_vendor('paramiko', vendor)
@@ -366,7 +365,7 @@ class SubprocessVendor(SSHVendor):
         try:
             my_sock, subproc_sock = socket.socketpair()
             osutils.set_fd_cloexec(my_sock)
-        except (AttributeError, socket.error):
+        except (AttributeError, OSError):
             # This platform doesn't support socketpair(), so just use ordinary
             # pipes instead.
             stdin = stdout = subprocess.PIPE
@@ -587,8 +586,8 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
         return True
     except paramiko.PasswordRequiredException:
         password = ui.ui_factory.get_password(
-            prompt=u'SSH %(filename)s password',
-            filename=filename.decode(osutils._fs_enc))
+            prompt='SSH %(filename)s password',
+            filename=os.fsdecode(filename))
         try:
             key = pkey_class.from_private_key_file(filename, password)
             paramiko_transport.auth_publickey(username, key)
@@ -599,7 +598,7 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
     except paramiko.SSHException:
         trace.mutter('SSH authentication via %s key failed.'
                      % (os.path.basename(filename),))
-    except IOError:
+    except OSError:
         pass
     return False
 
@@ -617,12 +616,12 @@ def load_host_keys():
     try:
         SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(
             os.path.expanduser('~/.ssh/known_hosts'))
-    except IOError as e:
+    except OSError as e:
         trace.mutter('failed to load system host keys: ' + str(e))
     brz_hostkey_path = _ssh_host_keys_config_dir()
     try:
         BRZ_HOSTKEYS = paramiko.util.load_host_keys(brz_hostkey_path)
-    except IOError as e:
+    except OSError as e:
         trace.mutter('failed to load brz host keys: ' + str(e))
         save_host_keys()
 
@@ -642,7 +641,7 @@ def save_host_keys():
                 for keytype, key in keys.items():
                     f.write('%s %s %s\n' %
                             (hostname, keytype, key.get_base64()))
-    except IOError as e:
+    except OSError as e:
         trace.mutter('failed to save bzr host keys: ' + str(e))
 
 
@@ -673,7 +672,7 @@ def os_specific_subprocess_params():
 
 
 import weakref
-_subproc_weakrefs = set()
+_subproc_weakrefs: Set[weakref.ref] = set()
 
 
 def _close_ssh_proc(proc, sock):
@@ -700,7 +699,7 @@ def _close_ssh_proc(proc, sock):
             continue
 
 
-class SSHConnection(object):
+class SSHConnection:
     """Abstract base class for SSH connections."""
 
     def get_sock_or_pipes(self):

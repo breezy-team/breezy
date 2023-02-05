@@ -41,8 +41,6 @@ true for classes or functions (when used as a factory, or you want
 to inherit from them).
 """
 
-from __future__ import absolute_import
-
 from .errors import BzrError, InternalBzrError
 
 
@@ -81,7 +79,7 @@ class InvalidImportLine(InternalBzrError):
         self.msg = msg
 
 
-class ScopeReplacer(object):
+class ScopeReplacer:
     """A lazy object that will replace itself in the appropriate scope.
 
     This object sits, ready to create the real object the first time it is
@@ -257,7 +255,7 @@ class ImportReplacer(ScopeReplacer):
         return module
 
 
-class ImportProcessor(object):
+class ImportProcessor:
     """Convert text that users input into lazy import requests"""
 
     # TODO: jam 20060912 This class is probably not strict enough about
@@ -309,7 +307,7 @@ class ImportProcessor(object):
         :param import_str: The import string to process
         """
         if not import_str.startswith('import '):
-            raise ValueError('bad import string %r' % (import_str,))
+            raise ValueError('bad import string {!r}'.format(import_str))
         import_str = import_str[len('import '):]
 
         for path in import_str.split(','):

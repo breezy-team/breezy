@@ -15,8 +15,6 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
-from __future__ import absolute_import
-
 from ... import (
     debug,
     errors,
@@ -60,7 +58,7 @@ class CommitHandler(processor.CommitHandler):
 
     def __init__(self, command, cache_mgr, rev_store, verbose=False,
                  prune_empty_dirs=True):
-        super(CommitHandler, self).__init__(command)
+        super().__init__(command)
         self.cache_mgr = cache_mgr
         self.rev_store = rev_store
         self.verbose = verbose
@@ -82,23 +80,23 @@ class CommitHandler(processor.CommitHandler):
 
     def mutter(self, msg, *args):
         """Output a mutter but add context."""
-        msg = "%s (%s)" % (msg, self.command.id)
+        msg = "{} ({})".format(msg, self.command.id)
         mutter(msg, *args)
 
     def debug(self, msg, *args):
         """Output a mutter if the appropriate -D option was given."""
         if "fast-import" in debug.debug_flags:
-            msg = "%s (%s)" % (msg, self.command.id)
+            msg = "{} ({})".format(msg, self.command.id)
             mutter(msg, *args)
 
     def note(self, msg, *args):
         """Output a note but add context."""
-        msg = "%s (%s)" % (msg, self.command.id)
+        msg = "{} ({})".format(msg, self.command.id)
         note(msg, *args)
 
     def warning(self, msg, *args):
         """Output a warning but add context."""
-        msg = "%s (%s)" % (msg, self.command.id)
+        msg = "{} ({})".format(msg, self.command.id)
         warning(msg, *args)
 
     def pre_process_files(self):
@@ -158,7 +156,7 @@ class CommitHandler(processor.CommitHandler):
             # Need to explicitly add the root entry for the first revision
             # and for non rich-root inventories
             root_id = inventory.ROOT_ID
-            root_ie = inventory.InventoryDirectory(root_id, u'', None)
+            root_ie = inventory.InventoryDirectory(root_id, '', None)
             root_ie.revision = self.revision_id
             self._add_entry((old_path, '', root_id, root_ie))
 
@@ -278,7 +276,7 @@ class CommitHandler(processor.CommitHandler):
         email = self._utf8_decode("%s email" % section, email)
 
         if email:
-            return "%s <%s>" % (name, email)
+            return "{} <{}>".format(name, email)
         else:
             return name
 
@@ -296,8 +294,8 @@ class CommitHandler(processor.CommitHandler):
 
     def build_revision(self):
         rev_props = self._legal_revision_properties(self.command.properties)
-        if u'branch-nick' not in rev_props:
-            rev_props[u'branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
+        if 'branch-nick' not in rev_props:
+            rev_props['branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
                 self.branch_ref)
         self._save_author_info(rev_props)
         committer = self.command.committer
@@ -350,7 +348,7 @@ class CommitHandler(processor.CommitHandler):
         else:
             return
         # If we reach here, there are authors worth storing
-        rev_props[u'authors'] = "\n".join(author_ids)
+        rev_props['authors'] = "\n".join(author_ids)
 
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
@@ -612,7 +610,7 @@ class CommitHandler(processor.CommitHandler):
             if len(ie.children) == 0:
                 result.append((dir, file_id))
                 if self.verbose:
-                    self.note("pruning empty directory %s" % (dir,))
+                    self.note("pruning empty directory {}".format(dir))
         return result
 
     def _get_proposed_inventory(self, delta):

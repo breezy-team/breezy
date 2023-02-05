@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
+from typing import Dict, Any, List
+
 #
 # Bazaar documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
-from __future__ import absolute_import
 
 # FIXME: better move the content of doc/en/conf.py here and cleanup the result
 # -- vila 20100428
@@ -42,8 +41,8 @@ source_suffix = '.txt'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Breezy'
-copyright = u'2009-2011 Canonical Ltd, 2017-2018 Breezy Developers'
+project = 'Breezy'
+copyright = '2009-2011 Canonical Ltd, 2017-2018 Breezy Developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -102,7 +101,7 @@ html_theme = 'agogo'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {
+html_theme_options: Dict[str, Any] = {
     # Unfortunately, the right sidebar breaks under IE6 and maybe IE7.
     # So we stick with the default left placement to cater for users stuck
     # on those browsers.
@@ -198,7 +197,7 @@ htmlhelp_basename = 'brz-docs'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
-latex_documents = []
+latex_documents: List[Any] = []
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
@@ -221,7 +220,7 @@ latex_documents = []
 # -- Bazaar-specific configuration ---------------------------------------------
 
 # Authors of the documents
-brz_team = u'Breezy Developers'
+brz_team = 'Breezy Developers'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),

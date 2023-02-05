@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-from __future__ import absolute_import
-
 from ... import _format_version_tuple, version_info
 
 __version__ = _format_version_tuple(version_info)

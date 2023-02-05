@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """ControlDir is the basic control directory class.
 
 The ControlDir class is the base for the control directory used
@@ -22,7 +24,7 @@ see breezy.bzrdir.BzrDir.
 
 """
 
-from __future__ import absolute_import
+from typing import List, Type, Optional, TYPE_CHECKING, Dict, Set, Tuple, cast
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -30,16 +32,8 @@ import textwrap
 
 from breezy import (
     branch as _mod_branch,
-    hooks,
-    revision as _mod_revision,
-    transport as _mod_transport,
-    trace,
     ui,
     urlutils,
-    )
-from breezy.transport import local
-from breezy.push import (
-    PushResult,
     )
 
 from breezy.i18n import gettext
@@ -47,8 +41,17 @@ from breezy.i18n import gettext
 
 from . import (
     errors,
+    hooks,
     registry,
+    revision as _mod_revision,
+    trace,
+    transport as _mod_transport,
     )
+
+if TYPE_CHECKING:
+    from .branch import Branch
+    from .repository import Repository
+    from .workingtree import WorkingTree
 
 
 class MustHaveWorkingTree(errors.BzrError):
@@ -67,7 +70,15 @@ class BranchReferenceLoop(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch)
 
 
-class ControlComponent(object):
+class NoColocatedBranchSupport(errors.BzrError):
+
+    _fmt = ("%(controldir)r does not support co-located branches.")
+
+    def __init__(self, controldir):
+        self.controldir = controldir
+
+
+class ControlComponent:
     """Abstract base class for control directory components.
 
     This provides interfaces that are common across controldirs,
@@ -84,20 +95,22 @@ class ControlComponent(object):
     """
 
     @property
-    def control_transport(self):
+    def control_transport(self) -> _mod_transport.Transport:
         raise NotImplementedError
 
     @property
-    def control_url(self):
+    def control_url(self) -> str:
         return self.control_transport.base
 
     @property
-    def user_transport(self):
+    def user_transport(self) -> _mod_transport.Transport:
         raise NotImplementedError
 
     @property
-    def user_url(self):
+    def user_url(self) -> str:
         return self.user_transport.base
+
+    _format: "ControlComponentFormat"
 
 
 class ControlDir(ControlComponent):
@@ -118,21 +131,26 @@ class ControlDir(ControlComponent):
     API users to check for magic attributes to see what features are supported.
     """
 
+    hooks: hooks.Hooks
+
+    root_transport: _mod_transport.Transport
+    user_transport: _mod_transport.Transport
+
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
         from."""
         return True
 
-    def list_branches(self):
+    def list_branches(self) -> List["Branch"]:
         """Return a sequence of all branches local to this control directory.
 
         """
         return list(self.get_branches().values())
 
-    def branch_names(self):
+    def branch_names(self) -> List[str]:
         """List all branch names in this control directory.
 
-        :return: List of branch names
+        Returns: List of branch names
         """
         try:
             self.get_branch_reference()
@@ -141,10 +159,10 @@ class ControlDir(ControlComponent):
         else:
             return [""]
 
-    def get_branches(self):
+    def get_branches(self) -> Dict[str, "Branch"]:
         """Get all branches in this control directory, as a dictionary.
 
-        :return: Dictionary mapping branch names to instances.
+        Returns: Dictionary mapping branch names to instances.
         """
         try:
             return {"": self.open_branch()}
@@ -155,7 +173,8 @@ class ControlDir(ControlComponent):
         """True if filename is the name of a path which is reserved for
         controldirs.
 
-        :param filename: A filename within the root transport of this
+        Args:
+          filename: A filename within the root transport of this
             controldir.
 
         This is true IF and ONLY IF the filename is part of the namespace reserved
@@ -172,30 +191,35 @@ class ControlDir(ControlComponent):
         For instance, if the repository format is out of date but the
         branch and working tree are not, this should return True.
 
-        :param format: Optional parameter indicating a specific desired
+        Args:
+          format: Optional parameter indicating a specific desired
                        format we plan to arrive at.
         """
         raise NotImplementedError(self.needs_format_conversion)
 
-    def create_repository(self, shared=False):
+    def create_repository(self, shared: bool = False) -> "Repository":
         """Create a new repository in this control directory.
 
-        :param shared: If a shared repository should be created
-        :return: The newly created repository
+        Args:
+          shared: If a shared repository should be created
+
+        Returns: The newly created repository
         """
         raise NotImplementedError(self.create_repository)
 
-    def destroy_repository(self):
+    def destroy_repository(self) -> None:
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self, name=None, repository=None,
-                      append_revisions_only=None):
+    def create_branch(self, name: Optional[str] = None,
+                      repository: Optional["Repository"] = None,
+                      append_revisions_only: Optional[bool] = None) -> "Branch":
         """Create a branch in this ControlDir.
 
-        :param name: Name of the colocated branch to create, None for
+        Args:
+          name: Name of the colocated branch to create, None for
             the user selected branch or "" for the active branch.
-        :param append_revisions_only: Whether this branch should only allow
+          append_revisions_only: Whether this branch should only allow
             appending new revisions to its history.
 
         The controldirs format will control what branch format is created.
@@ -203,23 +227,27 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self, name=None):
+    def destroy_branch(self, name: Optional[str] = None) -> None:
         """Destroy a branch in this ControlDir.
 
-        :param name: Name of the branch to destroy, None for the
+        Args:
+          name: Name of the branch to destroy, None for the
             user selected branch or "" for the active branch.
-        :raise NotBranchError: When the branch does not exist
+
+        Raises:
+          NotBranchError: When the branch does not exist
         """
         raise NotImplementedError(self.destroy_branch)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-                           accelerator_tree=None, hardlink=False):
+                           accelerator_tree=None, hardlink=False) -> "WorkingTree":
         """Create a working tree at this ControlDir.
 
-        :param revision_id: create it as of this revision id.
-        :param from_branch: override controldir branch
+        Args:
+          revision_id: create it as of this revision id.
+          from_branch: override controldir branch
             (for lightweight checkouts)
-        :param accelerator_tree: A tree which can be used for retrieving file
+          accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
@@ -251,52 +279,64 @@ class ControlDir(ControlComponent):
     def get_branch_reference(self, name=None):
         """Return the referenced URL for the branch in this controldir.
 
-        :param name: Optional colocated branch name
-        :raises NotBranchError: If there is no Branch.
-        :raises NoColocatedBranchSupport: If a branch name was specified
+        Args:
+          name: Optional colocated branch name
+
+        Raises:
+          NotBranchError: If there is no Branch.
+          NoColocatedBranchSupport: If a branch name was specified
             but colocated branches are not supported.
-        :return: The URL the branch in this controldir references if it is a
-            reference branch, or None for regular branches.
+
+        Returns:
+          The URL the branch in this controldir references if it is a
+          reference branch, or None for regular branches.
         """
         if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+            raise NoColocatedBranchSupport(self)
         return None
 
     def set_branch_reference(self, target_branch, name=None):
         """Set the referenced URL for the branch in this controldir.
 
-        :param name: Optional colocated branch name
-        :param target_branch: Branch to reference
-        :raises NoColocatedBranchSupport: If a branch name was specified
+        Args:
+          name: Optional colocated branch name
+          target_branch: Branch to reference
+
+        Raises:
+          NoColocatedBranchSupport: If a branch name was specified
             but colocated branches are not supported.
-        :return: The referencing branch
+
+        Returns:
+          The referencing branch
         """
         raise NotImplementedError(self.set_branch_reference)
 
     def open_branch(self, name=None, unsupported=False,
-                    ignore_fallbacks=False, possible_transports=None):
+                    ignore_fallbacks=False, possible_transports=None) -> "Branch":
         """Open the branch object at this ControlDir if one is present.
 
-        :param unsupported: if True, then no longer supported branch formats can
+        Args:
+          unsupported: if True, then no longer supported branch formats can
             still be opened.
-        :param ignore_fallbacks: Whether to open fallback repositories
-        :param possible_transports: Transports to use for opening e.g.
+          ignore_fallbacks: Whether to open fallback repositories
+          possible_transports: Transports to use for opening e.g.
             fallback repositories.
         """
         raise NotImplementedError(self.open_branch)
 
-    def open_repository(self, _unsupported=False):
+    def open_repository(self, _unsupported=False) -> "Repository":
         """Open the repository object at this ControlDir if one is present.
 
         This will not follow the Branch object pointer - it's strictly a direct
         open facility. Most client code should use open_branch().repository to
         get at a repository.
 
-        :param _unsupported: a private parameter, not part of the api.
+        Args:
+          _unsupported: a private parameter, not part of the api.
         """
         raise NotImplementedError(self.open_repository)
 
-    def find_repository(self):
+    def find_repository(self) -> "Repository":
         """Find the repository that should be used.
 
         This does not require a branch as we use it to find the repo for
@@ -306,14 +346,15 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.find_repository)
 
     def open_workingtree(self, unsupported=False,
-                         recommend_upgrade=True, from_branch=None):
+                         recommend_upgrade=True, from_branch=None) -> "WorkingTree":
         """Open the workingtree object at this ControlDir if one is present.
 
-        :param recommend_upgrade: Optional keyword parameter, when True (the
+        Args:
+          recommend_upgrade: Optional keyword parameter, when True (the
             default), emit through the ui module a recommendation that the user
             upgrade the working tree when the workingtree being opened is old
             (but still fully supported).
-        :param from_branch: override controldir branch (for lightweight
+          from_branch: override controldir branch (for lightweight
             checkouts)
         """
         raise NotImplementedError(self.open_workingtree)
@@ -334,7 +375,7 @@ class ControlDir(ControlComponent):
     def _get_selected_branch(self):
         """Return the name of the branch selected by the user.
 
-        :return: Name of the branch selected by the user, or "".
+        Returns: Name of the branch selected by the user, or "".
         """
         branch = self.root_transport.get_segment_parameters().get("branch")
         if branch is None:
@@ -396,33 +437,35 @@ class ControlDir(ControlComponent):
         whether one existed before or not; and a local branch is always
         created.
 
-        :param revision_id: if revision_id is not None, then the clone
+        Args:
+          revision_id: if revision_id is not None, then the clone
             operation may tune itself to download less data.
-        :param accelerator_tree: A tree which can be used for retrieving file
+          accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
             content is different.
-        :param hardlink: If true, hard-link files from accelerator_tree,
+          hardlink: If true, hard-link files from accelerator_tree,
             where possible.
-        :param stacked: If true, create a stacked branch referring to the
+          stacked: If true, create a stacked branch referring to the
             location of this control directory.
-        :param create_tree_if_local: If true, a working-tree will be created
+          create_tree_if_local: If true, a working-tree will be created
             when working locally.
         """
         raise NotImplementedError(self.sprout)
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    tag_selector=None):
+                    tag_selector=None, name=None):
         """Push the source branch into this ControlDir."""
-        br_to = None
+        from .push import PushResult
         # If we can open a branch, use its direct repository, otherwise see
         # if there is a repository without a branch.
         try:
-            br_to = self.open_branch()
+            br_to = self.open_branch(name=name)
         except errors.NotBranchError:
             # Didn't find a branch, can we find a repository?
             repository_to = self.find_repository()
+            br_to = None
         else:
             # Found a branch, so we must have found a repository
             repository_to = br_to.repository
@@ -439,7 +482,7 @@ class ControlDir(ControlComponent):
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.sprout(
                 self, revision_id=revision_id, lossy=lossy,
-                tag_selector=tag_selector)
+                tag_selector=tag_selector, name=name)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
@@ -459,21 +502,28 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
+                    br_to, overwrite=overwrite, stop_revision=revision_id, lossy=lossy,
                     tag_selector=tag_selector)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
-                    tag_selector=tag_selector)
+                    br_to, overwrite=overwrite, stop_revision=revision_id,
+                    lossy=lossy, tag_selector=tag_selector)
                 push_result.workingtree_updated = None  # Not applicable
             else:
-                with tree_to.lock_write():
+                if br_to.name == tree_to.branch.name:
+                    with tree_to.lock_write():
+                        push_result.branch_push_result = source.push(
+                            tree_to.branch, overwrite=overwrite,
+                            stop_revision=revision_id,
+                            lossy=lossy, tag_selector=tag_selector)
+                        tree_to.update()
+                    push_result.workingtree_updated = True
+                else:
                     push_result.branch_push_result = source.push(
-                        tree_to.branch, overwrite, stop_revision=revision_id,
+                        br_to, overwrite=overwrite, stop_revision=revision_id,
                         lossy=lossy, tag_selector=tag_selector)
-                    tree_to.update()
-                push_result.workingtree_updated = True
+                    push_result.workingtree_updated = None  # Not applicable
             push_result.old_revno = push_result.branch_push_result.old_revno
             push_result.old_revid = push_result.branch_push_result.old_revid
             push_result.target_branch = \
@@ -483,11 +533,13 @@ class ControlDir(ControlComponent):
     def _get_tree_branch(self, name=None):
         """Return the branch and tree, if any, for this controldir.
 
-        :param name: Name of colocated branch to open.
+        Args:
+          name: Name of colocated branch to open.
 
         Return None for tree if not present or inaccessible.
         Raise NotBranchError if no branch is present.
-        :return: (tree, branch)
+
+        Returns: (tree, branch)
         """
         try:
             tree = self.open_workingtree()
@@ -513,14 +565,15 @@ class ControlDir(ControlComponent):
               preserve_stacking=False, tag_selector=None):
         """Clone this controldir and its contents to url verbatim.
 
-        :param url: The url create the clone at.  If url's last component does
+        Args:
+          url: The url create the clone at.  If url's last component does
             not exist, it will be created.
-        :param revision_id: The tip revision-id to use for any branch or
+          revision_id: The tip revision-id to use for any branch or
             working tree.  If not None, then the clone operation may tune
             itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target
+          force_new_repo: Do not use a shared repository for the target
                                even if one is available.
-        :param preserve_stacking: When cloning a stacked branch, stack the
+          preserve_stacking: When cloning a stacked branch, stack the
             new branch on top of the other branch's stacked-on branch.
         """
         return self.clone_on_transport(_mod_transport.get_transport(url),
@@ -535,19 +588,20 @@ class ControlDir(ControlComponent):
                            tag_selector=None):
         """Clone this controldir and its contents to transport verbatim.
 
-        :param transport: The transport for the location to produce the clone
+        Args:
+          transport: The transport for the location to produce the clone
             at.  If the target directory does not exist, it will be created.
-        :param revision_id: The tip revision-id to use for any branch or
+          revision_id: The tip revision-id to use for any branch or
             working tree.  If not None, then the clone operation may tune
             itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target,
+          force_new_repo: Do not use a shared repository for the target,
                                even if one is available.
-        :param preserve_stacking: When cloning a stacked branch, stack the
+          preserve_stacking: When cloning a stacked branch, stack the
             new branch on top of the other branch's stacked-on branch.
-        :param create_prefix: Create any missing directories leading up to
+          create_prefix: Create any missing directories leading up to
             to_transport.
-        :param use_existing_dir: Use an existing directory if one exists.
-        :param no_tree: If set to true prevents creation of a working tree.
+          use_existing_dir: Use an existing directory if one exists.
+          no_tree: If set to true prevents creation of a working tree.
         """
         raise NotImplementedError(self.clone_on_transport)
 
@@ -559,13 +613,16 @@ class ControlDir(ControlComponent):
         functionality, like finding trees under a directory, or finding
         branches that use a given repository.
 
-        :param evaluate: An optional callable that yields recurse, value,
+        Args:
+          evaluate: An optional callable that yields recurse, value,
             where recurse controls whether this controldir is recursed into
             and value is the value to yield.  By default, all bzrdirs
             are recursed into, and the return value is the controldir.
-        :param list_current: if supplied, use this function to list the current
+          list_current: if supplied, use this function to list the current
             directory, instead of Transport.list_dir
-        :return: a generator of found bzrdirs, or whatever evaluate returns.
+
+        Returns:
+          a generator of found bzrdirs, or whatever evaluate returns.
         """
         if list_current is None:
             def list_current(transport):
@@ -588,7 +645,7 @@ class ControlDir(ControlComponent):
                 yield value
             try:
                 subdirs = list_current(current_transport)
-            except (errors.NoSuchFile, errors.PermissionDenied):
+            except (_mod_transport.NoSuchFile, errors.PermissionDenied):
                 continue
             if recurse:
                 for subdir in sorted(subdirs, reverse=True):
@@ -623,7 +680,8 @@ class ControlDir(ControlComponent):
         return ret
 
     @classmethod
-    def create_branch_and_repo(klass, base, force_new_repo=False, format=None):
+    def create_branch_and_repo(
+            klass, base, force_new_repo=False, format=None) -> "Branch":
         """Create a new ControlDir, Branch and Repository at the url 'base'.
 
         This will use the current default ControlDirFormat unless one is
@@ -634,14 +692,15 @@ class ControlDir(ControlComponent):
 
         The created Branch object is returned.
 
-        :param base: The URL to create the branch at.
-        :param force_new_repo: If True a new repository is always created.
-        :param format: If supplied, the format of branch to create.  If not
+        Args:
+          base: The URL to create the branch at.
+          force_new_repo: If True a new repository is always created.
+          format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
         """
         controldir = klass.create(base, format)
         controldir._find_or_create_repository(force_new_repo)
-        return controldir.create_branch()
+        return cast("Branch", controldir.create_branch())
 
     @classmethod
     def create_branch_convenience(klass, base, force_new_repo=False,
@@ -665,14 +724,16 @@ class ControlDir(ControlComponent):
         no error is raised unless force_new_tree is True, in which case no
         data is created on disk and NotLocalUrl is raised.
 
-        :param base: The URL to create the branch at.
-        :param force_new_repo: If True a new repository is always created.
-        :param force_new_tree: If True or False force creation of a tree or
+        Args:
+          base: The URL to create the branch at.
+          force_new_repo: If True a new repository is always created.
+          force_new_tree: If True or False force creation of a tree or
                                prevent such creation respectively.
-        :param format: Override for the controldir format to create.
-        :param possible_transports: An optional reusable transports list.
+          format: Override for the controldir format to create.
+          possible_transports: An optional reusable transports list.
         """
         if force_new_tree:
+            from breezy.transport import local
             # check for non local urls
             t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):
@@ -689,7 +750,7 @@ class ControlDir(ControlComponent):
         return result
 
     @classmethod
-    def create_standalone_workingtree(klass, base, format=None):
+    def create_standalone_workingtree(klass, base, format=None) -> "WorkingTree":
         """Create a new ControlDir, WorkingTree, Branch and Repository at 'base'.
 
         'base' must be a local path or a file:// url.
@@ -699,10 +760,13 @@ class ControlDir(ControlComponent):
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
-        :param format: Override for the controldir format to create.
-        :return: The WorkingTree object.
+        Args:
+          format: Override for the controldir format to create.
+
+        Returns: The WorkingTree object.
         """
         t = _mod_transport.get_transport(base)
+        from breezy.transport import local
         if not isinstance(t, local.LocalTransport):
             raise errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(base,
@@ -717,22 +781,24 @@ class ControlDir(ControlComponent):
 
     @classmethod
     def open(klass, base, possible_transports=None, probers=None,
-             _unsupported=False):
+             _unsupported=False) -> "ControlDir":
         """Open an existing controldir, rooted at 'base' (url).
 
-        :param _unsupported: a private parameter to the ControlDir class.
+        Args:
+          _unsupported: a private parameter to the ControlDir class.
         """
         t = _mod_transport.get_transport(base, possible_transports)
         return klass.open_from_transport(t, probers=probers,
                                          _unsupported=_unsupported)
 
     @classmethod
-    def open_from_transport(klass, transport, _unsupported=False,
-                            probers=None):
+    def open_from_transport(klass, transport: _mod_transport.Transport,
+                            _unsupported=False, probers=None) -> "ControlDir":
         """Open a controldir within a particular directory.
 
-        :param transport: Transport containing the controldir.
-        :param _unsupported: private.
+        Args:
+          transport: Transport containing the controldir.
+          _unsupported: private.
         """
         for hook in klass.hooks['pre_open']:
             hook(transport)
@@ -759,13 +825,14 @@ class ControlDir(ControlComponent):
             raise errors.NotBranchError(base)
 
         format.check_support_status(_unsupported)
-        return format.open(transport, _found=True)
+        return cast("ControlDir", format.open(transport, _found=True))
 
     @classmethod
     def open_containing(klass, url, possible_transports=None):
         """Open an existing branch which contains url.
 
-        :param url: url to search from.
+        Args:
+          url: url to search from.
 
         See open_containing_from_transport for more detail.
         """
@@ -773,7 +840,7 @@ class ControlDir(ControlComponent):
         return klass.open_containing_from_transport(transport)
 
     @classmethod
-    def open_containing_from_transport(klass, a_transport):
+    def open_containing_from_transport(klass, a_transport, probers=None):
         """Open an existing branch which contains a_transport.base.
 
         This probes for a branch at a_transport, and searches upwards from there.
@@ -784,14 +851,14 @@ class ControlDir(ControlComponent):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
 
-        :return: The ControlDir that contains the path, and a Unicode path
+        Returns: The ControlDir that contains the path, and a Unicode path
                 for the rest of the URL.
         """
         # this gets the normalised url back. I.e. '.' -> the full path.
         url = a_transport.base
         while True:
             try:
-                result = klass.open_from_transport(a_transport)
+                result = klass.open_from_transport(a_transport, probers=probers)
                 return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError:
                 pass
@@ -814,7 +881,7 @@ class ControlDir(ControlComponent):
         If there is no tree at the location, tree will be None.
         If there is no branch at the location, an exception will be
         raised
-        :return: (tree, branch)
+        Returns: (tree, branch)
         """
         controldir = klass.open(location)
         return controldir._get_tree_branch(name=name)
@@ -864,9 +931,10 @@ class ControlDir(ControlComponent):
     def create(klass, base, format=None, possible_transports=None):
         """Create a new ControlDir at the url 'base'.
 
-        :param format: If supplied, the format of branch to create.  If not
+        Args:
+          format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
-        :param possible_transports: If supplied, a list of transports that
+          possible_transports: If supplied, a list of transports that
             can be reused to share a remote connection.
         """
         if klass is not ControlDir:
@@ -896,10 +964,10 @@ class ControlDirHooks(hooks.Hooks):
 
 
 # install the default hooks
-ControlDir.hooks = ControlDirHooks()
+ControlDir.hooks = ControlDirHooks()  # type: ignore
 
 
-class ControlComponentFormat(object):
+class ControlComponentFormat:
     """A component that can live inside of a control directory."""
 
     upgrade_recommended = False
@@ -921,11 +989,12 @@ class ControlComponentFormat(object):
                              basedir=None):
         """Give an error or warning on old formats.
 
-        :param allow_unsupported: If true, allow opening
+        Args:
+          allow_unsupported: If true, allow opening
             formats that are strongly deprecated, and which may
             have limited functionality.
 
-        :param recommend_upgrade: If true (default), warn
+          recommend_upgrade: If true (default), warn
             the user through the ui object that they may wish
             to upgrade the object.
         """
@@ -941,21 +1010,21 @@ class ControlComponentFormat(object):
         raise NotImplementedError(cls.get_format_string)
 
 
-class ControlComponentFormatRegistry(registry.FormatRegistry):
+class ControlComponentFormatRegistry(registry.FormatRegistry[ControlComponentFormat]):
     """A registry for control components (branch, workingtree, repository)."""
 
     def __init__(self, other_registry=None):
-        super(ControlComponentFormatRegistry, self).__init__(other_registry)
+        super().__init__(other_registry)
         self._extra_formats = []
 
     def register(self, format):
         """Register a new format."""
-        super(ControlComponentFormatRegistry, self).register(
+        super().register(
             format.get_format_string(), format)
 
     def remove(self, format):
         """Remove a registered format."""
-        super(ControlComponentFormatRegistry, self).remove(
+        super().remove(
             format.get_format_string())
 
     def register_extra(self, format):
@@ -1007,14 +1076,15 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
         return modules
 
 
-class Converter(object):
+class Converter:
     """Converts a disk format object from one format to another."""
 
     def convert(self, to_convert, pb):
         """Perform the conversion of to_convert, giving feedback via pb.
 
-        :param to_convert: The disk object to convert.
-        :param pb: a progress bar to use for progress information.
+        Args:
+          to_convert: The disk object to convert.
+          pb: a progress bar to use for progress information.
         """
 
     def step(self, message):
@@ -1023,7 +1093,7 @@ class Converter(object):
         self.pb.update(message, self.count, self.total)
 
 
-class ControlDirFormat(object):
+class ControlDirFormat:
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -1039,15 +1109,16 @@ class ControlDirFormat(object):
     methods on the format class. Do not deprecate the object, as the
     object will be created every system load.
 
-    :cvar colocated_branches: Whether this formats supports colocated branches.
-    :cvar supports_workingtrees: This control directory can co-exist with a
-        working tree.
+    Attributes:
+      colocated_branches: Whether this formats supports colocated branches.
+      supports_workingtrees: This control directory can co-exist with a
+                                 working tree.
     """
 
-    _default_format = None
+    _default_format: Optional["ControlDirFormat"] = None
     """The default format used for new control directories."""
 
-    _probers = []
+    _probers: List[Type["Prober"]] = []
     """The registered format probers, e.g. BzrProber.
 
     This is a list of Prober-derived classes.
@@ -1081,7 +1152,8 @@ class ControlDirFormat(object):
         current default format. In the case of plugins we can/should provide
         some means for them to extend the range of returnable converters.
 
-        :param format: Optional format to override the default format of the
+        Args:
+          format: Optional format to override the default format of the
                        library.
         """
         raise NotImplementedError(self.get_converter)
@@ -1104,11 +1176,12 @@ class ControlDirFormat(object):
                              basedir=None):
         """Give an error or warning on old formats.
 
-        :param allow_unsupported: If true, allow opening
+        Args:
+          allow_unsupported: If true, allow opening
             formats that are strongly deprecated, and which may
             have limited functionality.
 
-        :param recommend_upgrade: If true (default), warn
+          recommend_upgrade: If true (default), warn
             the user through the ui object that they may wish
             to upgrade the object.
         """
@@ -1124,14 +1197,14 @@ class ControlDirFormat(object):
                 target_format.rich_root_data)
 
     @classmethod
-    def register_prober(klass, prober):
+    def register_prober(klass, prober: Type["Prober"]):
         """Register a prober that can look for a control dir.
 
         """
         klass._probers.append(prober)
 
     @classmethod
-    def unregister_prober(klass, prober):
+    def unregister_prober(klass, prober: Type["Prober"]):
         """Unregister a prober.
 
         """
@@ -1142,7 +1215,7 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def all_probers(klass):
+    def all_probers(klass) -> List[Type["Prober"]]:
         return klass._probers
 
     @classmethod
@@ -1155,7 +1228,9 @@ class ControlDirFormat(object):
         return result
 
     @classmethod
-    def find_format(klass, transport, probers=None):
+    def find_format(klass, transport: _mod_transport.Transport,
+                    probers: Optional[List[Type["Prober"]]] = None
+                    ) -> "ControlDirFormat":
         """Return the format present at transport."""
         if probers is None:
             probers = sorted(
@@ -1195,26 +1270,28 @@ class ControlDirFormat(object):
 
         The directory to initialize will be created.
 
-        :param force_new_repo: Do not use a shared repository for the target,
+        Args:
+          force_new_repo: Do not use a shared repository for the target,
                                even if one is available.
-        :param create_prefix: Create any missing directories leading up to
+          create_prefix: Create any missing directories leading up to
             to_transport.
-        :param use_existing_dir: Use an existing directory if one exists.
-        :param stacked_on: A url to stack any created branch on, None to follow
+          use_existing_dir: Use an existing directory if one exists.
+          stacked_on: A url to stack any created branch on, None to follow
             any target stacking policy.
-        :param stack_on_pwd: If stack_on is relative, the location it is
+          stack_on_pwd: If stack_on is relative, the location it is
             relative to.
-        :param repo_format_name: If non-None, a repository will be
+          repo_format_name: If non-None, a repository will be
             made-or-found. Should none be found, or if force_new_repo is True
             the repo_format_name is used to select the format of repository to
             create.
-        :param make_working_trees: Control the setting of make_working_trees
+          make_working_trees: Control the setting of make_working_trees
             for a new shared repository when one is made. None to use whatever
             default the format has.
-        :param shared_repo: Control whether made repositories are shared or
+          shared_repo: Control whether made repositories are shared or
             not.
-        :param vfs_only: If True do not attempt to use a smart server
-        :return: repo, controldir, require_stacking, repository_policy. repo is
+          vfs_only: If True do not attempt to use a smart server
+
+        Returns: repo, controldir, require_stacking, repository_policy. repo is
             None if none was created or found, controldir is always valid.
             require_stacking is the result of examining the stacked_on
             parameter and any stacking policy found for the target.
@@ -1231,7 +1308,7 @@ class ControlDirFormat(object):
         """
         raise NotImplementedError(self.network_name)
 
-    def open(self, transport, _found=False):
+    def open(self, transport: _mod_transport.Transport, _found=False) -> "ControlDir":
         """Return an instance of this format for the dir transport points at.
         """
         raise NotImplementedError(self.open)
@@ -1256,7 +1333,8 @@ class ControlDirFormat(object):
         """True if filename is the name of a path which is reserved for
         controldirs.
 
-        :param filename: A filename within the root transport of this
+        Args:
+          filename: A filename within the root transport of this
             controldir.
 
         This is true IF and ONLY IF the filename is part of the namespace reserved
@@ -1265,10 +1343,10 @@ class ControlDirFormat(object):
         this in the future - for instance to make bzr talk with svn working
         trees.
         """
-        raise NotImplementedError(self.is_control_filename)
+        raise NotImplementedError(cls.is_control_filename)
 
 
-class Prober(object):
+class Prober:
     """Abstract class that can be used to detect a particular kind of
     control directory.
 
@@ -1284,29 +1362,29 @@ class Prober(object):
     ControlDirFormat.
     """
 
-    def probe_transport(self, transport):
+    def probe_transport(self, transport) -> "ControlDirFormat":
         """Return the controldir style format present in a directory.
 
         :raise UnknownFormatError: If a control dir was found but is
             in an unknown format.
         :raise NotBranchError: If no control directory was found.
-        :return: A ControlDirFormat instance.
+        Returns: A ControlDirFormat instance.
         """
         raise NotImplementedError(self.probe_transport)
 
     @classmethod
-    def known_formats(klass):
+    def known_formats(klass) -> Set["ControlDirFormat"]:
         """Return the control dir formats known by this prober.
 
         Multiple probers can return the same formats, so this should
         return a set.
 
-        :return: A set of known formats.
+        Returns: A set of known formats.
         """
         raise NotImplementedError(klass.known_formats)
 
     @classmethod
-    def priority(klass, transport):
+    def priority(klass, transport: _mod_transport.Transport) -> int:
         """Priority of this prober.
 
         A lower value means the prober gets checked first.
@@ -1321,7 +1399,7 @@ class Prober(object):
         return 0
 
 
-class ControlDirFormatInfo(object):
+class ControlDirFormatInfo:
 
     def __init__(self, native, deprecated, hidden, experimental):
         self.deprecated = deprecated
@@ -1330,7 +1408,7 @@ class ControlDirFormatInfo(object):
         self.experimental = experimental
 
 
-class ControlDirFormatRegistry(registry.Registry):
+class ControlDirFormatRegistry(registry.Registry[str, ControlDirFormat]):
     """Registry of user-selectable ControlDir subformats.
 
     Differs from ControlDirFormat._formats in that it provides sub-formats,
@@ -1340,7 +1418,7 @@ class ControlDirFormatRegistry(registry.Registry):
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
         self._registration_order = list()
-        super(ControlDirFormatRegistry, self).__init__()
+        super().__init__()
 
     def register(self, key, factory, help, native=True, deprecated=False,
                  hidden=False, experimental=False):
@@ -1359,9 +1437,10 @@ class ControlDirFormatRegistry(registry.Registry):
     def register_alias(self, key, target, hidden=False):
         """Register a format alias.
 
-        :param key: Alias name
-        :param target: Target format
-        :param hidden: Whether the alias is hidden
+        Args:
+          key: Alias name
+          target: Target format
+          hidden: Whether the alias is hidden
         """
         info = self.get_info(target)
         registry.Registry.register_alias(self, key, target,
@@ -1413,7 +1492,7 @@ class ControlDirFormatRegistry(registry.Registry):
         def wrapped(key, help, info):
             if info.native:
                 help = '(native) ' + help
-            return ':%s:\n%s\n\n' % (key,
+            return ':{}:\n{}\n\n'.format(key,
                                      textwrap.fill(help, initial_indent='    ',
                                                    subsequent_indent='    ',
                                                    break_long_words=False))
@@ -1459,24 +1538,26 @@ class ControlDirFormatRegistry(registry.Registry):
             return output
 
 
-class RepoInitHookParams(object):
-    """Object holding parameters passed to `*_repo_init` hooks.
+class RepoInitHookParams:
+    """Object holding parameters passed to ``*_repo_init`` hooks.
 
     There are 4 fields that hooks may wish to access:
 
-    :ivar repository: Repository created
-    :ivar format: Repository format
-    :ivar bzrdir: The controldir for the repository
-    :ivar shared: The repository is shared
+    Attributes:
+      repository: Repository created
+      format: Repository format
+      bzrdir: The controldir for the repository
+      shared: The repository is shared
     """
 
     def __init__(self, repository, format, controldir, shared):
         """Create a group of RepoInitHook parameters.
 
-        :param repository: Repository created
-        :param format: Repository format
-        :param controldir: The controldir for the repository
-        :param shared: The repository is shared
+        Args:
+          repository: Repository created
+          format: Repository format
+          controldir: The controldir for the repository
+          shared: The repository is shared
         """
         self.repository = repository
         self.format = format
@@ -1488,10 +1569,10 @@ class RepoInitHookParams(object):
 
     def __repr__(self):
         if self.repository:
-            return "<%s for %s>" % (self.__class__.__name__,
+            return "<{} for {}>".format(self.__class__.__name__,
                                     self.repository)
         else:
-            return "<%s for %s>" % (self.__class__.__name__,
+            return "<{} for {}>".format(self.__class__.__name__,
                                     self.controldir)
 
 
@@ -1506,7 +1587,7 @@ def is_control_filename(filename):
         return False
 
 
-class RepositoryAcquisitionPolicy(object):
+class RepositoryAcquisitionPolicy:
     """Abstract base class for repository acquisition policies.
 
     A repository acquisition policy decides how a ControlDir acquires a repository
@@ -1517,10 +1598,11 @@ class RepositoryAcquisitionPolicy(object):
     def __init__(self, stack_on, stack_on_pwd, require_stacking):
         """Constructor.
 
-        :param stack_on: A location to stack on
-        :param stack_on_pwd: If stack_on is relative, the location it is
+        Args:
+          stack_on: A location to stack on
+          stack_on_pwd: If stack_on is relative, the location it is
             relative to.
-        :param require_stacking: If True, it is a failure to not stack.
+          require_stacking: If True, it is a failure to not stack.
         """
         self._stack_on = stack_on
         self._stack_on_pwd = stack_on_pwd
@@ -1593,11 +1675,12 @@ class RepositoryAcquisitionPolicy(object):
         Implementations may create a new repository or use a pre-exising
         repository.
 
-        :param make_working_trees: If creating a repository, set
+        Args:
+          make_working_trees: If creating a repository, set
             make_working_trees to this value (if non-None)
-        :param shared: If creating a repository, make it shared if True
-        :return: A repository, is_new_flag (True if the repository was
-            created).
+          shared: If creating a repository, make it shared if True
+        Returns:
+          A repository, is_new_flag (True if the repository was created).
         """
         raise NotImplementedError(
             RepositoryAcquisitionPolicy.acquire_repository)
@@ -1608,7 +1691,7 @@ class RepositoryAcquisitionPolicy(object):
 # on previous ones.
 format_registry = ControlDirFormatRegistry()
 
-network_format_registry = registry.FormatRegistry()
+network_format_registry = registry.FormatRegistry[ControlDirFormat]()
 """Registry of formats indexed by their network name.
 
 The network name for a ControlDirFormat is an identifier that can be used when

@@ -20,8 +20,6 @@ This does not change the transport behaviour at all, merely records every call
 and then delegates it.
 """
 
-from __future__ import absolute_import
-
 from ..transport import decorator
 
 
@@ -45,7 +43,7 @@ class TransportTraceDecorator(decorator.TransportDecorator):
 
         _decorated is a private parameter for cloning.
         """
-        super(TransportTraceDecorator, self).__init__(url, _decorated)
+        super().__init__(url, _decorated)
         if _from_transport is None:
             # newly created
             self._activity = []
@@ -104,18 +102,19 @@ class TransportTraceDecorator(decorator.TransportDecorator):
         """See Transport.put_file()."""
         return self._decorated.put_file(relpath, f, mode)
 
-    def put_bytes(self, relpath, bytes, mode=None):
+    def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """See Transport.put_bytes()."""
-        self._trace(('put_bytes', relpath, len(bytes), mode))
-        return self._decorated.put_bytes(relpath, bytes, mode)
+        self._trace(('put_bytes', relpath, len(raw_bytes), mode))
+        return self._decorated.put_bytes(relpath, raw_bytes, mode)
 
-    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath: str, raw_bytes: bytes, mode=None,
                              create_parent_dir=False, dir_mode=None):
         """See Transport.put_bytes_non_atomic."""
-        self._trace(('put_bytes_non_atomic', relpath, len(bytes), mode,
+        self._trace(('put_bytes_non_atomic', relpath, len(raw_bytes), mode,
                      create_parent_dir, dir_mode))
-        return self._decorated.put_bytes_non_atomic(relpath, bytes, mode=mode,
-                                                    create_parent_dir=create_parent_dir, dir_mode=dir_mode)
+        return self._decorated.put_bytes_non_atomic(
+            relpath, raw_bytes, mode=mode, create_parent_dir=create_parent_dir,
+            dir_mode=dir_mode)
 
     def listable(self):
         """See Transport.listable."""

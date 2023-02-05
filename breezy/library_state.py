@@ -16,18 +16,18 @@
 
 """The core state needed to make use of bzr is managed here."""
 
-from __future__ import absolute_import
-
 __all__ = [
     'BzrLibraryState',
     ]
+
+
+import contextlib
 
 
 import breezy
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    cleanup,
     config,
     osutils,
     symbol_versioning,
@@ -37,7 +37,7 @@ from breezy import (
 """)
 
 
-class BzrLibraryState(object):
+class BzrLibraryState:
     """The state about how breezy has been configured.
 
     This is the core state needed to make use of bzr. The current instance is
@@ -89,7 +89,7 @@ class BzrLibraryState(object):
         # isolation within the same interpreter.  It's not reached on normal
         # in-process run_bzr calls.  If it's broken, we expect that
         # TestRunBzrSubprocess may fail.
-        self.exit_stack = cleanup.ExitStack()
+        self.exit_stack = contextlib.ExitStack()
 
         if breezy.version_info[3] == 'final':
             self.exit_stack.callback(

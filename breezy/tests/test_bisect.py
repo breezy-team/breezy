@@ -16,9 +16,7 @@
 
 "Test suite for the bzr bisect plugin."
 
-from __future__ import absolute_import
-
-from ..sixish import StringIO
+from io import StringIO
 import os
 import shutil
 
@@ -43,7 +41,7 @@ class BisectTestCase(TestCaseWithTransport):
         with open("test_file") as f:
             content = f.read().strip()
         if content != rev_contents[rev]:
-            rev_ids = dict((rev_contents[k], k) for k in rev_contents)
+            rev_ids = {rev_contents[k]: k for k in rev_contents}
             found_rev = rev_ids[content]
             raise AssertionError("expected rev %0.1f, found rev %0.1f"
                                  % (rev, found_rev))

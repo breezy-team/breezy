@@ -34,10 +34,9 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from __future__ import absolute_import
+import contextlib
 
 from . import (
-    cleanup,
     errors,
     )
 from .controldir import ControlDir
@@ -45,7 +44,7 @@ from .trace import note
 from .i18n import gettext
 
 
-class Check(object):
+class Check:
     """Check a repository"""
 
     def __init__(self, repository, check_repo=True):
@@ -101,7 +100,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     except errors.NotBranchError:
         base_tree = branch = repo = None
 
-    with cleanup.ExitStack() as exit_stack:
+    with contextlib.ExitStack() as exit_stack:
         needed_refs = {}
         if base_tree is not None:
             # If the tree is a lightweight checkout we won't see it in

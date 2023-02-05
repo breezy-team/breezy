@@ -21,11 +21,11 @@ import sys
 import time
 
 from breezy import (
-    hashcache,
     tests,
     )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
+from breezy.bzr import hashcache
 from breezy.bzr.workingtree import InventoryWorkingTree
 
 
@@ -35,7 +35,7 @@ class TestReadonly(TestCaseWithWorkingTree):
         if not self.platform_supports_readonly_dirs():
             raise tests.TestSkipped('platform does not support readonly'
                                     ' directories.')
-        super(TestReadonly, self).setUp()
+        super().setUp()
 
     def platform_supports_readonly_dirs(self):
         if sys.platform in ('win32', 'cygwin'):

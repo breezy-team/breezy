@@ -25,18 +25,20 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import base64
 import bz2
+from io import BytesIO
 import tarfile
 import zlib
 
+import fastbencode as bencode
+
 from ... import (
-    bencode,
     branch,
     config,
     controldir,
     errors,
     repository,
     tests,
-    transport,
+    transport as _mod_transport,
     treebuilder,
     )
 from ...branch import Branch
@@ -63,16 +65,12 @@ from ..remote import (
     RemoteBzrDirFormat,
     RemoteRepository,
     RemoteRepositoryFormat,
+    UnknownErrorFromSmartServer,
     )
 from .. import groupcompress_repo, knitpack_repo
 from ...revision import (
     NULL_REVISION,
     Revision,
-    )
-from ...sixish import (
-    BytesIO,
-    PY3,
-    text_type,
     )
 from ..smart import medium, request
 from ..smart.client import _SmartClient
@@ -106,7 +104,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
             {'transport_server': test_server.SmartTCPServer_for_testing})]
 
     def setUp(self):
-        super(BasicRemoteObjectTests, self).setUp()
+        super().setUp()
         self.transport = self.get_transport()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
@@ -125,7 +123,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_remote_repository(self):
         b = BzrDir.open_from_transport(self.transport)
         repo = b.open_repository()
-        revid = u'\xc823123123'.encode('utf8')
+        revid = '\xc823123123'.encode()
         self.assertFalse(repo.has_revision(revid))
         self.local_wt.commit(message='test commit', rev_id=revid)
         self.assertTrue(repo.has_revision(revid))
@@ -190,7 +188,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
             errors.UpgradeRequired, branch.set_append_revisions_only, True)
 
 
-class FakeProtocol(object):
+class FakeProtocol:
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
 
     def __init__(self, body, fake_client):
@@ -258,7 +256,7 @@ class FakeClient(_SmartClient):
         try:
             response_tuple = self.responses.pop(0)
         except IndexError:
-            raise AssertionError("%r didn't expect any more calls" % (self,))
+            raise AssertionError("{!r} didn't expect any more calls".format(self))
         if response_tuple[0] == b'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b'error':
@@ -338,11 +336,8 @@ class TestVfsHas(tests.TestCase):
         client = FakeClient('/')
         client.add_success_response(b'yes',)
         transport = RemoteTransport('bzr://localhost/', _client=client)
-        filename = u'/hell\u00d8'
-        if PY3:
-            result = transport.has(filename)
-        else:
-            result = transport.has(filename.encode('utf-8'))
+        filename = '/hell\u00d8'
+        result = transport.has(filename)
         self.assertEqual(
             [('call', b'has', (filename.encode('utf-8'),))],
             client._calls)
@@ -373,7 +368,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given client_base and transport_base.
         """
         client_medium = medium.SmartClientMedium(client_base)
-        t = transport.get_transport(transport_base)
+        t = _mod_transport.get_transport(transport_base)
         result = client_medium.remote_path_from_transport(t)
         self.assertEqual(expected, result)
 
@@ -391,7 +386,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given transport_base and relpath of that transport.  (Note that
         HttpTransportBase is a subclass of SmartClientMedium)
         """
-        base_transport = transport.get_transport(transport_base)
+        base_transport = _mod_transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)
@@ -1097,11 +1092,11 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = transport.clone('no-such-path')
         fmt = RemoteBzrDirFormat()
         self.assertRaises(
-            errors.NoSuchFile, fmt.initialize_on_transport_ex, transport,
+            _mod_transport.NoSuchFile, fmt.initialize_on_transport_ex, transport,
             create_prefix=False)
 
 
-class OldSmartClient(object):
+class OldSmartClient:
     """A fake smart client for test_old_version that just returns a version one
     response to the 'hello' (query version) command.
     """
@@ -1117,7 +1112,7 @@ class OldSmartClient(object):
         return 1
 
 
-class OldServerTransport(object):
+class OldServerTransport:
     """A fake transport for test_old_server that reports it's smart server
     protocol version as version one.
     """
@@ -1381,7 +1376,7 @@ class TestBranchSetTagsBytes(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         self.lock_remote_branch(branch)
 
-        class StubRealBranch(object):
+        class StubRealBranch:
             def __init__(self):
                 self.calls = []
 
@@ -1526,7 +1521,7 @@ class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
     def test_non_empty_branch(self):
         # in a non-empty branch we also decode the response properly
-        revid = u'\xc8'.encode('utf8')
+        revid = '\xc8'.encode()
         transport = MemoryTransport()
         client = FakeClient(transport.base)
         client.add_expected_call(
@@ -1756,7 +1751,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         transport.mkdir('branch')
         transport = transport.clone('branch')
         client = FakeClient(transport.base)
-        rejection_msg_unicode = u'rejection message\N{INTERROBANG}'
+        rejection_msg_unicode = 'rejection message\N{INTERROBANG}'
         rejection_msg_utf8 = rejection_msg_unicode.encode('utf8')
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'branch/',),
@@ -1787,7 +1782,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             branch._set_last_revision, b'rev-id')
         # The UTF-8 message from the response has been decoded into a unicode
         # object.
-        self.assertIsInstance(err.msg, text_type)
+        self.assertIsInstance(err.msg, str)
         self.assertEqual(rejection_msg_unicode, err.msg)
         branch.unlock()
         self.assertFinished(client)
@@ -1880,7 +1875,7 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
 
         branch = self.make_remote_branch(transport, client)
 
-        class StubRealBranch(object):
+        class StubRealBranch:
             def __init__(self):
                 self.calls = []
 
@@ -1924,7 +1919,7 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         client._calls = []
 
         err = self.assertRaises(
-            errors.UnknownErrorFromSmartServer,
+            UnknownErrorFromSmartServer,
             branch.set_last_revision_info, 123, b'revid')
         self.assertEqual((b'UnexpectedError',), err.error_tuple)
         branch.unlock()
@@ -1990,7 +1985,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         transport = MemoryTransport()
         branch = self.make_remote_branch(transport, client)
         config = branch.get_config()
-        self.assertEqual(u'2', config.get_user_option('b'))
+        self.assertEqual('2', config.get_user_option('b'))
 
     def test_set_option(self):
         client = FakeClient()
@@ -2036,7 +2031,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         branch.lock_write()
         config = branch._get_config()
         config.set_option(
-            {'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'},
+            {'ascii': 'a', 'unicode \N{WATCH}': '\N{INTERROBANG}'},
             'foo')
         branch.unlock()
         self.assertFinished(client)
@@ -2085,7 +2080,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         self.addCleanup(branch.unlock)
         self.reset_smart_call_log()
         config = branch._get_config()
-        value_dict = {'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
+        value_dict = {'ascii': 'a', 'unicode \N{WATCH}': '\N{INTERROBANG}'}
         config.set_option(value_dict, 'name')
         self.assertLength(11, self.hpss_calls)
         self.assertEqual(value_dict, branch._get_config().get_option('name'))
@@ -2430,7 +2425,7 @@ class TestRepositoryAllRevisionIds(TestRemoteRepository):
         client.add_success_response_with_body(
             b'rev1\nrev2\nanotherrev\n', b'ok')
         self.assertEqual(
-            set([b"rev1", b"rev2", b"anotherrev"]),
+            {b"rev1", b"rev2", b"anotherrev"},
             set(repo.all_revision_ids()))
         self.assertEqual(
             [('call_expecting_body', b'Repository.all_revision_ids',
@@ -2460,7 +2455,7 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                 b'revisions: 2\n'
                 b'size: 18\n')
         transport_path = 'quick'
-        revid = u'\xc8'.encode('utf8')
+        revid = '\xc8'.encode()
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(body, b'ok')
         result = repo.gather_stats(revid)
@@ -2481,7 +2476,7 @@ class TestRepositoryGatherStats(TestRemoteRepository):
                 b'revisions: 2\n'
                 b'size: 18\n')
         transport_path = 'buick'
-        revid = u'\xc8'.encode('utf8')
+        revid = '\xc8'.encode()
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(body, b'ok')
         result = repo.gather_stats(revid, True)
@@ -2610,8 +2605,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
     def test_get_parent_map_caching(self):
         # get_parent_map returns from cache until unlock()
         # setup a reponse with two revisions
-        r1 = u'\u0e33'.encode('utf8')
-        r2 = u'\u0dab'.encode('utf8')
+        r1 = '\u0e33'.encode()
+        r2 = '\u0dab'.encode()
         lines = [b' '.join([r2, r1]), r1]
         encoded_body = bz2.compress(b'\n'.join(lines))
 
@@ -2793,8 +2788,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         """RemoteRepository exposes get_cached_parent_map from
         _unstacked_provider
         """
-        r1 = u'\u0e33'.encode('utf8')
-        r2 = u'\u0dab'.encode('utf8')
+        r1 = '\u0e33'.encode()
+        r2 = '\u0dab'.encode()
         lines = [b' '.join([r2, r1]), r1]
         encoded_body = bz2.compress(b'\n'.join(lines))
 
@@ -2892,8 +2887,8 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
 
     def test_none_revision(self):
         # with none we want the entire graph
-        r1 = u'\u0e33'.encode('utf8')
-        r2 = u'\u0dab'.encode('utf8')
+        r1 = '\u0e33'.encode()
+        r2 = '\u0dab'.encode()
         lines = [b' '.join([r2, r1]), r1]
         encoded_body = b'\n'.join(lines)
 
@@ -2912,9 +2907,9 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
     def test_specific_revision(self):
         # with a specific revision we want the graph for that
         # with none we want the entire graph
-        r11 = u'\u0e33'.encode('utf8')
-        r12 = u'\xc9'.encode('utf8')
-        r2 = u'\u0dab'.encode('utf8')
+        r11 = '\u0e33'.encode()
+        r12 = '\xc9'.encode()
+        r2 = '\u0dab'.encode()
         lines = [b' '.join([r2, r11, r12]), r11, r12]
         encoded_body = b'\n'.join(lines)
 
@@ -2946,7 +2941,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response(b'AnUnexpectedError')
-        e = self.assertRaises(errors.UnknownErrorFromSmartServer,
+        e = self.assertRaises(UnknownErrorFromSmartServer,
                               repo._get_revision_graph, revid)
         self.assertEqual((b'AnUnexpectedError',), e.error_tuple)
 
@@ -3402,7 +3397,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
     """
 
     def setUp(self):
-        super(TestRepositoryInsertStream, self).setUp()
+        super().setUp()
         self.disable_verb(b'Repository.insert_stream_1.19')
 
     def test_unlocked_repo(self):
@@ -3657,7 +3652,7 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         src_repo.copy_content_into(dest_repo)
 
 
-class _StubRealPackRepository(object):
+class _StubRealPackRepository:
 
     def __init__(self, calls):
         self.calls = calls
@@ -3673,7 +3668,7 @@ class _StubRealPackRepository(object):
         self.calls.append(('pack collection reload_pack_names',))
 
 
-class _StubPackCollection(object):
+class _StubPackCollection:
 
     def __init__(self, calls):
         self.calls = calls
@@ -3956,7 +3951,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         err = errors.ErrorFromSmartServer(
             (b'error', b"list index out of range"))
         translated_error = self.translateErrorFromSmartServer(err)
-        expected_error = errors.UnknownErrorFromSmartServer(err)
+        expected_error = UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
 
     # GZ 2011-03-02: TODO test generic non-ascii error string
@@ -3964,7 +3959,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
     def test_generic_KeyError(self):
         err = errors.ErrorFromSmartServer((b'error', b'KeyError', b"1"))
         translated_error = self.translateErrorFromSmartServer(err)
-        expected_error = errors.UnknownErrorFromSmartServer(err)
+        expected_error = UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
 
     def test_RevnoOutOfBounds(self):
@@ -3989,7 +3984,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         error_tuple = (b'An unknown error tuple',)
         server_error = errors.ErrorFromSmartServer(error_tuple)
         translated_error = self.translateErrorFromSmartServer(server_error)
-        expected_error = errors.UnknownErrorFromSmartServer(server_error)
+        expected_error = UnknownErrorFromSmartServer(server_error)
         self.assertEqual(expected_error, translated_error)
 
     def test_context_missing_a_key(self):
@@ -4205,7 +4200,7 @@ class TestStacking(tests.TestCaseWithTransport):
 class TestRemoteBranchEffort(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestRemoteBranchEffort, self).setUp()
+        super().setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = test_server.SmartTCPServer_for_testing()
@@ -4268,8 +4263,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
                 if search_bytes == b'everything':
                     return (None,
                             request.FailedSmartServerResponse((b'BadSearch',)))
-                return super(OldGetStreamVerb,
-                             self).recreate_search(repository, search_bytes,
+                return super().recreate_search(repository, search_bytes,
                                                    discard_excess=discard_excess)
         self.override_verb(b'Repository.get_stream_1.19', OldGetStreamVerb)
         local = self.make_branch('local')
@@ -4298,7 +4292,7 @@ class TestUpdateBoundBranchWithModifiedBoundLocation(
     """
 
     def setUp(self):
-        super(TestUpdateBoundBranchWithModifiedBoundLocation, self).setUp()
+        super().setUp()
         self.transport_server = test_server.SmartTCPServer_for_testing
 
     def make_master_and_checkout(self, master_name, checkout_name):
@@ -4549,3 +4543,13 @@ class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
         result = branch._get_all_reference_info()
         self.assertFinished(client)
         self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)
+
+
+class TestErrors(tests.TestCase):
+
+    def test_untranslateable_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        err = UnknownErrorFromSmartServer(orig_err)
+        self.assertEqual(
+            "Server sent an unexpected error: ('error', 'tuple')", str(err))

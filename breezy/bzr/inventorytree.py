@@ -17,24 +17,23 @@
 """Tree classes, representing directory at point in time.
 """
 
-from __future__ import absolute_import
-
-try:
-    from collections.abc import deque
-except ImportError:  # python < 3.7
-    from collections import deque
+from collections import deque
 
 import os
 import re
+from typing import Type, TYPE_CHECKING, Optional
 
 
 from .. import (
     branch as _mod_branch,
+    controldir,
     debug,
     errors,
     lazy_import,
     osutils,
     revision,
+    trace,
+    transport as _mod_transport,
     )
 from ..controldir import (
     ControlDir,
@@ -51,17 +50,11 @@ from ..revisiontree import (
 lazy_import.lazy_import(globals(), """
 from breezy import (
     add,
-    controldir,
-    trace,
-    transport as _mod_transport,
     )
 from breezy.bzr import (
     inventory as _mod_inventory,
     )
 """)
-from ..sixish import (
-    viewvalues,
-    )
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
@@ -80,12 +73,12 @@ class InventoryTreeChange(TreeChange):
                  name, kind, executable, copied=False):
         self.file_id = file_id
         self.parent_id = parent_id
-        super(InventoryTreeChange, self).__init__(
+        super().__init__(
             path=path, changed_content=changed_content, versioned=versioned,
             name=name, kind=kind, executable=executable, copied=copied)
 
     def __repr__(self):
-        return "%s%r" % (self.__class__.__name__, self._as_tuple())
+        return "{}{!r}".format(self.__class__.__name__, self._as_tuple())
 
     def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
@@ -140,11 +133,20 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
+    def supports_symlinks(self):
+        return True
+
+    @classmethod
+    def is_special_path(cls, path):
+        return path.startswith('.bzr')
+
     def _get_root_inventory(self):
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
                               doc="Root inventory of this tree")
+
+    supports_file_ids = True
 
     def _unpack_file_id(self, file_id):
         """Find the inventory and inventory file id for a tree file id.
@@ -211,6 +213,10 @@ class InventoryTree(Tree):
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
 
+
+    def is_versioned(self, path):
+        return self.path2id(path) is not None
+
     def _path2ie(self, path):
         """Lookup an inventory entry by path.
 
@@ -219,7 +225,7 @@ class InventoryTree(Tree):
         """
         inv, ie = self._path2inv_ie(path)
         if ie is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         return ie
 
     def _path2inv_ie(self, path):
@@ -290,7 +296,7 @@ class InventoryTree(Tree):
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
                     if inventory and inventory is not self.root_inventory:
-                        raise AssertionError("%r != %r" % (
+                        raise AssertionError("{!r} != {!r}".format(
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
             else:
@@ -298,9 +304,15 @@ class InventoryTree(Tree):
             def iter_entries(inv):
                 for p, e in inv.iter_entries_by_dir(specific_file_ids=inventory_file_ids):
                     if e.kind == 'tree-reference' and recurse_nested:
-                        subinv = self._get_nested_tree(p, e.file_id, e.reference_revision).root_inventory
-                        for subp, e in iter_entries(subinv):
-                            yield (osutils.pathjoin(p, subp) if subp else p), e
+                        try:
+                            subtree = self._get_nested_tree(p, e.file_id, e.reference_revision)
+                        except errors.NotBranchError:
+                            yield p, e
+                        else:
+                            with subtree.lock_read():
+                                subinv = subtree.root_inventory
+                                for subp, e in iter_entries(subinv):
+                                    yield (osutils.pathjoin(p, subp) if subp else p), e
                     else:
                         yield p, e
             return iter_entries(self.root_inventory)
@@ -310,7 +322,7 @@ class InventoryTree(Tree):
             ie = self._path2ie(path)
             if ie.kind != 'directory':
                 raise errors.NotADirectory(path)
-            return iter(viewvalues(ie.children))
+            return ie.children.values()
 
     def _get_plan_merge_data(self, path, other, base):
         from . import versionedfile
@@ -612,14 +624,83 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         from .transform import InventoryTreeTransform
         return InventoryTreeTransform(self, pb=pb)
 
+    def add(self, files, kinds=None, ids=None):
+        """Add paths to the set of versioned paths.
 
-class _SmartAddHelper(object):
+        Note that the command line normally calls smart_add instead,
+        which can automatically recurse.
+
+        This adds the files to the tree, so that they will be
+        recorded by the next commit.
+
+        Args:
+          files: List of paths to add, relative to the base of the tree.
+          kinds: Optional parameter to specify the kinds to be used for
+            each file.
+          ids: If set, use these instead of automatically generated ids.
+            Must be the same length as the list of files, but may
+            contain None for ids that are to be autogenerated.
+
+        TODO: Perhaps callback with the ids and paths as they're added.
+        """
+        if isinstance(files, str):
+            # XXX: Passing a single string is inconsistent and should be
+            # deprecated.
+            if not (ids is None or isinstance(ids, bytes)):
+                raise AssertionError()
+            if not (kinds is None or isinstance(kinds, str)):
+                raise AssertionError()
+            files = [files]
+            if ids is not None:
+                ids = [ids]
+            if kinds is not None:
+                kinds = [kinds]
+
+        files = [path.strip('/') for path in files]
+
+        if ids is None:
+            ids = [None] * len(files)
+        else:
+            if not (len(ids) == len(files)):
+                raise AssertionError()
+        if kinds is None:
+            kinds = [None] * len(files)
+        elif not len(kinds) == len(files):
+            raise AssertionError()
+        with self.lock_tree_write():
+            for f in files:
+                # generic constraint checks:
+                if self.is_control_filename(f):
+                    raise errors.ForbiddenControlFileError(filename=f)
+                fp = osutils.splitpath(f)
+            # fill out file kinds for all files [not needed when we stop
+            # caring about the instantaneous file kind within a uncommmitted tree
+            #
+            self._gather_kinds(files, kinds)
+            self._add(files, kinds, ids)
+
+    def _gather_kinds(self, files, kinds):
+        """Helper function for add - sets the entries of kinds."""
+        raise NotImplementedError(self._gather_kinds)
+
+    def _add(self, files, kinds, ids):
+        """Helper function for add - updates the inventory.
+
+        :param files: sequence of pathnames, relative to the tree root
+        :param kinds: sequence of  inventory kinds of the files (i.e. may
+            contain "tree-reference")
+        :param ids: sequence of suggested ids for the files (may be None)
+        """
+        raise NotImplementedError(self._add)
+
+
+class _SmartAddHelper:
     """Helper for MutableTree.smart_add."""
 
     def get_inventory_delta(self):
         # GZ 2016-06-05: Returning view would probably be fine but currently
         # Inventory.apply_delta is documented as requiring a list of changes.
-        return list(viewvalues(self._invdelta))
+        return list(self._invdelta.values())
 
     def _get_ie(self, inv_path):
         """Retrieve the most up to date inventory entry for a path.
@@ -727,7 +808,7 @@ class _SmartAddHelper(object):
             # no paths supplied: add the entire tree.
             # FIXME: this assumes we are running in a working tree subdir :-/
             # -- vila 20100208
-            file_list = [u'.']
+            file_list = ['.']
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
@@ -966,15 +1047,18 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def _get_nested_tree(self, path, file_id, reference_revision):
         # Just a guess..
-        subdir = ControlDir.open_from_transport(
-            self._repository.user_transport.clone(path))
+        try:
+            subdir = ControlDir.open_from_transport(
+                self._repository.user_transport.clone(path))
+        except errors.NotBranchError as e:
+            raise MissingNestedTree(path) from e
         subrepo = subdir.find_repository()
         try:
             revtree = subrepo.revision_tree(reference_revision)
         except errors.NoSuchRevision:
             raise MissingNestedTree(path)
         if file_id is not None and file_id != revtree.path2id(''):
-            raise AssertionError('invalid root id: %r != %r' % (
+            raise AssertionError('invalid root id: {!r} != {!r}'.format(
                 file_id, revtree.path2id('')))
         return revtree
 
@@ -989,7 +1073,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         """See Tree.path_content_summary."""
         try:
             entry = self._path2ie(path)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             return ('missing', None, None, None)
         kind = entry.kind
         if kind == 'file':
@@ -1037,10 +1121,9 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         repo_desired_files = [(self.path2id(f), self.get_file_revision(f), i)
                               for f, i in desired_files]
         try:
-            for result in self._repository.iter_files_bytes(repo_desired_files):
-                yield result
+            yield from self._repository.iter_files_bytes(repo_desired_files)
         except errors.RevisionNotPresent as e:
-            raise errors.NoSuchFile(e.file_id)
+            raise _mod_transport.NoSuchFile(e.file_id)
 
     def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
@@ -1068,12 +1151,6 @@ class InterInventoryTree(InterTree):
     """InterTree implementation for InventoryTree objects.
 
     """
-    # Formats that will be used to test this InterTree. If both are
-    # None, this InterTree will not be tested (e.g. because a complex
-    # setup is required)
-    _matching_from_tree_format = None
-    _matching_to_tree_format = None
-
     @classmethod
     def is_compatible(kls, source, target):
         # The default implementation is naive and uses the public API, so
@@ -1430,7 +1507,7 @@ class InterInventoryTree(InterTree):
         """
         file_id = self.source.path2id(path)
         if file_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         try:
             return self.target.id2path(file_id, recurse=recurse)
         except errors.NoSuchId:
@@ -1445,7 +1522,7 @@ class InterInventoryTree(InterTree):
         """
         file_id = self.target.path2id(path)
         if file_id is None:
-            raise errors.NoSuchFile(path)
+            raise _mod_transport.NoSuchFile(path)
         try:
             return self.source.id2path(file_id, recurse=recurse)
         except errors.NoSuchId:

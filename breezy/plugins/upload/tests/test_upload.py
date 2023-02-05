@@ -83,7 +83,7 @@ def load_tests(loader, standard_tests, pattern):
     return result
 
 
-class UploadUtilsMixin(object):
+class UploadUtilsMixin:
     """Helper class to write upload tests.
 
     This class provides helpers to simplify test writing. The emphasis is on
@@ -147,7 +147,7 @@ class UploadUtilsMixin(object):
     def chmod_file(self, path, mode, base=branch_dir):
         full_path = osutils.pathjoin(base, path)
         os.chmod(full_path, mode)
-        self.tree.commit('change file %s mode to %s' % (path, oct(mode)))
+        self.tree.commit('change file {} mode to {}'.format(path, oct(mode)))
 
     def delete_any(self, path, base=branch_dir):
         self.tree.remove([path], keep_files=False)
@@ -160,7 +160,7 @@ class UploadUtilsMixin(object):
 
     def rename_any(self, old_path, new_path):
         self.tree.rename_one(old_path, new_path)
-        self.tree.commit('rename %s into %s' % (old_path, new_path))
+        self.tree.commit('rename {} into {}'.format(old_path, new_path))
 
     def transform_dir_into_file(self, path, content, base=branch_dir):
         osutils.delete_any(osutils.pathjoin(base, path))
@@ -176,17 +176,17 @@ class UploadUtilsMixin(object):
         self.tree.commit('change %s from file to dir' % path)
 
     def add_symlink(self, path, target, base=branch_dir):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink(target, osutils.pathjoin(base, path))
         self.tree.add(path)
-        self.tree.commit('add symlink %s -> %s' % (path, target))
+        self.tree.commit('add symlink {} -> {}'.format(path, target))
 
     def modify_symlink(self, path, target, base=branch_dir):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         full_path = osutils.pathjoin(base, path)
         os.unlink(full_path)
         os.symlink(target, full_path)
-        self.tree.commit('modify symlink %s -> %s' % (path, target))
+        self.tree.commit('modify symlink {} -> {}'.format(path, target))
 
     def _get_cmd_upload(self):
         cmd = cmds.cmd_upload()
@@ -233,13 +233,13 @@ class TestUploadMixin(UploadUtilsMixin):
 
     def test_unicode_create_file(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_create_file(u'hell\u00d8')
+        self._test_create_file('hell\u00d8')
 
     def _test_create_file_in_dir(self, dir_name, file_name):
         self.make_branch_and_working_tree()
         self.do_full_upload()
         self.add_dir(dir_name)
-        fpath = '%s/%s' % (dir_name, file_name)
+        fpath = '{}/{}'.format(dir_name, file_name)
         self.add_file(fpath, b'baz')
 
         self.assertUpPathDoesNotExist(fpath)
@@ -254,7 +254,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
     def test_unicode_create_file_in_dir(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_create_file_in_dir(u'dir\u00d8', u'goodbye\u00d8')
+        self._test_create_file_in_dir('dir\u00d8', 'goodbye\u00d8')
 
     def test_modify_file(self):
         self.make_branch_and_working_tree()
@@ -285,7 +285,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
     def test_unicode_rename_one_file(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_rename_one_file(u'hello\u00d8', u'goodbye\u00d8')
+        self._test_rename_one_file('hello\u00d8', 'goodbye\u00d8')
 
     def test_rename_and_change_file(self):
         self.make_branch_and_working_tree()
@@ -356,7 +356,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.add_file(file_name, b'foo')
         self.do_full_upload()
         self.transform_file_into_dir(file_name)
-        fpath = '%s/%s' % (file_name, 'file')
+        fpath = '{}/{}'.format(file_name, 'file')
         self.add_file(fpath, b'bar')
 
         self.assertUpFileEqual(b'foo', file_name)
@@ -370,7 +370,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
     def test_unicode_change_file_into_dir(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_change_file_into_dir(u'hello\u00d8')
+        self._test_change_file_into_dir('hello\u00d8')
 
     def test_change_dir_into_file(self):
         self.make_branch_and_working_tree()
@@ -404,7 +404,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
     def test_unicode_make_file_executable(self):
         self.requireFeature(features.UnicodeFilenameFeature)
-        self._test_make_file_executable(u'hello\u00d8')
+        self._test_make_file_executable('hello\u00d8')
 
     def test_create_symlink(self):
         self.make_branch_and_working_tree()
@@ -737,8 +737,8 @@ class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
         bedding.ensure_config_dir_exists()
         fn = bedding.locations_config_path()
         b = self.get_branch()
-        with open(fn, 'wt') as f:
-            f.write(("[%s]\n" "upload_location=foo\n" % b.base.rstrip("/")))
+        with open(fn, 'w') as f:
+            f.write("[%s]\n" "upload_location=foo\n" % b.base.rstrip("/"))
         self.assertEqual("foo", b.get_config_stack().get('upload_location'))
 
     def test_set_push_location(self):
@@ -752,7 +752,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
     remote_branch_dir = 'remote_branch'
 
     def setUp(self):
-        super(TestUploadFromRemoteBranch, self).setUp()
+        super().setUp()
         if self._will_escape_isolation(self.transport_server):
             # FIXME: Some policy search ends up above the user home directory
             # and are seen as attemps to escape test isolation
@@ -798,7 +798,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport, UploadUtilsMixin):
 class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
 
     def setUp(self):
-        super(TestUploadDiverged, self).setUp()
+        super().setUp()
         self.diverged_tree = self.make_diverged_tree_and_upload_location()
 
     def make_diverged_tree_and_upload_location(self):

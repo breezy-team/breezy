@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+import contextlib
 import patiencediff
 import shutil
 import sys
@@ -25,7 +24,6 @@ from io import BytesIO
 
 from . import (
     builtins,
-    cleanup,
     delta,
     diff,
     errors,
@@ -44,7 +42,7 @@ class UseEditor(Exception):
     """Use an editor instead of selecting hunks."""
 
 
-class ShelfReporter(object):
+class ShelfReporter:
 
     vocab = {'add file': gettext('Shelve adding file "%(path)s"?'),
              'binary': gettext('Shelve binary changes?'),
@@ -116,7 +114,7 @@ class ApplyReporter(ShelfReporter):
         pass
 
 
-class Shelver(object):
+class Shelver:
     """Interactively shelve the changes in a working tree."""
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
@@ -173,7 +171,7 @@ class Shelver(object):
             changes.
         """
         if directory is None:
-            directory = u'.'
+            directory = '.'
         elif file_list:
             file_list = [osutils.pathjoin(directory, f) for f in file_list]
         tree, path = workingtree.WorkingTree.open_containing(directory)
@@ -374,7 +372,7 @@ class Shelver(object):
         return len(blocks) - 2
 
 
-class Unshelver(object):
+class Unshelver:
     """Unshelve changes into a working tree."""
 
     @classmethod
@@ -458,7 +456,7 @@ class Unshelver(object):
 
     def run(self):
         """Perform the unshelving operation."""
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.tree.lock_tree_write())
             if self.read_shelf:
                 trace.note(gettext('Using changes with id "%d".') %

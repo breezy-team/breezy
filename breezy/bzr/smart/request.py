@@ -26,18 +26,13 @@ Interesting module attributes:
       of times during a request).
 """
 
-from __future__ import absolute_import
-
 # XXX: The class names are a little confusing: the protocol will instantiate a
 # SmartServerRequestHandler, whose dispatch_command method creates an instance
 # of a SmartServerRequest subclass.
 
 
 import threading
-try:
-    from _thread import get_ident
-except ImportError:  # Python < 3
-    from thread import get_ident
+from _thread import get_ident
 
 from ... import (
     branch as _mod_branch,
@@ -47,9 +42,9 @@ from ... import (
     registry,
     revision,
     trace,
+    transport as _mod_transport,
     urlutils,
     )
-from ...sixish import text_type
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.bzr import bzrdir
@@ -95,7 +90,7 @@ def _pre_open_hook(transport):
 _install_hook()
 
 
-class SmartServerRequest(object):
+class SmartServerRequest:
     """Base class for request handlers.
 
     To define a new request, subclass this class and override the `do` method
@@ -224,7 +219,7 @@ class SmartServerRequest(object):
         return self._backing_transport.clone(relpath)
 
 
-class SmartServerResponse(object):
+class SmartServerResponse:
     """A response to a client request.
 
     This base class should not be used. Instead use
@@ -254,7 +249,7 @@ class SmartServerResponse(object):
                 and other.body_stream is self.body_stream)
 
     def __repr__(self):
-        return "<%s args=%r body=%r>" % (self.__class__.__name__,
+        return "<{} args={!r} body={!r}>".format(self.__class__.__name__,
                                          self.args, self.body)
 
 
@@ -274,7 +269,7 @@ class SuccessfulSmartServerResponse(SmartServerResponse):
         return True
 
 
-class SmartServerRequestHandler(object):
+class SmartServerRequestHandler:
     """Protocol logic for smart server.
 
     This doesn't handle serialization at all, it just processes requests and
@@ -400,7 +395,7 @@ class SmartServerRequestHandler(object):
                 action = 'hpss vfs req'
             else:
                 action = 'hpss request'
-            self._trace(action, '%s %s' % (cmd, repr(args)[1:-1]))
+            self._trace(action, '{} {}'.format(cmd, repr(args)[1:-1]))
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})
@@ -419,9 +414,9 @@ class SmartServerRequestHandler(object):
 
 
 def _translate_error(err):
-    if isinstance(err, errors.NoSuchFile):
+    if isinstance(err, _mod_transport.NoSuchFile):
         return (b'NoSuchFile', err.path.encode('utf-8'))
-    elif isinstance(err, errors.FileExists):
+    elif isinstance(err, _mod_transport.FileExists):
         return (b'FileExists', err.path.encode('utf-8'))
     elif isinstance(err, errors.DirectoryNotEmpty):
         return (b'DirectoryNotEmpty', err.path.encode('utf-8'))
@@ -449,7 +444,7 @@ def _translate_error(err):
         # If it is a DecodeError, than most likely we are starting
         # with a plain string
         str_or_unicode = err.object
-        if isinstance(str_or_unicode, text_type):
+        if isinstance(str_or_unicode, str):
             # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
             # byte) in it, so this encoding could cause broken responses.
             # Newer clients use protocol v3, so will be fine.
@@ -547,7 +542,7 @@ class SmartServerIsReadonly(SmartServerRequest):
 #   mutate  State is updated in a way that replaying that request results in a
 #           different state. For example 'append' writes more bytes to a given
 #           file. If append succeeds, it moves the file pointer.
-request_handlers = registry.Registry()
+request_handlers = registry.Registry[bytes, SmartServerRequest]()
 request_handlers.register_lazy(
     b'append', 'breezy.bzr.smart.vfs', 'AppendRequest', info='mutate')
 request_handlers.register_lazy(

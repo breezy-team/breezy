@@ -220,11 +220,11 @@ class TestMergeFetch(TestCaseWithTransport):
 class TestMergeFileHistory(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestMergeFileHistory, self).setUp()
+        super().setUp()
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
         self.build_tree_contents([('br1/file', b'original contents\n')])
-        wt1.add('file', b'this-file-id')
+        wt1.add('file', ids=b'this-file-id')
         wt1.commit(message='rev 1-1', rev_id=b'1-1')
         dir_2 = br1.controldir.sprout('br2')
         br2 = dir_2.open_branch()
@@ -276,7 +276,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
         tree.set_root_id(b'root-id')
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
@@ -316,7 +316,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
         tree.set_root_id(b'root-id')
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
@@ -361,7 +361,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
         tree.set_root_id(b'root-id')
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tree.commit('one', rev_id=b'rev-one')
         # Hack the KVF for revisions so that it "accidentally" allows a delta
         tree.branch.repository.revisions._max_delta_chain = 200
@@ -444,7 +444,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         stream = target.inventories.get_record_stream(
             [(b'C',), (b'D',), (b'E',), (b'F',)],
             'unordered', False)
-        kinds = dict((record.key, record.storage_kind) for record in stream)
+        kinds = {record.key: record.storage_kind for record in stream}
         self.assertEqual({(b'C',): 'knit-ft-gz', (b'D',): 'knit-delta-gz',
                           (b'E',): 'knit-delta-gz', (b'F',): 'knit-delta-gz'},
                          kinds)

@@ -17,15 +17,14 @@
 
 """A custom importer and regex compiler which logs time spent."""
 
-from __future__ import absolute_import
-
 import re
 import sys
 import time
+from typing import Dict, Tuple, List
 
 
-_parent_stack = []
-_total_stack = {}
+_parent_stack: List[Tuple[int, str]] = []
+_total_stack: Dict[Tuple[int, str], List[Tuple[int, str]]] = {}
 _info = {}
 _cur_id = 0
 _timer = time.time
@@ -54,7 +53,7 @@ def stack_finish(this, cost):
     global _parent_stack
 
     assert _parent_stack[-1] == this, \
-        'import stack does not end with this %s: %s' % (this, _parent_stack)
+        'import stack does not end with this {}: {}'.format(this, _parent_stack)
     _parent_stack.pop()
     _info[this].append(cost)
 
@@ -108,8 +107,6 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
     # /usr/lib/python2.6/email/__init__.py then there may be only one
     # parameter
     # level has different default between Python 2 and 3, but codebase
-    # uses `from __future__ import absolute_import` so can just use 0.
-
     if globals is None:
         # can't determine the scope name afaics; we could peek up the stack to
         # see where this is being called from, but it should be a rare case.
@@ -141,7 +138,7 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
         frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     if fromlist:
-        extra += ' [%s]' % (', '.join(map(str, fromlist)),)
+        extra += ' [{}]'.format(', '.join(map(str, fromlist)))
     frame_lineno = frame.f_lineno
 
     this = stack_add(extra + name, frame_name, frame_lineno, scope_name)
@@ -162,7 +159,7 @@ def _repr_regexp(pattern, max_len=30):
     return repr(pattern)
 
 
-_real_compile = re._compile
+_real_compile = re._compile  # type: ignore
 
 
 def timed_compile(*args, **kwargs):
@@ -195,10 +192,10 @@ def timed_compile(*args, **kwargs):
 def install():
     """Install the hooks for measuring import and regex compile time."""
     __builtins__['__import__'] = timed_import
-    re._compile = timed_compile
+    re._compile = timed_compile  # type: ignore
 
 
 def uninstall():
     """Remove the import and regex compile timing hooks."""
     __builtins__['__import__'] = _real_import
-    re._compile = _real_compile
+    re._compile = _real_compile  # type: ignore

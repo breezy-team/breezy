@@ -16,8 +16,6 @@
 
 """Tests for GitShaMap."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Blob,
     Commit,
@@ -135,7 +133,7 @@ class TestGitShaMap:
         updater.add_object(c, {"testament3-sha1": b"testament"}, None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEqual(set([b"lala", b"bla"]),
+        self.assertEqual({b"lala", b"bla"},
                          set(self.map.missing_revisions([b"myrevid", b"lala", b"bla"])))
 
 
@@ -161,7 +159,7 @@ class TdbGitShaMapTests(TestCaseInTempDir, TestGitShaMap):
         TestCaseInTempDir.setUp(self)
         try:
             self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
-        except ImportError:
+        except ModuleNotFoundError:
             raise UnavailableFeature("Missing tdb")
         self.map = self.cache.idmap
 

@@ -235,7 +235,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_funky_id(self):
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
-        t.add('filename', b'funky-chars<>%&;"\'')
+        t.add('filename', ids=b'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push -d tree new-tree')
 
@@ -295,7 +295,7 @@ class TestPush(tests.TestCaseWithTransport):
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], [b'a-id'])
+        tree.add(['a'], ids=[b'a-id'])
         tree.commit('one', rev_id=b'r1')
         return tree
 
@@ -429,10 +429,10 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertPublished(branch_tree.last_revision(),
                              trunk_tree.branch.base)
 
-    def test_push_new_branch_stacked_on(self):
+    def test_push_new_branch_stacked_on_can_use_dir_urls(self):
         """Pushing a new branch with --stacked-on can use directory URLs."""
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
-        class FooDirectory(object):
+        class FooDirectory:
             def look_up(self, name, url, purpose=None):
                 if url == 'foo:':
                     return trunk_tree.branch.base
@@ -600,7 +600,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
                                            self.abspath('../infinite-loop'),
                                            is_permanent=True)
         else:
-            return super(RedirectingMemoryTransport, self).mkdir(
+            return super().mkdir(
                 relpath, mode)
 
     def get(self, relpath):
@@ -609,7 +609,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
                                            self.abspath('../infinite-loop'),
                                            is_permanent=True)
         else:
-            return super(RedirectingMemoryTransport, self).get(relpath)
+            return super().get(relpath)
 
     def _redirected_to(self, source, target):
         # We do accept redirections
@@ -639,7 +639,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
 class TestPushRedirect(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestPushRedirect, self).setUp()
+        super().setUp()
         self.memory_server = RedirectingMemoryServer()
         self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.
@@ -674,7 +674,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
 
-class TestPushStrictMixin(object):
+class TestPushStrictMixin:
 
     def make_local_branch_and_tree(self):
         self.tree = self.make_branch_and_tree('local')
@@ -726,7 +726,7 @@ class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
                                    TestPushStrictMixin):
 
     def setUp(self):
-        super(TestPushStrictWithoutChanges, self).setUp()
+        super().setUp()
         self.make_local_branch_and_tree()
 
     def test_push_default(self):
@@ -764,7 +764,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
     _changes_type = None  # Set by load_tests
 
     def setUp(self):
-        super(TestPushStrictWithChanges, self).setUp()
+        super().setUp()
         # Apply the changes defined in load_tests: one of _uncommitted_changes,
         # _pending_merges or _out_of_sync_trees
         getattr(self, self._changes_type)()
@@ -831,7 +831,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 class TestPushForeign(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestPushForeign, self).setUp()
+        super().setUp()
         test_foreign.register_dummy_foreign_for_test(self)
 
     def make_dummy_builder(self, relpath):

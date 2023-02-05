@@ -56,34 +56,22 @@ mentioned when needed.
 When do we release ?
 ====================
 
-As of May 2020, we maintain a two series: 3.1 and trunk (3.2).
+As of 2022, we maintain a two series: 3.3 and trunk (4.0).
 
 #. as much as possible releases should not disturb development, and
    ongoing development should not disturb releases,
 
-#. the most recent development series should release once a month during
-   the beta period (see `Development cycles <cycle.html>`_ for more
+#. the most recent development series should ideally release once a month
+   during the beta period (see `Development cycles <cycle.html>`_ for more
    details),
 
-#. the most recent stable series should release every other month (based
-   on the amount of bug fixes, this can be shorter or longer depending on
-   the bugs importance),
+#. as capacity allows, the most recent stable series should release every
+   other month (based on the amount of bug fixes, this can be shorter or
+   longer depending on the bugs importance),
 
 #. previous series should release on a regular basis without interfering
    with the most recent series with a decreasing order of priority (again
    this should be based on bugs importance and user feedback),
-
-#. the death of a series should be planned ahead of time. 6 months should
-   give enough time to our users to migrate to a more recent series. This
-   doesn't mean we will make a release at the end of the series, just that
-   before the end date we *could* possibly put out another release if
-   there was a sufficiently important fix.  Beyond that date, we won't
-   even land changes on that branch (unless something causes a miraculous
-   resurrection.)
-
-#. there should not be more than 2 releases in the same week (but the
-   Release Manager is free to ignore this (get in touch with packagers
-   though),
 
 At the start of a series cycle
 ==============================
@@ -105,14 +93,12 @@ To start a new series cycle:
 #. Start a new release-notes file::
 
        cd doc/en/release-notes
-       cp series-template.txt brz-x.y.txt  # e.g. brz-3.1.txt
-       brz add brz-3.1.txt
+       brz cp series-template.txt brz-x.y.txt  # e.g. brz-3.1.txt
 
 #. Start a new whats-new file::
 
        cd doc/en/whats-new
-       cp template.txt brz-x.y.txt  # e.g. brz-3.1.txt
-       brz add brz-x.y.txt
+       brz cp template.txt brz-x.y.txt  # e.g. brz-3.1.txt
 
 #. Update ``doc/en/index.txt`` to point to the new whats-new file.
 
@@ -129,7 +115,7 @@ To start a new release cycle:
 
 #. Make a local branch to prepare the release::
 
-        brz branch lp:brz/x.y x.y-dev
+       brz branch lp:brz/x.y x.y-dev
 
    If you're doing your first beta release, branch from trunk::
 
@@ -142,9 +128,9 @@ To start a new release cycle:
 
 #. Update the version number in the ``brz`` script, and the
    ``breezy/__init__.py`` file::
-   
+
        version_info = (x, y, z, 'dev', 0)
-   
+
 #. Add a new section at the top of the current release notes (in
    ``doc/en/release-notes``) about the new release, including its version
    number and the headings from ``release-template.txt``.
@@ -207,9 +193,9 @@ Update the source code
    this can slow down the freeze, feel free to gently remind them about
    their duties ;) If you feel unsafe resolving the conflicts or it's too
    time consuming, contact the related devs and skip this merge.
-     
+
    Alternatively, think about automating these merges.
-    
+
 #. In the release branch, update  ``version_info`` in ``./breezy/__init__.py``.
    Make sure the corresponding milestone exists.
    Double check that ./brz ``_script_version`` matches ``version_info``. Check
@@ -291,20 +277,20 @@ Update the source code
       @@ -52,7 +52,7 @@
        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
        # releaselevel of 'dev' for unreleased under-development code.
-       
+
       -version_info = (2, 3, 1, 'dev', 0)
       +version_info = (2, 3, 1, 'final', 0)
-       
+
        # API compatibility version
        api_minimum_version = (2, 3, 0)
-      
+
       === modified file 'doc/en/release-notes/brz-2.3.txt'
       --- doc/en/release-notes/brz-2.3.txt	2011-03-09 08:30:16 +0000
       +++ doc/en/release-notes/brz-2.3.txt	2011-03-10 10:40:47 +0000
       @@ -8,23 +8,10 @@
        brz 2.3.1
        #########
-       
+
       -:2.3.1: NOT RELEASED YET
       -
       -External Compatibility Breaks
@@ -407,6 +393,10 @@ Publishing the source tarball
    page shows, so don't stop the release process yet, or platform binary
    installers won't be made and the download list will stay very small!
    <https://bugs.launchpad.net/launchpad/+bug/586445>
+
+#. Run twine to upload to pip::
+
+     twine upload breezy-*.tar.gz breezy-*.tar.gz.asc
 
 
 Kick off the next cycle
@@ -518,23 +508,10 @@ available to the world.
 
 #. Announce on the Breezy website.
 
-#. Check that the documentation for this release is available in
-   <https://www.breezy-vcs.org/doc/en/>.  It should be automatically build when
-   the branch is created, by a cron script ``update-brz-docs`` on
-   ``escudero``. When the first release is created in a new series, a branch
-   needs to be created on ``escudero``::
+#. Check that the documentation for this release is available on
+   https://www.breezy-vcs.org/doc/en/.
 
-     ssh escudero.canonical.com
-     sudo -u brz-web -s
-     cd /srv/doc.bazaar.canonical.com/
-     brz branch lp:brz/2.7 brz/brz.2.7
-
-   And the ``brz/bin/update-brz-docs`` script needs to refer to it.
-
-   The ``lp:brz-alldocs`` branch also needs to be updated when a new series
-   is introduced, see the ``README`` file there for more instructions
-   (looking at the branch history is also a good way to understand what
-   needs to be done and to document any policy changes).
+   This documentation is currently generated by a cron job run by Jelmer.
 
 Announcing the release
 ----------------------
@@ -682,7 +659,7 @@ category so that whole bugfix releases can more easily be
 approved.
 
 Progress on these realeases is tracked on the `SRU wiki
-<http://wiki.bazaar.canonical.com/UbuntuStableReleaseUpdates>`_
+<http://wiki.breezy-vcs.org/UbuntuStableReleaseUpdates>`_
 page.
 
 **After making a brz stable-release release, nominate the most serious bug

@@ -16,9 +16,11 @@
 
 """Commit message editor support."""
 
-from __future__ import absolute_import
-
 import codecs
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 from subprocess import call
 import sys
@@ -34,10 +36,6 @@ from . import (
     )
 from .errors import BzrError
 from .hooks import Hooks
-from .sixish import (
-    BytesIO,
-    StringIO,
-    )
 
 
 class BadCommitMessageEncoding(BzrError):
@@ -163,7 +161,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         edited_content = msg_transport.get_bytes(basename)
         if edited_content == reference_content:
             if not ui.ui_factory.confirm_action(
-                u"Commit message was not edited, use anyway",
+                "Commit message was not edited, use anyway",
                 "breezy.msgeditor.unchanged",
                     {}):
                 # Returning "" makes cmd_commit raise 'empty commit message
@@ -201,7 +199,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         del msg[lastline:]
         # add a newline at the end, if needed
         if not msg[-1].endswith("\n"):
-            return "%s%s" % ("".join(msg), "\n")
+            return "{}{}".format("".join(msg), "\n")
         else:
             return "".join(msg)
     finally:
@@ -209,7 +207,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         if msgfilename is not None:
             try:
                 os.unlink(msgfilename)
-            except IOError as e:
+            except OSError as e:
                 trace.warning(
                     "failed to unlink %s: %s; ignored", msgfilename, e)
 

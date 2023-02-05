@@ -35,7 +35,7 @@ class TestHelp(tests.TestCaseWithTransport):
             output = self.run_bzr(cmd)[0]
             line1 = output.split('\n')[0]
             if not line1.startswith('Breezy'):
-                self.fail("bad output from brz %s:\n%r" % (cmd, output))
+                self.fail("bad output from brz {}:\n{!r}".format(cmd, output))
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 
     def test_help_topics(self):
@@ -183,7 +183,7 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
     """Tests for display of translated help topics"""
 
     def setUp(self):
-        super(TestTranslatedHelp, self).setUp()
+        super().setUp()
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_help_command_utf8(self):

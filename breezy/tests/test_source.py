@@ -20,11 +20,9 @@ They are useful for testing code quality, checking coverage metric etc.
 """
 
 import os
-import parser
+import ast
 import re
-import symbol
 import sys
-import token
 
 from breezy import (
     osutils,
@@ -40,13 +38,11 @@ from breezy.tests import (
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
 COPYRIGHT_EXCEPTIONS = [
-    'breezy/_bencode_py.py',
     'breezy/doc_generate/conf.py',
     'breezy/lsprof.py',
     ]
 
 LICENSE_EXCEPTIONS = [
-    'breezy/_bencode_py.py',
     'breezy/doc_generate/conf.py',
     'breezy/lsprof.py',
     ]
@@ -75,7 +71,7 @@ class TestApiUsage(TestSourceHelper):
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
-        source = open(filename, 'r')
+        source = open(filename)
         for line in source:
             if line.find(rule) > -1:
                 occurences += 1
@@ -127,10 +123,6 @@ class TestSource(TestSourceHelper):
         if extensions is None:
             extensions = ('.py',)
 
-        # This is the front-end 'bzr' script
-        bzr_path = self.get_brz_path()
-        yield bzr_path
-
         for root, dirs, files in os.walk(breezy_dir):
             for d in dirs:
                 if d.endswith('.tmp'):
@@ -146,7 +138,7 @@ class TestSource(TestSourceHelper):
 
     def get_source_file_contents(self, extensions=None):
         for fname in self.get_source_files(extensions=extensions):
-            with open(fname, 'r') as f:
+            with open(fname) as f:
                 yield fname, f.read()
 
     def is_our_code(self, fname):
@@ -200,7 +192,7 @@ class TestSource(TestSourceHelper):
             if not match:
                 match = copyright_re.search(text)
                 if match:
-                    incorrect.append((fname, 'found: %s' % (match.group(),)))
+                    incorrect.append((fname, 'found: {}'.format(match.group())))
                 else:
                     incorrect.append((fname, 'no copyright line found\n'))
             else:
@@ -275,7 +267,7 @@ class TestSource(TestSourceHelper):
             dict_[fname].append(line_no)
 
     def _format_message(self, dict_, message):
-        files = sorted(["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
+        files = sorted(["{}: {}".format(f, ', '.join([str(i + 1) for i in lines]))
                         for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
@@ -324,67 +316,10 @@ class TestSource(TestSourceHelper):
         if problems:
             self.fail('\n\n'.join(problems))
 
-    def test_flake8(self):
-        try:
-            self.requireFeature(features.flake8)
-        except (SyntaxError, NameError):
-            # importlib_metadata uses ModuleNotFoundError, which is
-            # python 3.6 only
-            if sys.version_info[:2] <= (3, 5):
-                self.skipTest('python version too old')
-            raise
-        # Older versions of flake8 don't support the 'paths'
-        # variable
-        new_path = list(sys.path)
-        new_path.insert(
-            0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
-        self.overrideAttr(sys, 'path', new_path)
-        import argparse
-        from flake8.main.application import Application
-        from flake8.formatting.base import BaseFormatter
-        app = Application()
-        app.config = u'setup.cfg'
-        app.jobs = 1
-
-        class Formatter(BaseFormatter):
-
-            def __init__(self):
-                self.errors = []
-
-            def start(self):
-                pass
-
-            def stop(self):
-                app.file_checker_manager.report()
-
-            def handle(self, error):
-                self.errors.append(error)
-
-        try:
-            app.initialize([])
-        except argparse.ArgumentError as e:
-            self.skipTest('broken flake8: %r' % e)
-        app.formatter = Formatter()
-        app.run_checks()
-        app.report()
-        self.assertEqual(app.formatter.errors, [])
-
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""
         # assert causes too much variation between -O and not, and tends to
         # give bad errors to the user
-        def search(x):
-            # scan down through x for assert statements, report any problems
-            # this is a bit cheesy; it may get some false positives?
-            if x[0] == symbol.assert_stmt:
-                return True
-            elif x[0] == token.NAME:
-                # can't search further down
-                return False
-            for sub in x[1:]:
-                if sub and search(sub):
-                    return True
-            return False
         badfiles = []
         assert_re = re.compile(r'\bassert\b')
         for fname, text in self.get_source_file_contents():
@@ -392,10 +327,11 @@ class TestSource(TestSourceHelper):
                 continue
             if not assert_re.search(text):
                 continue
-            st = parser.suite(text)
-            code = parser.st2tuple(st)
-            if search(code):
-                badfiles.append(fname)
+            tree = ast.parse(text)
+            for entry in ast.walk(tree):
+                if isinstance(entry, ast.Assert):
+                    badfiles.append(fname)
+                    break
         if badfiles:
             self.fail(
                 "these files contain an assert statement and should not:\n%s"
@@ -442,7 +378,7 @@ class TestSource(TestSourceHelper):
                 'The following functions had "cannot raise" comments'
                 ' but did have an except clause set:')
             for fname, func in both_exc_and_no_exc:
-                error_msg.append('%s:%s' % (fname, func))
+                error_msg.append('{}:{}'.format(fname, func))
             error_msg.extend(('', ''))
         if missing_except:
             error_msg.append(
@@ -451,27 +387,7 @@ class TestSource(TestSourceHelper):
             error_msg.append(
                 'Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:
-                error_msg.append('%s:%s' % (fname, func))
+                error_msg.append('{}:{}'.format(fname, func))
             error_msg.extend(('', ''))
         if error_msg:
             self.fail('\n'.join(error_msg))
-
-    def test_feature_absolute_import(self):
-        """Using absolute imports means avoiding unnecesary stat and
-        open calls.
-
-        Make sure that all non-test files have absolute imports enabled.
-        """
-        missing_absolute_import = []
-        for fname, text in self.get_source_file_contents(
-                extensions=('.py', '.pyx')):
-            if "/tests/" in fname or "test_" in fname:
-                # We don't really care about tests
-                continue
-            if "from __future__ import absolute_import" not in text:
-                missing_absolute_import.append(fname)
-
-        if missing_absolute_import:
-            self.fail(
-                'The following files do not have absolute_import enabled:\n'
-                '\n' + '\n'.join(missing_absolute_import))

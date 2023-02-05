@@ -18,21 +18,18 @@
 
 import os
 
-try:
-    from xmlrpc.client import Fault
-    from http.client import parse_headers
-except ImportError:  # python < 3
-    from xmlrpclib import Fault
+from xmlrpc.client import Fault
+from http.client import parse_headers
 
 import breezy
 from ... import (
     debug,
     tests,
     transport,
+    urlutils,
     )
 from ...branch import Branch
 from ...directory_service import directories
-from ...sixish import PY3
 from ...tests import (
     features,
     ssl_certs,
@@ -41,7 +38,6 @@ from ...tests import (
 )
 from . import (
     _register_directory,
-    lp_registration,
     )
 from .lp_directory import (
     LaunchpadDirectory)
@@ -49,57 +45,28 @@ from .account import get_lp_login, set_lp_login
 from ...tests import http_server
 
 
-def load_tests(loader, standard_tests, pattern):
-    result = loader.suiteClass()
-    t_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-            TestXMLRPCTransport,
-            )))
-    transport_scenarios = [
-        ('http', dict(server_class=PreCannedHTTPServer,)),
-        ]
-    if features.HTTPSServerFeature.available():
-        transport_scenarios.append(
-            ('https', dict(server_class=PreCannedHTTPSServer,)),
-            )
-    tests.multiply_tests(t_tests, transport_scenarios, result)
-
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
-
-
-class FakeResolveFactory(object):
+class FakeResolveFactory:
 
     def __init__(self, test, expected_path, result):
         self._test = test
         self._expected_path = expected_path
         self._result = result
-        self._submitted = False
 
-    def __call__(self, path):
+    def __call__(self, path, url):
         self._test.assertEqual(self._expected_path, path)
-        return self
-
-    def submit(self, service):
-        self._service_url = service.service_url
-        self._submitted = True
         return self._result
 
 
 class LocalDirectoryURLTests(TestCaseInTempDir):
     """Tests for branch urls that we try to pass through local resolution."""
 
-    def assertResolve(self, expected, url, submitted=False):
+    def assertResolve(self, expected, url):
         path = url[url.index(':') + 1:].lstrip('/')
         factory = FakeResolveFactory(self, path,
                                      dict(urls=['bzr+ssh://fake-resolved']))
         directory = LaunchpadDirectory()
         self.assertEqual(expected,
                          directory._resolve(url, factory, _lp_login='user'))
-        # We are testing local resolution, and the fallback when necessary.
-        self.assertEqual(submitted, factory._submitted)
 
     def test_short_form(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
@@ -138,7 +105,7 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         :seealso: http://pad.lv/843900
         """
         # This ought to be natty-updates.
-        self.assertRaises(lp_registration.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           self.assertResolve,
                           '',
                           'ubuntu:natty/updates/smartpm')
@@ -160,8 +127,7 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
     def test_user_two_part(self):
         # We fall back to the ResolveFactory. The real Launchpad one will raise
         # InvalidURL for this case.
-        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/apt',
-                           submitted=True)
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/apt')
 
     def test_user_three_part(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/~jameinel/apt/foo',
@@ -173,22 +139,20 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
             'lp:~jameinel/apt/foo/fname')
 
     def test_user_ubuntu_two_part(self):
-        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/ubuntu',
-                           submitted=True)
-        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/debian',
-                           submitted=True)
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/ubuntu')
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:~jameinel/debian')
 
     def test_user_ubuntu_three_part(self):
         self.assertResolve('bzr+ssh://fake-resolved',
-                           'lp:~jameinel/ubuntu/natty', submitted=True)
+                           'lp:~jameinel/ubuntu/natty')
         self.assertResolve('bzr+ssh://fake-resolved',
-                           'lp:~jameinel/debian/sid', submitted=True)
+                           'lp:~jameinel/debian/sid')
 
     def test_user_ubuntu_four_part(self):
         self.assertResolve('bzr+ssh://fake-resolved',
-                           'lp:~jameinel/ubuntu/natty/project', submitted=True)
+                           'lp:~jameinel/ubuntu/natty/project')
         self.assertResolve('bzr+ssh://fake-resolved',
-                           'lp:~jameinel/debian/sid/project', submitted=True)
+                           'lp:~jameinel/debian/sid/project')
 
     def test_user_ubuntu_five_part(self):
         self.assertResolve(
@@ -213,8 +177,8 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
                            'lp:///apt')
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
                            'lp://production/apt')
-        self.assertResolve('bzr+ssh://bazaar.launchpad.dev/+branch/apt',
-                           'lp://dev/apt')
+        self.assertResolve('bzr+ssh://bazaar.launchpad.test/+branch/apt',
+                           'lp://test/apt')
         self.assertResolve('bzr+ssh://bazaar.staging.launchpad.net/+branch/apt',
                            'lp://staging/apt')
         self.assertResolve('bzr+ssh://bazaar.qastaging.launchpad.net/+branch/apt',
@@ -224,10 +188,10 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
 
     def test_debug_launchpad_uses_resolver(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/bzr',
-                           'lp:bzr', submitted=False)
+                           'lp:bzr')
         debug.debug_flags.add('launchpad')
         self.addCleanup(debug.debug_flags.discard, 'launchpad')
-        self.assertResolve('bzr+ssh://fake-resolved', 'lp:bzr', submitted=True)
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:bzr')
 
 
 class DirectoryUrlTests(TestCaseInTempDir):
@@ -241,9 +205,6 @@ class DirectoryUrlTests(TestCaseInTempDir):
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
                          directory._resolve('lp:apt', factory))
-        # Make sure that resolve went to the production server.
-        self.assertEqual('https://xmlrpc.launchpad.net/bazaar/',
-                         factory._service_url)
 
     def test_qastaging(self):
         """A launchpad url should map to a http url"""
@@ -254,9 +215,6 @@ class DirectoryUrlTests(TestCaseInTempDir):
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
                          directory._resolve(url, factory))
-        # Make sure that resolve went to the qastaging server.
-        self.assertEqual('https://xmlrpc.qastaging.launchpad.net/bazaar/',
-                         factory._service_url)
 
     def test_staging(self):
         """A launchpad url should map to a http url"""
@@ -267,9 +225,6 @@ class DirectoryUrlTests(TestCaseInTempDir):
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.staging.launchpad.net/~apt/apt/devel',
                          directory._resolve(url, factory))
-        # Make sure that resolve went to the staging server.
-        self.assertEqual('https://xmlrpc.staging.launchpad.net/bazaar/',
-                         factory._service_url)
 
     def test_url_from_directory(self):
         """A launchpad url should map to a http url"""
@@ -297,18 +252,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
             self, 'apt', dict(urls=[
                 'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertRaises(lp_registration.InvalidURL,
-                          directory._resolve, 'lp:///apt', factory)
-
-    def test_directory_fault(self):
-        # Test that XMLRPC faults get converted to InvalidURL errors.
-        factory = FakeResolveFactory(self, 'apt', None)
-
-        def submit(service):
-            raise Fault(42, 'something went wrong')
-        factory.submit = submit
-        directory = LaunchpadDirectory()
-        self.assertRaises(lp_registration.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
 
     def test_skip_bzr_ssh_launchpad_net_when_anonymous(self):
@@ -361,8 +305,9 @@ class DirectoryUrlTests(TestCaseInTempDir):
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_url(self):
         directory = LaunchpadDirectory()
-        self.assertRaises(lp_registration.InvalidURL,
-                          directory._resolve, 'lp://ratotehunoahu')
+        factory = FakeResolveFactory(self, '', {'urls': []})
+        self.assertRaises(urlutils.InvalidURL,
+                          directory._resolve, 'lp://ratotehunoahu', factory)
 
     def test_resolve_tilde_to_user(self):
         factory = FakeResolveFactory(
@@ -384,7 +329,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                 'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
         self.assertIs(None, get_lp_login())
         directory = LaunchpadDirectory()
-        self.assertRaises(lp_registration.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           directory._resolve, 'lp:~/apt/test', factory)
 
 
@@ -394,7 +339,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         # Test that opening an lp: branch redirects to the real location.
         target_branch = self.make_branch('target')
 
-        class FooService(object):
+        class FooService:
             """A directory service that maps the name to a FILE url"""
 
             def look_up(self, name, url, purpose=None):
@@ -414,140 +359,20 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         self.assertEqual(target_branch.base, branch.base)
 
 
-class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
-    """Request handler for a unique and pre-defined request.
-
-    The only thing we care about here is that we receive a connection. But
-    since we want to dialog with a real http client, we have to send it correct
-    responses.
-
-    We expect to receive a *single* request nothing more (and we won't even
-    check what request it is), the tests will recognize us from our response.
-    """
-
-    def handle_one_request(self):
-        tcs = self.server.test_case_server
-        requestline = self.rfile.readline()
-        if PY3:
-            parse_headers(self.rfile)
-        else:
-            self.MessageClass(self.rfile, 0)
-        if requestline.startswith(b'POST'):
-            # The body should be a single line (or we don't know where it ends
-            # and we don't want to issue a blocking read)
-            self.rfile.readline()
-
-        self.wfile.write(tcs.canned_response)
-
-
-class PreCannedServerMixin(object):
-
-    def __init__(self):
-        super(PreCannedServerMixin, self).__init__(
-            request_handler=PredefinedRequestHandler)
-        # Bytes read and written by the server
-        self.bytes_read = 0
-        self.bytes_written = 0
-        self.canned_response = None
-
-
-class PreCannedHTTPServer(PreCannedServerMixin, http_server.HttpServer):
-    pass
-
-
-if features.HTTPSServerFeature.available():
-    from ...tests import https_server
-
-    class PreCannedHTTPSServer(PreCannedServerMixin, https_server.HTTPSServer):
-        pass
-
-
-class TestXMLRPCTransport(tests.TestCase):
-
-    # set by load_tests
-    server_class = None
-
-    def setUp(self):
-        super(TestXMLRPCTransport, self).setUp()
-        self.server = self.server_class()
-        self.server.start_server()
-        self.addCleanup(self.server.stop_server)
-        # Ensure we don't clobber env
-        self.overrideEnv('BRZ_LP_XMLRPC_URL', None)
-        # Ensure we use the right certificates for https.
-        # FIXME: There should be a better way but the only alternative I can
-        # think of involves carrying the ca_certs through the lp_registration
-        # infrastructure to _urllib2_wrappers... -- vila 2012-01-20
-        breezy.get_global_state().cmdline_overrides._from_cmdline(
-            ['ssl.ca_certs=%s' % ssl_certs.build_path('ca.crt')])
-
-    def set_canned_response(self, server, path):
-        response_format = b'''HTTP/1.1 200 OK\r
-Date: Tue, 11 Jul 2006 04:32:56 GMT\r
-Server: Apache/2.0.54 (Fedora)\r
-Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
-ETag: "56691-23-38e9ae00"\r
-Accept-Ranges: bytes\r
-Content-Length: %(length)d\r
-Connection: close\r
-Content-Type: text/plain; charset=UTF-8\r
-\r
-<?xml version='1.0'?>
-<methodResponse>
-<params>
-<param>
-<value><struct>
-<member>
-<name>urls</name>
-<value><array><data>
-<value><string>bzr+ssh://bazaar.launchpad.net/%(path)s</string></value>
-<value><string>http://bazaar.launchpad.net/%(path)s</string></value>
-</data></array></value>
-</member>
-</struct></value>
-</param>
-</params>
-</methodResponse>
-'''
-        length = 334 + 2 * len(path)
-        server.canned_response = response_format % {
-            b'length': length, b'path': path}
-
-    def do_request(self, server_url):
-        os.environ['BRZ_LP_XMLRPC_URL'] = self.server.get_url()
-        service = lp_registration.LaunchpadService()
-        resolve = lp_registration.ResolveLaunchpadPathRequest('bzr')
-        result = resolve.submit(service)
-        return result
-
-    def test_direct_request(self):
-        self.set_canned_response(self.server, b'~bzr-pqm/bzr/bzr.dev')
-        result = self.do_request(self.server.get_url())
-        urls = result.get('urls', None)
-        self.assertIsNot(None, urls)
-        self.assertEqual(
-            ['bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev',
-             'http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev'],
-            urls)
-    # FIXME: we need to test with a real proxy, I can't find a way so simulate
-    # CONNECT without leaving one server hanging the test :-/ Since that maybe
-    # related to the leaking tests problems, I'll punt for now -- vila 20091030
-
-
 class TestDebuntuExpansions(TestCaseInTempDir):
     """Test expansions for ubuntu: and debianlp: schemes."""
 
     def setUp(self):
-        super(TestDebuntuExpansions, self).setUp()
+        super().setUp()
         self.directory = LaunchpadDirectory()
 
     def _make_factory(self, package='foo', distro='ubuntu', series=None):
         if series is None:
-            path = '%s/%s' % (distro, package)
-            url_suffix = '~branch/%s/%s' % (distro, package)
+            path = '{}/{}'.format(distro, package)
+            url_suffix = '~branch/{}/{}'.format(distro, package)
         else:
-            path = '%s/%s/%s' % (distro, series, package)
-            url_suffix = '~branch/%s/%s/%s' % (distro, series, package)
+            path = '{}/{}/{}'.format(distro, series, package)
+            url_suffix = '~branch/{}/{}/{}'.format(distro, series, package)
         return FakeResolveFactory(
             self, path, dict(urls=[
                 'http://bazaar.launchpad.net/' + url_suffix]))
@@ -563,17 +388,17 @@ class TestDebuntuExpansions(TestCaseInTempDir):
 
     def test_bogus_distro(self):
         factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
-        self.assertRaises(lp_registration.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           self.directory._resolve, 'gentoo:foo', factory)
 
     def test_trick_bogus_distro_u(self):
         factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
-        self.assertRaises(lp_registration.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           self.directory._resolve, 'utube:foo', factory)
 
     def test_trick_bogus_distro_d(self):
         factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
-        self.assertRaises(lp_registration.InvalidURL,
+        self.assertRaises(urlutils.InvalidURL,
                           self.directory._resolve, 'debuntu:foo', factory)
 
     def test_missing_ubuntu_distroseries_without_project(self):

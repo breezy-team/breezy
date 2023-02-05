@@ -34,10 +34,10 @@ class TestCaseWithStackedTarget(TestCaseWithRepository):
     def make_stacked_target(self):
         base_tree = self.make_branch_and_tree('base')
         self.build_tree(['base/f1.txt'])
-        base_tree.add(['f1.txt'], [b'f1.txt-id'])
+        base_tree.add(['f1.txt'], ids=[b'f1.txt-id'])
         base_tree.commit('initial', rev_id=self.r1_key[0])
         self.build_tree(['base/f2.txt'])
-        base_tree.add(['f2.txt'], [b'f2.txt-id'])
+        base_tree.add(['f2.txt'], ids=[b'f2.txt-id'])
         base_tree.commit('base adds f2', rev_id=self.r2_key[0])
         stacked_url = urlutils.join(base_tree.branch.base, '../stacked')
         stacked_bzrdir = base_tree.controldir.sprout(stacked_url,
@@ -54,7 +54,7 @@ class TestCaseWithStackedTarget(TestCaseWithRepository):
 class TestCommitWithStacking(TestCaseWithStackedTarget):
 
     def setUp(self):
-        super(TestCommitWithStacking, self).setUp()
+        super().setUp()
         format = self.repository_format
         if (not (isinstance(format, remote.RemoteRepositoryFormat)
                  or format.supports_chks)):
@@ -105,7 +105,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         to_be_merged_tree = base_tree.controldir.sprout('merged'
                                                         ).open_workingtree()
         self.build_tree(['merged/f2.txt'])
-        to_be_merged_tree.add(['f2.txt'], [b'f2.txt-id'])
+        to_be_merged_tree.add(['f2.txt'], ids=[b'f2.txt-id'])
         to_merge_key = (b'to-merge-rev-id',)
         to_be_merged_tree.commit('new-to-be-merged', rev_id=to_merge_key[0])
         stacked_tree.merge_from_branch(to_be_merged_tree.branch)
@@ -145,7 +145,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         """base + stacked + stacked-on-stacked"""
         base_tree, stacked_tree = self.make_stacked_target()
         self.build_tree(['stacked/f3.txt'])
-        stacked_tree.add(['f3.txt'], [b'f3.txt-id'])
+        stacked_tree.add(['f3.txt'], ids=[b'f3.txt-id'])
         stacked_key = (b'stacked-rev-id',)
         stacked_tree.commit('add f3', rev_id=stacked_key[0])
         stacked_only_repo = self.get_only_repo(stacked_tree)
@@ -168,7 +168,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         stacked2_only_repo = self.get_only_repo(stacked2_tree)
         self.assertPresent([], stacked2_only_repo.inventories,
                            [self.r1_key, self.r2_key])
-        stacked2_tree.add(['f3.txt'], [b'f3.txt-id'])
+        stacked2_tree.add(['f3.txt'], ids=[b'f3.txt-id'])
         stacked2_tree.commit('add f3', rev_id=b'stacked2-rev-id')
         # We added data to this read-locked repo, so refresh it
         stacked2_only_repo.refresh_data()
@@ -190,7 +190,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         to_be_merged_tree = base_tree.controldir.sprout('merged'
                                                         ).open_workingtree()
         self.build_tree(['merged/f2.txt'])
-        to_be_merged_tree.add(['f2.txt'], [b'f2.txt-id'])
+        to_be_merged_tree.add(['f2.txt'], ids=[b'f2.txt-id'])
         ghost_key = (b'ghost-rev-id',)
         to_be_merged_tree.set_parent_ids([r3_key[0], ghost_key[0]])
         to_merge_key = (b'to-merge-rev-id',)

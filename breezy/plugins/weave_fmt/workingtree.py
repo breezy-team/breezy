@@ -16,8 +16,7 @@
 
 """Weave-era working tree objects."""
 
-from __future__ import absolute_import
-
+from io import BytesIO
 
 from ... import (
     conflicts as _mod_conflicts,
@@ -25,6 +24,7 @@ from ... import (
     lock,
     osutils,
     revision as _mod_revision,
+    transport as _mod_transport,
     )
 from ...bzr import (
     conflicts as _mod_bzr_conflicts,
@@ -33,9 +33,6 @@ from ...bzr import (
     xml5,
     )
 from ...mutabletree import MutableTree
-from ...sixish import (
-    BytesIO,
-    )
 from ...transport.local import LocalTransport
 from ...workingtree import (
     WorkingTreeFormat,
@@ -97,7 +94,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         else:
             branch = a_controldir.open_branch()
         if revision_id is None:
-            revision_id = _mod_revision.ensure_null(branch.last_revision())
+            revision_id = branch.last_revision()
         with branch.lock_write():
             branch.generate_revision_history(revision_id)
         inv = inventory.Inventory()
@@ -123,7 +120,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         return wt
 
     def __init__(self):
-        super(WorkingTreeFormat2, self).__init__()
+        super().__init__()
         from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
         self._matchingcontroldir = BzrDirFormat6()
 
@@ -155,7 +152,7 @@ class WorkingTree2(PreDirStateWorkingTree):
     """
 
     def __init__(self, basedir, *args, **kwargs):
-        super(WorkingTree2, self).__init__(basedir, *args, **kwargs)
+        super().__init__(basedir, *args, **kwargs)
         # WorkingTree2 has more of a constraint that self._inventory must
         # exist. Because this is an older format, we don't mind the overhead
         # caused by the extra computation here.
@@ -220,7 +217,7 @@ class WorkingTree2(PreDirStateWorkingTree):
                 try:
                     if osutils.file_kind(self.abspath(conflicted)) != "file":
                         text = False
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     text = False
                 if text is True:
                     for suffix in ('.THIS', '.OTHER'):
@@ -229,15 +226,14 @@ class WorkingTree2(PreDirStateWorkingTree):
                                 self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False
-                        except errors.NoSuchFile:
+                        except _mod_transport.NoSuchFile:
                             text = False
                         if text is False:
                             break
                 ctype = {True: 'text conflict',
                          False: 'contents conflict'}[text]
-                conflicts.append(_mod_bzr_conflicts.Conflict.factory(ctype,
-                                                                 path=conflicted,
-                                                                 file_id=self.path2id(conflicted)))
+                conflicts.append(_mod_bzr_conflicts.Conflict.factory(
+                    ctype, path=conflicted, file_id=self.path2id(conflicted)))
             return conflicts
 
     def set_conflicts(self, arg):

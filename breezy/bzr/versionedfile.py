@@ -16,46 +16,44 @@
 
 """Versioned text file storage api."""
 
-from __future__ import absolute_import
-
 from copy import copy
+from io import BytesIO
 import itertools
 import os
 import struct
+from typing import Tuple, Any
 from zlib import adler32
+
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import fastbencode as bencode
+
 from breezy import (
-    annotate,
-    bencode,
-    graph as _mod_graph,
-    osutils,
     multiparent,
-    tsort,
     revision,
     urlutils,
     )
 from breezy.bzr import (
     groupcompress,
-    index,
     knit,
     )
 """)
 from .. import (
     errors,
+    graph as _mod_graph,
+    osutils,
+    transport as _mod_transport,
     )
 from ..registry import Registry
-from ..sixish import (
-    BytesIO,
-    viewitems,
-    viewvalues,
-    zip,
-    )
 from ..textmerge import TextMerge
 
+from . import (
+    index,
+    )
 
-adapter_registry = Registry()
+
+adapter_registry = Registry[Tuple[str, str], Any]()
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
                                'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
@@ -88,7 +86,7 @@ class ExistingContent(errors.BzrError):
     _fmt = "The content being inserted is already present."
 
 
-class ContentFactory(object):
+class ContentFactory:
     """Abstract interface for insertion and retrieval from a VersionedFile.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
@@ -221,9 +219,12 @@ class FileContentFactory(ContentFactory):
         self.storage_kind = 'file'
         self.sha1 = sha1
         self.size = size
+        self._needs_reset = False
 
     def get_bytes_as(self, storage_kind):
-        self.file.seek(0)
+        if self._needs_reset:
+            self.file.seek(0)
+        self._needs_reset = True
         if storage_kind == 'fulltext':
             return self.file.read()
         elif storage_kind == 'chunked':
@@ -234,7 +235,9 @@ class FileContentFactory(ContentFactory):
                                         self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
-        self.file.seek(0)
+        if self._needs_reset:
+            self.file.seek(0)
+        self._needs_reset = True
         if storage_kind == 'chunked':
             return osutils.file_iterator(self.file)
         elif storage_kind == 'lines':
@@ -298,7 +301,7 @@ def filter_absent(record_stream):
             yield record
 
 
-class _MPDiffGenerator(object):
+class _MPDiffGenerator:
     """Pull out the functionality for generating mp_diffs."""
 
     def __init__(self, vf, keys):
@@ -344,7 +347,7 @@ class _MPDiffGenerator(object):
         refcounts = {}
         setdefault = refcounts.setdefault
         just_parents = set()
-        for child_key, parent_keys in viewitems(parent_map):
+        for child_key, parent_keys in parent_map.items():
             if not parent_keys:
                 # parent_keys may be None if a given VersionedFile claims to
                 # not support graph operations.
@@ -430,7 +433,7 @@ class _MPDiffGenerator(object):
         return [dpop(k) for k in self.ordered_keys]
 
 
-class VersionedFile(object):
+class VersionedFile:
     """Versioned text file storage.
 
     A versioned file manages versions of line-based text files,
@@ -783,7 +786,7 @@ class VersionedFile(object):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 
-class RecordingVersionedFilesDecorator(object):
+class RecordingVersionedFilesDecorator:
     """A minimal versioned files that records calls made on it.
 
     Only enough methods have been added to support tests using it to date.
@@ -872,16 +875,14 @@ class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
             # Use a defined order by asking for the keys one-by-one from the
             # backing_vf
             for key in sorted(keys, key=sort_key):
-                for record in self._backing_vf.get_record_stream([key],
-                                                                 'unordered', include_delta_closure):
-                    yield record
+                yield from self._backing_vf.get_record_stream([key],
+                                                                 'unordered', include_delta_closure)
         else:
-            for record in self._backing_vf.get_record_stream(keys, sort_order,
-                                                             include_delta_closure):
-                yield record
+            yield from self._backing_vf.get_record_stream(keys, sort_order,
+                                                             include_delta_closure)
 
 
-class KeyMapper(object):
+class KeyMapper:
     """KeyMappers map between keys and underlying partitioned storage."""
 
     def map(self, key):
@@ -955,7 +956,7 @@ class HashPrefixMapper(URLEscapeMapper):
     def _map(self, key):
         """See KeyMapper.map()."""
         prefix = self._escape(key[0])
-        return "%02x/%s" % (adler32(prefix) & 0xff, prefix.decode('utf-8'))
+        return "{:02x}/{}".format(adler32(prefix) & 0xff, prefix.decode('utf-8'))
 
     def _escape(self, prefix):
         """No escaping needed here."""
@@ -1010,7 +1011,7 @@ def make_versioned_files_factory(versioned_file_factory, mapper):
     return factory
 
 
-class VersionedFiles(object):
+class VersionedFiles:
     """Storage for many versioned files.
 
     This object allows a single keyspace for accessing the history graph and
@@ -1193,7 +1194,7 @@ class VersionedFiles(object):
             this_parent_map = self.get_parent_map(pending)
             parent_map.update(this_parent_map)
             pending = set(itertools.chain.from_iterable(
-                viewvalues(this_parent_map)))
+                this_parent_map.values()))
             pending.difference_update(parent_map)
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
@@ -1287,7 +1288,8 @@ class VersionedFiles(object):
         return generator.compute_diffs()
 
     def get_annotator(self):
-        return annotate.Annotator(self)
+        from ..annotate import Annotator
+        return Annotator(self)
 
     missing_keys = index._missing_keys_from_parent_map
 
@@ -1358,7 +1360,7 @@ class ThunkedVersionedFiles(VersionedFiles):
                                     left_matching_blocks=left_matching_blocks,
                                     nostore_sha=nostore_sha, random_id=random_id,
                                     check_content=check_content)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             # parent directory may be missing, try again.
             self._transport.mkdir(osutils.dirname(path))
             try:
@@ -1407,11 +1409,11 @@ class ThunkedVersionedFiles(VersionedFiles):
         """
         prefixes = self._partition_keys(keys)
         result = {}
-        for prefix, suffixes in viewitems(prefixes):
+        for prefix, suffixes in prefixes.items():
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
             parent_map = vf.get_parent_map(suffixes)
-            for key, parents in viewitems(parent_map):
+            for key, parents in parent_map.items():
                 result[prefix + (key,)] = tuple(
                     prefix + (parent,) for parent in parents)
         return result
@@ -1463,7 +1465,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def _iter_keys_vf(self, keys):
         prefixes = self._partition_keys(keys)
         sha1s = {}
-        for prefix, suffixes in viewitems(prefixes):
+        for prefix, suffixes in prefixes.items():
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
             yield prefix, suffixes, vf
@@ -1473,7 +1475,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         sha1s = {}
         for prefix, suffixes, vf in self._iter_keys_vf(keys):
             vf_sha1s = vf.get_sha1s(suffixes)
-            for suffix, sha1 in viewitems(vf_sha1s):
+            for suffix, sha1 in vf_sha1s.items():
                 sha1s[prefix + (suffix,)] = sha1
         return sha1s
 
@@ -1673,7 +1675,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         result.update(
             _mod_graph.StackedParentsProvider(
                 self._providers).get_parent_map(keys))
-        for key, parents in viewitems(result):
+        for key, parents in result.items():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
         return result
@@ -1701,11 +1703,11 @@ class PlanWeaveMerge(TextMerge):
                 return
             elif ch_a and not ch_b:
                 # one-sided change:
-                yield(lines_a,)
+                yield (lines_a,)
             elif ch_b and not ch_a:
                 yield (lines_b,)
             elif lines_a == lines_b:
-                yield(lines_a,)
+                yield (lines_a,)
             else:
                 yield (lines_a, lines_b)
 
@@ -1715,8 +1717,7 @@ class PlanWeaveMerge(TextMerge):
         for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
-                for struct in outstanding_struct():
-                    yield struct
+                yield from outstanding_struct()
                 lines_a = []
                 lines_b = []
                 ch_a = ch_b = False
@@ -1750,8 +1751,7 @@ class PlanWeaveMerge(TextMerge):
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
                                  'killed-base'):
                     raise AssertionError(state)
-        for struct in outstanding_struct():
-            yield struct
+        yield from outstanding_struct()
 
     def base_from_plan(self):
         """Construct a BASE file from the plan text."""
@@ -1804,7 +1804,7 @@ class PlanWeaveMerge(TextMerge):
                     # It seems that having the line 2 times is better than
                     # having it omitted. (Easier to manually delete than notice
                     # it needs to be added.)
-                    raise AssertionError('Unknown state: %s' % (state,))
+                    raise AssertionError('Unknown state: {}'.format(state))
         return base_lines
 
 
@@ -1832,7 +1832,7 @@ class VirtualVersionedFiles(VersionedFiles):
         :param get_lines: Should return lines for specified key or None if
                           not available.
         """
-        super(VirtualVersionedFiles, self).__init__()
+        super().__init__()
         self._get_parent_map = get_parent_map
         self._get_lines = get_lines
 
@@ -1852,8 +1852,8 @@ class VirtualVersionedFiles(VersionedFiles):
 
     def get_parent_map(self, keys):
         """See VersionedFiles.get_parent_map."""
-        parent_view = viewitems(self._get_parent_map(k for (k,) in keys))
-        return dict(((k,), tuple((p,) for p in v)) for k, v in parent_view)
+        parent_view = self._get_parent_map(k for (k,) in keys).items()
+        return {(k,): tuple((p,) for p in v) for k, v in parent_view}
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s."""
@@ -1888,7 +1888,7 @@ class VirtualVersionedFiles(VersionedFiles):
                 yield (l, key)
 
 
-class NoDupeAddLinesDecorator(object):
+class NoDupeAddLinesDecorator:
     """Decorator for a VersionedFiles that skips doing an add_lines if the key
     is already present.
     """
@@ -1939,7 +1939,7 @@ def network_bytes_to_kind_and_offset(network_bytes):
     return storage_kind, line_end + 1
 
 
-class NetworkRecordStream(object):
+class NetworkRecordStream:
     """A record_stream which reconstitures a serialised stream."""
 
     def __init__(self, bytes_iterator):
@@ -1967,9 +1967,8 @@ class NetworkRecordStream(object):
         """
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
-            for record in self._kind_factory[storage_kind](
-                    storage_kind, bytes, line_end):
-                yield record
+            yield from self._kind_factory[storage_kind](
+                    storage_kind, bytes, line_end)
 
 
 def fulltext_network_to_record(kind, bytes, line_end):
@@ -1991,7 +1990,7 @@ def record_to_fulltext_bytes(record):
     if record.parents is None:
         parents = b'nil'
     else:
-        parents = record.parents
+        parents = tuple([tuple(p) for p in record.parents])
     record_meta = bencode.bencode((record.key, parents))
     record_content = record.get_bytes_as('fulltext')
     return b"fulltext\n%s%s%s" % (
@@ -2006,10 +2005,11 @@ def sort_groupcompress(parent_map):
 
     :return: A sorted-list of keys
     """
+    from ..tsort import topo_sort
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for item in viewitems(parent_map):
+    for item in parent_map.items():
         key = item[0]
         if isinstance(key, bytes) or len(key) == 1:
             prefix = b''
@@ -2022,11 +2022,11 @@ def sort_groupcompress(parent_map):
 
     present_keys = []
     for prefix in sorted(per_prefix_map):
-        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
+        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
     return present_keys
 
 
-class _KeyRefs(object):
+class _KeyRefs:
 
     def __init__(self, track_new_keys=False):
         # dict mapping 'key' to 'set of keys referring to that key'
@@ -2078,4 +2078,4 @@ class _KeyRefs(object):
             self._satisfy_refs_for_key(key)
 
     def get_referrers(self):
-        return set(itertools.chain.from_iterable(viewvalues(self.refs)))
+        return set(itertools.chain.from_iterable(self.refs.values()))

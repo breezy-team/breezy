@@ -17,10 +17,9 @@
 """Export trees to tarballs, zipfiles, etc.
 """
 
-from __future__ import absolute_import
-
 import os
 import time
+from typing import Iterator, cast
 import warnings
 
 from .. import (
@@ -31,7 +30,7 @@ from .. import (
     )
 
 
-class ArchiveFormatInfo(object):
+class ArchiveFormatInfo:
 
     def __init__(self, extensions):
         self.extensions = extensions
@@ -42,7 +41,7 @@ class ArchiveFormatRegistry(registry.Registry):
 
     def __init__(self):
         self._extension_map = {}
-        super(ArchiveFormatRegistry, self).__init__()
+        super().__init__()
 
     @property
     def extensions(self):
@@ -79,13 +78,16 @@ class ArchiveFormatRegistry(registry.Registry):
 
 
 def create_archive(format, tree, name, root=None, subdir=None,
-                   force_mtime=None):
+                   force_mtime=None, recurse_nested=False) -> Iterator[bytes]:
     try:
         archive_fn = format_registry.get(format)
-    except KeyError:
-        raise errors.NoSuchExportFormat(format)
-    return archive_fn(tree, name, root=root, subdir=subdir,
-                      force_mtime=force_mtime)
+    except KeyError as exc:
+        raise errors.NoSuchExportFormat(format) from exc
+    return cast(Iterator[bytes],
+                archive_fn(
+                    tree, name, root=root, subdir=subdir,
+                    force_mtime=force_mtime,
+                    recurse_nested=recurse_nested))
 
 
 format_registry = ArchiveFormatRegistry()

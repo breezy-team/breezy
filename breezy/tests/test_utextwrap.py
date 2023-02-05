@@ -25,9 +25,9 @@ from .. import (
 
 # Japanese "Good morning".
 # Each character have double width. So total 8 width on console.
-_str_D = u'\u304a\u306f\u3088\u3046'
+_str_D = '\u304a\u306f\u3088\u3046'
 
-_str_S = u"hello"
+_str_S = "hello"
 
 # Combine single width characters and double width characters.
 _str_SD = _str_S + _str_D
@@ -61,7 +61,7 @@ class TestUTextWrap(tests.TestCase):
         self.check_cut(s, 12, 8)
         self.check_cut(s, 13, 9)
         self.check_cut(s, 14, 9)
-        self.check_cut(u'A' * 5, 3, 3)
+        self.check_cut('A' * 5, 3, 3)
 
     def test_split(self):
         w = utextwrap.UTextWrapper()
@@ -81,13 +81,13 @@ class TestUTextFill(tests.TestCase):
 
     def test_fill_simple(self):
         # Test only can call fill() because it's just '\n'.join(wrap(text)).
-        self.assertEqual("%s\n%s" % (_str_D[:2], _str_D[2:]),
+        self.assertEqual("{}\n{}".format(_str_D[:2], _str_D[2:]),
                          utextwrap.fill(_str_D, 4))
 
     def test_fill_with_breaks(self):
         # Demonstrate complicated case.
-        text = u"spam ham egg spamhamegg" + _str_D + u" spam" + _str_D * 2
-        self.assertEqual(u'\n'.join(["spam ham",
+        text = "spam ham egg spamhamegg" + _str_D + " spam" + _str_D * 2
+        self.assertEqual('\n'.join(["spam ham",
                                      "egg spam",
                                      "hamegg" + _str_D[0],
                                      _str_D[1:],
@@ -97,8 +97,8 @@ class TestUTextFill(tests.TestCase):
                          utextwrap.fill(text, 8))
 
     def test_fill_without_breaks(self):
-        text = u"spam ham egg spamhamegg" + _str_D + u" spam" + _str_D * 2
-        self.assertEqual(u'\n'.join(["spam ham",
+        text = "spam ham egg spamhamegg" + _str_D + " spam" + _str_D * 2
+        self.assertEqual('\n'.join(["spam ham",
                                      "egg",
                                      "spamhamegg",
                                      # border between single width and double
@@ -112,7 +112,7 @@ class TestUTextFill(tests.TestCase):
     def test_fill_indent_with_breaks(self):
         w = utextwrap.UTextWrapper(8, initial_indent=' ' * 4,
                                    subsequent_indent=' ' * 4)
-        self.assertEqual(u'\n'.join(["    hell",
+        self.assertEqual('\n'.join(["    hell",
                                      "    o" + _str_D[0],
                                      "    " + _str_D[1:3],
                                      "    " + _str_D[3]
@@ -123,7 +123,7 @@ class TestUTextFill(tests.TestCase):
         w = utextwrap.UTextWrapper(8, initial_indent=' ' * 4,
                                    subsequent_indent=' ' * 4)
         w.break_long_words = False
-        self.assertEqual(u'\n'.join(["    hello",
+        self.assertEqual('\n'.join(["    hello",
                                      "    " + _str_D[:2],
                                      "    " + _str_D[2:],
                                      ]),
@@ -134,7 +134,7 @@ class TestUTextFill(tests.TestCase):
                                    subsequent_indent=' ' * 4)
         w.break_long_words = False
         w.width = 3
-        self.assertEqual(u'\n'.join(["    hello",
+        self.assertEqual('\n'.join(["    hello",
                                      "    " + _str_D[0],
                                      "    " + _str_D[1],
                                      "    " + _str_D[2],
@@ -144,7 +144,7 @@ class TestUTextFill(tests.TestCase):
 
 
 class TestUTextWrapAmbiWidth(tests.TestCase):
-    _cyrill_char = u"\u0410"  # east_asian_width() == 'A'
+    _cyrill_char = "\u0410"  # east_asian_width() == 'A'
 
     def test_ambiwidth1(self):
         w = utextwrap.UTextWrapper(4, ambiguous_width=1)
@@ -191,19 +191,20 @@ try:
         def setUp(self):
             setup_both(self, TestIndent, test_textwrap.IndentTestCases)
 
+
 except ImportError:
 
-    class TestWrap(tests.TestCase):
+    class TestWrap(tests.TestCase):  # type: ignore
 
         def test_wrap(self):
             raise tests.TestSkipped("test.test_textwrap is not available.")
 
-    class TestLongWord(tests.TestCase):
+    class TestLongWord(tests.TestCase):  # type: ignore
 
         def test_longword(self):
             raise tests.TestSkipped("test.test_textwrap is not available.")
 
-    class TestIndent(tests.TestCase):
+    class TestIndent(tests.TestCase):  # type: ignore
 
         def test_indent(self):
             raise tests.TestSkipped("test.test_textwrap is not available.")

@@ -1,5 +1,4 @@
 # Copyright (C) 2006, 2007, 2009-2013, 2016 Canonical Ltd
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -114,4 +113,3 @@ class SignMyCommits(tests.TestCaseWithTransport):
         self.assertUnsigned(repo, b'C')
         self.assertUnsigned(repo, b'D')
         self.assertUnsigned(repo, b'E')
-

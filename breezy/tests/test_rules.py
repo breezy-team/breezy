@@ -132,7 +132,7 @@ class TestStackedRulesSearcher(tests.TestCase):
 class TestRulesPath(tests.TestCase):
 
     def setUp(self):
-        super(TestRulesPath, self).setUp()
+        super().setUp()
         self.overrideEnv('HOME', '/home/bogus')
         if sys.platform == 'win32':
             self.overrideEnv(

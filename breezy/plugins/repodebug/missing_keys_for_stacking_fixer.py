@@ -14,12 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ...controldir import ControlDir
-from ...commands import Command, Option
+from ...commands import Command
+from ...option import Option
 from ... import errors
-from ...sixish import viewvalues
 from ...bzr.vf_search import PendingAncestryResult
 from ...repository import WriteGroup
 from ...revision import NULL_REVISION
@@ -65,9 +63,9 @@ class cmd_fix_missing_keys_for_stacking(Command):
             revs = raw_r.all_revision_ids()
             rev_parents = raw_r.get_graph().get_parent_map(revs)
             needed = set()
-            map(needed.update, viewvalues(rev_parents))
+            map(needed.update, rev_parents.values())
             needed.discard(NULL_REVISION)
-            needed = set((rev,) for rev in needed)
+            needed = {(rev,) for rev in needed}
             needed = needed - raw_r.inventories.keys()
             if not needed:
                 # Nothing to see here.

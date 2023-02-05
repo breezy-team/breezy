@@ -16,26 +16,21 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from __future__ import absolute_import
-
 import time
+from typing import Type
 import zlib
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    annotate,
-    config,
     debug,
-    osutils,
-    static_tuple,
-    trace,
     tsort,
     )
 from breezy.bzr import (
     knit,
     pack,
     pack_repo,
+    static_tuple,
     )
 
 from breezy.i18n import gettext
@@ -43,15 +38,11 @@ from breezy.i18n import gettext
 
 from .. import (
     errors,
-    )
+    osutils,
+    trace,
+)
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
-from ..sixish import (
-    indexbytes,
-    map,
-    range,
-    viewitems,
-    )
 from .versionedfile import (
     _KeyRefs,
     adapter_registry,
@@ -61,7 +52,7 @@ from .versionedfile import (
     FulltextContentFactory,
     VersionedFilesWithFallbacks,
     UnavailableRepresentation,
-    )
+)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -82,7 +73,7 @@ def sort_gc_optimal(parent_map):
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for key, value in viewitems(parent_map):
+    for key, value in parent_map.items():
         if isinstance(key, bytes) or len(key) == 1:
             prefix = b''
         else:
@@ -104,7 +95,7 @@ class DecompressCorruption(errors.BzrError):
 
     def __init__(self, orig_error=None):
         if orig_error is not None:
-            self.orig_error = ", %s" % (orig_error,)
+            self.orig_error = ", {}".format(orig_error)
         else:
             self.orig_error = ""
         errors.BzrError.__init__(self)
@@ -116,7 +107,7 @@ class DecompressCorruption(errors.BzrError):
 _ZLIB_DECOMP_WINDOW = 32 * 1024
 
 
-class GroupCompressBlock(object):
+class GroupCompressBlock:
     """An object which maintains the internal structure of the compressed data.
 
     This tracks the meta info (start of text, length, type, etc.)
@@ -266,7 +257,7 @@ class GroupCompressBlock(object):
         elif header == cls.GCB_LZ_HEADER:
             out._compressor_name = 'lzma'
         else:
-            raise ValueError('unknown compressor: %r' % (header,))
+            raise ValueError('unknown compressor: {!r}'.format(header))
         out._parse_bytes(bytes, 6)
         return out
 
@@ -373,7 +364,7 @@ class GroupCompressBlock(object):
             kind = self._content[pos:pos + 1]
             pos += 1
             if kind not in (b'f', b'd'):
-                raise ValueError('invalid kind character: %r' % (kind,))
+                raise ValueError('invalid kind character: {!r}'.format(kind))
             content_len, len_len = decode_base128_int(
                 self._content[pos:pos + 5])
             pos += len_len
@@ -394,7 +385,7 @@ class GroupCompressBlock(object):
                 result.append((b'd', content_len, decomp_len, delta_info))
                 measured_len = 0
                 while delta_pos < content_len:
-                    c = indexbytes(delta_content, delta_pos)
+                    c = delta_content[delta_pos]
                     delta_pos += 1
                     if c & 0x80:  # Copy
                         (offset, length,
@@ -425,7 +416,7 @@ class GroupCompressBlock(object):
         return result
 
 
-class _LazyGroupCompressFactory(object):
+class _LazyGroupCompressFactory:
     """Yield content from a GroupCompressBlock on demand."""
 
     def __init__(self, key, parents, manager, start, end, first):
@@ -459,7 +450,7 @@ class _LazyGroupCompressFactory(object):
         self._end = end
 
     def __repr__(self):
-        return '%s(%s, first=%s)' % (self.__class__.__name__,
+        return '{}({}, first={})'.format(self.__class__.__name__,
                                      self.key, self._first)
 
     def _extract_bytes(self):
@@ -493,7 +484,7 @@ class _LazyGroupCompressFactory(object):
             else:
                 return osutils.chunks_to_lines(self._chunks)
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if self._chunks is None:
@@ -503,10 +494,10 @@ class _LazyGroupCompressFactory(object):
         elif storage_kind == 'lines':
             return iter(osutils.chunks_to_lines(self._chunks))
         raise UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+                                        self.storage_kind)
 
 
-class _LazyGroupContentManager(object):
+class _LazyGroupContentManager:
     """This manages a group of _LazyGroupCompressFactory objects."""
 
     _max_cut_fraction = 0.75  # We allow a block to be trimmed to 75% of
@@ -722,7 +713,7 @@ class _LazyGroupContentManager(object):
         elif action == 'rebuild':
             self._rebuild_block()
         else:
-            raise ValueError('unknown rebuild action: %r' % (action,))
+            raise ValueError('unknown rebuild action: {!r}'.format(action))
 
     def _wire_bytes(self):
         """Return a byte stream suitable for transmitting over the wire."""
@@ -781,7 +772,7 @@ class _LazyGroupContentManager(object):
          block_len, rest) = bytes.split(b'\n', 4)
         del bytes
         if storage_kind != b'groupcompress-block':
-            raise ValueError('Unknown storage kind: %s' % (storage_kind,))
+            raise ValueError('Unknown storage kind: {}'.format(storage_kind))
         z_header_len = int(z_header_len)
         if len(rest) < z_header_len:
             raise ValueError('Compressed header len shorter than all bytes')
@@ -827,12 +818,12 @@ class _LazyGroupContentManager(object):
 
 def network_block_to_records(storage_kind, bytes, line_end):
     if storage_kind != 'groupcompress-block':
-        raise ValueError('Unknown storage kind: %s' % (storage_kind,))
+        raise ValueError('Unknown storage kind: {}'.format(storage_kind))
     manager = _LazyGroupContentManager.from_bytes(bytes)
     return manager.get_record_stream()
 
 
-class _CommonGroupCompressor(object):
+class _CommonGroupCompressor:
 
     def __init__(self, settings=None):
         """Create a GroupCompressor."""
@@ -977,7 +968,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
 
         Used only if the pyrex version is not available.
         """
-        super(PythonGroupCompressor, self).__init__(settings)
+        super().__init__(settings)
         self._delta_index = LinesDeltaIndex([])
         # The actual content is managed by LinesDeltaIndex
         self.chunks = self._delta_index.lines
@@ -1032,7 +1023,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
     """
 
     def __init__(self, settings=None):
-        super(PyrexGroupCompressor, self).__init__(settings)
+        super().__init__(settings)
         max_bytes_to_index = self._settings.get('max_bytes_to_index', 0)
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
@@ -1102,6 +1093,8 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
     :param delta: Delta compress contents.
     :param keylength: How long should keys be.
     """
+    from .pack import ContainerWriter
+    from .pack_repo import _DirectPackAccess
     def factory(transport):
         parents = graph
         ref_length = 0
@@ -1110,12 +1103,12 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
         graph_index = BTreeBuilder(reference_lists=ref_length,
                                    key_elements=keylength)
         stream = transport.open_write_stream('newpack')
-        writer = pack.ContainerWriter(stream.write)
+        writer = ContainerWriter(stream.write)
         writer.begin()
         index = _GCGraphIndex(graph_index, lambda: True, parents=parents,
                               add_callback=graph_index.add_nodes,
                               inconsistency_fatal=inconsistency_fatal)
-        access = pack_repo._DirectPackAccess({})
+        access = _DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
@@ -1129,7 +1122,7 @@ def cleanup_pack_group(versioned_files):
     versioned_files.stream.close()
 
 
-class _BatchingBlockFetcher(object):
+class _BatchingBlockFetcher:
     """Fetch group compress blocks in batches.
 
     :ivar total_bytes: int of expected number of bytes needed to fetch the
@@ -1183,8 +1176,7 @@ class _BatchingBlockFetcher(object):
 
     def _flush_manager(self):
         if self.manager is not None:
-            for factory in self.manager.get_record_stream():
-                yield factory
+            yield from self.manager.get_record_stream()
             self.manager = None
             self.last_read_memo = None
 
@@ -1210,8 +1202,7 @@ class _BatchingBlockFetcher(object):
                 # We are starting a new block. If we have a
                 # manager, we have found everything that fits for
                 # now, so yield records
-                for factory in self._flush_manager():
-                    yield factory
+                yield from self._flush_manager()
                 # Now start a new manager.
                 if memos_to_get_stack and memos_to_get_stack[-1] == read_memo:
                     # The next block from _get_blocks will be the block we
@@ -1231,8 +1222,7 @@ class _BatchingBlockFetcher(object):
             start, end = index_memo[3:5]
             self.manager.add_factory(key, parents, start, end)
         if full_flush:
-            for factory in self._flush_manager():
-                yield factory
+            yield from self._flush_manager()
         del self.keys[:]
         self.batch_memos.clear()
         del self.memos_to_get[:]
@@ -1376,11 +1366,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
-        ann = annotate.Annotator(self)
+        ann = self.get_annotator()
         return ann.annotate_flat(key)
 
     def get_annotator(self):
-        return annotate.Annotator(self)
+        from ..annotate import Annotator
+        return Annotator(self)
 
     def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
@@ -1521,7 +1512,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
-            except errors.RetryWithNewPacks as e:
+            except pack_repo.RetryWithNewPacks as e:
                 self._access.reload_or_raise(e)
 
     def _find_from_fallback(self, missing):
@@ -1633,8 +1624,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # would be better to not globally sort initially but instead
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
-            parent_map = dict((key, details[2]) for key, details in
-                              viewitems(locations))
+            parent_map = {key: details[2] for key, details in
+                              locations.items()}
             for key in unadded_keys:
                 parent_map[key] = self._unadded_refs[key]
             parent_map.update(fallback_parent_map)
@@ -1662,24 +1653,19 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     if key in self._unadded_refs:
                         # Flush batch, then yield unadded ref from
                         # self._compressor.
-                        for factory in batcher.yield_factories(full_flush=True):
-                            yield factory
+                        yield from batcher.yield_factories(full_flush=True)
                         chunks, sha1 = self._compressor.extract(key)
                         parents = self._unadded_refs[key]
                         yield ChunkedContentFactory(key, parents, sha1, chunks)
                         continue
                     if batcher.add_key(key) > BATCH_SIZE:
                         # Ok, this batch is big enough.  Yield some results.
-                        for factory in batcher.yield_factories():
-                            yield factory
+                        yield from batcher.yield_factories()
             else:
-                for factory in batcher.yield_factories(full_flush=True):
-                    yield factory
-                for record in source.get_record_stream(keys, ordering,
-                                                       include_delta_closure):
-                    yield record
-        for factory in batcher.yield_factories(full_flush=True):
-            yield factory
+                yield from batcher.yield_factories(full_flush=True)
+                yield from source.get_record_stream(keys, ordering,
+                                                       include_delta_closure)
+        yield from batcher.yield_factories(full_flush=True)
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
@@ -1708,11 +1694,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             pass
 
     def _get_compressor_settings(self):
+        from ..config import GlobalConfig
         if self._max_bytes_to_index is None:
             # TODO: VersionedFiles don't know about their containing
             #       repository, so they don't have much of an idea about their
             #       location. So for now, this is only a global option.
-            c = config.GlobalConfig()
+            c = GlobalConfig()
             val = c.get_user_option('bzr.groupcompress.max_bytes_to_index')
             if val is not None:
                 try:
@@ -1953,7 +1940,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         return result
 
 
-class _GCBuildDetails(object):
+class _GCBuildDetails:
     """A blob of data about the build details.
 
     This stores the minimal data, which then allows compatibility with the old
@@ -1972,7 +1959,7 @@ class _GCBuildDetails(object):
          self._delta_end) = position_info
 
     def __repr__(self):
-        return '%s(%s, %s)' % (self.__class__.__name__,
+        return '{}({}, {})'.format(self.__class__.__name__,
                                self.index_memo, self._parents)
 
     @property
@@ -2001,7 +1988,7 @@ class _GCBuildDetails(object):
         return 4
 
 
-class _GCGraphIndex(object):
+class _GCGraphIndex:
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
     def __init__(self, graph_index, is_locked, parents=True,
@@ -2079,7 +2066,7 @@ class _GCGraphIndex(object):
                 node_refs = static_tuple.as_tuples(node_refs)
                 passed = static_tuple.as_tuples(keys[key])
                 if node_refs != passed[1]:
-                    details = '%s %s %s' % (key, (value, node_refs), passed)
+                    details = '{} {} {}'.format(key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
                         raise knit.KnitCorrupt(self, "inconsistent details"
                                                " in add_records: %s" %
@@ -2092,10 +2079,10 @@ class _GCGraphIndex(object):
         if changed:
             result = []
             if self._parents:
-                for key, (value, node_refs) in viewitems(keys):
+                for key, (value, node_refs) in keys.items():
                     result.append((key, value, node_refs))
             else:
-                for key, (value, node_refs) in viewitems(keys):
+                for key, (value, node_refs) in keys.items():
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies
@@ -2252,6 +2239,9 @@ class _GCGraphIndex(object):
             key_dependencies.add_references(node[1], node[3][0])
 
 
+GroupCompressor: Type[_CommonGroupCompressor]
+
+
 from ._groupcompress_py import (
     apply_delta,
     apply_delta_to_source,
@@ -2261,7 +2251,7 @@ from ._groupcompress_py import (
     LinesDeltaIndex,
     )
 try:
-    from ._groupcompress_pyx import (
+    from ._groupcompress_pyx import (  # type: ignore
         apply_delta,
         apply_delta_to_source,
         DeltaIndex,

@@ -51,13 +51,13 @@ class DirBlock:
 
     def __str__(self):
         return """
-file_path      = %r
-abspath        = %r
-relpath        = %r
-file_name      = %r
-inventory_kind = %r
-stat           = %r
-disk_kind      = %r""" % (self.file_path, self.abspath, self.relpath,
+file_path      = {!r}
+abspath        = {!r}
+relpath        = {!r}
+file_name      = {!r}
+inventory_kind = {!r}
+stat           = {!r}
+disk_kind      = {!r}""".format(self.file_path, self.abspath, self.relpath,
                           self.file_name, self.inventory_kind, self.stat,
                           self.disk_kind)
 
@@ -162,7 +162,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
     def test_walkdirs_type_changes(self):
         """Walkdir shows the actual kinds on disk and the recorded kinds."""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         tree = self.make_branch_and_tree('.')
         paths = ['file1', 'file2', 'dir1/', 'dir2/']
         self.build_tree(paths)
@@ -236,7 +236,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
                 ('',
                  [('dir1', 'dir1', 'file', dir1_stat, 'directory'),
                   ('file1', 'file1', 'directory', file1_stat, 'file'),
-                 ]),
+                  ]),
                 ('dir1', []),
                 ('file1', []),
                 ]

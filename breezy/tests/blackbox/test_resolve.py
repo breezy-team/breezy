@@ -29,7 +29,7 @@ from breezy.tests.blackbox import test_conflicts
 class TestResolve(script.TestCaseWithTransportAndScript):
 
     def setUp(self):
-        super(TestResolve, self).setUp()
+        super().setUp()
         test_conflicts.make_tree_with_conflicts(self, 'branch', 'other')
 
     def test_resolve_one_by_one(self):
@@ -177,7 +177,7 @@ class TestResolveAuto(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file',
                                    b'<<<<<<<\na\n=======\n>>>>>>>\n')])
-        tree.add('file', b'file_id')
+        tree.add('file', ids=b'file_id')
         self.assertEqual(tree.kind('file'), 'file')
         file_conflict = _mod_bzr_conflicts.TextConflict('file', file_id=b'file_id')
         tree.set_conflicts([file_conflict])

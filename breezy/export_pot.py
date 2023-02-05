@@ -26,8 +26,6 @@ extracting those strings, as is done in the bzr Makefile. Sorting the output
 is also left to that stage of the process.
 """
 
-from __future__ import absolute_import
-
 import inspect
 import os
 import sys
@@ -40,7 +38,6 @@ from . import (
     option,
     plugin as _mod_plugin,
     )
-from .sixish import PY3
 from .trace import (
     mutter,
     note,
@@ -92,7 +89,7 @@ def _parse_source(source_text, filename='<unknown>'):
     return cls_to_lineno, str_to_lineno
 
 
-class _ModuleContext(object):
+class _ModuleContext:
     """Record of the location within a source tree"""
 
     def __init__(self, path, lineno=1, _source_info=None):
@@ -131,7 +128,7 @@ class _ModuleContext(object):
                               (self._cls_to_lineno, self._str_to_lineno))
 
 
-class _PotExporter(object):
+class _PotExporter:
     """Write message details to output stream in .pot file format"""
 
     def __init__(self, outf, include_duplicates=False):
@@ -159,8 +156,6 @@ class _PotExporter(object):
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
-        if not PY3:
-            line = line.decode('utf-8')
         self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):
@@ -194,7 +189,7 @@ def _write_option(exporter, context, opt, note):
     optname = opt.name
     if getattr(opt, 'title', None):
         exporter.poentry_in_context(context, opt.title,
-                                    "title of {name!r} {what}".format(name=optname, what=note))
+                                    f"title of {optname!r} {note}")
     for name, _, _, helptxt in opt.iter_switches():
         if name != optname:
             if opt.is_hidden(name):
@@ -202,7 +197,7 @@ def _write_option(exporter, context, opt, note):
             name = "=".join([optname, name])
         if helptxt:
             exporter.poentry_in_context(context, helptxt,
-                                        "help of {name!r} {what}".format(name=name, what=note))
+                                        f"help of {name!r} {note}")
 
 
 def _standard_options(exporter):
@@ -214,7 +209,7 @@ def _standard_options(exporter):
 
 
 def _command_options(exporter, context, cmd):
-    note = "option of {0!r} command".format(cmd.name())
+    note = f"option of {cmd.name()!r} command"
     for opt in cmd.takes_options:
         # String values in Command option lists are for global options
         if not isinstance(opt, str):
@@ -259,9 +254,9 @@ def _command_helps(exporter, plugin_name=None):
     plugins = _mod_plugin.plugins()
     if plugin_name is not None and plugin_name not in plugins:
         raise errors.BzrError(gettext('Plugin %s is not loaded' % plugin_name))
-    core_plugins = set(
+    core_plugins = {
         name for name in plugins
-        if plugins[name].path().startswith(breezy.__path__[0]))
+        if plugins[name].path().startswith(breezy.__path__[0])}
     # plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)

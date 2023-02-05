@@ -40,7 +40,7 @@ def spec_in_history(spec, branch):
 class TestRevisionSpec(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestRevisionSpec, self).setUp()
+        super().setUp()
         # this sets up a revision graph:
         # r1: []             1
         # alt_r2: [r1]       1.1.1
@@ -110,7 +110,7 @@ class RevisionSpecMatchOnTrap(RevisionSpec):
 
     def _match_on(self, branch, revs):
         self.last_call = (branch, revs)
-        return super(RevisionSpecMatchOnTrap, self)._match_on(branch, revs)
+        return super()._match_on(branch, revs)
 
 
 class TestRevisionSpecBase(TestRevisionSpec):
@@ -160,8 +160,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.tree.branch.tags.set_tag('footag', b'r1')
         self.assertAsRevisionId(b'r1', 'footag')
         self.tree.branch.tags.delete_tag('footag')
-        self.assertRaises(InvalidRevisionSpec,
-                          self.get_in_history, 'footag')
+        self.assertRaises(InvalidRevisionSpec, self.get_in_history, 'footag')
 
     def test_dwim_spec_tag_that_looks_like_revno(self):
         # Test that we slip past revno with things that look like revnos,
@@ -287,7 +286,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_with_url(self):
         url = self.get_url() + '/tree2'
-        revinfo = self.get_in_history('revno:2:%s' % (url,))
+        revinfo = self.get_in_history('revno:2:{}'.format(url))
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -295,7 +294,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_negative_with_url(self):
         url = self.get_url() + '/tree2'
-        revinfo = self.get_in_history('revno:-1:%s' % (url,))
+        revinfo = self.get_in_history('revno:-1:{}'.format(url))
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
@@ -395,9 +394,9 @@ class TestRevisionSpec_revid(TestRevisionSpec):
 
     def test_unicode(self):
         """We correctly convert a unicode ui string to an encoded revid."""
-        revision_id = u'\N{SNOWMAN}'.encode('utf-8')
+        revision_id = '\N{SNOWMAN}'.encode()
         self.tree.commit('unicode', rev_id=revision_id)
-        self.assertInHistoryIs(3, revision_id, u'revid:\N{SNOWMAN}')
+        self.assertInHistoryIs(3, revision_id, 'revid:\N{SNOWMAN}')
         self.assertInHistoryIs(3, revision_id, 'revid:' +
                                revision_id.decode('utf-8'))
 
@@ -518,10 +517,10 @@ class TestRevisionSpec_date(TestRevisionSpec):
         super(TestRevisionSpec, self).setUp()
 
         new_tree = self.make_branch_and_tree('new_tree')
-        new_tree.commit('Commit one', rev_id=b'new_r1',
-                        timestamp=time.time() - 60 * 60 * 24)
-        new_tree.commit('Commit two', rev_id=b'new_r2')
-        new_tree.commit('Commit three', rev_id=b'new_r3')
+        self.revid1 = new_tree.commit(
+            'Commit one', timestamp=time.time() - 60 * 60 * 24)
+        self.revid2 = new_tree.commit('Commit two')
+        self.revid3 = new_tree.commit('Commit three')
 
         self.tree = new_tree
 
@@ -529,11 +528,11 @@ class TestRevisionSpec_date(TestRevisionSpec):
         self.assertInvalid('date:tomorrow')
 
     def test_today(self):
-        self.assertInHistoryIs(2, b'new_r2', 'date:today')
-        self.assertInHistoryIs(1, b'new_r1', 'before:date:today')
+        self.assertInHistoryIs(2, self.revid2, 'date:today')
+        self.assertInHistoryIs(1, self.revid1, 'before:date:today')
 
     def test_yesterday(self):
-        self.assertInHistoryIs(1, b'new_r1', 'date:yesterday')
+        self.assertInHistoryIs(1, self.revid1, 'date:yesterday')
 
     def test_invalid(self):
         self.assertInvalid('date:foobar', extra='\ninvalid date')
@@ -544,11 +543,27 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
     def test_day(self):
         now = datetime.datetime.now()
-        self.assertInHistoryIs(2, b'new_r2',
+        self.assertInHistoryIs(2, self.revid2,
                                'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
 
     def test_as_revision_id(self):
-        self.assertAsRevisionId(b'new_r2', 'date:today')
+        self.assertAsRevisionId(self.revid2, 'date:today')
+
+
+class TestRevisionSpec_date_no_revno(TestRevisionSpec_date):
+
+    # some formats don't implement .revno(), so it triggers a different codepath
+
+    def get_in_history(self, revision_spec):
+        old_revno = self.overrideAttr(self.tree.branch, 'revno', lambda: None)
+        try:
+            return spec_in_history(revision_spec, self.tree.branch)
+        finally:
+            self.tree.branch.revno = old_revno
+
+    def test_today(self):
+        self.assertInHistoryIs(2, self.revid2, 'date:today')
+        # Drop before: since it messes with our monkeypatching of Branch.revno.
 
 
 class TestRevisionSpec_ancestor(TestRevisionSpec):
@@ -679,8 +694,8 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
         self.assertAsRevisionId(b'r2', 'mainline:1.1.1')
         self.assertAsRevisionId(b'r2', 'mainline:revid:alt_r2')
         spec = RevisionSpec.from_string('mainline:revid:alt_r22')
-        e = self.assertRaises(InvalidRevisionSpec,
-                              spec.as_revision_id, self.tree.branch)
+        e = self.assertRaises(
+            InvalidRevisionSpec, spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               "Requested revision: 'mainline:revid:alt_r22' does not exist in"
                               " branch: ")
@@ -692,7 +707,7 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
 class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def setUp(self):
-        super(TestRevisionSpec_annotate, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('annotate-tree')
         self.build_tree_contents([('annotate-tree/file1', b'1\n')])
         self.tree.add('file1')
@@ -709,8 +724,8 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def test_as_revision_id_uncommitted(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:3')
-        e = self.assertRaises(InvalidRevisionSpec,
-                              spec.as_revision_id, self.tree.branch)
+        e = self.assertRaises(
+            InvalidRevisionSpec, spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               r"Requested revision: \'annotate:annotate-tree/file1:3\' does not"
                               " exist in branch: .*\nLine 3 has not been committed.")

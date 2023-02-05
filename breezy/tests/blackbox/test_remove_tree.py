@@ -26,7 +26,7 @@ from breezy.tests import TestCaseWithTransport
 class TestRemoveTree(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestRemoveTree, self).setUp()
+        super().setUp()
         self.tree = self.make_branch_and_tree('branch1')
         self.build_tree(['branch1/foo'])
         self.tree.add('foo')

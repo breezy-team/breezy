@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from __future__ import absolute_import
-
 import subprocess
 import tempfile
 
@@ -34,7 +32,7 @@ from ...smtp_connection import SMTPConnection
 from ...email_message import EmailMessage
 
 
-class EmailSender(object):
+class EmailSender:
     """An email message sender."""
 
     _smtplib_implementation = SMTPConnection
@@ -80,7 +78,7 @@ class EmailSender(object):
 
         # We must use StringIO.StringIO because we want a Unicode string that
         # we can pass to send_email and have that do the proper encoding.
-        from ...sixish import StringIO
+        from io import StringIO
         outf = StringIO()
 
         _body = self.config.get('post_commit_body')
@@ -137,7 +135,7 @@ class EmailSender(object):
 
         # We can use a StringIO because show_diff_trees should only write
         # 8-bit strings. It is an error to write a Unicode string here.
-        from ...sixish import StringIO
+        from io import StringIO
         diff_content = StringIO()
         diff_options = self.config.get('post_commit_diffoptions')
         show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)
@@ -227,7 +225,7 @@ class EmailSender(object):
             rc = process.wait()
             if rc != 0:
                 raise errors.BzrError(
-                    "Failed to send email: exit status %s" % (rc,))
+                    "Failed to send email: exit status {}".format(rc))
 
     def _send_using_smtplib(self):
         """Use python's smtplib to send the email."""
@@ -275,7 +273,7 @@ class EmailSender(object):
         return self._format(_subject)
 
     def diff_filename(self):
-        return "patch-%s.diff" % (self.revno,)
+        return "patch-{}.diff".format(self.revno)
 
 
 opt_post_commit_body = Option("post_commit_body",

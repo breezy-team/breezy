@@ -14,12 +14,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""CVS working tree support for bzr.
+"""CVS working tree support.
 
 Currently limited to referencing tools for migration.
 """
-
-from __future__ import absolute_import
 
 from ... import version_info  # noqa: F401
 
@@ -30,7 +28,9 @@ from ... import (
 from ...transport import register_transport_proto
 
 
-class CVSUnsupportedError(errors.UnsupportedFormatError):
+class CVSUnsupportedError(errors.UnsupportedVcs):
+
+    vcs = "cvs"
 
     _fmt = ("CVS working trees are not supported. To convert CVS projects to "
             "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
@@ -57,7 +57,7 @@ class CVSDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise CVSUnsupportedError(self)
+        raise CVSUnsupportedError(format=self)
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there

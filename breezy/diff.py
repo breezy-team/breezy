@@ -14,24 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+import contextlib
 import difflib
 import os
 import re
 import sys
+from typing import Optional, List, Union, Type
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 import patiencediff
 import subprocess
-import tempfile
 
 from breezy import (
-    cleanup,
     controldir,
-    osutils,
     textfile,
     timestamp,
     views,
@@ -43,13 +40,14 @@ from breezy.i18n import gettext
 
 from . import (
     errors,
+    osutils,
+    transport as _mod_transport,
     )
 from .registry import (
     Registry,
     )
-from .sixish import text_type
 from .trace import mutter, note, warning
-from .tree import FileTimestampUnavailable
+from .tree import Tree, FileTimestampUnavailable
 
 
 DEFAULT_CONTEXT_AMOUNT = 3
@@ -256,6 +254,7 @@ def default_style_unified(diff_opts):
 def external_diff(old_label, oldlines, new_label, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
+    import tempfile
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
@@ -413,7 +412,7 @@ def get_trees_and_branches_to_diff_locked(
     consider_relpath = True
     if path_list is None or len(path_list) == 0:
         # If no path is given, the current working tree is used
-        default_location = u'.'
+        default_location = '.'
         consider_relpath = False
     elif old_url is not None and new_url is not None:
         other_paths = path_list
@@ -497,10 +496,10 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
-                    old_label='a/', new_label='b/',
+                    old_label: str = 'a/', new_label: str = 'b/',
                     extra_trees=None,
-                    path_encoding='utf8',
-                    using=None,
+                    path_encoding: str = 'utf8',
+                    using: Optional[str] = None,
                     format_cls=None,
                     context=DEFAULT_CONTEXT_AMOUNT):
     """Show in text form the changes from one tree to another.
@@ -519,7 +518,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         context = DEFAULT_CONTEXT_AMOUNT
     if format_cls is None:
         format_cls = DiffTree
-    with cleanup.ExitStack() as exit_stack:
+    with contextlib.ExitStack() as exit_stack:
         exit_stack.enter_context(old_tree.lock_read())
         if extra_trees is not None:
             for tree in extra_trees:
@@ -550,7 +549,7 @@ def get_executable_change(old_is_x, new_is_x):
         return []
 
 
-class DiffPath(object):
+class DiffPath:
     """Base type for command object that compare files"""
 
     # The type or contents of the file were unsuitable for diffing
@@ -591,7 +590,7 @@ class DiffPath(object):
             return DiffPath.CANNOT_DIFF
 
 
-class DiffKindChange(object):
+class DiffKindChange:
     """Special differ for file kind changes.
 
     Represents kind change as deletion + creation.  Uses the other differs
@@ -734,9 +733,9 @@ class DiffText(DiffPath):
             new_date = self.EPOCH_DATE
         else:
             return self.CANNOT_DIFF
-        from_label = '%s%s\t%s' % (
+        from_label = '{}{}\t{}'.format(
             self.old_label, old_path or new_path, old_date)
-        to_label = '%s%s\t%s' % (
+        to_label = '{}{}\t{}'.format(
             self.new_label, new_path or old_path, new_date)
         return self.diff_text(old_path, new_path, from_label, to_label)
 
@@ -754,7 +753,7 @@ class DiffText(DiffPath):
                 return []
             try:
                 return tree.get_file_lines(path)
-            except errors.NoSuchFile:
+            except _mod_transport.NoSuchFile:
                 return []
         try:
             from_text = _get_text(self.old_tree, from_path)
@@ -773,15 +772,20 @@ class DiffText(DiffPath):
 
 class DiffFromTool(DiffPath):
 
-    def __init__(self, command_template, old_tree, new_tree, to_file,
+    def __init__(self, command_template: Union[str, List[str]],
+            old_tree: Tree, new_tree: Tree, to_file,
                  path_encoding='utf-8'):
+        import tempfile
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        self._root = osutils.mkdtemp(prefix='brz-diff-')
+        import tempfile
+        self._root = tempfile.mkdtemp(prefix='brz-diff-')
 
     @classmethod
-    def from_string(klass, command_template, old_tree, new_tree, to_file,
-                    path_encoding='utf-8'):
+    def from_string(klass,
+                    command_template: Union[str, List[str]],
+                    old_tree: Tree, new_tree: Tree, to_file,
+                    path_encoding: str = 'utf-8'):
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 
@@ -790,7 +794,7 @@ class DiffFromTool(DiffPath):
         def from_diff_tree(diff_tree):
             full_command_string = [command_string]
             if external_diff_options is not None:
-                full_command_string += ' ' + external_diff_options
+                full_command_string.extend(external_diff_options.split())
             return klass.from_string(full_command_string, diff_tree.old_tree,
                                      diff_tree.new_tree, diff_tree.to_file)
         return from_diff_tree
@@ -804,7 +808,7 @@ class DiffFromTool(DiffPath):
         if sys.platform == 'win32':  # Popen doesn't accept unicode on win32
             command_encoded = []
             for c in command:
-                if isinstance(c, text_type):
+                if isinstance(c, str):
                     command_encoded.append(c.encode('mbcs'))
                 else:
                     command_encoded.append(c)
@@ -828,7 +832,7 @@ class DiffFromTool(DiffPath):
 
     def _try_symlink_root(self, tree, prefix):
         if (getattr(tree, 'abspath', None) is None or
-                not osutils.host_os_dereferences_symlinks()):
+                not osutils.supports_symlinks(self._root)):
             return False
         try:
             os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
@@ -862,7 +866,7 @@ class DiffFromTool(DiffPath):
         # encoded_str.replace('?', '_') may break multibyte char.
         # So we should encode, decode, then replace(u'?', u'_')
         relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
-        relpath_tmp = relpath_tmp.replace(u'?', u'_')
+        relpath_tmp = relpath_tmp.replace('?', '_')
         return osutils.pathjoin(self._root, prefix, relpath_tmp)
 
     def _write_file(self, relpath, tree, prefix, force_temp=False,
@@ -934,7 +938,7 @@ class DiffFromTool(DiffPath):
             return new_file.read()
 
 
-class DiffTree(object):
+class DiffTree:
     """Provides textual representations of the difference between two trees.
 
     A DiffTree examines two trees and where a file-id has altered
@@ -1049,7 +1053,7 @@ class DiffTree(object):
         for change in sorted(iterator, key=changes_key):
             # The root does not get diffed, and items with no known kind (that
             # is, missing) in both trees are skipped as well.
-            if change.parent_id == (None, None) or change.kind == (None, None):
+            if (not change.path[0] and not change.path[1]) or change.kind == (None, None):
                 continue
             if change.kind[0] == 'symlink' and not self.new_tree.supports_symlinks():
                 warning(
@@ -1063,7 +1067,7 @@ class DiffTree(object):
             new_present = (change.kind[1] is not None and change.versioned[1])
             executable = change.executable
             kind = change.kind
-            renamed = (change.parent_id[0], change.name[0]) != (change.parent_id[1], change.name[1])
+            renamed = change.renamed
 
             properties_changed = []
             properties_changed.extend(
@@ -1122,5 +1126,5 @@ class DiffTree(object):
             raise errors.NoDiffFound(error_path)
 
 
-format_registry = Registry()
+format_registry = Registry[str, Type[DiffTree]]()
 format_registry.register('default', DiffTree)

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from . import trace
 
 
@@ -93,7 +91,7 @@ def cachedproperty(attrname_or_fn):
         return _CachedProperty(attrname, fn)
 
 
-class _CachedPropertyForAttr(object):
+class _CachedPropertyForAttr:
 
     def __init__(self, attrname):
         self.attrname = attrname
@@ -102,7 +100,7 @@ class _CachedPropertyForAttr(object):
         return _CachedProperty(self.attrname, fn)
 
 
-class _CachedProperty(object):
+class _CachedProperty:
 
     def __init__(self, attrname, fn):
         self.fn = fn

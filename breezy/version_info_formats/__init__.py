@@ -16,9 +16,8 @@
 
 """Routines for extracting all version information from a bzr branch."""
 
-from __future__ import absolute_import
-
 import time
+from typing import Type
 
 from breezy.osutils import local_time_offset, format_date
 from breezy import (
@@ -43,7 +42,7 @@ def create_date_str(timestamp=None, offset=None):
                        timezone='original', show_offset=True)
 
 
-class VersionInfoBuilder(object):
+class VersionInfoBuilder:
     """A class which lets you build up information about a revision."""
 
     def __init__(self, branch, working_tree=None,
@@ -123,7 +122,7 @@ class VersionInfoBuilder(object):
             # in which case we would rather see the renamed marker
             for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[change.path[0]] = u'renamed to %s' % (change.path[1],)
+                self._file_revisions[change.path[0]] = 'renamed to {}'.format(change.path[1])
             for change in delta.removed:
                 self._clean = False
                 self._file_revisions[change.path[0]] = 'removed'
@@ -132,12 +131,12 @@ class VersionInfoBuilder(object):
                 self._file_revisions[change.path[1]] = 'new'
             for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[change.path[1]] = u'renamed from %s' % (
-                    change.path[0],)
+                self._file_revisions[change.path[1]] = 'renamed from {}'.format(
+                    change.path[0])
             for change in delta.copied:
                 self._clean = False
-                self._file_revisions[change.path[1]] = u'copied from %s' % (
-                    change.path[0],)
+                self._file_revisions[change.path[1]] = 'copied from {}'.format(
+                    change.path[0])
             for change in delta.modified:
                 self._clean = False
                 self._file_revisions[change.path[1]] = 'modified'
@@ -188,7 +187,7 @@ class VersionInfoBuilder(object):
         raise NotImplementedError(VersionInfoBuilder.generate)
 
 
-format_registry = registry.Registry()
+format_registry = registry.Registry[str, Type[VersionInfoBuilder]]()
 
 
 format_registry.register_lazy(
@@ -196,7 +195,11 @@ format_registry.register_lazy(
     'breezy.version_info_formats.format_rio',
     'RioVersionInfoBuilder',
     'Version info in RIO (simple text) format (default).')
-format_registry.default_key = 'rio'
+format_registry.register_lazy(
+    'yaml',
+    'breezy.version_info_formats.format_yaml',
+    'YamlVersionInfoBuilder',
+    'Version info in YAML format.')
 format_registry.register_lazy(
     'python',
     'breezy.version_info_formats.format_python',
@@ -207,3 +210,4 @@ format_registry.register_lazy(
     'breezy.version_info_formats.format_custom',
     'CustomVersionInfoBuilder',
     'Version info in Custom template-based format.')
+format_registry.default_key = 'rio'

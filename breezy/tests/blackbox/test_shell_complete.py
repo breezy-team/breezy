@@ -1,5 +1,4 @@
 # Copyright (C) 2011 Canonical Ltd
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +18,6 @@
 """Black-box tests for 'brz shell-complete'."""
 
 from breezy.tests import TestCaseWithTransport
-from breezy.sixish import PY3
 
 
 class ShellCompleteTests(TestCaseWithTransport):

@@ -23,8 +23,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 
@@ -103,7 +101,7 @@ class UTextWrapper(textwrap.TextWrapper):
             w += charwidth(c)
             if w > width:
                 return s[:pos], s[pos:]
-        return s, u''
+        return s, ''
 
     def _fix_sentence_endings(self, chunks):
         """_fix_sentence_endings(chunks : [string])
@@ -121,8 +119,8 @@ class UTextWrapper(textwrap.TextWrapper):
         L = len(chunks) - 1
         patsearch = self.sentence_end_re.search
         while i < L:
-            if chunks[i + 1] == u" " and patsearch(chunks[i]):
-                chunks[i + 1] = u"  "
+            if chunks[i + 1] == " " and patsearch(chunks[i]):
+                chunks[i + 1] = "  "
                 i += 2
             else:
                 i += 1
@@ -228,7 +226,7 @@ class UTextWrapper(textwrap.TextWrapper):
                      not chunks[0].strip()) and cur_len <= width):
                     # Convert current line back to a string and store it in
                     # list of all lines (return value).
-                    lines.append(indent + u''.join(cur_line))
+                    lines.append(indent + ''.join(cur_line))
                 else:
                     while cur_line:
                         if (cur_line[-1].strip() and

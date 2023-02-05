@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import BytesIO
+
 from .. import errors, filters
 from ..filters import (
     ContentFilter,
@@ -25,9 +27,6 @@ from ..filters import (
     internal_size_sha_file_byname,
     )
 from ..osutils import sha_string
-from ..sixish import (
-    BytesIO,
-    )
 from . import TestCase, TestCaseInTempDir
 
 

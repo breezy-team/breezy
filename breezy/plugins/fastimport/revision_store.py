@@ -15,8 +15,6 @@
 
 """An abstraction of a repository providing just the bits importing needs."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ... import (
@@ -31,7 +29,7 @@ from ...bzr import (
     )
 
 
-class _TreeShim(object):
+class _TreeShim:
     """Fake a Tree implementation.
 
     This implements just enough of the tree api to make commit builder happy.
@@ -42,8 +40,8 @@ class _TreeShim(object):
         self._content_provider = content_provider
         self._basis_inv = basis_inv
         self._inv_delta = inv_delta
-        self._new_info_by_id = dict([(file_id, (new_path, ie))
-                                    for _, new_path, file_id, ie in inv_delta])
+        self._new_info_by_id = {file_id: (new_path, ie)
+                                    for _, new_path, file_id, ie in inv_delta}
         self._new_info_by_path = {new_path: ie
                                   for _, new_path, file_id, ie in inv_delta}
 
@@ -169,7 +167,7 @@ class _TreeShim(object):
             yield change
 
 
-class RevisionStore(object):
+class RevisionStore:
 
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
@@ -248,10 +246,11 @@ class RevisionStore(object):
         # We can't use self.repo.get_commit_builder() here because it starts a
         # new write group. We want one write group around a batch of imports
         # where the default batch size is currently 10000. IGC 20090312
-        self._commit_builder = self.repo._commit_builder_class(self.repo,
-                                                               parents, config, timestamp=revision.timestamp,
-                                                               timezone=revision.timezone, committer=revision.committer,
-                                                               revprops=revision.properties, revision_id=revision.revision_id)
+        self._commit_builder = self.repo.get_commit_builder(
+            self.repo,
+            parents, config, timestamp=revision.timestamp,
+            timezone=revision.timezone, committer=revision.committer,
+            revprops=revision.properties, revision_id=revision.revision_id)
 
     def get_parents_and_revision_for_entry(self, ie):
         """Get the parents and revision for an inventory entry.

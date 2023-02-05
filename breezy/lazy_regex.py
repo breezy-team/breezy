@@ -24,8 +24,6 @@ We do this rather than just providing a new interface so that it will also
 be used by existing Python modules that create regexs.
 """
 
-from __future__ import absolute_import
-
 import re
 
 from . import errors
@@ -39,7 +37,7 @@ class InvalidPattern(errors.BzrError):
         self.msg = msg
 
 
-class LazyRegex(object):
+class LazyRegex:
     """A proxy around a real regex, which won't be compiled until accessed."""
 
     # These are the parameters on a real _sre.SRE_Pattern object, which we

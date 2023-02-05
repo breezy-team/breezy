@@ -37,23 +37,15 @@ Some properties are common to all kinds:
   InvalidHttpResponse.
 """
 
-try:
-    import http.client as http_client
-except ImportError:  # python < 3 without future
-    import httplib as http_client
+from io import BytesIO
 
-try:
-    parse_headers = http_client.parse_headers
-except AttributeError:  # python 2
-    parse_headers = http_client.HTTPMessage
+import http.client as http_client
+
+parse_headers = http_client.parse_headers
 
 from .. import (
     errors,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
-    PY3,
     )
 from ..transport.http import (
     response,
@@ -64,7 +56,7 @@ from .file_utils import (
     )
 
 
-class ReadSocket(object):
+class ReadSocket:
     """A socket-like object that can be given a predefined content."""
 
     def __init__(self, data):
@@ -125,7 +117,7 @@ garbage""")
         self.assertContainsRe(self.get_log(), 'Got a 200 response when asking')
 
 
-class TestRangeFileMixin(object):
+class TestRangeFileMixin:
     """Tests for accessing the first range in a RangeFile."""
 
     # A simple string used to represent a file part (also called a range), in
@@ -229,7 +221,7 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for a whole file whose size is not known."""
 
     def setUp(self):
-        super(TestRangeFileSizeUnknown, self).setUp()
+        super().setUp()
         self._file = response.RangeFile('Whole_file_size_known',
                                         BytesIO(self.alpha))
         # We define no range, relying on RangeFile to provide default values
@@ -254,7 +246,7 @@ class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for a whole file whose size is known."""
 
     def setUp(self):
-        super(TestRangeFileSizeKnown, self).setUp()
+        super().setUp()
         self._file = response.RangeFile('Whole_file_size_known',
                                         BytesIO(self.alpha))
         self._file.set_range(0, len(self.alpha))
@@ -265,7 +257,7 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for a single range."""
 
     def setUp(self):
-        super(TestRangeFileSingleRange, self).setUp()
+        super().setUp()
         self._file = response.RangeFile('Single_range_file',
                                         BytesIO(self.alpha))
         self.first_range_start = 15
@@ -298,7 +290,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     boundary = b"separation"
 
     def setUp(self):
-        super(TestRangeFileMultipleRanges, self).setUp()
+        super().setUp()
 
         boundary = self.boundary
 
@@ -730,10 +722,7 @@ class TestHandleResponse(tests.TestCase):
         # Get rid of the status line
         status_and_headers.readline()
         msg = parse_headers(status_and_headers)
-        if PY3:
-            return msg.get
-        else:
-            return msg.getheader
+        return msg.get
 
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""
@@ -830,7 +819,7 @@ class TestRangeFileSizeReadLimited(tests.TestCase):
     """
 
     def setUp(self):
-        super(TestRangeFileSizeReadLimited, self).setUp()
+        super().setUp()
         # create a test datablock larger than _max_read_size.
         chunk_size = response.RangeFile._max_read_size
         test_pattern = b'0123456789ABCDEF'

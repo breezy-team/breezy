@@ -19,11 +19,11 @@
 import codecs
 import locale
 import sys
+from typing import Set
 
 from .. import (
     osutils,
     )
-from ..sixish import PY3
 from . import (
     TestCase,
     )
@@ -33,15 +33,15 @@ from .ui_testing import (
     )
 
 
-class FakeCodec(object):
+class FakeCodec:
     """Special class that helps testing over several non-existed encodings.
 
     Clients can add new encoding names, but because of how codecs is
     implemented they cannot be removed. Be careful with naming to avoid
     collisions between tests.
     """
-    _registered = False
-    _enabled_encodings = set()
+    _registered: bool = False
+    _enabled_encodings: Set[str] = set()
 
     def add(self, encoding_name):
         """Adding encoding name to fake.
@@ -76,7 +76,7 @@ class TestTerminalEncoding(TestCase):
     """Test the auto-detection of proper terminal encoding."""
 
     def setUp(self):
-        super(TestTerminalEncoding, self).setUp()
+        super().setUp()
         self.overrideAttr(sys, 'stdin')
         self.overrideAttr(sys, 'stdout')
         self.overrideAttr(sys, 'stderr')
@@ -88,20 +88,11 @@ class TestTerminalEncoding(TestCase):
                              stdin_encoding,
                              user_encoding='user_encoding',
                              enable_fake_encodings=True):
-        if PY3:
-            sys.stdout = StringIOWithEncoding()
-        else:
-            sys.stdout = BytesIOWithEncoding()
+        sys.stdout = StringIOWithEncoding()
         sys.stdout.encoding = stdout_encoding
-        if PY3:
-            sys.stderr = StringIOWithEncoding()
-        else:
-            sys.stderr = BytesIOWithEncoding()
+        sys.stderr = StringIOWithEncoding()
         sys.stderr.encoding = stderr_encoding
-        if PY3:
-            sys.stdin = StringIOWithEncoding()
-        else:
-            sys.stdin = BytesIOWithEncoding()
+        sys.stdin = StringIOWithEncoding()
         sys.stdin.encoding = stdin_encoding
         osutils._cached_user_encoding = user_encoding
         if enable_fake_encodings:
@@ -180,14 +171,11 @@ class TestUserEncoding(TestCase):
     """Test detection of default user encoding."""
 
     def setUp(self):
-        super(TestUserEncoding, self).setUp()
+        super().setUp()
         self.overrideAttr(osutils, '_cached_user_encoding', None)
         self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
         self.overrideAttr(locale, 'CODESET', None)
-        if PY3:
-            self.overrideAttr(sys, 'stderr', StringIOWithEncoding())
-        else:
-            self.overrideAttr(sys, 'stderr', BytesIOWithEncoding())
+        self.overrideAttr(sys, 'stderr', StringIOWithEncoding())
 
     def get_encoding(self, do_setlocale=True):
         return self._encoding

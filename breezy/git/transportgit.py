@@ -16,18 +16,17 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import os
 import sys
+import posixpath
 
 from dulwich.errors import (
     NoIndexPresent,
     )
 from dulwich.file import (
-    GitFile,
+    _GitFile,
     FileLocked,
     )
 from dulwich.objects import (
@@ -36,17 +35,27 @@ from dulwich.objects import (
 from dulwich.object_store import (
     PackBasedObjectStore,
     PACKDIR,
+    PACK_MODE,
     read_packs_file,
     )
 from dulwich.pack import (
     MemoryPackIndex,
     PackData,
+    PackIndexer,
     Pack,
+    PackStreamCopier,
+    extend_pack,
     iter_sha1,
     load_pack_index_file,
     write_pack_objects,
-    write_pack_index_v2,
-    )
+    write_pack_index,
+    write_pack_header,
+    compute_file_sha,
+    write_pack_object,
+    PackInflater,
+    PACK_SPOOL_FILE_MAX_SIZE,
+)
+from dulwich.refs import SymrefLoop
 from dulwich.repo import (
     BaseRepo,
     InfoRefsContainer,
@@ -70,17 +79,80 @@ from .. import (
     )
 from ..errors import (
     AlreadyControlDirError,
-    FileExists,
     LockBroken,
     LockContention,
     NotLocalUrl,
-    NoSuchFile,
     ReadError,
     TransportNotPossible,
     )
 
 from ..lock import LogicalLockResult
 from ..trace import warning
+from ..transport import (
+    FileExists,
+    NoSuchFile,
+    )
+from ..transport.local import LocalTransport
+from .. import ui
+
+
+class _RemoteGitFile(object):
+
+    def __init__(self, transport, filename, mode, bufsize, mask):
+        self.transport = transport
+        self.filename = filename
+        self.mode = mode
+        self.bufsize = bufsize
+        self.mask = mask
+        import tempfile
+        self._file = tempfile.SpooledTemporaryFile(max_size=1024 * 1024)
+        self._closed = False
+        for method in _GitFile.PROXY_METHODS:
+            setattr(self, method, getattr(self._file, method))
+
+    def abort(self):
+        self._file.close()
+        self._closed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self.abort()
+        else:
+            self.close()
+
+    def __getattr__(self, name):
+        """Proxy property calls to the underlying file."""
+        if name in _GitFile.PROXY_PROPERTIES:
+            return getattr(self._file, name)
+        raise AttributeError(name)
+
+    def close(self):
+        if self._closed:
+            return
+        self._file.flush()
+        self._file.seek(0)
+        self.transport.put_file(self.filename, self._file)
+        self._file.close()
+        self._closed = True
+
+
+def TransportGitFile(transport, filename, mode="rb", bufsize=-1, mask=0o644):
+    if "a" in mode:
+        raise OSError("append mode not supported for Git files")
+    if "+" in mode:
+        raise OSError("read/write mode not supported for Git files")
+    if "b" not in mode:
+        raise OSError("text mode not supported for Git files")
+    if "w" in mode:
+        try:
+            return _GitFile(transport.local_abspath(filename), mode, bufsize, mask)
+        except NotLocalUrl:
+            return _RemoteGitFile(transport, filename, mode, bufsize, mask)
+    else:
+        return transport.get(filename)
 
 
 class TransportRefsContainer(RefsContainer):
@@ -95,15 +167,10 @@ class TransportRefsContainer(RefsContainer):
         self._peeled_refs = None
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.transport)
+        return "{}({!r})".format(self.__class__.__name__, self.transport)
 
     def _ensure_dir_exists(self, path):
-        for n in range(path.count("/")):
-            dirname = "/".join(path.split("/")[:n + 1])
-            try:
-                self.transport.mkdir(dirname)
-            except FileExists:
-                pass
+        self.transport.clone(posixpath.dirname(path)).create_prefix()
 
     def subkeys(self, base):
         """Refs present in this container under a base.
@@ -269,10 +336,11 @@ class TransportRefsContainer(RefsContainer):
         :param new_ref: The new sha the refname will refer to.
         :return: True if the set was successful, False otherwise.
         """
+        self._check_refname(name)
         try:
             realnames, _ = self.follow(name)
             realname = realnames[-1]
-        except (KeyError, IndexError):
+        except (KeyError, IndexError, SymrefLoop):
             realname = name
         if realname == b'HEAD':
             transport = self.worktree_transport
@@ -368,7 +436,7 @@ class TransportRefsContainer(RefsContainer):
             return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
-                gf = GitFile(local_path, 'wb')
+                gf = TransportGitFile(transport, urlutils.quote_from_bytes(name), 'wb')
             except FileLocked as e:
                 raise LockContention(name, e)
             else:
@@ -442,7 +510,7 @@ class TransportRepo(BaseRepo):
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport)
-        super(TransportRepo, self).__init__(object_store,
+        super().__init__(object_store,
                                             refs_container)
 
     def controldir(self):
@@ -450,6 +518,10 @@ class TransportRepo(BaseRepo):
 
     def commondir(self):
         return self._commontransport.local_abspath('.')
+
+    def close(self):
+        """Close any files opened by this repository."""
+        self.object_store.close()
 
     @property
     def path(self):
@@ -516,27 +588,8 @@ class TransportRepo(BaseRepo):
         backends.extend(StackedConfig.default_backends())
         return StackedConfig(backends, writable=writable)
 
-    # Here for compatibility with dulwich < 0.19.17
-    def generate_pack_data(self, have, want, progress=None, ofs_delta=None):
-        """Generate pack data objects for a set of wants/haves.
-
-        Args:
-          have: List of SHA1s of objects that should not be sent
-          want: List of SHA1s of objects that should be sent
-          ofs_delta: Whether OFS deltas can be included
-          progress: Optional progress reporting method
-        """
-        shallow = self.get_shallow()
-        if shallow:
-            return self.object_store.generate_pack_data(
-                have, want, shallow=shallow,
-                progress=progress, ofs_delta=ofs_delta)
-        else:
-            return self.object_store.generate_pack_data(
-                have, want, progress=progress, ofs_delta=ofs_delta)
-
     def __repr__(self):
-        return "<%s for %r>" % (self.__class__.__name__, self.transport)
+        return "<{} for {!r}>".format(self.__class__.__name__, self.transport)
 
     @classmethod
     def init(cls, transport, bare=False):
@@ -573,7 +626,7 @@ class TransportObjectStore(PackBasedObjectStore):
 
         :param transport: Transport to open data from
         """
-        super(TransportObjectStore, self).__init__()
+        super().__init__()
         self.pack_compression_level = pack_compression_level
         self.loose_compression_level = loose_compression_level
         self.transport = transport
@@ -605,7 +658,7 @@ class TransportObjectStore(PackBasedObjectStore):
         return self.transport == other.transport
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.transport)
+        return "{}({!r})".format(self.__class__.__name__, self.transport)
 
     @property
     def alternates(self):
@@ -642,14 +695,10 @@ class TransportObjectStore(PackBasedObjectStore):
                 try:
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
-                    f = self.pack_transport.get(pack_name)
-                    # TODO(jelmer): Don't read entire file into memory?
-                    f = BytesIO(f.read())
-                    pd = PackData(pack_name, f)
-                else:
-                    pd = PackData(
-                        pack_name, self.pack_transport.get(pack_name),
-                        size=size)
+                    size = None
+                pd = PackData(
+                    pack_name, self.pack_transport.get(pack_name),
+                    size=size)
                 idxname = basename + ".idx"
                 idx = load_pack_index_file(
                     idxname, self.pack_transport.get(idxname))
@@ -658,8 +707,8 @@ class TransportObjectStore(PackBasedObjectStore):
                 self._pack_cache[basename] = pack
                 new_packs.append(pack)
         # Remove disappeared pack files
-        for f in set(self._pack_cache) - pack_files:
-            self._pack_cache.pop(f).close()
+        for n in set(self._pack_cache) - pack_files:
+            self._pack_cache.pop(n).close()
         return new_packs
 
     def _pack_names(self):
@@ -740,74 +789,6 @@ class TransportObjectStore(PackBasedObjectStore):
             raw_string = obj.as_legacy_object()
         self.transport.put_bytes(path, raw_string)
 
-    def move_in_pack(self, f):
-        """Move a specific file containing a pack into the pack directory.
-
-        :note: The file should be on the same file system as the
-            packs directory.
-
-        :param path: Path to the pack file.
-        """
-        f.seek(0)
-        p = PackData("", f, len(f.getvalue()))
-        entries = p.sorted_entries()
-        basename = "pack-%s" % iter_sha1(entry[0]
-                                         for entry in entries).decode('ascii')
-        p._filename = basename + ".pack"
-        f.seek(0)
-        self.pack_transport.put_file(basename + ".pack", f)
-        with self.pack_transport.open_write_stream(basename + ".idx") as idxfile:
-            write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
-        idxfile = self.pack_transport.get(basename + ".idx")
-        idx = load_pack_index_file(basename + ".idx", idxfile)
-        final_pack = Pack.from_objects(p, idx)
-        final_pack._basename = basename
-        self._add_cached_pack(basename, final_pack)
-        return final_pack
-
-    def move_in_thin_pack(self, f):
-        """Move a specific file containing a pack into the pack directory.
-
-        :note: The file should be on the same file system as the
-            packs directory.
-
-        :param path: Path to the pack file.
-        """
-        f.seek(0)
-        p = Pack('', resolve_ext_ref=self.get_raw)
-        p._data = PackData.from_file(f, len(f.getvalue()))
-        p._data.pack = p
-        p._idx_load = lambda: MemoryPackIndex(
-            p.data.sorted_entries(), p.data.get_stored_checksum())
-
-        pack_sha = p.index.objects_sha1()
-
-        with self.pack_transport.open_write_stream(
-                "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
-            entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
-        entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
-        with self.pack_transport.open_write_stream(
-                "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
-            write_pack_index_v2(idxfile, entries, data_sum)
-
-    def add_pack(self):
-        """Add a new pack to this object store.
-
-        :return: Fileobject to write to and a commit function to
-            call when the pack is finished.
-        """
-        f = BytesIO()
-
-        def commit():
-            if len(f.getvalue()) > 0:
-                return self.move_in_pack(f)
-            else:
-                return None
-
-        def abort():
-            return None
-        return f, commit, abort
-
     @classmethod
     def init(cls, transport):
         try:
@@ -819,3 +800,146 @@ class TransportObjectStore(PackBasedObjectStore):
         except FileExists:
             pass
         return cls(transport)
+
+    def _complete_pack(self, f, path, num_objects, indexer, progress=None):
+        """Move a specific file containing a pack into the pack directory.
+
+        Note: The file should be on the same file system as the
+            packs directory.
+
+        Args:
+          f: Open file object for the pack.
+          path: Path to the pack file.
+          indexer: A PackIndexer for indexing the pack.
+        """
+        entries = []
+        for i, entry in enumerate(indexer):
+            if progress is not None:
+                progress(("generating index: %d/%d\r" % (i, num_objects)).encode('ascii'))
+            entries.append(entry)
+
+        pack_sha, extra_entries = extend_pack(
+            f, indexer.ext_refs(), get_raw=self.get_raw, compression_level=self.pack_compression_level,
+            progress=progress)
+        f.flush()
+        try:
+            fileno = f.fileno()
+        except AttributeError:
+            pass
+        else:
+            os.fsync(fileno)
+
+        entries.extend(extra_entries)
+
+        # Move the pack in.
+        entries.sort()
+        pack_base_name = "pack-" + iter_sha1(entry[0] for entry in entries).decode('ascii')
+
+        for pack in self.packs:
+            if osutils.basename(pack._basename) == pack_base_name:
+                f.close()
+                return pack
+
+        target_pack_name = pack_base_name + ".pack"
+        target_pack_index = pack_base_name + ".idx"
+        if sys.platform == "win32":
+            # Windows might have the target pack file lingering. Attempt
+            # removal, silently passing if the target does not exist.
+            with suppress(NoSuchFile):
+                self.transport.remove(target_pack_name)
+
+        if path:
+            f.close()
+            self.pack_transport.ensure_base()
+            os.rename(path, self.transport.local_abspath(osutils.pathjoin(PACKDIR, target_pack_name)))
+        else:
+            f.seek(0)
+            self.pack_transport.put_file(target_pack_name, f, mode=PACK_MODE)
+
+        # Write the index.
+        with TransportGitFile(self.pack_transport, target_pack_index, "wb", mask=PACK_MODE) as index_file:
+            write_pack_index(index_file, entries, pack_sha)
+
+        # Add the pack to the store and return it.
+        final_pack = Pack.from_objects(
+            PackData(target_pack_name, self.pack_transport.get(target_pack_name)),
+            load_pack_index_file(target_pack_index, self.pack_transport.get(target_pack_index)))
+        final_pack._basename = pack_base_name
+
+        final_pack.check_length_and_checksum()
+        self._add_cached_pack(pack_base_name, final_pack)
+        return final_pack
+
+    def add_thin_pack(self, read_all, read_some, progress=None):
+        """Add a new thin pack to this object store.
+
+        Thin packs are packs that contain deltas with parents that exist
+        outside the pack. They should never be placed in the object store
+        directly, and always indexed and completed as they are copied.
+
+        Args:
+          read_all: Read function that blocks until the number of
+            requested bytes are read.
+          read_some: Read function that returns at least one byte, but may
+            not return the number of bytes requested.
+        Returns: A Pack object pointing at the now-completed thin pack in the
+            objects/pack directory.
+        """
+        import tempfile
+
+        try:
+            dir = self.transport.local_abspath('.')
+        except NotLocalUrl:
+            f = tempfile.SpooledTemporaryFile(prefix="tmp_pack_")
+            path = None
+        else:
+            f = tempfile.NamedTemporaryFile(dir=dir, prefix="tmp_pack_", delete=False)
+            path = f.name
+
+        try:
+            indexer = PackIndexer(f, resolve_ext_ref=self.get_raw)
+            copier = PackStreamCopier(read_all, read_some, f, delta_iter=indexer)
+            copier.verify(progress=progress)
+            if f.name:
+                os.chmod(f.name, PACK_MODE)
+            return self._complete_pack(f, path, len(copier), indexer, progress=progress)
+        except BaseException:
+            f.close()
+            if path:
+                os.remove(path)
+            raise
+
+    def add_pack(self):
+        """Add a new pack to this object store.
+
+        Returns: Fileobject to write to, a commit function to
+            call when the pack is finished and an abort
+            function.
+        """
+        import tempfile
+
+        try:
+            dir = self.transport.local_abspath('.')
+        except NotLocalUrl:
+            f = tempfile.SpooledTemporaryFile(prefix="tmp_pack_")
+            path = None
+        else:
+            f = tempfile.NamedTemporaryFile(dir=dir, prefix="tmp_pack_", delete=False)
+            path = f.name
+
+        def commit():
+            if f.tell() > 0:
+                f.seek(0)
+                with PackData(path, f) as pd:
+                    indexer = PackIndexer.for_pack_data(pd, resolve_ext_ref=self.get_raw)
+                    return self._complete_pack(f, path, len(pd), indexer)
+            else:
+                abort()
+                return None
+
+        def abort():
+            f.close()
+            if path:
+                os.remove(path)
+
+        return f, commit, abort

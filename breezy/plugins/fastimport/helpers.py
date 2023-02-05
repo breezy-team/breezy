@@ -15,8 +15,6 @@
 
 """Miscellaneous useful stuff."""
 
-from __future__ import absolute_import
-
 import stat
 
 from ... import (
@@ -35,7 +33,7 @@ def escape_commit_message(message):
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
     import re
     message, _ = re.subn(
-        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+        '[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
         lambda match: match.group(0).encode('unicode_escape'),
         message)
     return message
@@ -97,13 +95,13 @@ def open_destination_directory(location, format=None, verbose=True):
         contents = os.listdir(location)
         if contents:
             errors.CommandError("Destination must have a .bzr directory, "
-                                   " not yet exist or be empty - files found in %s" % (location,))
+                                " not yet exist or be empty - files found in %s" % (location,))
     else:
         try:
             os.mkdir(location)
-        except IOError as ex:
+        except OSError as ex:
             raise errors.CommandError(
-                "Unable to create %s: %s" % (location, ex))
+                "Unable to create {}: {}".format(location, ex))
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")

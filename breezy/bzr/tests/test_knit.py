@@ -26,7 +26,7 @@ from ... import (
     multiparent,
     osutils,
     tests,
-    transport,
+    transport as _mod_transport,
     )
 from .. import (
     knit,
@@ -102,7 +102,7 @@ class ErrorTests(TestCase):
                          str(error))
 
 
-class KnitContentTestsMixin(object):
+class KnitContentTestsMixin:
 
     def test_constructor(self):
         content = self._make_content([])
@@ -272,7 +272,7 @@ class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
         self.assertRaises(StopIteration, next, it)
 
 
-class MockTransport(object):
+class MockTransport:
 
     def __init__(self, file_lines=None):
         self.file_lines = file_lines
@@ -282,7 +282,7 @@ class MockTransport(object):
 
     def get(self, filename):
         if self.file_lines is None:
-            raise errors.NoSuchFile(filename)
+            raise _mod_transport.NoSuchFile(filename)
         else:
             return BytesIO(b"\n".join(self.file_lines))
 
@@ -312,11 +312,11 @@ class MockReadvFailingTransport(MockTransport):
             # we use 2 because the first offset is the pack header, the second
             # is the first actual content requset
             if count > 2:
-                raise errors.NoSuchFile(relpath)
+                raise _mod_transport.NoSuchFile(relpath)
             yield result
 
 
-class KnitRecordAccessTestsMixin(object):
+class KnitRecordAccessTestsMixin:
     """Tests for getting and putting knit records."""
 
     def test_add_raw_records(self):
@@ -492,7 +492,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         try:
             raise _TestException('foobar')
         except _TestException as e:
-            retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
+            retry_exc = pack_repo.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
         # GZ 2010-08-10: Cycle with exc_info affects 3 tests
         return retry_exc
@@ -546,7 +546,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # Note that the index key has changed from 'foo' to 'bar'
         access = pack_repo._DirectPackAccess({'bar': (transport, 'packname')},
                                              reload_func=reload_func)
-        e = self.assertListRaises(errors.RetryWithNewPacks,
+        e = self.assertListRaises(pack_repo.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # Because a key was passed in which does not match our index list, we
         # assume that the listing was already reloaded
@@ -570,13 +570,13 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access = pack_repo._DirectPackAccess(
             {'foo': (transport, 'different-packname')},
             reload_func=reload_func)
-        e = self.assertListRaises(errors.RetryWithNewPacks,
+        e = self.assertListRaises(pack_repo.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
         self.assertFalse(e.reload_occurred)
         self.assertIsInstance(e.exc_info, tuple)
-        self.assertIs(e.exc_info[0], errors.NoSuchFile)
-        self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
+        self.assertIs(e.exc_info[0], _mod_transport.NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], _mod_transport.NoSuchFile)
         self.assertEqual('different-packname', e.exc_info[1].path)
 
     def test_missing_file_raises_no_such_file_with_no_reload(self):
@@ -585,7 +585,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess(
             {'foo': (transport, 'different-packname')})
-        e = self.assertListRaises(errors.NoSuchFile,
+        e = self.assertListRaises(_mod_transport.NoSuchFile,
                                   access.get_raw_records, memos)
 
     def test_failing_readv_raises_retry(self):
@@ -603,13 +603,13 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([b'12345'],
                          list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
-        e = self.assertListRaises(errors.RetryWithNewPacks,
+        e = self.assertListRaises(pack_repo.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
         self.assertFalse(e.reload_occurred)
         self.assertIsInstance(e.exc_info, tuple)
-        self.assertIs(e.exc_info[0], errors.NoSuchFile)
-        self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
+        self.assertIs(e.exc_info[0], _mod_transport.NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], _mod_transport.NoSuchFile)
         self.assertEqual('packname', e.exc_info[1].path)
 
     def test_failing_readv_raises_no_such_file_with_no_reload(self):
@@ -626,7 +626,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([b'12345'],
                          list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
-        e = self.assertListRaises(errors.NoSuchFile,
+        e = self.assertListRaises(_mod_transport.NoSuchFile,
                                   access.get_raw_records, memos)
 
     def test_reload_or_raise_no_reload(self):
@@ -674,7 +674,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # this time we just raise an exception because we can't recover
         for trans, name in vf._access._indices.values():
             trans.delete(name)
-        self.assertRaises(errors.NoSuchFile, vf.annotate, key)
+        self.assertRaises(_mod_transport.NoSuchFile, vf.annotate, key)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test__get_record_map_retries(self):
@@ -687,7 +687,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # this time we just raise an exception because we can't recover
         for trans, name in vf._access._indices.values():
             trans.delete(name)
-        self.assertRaises(errors.NoSuchFile, vf._get_record_map, keys)
+        self.assertRaises(_mod_transport.NoSuchFile, vf._get_record_map, keys)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_get_record_stream_retries(self):
@@ -706,7 +706,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # Now delete all pack files, and see that we raise the right error
         for trans, name in vf._access._indices.values():
             trans.delete(name)
-        self.assertListRaises(errors.NoSuchFile,
+        self.assertListRaises(_mod_transport.NoSuchFile,
                               vf.get_record_stream, keys, 'topological', False)
 
     def test_iter_lines_added_or_present_in_keys_retries(self):
@@ -730,7 +730,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # Now delete all pack files, and see that we raise the right error
         for trans, name in vf._access._indices.values():
             trans.delete(name)
-        self.assertListRaises(errors.NoSuchFile,
+        self.assertListRaises(_mod_transport.NoSuchFile,
                               vf.iter_lines_added_or_present_in_keys, keys)
         self.assertEqual([2, 1, 1], reload_counter)
 
@@ -760,7 +760,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         repo.commit_write_group()
         # Request in random order, to make sure the output order isn't based on
         # the request
-        request_keys = set((b'f-id', b'rev-%d' % i) for i in range(1, 7))
+        request_keys = {(b'f-id', b'rev-%d' % i) for i in range(1, 7)}
         stream = vf.get_record_stream(request_keys, 'unordered', False)
         keys = [r.key for r in stream]
         # We want to get the keys back in disk order, but it doesn't matter
@@ -963,7 +963,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual({'create_parent_dir': True}, call[2])
 
     def test_read_utf8_version_id(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER,
@@ -977,7 +977,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertFalse((unicode_revision_id,) in index.keys())
 
     def test_read_utf8_parents(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER,
@@ -1034,7 +1034,7 @@ class LowLevelKnitIndexTests(TestCase):
                          index.get_parent_map([(b"b",), (b"c",)]))
 
     def test_write_utf8_version_id(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER
@@ -1053,7 +1053,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual({'create_parent_dir': True}, call[2])
 
     def test_write_utf8_parents(self):
-        unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
+        unicode_revision_id = "version-\N{CYRILLIC CAPITAL LETTER A}"
         utf8_revision_id = unicode_revision_id.encode('utf-8')
         transport = MockTransport([
             _KndxIndex.HEADER
@@ -1610,13 +1610,13 @@ class TestKnitIndex(KnitTests):
         # could leave an empty .kndx file, which bzr would later claim was a
         # corrupted file since the header was not present. In reality, the file
         # just wasn't created, so it should be ignored.
-        t = transport.get_transport_from_path('.')
+        t = _mod_transport.get_transport_from_path('.')
         t.put_bytes('test.kndx', b'')
 
         knit = self.make_test_knit()
 
     def test_knit_index_checks_header(self):
-        t = transport.get_transport_from_path('.')
+        t = _mod_transport.get_transport_from_path('.')
         t.put_bytes('test.kndx', b'# not really a knit header\n\n')
         k = self.make_test_knit()
         self.assertRaises(KnitHeaderError, k.keys)
@@ -2154,7 +2154,7 @@ class TestKnitVersionedFiles(KnitTests):
                                   [f_a], [], positions)
         self.assertGroupKeysForIo([([f_a], {f_a})],
                                   [f_a], [f_a], positions)
-        self.assertGroupKeysForIo([([f_a, f_b], set([]))],
+        self.assertGroupKeysForIo([([f_a, f_b], set())],
                                   [f_a, f_b], [], positions)
         self.assertGroupKeysForIo([([f_a, f_b], {f_b})],
                                   [f_a, f_b], [f_b], positions)
@@ -2671,3 +2671,14 @@ class TestContentMapGenerator(KnitTests):
                  }
         for record in generator.get_record_stream():
             self.assertEqual(kinds[record.key], record.storage_kind)
+
+
+class TestErrors(TestCase):
+
+    def test_retry_with_new_packs(self):
+        fake_exc_info = ('{exc type}', '{exc value}', '{exc traceback}')
+        error = pack_repo.RetryWithNewPacks(
+            '{context}', reload_occurred=False, exc_info=fake_exc_info)
+        self.assertEqual(
+            'Pack files have changed, reload and retry. context: '
+            '{context} {exc value}', str(error))

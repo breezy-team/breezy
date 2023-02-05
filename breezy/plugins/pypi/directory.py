@@ -16,21 +16,15 @@
 
 """Directory lookup that uses pypi."""
 
-from __future__ import absolute_import
-
 from breezy.errors import BzrError
 from breezy.trace import note
 from breezy.urlutils import InvalidURL
 
 import json
 
-try:
-    from urllib.request import urlopen
-    from urllib.parse import urlparse
-    from urllib.error import HTTPError
-except ImportError:  # python < 3
-    from urllib import urlopen, HTTPError
-    from urlparse import urlparse
+from urllib.request import urlopen
+from urllib.parse import urlparse
+from urllib.error import HTTPError
 
 
 class PypiProjectWithoutRepositoryURL(InvalidURL):
@@ -61,7 +55,7 @@ def find_repo_url(data):
             return value
 
 
-class PypiDirectory(object):
+class PypiDirectory:
 
     def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""

@@ -67,7 +67,7 @@ with_url_config = (b"[DEFAULT]\n"
 # FIXME: this should not use a literal log, rather grab one from breezy.log
 sample_log = ('------------------------------------------------------------\n'
               'revno: 1\n'
-              'revision-id: A\n'
+              'revision-id: %s\n'
               'committer: Sample <john@example.com>\n'
               'branch nick: work\n'
               'timestamp: Thu 1970-01-01 00:00:01 +0000\n'
@@ -80,96 +80,98 @@ sample_log = ('------------------------------------------------------------\n'
 class TestGetTo(TestCaseInTempDir):
 
     def test_body(self):
-        sender = self.get_sender()
-        self.assertEqual('At %s\n\n%s' % (sender.url(), sample_log),
-                         sender.body())
+        sender, revid = self.get_sender()
+        self.assertEqual(
+            'At {}\n\n{}'.format(sender.url(), sample_log % revid.decode('utf-8')),
+            sender.body())
 
     def test_custom_body(self):
-        sender = self.get_sender(customized_mail_config)
-        self.assertEqual('%s has committed revision 1 at %s.\n\n%s' %
-                         (sender.revision.committer, sender.url(), sample_log),
-                         sender.body())
+        sender, revid = self.get_sender(customized_mail_config)
+        self.assertEqual(
+            '%s has committed revision 1 at %s.\n\n%s' %
+            (sender.revision.committer, sender.url(), sample_log % revid.decode('utf-8')),
+            sender.body())
 
     def test_command_line(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual(['mail', '-s', sender.subject(), '-a',
                           'From: ' + sender.from_address()] + sender.to(),
                          sender._command_line())
 
     def test_to(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual(['demo@example.com'], sender.to())
 
     def test_from(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual('Sample <foo@example.com>', sender.from_address())
 
     def test_from_default(self):
-        sender = self.get_sender(unconfigured_config)
+        sender, revid = self.get_sender(unconfigured_config)
         self.assertEqual('Robert <foo@example.com>', sender.from_address())
 
     def test_should_send(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual(True, sender.should_send())
 
     def test_should_not_send(self):
-        sender = self.get_sender(unconfigured_config)
+        sender, revid = self.get_sender(unconfigured_config)
         self.assertEqual(False, sender.should_send())
 
     def test_should_not_send_sender_configured(self):
-        sender = self.get_sender(sender_configured_config)
+        sender, revid = self.get_sender(sender_configured_config)
         self.assertEqual(False, sender.should_send())
 
     def test_should_not_send_to_configured(self):
-        sender = self.get_sender(to_configured_config)
+        sender, revid = self.get_sender(to_configured_config)
         self.assertEqual(True, sender.should_send())
 
     def test_send_to_multiple(self):
-        sender = self.get_sender(multiple_to_configured_config)
-        self.assertEqual([u'Sample <foo@example.com>', u'Other <baz@bar.com>'],
+        sender, revid = self.get_sender(multiple_to_configured_config)
+        self.assertEqual(['Sample <foo@example.com>', 'Other <baz@bar.com>'],
                          sender.to())
-        self.assertEqual([u'Sample <foo@example.com>', u'Other <baz@bar.com>'],
+        self.assertEqual(['Sample <foo@example.com>', 'Other <baz@bar.com>'],
                          sender._command_line()[-2:])
 
     def test_url_set(self):
-        sender = self.get_sender(with_url_config)
+        sender, revid = self.get_sender(with_url_config)
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
     def test_public_url_set(self):
         config = (b"[DEFAULT]\n"
                   b"public_branch=http://the.publication/location/\n")
-        sender = self.get_sender(config)
+        sender, revid = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://the.publication/location/')
 
     def test_url_precedence(self):
         config = (b"[DEFAULT]\n"
                   b"post_commit_url=http://some.fake/url/\n"
                   b"public_branch=http://the.publication/location/\n")
-        sender = self.get_sender(config)
+        sender, revid = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
     def test_url_unset(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual(sender.url(), sender.branch.base)
 
     def test_subject(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual("Rev 1: foo bar baz in %s" %
                          sender.branch.base,
                          sender.subject())
 
     def test_custom_subject(self):
-        sender = self.get_sender(customized_mail_config)
+        sender, revid = self.get_sender(customized_mail_config)
         self.assertEqual("[commit] %s" %
                          sender.revision.get_summary(),
                          sender.subject())
 
     def test_diff_filename(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual('patch-1.diff', sender.diff_filename())
 
     def test_headers(self):
-        sender = self.get_sender()
+        sender, revid = self.get_sender()
         self.assertEqual({'X-Cheese': 'to the rescue!'},
                          sender.extra_headers())
 
@@ -177,18 +179,18 @@ class TestGetTo(TestCaseInTempDir):
         my_config = config.MemoryStack(text)
         self.branch = BzrDir.create_branch_convenience('.')
         tree = self.branch.controldir.open_workingtree()
-        tree.commit('foo bar baz\nfuzzy\nwuzzy', rev_id=b'A',
+        revid = tree.commit('foo bar baz\nfuzzy\nwuzzy',
                     allow_pointless=True,
                     timestamp=1,
                     timezone=0,
                     committer="Sample <john@example.com>",
                     )
-        sender = EmailSender(self.branch, b'A', my_config)
+        sender = EmailSender(self.branch, revid, my_config)
         # This is usually only done after the EmailSender has locked the branch
         # and repository during send(), however, for testing, we need to do it
         # earlier, since send() is not called.
         sender._setup_revision_and_revno()
-        return sender
+        return sender, revid
 
 
 class TestEmailerWithLocal(tests.TestCaseWithTransport):

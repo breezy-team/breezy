@@ -17,8 +17,6 @@
 
 """The basic test suite for bzr-git."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import time
@@ -58,7 +56,7 @@ DulwichFeature = _DulwichFeature()
 FastimportFeature = ModuleAvailableFeature('fastimport')
 
 
-class GitBranchBuilder(object):
+class GitBranchBuilder:
 
     def __init__(self, stream=None):
         if not FastimportFeature.available():

@@ -15,11 +15,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""An adapter between a Git Repository and a Bazaar Branch"""
-
-from __future__ import absolute_import
+"""An adapter between a Git Repository and a Breezy one."""
 
 from io import BytesIO
+
+from dulwich.errors import (
+    NotCommitError,
+    )
+from dulwich.objects import (
+    Commit,
+    ZERO_SHA,
+    )
+from dulwich.object_store import (
+    peel_sha,
+    tree_lookup_path,
+    )
+
+
 
 from .. import (
     check,
@@ -36,10 +48,6 @@ from ..decorators import only_raises
 from ..foreign import (
     ForeignRepository,
     )
-from ..sixish import (
-    viewitems,
-    viewvalues,
-    )
 
 from .filegraph import (
     GitFileLastChangeScanner,
@@ -53,18 +61,6 @@ from .mapping import (
     )
 from .tree import (
     GitRevisionTree,
-    )
-
-
-from dulwich.errors import (
-    NotCommitError,
-    )
-from dulwich.objects import (
-    Commit,
-    ZERO_SHA,
-    )
-from dulwich.object_store import (
-    tree_lookup_path,
     )
 
 
@@ -94,7 +90,7 @@ class GitCheck(check.Check):
                     self.problems.append((sha, e))
 
     def _report_repo_results(self, verbose):
-        trace.note('checked repository {0} format {1}'.format(
+        trace.note('checked repository {} format {}'.format(
             self.repository.user_url,
             self.repository._format))
         trace.note('%6d objects', self.object_count)
@@ -121,13 +117,12 @@ for optimiser in ['InterRemoteGitNonGitRepository',
 class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
-    _serializer = None
     vcs = foreign_vcs_git
     chk_bytes = None
 
     def __init__(self, gitdir):
         self._transport = gitdir.root_transport
-        super(GitRepository, self).__init__(GitRepositoryFormat(),
+        super().__init__(GitRepositoryFormat(),
                                             gitdir, control_files=None)
         self.base = gitdir.root_transport.base
         self._lock_mode = None
@@ -192,6 +187,8 @@ class GitRepository(ForeignRepository):
             transaction = self._transaction
             self._transaction = None
             transaction.finish()
+            if hasattr(self, '_git'):
+                self._git.close()
 
     def is_write_locked(self):
         return (self._lock_mode == 'w')
@@ -220,7 +217,7 @@ class GitRepository(ForeignRepository):
         return default_mapping
 
     def make_working_trees(self):
-        return not self._git.get_config().get_boolean(("core", ), "bare")
+        raise NotImplementedError(self.make_working_trees)
 
     def revision_graph_can_have_wrong_parents(self):
         return False
@@ -298,7 +295,7 @@ class LocalGitRepository(GitRepository):
         for (file_id, revision_id, identifier) in desired_files:
             per_revision.setdefault(revision_id, []).append(
                 (file_id, identifier))
-        for revid, files in viewitems(per_revision):
+        for revid, files in per_revision.items():
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
             except errors.NoSuchRevision:
@@ -314,12 +311,10 @@ class LocalGitRepository(GitRepository):
                 except ValueError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 try:
-                    obj = tree_lookup_path(
+                    mode, item_id = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree,
                         encode_git_path(path))
-                    if isinstance(obj, tuple):
-                        (mode, item_id) = obj
-                        obj = self._git.object_store[item_id]
+                    obj = self._git.object_store[item_id]
                 except KeyError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 else:
@@ -332,7 +327,7 @@ class LocalGitRepository(GitRepository):
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
-        result = super(LocalGitRepository, self).gather_stats(
+        result = super().gather_stats(
             revid, committers)
         revs = []
         for sha in self._git.object_store:
@@ -410,7 +405,7 @@ class LocalGitRepository(GitRepository):
                     this_parent_map[revid] = parents
             parent_map.update(this_parent_map)
             pending = set()
-            for values in viewvalues(this_parent_map):
+            for values in this_parent_map.values():
                 pending.update(values)
             pending = pending.difference(parent_map)
         return _mod_graph.KnownGraph(parent_map)
@@ -447,10 +442,10 @@ class LocalGitRepository(GitRepository):
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return _mod_revision.NULL_REVISION
-        commit = self._git.object_store.peel_sha(foreign_revid)
-        if not isinstance(commit, Commit):
-            raise NotCommitError(commit.id)
-        revid = mapping.get_revision_id(commit)
+        unpeeled, peeled = peel_sha(self._git.object_store, foreign_revid)
+        if not isinstance(peeled, Commit):
+            raise NotCommitError(peeled.id)
+        revid = mapping.get_revision_id(peeled)
         # FIXME: check testament before doing this?
         return revid
 
@@ -562,10 +557,8 @@ class LocalGitRepository(GitRepository):
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
-    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
-                      progress=None, limit=None):
-        return self._git.fetch_objects(determine_wants, graph_walker, progress,
-                                       limit=limit)
+    def make_working_trees(self):
+        return not self._git.get_config().get_boolean(("core", ), "bare")
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):
@@ -589,6 +582,8 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_custom_revision_properties = False
     records_per_file_revision = False
     supports_multiple_authors = False
+    supports_ghosts = False
+    supports_chks = False
 
     @property
     def _matchingcontroldir(self):

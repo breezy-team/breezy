@@ -41,7 +41,7 @@ class TestOSLock(tests.TestCaseInTempDir):
     write_lock = None
 
     def setUp(self):
-        super(TestOSLock, self).setUp()
+        super().setUp()
         self.build_tree(['a-lock-file'])
 
     def test_create_read_lock(self):

@@ -14,18 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
 import re
+
+import fastbencode as bencode
 
 from . import errors
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    bencode,
     merge,
-    merge3,
     transform,
 )
 from breezy.bzr import (
@@ -55,7 +53,7 @@ class InvalidShelfId(errors.BzrError):
         errors.BzrError.__init__(self, invalid_id=invalid_id)
 
 
-class ShelfCreator(object):
+class ShelfCreator:
     """Create a transform to shelve objects and its inverse."""
 
     def __init__(self, work_tree, target_tree, file_list=None):
@@ -276,7 +274,12 @@ class ShelfCreator(object):
         target_lines = self.target_tree.get_file_lines(target_path)
         work_path = self.work_tree.id2path(file_id)
         work_lines = self.work_tree.get_file_lines(work_path)
-        return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
+        from merge3 import Merge3
+        import patiencediff
+        return Merge3(
+            new_lines, target_lines, work_lines,
+            sequence_matcher=patiencediff.PatienceSequenceMatcher,
+            ).merge_lines()
 
     def finalize(self):
         """Release all resources used by this ShelfCreator."""
@@ -318,7 +321,7 @@ class ShelfCreator(object):
         shelf_file.write(serializer.end())
 
 
-class Unshelver(object):
+class Unshelver:
     """Unshelve shelved changes."""
 
     def __init__(self, tree, base_tree, transform, message):
@@ -382,7 +385,7 @@ class Unshelver(object):
         self.transform.finalize()
 
 
-class ShelfManager(object):
+class ShelfManager:
     """Maintain a list of shelved changes."""
 
     def __init__(self, tree, transport):
@@ -431,7 +434,7 @@ class ShelfManager(object):
         filename = self.get_shelf_filename(shelf_id)
         try:
             return open(self.transport.local_abspath(filename), 'rb')
-        except IOError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             raise NoSuchShelfId(shelf_id)

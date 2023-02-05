@@ -20,9 +20,8 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
-from __future__ import absolute_import
-
 import gzip
+from io import BytesIO
 import os
 
 from ...lazy_import import lazy_import
@@ -44,10 +43,11 @@ from ... import (
     lockdir,
     osutils,
     trace,
-    tuned_gzip,
+    transport as _mod_transport,
     urlutils,
     )
 from ...bzr import (
+    tuned_gzip,
     versionedfile,
     weave,
     weavefile,
@@ -57,10 +57,6 @@ from ...repository import (
     )
 from ...bzr.repository import (
     RepositoryFormatMetaDir,
-    )
-from ...sixish import (
-    BytesIO,
-    text_type,
     )
 from .store.text import TextStore
 from ...bzr.versionedfile import (
@@ -88,10 +84,10 @@ class AllInOneRepository(VersionedFileRepository):
         return xml5.serializer_v5
 
     def _escape(self, file_or_path):
-        if not isinstance(file_or_path, (str, text_type)):
+        if not isinstance(file_or_path, str):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
-            return u''
+            return ''
         return urlutils.escape(osutils.safe_unicode(file_or_path))
 
     def __init__(self, _format, a_controldir):
@@ -118,7 +114,7 @@ class AllInOneRepository(VersionedFileRepository):
             # which allows access to this old info.
             self.inventory_store = get_store('inventory-store')
             self._text_store = get_store('text-store')
-        super(AllInOneRepository, self).__init__(
+        super().__init__(
             _format, a_controldir, a_controldir._control_files)
 
     def _all_possible_ids(self):
@@ -201,7 +197,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
     def __init__(self, _format, a_controldir, control_files):
-        super(WeaveMetaDirRepository, self).__init__(
+        super().__init__(
             _format, a_controldir, control_files)
         self._serializer = _format._serializer
 
@@ -612,7 +608,7 @@ class TextVersionedFiles(VersionedFiles):
         if not self._can_write():
             raise errors.ReadOnlyError(self)
         if b'/' in key[-1]:
-            raise ValueError('bad idea to put / in %r' % (key,))
+            raise ValueError('bad idea to put / in {!r}'.format(key))
         chunks = lines
         if self._compressed:
             chunks = tuned_gzip.chunks_to_gzip(chunks)
@@ -653,14 +649,14 @@ class TextVersionedFiles(VersionedFiles):
         try:
             text = self._transport.get_bytes(path)
             compressed = self._compressed
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             if self._compressed:
                 # try without the .gz
                 path = path[:-3]
                 try:
                     text = self._transport.get_bytes(path)
                     compressed = False
-                except errors.NoSuchFile:
+                except _mod_transport.NoSuchFile:
                     return None
             else:
                 return None

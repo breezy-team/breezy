@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import sys
 
 from . import (
@@ -179,7 +177,7 @@ def show_tree_status(wt,
                 else:
                     prefix = 'I  '
                 for ignored_file in ignored_files:
-                    to_file.write("%s %s\n" % (prefix, ignored_file))
+                    to_file.write("{} {}\n".format(prefix, ignored_file))
 
             # show the new conflicts only for now. XXX: get them from the
             # delta.
@@ -194,7 +192,7 @@ def show_tree_status(wt,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("%s %s\n" % (prefix, conflict.describe()))
+                to_file.write("{} {}\n".format(prefix, conflict.describe()))
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status
@@ -210,7 +208,7 @@ def show_tree_status(wt,
                     prefix = 'X  '
                 else:
                     prefix = ' '
-                to_file.write("%s %s\n" % (prefix, nonexistent))
+                to_file.write("{} {}\n".format(prefix, nonexistent))
             if (new_is_working_tree and show_pending):
                 show_pending_merges(new, to_file, short, verbose=verbose)
             if nonexistents:
@@ -368,7 +366,7 @@ class StatusHooks(_mod_hooks.Hooks):
         _mod_hooks.Hooks.__init__(self, "breezy.status", "hooks")
         self.add_hook(
             'post_status',
-            "Called with argument StatusHookParams after Bazaar has "
+            "Called with argument StatusHookParams after Breezy has "
             "displayed the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
@@ -377,7 +375,7 @@ class StatusHooks(_mod_hooks.Hooks):
             (2, 3))
         self.add_hook(
             'pre_status',
-            "Called with argument StatusHookParams before Bazaar "
+            "Called with argument StatusHookParams before Breezy "
             "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
@@ -386,7 +384,7 @@ class StatusHooks(_mod_hooks.Hooks):
             (2, 3))
 
 
-class StatusHookParams(object):
+class StatusHookParams:
     """Object holding parameters passed to post_status hooks.
 
     :ivar old_tree: Start tree (basis tree) for comparison.
@@ -426,7 +424,7 @@ class StatusHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s(%s, %s, %s, %s, %s, %s, %s, %s)>" % (
+        return "<{}({}, {}, {}, {}, {}, {}, {}, {})>".format(
             self.__class__.__name__, self.old_tree, self.new_tree,
             self.to_file, self.versioned, self.show_ids, self.short,
             self.verbose, self.specific_files)

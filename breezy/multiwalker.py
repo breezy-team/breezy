@@ -17,20 +17,13 @@
 """Walk multiple trees simultaneously.
 """
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     osutils,
     )
 
-from .sixish import (
-    text_type,
-    viewvalues,
-    )
 
-
-class MultiWalker(object):
+class MultiWalker:
     """Walk multiple trees simultaneously, getting combined results."""
 
     # Note: This could be written to not assume you can do out-of-order
@@ -94,10 +87,10 @@ class MultiWalker(object):
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
-        if not isinstance(path1, text_type):
+        if not isinstance(path1, str):
             raise TypeError("'path1' must be a unicode string, not %s: %r"
                             % (type(path1), path1))
-        if not isinstance(path2, text_type):
+        if not isinstance(path2, str):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
         return (MultiWalker._path_to_key(path1) <
@@ -106,7 +99,7 @@ class MultiWalker(object):
     @staticmethod
     def _path_to_key(path):
         dirname, basename = osutils.split(path)
-        return (dirname.split(u'/'), basename)
+        return (dirname.split('/'), basename)
 
     def _lookup_by_master_path(self, extra_entries, other_tree, master_path):
         return self._lookup_by_file_id(
@@ -146,11 +139,9 @@ class MultiWalker(object):
 
     def iter_all(self):
         """Match up the values in the different trees."""
-        for result in self._walk_master_tree():
-            yield result
+        yield from self._walk_master_tree()
         self._finish_others()
-        for result in self._walk_others():
-            yield result
+        yield from self._walk_others()
 
     def _walk_master_tree(self):
         """First pass, walk all trees in lock-step.
@@ -247,7 +238,7 @@ class MultiWalker(object):
         #       might ensure better ordering, in case a caller strictly
         #       requires parents before children.
         for idx, other_extra in enumerate(self._others_extra):
-            others = sorted(viewvalues(other_extra),
+            others = sorted(other_extra.values(),
                             key=lambda x: self._path_to_key(x[0]))
             for other_path, other_ie in others:
                 file_id = other_ie.file_id

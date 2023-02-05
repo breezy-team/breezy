@@ -22,7 +22,7 @@ from breezy.tests.transport_util import TestCaseWithConnectionHookedTransport
 class TestBranch(TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
-        super(TestBranch, self).setUp()
+        super().setUp()
         self.make_branch_and_tree('branch')
         self.start_logging_connections()
 

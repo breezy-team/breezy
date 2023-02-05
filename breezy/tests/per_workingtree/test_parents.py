@@ -16,6 +16,7 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
+from io import BytesIO
 import os
 
 from ... import (
@@ -31,9 +32,6 @@ from ...bzr.inventory import (
 from ...bzr.inventorytree import (
     InventoryRevisionTree,
     InventoryTree,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from ...tests import TestNotApplicable
 from ..per_workingtree import TestCaseWithWorkingTree
@@ -53,8 +51,7 @@ class TestParents(TestCaseWithWorkingTree):
         """
         self.assertEqual(expected, tree.get_parent_ids())
         if expected == []:
-            self.assertEqual(_mod_revision.NULL_REVISION,
-                             _mod_revision.ensure_null(tree.last_revision()))
+            self.assertEqual(_mod_revision.NULL_REVISION, tree.last_revision())
         else:
             self.assertEqual(expected[0], tree.last_revision())
 
@@ -256,7 +253,7 @@ class TestSetParents(TestParents):
 
     def test_unicode_symlink(self):
         # this tests bug #272444
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.requireFeature(features.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
@@ -264,8 +261,8 @@ class TestSetParents(TestParents):
         # The link points to a file whose name is an omega
         # U+03A9 GREEK CAPITAL LETTER OMEGA
         # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
-        target = u'\u03a9'
-        link_name = u'\N{Euro Sign}link'
+        target = '\u03a9'
+        link_name = '\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
         tree.add([link_name])
 

@@ -14,12 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ..sixish import (
-    BytesIO,
-    )
+from io import BytesIO
 
 
-class FakeReadFile(object):
+class FakeReadFile:
     """A file-like object that can be given predefined content and read
     like a file.  The maximum size and number of the reads is recorded."""
 

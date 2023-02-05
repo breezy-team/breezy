@@ -290,7 +290,7 @@ You can restore the old tip by running:
 
     def test_uncommit_nonascii(self):
         tree = self.make_branch_and_tree('tree')
-        tree.commit(u'\u1234 message')
+        tree.commit('\u1234 message')
         out, err = self.run_bzr('uncommit --force tree', encoding='ascii')
         self.assertContainsRe(out, r'\? message')
 

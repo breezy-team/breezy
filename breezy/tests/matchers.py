@@ -32,16 +32,15 @@ __all__ = [
     'MatchesAncestry',
     'ReturnsUnlockable',
     'RevisionHistoryMatches',
+    'MatchesTreeChanges',
     ]
 
 from .. import (
     osutils,
     revision as _mod_revision,
     )
-from ..sixish import (
-    text_type,
-    )
-from ..tree import InterTree
+
+from ..tree import InterTree, TreeChange
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -90,7 +89,7 @@ class _AncestryMismatch(Mismatch):
         self.expected = expected
 
     def describe(self):
-        return "mismatched ancestry for revision %r was %r, expected %r" % (
+        return "mismatched ancestry for revision {!r} was {!r}, expected {!r}".format(
             self.tip_revision, self.got, self.expected)
 
 
@@ -107,7 +106,7 @@ class MatchesAncestry(Matcher):
         self.revision_id = revision_id
 
     def __str__(self):
-        return ('MatchesAncestry(repository=%r, revision_id=%r)' % (
+        return ('MatchesAncestry(repository={!r}, revision_id={!r})'.format(
             self.repository, self.revision_id))
 
     def match(self, expected):
@@ -135,7 +134,7 @@ class HasLayout(Matcher):
         """Get the (path, file_id) pairs for the current tree."""
         with tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
-                if path != u'':
+                if path != '':
                     path += ie.kind_character()
                 if include_file_ids:
                     yield (path, ie.file_id)
@@ -150,7 +149,7 @@ class HasLayout(Matcher):
         """
         directories = []
         for entry in entries:
-            if isinstance(entry, (str, text_type)):
+            if isinstance(entry, str):
                 path = entry
             else:
                 path = entry[0]
@@ -170,7 +169,7 @@ class HasLayout(Matcher):
 
     def match(self, tree):
         include_file_ids = self.entries and not isinstance(
-            self.entries[0], (str, text_type))
+            self.entries[0], str)
         actual = list(self.get_tree_layout(
             tree, include_file_ids=include_file_ids))
         if not tree.has_versioned_directories():
@@ -208,8 +207,8 @@ class HasPathRelations(Matcher):
                     kind = self.previous_tree.kind(previous_path)
                     if kind == 'directory':
                         previous_path += '/'
-                if path == u'':
-                    yield (u"", previous_path)
+                if path == '':
+                    yield ("", previous_path)
                 else:
                     yield (path + ie.kind_character(), previous_path)
 
@@ -235,7 +234,7 @@ class HasPathRelations(Matcher):
                 yield (path, previous_path)
 
     def __str__(self):
-        return 'HasPathRelations(%r, %r)' % (self.previous_tree, self.previous_entries)
+        return 'HasPathRelations({!r}, {!r})'.format(self.previous_tree, self.previous_entries)
 
     def match(self, tree):
         actual = list(self.get_path_map(tree))
@@ -271,3 +270,57 @@ class RevisionHistoryMatches(Matcher):
                 branch.last_revision(), [_mod_revision.NULL_REVISION]))
             history.reverse()
         return Equals(self.expected).match(history)
+
+
+class MatchesTreeChanges(Matcher):
+    """A matcher that checks that tree changes match expected contents."""
+
+    def __init__(self, old_tree, new_tree, expected):
+        Matcher.__init__(self)
+        expected = [TreeChange(*x) if isinstance(x, tuple) else x for x in expected]
+        self.use_inventory_tree_changes = old_tree.supports_file_ids and new_tree.supports_file_ids
+        self.expected = expected
+        self.old_tree = old_tree
+        self.new_tree = new_tree
+
+    @staticmethod
+    def _convert_to_inventory_tree_changes(old_tree, new_tree, expected):
+        from ..bzr.inventorytree import InventoryTreeChange
+        rich_expected = []
+
+        def get_parent_id(t, p):
+            if p:
+                return t.path2id(osutils.dirname(p))
+            else:
+                return None
+
+        for c in expected:
+            if c.path[0] is not None:
+                file_id = old_tree.path2id(c.path[0])
+            else:
+                file_id = new_tree.path2id(c.path[1])
+            old_parent_id = get_parent_id(old_tree, c.path[0])
+            new_parent_id = get_parent_id(new_tree, c.path[1])
+            rich_expected.append(
+                InventoryTreeChange(
+                    file_id=file_id,
+                    parent_id=(old_parent_id, new_parent_id),
+                    path=c.path, changed_content=c.changed_content,
+                    versioned=c.versioned, name=c.name,
+                    kind=c.kind, executable=c.executable,
+                    copied=c.copied))
+        return rich_expected
+
+    def __str__(self):
+        return '<MatchesTreeChanges(%r)>' % self.expected
+
+    def match(self, actual):
+        from ..bzr.inventorytree import InventoryTreeChange
+        actual = list(actual)
+        if self.use_inventory_tree_changes or (actual and isinstance(actual[0], InventoryTreeChange)):
+            expected = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, self.expected)
+        else:
+            expected = self.expected
+        if self.use_inventory_tree_changes:
+            actual = self._convert_to_inventory_tree_changes(self.old_tree, self.new_tree, actual)
+        return Equals(expected).match(actual)

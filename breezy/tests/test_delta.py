@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import StringIO
 import os
 
 from .. import (
@@ -22,13 +23,9 @@ from .. import (
     tests,
     )
 from ..bzr.inventorytree import InventoryTreeChange
-from ..sixish import (
-    PY3,
-    StringIO,
-    )
 
 
-class InstrumentedReporter(object):
+class InstrumentedReporter:
     def __init__(self):
         self.calls = []
 
@@ -243,7 +240,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         """Doing a status when a file has changed kind should work"""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['filename'])
-        tree.add('filename', b'file-id')
+        tree.add('filename', ids=b'file-id')
         tree.commit('added filename')
         os.unlink('filename')
         self.build_tree(['filename/'])
@@ -306,7 +303,7 @@ class TestDeltaShow(tests.TestCaseWithTransport):
                                   ('branch/dir/',),
                                   ])
         wt.add(['f1', 'f2', 'f3', 'f4', 'dir'],
-               [b'f1-id', b'f2-id', b'f3-id', b'f4-id', b'dir-id'])
+               ids=[b'f1-id', b'f2-id', b'f3-id', b'f4-id', b'dir-id'])
         wt.commit('commit one', rev_id=b'1')
 
         # TODO add rename,removed,etc. here?

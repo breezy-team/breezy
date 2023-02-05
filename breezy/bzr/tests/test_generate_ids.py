@@ -54,7 +54,7 @@ class TestFileIds(tests.TestCase):
 
         # we remove unicode characters, and still don't end up with a
         # hidden file id
-        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), b'txt-')
+        self.assertStartsWith(gen_file_id('\xe5\xb5.txt'), b'txt-')
 
         # Our current method of generating unique ids adds 33 characters
         # plus an serial number (log10(N) characters)
@@ -75,9 +75,9 @@ class TestFileIds(tests.TestCase):
     def test_file_ids_are_ascii(self):
         tail = br'-\d{14}-[a-z0-9]{16}-\d+'
         self.assertGenFileId(b'foo' + tail, 'foo')
-        self.assertGenFileId(b'foo' + tail, u'foo')
-        self.assertGenFileId(b'bar' + tail, u'bar')
-        self.assertGenFileId(b'br' + tail, u'b\xe5r')
+        self.assertGenFileId(b'foo' + tail, 'foo')
+        self.assertGenFileId(b'bar' + tail, 'bar')
+        self.assertGenFileId(b'br' + tail, 'b\xe5r')
 
     def test__next_id_suffix_sets_suffix(self):
         generate_ids._gen_file_id_suffix = None
@@ -138,24 +138,24 @@ class TestGenRevisionId(tests.TestCase):
         self.assertGenRevisionId(regex, 'Joe Bar <user+joe_bar@foo-bar.com>')
         self.assertGenRevisionId(regex, 'Joe Bar <user+Joe_Bar@Foo-Bar.com>')
         self.assertGenRevisionId(
-            regex, u'Joe B\xe5r <user+Joe_Bar@Foo-Bar.com>')
+            regex, 'Joe B\xe5r <user+Joe_Bar@Foo-Bar.com>')
 
     def test_gen_revision_id_user(self):
         """If there is no email, fall back to the whole username"""
         tail = br'-\d{14}-[a-z0-9]{16}'
         self.assertGenRevisionId(b'joe_bar' + tail, 'Joe Bar')
         self.assertGenRevisionId(b'joebar' + tail, 'joebar')
-        self.assertGenRevisionId(b'joe_br' + tail, u'Joe B\xe5r')
+        self.assertGenRevisionId(b'joe_br' + tail, 'Joe B\xe5r')
         self.assertGenRevisionId(br'joe_br_user\+joe_bar_foo-bar.com' + tail,
-                                 u'Joe B\xe5r <user+Joe_Bar_Foo-Bar.com>')
+                                 'Joe B\xe5r <user+Joe_Bar_Foo-Bar.com>')
 
     def test_revision_ids_are_ascii(self):
         """gen_revision_id should always return an ascii revision id."""
         tail = br'-\d{14}-[a-z0-9]{16}'
         self.assertGenRevisionId(b'joe_bar' + tail, 'Joe Bar')
-        self.assertGenRevisionId(b'joe_bar' + tail, u'Joe Bar')
-        self.assertGenRevisionId(b'joe@foo' + tail, u'Joe Bar <joe@foo>')
+        self.assertGenRevisionId(b'joe_bar' + tail, 'Joe Bar')
+        self.assertGenRevisionId(b'joe@foo' + tail, 'Joe Bar <joe@foo>')
         # We cheat a little with this one, because email-addresses shouldn't
         # contain non-ascii characters, but generate_ids should strip them
         # anyway.
-        self.assertGenRevisionId(b'joe@f' + tail, u'Joe Bar <joe@f\xb6>')
+        self.assertGenRevisionId(b'joe@f' + tail, 'Joe Bar <joe@f\xb6>')

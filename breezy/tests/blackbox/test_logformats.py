@@ -31,7 +31,7 @@ from breezy import (
 class TestLogFormats(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestLogFormats, self).setUp()
+        super().setUp()
 
         # Create a config file with some useful variables
         conf_path = bedding.config_path()

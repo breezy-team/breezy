@@ -16,16 +16,15 @@
 
 """Tests for WSGI application"""
 
+from io import BytesIO
+
 from .. import tests
-from ..sixish import (
-    BytesIO,
-    )
 from ..bzr.smart import medium, protocol
 from ..transport.http import wsgi
 from ..transport import chroot, memory
 
 
-class WSGITestMixin(object):
+class WSGITestMixin:
 
     def build_environ(self, updates=None):
         """Builds an environ dict with all fields required by PEP 333.
@@ -69,7 +68,7 @@ class WSGITestMixin(object):
 class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
 
     def setUp(self):
-        super(TestWSGI, self).setUp()
+        super().setUp()
         self.status = None
         self.headers = None
 
@@ -293,7 +292,7 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
             in message_handler.event_log)
 
 
-class FakeRequest(object):
+class FakeRequest:
 
     def __init__(self, transport, write_func):
         self.transport = transport
@@ -308,7 +307,7 @@ class FakeRequest(object):
         return 0
 
 
-class FakeTransport(object):
+class FakeTransport:
 
     def __init__(self):
         self.calls = []

@@ -26,7 +26,7 @@ class ExtractForeignRevidTests(TestCase):
 
     def test_no_foreign_revid(self):
         x = Revision(b"myrevid")
-        self.assertEquals(set(), extract_foreign_revids(x))
+        self.assertEqual(set(), extract_foreign_revids(x))
 
     def test_cscvs(self):
         x = Revision(b"myrevid")
@@ -34,6 +34,6 @@ class ExtractForeignRevidTests(TestCase):
             "cscvs-svn-repository-uuid": "someuuid",
             "cscvs-svn-revision-number": "4",
             "cscvs-svn-branch-path": "/trunk"}
-        self.assertEquals(
-            set([("svn", "someuuid:4:trunk")]),
+        self.assertEqual(
+            {("svn", "someuuid:4:trunk")},
             extract_foreign_revids(x))

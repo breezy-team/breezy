@@ -15,8 +15,6 @@
 
 """Test the command implementations."""
 
-from __future__ import absolute_import
-
 import os
 import re
 import tempfile
@@ -138,7 +136,7 @@ class TestFastExport(ExternalBase):
 
     def test_empty(self):
         self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-export br")[0])
+        self.assertEqual("", self.run_bzr("fast-export br")[0])
 
     def test_pointless(self):
         tree = self.make_branch_and_tree("br")
@@ -153,17 +151,17 @@ class TestFastExport(ExternalBase):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br br.fi")[0]
-        self.assertEquals("", data)
+        self.assertEqual("", data)
         self.assertPathExists("br.fi")
 
     def test_symlink(self):
         tree = self.make_branch_and_tree("br")
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         os.symlink('symlink-target', 'br/symlink')
         tree.add('symlink')
         tree.commit("add a symlink")
         data = self.run_bzr("fast-export br br.fi")[0]
-        self.assertEquals("", data)
+        self.assertEqual("", data)
         self.assertPathExists("br.fi")
 
     def test_tag_rewriting(self):
@@ -240,7 +238,7 @@ class TestFastExport(ExternalBase):
         # Also confirm that --baseline with no args is identical to full export
         data1 = self.run_bzr("fast-export --baseline bl")[0]
         data2 = self.run_bzr("fast-export bl")[0]
-        self.assertEquals(data1, data2)
+        self.assertEqual(data1, data2)
 
 
 simple_fast_import_stream = b"""commit refs/heads/master
@@ -259,13 +257,13 @@ class TestFastImport(ExternalBase):
     def test_empty(self):
         self.build_tree_contents([('empty.fi', b"")])
         self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-import empty.fi br")[0])
+        self.assertEqual("", self.run_bzr("fast-import empty.fi br")[0])
 
     def test_file(self):
         tree = self.make_branch_and_tree("br")
         self.build_tree_contents([('file.fi', simple_fast_import_stream)])
         data = self.run_bzr("fast-import file.fi br")[0]
-        self.assertEquals(1, tree.branch.revno())
+        self.assertEqual(1, tree.branch.revno())
 
     def test_missing_bytes(self):
         self.build_tree_contents([('empty.fi', b"""

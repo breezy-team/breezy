@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # XXX: Some consideration of the problems that might occur if there are
 # files whose id differs only in case.  That should probably be forbidden.
 
@@ -25,6 +23,7 @@ import os
 from .... import (
     errors,
     osutils,
+    transport as _mod_transport,
     ui,
     )
 from . import TransportStore
@@ -41,7 +40,7 @@ class VersionedFileStore(TransportStore):
                  versionedfile_class=None,
                  versionedfile_kwargs={},
                  escaped=False):
-        super(VersionedFileStore, self).__init__(transport,
+        super().__init__(transport,
                                                  dir_mode=dir_mode, file_mode=file_mode,
                                                  prefixed=prefixed, compressed=False, escaped=escaped)
         self._precious = precious
@@ -96,7 +95,7 @@ class VersionedFileStore(TransportStore):
         fn = self.filename(file_id)
         try:
             return self._transport.put_file(fn, f, mode=self._file_mode)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             if not self._prefixed:
                 raise
             self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
@@ -141,7 +140,7 @@ class VersionedFileStore(TransportStore):
             # for the common case.
             weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
                                               get_scope=self.get_scope, **self._versionedfile_kwargs)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is expected to be raised on a
                 # missing dir only and that only occurs when we are prefixed.
@@ -164,7 +163,7 @@ class VersionedFileStore(TransportStore):
         _filename = self.filename(file_id)
         try:
             return self.get_weave(file_id, transaction, _filename=_filename)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             weave = self._make_new_versionedfile(file_id, transaction,
                                                  known_missing=True, _filename=_filename)
             return weave
@@ -177,5 +176,5 @@ class VersionedFileStore(TransportStore):
             'topological', False))
 
     def total_size(self):
-        count, bytes = super(VersionedFileStore, self).total_size()
+        count, bytes = super().total_size()
         return (count / len(self._versionedfile_class.get_suffixes())), bytes

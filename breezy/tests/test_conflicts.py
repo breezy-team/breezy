@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+from typing import List, Tuple, Dict, Any, Callable, Type
 
 from .. import (
     conflicts,
@@ -24,7 +25,7 @@ from .. import (
     tests,
     transform,
     )
-from ..sixish import text_type
+from ..workingtree import WorkingTree
 from ..bzr import conflicts as bzr_conflicts
 from . import (
     script,
@@ -44,23 +45,23 @@ load_tests = scenarios.load_tests_apply_scenarios
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'path' and 'id' only with a circle and a hat. (shappo?)
 example_conflicts = [
-     bzr_conflicts.MissingParent('Not deleting', u'p\xe5thg', b'\xc3\xaedg'),
-     bzr_conflicts.ContentsConflict(u'p\xe5tha', None, b'\xc3\xaeda'),
-     bzr_conflicts.TextConflict(u'p\xe5tha'),
-     bzr_conflicts.PathConflict(u'p\xe5thb', u'p\xe5thc', b'\xc3\xaedb'),
-     bzr_conflicts.DuplicateID('Unversioned existing file',
-                               u'p\xe5thc', u'p\xe5thc2',
-                               b'\xc3\xaedc', b'\xc3\xaedc'),
-     bzr_conflicts.DuplicateEntry('Moved existing file to',
-                                  u'p\xe5thdd.moved', u'p\xe5thd',
-                                  b'\xc3\xaedd', None),
-     bzr_conflicts.ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
-                              None, b'\xc3\xaed2e'),
-     bzr_conflicts.UnversionedParent('Versioned directory',
-                                     u'p\xe5thf', b'\xc3\xaedf'),
-     bzr_conflicts.NonDirectoryParent('Created directory',
-                                      u'p\xe5thg', b'\xc3\xaedg'),
-     ]
+    bzr_conflicts.MissingParent('Not deleting', 'p\xe5thg', b'\xc3\xaedg'),
+    bzr_conflicts.ContentsConflict('p\xe5tha', None, b'\xc3\xaeda'),
+    bzr_conflicts.TextConflict('p\xe5tha'),
+    bzr_conflicts.PathConflict('p\xe5thb', 'p\xe5thc', b'\xc3\xaedb'),
+    bzr_conflicts.DuplicateID('Unversioned existing file',
+                              'p\xe5thc', 'p\xe5thc2',
+                              b'\xc3\xaedc', b'\xc3\xaedc'),
+    bzr_conflicts.DuplicateEntry('Moved existing file to',
+                                 'p\xe5thdd.moved', 'p\xe5thd',
+                                 b'\xc3\xaedd', None),
+    bzr_conflicts.ParentLoop('Cancelled move', 'p\xe5the', 'p\xe5th2e',
+                             None, b'\xc3\xaed2e'),
+    bzr_conflicts.UnversionedParent('Versioned directory',
+                                    'p\xe5thf', b'\xc3\xaedf'),
+    bzr_conflicts.NonDirectoryParent('Created directory',
+                                     'p\xe5thg', b'\xc3\xaedg'),
+    ]
 
 
 def vary_by_conflicts():
@@ -77,7 +78,7 @@ class TestConflicts(tests.TestCaseWithTransport):
                                   ('hello.BASE', b'hello world1'),
                                   ])
         os.mkdir('hello.OTHER')
-        tree.add('hello', b'q')
+        tree.add('hello', ids=b'q')
         l = conflicts.ConflictList([bzr_conflicts.TextConflict('hello')])
         l.remove_files(tree)
 
@@ -131,7 +132,7 @@ class TestPerConflict(tests.TestCase):
     scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
 
     def test_stringification(self):
-        text = text_type(self.conflict)
+        text = str(self.conflict)
         self.assertContainsString(text, self.conflict.path)
         self.assertContainsString(text.lower(), "conflict")
         self.assertContainsString(repr(self.conflict),
@@ -149,7 +150,7 @@ class TestConflictList(tests.TestCase):
         for text, o in zip(
                 bzr_conflicts.ConflictList(example_conflicts).to_strings(),
                 example_conflicts):
-            self.assertEqual(text, text_type(o))
+            self.assertEqual(text, str(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
@@ -160,10 +161,10 @@ class TestConflictList(tests.TestCase):
 # FIXME: Tests missing for DuplicateID conflict type
 class TestResolveConflicts(script.TestCaseWithTransportAndScript):
 
-    preamble = None  # The setup script set by daughter classes
+    preamble: str  # The setup script set by daughter classes
 
     def setUp(self):
-        super(TestResolveConflicts, self).setUp()
+        super().setUp()
         self.run_script(self.preamble)
 
 
@@ -237,15 +238,18 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """
 
     # Set by daughter classes
-    _conflict_type = None
-    _assert_conflict = None
+    _conflict_type: Type[conflicts.Conflict]
+    _assert_conflict: Callable[[Any, Any, Any], Any]
 
     # Set by load_tests
     _base_actions = None
     _this = None
     _other = None
 
-    scenarios = []
+    scenarios: List[Tuple[
+        Dict[str, Any],
+        Tuple[str, Dict[str, Any]],
+        Tuple[str, Dict[str, Any]]]] = []
     """The scenario list for the conflict type defined by the class.
 
     Each scenario is of the form:
@@ -272,13 +276,13 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """
 
     def setUp(self):
-        super(TestParametrizedResolveConflicts, self).setUp()
+        super().setUp()
         builder = self.make_branch_builder('trunk')
         builder.start_series()
 
         # Create an empty trunk
         builder.build_snapshot(None, [
-            ('add', (u'', b'root-id', 'directory', ''))],
+            ('add', ('', b'root-id', 'directory', ''))],
             revision_id=b'start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
@@ -647,8 +651,8 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
         # We create a conflict object as it was created before the fix and
         # inject it into the working tree, the test will exercise the
         # compatibility code.
-        old_c = bzr_conflicts.PathConflict('<deleted>', self._item_path,
-                                       file_id=None)
+        old_c = bzr_conflicts.PathConflict(
+            '<deleted>', self._item_path, file_id=None)
         wt.set_conflicts([old_c])
 
 
@@ -1159,7 +1163,7 @@ $ brz merge ../experimental
 class TestResolveActionOption(tests.TestCase):
 
     def setUp(self):
-        super(TestResolveActionOption, self).setUp()
+        super().setUp()
         self.options = [conflicts.ResolveActionOption()]
         self.parser = option.get_optparser(self.options)
 

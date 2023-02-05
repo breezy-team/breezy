@@ -16,8 +16,6 @@
 
 """Full history branch formats."""
 
-from __future__ import absolute_import
-
 from .. import (
     debug,
     errors,
@@ -42,7 +40,6 @@ class FullHistoryBzrBranch(BzrBranch):
         if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(
                 revision_id=revision_id, branch=self)
-        revision_id = _mod_revision.ensure_null(revision_id)
         with self.lock_write():
             # this old format stores the full history, but this api doesn't
             # provide it, so we must generate, and might as well check it's

@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from typing import List
 
 from breezy import (
     branch,
@@ -24,18 +25,18 @@ from breezy.tests import (
     )
 
 
-class TestRememberMixin(object):
+class TestRememberMixin:
     """--remember and --no-remember set locations or not."""
 
     # the command to run (expecting additional arguments from the tests
-    command = []
+    command: List[str] = []
     # the dir where the command should be run (it should contain a branch for
     # which the tested locations are/will be set)
-    working_dir = None
+    working_dir: str
     # argument list for the first command invocation
-    first_use_args = []
+    first_use_args: List[str] = []
     # argument list for the next command invocation
-    next_uses_args = []
+    next_uses_args: List[str] = []
 
     def do_command(self, *args):
         # We always expect the same result here and care only about the
@@ -80,7 +81,7 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
     next_uses_args = ['../new_parent', '../new_grand_parent']
 
     def setUp(self):
-        super(TestSendRemember, self).setUp()
+        super().setUp()
         self.run_script('''
             $ brz init grand_parent
             $ cd grand_parent
@@ -93,12 +94,12 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
             $ echo parent > file
             $ brz commit -m 'parent'
             $ cd ..
-            $ brz branch parent %(working_dir)s
-            $ cd %(working_dir)s
-            $ echo %(working_dir)s > file
-            $ brz commit -m '%(working_dir)s'
+            $ brz branch parent {working_dir}
+            $ cd {working_dir}
+            $ echo {working_dir} > file
+            $ brz commit -m '{working_dir}'
             $ cd ..
-            ''' % {'working_dir': self.working_dir},
+            '''.format(working_dir=self.working_dir),
             null_output_matches_anything=True)
 
     def setup_next_uses(self):
@@ -130,15 +131,15 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
     next_uses_args = ['../new_target']
 
     def setUp(self):
-        super(TestPushRemember, self).setUp()
+        super().setUp()
         self.run_script('''
-            $ brz init %(working_dir)s
-            $ cd %(working_dir)s
+            $ brz init {working_dir}
+            $ cd {working_dir}
             $ echo some content > file
             $ brz add
             $ brz commit -m 'initial commit'
             $ cd ..
-            ''' % {'working_dir': self.working_dir},
+            '''.format(working_dir=self.working_dir),
             null_output_matches_anything=True)
 
     def setup_next_uses(self):
@@ -146,11 +147,11 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
         self.do_command(*self.first_use_args)
         # Now create some new content
         self.run_script('''
-            $ cd %(working_dir)s
+            $ cd {working_dir}
             $ echo new content > file
             $ brz commit -m 'new content'
             $ cd ..
-            ''' % {'working_dir': self.working_dir},
+            '''.format(working_dir=self.working_dir),
             null_output_matches_anything=True)
 
     def assertLocations(self, expected_locations):
@@ -173,7 +174,7 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
     next_uses_args = ['../new_parent']
 
     def setUp(self):
-        super(TestPullRemember, self).setUp()
+        super().setUp()
         self.run_script('''
             $ brz init parent
             $ cd parent
@@ -181,8 +182,8 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
             $ brz add
             $ brz commit -m 'initial commit'
             $ cd ..
-            $ brz init %(working_dir)s
-            ''' % {'working_dir': self.working_dir},
+            $ brz init {working_dir}
+            '''.format(working_dir=self.working_dir),
             null_output_matches_anything=True)
 
     def setup_next_uses(self):

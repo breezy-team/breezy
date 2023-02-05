@@ -16,12 +16,7 @@
 
 """A convenience class around smtplib."""
 
-from __future__ import absolute_import
-
-try:
-    from email.utils import getaddresses, parseaddr
-except ImportError:  # python < 3
-    from email.Utils import getaddresses, parseaddr
+from email.utils import getaddresses, parseaddr
 
 import errno
 import smtplib
@@ -78,7 +73,7 @@ class NoDestinationAddress(InternalBzrError):
     _fmt = "Message does not have a destination address."
 
 
-class SMTPConnection(object):
+class SMTPConnection:
     """Connect to an SMTP server and send an email.
 
     This is a gateway between breezy.config.Config and smtplib.SMTP. It
@@ -116,10 +111,9 @@ class SMTPConnection(object):
 
     def _create_connection(self):
         """Create an SMTP connection."""
-        self._connection = self._smtp_factory()
         try:
-            self._connection.connect(self._smtp_server)
-        except socket.error as e:
+            self._connection = self._smtp_factory(host=self._smtp_server)
+        except OSError as e:
             if e.args[0] == errno.ECONNREFUSED:
                 if self._config_smtp_server is None:
                     raise DefaultSMTPConnectionRefused(socket.error,

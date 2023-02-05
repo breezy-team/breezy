@@ -21,8 +21,6 @@ TODO:
   * add command aliases
 """
 
-from __future__ import absolute_import
-
 PLUGINS_TO_DOCUMENT = ["launchpad"]
 
 import textwrap
@@ -92,7 +90,7 @@ def getcommand_list(params):
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
             usage = cmd_object._usage()
-            tmp = '.TP\n.B "%s"\n%s\n' % (usage, firstline)
+            tmp = '.TP\n.B "{}"\n{}\n'.format(usage, firstline)
             output = output + tmp
         else:
             raise RuntimeError("Command '%s' has no help text" % (cmd_name))
@@ -167,7 +165,7 @@ def format_command(params, cmd):
 
 def format_alias(params, alias, cmd_name):
     help = '.SS "brz %s"\n' % alias
-    help += 'Alias for "%s", see "brz %s".\n' % (cmd_name, cmd_name)
+    help += 'Alias for "{}", see "brz {}".\n'.format(cmd_name, cmd_name)
     return help
 
 

@@ -17,8 +17,6 @@
 
 """Git Memory Trees."""
 
-from __future__ import absolute_import
-
 import os
 import posixpath
 import stat
@@ -251,7 +249,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
-        self.add(path, None, 'directory')
+        self.add(path, 'directory')
         self._file_transport.mkdir(path)
 
     def _rename_one(self, from_rel, to_rel):

@@ -47,17 +47,21 @@ class TestFlush(TestCaseWithWorkingTree):
         # prepare for a series of changes that will modify the
         # inventory
         with tree.lock_write():
-            old_root = tree.path2id('')
+            if tree.supports_file_ids:
+                old_root = tree.path2id('')
             tree.add('')
             # to detect that the inventory is written by flush, we
             # first check that it was not written yet.
             reference_tree = tree.controldir.open_workingtree()
-            self.assertEqual(old_root, reference_tree.path2id(''))
+            if tree.supports_file_ids:
+                self.assertEqual(old_root, reference_tree.path2id(''))
             # now flush the tree which should write the inventory.
             tree.flush()
             # and check it was written using another reference tree
             reference_tree = tree.controldir.open_workingtree()
-            self.assertIsNot(None, reference_tree.path2id(''))
+            self.assertTrue(reference_tree.is_versioned(''))
+            if reference_tree.supports_file_ids:
+                self.assertIsNot(None, reference_tree.path2id(''))
 
     def test_flush_with_read_lock_fails(self):
         """Flush cannot be used during a read lock."""

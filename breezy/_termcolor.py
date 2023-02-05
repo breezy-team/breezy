@@ -14,13 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import os
 import sys
 
 
-class FG(object):
+class FG:
     """Unix terminal foreground color codes (16-color)."""
     RED = '\033[31m'
     GREEN = '\033[32m'
@@ -42,7 +40,7 @@ class FG(object):
     NONE = '\033[0m'
 
 
-class BG(object):
+class BG:
     """Unix terminal background color codes (16-color)."""
     BLACK = '\033[40m'
     RED = '\033[41m'

@@ -22,12 +22,11 @@ target path is a directory.
 To get a fake nfs transport use get_transport('fakenfs+' + real_url)
 """
 
-from __future__ import absolute_import
-
 from stat import S_ISDIR
 
 from .. import (
     errors,
+    transport as _mod_transport,
     urlutils,
     )
 from . import decorator
@@ -49,7 +48,7 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
         """
         try:
             self._decorated.rename(rel_from, rel_to)
-        except (errors.DirectoryNotEmpty, errors.FileExists) as e:
+        except (errors.DirectoryNotEmpty, _mod_transport.FileExists) as e:
             # if this is a directory rename, raise
             # resourcebusy rather than DirectoryNotEmpty
             stat = self._decorated.stat(rel_to)

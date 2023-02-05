@@ -45,8 +45,6 @@ KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
 
-from __future__ import absolute_import
-
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
@@ -57,19 +55,15 @@ from __future__ import absolute_import
 # that.
 
 import errno
+from io import StringIO
 import logging
 import os
 import sys
 import time
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-import tempfile
-import traceback
-""")
-
 import breezy
 
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     bedding,
@@ -80,12 +74,6 @@ from breezy import (
 """)
 from . import (
     errors,
-    )
-
-from .sixish import (
-    PY3,
-    StringIO,
-    text_type,
     )
 
 
@@ -162,14 +150,11 @@ def mutter(fmt, *args):
         fmt = fmt.decode('ascii', 'replace')
 
     if args:
-        if not PY3:
-            args = tuple(
-                _Bytes(arg) if isinstance(arg, bytes) else arg for arg in args)
         out = fmt % args
     else:
         out = fmt
     now = time.time()
-    out = '%0.3f  %s\n' % (now - _brz_log_start_time, out)
+    out = '{:0.3f}  {}\n'.format(now - _brz_log_start_time, out)
     _trace_file.write(out.encode('utf-8'))
     # there's no explicit flushing; the file is typically line buffered.
 
@@ -182,6 +167,7 @@ def mutter_callsite(stacklevel, fmt, *args):
     :param fmt: The format string to pass to mutter.
     :param args: A list of substitution variables.
     """
+    import traceback
     outf = StringIO()
     if stacklevel is None:
         limit = None
@@ -211,7 +197,7 @@ def _get_brz_log_filename():
     :return: A path to the log file
     :raise EnvironmentError: If the cache directory could not be created
     """
-    brz_log = osutils.path_from_environ('BRZ_LOG')
+    brz_log = os.environ.get('BRZ_LOG')
     if brz_log:
         return brz_log
     return os.path.join(bedding.cache_dir(), 'brz.log')
@@ -269,13 +255,13 @@ def _open_brz_log():
 
         return brz_log_file
 
-    except EnvironmentError as e:
+    except OSError as e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no
         # handlers registered for "brz"' when something goes wrong on the
         # server. (bug #503886)
-        sys.stderr.write("failed to open trace file: %s\n" % (e,))
+        sys.stderr.write("failed to open trace file: {}\n".format(e))
     # TODO: What should happen if we fail to open the trace file?  Maybe the
     # objects should be pointed at /dev/null or the equivalent?  Currently
     # returns None which will cause failures later.
@@ -306,12 +292,7 @@ def enable_default_logging():
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    if sys.version_info[0] == 2:
-        stderr_handler = EncodedStreamHandler(
-            sys.stderr, osutils.get_terminal_encoding(), 'replace',
-            level=logging.INFO)
-    else:
-        stderr_handler = logging.StreamHandler(stream=sys.stderr)
+    stderr_handler = logging.StreamHandler(stream=sys.stderr)
     logging.getLogger('brz').addHandler(stderr_handler)
     return memento
 
@@ -377,6 +358,7 @@ def log_exception_quietly():
     interesting to developers but not to users.  For example,
     errors loading plugins.
     """
+    import traceback
     mutter(traceback.format_exc())
 
 
@@ -439,7 +421,7 @@ _short_fields = ('VmPeak', 'VmSize', 'VmRSS')
 def _debug_memory_proc(message='', short=True):
     try:
         status_file = open('/proc/%s/status' % os.getpid(), 'rb')
-    except IOError:
+    except OSError:
         return
     try:
         status = status_file.read()
@@ -458,6 +440,7 @@ def _debug_memory_proc(message='', short=True):
 
 
 def _dump_memory_usage(err_file):
+    import tempfile
     try:
         try:
             fd, name = tempfile.mkstemp(prefix="brz_memdump", suffix=".json")
@@ -489,7 +472,7 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
     if module_name in ("builtins", "exceptions", "__main__") or (
             unqualified_breezy_errors and module_name == "breezy.errors"):
         return class_name
-    return "%s.%s" % (module_name, class_name)
+    return "{}.{}".format(module_name, class_name)
 
 
 def report_exception(exc_info, err_file):
@@ -524,7 +507,7 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif osutils.is_environment_error(exc_object):
+    elif isinstance(exc_object, EnvironmentError):
         if getattr(exc_object, 'errno', None) == errno.EPIPE:
             err_file.write("brz: broken pipe\n")
             return errors.EXIT_ERROR
@@ -538,8 +521,9 @@ def report_exception(exc_info, err_file):
 
 
 def print_exception(exc_info, err_file):
+    import traceback
     exc_type, exc_object, exc_tb = exc_info
-    err_file.write("brz: ERROR: %s: %s\n" % (
+    err_file.write("brz: ERROR: {}: {}\n".format(
         _qualified_exception_name(exc_type), exc_object))
     err_file.write('\n')
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
@@ -555,9 +539,9 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write(("brz: ERROR: %s\n" % (str(exc_info[1]),)))
+    err_file.write("brz: ERROR: {}\n".format(str(exc_info[1])))
     if advice:
-        err_file.write(("%s\n" % advice))
+        err_file.write("%s\n" % advice)
 
 
 def report_bug(exc_info, err_file):
@@ -575,7 +559,7 @@ def _flush_stdout_stderr():
         # On Windows, I get ValueError calling stdout.flush() on a closed
         # handle
         pass
-    except IOError as e:
+    except OSError as e:
         import errno
         if e.errno in [errno.EINVAL, errno.EPIPE]:
             pass
@@ -615,12 +599,11 @@ class EncodedStreamHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            if not isinstance(record.msg, text_type):
+            if not isinstance(record.msg, str):
                 msg = record.msg.decode("utf-8")
-                if PY3:
-                    record.msg = msg
+                record.msg = msg
             line = self.format(record)
-            if not isinstance(line, text_type):
+            if not isinstance(line, str):
                 line = line.decode("utf-8")
             self.stream.write(line.encode(self.encoding, self.errors) + b"\n")
         except Exception:
@@ -637,7 +620,7 @@ class EncodedStreamHandler(logging.Handler):
             mutter("Logging record unformattable: %s %% %s", msg, args)
 
 
-class Config(object):
+class Config:
     """Configuration of message tracing in breezy.
 
     This implements the context manager protocol and should manage any global

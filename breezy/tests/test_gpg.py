@@ -17,6 +17,8 @@
 
 """Tests for signing and verifying blobs of data via gpg."""
 
+from io import BytesIO
+
 # import system imports here
 import sys
 
@@ -27,9 +29,6 @@ from .. import (
     tests,
     trace,
     ui,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from . import (
     TestCase,
@@ -44,7 +43,7 @@ class FakeConfig(config.MemoryStack):
             content = b'''
 gpg_signing_key=amy@example.com
 '''
-        super(FakeConfig, self).__init__(content)
+        super().__init__(content)
 
 
 class TestVerify(TestCase):
@@ -255,7 +254,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("foo@example.com")
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'E3080E45', plain),
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, 'E3080E45', plain),
                          my_gpg.verify(content))
 
     def test_verify_valid_but_untrusted(self):
@@ -357,7 +356,7 @@ dTp8VatVVrwuvzOPDVc=
 -----END PGP SIGNATURE-----
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513', None),
+        self.assertEqual((gpg.SIGNATURE_EXPIRED, '4F8D1513', None),
                          my_gpg.verify(content))
 
     def test_verify_unknown_key(self):
@@ -380,7 +379,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 -----END PGP SIGNATURE-----
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F', None),
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, '5D51E56F', None),
                          my_gpg.verify(content))
 
     def test_set_acceptable_keys(self):
@@ -389,7 +388,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
         self.assertEqual(my_gpg.acceptable_keys,
-                         [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
+                         ['B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
     def test_set_acceptable_keys_from_config(self):
         self.requireFeature(features.gpg)
@@ -398,7 +397,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
             b'acceptable_keys=bazaar@example.com'))
         my_gpg.set_acceptable_keys(None)
         self.assertEqual(my_gpg.acceptable_keys,
-                         [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
+                         ['B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
     def test_set_acceptable_keys_unknown(self):
         self.requireFeature(features.gpg)

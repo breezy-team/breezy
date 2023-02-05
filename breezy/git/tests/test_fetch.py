@@ -1,5 +1,4 @@
 # Copyright (C) 2009-2018 Jelmer Vernooij <jelmer@jelmer.uk>
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests from fetching from git into bzr."""
-
-from __future__ import absolute_import
 
 from dulwich.objects import (
     Blob,
@@ -69,7 +66,7 @@ from . import (
     )
 
 
-class RepositoryFetchTests(object):
+class RepositoryFetchTests:
 
     def make_git_repo(self, path):
         os.mkdir(path)
@@ -129,7 +126,7 @@ class RepositoryFetchTests(object):
         self.assertEqual([revid1], newrepo.all_revision_ids())
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         newrepo.fetch(oldrepo, revision_id=revid2)
-        self.assertEqual(set([revid1, revid2]),
+        self.assertEqual({revid1, revid2},
                          set(newrepo.all_revision_ids()))
 
     def test_dir_becomes_symlink(self):
@@ -247,7 +244,7 @@ class RepositoryFetchTests(object):
         r = self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file(u"foobar", b"foo\n", False)
+        bb.set_file("foobar", b"foo\n", False)
         mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
         gitsha1 = bb.finish()[mark1]
         os.chdir("..")
@@ -262,8 +259,8 @@ class RepositoryFetchTests(object):
         tree.branch.set_stacked_on_url(b.user_url)
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file(u"barbar", b"bar\n", False)
-        bb.set_file(u"foo/blie/bla", b"bla\n", False)
+        bb.set_file("barbar", b"bar\n", False)
+        bb.set_file("foo/blie/bla", b"bla\n", False)
         mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         gitsha2 = bb.finish()[mark2]
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
@@ -272,17 +269,17 @@ class RepositoryFetchTests(object):
         tree.branch.repository.check()
         self.addCleanup(tree.lock_read().unlock)
         self.assertEqual(
-            set([(revid2,)]),
+            {(revid2,)},
             tree.branch.repository.revisions.without_fallbacks().keys())
         self.assertEqual(
-            set([revid1, revid2]),
+            {revid1, revid2},
             set(tree.branch.repository.all_revision_ids()))
 
     def test_non_ascii_characters(self):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file(u"foőbar", b"foo\nbar\n", False)
+        bb.set_file("foőbar", b"foo\nbar\n", False)
         mark = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
@@ -290,7 +287,7 @@ class RepositoryFetchTests(object):
         newrepo = self.clone_git_repo("d", "f")
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         tree = newrepo.revision_tree(revid)
-        self.assertTrue(tree.has_filename(u"foőbar"))
+        self.assertTrue(tree.has_filename("foőbar"))
 
     def test_tagged_tree(self):
         r = self.make_git_repo("d")
@@ -313,7 +310,7 @@ class RepositoryFetchTests(object):
         oldrepo = self.open_git_repo("d")
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newrepo = self.clone_git_repo("d", "f")
-        self.assertEqual(set([revid]), set(newrepo.all_revision_ids()))
+        self.assertEqual({revid}, set(newrepo.all_revision_ids()))
 
 
 class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):
@@ -322,7 +319,7 @@ class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):
         return Repository.open(path)
 
 
-class DummyStoreUpdater(object):
+class DummyStoreUpdater:
 
     def add_object(self, obj, ie, path):
         pass
@@ -334,7 +331,7 @@ class DummyStoreUpdater(object):
 class ImportObjects(TestCaseWithTransport):
 
     def setUp(self):
-        super(ImportObjects, self).setUp()
+        super().setUp()
         self._mapping = BzrGitMappingv1()
         factory = knit.make_file_factory(True, versionedfile.PrefixMapper())
         self._texts = factory(self.get_transport('texts'))
@@ -361,7 +358,7 @@ class ImportObjects(TestCaseWithTransport):
                               objs.__getitem__,
                               (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
                               self._mapping.generate_file_id)
-        self.assertEqual(set([(b'git:bla', b'somerevid')]), self._texts.keys())
+        self.assertEqual({(b'git:bla', b'somerevid')}, self._texts.keys())
 
     def test_import_blob_simple(self):
         blob = Blob.from_string(b"bar")
@@ -371,7 +368,7 @@ class ImportObjects(TestCaseWithTransport):
                               None, None, b"somerevid", [], objs.__getitem__,
                               (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
                               self._mapping.generate_file_id)
-        self.assertEqual(set([(b'git:bla', b'somerevid')]), self._texts.keys())
+        self.assertEqual({(b'git:bla', b'somerevid')}, self._texts.keys())
         self.assertEqual(next(self._texts.get_record_stream([(b'git:bla', b'somerevid')],
                                                             "unordered", True)).get_bytes_as("fulltext"), b"bar")
         self.assertEqual(1, len(ret))
@@ -393,7 +390,7 @@ class ImportObjects(TestCaseWithTransport):
                                            self._mapping.generate_file_id)
         self.assertEqual(child_modes, {})
         self.assertEqual(
-            set([(b"TREE_ROOT", b'somerevid')]), self._texts.keys())
+            {(b"TREE_ROOT", b'somerevid')}, self._texts.keys())
         self.assertEqual(1, len(ret))
         self.assertEqual(None, ret[0][0])
         self.assertEqual("", ret[0][1])
@@ -412,7 +409,7 @@ class ImportObjects(TestCaseWithTransport):
                                            (None, stat.S_IFDIR), DummyStoreUpdater(),
                                            self._mapping.generate_file_id)
         self.assertEqual(child_modes, {})
-        self.assertEqual(set([(b"git:bla", b'somerevid')]), self._texts.keys())
+        self.assertEqual({(b"git:bla", b'somerevid')}, self._texts.keys())
         self.assertEqual(1, len(ret))
         self.assertEqual(None, ret[0][0])
         self.assertEqual("bla", ret[0][1])

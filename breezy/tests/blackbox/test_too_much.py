@@ -59,19 +59,19 @@ class TestCommands(TestCaseWithTransport):
     def test_revert(self):
         self.run_bzr('init')
 
-        with open('hello', 'wt') as f:
+        with open('hello', 'w') as f:
             f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup hello')
 
-        with open('goodbye', 'wt') as f:
+        with open('goodbye', 'w') as f:
             f.write('baz')
         self.run_bzr('add goodbye')
         self.run_bzr('commit -m setup goodbye')
 
-        with open('hello', 'wt') as f:
+        with open('hello', 'w') as f:
             f.write('bar')
-        with open('goodbye', 'wt') as f:
+        with open('goodbye', 'w') as f:
             f.write('qux')
         self.run_bzr('revert hello')
         self.check_file_contents('hello', b'foo')
@@ -85,7 +85,7 @@ class TestCommands(TestCaseWithTransport):
         os.rmdir('revertdir')
         self.run_bzr('revert')
 
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             os.symlink('/unlikely/to/exist', 'symlink')
             self.run_bzr('add symlink')
             self.run_bzr('commit -m f')
@@ -100,7 +100,7 @@ class TestCommands(TestCaseWithTransport):
         else:
             self.log("skipping revert symlink tests")
 
-        with open('hello', 'wt') as f:
+        with open('hello', 'w') as f:
             f.write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
@@ -113,11 +113,11 @@ class TestCommands(TestCaseWithTransport):
 
     def example_branch(test):
         test.run_bzr('init')
-        with open('hello', 'wt') as f:
+        with open('hello', 'w') as f:
             f.write('foo')
         test.run_bzr('add hello')
         test.run_bzr('commit -m setup hello')
-        with open('goodbye', 'wt') as f:
+        with open('goodbye', 'w') as f:
             f.write('baz')
         test.run_bzr('add goodbye')
         test.run_bzr('commit -m setup goodbye')
@@ -245,7 +245,7 @@ class TestCommands(TestCaseWithTransport):
         """Handling of merge conflicts"""
         self.create_conflicts()
         self.run_bzr('merge ../other --show-base', retcode=1)
-        with open('hello', 'r') as f:
+        with open('hello') as f:
             conflict_text = f.read()
         self.assertTrue('<<<<<<<' in conflict_text)
         self.assertTrue('>>>>>>>' in conflict_text)
@@ -255,7 +255,7 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('revert')
         self.run_bzr('resolve --all')
         self.run_bzr('merge ../other', retcode=1)
-        with open('hello', 'r') as f:
+        with open('hello') as f:
             conflict_text = f.read()
         self.assertTrue('|||||||' not in conflict_text)
         self.assertTrue('hi world' not in conflict_text)
@@ -377,7 +377,7 @@ class OldTests(TestCaseWithTransport):
 
         progress("status of new file")
 
-        with open('test.txt', 'wt') as f:
+        with open('test.txt', 'w') as f:
             f.write('hello world!\n')
 
         self.assertEqual(self.run_bzr('unknowns')[0], 'test.txt\n')
@@ -385,7 +385,7 @@ class OldTests(TestCaseWithTransport):
         out = self.run_bzr("status")[0]
         self.assertEqual(out, 'unknown:\n  test.txt\n')
 
-        with open('test2.txt', 'wt') as f:
+        with open('test2.txt', 'w') as f:
             f.write('goodbye cruel world...\n')
 
         out = self.run_bzr("status test.txt")[0]
@@ -412,12 +412,12 @@ class OldTests(TestCaseWithTransport):
         out = self.run_bzr("help ci")[0]
         out.index('Aliases:  ci, checkin\n')
 
-        with open('hello.txt', 'wt') as f:
+        with open('hello.txt', 'w') as f:
             f.write('some nice new content\n')
 
         self.run_bzr("add hello.txt")
 
-        with open('msg.tmp', 'wt') as f:
+        with open('msg.tmp', 'w') as f:
             f.write('this is my new commit\nand it has multiple lines, for fun')
 
         self.run_bzr('commit -F msg.tmp')
@@ -448,7 +448,7 @@ class OldTests(TestCaseWithTransport):
 
         progress("file with spaces in name")
         mkdir('sub directory')
-        with open('sub directory/file with spaces ', 'wt') as f:
+        with open('sub directory/file with spaces ', 'w') as f:
             f.write('see how this works\n')
         self.run_bzr('add .')
         self.run_bzr('diff', retcode=1)
@@ -460,7 +460,7 @@ class OldTests(TestCaseWithTransport):
 
         self.run_bzr('info')
 
-        if osutils.has_symlinks():
+        if osutils.supports_symlinks(self.test_dir):
             progress("symlinks")
             mkdir('symlinks')
             chdir('symlinks')
@@ -564,7 +564,7 @@ class OldTests(TestCaseWithTransport):
             progress("skipping symlink tests")
 
 
-class RemoteTests(object):
+class RemoteTests:
     """Test brz ui commands against remote branches."""
 
     def test_branch(self):
@@ -601,7 +601,7 @@ class RemoteTests(object):
         os.mkdir('my-branch')
         os.chdir('my-branch')
         self.run_bzr('init')
-        with open('hello', 'wt') as f:
+        with open('hello', 'w') as f:
             f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup')
@@ -622,7 +622,7 @@ class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using abs paths."""
 
     def setUp(self):
-        super(SFTPTestsAbsoluteSibling, self).setUp()
+        super().setUp()
         self._override_home = '/dev/noone/runs/tests/here'
 
 
@@ -630,5 +630,5 @@ class SFTPTestsRelative(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using homedir rel paths."""
 
     def setUp(self):
-        super(SFTPTestsRelative, self).setUp()
+        super().setUp()
         self._get_remote_is_absolute = False

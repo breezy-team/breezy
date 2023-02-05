@@ -13,8 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-
-from __future__ import absolute_import
+#
+# cython: language_level=3
 
 cdef extern from "python-compat.h":
     pass
@@ -60,7 +60,7 @@ from ._str_helpers cimport (
     )
 
 # cimport all of the definitions we will need to access
-from .._static_tuple_c cimport (
+from ._static_tuple_c cimport (
     import_static_tuple_c,
     StaticTuple,
     StaticTuple_New,

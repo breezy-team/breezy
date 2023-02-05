@@ -20,7 +20,6 @@ from email.header import decode_header
 from .. import __version__ as _breezy_version
 from ..email_message import EmailMessage
 from ..errors import BzrBadParameterNotUnicode
-from ..sixish import PY3, text_type
 from ..smtp_connection import SMTPConnection
 from .. import tests
 
@@ -51,34 +50,26 @@ SIMPLE_MESSAGE_8BIT = _SIMPLE_MESSAGE % ('8-bit', 'base64', 'YvRkeQ==\n')
 BOUNDARY = '=====123456=='
 
 _MULTIPART_HEAD = '''\
-Content-Type: multipart/mixed; boundary="%(boundary)s"
+Content-Type: multipart/mixed; boundary="{boundary}"
 MIME-Version: 1.0
 From: from@from.com
 Subject: subject
 To: to@to.com
-User-Agent: Bazaar (%(version)s)
+User-Agent: Bazaar ({version})
 
---%(boundary)s
+--{boundary}
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 body
-''' % {'version': _breezy_version, 'boundary': BOUNDARY}
-
-
-def final_newline_or_not(msg):
-    if sys.version_info >= (2, 7, 6):
-        # Some internals of python's email module changed in an (minor)
-        # incompatible way: a final newline is appended in 2.7.6...
-        msg += '\n'
-    return msg
+'''.format(version=_breezy_version, boundary=BOUNDARY)
 
 
 def simple_multipart_message():
-    msg = _MULTIPART_HEAD + '--%s--' % BOUNDARY
-    return final_newline_or_not(msg)
+    msg = _MULTIPART_HEAD + '--%s--\n' % BOUNDARY
+    return msg
 
 
 def complex_multipart_message(typ):
@@ -95,8 +86,8 @@ c
 d
 e
 
---%(boundary)s--''' % {'boundary': BOUNDARY}
-    msg = final_newline_or_not(msg)
+--%(boundary)s--
+''' % {'boundary': BOUNDARY}
     return msg % (typ,)
 
 
@@ -109,7 +100,7 @@ class TestEmailMessage(tests.TestCase):
     def test_simple_message(self):
         pairs = {
             b'body': SIMPLE_MESSAGE_ASCII,
-            u'b\xf3dy': SIMPLE_MESSAGE_UTF8,
+            'b\xf3dy': SIMPLE_MESSAGE_UTF8,
             b'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
             b'b\xf4dy': SIMPLE_MESSAGE_8BIT,
         }
@@ -125,12 +116,12 @@ class TestEmailMessage(tests.TestCase):
 
     def test_multipart_message_complex(self):
         msg = EmailMessage('from@from.com', 'to@to.com', 'subject', 'body')
-        msg.add_inline_attachment(u'a\nb\nc\nd\ne\n', 'lines.txt', 'x-subtype')
+        msg.add_inline_attachment('a\nb\nc\nd\ne\n', 'lines.txt', 'x-subtype')
         self.assertEqualDiff(complex_multipart_message('x-subtype'),
                              msg.as_string(BOUNDARY))
 
     def test_headers_accept_unicode_and_utf8(self):
-        for user in [u'Pepe P\xe9rez <pperez@ejemplo.com>',
+        for user in ['Pepe P\xe9rez <pperez@ejemplo.com>',
                      'Pepe P\xc3\xa9red <pperez@ejemplo.com>']:
             msg = EmailMessage(user, user, user)  # no exception raised
 
@@ -170,14 +161,8 @@ class TestEmailMessage(tests.TestCase):
     def test_address_to_encoded_header(self):
         def decode(s):
             """Convert a RFC2047-encoded string to a unicode string."""
-            if PY3:
-                return ''.join([chunk.decode(encoding or 'ascii')
-                                for chunk, encoding in decode_header(s)])
-            else:
-                # Cope with python2 stripping whitespace.
-                # https://bugs.python.org/issue1467619
-                return ' '.join([chunk.decode(encoding or 'ascii')
-                                 for chunk, encoding in decode_header(s)])
+            return ''.join([chunk.decode(encoding or 'ascii')
+                            for chunk, encoding in decode_header(s)])
 
         address = 'jrandom@example.com'
         encoded = EmailMessage.address_to_encoded_header(address)
@@ -191,7 +176,7 @@ class TestEmailMessage(tests.TestCase):
         encoded = EmailMessage.address_to_encoded_header(address)
         self.assertEqual(address, encoded)
 
-        address = u'Pepe P\xe9rez <pperez@ejemplo.com>'  # unicode ok
+        address = 'Pepe P\xe9rez <pperez@ejemplo.com>'  # unicode ok
         encoded = EmailMessage.address_to_encoded_header(address)
         # addr must be unencoded
         self.assertTrue('pperez@ejemplo.com' in encoded)
@@ -203,8 +188,8 @@ class TestEmailMessage(tests.TestCase):
 
     def test_string_with_encoding(self):
         pairs = {
-            u'Pepe': (b'Pepe', 'ascii'),
-            u'P\xe9rez': (b'P\xc3\xa9rez', 'utf-8'),
+            'Pepe': (b'Pepe', 'ascii'),
+            'P\xe9rez': (b'P\xc3\xa9rez', 'utf-8'),
             b'P\xc3\xa9rez': (b'P\xc3\xa9rez', 'utf-8'),
             b'P\xe8rez': (b'P\xe8rez', '8-bit'),
         }
@@ -215,7 +200,7 @@ class TestEmailMessage(tests.TestCase):
 class TestSend(tests.TestCase):
 
     def setUp(self):
-        super(TestSend, self).setUp()
+        super().setUp()
         self.messages = []
 
         def send_as_append(_self, msg):
@@ -240,11 +225,11 @@ class TestSend(tests.TestCase):
         self.assertEqualDiff(expected, self.messages[0])
 
     def test_send_plain(self):
-        self.send_email(u'a\nb\nc\nd\ne\n', 'lines.txt')
+        self.send_email('a\nb\nc\nd\ne\n', 'lines.txt')
         self.assertMessage(complex_multipart_message('plain'))
 
     def test_send_patch(self):
-        self.send_email(u'a\nb\nc\nd\ne\n', 'lines.txt', 'x-patch')
+        self.send_email('a\nb\nc\nd\ne\n', 'lines.txt', 'x-patch')
         self.assertMessage(complex_multipart_message('x-patch'))
 
     def test_send_simple(self):

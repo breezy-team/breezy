@@ -16,11 +16,9 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
-from __future__ import absolute_import
-
-from io import BytesIO
 from . import (
     lock,
+    iterablefile,
     revision,
     tree,
     )
@@ -67,11 +65,11 @@ class RevisionTree(tree.Tree):
 
     def get_file_text(self, path):
         for (identifier, content) in self.iter_files_bytes([(path, None)]):
-            ret = b"".join(content)
-        return ret
+            return b"".join(content)
 
     def get_file(self, path):
-        return BytesIO(self.get_file_text(path))
+        for (identifier, content) in self.iter_files_bytes([(path, None)]):
+            return iterablefile.IterableFile(content)
 
     def is_locked(self):
         return self._repository.is_locked()
@@ -81,7 +79,7 @@ class RevisionTree(tree.Tree):
         return lock.LogicalLockResult(self.unlock)
 
     def __repr__(self):
-        return '<%s instance at %x, rev_id=%r>' % (
+        return '<{} instance at {:x}, rev_id={!r}>'.format(
             self.__class__.__name__, id(self), self._revision_id)
 
     def unlock(self):
@@ -90,6 +88,5 @@ class RevisionTree(tree.Tree):
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
-            self._rules_searcher = super(RevisionTree,
-                                         self)._get_rules_searcher(default_searcher)
+            self._rules_searcher = super()._get_rules_searcher(default_searcher)
         return self._rules_searcher

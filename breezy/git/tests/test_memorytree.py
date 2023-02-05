@@ -18,16 +18,17 @@
 """Tests for the GitMemoryTree class."""
 
 from ... import errors
+from ...transport import NoSuchFile
 from . import TestCaseWithTransport
 
 
 class TestMemoryTree(TestCaseWithTransport):
 
     def make_branch(self, path, format='git'):
-        return super(TestMemoryTree, self).make_branch(path, format=format)
+        return super().make_branch(path, format=format)
 
     def make_branch_and_tree(self, path, format='git'):
-        return super(TestMemoryTree, self).make_branch_and_tree(path, format=format)
+        return super().make_branch_and_tree(path, format=format)
 
     def test_create_on_branch(self):
         """Creating a mutable tree on a trivial branch works."""
@@ -83,8 +84,7 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = branch.create_memorytree()
         tree.lock_write()
-        tree.add(['', 'afile', 'adir'], None,
-                 ['directory', 'file', 'directory'])
+        tree.add(['', 'afile', 'adir'], ['directory', 'file', 'directory'])
         self.assertTrue(tree.is_versioned('afile'))
         self.assertFalse(tree.is_versioned('adir'))
         self.assertFalse(tree.has_filename('afile'))
@@ -112,10 +112,10 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = branch.create_memorytree()
         with tree.lock_write():
-            tree.add([''], None, ['directory'])
+            tree.add([''], ['directory'])
             tree.mkdir('adir')
             tree.put_file_bytes_non_atomic('adir/afile', b'barshoom')
-            tree.add(['adir/afile'], None, ['file'])
+            tree.add(['adir/afile'], ['file'])
             self.assertTrue(tree.is_versioned('adir/afile'))
             self.assertTrue(tree.is_versioned('adir'))
 
@@ -160,17 +160,17 @@ class TestMemoryTree(TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('branch')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add(['', 'foo'], [b'root-id', b'foo-id'], ['directory', 'file'])
+        tree.add(['', 'foo'], ['directory', 'file'], ids=[b'root-id', b'foo-id'])
         tree.put_file_bytes_non_atomic('foo', b'content\n')
         tree.commit('one', rev_id=b'rev-one')
         tree.rename_one('foo', 'bar')
         self.assertEqual('bar', tree.id2path(b'foo-id'))
         self.assertEqual(b'content\n', tree._file_transport.get_bytes('bar'))
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
         tree.commit('two', rev_id=b'rev-two')
         self.assertEqual(b'content\n', tree._file_transport.get_bytes('bar'))
-        self.assertRaises(errors.NoSuchFile,
+        self.assertRaises(NoSuchFile,
                           tree._file_transport.get_bytes, 'foo')
 
         rev_tree2 = tree.branch.repository.revision_tree(b'rev-two')
@@ -183,7 +183,7 @@ class TestMemoryTree(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         tree.add('')
         tree.mkdir('subdir', b'subdir-id')
-        tree.add('foo', b'foo-id', 'file')
+        tree.add('foo', 'file', b'foo-id')
         tree.put_file_bytes_non_atomic('foo', b'content\n')
         tree.commit('one', rev_id=b'rev-one')
 

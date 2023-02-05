@@ -335,7 +335,7 @@ class TestDiff(DiffBase):
 
             def show_diff(self, specific_files, extra_trees=None):
                 self.to_file.write("BOO!\n")
-                return super(BooDiffTree, self).show_diff(specific_files,
+                return super().show_diff(specific_files,
                                                           extra_trees)
 
         diff_format_registry.register("boo", BooDiffTree, "Scary diff format")
@@ -382,21 +382,20 @@ class TestDiff(DiffBase):
 class TestCheckoutDiff(TestDiff):
 
     def make_example_branch(self):
-        tree = super(TestCheckoutDiff, self).make_example_branch()
+        tree = super().make_example_branch()
         tree = tree.branch.create_checkout('checkout')
         os.chdir('checkout')
         return tree
 
     def example_branch2(self):
-        tree = super(TestCheckoutDiff, self).example_branch2()
+        tree = super().example_branch2()
         os.mkdir('checkouts')
         tree = tree.branch.create_checkout('checkouts/branch1')
         os.chdir('checkouts')
         return tree
 
     def example_branches(self):
-        branch1_tree, branch2_tree = super(TestCheckoutDiff,
-                                           self).example_branches()
+        branch1_tree, branch2_tree = super().example_branches()
         os.mkdir('checkouts')
         branch1_tree = branch1_tree.branch.create_checkout('checkouts/branch1')
         branch2_tree = branch2_tree.branch.create_checkout('checkouts/branch2')
@@ -407,26 +406,26 @@ class TestCheckoutDiff(TestDiff):
 class TestDiffLabels(DiffBase):
 
     def test_diff_label_removed(self):
-        tree = super(TestDiffLabels, self).make_example_branch()
+        tree = super().make_example_branch()
         tree.remove('hello', keep_files=False)
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== removed file 'hello'" in diff[0])
 
     def test_diff_label_added(self):
-        tree = super(TestDiffLabels, self).make_example_branch()
+        tree = super().make_example_branch()
         self.build_tree_contents([('barbar', b'barbar')])
         tree.add('barbar')
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== added file 'barbar'" in diff[0])
 
     def test_diff_label_modified(self):
-        super(TestDiffLabels, self).make_example_branch()
+        super().make_example_branch()
         self.build_tree_contents([('hello', b'barbar')])
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== modified file 'hello'" in diff[0])
 
     def test_diff_label_renamed(self):
-        tree = super(TestDiffLabels, self).make_example_branch()
+        tree = super().make_example_branch()
         tree.rename_one('hello', 'gruezi')
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== renamed file 'hello' => 'gruezi'" in diff[0])
@@ -437,12 +436,12 @@ class TestExternalDiff(DiffBase):
     def test_external_diff(self):
         """Test that we can spawn an external diff process"""
         self.disable_missing_extensions_warning()
-        # We have to use run_bzr_subprocess, because we need to
+        # We have to use run_brz_subprocess, because we need to
         # test writing directly to stdout, (there was a bug in
         # subprocess.py that we had to workaround).
         # However, if 'diff' may not be available
         self.make_example_branch()
-        out, err = self.run_bzr_subprocess(
+        out, err = self.run_brz_subprocess(
             'diff -Oprogress_bar=none -r 1 --diff-options -ub',
             universal_newlines=True,
             retcode=None)
@@ -464,9 +463,9 @@ class TestExternalDiff(DiffBase):
         self.requireFeature(features.diff_feature)
         self.make_example_branch()
         self.build_tree_contents([('hello', b'Foo\n')])
-        out, err = self.run_bzr('diff --diff-options -i --using diff',
+        out, err = self.run_bzr('diff --diff-options -i --diff-options -a --using diff',
                                 retcode=1)
-        self.assertEqual("=== modified file 'hello'\n", out)
+        self.assertEqual("=== modified file 'hello'\n1c1\n< foo\n---\n> Foo\n", out)
         self.assertEqual('', err)
 
 
@@ -476,5 +475,5 @@ class TestDiffOutput(DiffBase):
         # check that output doesn't mangle line-endings
         self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
-        output = self.run_bzr_subprocess('diff', retcode=1)[0]
+        output = self.run_brz_subprocess('diff', retcode=1)[0]
         self.assertTrue(b'\n+hello world!\n' in output)

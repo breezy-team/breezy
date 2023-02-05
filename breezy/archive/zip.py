@@ -17,8 +17,6 @@
 """Export a Tree to a zip file.
 """
 
-from __future__ import absolute_import
-
 from contextlib import closing
 import os
 import stat
@@ -45,7 +43,7 @@ _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT | DIR_PERMISSIONS
 
 
 def zip_archive_generator(tree, dest, root, subdir=None,
-                          force_mtime=None):
+                          force_mtime=None, recurse_nested=False):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -55,7 +53,8 @@ def zip_archive_generator(tree, dest, root, subdir=None,
     with tempfile.SpooledTemporaryFile() as buf:
         with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, \
                 tree.lock_read():
-            for dp, tp, ie in _export_iter_entries(tree, subdir):
+            for dp, tp, ie in _export_iter_entries(
+                    tree, subdir, recurse_nested=recurse_nested):
                 mutter("  export {%s} kind %s to %s", tp, ie.kind, dest)
 
                 # zipfile.ZipFile switches all paths to forward
@@ -94,5 +93,4 @@ def zip_archive_generator(tree, dest, root, subdir=None,
         # Urgh, headers are written last since they include e.g. file size.
         # So we have to buffer it all :(
         buf.seek(0)
-        for chunk in osutils.file_iterator(buf):
-            yield chunk
+        yield from osutils.file_iterator(buf)

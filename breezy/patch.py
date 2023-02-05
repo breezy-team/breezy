@@ -15,8 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 """Diff and patch functionality"""
 
 import errno
@@ -163,7 +161,7 @@ def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
             process.stdin.write(bytes(patch))
         process.stdin.close()
 
-    except IOError as e:
+    except OSError as e:
         raise PatchInvokeError(e, process.stderr.read())
 
     result = process.wait()

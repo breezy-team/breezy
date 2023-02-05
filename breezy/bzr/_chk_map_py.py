@@ -16,13 +16,10 @@
 
 """Python implementation of _search_key functions, etc."""
 
-from __future__ import absolute_import
-
 import zlib
 import struct
 
-from ..sixish import bytesintern
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 _LeafNode = None
 _InternalNode = None
@@ -167,4 +164,4 @@ def _bytes_to_text_key(data):
     """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
     sections = data.split(b'\n')
     kind, file_id = sections[0].split(b': ')
-    return (bytesintern(file_id), bytesintern(sections[3]))
+    return (file_id, sections[3])

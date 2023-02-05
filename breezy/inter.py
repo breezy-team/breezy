@@ -16,7 +16,7 @@
 
 """Inter-object utility class."""
 
-from __future__ import absolute_import
+from typing import Generic, TypeVar, List, Type
 
 from .errors import BzrError
 from .lock import LogicalLockResult
@@ -33,7 +33,10 @@ class NoCompatibleInter(BzrError):
         self.target = target
 
 
-class InterObject(object):
+T = TypeVar('T')
+
+
+class InterObject(Generic[T]):
     """This class represents operations taking place between two objects.
 
     Its instances have methods like join or copy_content or fetch, and contain
@@ -54,10 +57,15 @@ class InterObject(object):
     registered first.
     """
 
+    source: T
+    target: T
+
+    _optimisers: List[Type["InterObject[T]"]]
+
     # _optimisers = list()
     # Each concrete InterObject type should have its own optimisers list.
 
-    def __init__(self, source, target):
+    def __init__(self, source: T, target: T):
         """Construct a default InterObject instance. Please use 'get'.
 
         Only subclasses of InterObject should call
@@ -81,8 +89,9 @@ class InterObject(object):
             self.source.unlock()
             raise
 
+    # TODO(jelmer): Post Python 3.11, return Self here
     @classmethod
-    def get(klass, source, target):
+    def get(klass, source: T, target: T):
         """Retrieve a Inter worker object for these objects.
 
         :param source: the object to be the 'source' member of
@@ -100,6 +109,10 @@ class InterObject(object):
             if provider.is_compatible(source, target):
                 return provider(source, target)
         raise NoCompatibleInter(source, target)
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        raise NotImplementedError(cls.is_compatible)
 
     @classmethod
     def iter_optimisers(klass):

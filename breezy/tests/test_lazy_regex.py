@@ -18,8 +18,8 @@
 
 import pickle
 import re
+from typing import List, Tuple
 
-from .. import errors
 from .. import (
     lazy_regex,
     tests,
@@ -37,7 +37,7 @@ class TestErrors(tests.TestCase):
 class InstrumentedLazyRegex(lazy_regex.LazyRegex):
     """Keep track of actions on the lazy regex"""
 
-    _actions = []
+    _actions: List[Tuple[str, ...]] = []
 
     @classmethod
     def use_actions(cls, actions):
@@ -45,11 +45,11 @@ class InstrumentedLazyRegex(lazy_regex.LazyRegex):
 
     def __getattr__(self, attr):
         self._actions.append(('__getattr__', attr))
-        return super(InstrumentedLazyRegex, self).__getattr__(attr)
+        return super().__getattr__(attr)
 
     def _real_re_compile(self, *args, **kwargs):
         self._actions.append(('_real_re_compile', args, kwargs))
-        return super(InstrumentedLazyRegex, self)._real_re_compile(
+        return super()._real_re_compile(
             *args, **kwargs)
 
 

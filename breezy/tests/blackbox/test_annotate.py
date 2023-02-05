@@ -1,5 +1,4 @@
 # Copyright (C) 2005-2010 Canonical Ltd
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +35,7 @@ from ..test_bedding import override_whoami
 class TestAnnotate(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestAnnotate, self).setUp()
+        super().setUp()
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         self.build_tree_contents([('hello.txt', b'my helicopter\n'),

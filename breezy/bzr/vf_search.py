@@ -16,8 +16,6 @@
 
 """Searching in versioned file repositories."""
 
-from __future__ import absolute_import
-
 import itertools
 
 from .. import (
@@ -31,12 +29,9 @@ from ..graph import (
     Graph,
     invert_parent_map,
     )
-from ..sixish import (
-    viewvalues,
-    )
 
 
-class AbstractSearchResult(object):
+class AbstractSearchResult:
     """The result of a search, describing a set of keys.
 
     Search results are typically used as the 'fetch_spec' parameter when
@@ -81,7 +76,7 @@ class AbstractSearchResult(object):
         raise NotImplementedError(self.refine)
 
 
-class AbstractSearch(object):
+class AbstractSearch:
     """A search that can be executed, producing a search result.
 
     :seealso: AbstractSearchResult
@@ -222,7 +217,7 @@ class PendingAncestryResult(AbstractSearchResult):
             heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
-        return '<%s heads:%s repo:%r>' % (
+        return '<{} heads:{} repo:{!r}>'.format(
             self.__class__.__name__, heads_repr, self.repo)
 
     def get_recipe(self):
@@ -289,7 +284,7 @@ class EverythingResult(AbstractSearchResult):
         self._repo = repo
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self._repo)
+        return '{}({!r})'.format(self.__class__.__name__, self._repo)
 
     def get_recipe(self):
         raise NotImplementedError(self.get_recipe)
@@ -386,7 +381,7 @@ def search_result_from_parent_map(parent_map, missing_keys):
     # start_set is all the keys in the cache
     start_set = set(parent_map)
     # result set is all the references to keys in the cache
-    result_parents = set(itertools.chain.from_iterable(viewvalues(parent_map)))
+    result_parents = set(itertools.chain.from_iterable(parent_map.values()))
     stop_keys = result_parents.difference(start_set)
     # We don't need to send ghosts back to the server as a position to
     # stop either.
@@ -424,14 +419,14 @@ def _run_search(parent_map, heads, exclude_keys):
             next_revs = next(s)
         except StopIteration:
             break
-        for parents in viewvalues(s._current_parents):
+        for parents in s._current_parents.values():
             f_heads = heads.intersection(parents)
             if f_heads:
                 found_heads.update(f_heads)
         stop_keys = exclude_keys.intersection(next_revs)
         if stop_keys:
             s.stop_searching_any(stop_keys)
-    for parents in viewvalues(s._current_parents):
+    for parents in s._current_parents.values():
         f_heads = heads.intersection(parents)
         if f_heads:
             found_heads.update(f_heads)

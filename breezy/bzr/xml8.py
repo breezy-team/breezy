@@ -14,12 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
-from io import BytesIO
+from typing import List, Optional
 
 from .. import (
-    cache_utf8,
     lazy_regex,
     revision as _mod_revision,
     trace,
@@ -36,7 +33,6 @@ from .xml_serializer import (
     unpack_inventory_flat,
     )
 from ..revision import Revision
-from ..sixish import unichr
 from ..errors import BzrError
 
 
@@ -56,7 +52,7 @@ def _unescaper(match, _map=_xml_unescape_map):
     except KeyError:
         if not code.startswith(b'#'):
             raise
-        return unichr(int(code[1:])).encode('utf8')
+        return chr(int(code[1:])).encode('utf8')
 
 
 _unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
@@ -73,16 +69,16 @@ class Serializer_v8(XMLSerializer):
     Its revision format number matches its inventory number.
     """
 
-    __slots__ = []
+    __slots__: List[str] = []
 
-    root_id = None
+    root_id: Optional[bytes] = None
     support_altered_by_hack = True
     # This format supports the altered-by hack that reads file ids directly out
     # of the versionedfile, without doing XML parsing.
 
     supported_kinds = {'file', 'directory', 'symlink'}
     format_num = b'8'
-    revision_format_num = None
+    revision_format_num: Optional[bytes] = None
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.
@@ -185,7 +181,7 @@ class Serializer_v8(XMLSerializer):
                   encode_and_escape(rev.committer),
                   self.revision_format_num or self.format_num,
                   rev.inventory_sha1,
-                  encode_and_escape(cache_utf8.decode(rev.revision_id)),
+                  encode_and_escape(rev.revision_id.decode('utf-8')),
                   rev.timestamp))
         if rev.timezone is not None:
             el += b' timezone="%s"' % str(rev.timezone).encode('ascii')
@@ -198,7 +194,7 @@ class Serializer_v8(XMLSerializer):
                 _mod_revision.check_not_reserved_id(parent_id)
                 lines.append(
                     b'<revision_ref revision_id="%s" />\n'
-                    % encode_and_escape(cache_utf8.decode(parent_id)))
+                    % encode_and_escape(parent_id.decode('utf-8')))
             lines.append(b'</parents>\n')
         if rev.properties:
             preamble = b'<properties>'
@@ -244,9 +240,10 @@ class Serializer_v8(XMLSerializer):
                        revision_id=get_cached(elt.get('revision_id')),
                        inventory_sha1=elt.get('inventory_sha1').encode('ascii')
                        )
-        parents = elt.find('parents') or []
-        for p in parents:
-            rev.parent_ids.append(get_cached(p.get('revision_id')))
+        parents = elt.find('parents')
+        if parents is not None:
+            for p in parents:
+                rev.parent_ids.append(get_cached(p.get('revision_id')))
         self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
         if v is None:

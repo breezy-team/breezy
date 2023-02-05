@@ -14,16 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     registry,
+    urlutils,
     )
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import urlutils
-""")
 
 
 """Provides a shorthand for referring to bugs on a variety of bug trackers.
@@ -235,7 +230,7 @@ tracker_registry = TrackerRegistry()
 """Registry of bug trackers."""
 
 
-class BugTracker(object):
+class BugTracker:
     """Base class for bug trackers."""
 
     def check_bug_id(self, bug_id):
@@ -259,8 +254,8 @@ class IntegerBugTracker(BugTracker):
     def check_bug_id(self, bug_id):
         try:
             int(bug_id)
-        except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Must be an integer")
+        except ValueError as exc:
+            raise MalformedBugIdentifier(bug_id, "Must be an integer") from exc
 
 
 class UniqueIntegerBugTracker(IntegerBugTracker):
@@ -309,20 +304,20 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
     def check_bug_id(self, bug_id):
         try:
             (project, bug_id) = bug_id.rsplit('/', 1)
-        except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Expected format: project/id")
+        except ValueError as exc:
+            raise MalformedBugIdentifier(bug_id, "Expected format: project/id") from exc
         try:
             int(bug_id)
-        except ValueError:
-            raise MalformedBugIdentifier(bug_id, "Bug id must be an integer")
+        except ValueError as exc:
+            raise MalformedBugIdentifier(bug_id, "Bug id must be an integer") from exc
 
     def _get_bug_url(self, bug_id):
         (project, bug_id) = bug_id.rsplit('/', 1)
         """Return the URL for bug_id."""
         if '{id}' not in self._base_url:
-            raise InvalidBugTrackerURL(self._abbreviation, self._base_url)
+            raise InvalidBugTrackerURL(self.abbreviation, self._base_url)
         if '{project}' not in self._base_url:
-            raise InvalidBugTrackerURL(self._abbreviation, self._base_url)
+            raise InvalidBugTrackerURL(self.abbreviation, self._base_url)
         return self._base_url.replace(
             '{project}', project).replace('{id}', str(bug_id))
 
@@ -357,7 +352,7 @@ class URLParametrizedBugTracker(BugTracker):
     def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "%s_%s_url" % (self.type_name, abbreviation), expand=False)
+            "{}_{}_url".format(self.type_name, abbreviation), expand=False)
         if url is None:
             return None
         self._base_url = url
@@ -398,11 +393,11 @@ class GenericBugTracker(URLParametrizedBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):
-        super(GenericBugTracker, self).__init__('bugtracker', None)
+        super().__init__('bugtracker', None)
 
     def get(self, abbreviation, branch):
         self._abbreviation = abbreviation
-        return super(GenericBugTracker, self).get(abbreviation, branch)
+        return super().get(abbreviation, branch)
 
     def _get_bug_url(self, bug_id):
         """Given a validated bug_id, return the bug's web page's URL."""
@@ -432,7 +427,7 @@ def encode_fixes_bug_urls(bug_urls):
     for (url, tag) in bug_urls:
         if ' ' in url:
             raise InvalidBugUrl(url)
-        lines.append('%s %s' % (url, tag))
+        lines.append('{} {}'.format(url, tag))
     return '\n'.join(lines)
 
 
@@ -445,8 +440,8 @@ def decode_bug_urls(bug_text):
     for line in bug_text.splitlines():
         try:
             url, status = line.split(None, 2)
-        except ValueError:
-            raise InvalidLineInBugsProperty(line)
+        except ValueError as exc:
+            raise InvalidLineInBugsProperty(line) from exc
         if status not in ALLOWED_BUG_STATUSES:
             raise InvalidBugStatus(status)
         yield url, status

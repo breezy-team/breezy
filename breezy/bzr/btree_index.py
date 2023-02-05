@@ -17,7 +17,7 @@
 
 """B+Tree indices"""
 
-from __future__ import absolute_import, division
+from io import BytesIO
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -33,21 +33,14 @@ from .. import (
     fifo_cache,
     lru_cache,
     osutils,
-    static_tuple,
     trace,
     transport,
     )
 from . import (
     index,
+    static_tuple,
     )
 from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
-from ..sixish import (
-    BytesIO,
-    map,
-    range,
-    viewitems,
-    viewvalues,
-    )
 
 
 _BTSIGNATURE = b"B+Tree Graph Index 2\n"
@@ -63,7 +56,7 @@ _PAGE_SIZE = 4096
 _NODE_CACHE_SIZE = 1000
 
 
-class _BuilderRow(object):
+class _BuilderRow:
     """The stored state accumulated while writing out a row in the index.
 
     :ivar spool: A temporary file used to accumulate nodes for this row
@@ -263,8 +256,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
 
     def _iter_smallest(self, iterators_to_combine):
         if len(iterators_to_combine) == 1:
-            for value in iterators_to_combine[0]:
-                yield value
+            yield from iterators_to_combine[0]
             return
         current_values = []
         for iterator in iterators_to_combine:
@@ -555,20 +547,19 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     yield self, key, node[1]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from index._iter_entries_prefix(self, nodes_by_key, keys)
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (references, value) in viewitems(self._nodes):
+                for key, (references, value) in self._nodes.items():
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (references, value) in viewitems(self._nodes):
+                for key, (references, value) in self._nodes.items():
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -613,7 +604,7 @@ class _LeafNode(dict):
             self.max_key = key_list[-1][0]
         else:
             self.min_key = self.max_key = None
-        super(_LeafNode, self).__init__(key_list)
+        super().__init__(key_list)
         self._keys = dict(self)
 
     def all_items(self):
@@ -627,7 +618,7 @@ class _LeafNode(dict):
         return keys
 
 
-class _InternalNode(object):
+class _InternalNode:
     """An internal node for a serialised B+Tree index."""
 
     __slots__ = ('keys', 'offset')
@@ -650,7 +641,7 @@ class _InternalNode(object):
         return nodes
 
 
-class BTreeGraphIndex(object):
+class BTreeGraphIndex:
     """Access to nodes via the standard GraphIndex interface for B+Tree's.
 
     Individual nodes are held in a LRU cache. This holds the root node in
@@ -970,7 +961,7 @@ class BTreeGraphIndex(object):
     def _cache_leaf_values(self, nodes):
         """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in viewvalues(nodes):
+            for node in nodes.values():
                 for key, value in node.all_items():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node
@@ -1091,16 +1082,16 @@ class BTreeGraphIndex(object):
                         cur_keys.append(cur_in_key)
                         try:
                             cur_in_key = next(in_keys_iter)
-                        except StopIteration:
-                            raise InputDone
+                        except StopIteration as exc:
+                            raise InputDone from exc
                     # At this point cur_in_key must be >= cur_fixed_key
                 # step the cur_fixed_key until we pass the cur key, or walk off
                 # the end
                 while cur_in_key >= cur_fixed_key:
                     try:
                         cur_fixed_offset, cur_fixed_key = next(fixed_keys_iter)
-                    except StopIteration:
-                        raise FixedDone
+                    except StopIteration as exc:
+                        raise FixedDone from exc
         except InputDone:
             # We consumed all of the input, nothing more to do
             pass
@@ -1400,8 +1391,7 @@ class BTreeGraphIndex(object):
                 except KeyError:
                     pass
             return
-        for entry in index._iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from index._iter_entries_prefix(self, nodes_by_key, keys)
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
@@ -1564,8 +1554,8 @@ class BTreeGraphIndex(object):
 _gcchk_factory = _LeafNode
 
 try:
-    from . import _btree_serializer_pyx as _btree_serializer
-    _gcchk_factory = _btree_serializer._parse_into_chk
+    from . import _btree_serializer_pyx as _btree_serializer  # type: ignore
+    _gcchk_factory = _btree_serializer._parse_into_chk  # type: ignore
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from . import _btree_serializer_py as _btree_serializer

@@ -22,6 +22,8 @@ For concrete class tests see this file, and for meta-branch tests
 also see this file.
 """
 
+from io import StringIO
+
 from .. import (
     bedding,
     branch as _mod_branch,
@@ -40,15 +42,12 @@ from ..bzr.fullhistory import (
     BzrBranch5,
     BzrBranchFormat5,
     )
-from ..sixish import (
-    StringIO,
-    )
 
 
 class TestErrors(tests.TestCase):
 
     def test_unstackable_branch_format(self):
-        format = u'foo'
+        format = 'foo'
         url = "/foo"
         error = _mod_branch.UnstackableBranchFormat(format, url)
         self.assertEqualDiff(
@@ -247,7 +246,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 class TestBranchFormatRegistry(tests.TestCase):
 
     def setUp(self):
-        super(TestBranchFormatRegistry, self).setUp()
+        super().setUp()
         self.registry = _mod_branch.BranchFormatRegistry()
 
     def test_default(self):
@@ -286,7 +285,7 @@ class TestBranchFormatRegistry(tests.TestCase):
         self.assertIsInstance(formats[0], SampleExtraBranchFormat)
 
 
-class TestBranch67(object):
+class TestBranch67:
     """Common tests for both branch 6 and 7 which are mostly the same."""
 
     def get_format_name(self):
@@ -612,7 +611,7 @@ class TestHooks(tests.TestCaseWithTransport):
 class TestBranchOptions(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestBranchOptions, self).setUp()
+        super().setUp()
         self.branch = self.make_branch('.')
         self.config_stack = self.branch.get_config_stack()
 

@@ -1,5 +1,4 @@
 # Copyright (C) 2009, 2010, 2011, 2016 Canonical Ltd
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +23,8 @@ Specific tests for individual formats are in the tests for the formats
 itself rather than in tests/per_interbranch/*.py.
 """
 
+from typing import List, Any
+
 
 from breezy import (
     branchbuilder,
@@ -46,7 +47,7 @@ def make_scenarios(test_list):
     """
     result = []
     for interbranch_class, branch_format_from, branch_format_to in test_list:
-        id = '%s,%s,%s' % (interbranch_class.__name__,
+        id = '{},{},{}'.format(interbranch_class.__name__,
                            branch_format_from.__class__.__name__,
                            branch_format_to.__class__.__name__)
         scenario = (id,
@@ -152,20 +153,20 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         return wt.controldir
 
 
-class StubWithFormat(object):
+class StubWithFormat:
     """A stub object used to check that convenience methods call Inter's."""
 
     _format = object()
 
 
-class StubMatchingInter(object):
+class StubMatchingInter:
     """An inter for tests.
 
     This is not a subclass of InterBranch so that missing methods are caught
     and added rather than actually trying to do something.
     """
 
-    _uses = []
+    _uses: List[Any] = []
 
     def __init__(self, source, target):
         self.source = source

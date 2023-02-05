@@ -17,8 +17,6 @@
 
 """Test the GitDir class"""
 
-from __future__ import absolute_import
-
 from dulwich.repo import Repo as GitRepo
 import os
 
@@ -47,6 +45,24 @@ class TestGitDir(tests.TestCaseInTempDir):
             "%s,branch=master" %
             urlutils.local_path_to_url(os.path.abspath(".")),
             gd.get_branch_reference())
+
+    def test_get_reference_loop(self):
+        r = GitRepo.init(".")
+        r.refs.set_symbolic_ref(b'refs/heads/loop', b'refs/heads/loop')
+
+        gd = controldir.ControlDir.open('.')
+        self.assertRaises(
+            controldir.BranchReferenceLoop,
+            gd.get_branch_reference, name='loop')
+
+    def test_open_reference_loop(self):
+        r = GitRepo.init(".")
+        r.refs.set_symbolic_ref(b'refs/heads/loop', b'refs/heads/loop')
+
+        gd = controldir.ControlDir.open('.')
+        self.assertRaises(
+            controldir.BranchReferenceLoop,
+            gd.open_branch, name='loop')
 
     def test_open_existing(self):
         GitRepo.init(".")
@@ -94,7 +110,7 @@ class TestGitDir(tests.TestCaseInTempDir):
 class TestGitDirFormat(tests.TestCase):
 
     def setUp(self):
-        super(TestGitDirFormat, self).setUp()
+        super().setUp()
         self.format = dir.LocalGitControlDirFormat()
 
     def test_get_format_description(self):

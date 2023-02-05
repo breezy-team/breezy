@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Copying of history from one branch to another.
 
 The basic plan is that every branch knows the history of everything
@@ -22,33 +24,18 @@ branch operation we copy history from the source into the destination
 branch.
 """
 
-from __future__ import absolute_import
-
 import operator
 
-from ..lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
-    tsort,
-    )
-from breezy.bzr import (
-    versionedfile,
-    vf_search,
-    )
-""")
 from .. import (
     errors,
     ui,
     )
 from ..i18n import gettext
 from ..revision import NULL_REVISION
-from ..sixish import (
-    viewvalues,
-    )
 from ..trace import mutter
 
 
-class RepoFetcher(object):
+class RepoFetcher:
     """Pull revisions and texts from one repository to another.
 
     This should not be used directly, it's essential a object to encapsulate
@@ -59,11 +46,12 @@ class RepoFetcher(object):
                  find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
-        :param last_revision: If set, try to limit to the data this revision
+        Args:
+          last_revision: If set, try to limit to the data this revision
             references.
-        :param fetch_spec: A SearchResult specifying which revisions to fetch.
+          fetch_spec: A SearchResult specifying which revisions to fetch.
             If set, this overrides last_revision.
-        :param find_ghosts: If True search the entire history for ghosts.
+          find_ghosts: If True search the entire history for ghosts.
         """
         # repository.fetch has the responsibility for short-circuiting
         # attempts to copy between a repository and itself.
@@ -136,12 +124,12 @@ class RepoFetcher(object):
                     stream, from_format, resume_tokens)
             if missing_keys:
                 raise AssertionError(
-                    "second push failed to complete a fetch %r." % (
-                        missing_keys,))
+                    "second push failed to complete a fetch {!r}.".format(
+                        missing_keys))
             if resume_tokens:
                 raise AssertionError(
-                    "second push failed to commit the fetch %r." % (
-                        resume_tokens,))
+                    "second push failed to commit the fetch {!r}.".format(
+                        resume_tokens))
             pb.update("Finishing stream")
             self.sink.finished()
 
@@ -149,9 +137,11 @@ class RepoFetcher(object):
         """Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
 
-        :returns: A SearchResult of some sort.  (Possibly a
-            PendingAncestryResult, EmptySearchResult, etc.)
+        Returns:
+          A SearchResult of some sort.  (Possibly a
+          PendingAncestryResult, EmptySearchResult, etc.)
         """
+        from . import vf_search
         if self._fetch_spec is not None:
             # The fetch spec is already a concrete search result.
             return self._fetch_spec
@@ -170,7 +160,7 @@ class RepoFetcher(object):
                                                   find_ghosts=self.find_ghosts).execute()
 
 
-class Inter1and2Helper(object):
+class Inter1and2Helper:
     """Helper for operations that convert data from model 1 and 2
 
     This is for use by fetchers and converters.
@@ -182,7 +172,8 @@ class Inter1and2Helper(object):
     def __init__(self, source):
         """Constructor.
 
-        :param source: The repository data comes from
+        Args:
+          source: The repository data comes from
         """
         self.source = source
 
@@ -194,7 +185,8 @@ class Inter1and2Helper(object):
         Trees are retrieved in batches of 100, and then yielded in the order
         they were requested.
 
-        :param revs: A list of revision ids
+        Args:
+          revs: A list of revision ids
         """
         # In case that revs is not a list.
         revs = list(revs)
@@ -209,10 +201,10 @@ class Inter1and2Helper(object):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.path2id('')
-            revision_id = tree.get_file_revision(u'')
+            revision_id = tree.get_file_revision('')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
-        parents = set(viewvalues(parent_map))
+        parents = set(parent_map.values())
         parents.difference_update(revision_root)
         parents.discard(NULL_REVISION)
         # Limit to revisions present in the versionedfile
@@ -225,11 +217,13 @@ class Inter1and2Helper(object):
     def generate_root_texts(self, revs):
         """Generate VersionedFiles for all root ids.
 
-        :param revs: the revisions to include
+        Args:
+          revs: the revisions to include
         """
+        from ..tsort import topo_sort
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
-        rev_order = tsort.topo_sort(parent_map)
+        rev_order = topo_sort(parent_map)
         rev_id_to_root_id = self._find_root_ids(revs, parent_map, graph)
         root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
                          rev_order]
@@ -252,21 +246,22 @@ def _new_root_data_stream(
 
     Used in fetches that do rich-root upgrades.
 
-    :param root_keys_to_create: iterable of (root_id, rev_id) pairs describing
+    Args:
+      root_keys_to_create: iterable of (root_id, rev_id) pairs describing
         the root entries to create.
-    :param rev_id_to_root_id_map: dict of known rev_id -> root_id mappings for
+      rev_id_to_root_id_map: dict of known rev_id -> root_id mappings for
         calculating the parents.  If a parent rev_id is not found here then it
         will be recalculated.
-    :param parent_map: a parent map for all the revisions in
+      parent_map: a parent map for all the revisions in
         root_keys_to_create.
-    :param graph: a graph to use instead of repo.get_graph().
+      graph: a graph to use instead of repo.get_graph().
     """
+    from .versionedfile import ChunkedContentFactory
     for root_key in root_keys_to_create:
         root_id, rev_id = root_key
         parent_keys = _parent_keys_for_root_version(
             root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
-        yield versionedfile.ChunkedContentFactory(
-            root_key, parent_keys, None, [])
+        yield ChunkedContentFactory(root_key, parent_keys, None, [])
 
 
 def _parent_keys_for_root_version(
@@ -333,7 +328,7 @@ def _parent_keys_for_root_version(
     return parent_keys
 
 
-class TargetRepoKinds(object):
+class TargetRepoKinds:
     """An enum-like set of constants.
 
     They are the possible values of FetchSpecFactory.target_repo_kinds.
@@ -344,7 +339,7 @@ class TargetRepoKinds(object):
     EMPTY = 'empty'
 
 
-class FetchSpecFactory(object):
+class FetchSpecFactory:
     """A helper for building the best fetch spec for a sprout call.
 
     Factors that go into determining the sort of fetch to perform:
@@ -356,12 +351,13 @@ class FetchSpecFactory(object):
      * target is stacked?  (similar to pre-existing target repo: even if
        the target itself is new don't want to refetch existing revs)
 
-    :ivar source_branch: the source branch if one specified, else None.
-    :ivar source_branch_stop_revision_id: fetch up to this revision of
+    Attributes:
+      source_branch: the source branch if one specified, else None.
+      source_branch_stop_revision_id: fetch up to this revision of
         source_branch, rather than its tip.
-    :ivar source_repo: the source repository if one found, else None.
-    :ivar target_repo: the target repository acquired by sprout.
-    :ivar target_repo_kind: one of the TargetRepoKinds constants.
+      source_repo: the source repository if one found, else None.
+      target_repo: the target repository acquired by sprout.
+      target_repo_kind: one of the TargetRepoKinds constants.
     """
 
     def __init__(self):
@@ -379,9 +375,10 @@ class FetchSpecFactory(object):
 
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
+        from . import vf_search
         if self.target_repo_kind is None or self.source_repo is None:
             raise AssertionError(
-                'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
+                'Incomplete FetchSpecFactory: {!r}'.format(self.__dict__))
         if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
             if self.limit is not None:
                 raise NotImplementedError(

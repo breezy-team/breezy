@@ -16,22 +16,18 @@
 
 """Server-side repository related request implementations."""
 
-from __future__ import absolute_import
-
 import bz2
 import itertools
 import os
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 import sys
 import tempfile
 import threading
 import zlib
 
+import fastbencode as bencode
+
 from ... import (
-    bencode,
     errors,
     estimate_compressed_size,
     osutils,
@@ -45,9 +41,6 @@ from .. import (
     vf_search,
     )
 from ..bzrdir import BzrDir
-from ...sixish import (
-    reraise,
-)
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -602,8 +595,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
     def body_stream(self, stream, repository):
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
-            for bytes in byte_stream:
-                yield bytes
+            yield from byte_stream
         except errors.RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.
@@ -637,7 +629,7 @@ def _stream_to_byte_stream(stream, src_format):
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
             elif record.storage_kind == 'absent':
-                raise ValueError("Absent factory for %s" % (record.key,))
+                raise ValueError("Absent factory for {}".format(record.key))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:
@@ -648,7 +640,7 @@ def _stream_to_byte_stream(stream, src_format):
     yield pack_writer.end()
 
 
-class _ByteStreamDecoder(object):
+class _ByteStreamDecoder:
     """Helper for _byte_stream_to_stream.
 
     The expected usage of this class is via the function _byte_stream_to_stream
@@ -685,13 +677,11 @@ class _ByteStreamDecoder(object):
     def iter_stream_decoder(self):
         """Iterate the contents of the pack from stream_decoder."""
         # dequeue pending items
-        for record in self.stream_decoder.read_pending_records():
-            yield record
+        yield from self.stream_decoder.read_pending_records()
         # Pull bytes of the wire, decode them to records, yield those records.
         for bytes in self.byte_stream:
             self.stream_decoder.accept_bytes(bytes)
-            for record in self.stream_decoder.read_pending_records():
-                yield record
+            yield from self.stream_decoder.read_pending_records()
 
     def iter_substream_bytes(self):
         if self.first_bytes is not None:
@@ -836,7 +826,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             osutils.rmtree(tmp_dirname)
 
     def _copy_to_tempdir(self, from_repo):
-        tmp_dirname = osutils.mkdtemp(prefix='tmpbzrclone')
+        tmp_dirname = tempfile.mkdtemp(prefix='tmpbzrclone')
         tmp_bzrdir = from_repo.controldir._format.initialize(tmp_dirname)
         tmp_repo = from_repo._format.initialize(tmp_bzrdir)
         from_repo.copy_content_into(tmp_repo)
@@ -919,8 +909,9 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         if self.insert_thread is not None:
             self.insert_thread.join()
         if not self.insert_ok:
+            (exc_type, exc_val, exc_tb) = self.insert_exception
             try:
-                reraise(*self.insert_exception)
+                raise exc_val
             finally:
                 del self.insert_exception
         write_group_tokens, missing_keys = self.insert_result
@@ -1335,8 +1326,7 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
     def body_stream(self, stream, repository):
         byte_stream = _stream_to_byte_stream(stream, repository._format)
         try:
-            for bytes in byte_stream:
-                yield bytes
+            yield from byte_stream
         except errors.RevisionNotPresent as e:
             # This shouldn't be able to happen, but as we don't buffer
             # everything it can in theory happen.

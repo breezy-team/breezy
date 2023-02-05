@@ -8,9 +8,11 @@ If you want to fix or improve something in Breezy, we want to help you.
 You can ask at any time for help, on the list, on irc, or through a merge
 proposal on Launchpad.
 
-* `Bazaar mailing list <http://lists.ubuntu.com/mailman/listinfo/bazaar>`_
+* `Bazaar mailing list <https://lists.ubuntu.com/mailman/listinfo/bazaar>`_
 
-* IRC in channel ``#bzr`` on ``irc.freenode.net``
+* `Breezy mailing list <https://groups.google.com/g/breezy-vcs>`_
+
+* IRC in channel ``#breezy`` on ``irc.oftc.net``
 
 
 Starting
@@ -25,7 +27,7 @@ You might like to start with a bug tagged `easy
 
 If you are wondering if your understanding of the bug is correct, or if the 
 approach you have in mind is likely to work, feel to ask about it on the bug,
-in ``#bzr`` or on the mailing list.
+in ``#breezy`` or on the mailing list.
 
 Making a branch
 ---------------

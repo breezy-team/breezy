@@ -17,6 +17,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 
 from textwrap import dedent
+from io import BytesIO
 import os
 import sys
 import threading
@@ -39,13 +40,10 @@ from .. import (
     registry as _mod_registry,
     tests,
     trace,
+    transport as _mod_transport,
     )
 from ..bzr import (
     remote,
-    )
-from ..sixish import (
-    BytesIO,
-    text_type,
     )
 from ..transport import remote as transport_remote
 from . import (
@@ -187,7 +185,7 @@ config.test_stack_builder_registry.register('remote_control',
 
 
 sample_long_alias = "log -r-15..-1 --line"
-sample_config_text = u"""
+sample_config_text = """
 [DEFAULT]
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
@@ -203,7 +201,7 @@ bzr.mergetool.newtool='"newtool with spaces" {this_temp}'
 bzr.default_mergetool=sometool
 [ALIASES]
 h=help
-ll=""".encode('utf-8') + sample_long_alias.encode('utf-8') + b"\n"
+ll=""".encode() + sample_long_alias.encode('utf-8') + b"\n"
 
 
 sample_always_signatures = b"""
@@ -302,7 +300,7 @@ class TestOptionsMixin:
                         matchers.Equals(expected))
 
 
-class InstrumentedConfigObj(object):
+class InstrumentedConfigObj:
     """A config obj look-enough-alike to record calls made to it."""
 
     def __contains__(self, thing):
@@ -341,7 +339,7 @@ class InstrumentedConfigObj(object):
         return None
 
 
-class FakeBranch(object):
+class FakeBranch:
 
     def __init__(self, base=None):
         if base is None:
@@ -361,7 +359,7 @@ class FakeBranch(object):
         pass
 
 
-class FakeControlFilesAndTransport(object):
+class FakeControlFilesAndTransport:
 
     def __init__(self):
         self.files = {}
@@ -372,14 +370,14 @@ class FakeControlFilesAndTransport(object):
         try:
             return BytesIO(self.files[filename])
         except KeyError:
-            raise errors.NoSuchFile(filename)
+            raise _mod_transport.NoSuchFile(filename)
 
     def get_bytes(self, filename):
         # from Transport
         try:
             return self.files[filename]
         except KeyError:
-            raise errors.NoSuchFile(filename)
+            raise _mod_transport.NoSuchFile(filename)
 
     def put(self, filename, fileobj):
         self.files[filename] = fileobj.read()
@@ -392,7 +390,7 @@ class InstrumentedConfig(config.Config):
     """An instrumented config that supplies stubs for template methods."""
 
     def __init__(self):
-        super(InstrumentedConfig, self).__init__()
+        super().__init__()
         self._calls = []
         self._signatures = config.CHECK_NEVER
         self._change_editor = 'vimdiff -fo {new_path} {old_path}'
@@ -756,8 +754,8 @@ class TestLockableConfig(tests.TestCaseInTempDir):
     config_section = None
 
     def setUp(self):
-        super(TestLockableConfig, self).setUp()
-        self._content = '[%s]\none=1\ntwo=2\n' % (self.config_section,)
+        super().setUp()
+        self._content = '[{}]\none=1\ntwo=2\n'.format(self.config_section)
         self.config = self.create_config(self._content)
 
     def get_existing_config(self):
@@ -994,7 +992,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         local_url = urlutils.local_path_to_url('branch')
         conf = config.LocationConfig.from_string(
-            '[%s]\nnickname = foobar' % (local_url,),
+            '[{}]\nnickname = foobar'.format(local_url),
             local_url, save=True)
         self.assertIsNot(None, conf)
         self.assertEqual('foobar', branch.nick)
@@ -1079,7 +1077,7 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_user_id(self):
         my_config = config.GlobalConfig.from_string(sample_config_text)
-        self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
+        self.assertEqual("Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
@@ -1136,9 +1134,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         tools = conf.get_merge_tools()
         self.log(repr(tools))
         self.assertEqual(
-            {u'funkytool': u'funkytool "arg with spaces" {this_temp}',
-             u'sometool': u'sometool {base} {this} {other} -o {result}',
-             u'newtool': u'"newtool with spaces" {this_temp}'},
+            {'funkytool': 'funkytool "arg with spaces" {this_temp}',
+             'sometool': 'sometool {base} {this} {other} -o {result}',
+             'newtool': '"newtool with spaces" {this_temp}'},
             tools)
 
     def test_get_merge_tools_empty(self):
@@ -1279,7 +1277,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
     def test__get_option_policy_normal(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
-            self.my_location_config._get_config_policy(
+            self.my_location_config._get_option_policy(
                 'http://www.example.com', 'normal_option'),
             config.POLICY_NONE)
 
@@ -1295,7 +1293,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
                 'http://www.example.com/norecurse', 'normal_option'),
             config.POLICY_NORECURSE)
 
-    def test__get_option_policy_normal(self):
+    def test__get_option_policy_normal_appendpath(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
             self.my_location_config._get_option_policy(
@@ -1312,20 +1310,20 @@ other_url:policy = appendpath
 other_url = /other-subdir
 """)
         self.assertOptions(
-            [(u'other_url', u'/other-subdir', u'/dir/subdir', 'locations'),
-             (u'other_url', u'/other-dir', u'/dir', 'locations'),
-             (u'other_url:policy', u'appendpath', u'/dir', 'locations')],
+            [('other_url', '/other-subdir', '/dir/subdir', 'locations'),
+             ('other_url', '/other-dir', '/dir', 'locations'),
+             ('other_url:policy', 'appendpath', '/dir', 'locations')],
             self.my_location_config)
 
     def test_location_without_username(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
-        self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
+        self.assertEqual('Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
     def test_location_not_listed(self):
         """Test that the global username is used when no location matches"""
         self.get_branch_config('/home/robertc/sources')
-        self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
+        self.assertEqual('Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
     def test_overriding_location(self):
@@ -1484,13 +1482,6 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("Robert Collins <robertc@example.org>",
                          my_config.username())
 
-    def test_BRZ_EMAIL_OVERRIDES(self):
-        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        self.assertEqual("Robert Collins <robertc@example.org>",
-                         my_config.username())
-
     def test_get_user_option_global(self):
         my_config = self.get_branch_config(global_config=sample_config_text)
         self.assertEqual('something',
@@ -1536,6 +1527,8 @@ class TestMailAddressExtraction(tests.TestCase):
                          config.parse_username('John Doe'))
         self.assertEqual(('John Doe', 'jdoe@example.com'),
                          config.parse_username('John Doe jdoe@example.com'))
+        self.assertEqual(('John Doe', 'jdoe[bot]@example.com'),
+                         config.parse_username('John Doe <jdoe[bot]@example.com>'))
 
 
 class TestTreeConfig(tests.TestCaseWithTransport):
@@ -1571,8 +1564,8 @@ class TestTransportConfig(tests.TestCaseWithTransport):
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
-        unicode_user = u'b\N{Euro Sign}ar'
-        unicode_content = u'user=%s' % (unicode_user,)
+        unicode_user = 'b\N{Euro Sign}ar'
+        unicode_content = 'user={}'.format(unicode_user)
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         t.put_bytes('foo.conf', utf8_content)
@@ -1601,7 +1594,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
 
-        class DenyingTransport(object):
+        class DenyingTransport:
 
             def __init__(self, base):
                 self.base = base
@@ -1614,8 +1607,8 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, cfg.get_option('non-existant', 'SECTION'))
         self.assertEqual(
             warnings,
-            [u'Permission denied while trying to open configuration file '
-             u'nonexisting:///control.conf.'])
+            ['Permission denied while trying to open configuration file '
+             'nonexisting:///control.conf.'])
 
     def test_get_value(self):
         """Test that retreiving a value from a section is possible"""
@@ -1658,7 +1651,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 class TestOldConfigHooks(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestOldConfigHooks, self).setUp()
+        super().setUp()
         create_configs_with_file_option(self)
 
     def assertGetHook(self, conf, name, value):
@@ -1793,7 +1786,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
     """
 
     def setUp(self):
-        super(TestOldConfigHooksForRemote, self).setUp()
+        super().setUp()
         self.transport_server = test_server.SmartTCPServer_for_testing
         create_configs_with_file_option(self)
 
@@ -1959,7 +1952,7 @@ class TestOption(tests.TestCase):
 
     def test_callable_default_value(self):
         def bar_as_unicode():
-            return u'bar'
+            return 'bar'
         opt = config.Option('foo', default=bar_as_unicode)
         self.assertEqual('bar', opt.get_default())
 
@@ -2009,7 +2002,7 @@ class TestOptionConverter(tests.TestCase):
         self.assertEqual(None, opt.convert_from_unicode(None, value))
         self.assertLength(1, warnings)
         self.assertEqual(
-            'Value "%s" is not valid for "%s"' % (value, opt.name),
+            'Value "{}" is not valid for "{}"'.format(value, opt.name),
             warnings[0])
 
     def assertCallsError(self, opt, value):
@@ -2034,15 +2027,15 @@ class TestOptionWithBooleanConverter(TestOptionConverter):
     def test_convert_invalid(self):
         opt = self.get_option()
         # A string that is not recognized as a boolean
-        self.assertConvertInvalid(opt, u'invalid-boolean')
+        self.assertConvertInvalid(opt, 'invalid-boolean')
         # A list of strings is never recognized as a boolean
-        self.assertConvertInvalid(opt, [u'not', u'a', u'boolean'])
+        self.assertConvertInvalid(opt, ['not', 'a', 'boolean'])
 
     def test_convert_valid(self):
         opt = self.get_option()
-        self.assertConverted(True, opt, u'True')
-        self.assertConverted(True, opt, u'1')
-        self.assertConverted(False, opt, u'False')
+        self.assertConverted(True, opt, 'True')
+        self.assertConverted(True, opt, '1')
+        self.assertConverted(False, opt, 'False')
 
 
 class TestOptionWithIntegerConverter(TestOptionConverter):
@@ -2054,13 +2047,13 @@ class TestOptionWithIntegerConverter(TestOptionConverter):
     def test_convert_invalid(self):
         opt = self.get_option()
         # A string that is not recognized as an integer
-        self.assertConvertInvalid(opt, u'forty-two')
+        self.assertConvertInvalid(opt, 'forty-two')
         # A list of strings is never recognized as an integer
-        self.assertConvertInvalid(opt, [u'a', u'list'])
+        self.assertConvertInvalid(opt, ['a', 'list'])
 
     def test_convert_valid(self):
         opt = self.get_option()
-        self.assertConverted(16, opt, u'16')
+        self.assertConverted(16, opt, '16')
 
 
 class TestOptionWithSIUnitConverter(TestOptionConverter):
@@ -2071,21 +2064,21 @@ class TestOptionWithSIUnitConverter(TestOptionConverter):
 
     def test_convert_invalid(self):
         opt = self.get_option()
-        self.assertConvertInvalid(opt, u'not-a-unit')
-        self.assertConvertInvalid(opt, u'Gb')  # Forgot the value
-        self.assertConvertInvalid(opt, u'1b')  # Forgot the unit
-        self.assertConvertInvalid(opt, u'1GG')
-        self.assertConvertInvalid(opt, u'1Mbb')
-        self.assertConvertInvalid(opt, u'1MM')
+        self.assertConvertInvalid(opt, 'not-a-unit')
+        self.assertConvertInvalid(opt, 'Gb')  # Forgot the value
+        self.assertConvertInvalid(opt, '1b')  # Forgot the unit
+        self.assertConvertInvalid(opt, '1GG')
+        self.assertConvertInvalid(opt, '1Mbb')
+        self.assertConvertInvalid(opt, '1MM')
 
     def test_convert_valid(self):
         opt = self.get_option()
-        self.assertConverted(int(5e3), opt, u'5kb')
-        self.assertConverted(int(5e6), opt, u'5M')
-        self.assertConverted(int(5e6), opt, u'5MB')
-        self.assertConverted(int(5e9), opt, u'5g')
-        self.assertConverted(int(5e9), opt, u'5gB')
-        self.assertConverted(100, opt, u'100')
+        self.assertConverted(int(5e3), opt, '5kb')
+        self.assertConverted(int(5e6), opt, '5M')
+        self.assertConverted(int(5e6), opt, '5MB')
+        self.assertConverted(int(5e9), opt, '5g')
+        self.assertConverted(int(5e9), opt, '5gB')
+        self.assertConverted(100, opt, '100')
 
 
 class TestListOption(TestOptionConverter):
@@ -2104,13 +2097,13 @@ class TestListOption(TestOptionConverter):
         opt = self.get_option()
         # An empty string is an empty list
         self.assertConverted([], opt, '')  # Using a bare str() just in case
-        self.assertConverted([], opt, u'')
+        self.assertConverted([], opt, '')
         # A boolean
-        self.assertConverted([u'True'], opt, u'True')
+        self.assertConverted(['True'], opt, 'True')
         # An integer
-        self.assertConverted([u'42'], opt, u'42')
+        self.assertConverted(['42'], opt, '42')
         # A single string
-        self.assertConverted([u'bar'], opt, u'bar')
+        self.assertConverted(['bar'], opt, 'bar')
 
 
 class TestRegistryOption(TestOptionConverter):
@@ -2123,7 +2116,7 @@ class TestRegistryOption(TestOptionConverter):
         registry = _mod_registry.Registry()
         opt = self.get_option(registry)
         self.assertConvertInvalid(opt, [1])
-        self.assertConvertInvalid(opt, u"notregistered")
+        self.assertConvertInvalid(opt, "notregistered")
 
     def test_convert_valid(self):
         registry = _mod_registry.Registry()
@@ -2131,7 +2124,7 @@ class TestRegistryOption(TestOptionConverter):
         opt = self.get_option(registry)
         # Using a bare str() just in case
         self.assertConverted(1234, opt, "someval")
-        self.assertConverted(1234, opt, u'someval')
+        self.assertConverted(1234, opt, 'someval')
         self.assertConverted(None, opt, None)
 
     def test_help(self):
@@ -2164,7 +2157,7 @@ class TestRegistryOption(TestOptionConverter):
 class TestOptionRegistry(tests.TestCase):
 
     def setUp(self):
-        super(TestOptionRegistry, self).setUp()
+        super().setUp()
         # Always start with an empty registry
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
@@ -2218,7 +2211,7 @@ class TestRegisteredOptions(tests.TestCase):
                  in config.option_registry.iteritems()]
 
     def setUp(self):
-        super(TestRegisteredOptions, self).setUp()
+        super().setUp()
         self.registry = config.option_registry
 
     def test_proper_name(self):
@@ -2311,7 +2304,7 @@ class TestMutableSection(tests.TestCase):
 class TestCommandLineStore(tests.TestCase):
 
     def setUp(self):
-        super(TestCommandLineStore, self).setUp()
+        super().setUp()
         self.store = config.CommandLineStore()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
 
@@ -2379,7 +2372,7 @@ class TestStore(tests.TestCaseWithTransport):
         self.assertEqual(expected_name, section.id)
         self.assertEqual(
             expected_options,
-            dict([(k, section.get(k)) for k in expected_options.keys()]))
+            {k: section.get(k) for k in expected_options.keys()})
 
 
 class TestReadonlyStore(TestStore):
@@ -2424,7 +2417,7 @@ class TestStoreQuoting(TestStore):
                  in config.test_store_builder_registry.iteritems()]
 
     def setUp(self):
-        super(TestStoreQuoting, self).setUp()
+        super().setUp()
         self.store = self.get_store(self)
         # We need a loaded store but any content will do
         self.store._load_from_string(b'')
@@ -2488,7 +2481,7 @@ class TestDictFromStore(tests.TestCase):
         # are getting the value or displaying it. In the later case, '%s' will
         # do).
         self.assertEqual({'a': '1'}, unquoted)
-        self.assertIn('%s' % (unquoted,), ("{u'a': u'1'}", "{'a': '1'}"))
+        self.assertIn('{}'.format(unquoted), ("{u'a': u'1'}", "{'a': '1'}"))
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
@@ -2506,8 +2499,8 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         """Ensure we can load an utf8-encoded file."""
         t = self.get_transport()
         # From http://pad.lv/799212
-        unicode_user = u'b\N{Euro Sign}ar'
-        unicode_content = u'user=%s' % (unicode_user,)
+        unicode_user = 'b\N{Euro Sign}ar'
+        unicode_content = 'user={}'.format(unicode_user)
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         t.put_bytes('foo.conf', utf8_content)
@@ -2547,7 +2540,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
         self.assertRaises(errors.PermissionDenied, store.load)
         self.assertEqual(
             warnings,
-            [u'Permission denied while trying to load configuration store %s.'
+            ['Permission denied while trying to load configuration store %s.'
              % store.external_url()])
 
 
@@ -2565,8 +2558,8 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
         # From http://pad.lv/799212
-        unicode_user = u'b\N{Euro Sign}ar'
-        unicode_content = u'user=%s' % (unicode_user,)
+        unicode_user = 'b\N{Euro Sign}ar'
+        unicode_content = 'user={}'.format(unicode_user)
         utf8_content = unicode_content.encode('utf8')
         # Store the raw content in the config file
         with open('foo.conf', 'wb') as f:
@@ -2595,7 +2588,7 @@ class TestMutableStore(TestStore):
                  in config.test_store_builder_registry.iteritems()]
 
     def setUp(self):
-        super(TestMutableStore, self).setUp()
+        super().setUp()
         self.transport = self.get_transport()
 
     def has_store(self, store):
@@ -2767,7 +2760,7 @@ class TestStoreSaveChanges(tests.TestCaseWithTransport):
     """Tests that config changes are kept in memory and saved on-demand."""
 
     def setUp(self):
-        super(TestStoreSaveChanges, self).setUp()
+        super().setUp()
         self.transport = self.get_transport()
         # Most of the tests involve two stores pointing to the same persistent
         # storage to observe the effects of concurrent changes
@@ -2869,7 +2862,7 @@ class TestTransportIniFileStore(TestStore):
     def test_loading_unknown_file_fails(self):
         store = config.TransportIniFileStore(self.get_transport(),
                                              'I-do-not-exist')
-        self.assertRaises(errors.NoSuchFile, store.load)
+        self.assertRaises(_mod_transport.NoSuchFile, store.load)
 
     def test_invalid_content(self):
         store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
@@ -2905,7 +2898,7 @@ foo_in_qux=quux
         # List values are provided as strings and need to be explicitly
         # converted by specifying from_unicode=list_from_store at option
         # registration
-        self.assertSectionContent((None, {'foo': 'bar', 'l': u'1,2'}),
+        self.assertSectionContent((None, {'foo': 'bar', 'l': '1,2'}),
                                   sections[0])
         self.assertSectionContent(
             ('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}), sections[1])
@@ -2940,7 +2933,7 @@ class TestConcurrentStoreUpdates(TestStore):
                  in config.test_stack_builder_registry.iteritems()]
 
     def setUp(self):
-        super(TestConcurrentStoreUpdates, self).setUp()
+        super().setUp()
         self.stack = self.get_stack(self)
         if not isinstance(self.stack, config._CompatibleStack):
             raise tests.TestNotApplicable(
@@ -3070,7 +3063,7 @@ class TestSectionMatcher(TestStore):
                  ('id', {'matcher': config.NameMatcher}), ]
 
     def setUp(self):
-        super(TestSectionMatcher, self).setUp()
+        super().setUp()
         # Any simple store is good enough
         self.get_store = config.test_store_builder_registry.get('configobj')
 
@@ -3111,7 +3104,7 @@ class TestLocationSection(tests.TestCase):
 class TestLocationMatcher(TestStore):
 
     def setUp(self):
-        super(TestLocationMatcher, self).setUp()
+        super().setUp()
         # Any simple store is good enough
         self.get_store = config.test_store_builder_registry.get('configobj')
 
@@ -3206,7 +3199,7 @@ foo:policy = appendpath
 class TestStartingPathMatcher(TestStore):
 
     def setUp(self):
-        super(TestStartingPathMatcher, self).setUp()
+        super().setUp()
         # Any simple store is good enough
         self.store = config.IniFileStore()
 
@@ -3289,7 +3282,7 @@ option = defined so the no-name section exists
 class TestNameMatcher(TestStore):
 
     def setUp(self):
-        super(TestNameMatcher, self).setUp()
+        super().setUp()
         self.matcher = config.NameMatcher
         # Any simple store is good enough
         self.get_store = config.test_store_builder_registry.get('configobj')
@@ -3320,7 +3313,7 @@ option=bar
 class TestBaseStackGet(tests.TestCase):
 
     def setUp(self):
-        super(TestBaseStackGet, self).setUp()
+        super().setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
 
     def test_get_first_definition(self):
@@ -3358,7 +3351,7 @@ class TestBaseStackGet(tests.TestCase):
 class TestStackWithSimpleStore(tests.TestCase):
 
     def setUp(self):
-        super(TestStackWithSimpleStore, self).setUp()
+        super().setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
 
@@ -3460,7 +3453,7 @@ class TestConcreteStacks(TestStackWithTransport):
 class TestStackGet(TestStackWithTransport):
 
     def setUp(self):
-        super(TestStackGet, self).setUp()
+        super().setUp()
         self.conf = self.get_stack(self)
 
     def test_get_for_empty_stack(self):
@@ -3483,7 +3476,7 @@ class TestStackGet(TestStackWithTransport):
 class TestStackGetWithConverter(tests.TestCase):
 
     def setUp(self):
-        super(TestStackGetWithConverter, self).setUp()
+        super().setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
 
@@ -3502,7 +3495,7 @@ class TestStackGetWithConverter(tests.TestCase):
         self.assertEqual(None, conf.get('foo'))
 
     def test_get_default_bool_True(self):
-        self.register_bool_option('foo', u'True')
+        self.register_bool_option('foo', 'True')
         conf = self.get_conf(b'')
         self.assertEqual(True, conf.get('foo'))
 
@@ -3512,12 +3505,12 @@ class TestStackGetWithConverter(tests.TestCase):
         self.assertEqual(False, conf.get('foo'))
 
     def test_get_default_bool_False_as_string(self):
-        self.register_bool_option('foo', u'False')
+        self.register_bool_option('foo', 'False')
         conf = self.get_conf(b'')
         self.assertEqual(False, conf.get('foo'))
 
     def test_get_default_bool_from_env_converted(self):
-        self.register_bool_option('foo', u'True', default_from_env=['FOO'])
+        self.register_bool_option('foo', 'True', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'False')
         conf = self.get_conf(b'')
         self.assertEqual(False, conf.get('foo'))
@@ -3545,7 +3538,7 @@ class TestStackGetWithConverter(tests.TestCase):
         self.assertEqual(42, conf.get('foo'))
 
     def test_get_default_integer_as_string(self):
-        self.register_integer_option('foo', u'42')
+        self.register_integer_option('foo', '42')
         conf = self.get_conf(b'')
         self.assertEqual(42, conf.get('foo'))
 
@@ -3637,7 +3630,7 @@ class TestIterOptionRefs(tests.TestCase):
 class TestStackExpandOptions(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestStackExpandOptions, self).setUp()
+        super().setUp()
         self.overrideAttr(config, 'option_registry', config.OptionRegistry())
         self.registry = config.option_registry
         store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
@@ -3651,7 +3644,7 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
 
     def test_expand_default_value(self):
         self.conf.store._load_from_string(b'bar=baz')
-        self.registry.register(config.Option('foo', default=u'{bar}'))
+        self.registry.register(config.Option('foo', default='{bar}'))
         self.assertEqual('baz', self.conf.get('foo', expand=True))
 
     def test_expand_default_from_env(self):
@@ -3663,7 +3656,7 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
     def test_expand_default_on_failed_conversion(self):
         self.conf.store._load_from_string(b'baz=bogus\nbar=42\nfoo={baz}')
         self.registry.register(
-            config.Option('foo', default=u'{bar}',
+            config.Option('foo', default='{bar}',
                           from_unicode=config.int_from_store))
         self.assertEqual(42, self.conf.get('foo', expand=True))
 
@@ -3762,7 +3755,7 @@ hidden={start}{middle}{end}
 class TestStackCrossSectionsExpand(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestStackCrossSectionsExpand, self).setUp()
+        super().setUp()
 
     def get_config(self, location, string):
         if string is None:
@@ -3967,7 +3960,7 @@ class TestStackRemove(TestStackWithTransport):
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
-        super(TestConfigGetOptions, self).setUp()
+        super().setUp()
         create_configs(self)
 
     def test_no_variable(self):
@@ -4020,7 +4013,7 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
-        super(TestConfigRemoveOption, self).setUp()
+        super().setUp()
         create_configs_with_file_option(self)
 
     def test_remove_in_locations(self):
@@ -4048,7 +4041,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
 class TestConfigGetSections(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigGetSections, self).setUp()
+        super().setUp()
         create_configs(self)
 
     def assertSectionNames(self, expected, conf, name=None):
@@ -4128,7 +4121,7 @@ class TestAuthenticationConfigFilePermissions(tests.TestCaseInTempDir):
     """Test warning for permissions of authentication.conf."""
 
     def setUp(self):
-        super(TestAuthenticationConfigFilePermissions, self).setUp()
+        super().setUp()
         self.path = osutils.pathjoin(self.test_dir, 'authentication.conf')
         with open(self.path, 'wb') as f:
             f.write(b"""[broken]
@@ -4433,11 +4426,11 @@ class TestAuthenticationConfig(tests.TestCaseInTempDir):
 
     def test_username_defaults_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
-        self._check_default_username_prompt(u'FTP %(host)s username: ', 'ftp')
+        self._check_default_username_prompt('FTP %(host)s username: ', 'ftp')
         self._check_default_username_prompt(
-            u'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
+            'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
         self._check_default_username_prompt(
-            u'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
+            'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
 
     def test_username_default_no_prompt(self):
         conf = config.AuthenticationConfig()
@@ -4449,21 +4442,21 @@ class TestAuthenticationConfig(tests.TestCaseInTempDir):
     def test_password_default_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
         self._check_default_password_prompt(
-            u'FTP %(user)s@%(host)s password: ', 'ftp')
+            'FTP %(user)s@%(host)s password: ', 'ftp')
         self._check_default_password_prompt(
-            u'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
+            'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
         self._check_default_password_prompt(
-            u'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
+            'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
         # SMTP port handling is a bit special (it's handled if embedded in the
         # host too)
         # FIXME: should we: forbid that, extend it to other schemes, leave
         # things as they are that's fine thank you ?
         self._check_default_password_prompt(
-            u'SMTP %(user)s@%(host)s password: ', 'smtp')
+            'SMTP %(user)s@%(host)s password: ', 'smtp')
         self._check_default_password_prompt(
-            u'SMTP %(user)s@%(host)s password: ', 'smtp', host='bar.org:10025')
+            'SMTP %(user)s@%(host)s password: ', 'smtp', host='bar.org:10025')
         self._check_default_password_prompt(
-            u'SMTP %(user)s@%(host)s:%(port)d password: ', 'smtp', port=10025)
+            'SMTP %(user)s@%(host)s:%(port)d password: ', 'smtp', port=10025)
 
     def test_ssh_password_emits_warning(self):
         conf = config.AuthenticationConfig(_file=BytesIO(b"""

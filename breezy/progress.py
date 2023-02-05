@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """Progress indicators.
 
 The usual way to use this is via breezy.ui.ui_factory.nested_progress_bar which
 will manage a conceptual stack of nested activities.
 """
-
-from __future__ import absolute_import
 
 import time
 import os
@@ -49,7 +49,7 @@ def _supports_progress(f):
     return True
 
 
-class ProgressTask(object):
+class ProgressTask:
     """Model component of a progress indicator.
 
     Most code that needs to indicate progress should update one of these,
@@ -61,11 +61,12 @@ class ProgressTask(object):
 
     The message given when updating a task must be unicode, not bytes.
 
-    :ivar update_latency: The interval (in seconds) at which the PB should be
+    Attributes:
+      update_latency: The interval (in seconds) at which the PB should be
         updated.  Setting this to zero suggests every update should be shown
         synchronously.
 
-    :ivar show_transport_activity: If true (default), transport activity
+      show_transport_activity: If true (default), transport activity
         will be shown when this task is drawn.  Disable it if you're sure
         that only irrelevant or uninteresting transport activity can occur
         during this task.
@@ -74,11 +75,10 @@ class ProgressTask(object):
     def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
         """Construct a new progress task.
 
-        :param parent_task: Enclosing ProgressTask or None.
-
-        :param progress_view: ProgressView to display this ProgressTask.
-
-        :param ui_factory: The UI factory that will display updates;
+        Args:
+          parent_task: Enclosing ProgressTask or None.
+          progress_view: ProgressView to display this ProgressTask.
+          ui_factory: The UI factory that will display updates;
             deprecated in favor of passing progress_view directly.
 
         Normally you should not call this directly but rather through
@@ -101,7 +101,7 @@ class ProgressTask(object):
         self.show_transport_activity = True
 
     def __repr__(self):
-        return '%s(%r/%r, msg=%r)' % (
+        return '{}({!r}/{!r}, msg={!r})'.format(
             self.__class__.__name__,
             self.current_cnt,
             self.total_cnt,
@@ -173,7 +173,7 @@ class ProgressTask(object):
         return False
 
 
-class DummyProgress(object):
+class DummyProgress:
     """Progress-bar standin that does nothing.
 
     This was previously often constructed by application code if no progress
@@ -240,7 +240,7 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None,
     return total_duration - elapsed
 
 
-class ProgressPhase(object):
+class ProgressPhase:
     """Update progress object with the current phase"""
 
     def __init__(self, message, total, pb):

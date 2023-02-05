@@ -87,7 +87,7 @@ class TestBadRevisionParents(TestCaseWithBrokenRevisionIndex):
 class TestsNeedingReweave(TestReconcile):
 
     def setUp(self):
-        super(TestsNeedingReweave, self).setUp()
+        super().setUp()
 
         t = self.get_transport()
         # an empty inventory with no revision for testing with.
@@ -336,7 +336,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def setUp(self):
         self.reduceLockdirTimeout()
-        super(TestReconcileWithIncorrectRevisionCache, self).setUp()
+        super().setUp()
 
         t = self.get_transport()
         # we need a revision with two parents in the wrong order

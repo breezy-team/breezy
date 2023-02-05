@@ -19,7 +19,6 @@
 import warnings
 
 from breezy import symbol_versioning
-from breezy.sixish import PY3
 from breezy.symbol_versioning import (
     deprecated_function,
     deprecated_in,
@@ -52,7 +51,7 @@ class TestDeprecationWarnings(TestCase):
         self._warnings.append((message, category, stacklevel))
 
     def setUp(self):
-        super(TestDeprecationWarnings, self).setUp()
+        super().setUp()
         self._warnings = []
 
     @deprecated_method(deprecated_in((0, 7, 0)))
@@ -70,19 +69,10 @@ class TestDeprecationWarnings(TestCase):
         return 1
 
     def test_deprecated_static(self):
-        if PY3:
-            expected_warning = (
-                "breezy.tests.test_symbol_versioning.TestDeprecationWarnings."
-                "deprecated_static "
-                "was deprecated in version 0.7.0.", DeprecationWarning, 2)
-        else:
-            # XXX: The results are not quite right because the class name is not
-            # shown on Python 2- however it is enough to give people a good indication of
-            # where the problem is.
-            expected_warning = (
-                "breezy.tests.test_symbol_versioning."
-                "deprecated_static "
-                "was deprecated in version 0.7.0.", DeprecationWarning, 2)
+        expected_warning = (
+            "breezy.tests.test_symbol_versioning.TestDeprecationWarnings."
+            "deprecated_static "
+            "was deprecated in version 0.7.0.", DeprecationWarning, 2)
         expected_docstring = (
             'Deprecated static.\n'
             '\n'
@@ -233,7 +223,7 @@ class TestDeprecationWarnings(TestCase):
 class TestSuppressAndActivate(TestCase):
 
     def setUp(self):
-        super(TestSuppressAndActivate, self).setUp()
+        super().setUp()
         existing_filters = list(warnings.filters)
 
         def restore():

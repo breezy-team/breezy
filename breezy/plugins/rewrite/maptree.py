@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Map Tree."""
 
-from __future__ import absolute_import
-
 def map_file_ids(repository, old_parents, new_parents):
     """Try to determine the equivalent file ids in two sets of parents.
 
@@ -36,7 +34,7 @@ def map_file_ids(repository, old_parents, new_parents):
     return ret
 
 
-class MapTree(object):
+class MapTree:
     """Wrapper around a tree that translates file ids.
     """
 

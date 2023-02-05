@@ -131,8 +131,6 @@ Known Issues
 
 """
 
-from __future__ import absolute_import
-
 # TODO: the chmod bits *can* be supported via the upload protocols
 # (i.e. poorly), but since the web developers use these protocols to upload
 # manually, it is expected that the associated web server is coherent with
@@ -222,5 +220,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests

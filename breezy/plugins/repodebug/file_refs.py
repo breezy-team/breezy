@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ... import (
     controldir,
     commands,
@@ -31,7 +29,7 @@ class cmd_file_refs(commands.Command):
     takes_args = ['file_id', 'rev_id']
     takes_options = ['directory']
 
-    def run(self, file_id, rev_id, directory=u'.'):
+    def run(self, file_id, rev_id, directory='.'):
         file_id = file_id.encode()
         rev_id = rev_id.encode()
         bd, relpath = controldir.ControlDir.open_containing(directory)

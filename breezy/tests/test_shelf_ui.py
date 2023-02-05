@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from io import BytesIO
 import os
 import sys
 from textwrap import dedent
@@ -25,9 +26,6 @@ from .. import (
     revision,
     shelf,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from . import script
 from . import (
@@ -76,7 +74,7 @@ class ShelfTestCase(tests.TestCaseWithTransport):
     def create_shelvable_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/foo', LINES_AJ)])
-        tree.add('foo', b'foo-id')
+        tree.add('foo', ids=b'foo-id')
         tree.commit('added foo')
         self.build_tree_contents([('tree/foo', LINES_ZY)])
         return tree
@@ -216,10 +214,10 @@ class TestShelver(ShelfTestCase):
         shelver.expect('Shelve 1 change(s)?', 0)
 
     def test_shelve_modify_target(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
-        tree.add('baz', b'baz-id')
+        tree.add('baz', ids=b'baz-id')
         tree.commit("Add symlink")
         os.unlink('tree/baz')
         os.symlink('vax', 'tree/baz')
@@ -445,10 +443,10 @@ class TestApplyReporter(ShelfTestCase):
         shelver.expect('Apply 1 change(s)?', 0)
 
     def test_shelve_modify_target(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
-        tree.add('baz', b'baz-id')
+        tree.add('baz', ids=b'baz-id')
         tree.commit("Add symlink")
         os.unlink('tree/baz')
         os.symlink('vax', 'tree/baz')
@@ -471,7 +469,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         tree.lock_write()
         try:
             self.build_tree_contents([('tree/foo', LINES_AJ)])
-            tree.add('foo', b'foo-id')
+            tree.add('foo', ids=b'foo-id')
             tree.commit('added foo')
             self.build_tree_contents([('tree/foo', LINES_ZY)])
             shelver = shelf_ui.Shelver(tree, tree.basis_tree(),

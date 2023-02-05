@@ -15,22 +15,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+
+from typing import List, Optional, Iterator, Callable, Iterable
 
 
-class IterableFileBase(object):
+class IterableFileBase:
     """Create a file-like object from any iterable"""
 
-    def __init__(self, iterable):
+    def __init__(self, iterable: Iterable[bytes]) -> None:
         object.__init__(self)
-        self._iter = iterable.__iter__()
+        self._iter = iter(iterable)
         self._buffer = b""
         self.done = False
 
-    def read_n(self, length):
+    def read_n(self, length: int) -> bytes:
         """
-        >>> IterableFileBase(['This ', 'is ', 'a ', 'test.']).read_n(8)
-        'This is '
+        >>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_n(8)
+        b'This is '
         """
         def test_length(result):
             if len(result) >= length:
@@ -39,13 +40,13 @@ class IterableFileBase(object):
                 return None
         return self._read(test_length)
 
-    def read_to(self, sequence, length=None):
+    def read_to(self, sequence: bytes, length: Optional[int] = None) -> bytes:
         """
-        >>> f = IterableFileBase(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.'])
-        >>> f.read_to('\\n')
-        'Th\\n'
-        >>> f.read_to('\\n')
-        'is is \\n'
+        >>> f = IterableFileBase([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
+        >>> f.read_to(b'\\n')
+        b'Th\\n'
+        >>> f.read_to(b'\\n')
+        b'is is \\n'
         """
         def test_contents(result):
             if length is not None:
@@ -57,7 +58,7 @@ class IterableFileBase(object):
                 return None
         return self._read(test_contents)
 
-    def _read(self, result_length):
+    def _read(self, result_length: Callable[[bytes], Optional[int]]) -> bytes:
         """
         Read data until result satisfies the condition result_length.
         result_length is a callable that returns None until the condition
@@ -77,38 +78,38 @@ class IterableFileBase(object):
         self._buffer = result[output_length:]
         return result[:output_length]
 
-    def read_all(self):
+    def read_all(self) -> bytes:
         """
-        >>> IterableFileBase(['This ', 'is ', 'a ', 'test.']).read_all()
-        'This is a test.'
+        >>> IterableFileBase([b'This ', b'is ', b'a ', b'test.']).read_all()
+        b'This is a test.'
         """
         def no_stop(result):
             return None
         return self._read(no_stop)
 
-    def push_back(self, contents):
+    def push_back(self, contents: bytes) -> None:
         """
-        >>> f = IterableFileBase(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.'])
-        >>> f.read_to('\\n')
-        'Th\\n'
-        >>> f.push_back("Sh")
+        >>> f = IterableFileBase([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
+        >>> f.read_to(b'\\n')
+        b'Th\\n'
+        >>> f.push_back(b"Sh")
         >>> f.read_all()
-        'Shis is \\na te\\nst.'
+        b'Shis is \\na te\\nst.'
         """
         self._buffer = contents + self._buffer
 
 
-class IterableFile(object):
+class IterableFile:
     """This class supplies all File methods that can be implemented cheaply."""
 
-    def __init__(self, iterable):
+    def __init__(self, iterable: Iterable[bytes]) -> None:
         object.__init__(self)
         self._file_base = IterableFileBase(iterable)
         self._iter = self._make_iterator()
         self._closed = False
         self.softspace = 0
 
-    def _make_iterator(self):
+    def _make_iterator(self) -> Iterator[bytes]:
         while not self._file_base.done:
             self._check_closed()
             result = self._file_base.read_to(b'\n')
@@ -119,9 +120,9 @@ class IterableFile(object):
         if self.closed:
             raise ValueError("File is closed.")
 
-    def close(self):
+    def close(self) -> None:
         """
-        >>> f = IterableFile(['This ', 'is ', 'a ', 'test.'])
+        >>> f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
         >>> f.closed
         False
         >>> f.close()
@@ -145,7 +146,7 @@ class IterableFile(object):
                 raise
         return False
 
-    def flush(self):
+    def flush(self) -> None:
         """No-op for standard compliance.
         >>> f = IterableFile([])
         >>> f.close()
@@ -155,21 +156,21 @@ class IterableFile(object):
         """
         self._check_closed()
 
-    def __next__(self):
+    def __next__(self) -> bytes:
         """Implementation of the iterator protocol's next()
 
-        >>> f = IterableFile(['This \\n', 'is ', 'a ', 'test.'])
+        >>> f = IterableFile([b'This \\n', b'is ', b'a ', b'test.'])
         >>> next(f)
-        'This \\n'
+        b'This \\n'
         >>> f.close()
         >>> next(f)
         Traceback (most recent call last):
         ValueError: File is closed.
-        >>> f = IterableFile(['This \\n', 'is ', 'a ', 'test.\\n'])
+        >>> f = IterableFile([b'This \\n', b'is ', b'a ', b'test.\\n'])
         >>> next(f)
-        'This \\n'
+        b'This \\n'
         >>> next(f)
-        'is a test.\\n'
+        b'is a test.\\n'
         >>> next(f)
         Traceback (most recent call last):
         StopIteration
@@ -177,13 +178,11 @@ class IterableFile(object):
         self._check_closed()
         return next(self._iter)
 
-    next = __next__
-
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bytes]:
         """
-        >>> list(IterableFile(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.']))
-        ['Th\\n', 'is is \\n', 'a te\\n', 'st.']
-        >>> f = IterableFile(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.'])
+        >>> list(IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.']))
+        [b'Th\\n', b'is is \\n', b'a te\\n', b'st.']
+        >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.close()
         >>> list(f)
         Traceback (most recent call last):
@@ -191,14 +190,14 @@ class IterableFile(object):
         """
         return self
 
-    def read(self, length=None):
+    def read(self, length: Optional[int] = None) -> bytes:
         """
-        >>> IterableFile(['This ', 'is ', 'a ', 'test.']).read()
-        'This is a test.'
-        >>> f = IterableFile(['This ', 'is ', 'a ', 'test.'])
+        >>> IterableFile([b'This ', b'is ', b'a ', b'test.']).read()
+        b'This is a test.'
+        >>> f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
         >>> f.read(10)
-        'This is a '
-        >>> f = IterableFile(['This ', 'is ', 'a ', 'test.'])
+        b'This is a '
+        >>> f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
         >>> f.close()
         >>> f.read(10)
         Traceback (most recent call last):
@@ -210,31 +209,31 @@ class IterableFile(object):
         else:
             return self._file_base.read_n(length)
 
-    def read_to(self, sequence, size=None):
+    def read_to(self, sequence: bytes, size: Optional[int] = None) -> bytes:
         """
         Read characters until a sequence is found, with optional max size.
         The specified sequence, if found, will be included in the result
 
-        >>> f = IterableFile(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.'])
-        >>> f.read_to('i')
-        'Th\\ni'
-        >>> f.read_to('i')
-        's i'
+        >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
+        >>> f.read_to(b'i')
+        b'Th\\ni'
+        >>> f.read_to(b'i')
+        b's i'
         >>> f.close()
-        >>> f.read_to('i')
+        >>> f.read_to(b'i')
         Traceback (most recent call last):
         ValueError: File is closed.
         """
         self._check_closed()
         return self._file_base.read_to(sequence, size)
 
-    def readline(self, size=None):
+    def readline(self, size: Optional[int] = None) -> bytes:
         """
-        >>> f = IterableFile(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.'])
+        >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.readline()
-        'Th\\n'
+        b'Th\\n'
         >>> f.readline(4)
-        'is i'
+        b'is i'
         >>> f.close()
         >>> f.readline()
         Traceback (most recent call last):
@@ -242,18 +241,18 @@ class IterableFile(object):
         """
         return self.read_to(b'\n', size)
 
-    def readlines(self, sizehint=None):
+    def readlines(self, sizehint=None) -> List[bytes]:
         """
-        >>> f = IterableFile(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.'])
+        >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.readlines()
-        ['Th\\n', 'is is \\n', 'a te\\n', 'st.']
-        >>> f = IterableFile(['Th\\nis ', 'is \\n', 'a ', 'te\\nst.'])
+        [b'Th\\n', b'is is \\n', b'a te\\n', b'st.']
+        >>> f = IterableFile([b'Th\\nis ', b'is \\n', b'a ', b'te\\nst.'])
         >>> f.close()
         >>> f.readlines()
         Traceback (most recent call last):
         ValueError: File is closed.
         """
-        lines = []
+        lines: List[bytes] = []
         while True:
             line = self.readline()
             if line == b"":

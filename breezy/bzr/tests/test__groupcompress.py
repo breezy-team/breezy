@@ -27,9 +27,6 @@ from .. import (
 from ...tests.scenarios import (
     load_tests_apply_scenarios,
     )
-from ...sixish import (
-    indexbytes,
-    )
 from ...tests import (
     features,
     )
@@ -134,7 +131,7 @@ class TestMakeAndApplyDelta(tests.TestCase):
     _gc_module = None  # Set by load_tests
 
     def setUp(self):
-        super(TestMakeAndApplyDelta, self).setUp()
+        super().setUp()
         self.make_delta = self._gc_module.make_delta
         self.apply_delta = self._gc_module.apply_delta
         self.apply_delta_to_source = self._gc_module.apply_delta_to_source
@@ -146,9 +143,9 @@ class TestMakeAndApplyDelta(tests.TestCase):
             self.assertRaises(TypeError, self.make_delta, string1, string2)
 
         _check_make_delta(b'a string', object())
-        _check_make_delta(b'a string', u'not a string')
+        _check_make_delta(b'a string', 'not a string')
         _check_make_delta(object(), b'a string')
-        _check_make_delta(u'not a string', b'a string')
+        _check_make_delta('not a string', b'a string')
 
     def test_make_noop_delta(self):
         ident_delta = self.make_delta(_text1, _text1)
@@ -206,7 +203,7 @@ class TestMakeAndApplyDelta(tests.TestCase):
         self.assertRaises(TypeError, self.apply_delta, object(), b'M\x90M')
         self.assertRaises(TypeError, self.apply_delta,
                           _text1.decode('latin1'), b'M\x90M')
-        self.assertRaises(TypeError, self.apply_delta, _text1, u'M\x90M')
+        self.assertRaises(TypeError, self.apply_delta, _text1, 'M\x90M')
         self.assertRaises(TypeError, self.apply_delta, _text1, object())
 
     def test_apply_delta(self):
@@ -221,7 +218,7 @@ class TestMakeAndApplyDelta(tests.TestCase):
         self.assertRaises(TypeError,
                           self.apply_delta_to_source, object(), 0, 1)
         self.assertRaises(TypeError,
-                          self.apply_delta_to_source, u'unicode str', 0, 1)
+                          self.apply_delta_to_source, 'unicode str', 0, 1)
         # end > length
         self.assertRaises(ValueError,
                           self.apply_delta_to_source, b'foo', 1, 4)
@@ -264,7 +261,7 @@ class TestMakeAndApplyCompatible(tests.TestCase):
 class TestDeltaIndex(tests.TestCase):
 
     def setUp(self):
-        super(TestDeltaIndex, self).setUp()
+        super().setUp()
         # This test isn't multiplied, because we only have DeltaIndex for the
         # compiled form
         # We call this here, because _test_needs_features happens after setUp
@@ -470,7 +467,7 @@ class TestCopyInstruction(tests.TestCase):
         self.assertEqual(expected, data)
 
     def assertDecode(self, exp_offset, exp_length, exp_newpos, data, pos):
-        cmd = indexbytes(data, pos)
+        cmd = data[pos]
         pos += 1
         out = _groupcompress_py.decode_copy_instruction(data, cmd, pos)
         self.assertEqual((exp_offset, exp_length, exp_newpos), out)

@@ -17,8 +17,6 @@
 
 """Support for running strace against the current process."""
 
-from __future__ import absolute_import
-
 import os
 import signal
 import subprocess
@@ -81,7 +79,7 @@ class StraceError(errors.BzrError):
     _fmt = "strace failed: %(err_messages)s"
 
 
-class StraceResult(object):
+class StraceResult:
     """The result of stracing a function."""
 
     def __init__(self, raw_log, err_messages):

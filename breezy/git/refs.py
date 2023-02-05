@@ -16,8 +16,7 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
-from __future__ import absolute_import
-
+from dulwich.objects import Tag, object_class
 from dulwich.refs import (
     ANNOTATED_TAG_SUFFIX,
     LOCAL_BRANCH_PREFIX,
@@ -28,6 +27,7 @@ from dulwich.repo import (
     )
 
 from .. import (
+    controldir,
     errors,
     osutils,
     revision as _mod_revision,
@@ -91,7 +91,7 @@ def ref_to_branch_name(ref):
     :return: A branch name
     """
     if ref == b"HEAD":
-        return u""
+        return ""
     if ref is None:
         return ref
     if ref.startswith(LOCAL_BRANCH_PREFIX):
@@ -134,7 +134,7 @@ class BazaarRefsContainer(RefsContainer):
     def _get_revid_by_branch_name(self, branch_name):
         try:
             branch = self.dir.open_branch(branch_name)
-        except errors.NoColocatedBranchSupport:
+        except controldir.NoColocatedBranchSupport:
             if branch_name in ("HEAD", "master"):
                 branch = self.dir.open_branch()
             else:

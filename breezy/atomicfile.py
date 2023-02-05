@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import os
 
 import stat
@@ -40,7 +38,7 @@ class AtomicFileAlreadyClosed(errors.PathError):
         self.function = function
 
 
-class AtomicFile(object):
+class AtomicFile:
     """A file that does an atomic-rename to move into place.
 
     This also causes hardlinks to break when it's written out.
@@ -87,7 +85,7 @@ class AtomicFile(object):
                 osutils.chmod_if_possible(self.tmpfilename, new_mode)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__,
+        return '{}({!r})'.format(self.__class__.__name__,
                            self.realfilename)
 
     def write(self, data):

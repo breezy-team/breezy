@@ -18,6 +18,7 @@
 """Black-box tests for brz export.
 """
 
+from io import BytesIO
 import os
 import stat
 import tarfile
@@ -29,9 +30,6 @@ from ...archive import zip
 from ... import (
     export,
     osutils,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from .. import (
     features,
@@ -95,11 +93,11 @@ class TestExport(TestCaseWithTransport):
         self.assertTrue(tree.has_filename('.bzr-adir'))
         self.assertTrue(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.tar.gz -d tree')
-        ball = tarfile.open('test.tar.gz')
-        # Make sure the tarball contains 'a', but does not contain
-        # '.bzrignore'.
-        self.assertEqual(['test/a'],
-                         sorted(ball.getnames()))
+        with tarfile.open('test.tar.gz') as ball:
+            # Make sure the tarball contains 'a', but does not contain
+            # '.bzrignore'.
+            self.assertEqual(['test/a'],
+                             sorted(ball.getnames()))
 
     def test_tar_export_unicode_filename(self):
         self.requireFeature(features.UnicodeFilenameFeature)
@@ -107,24 +105,24 @@ class TestExport(TestCaseWithTransport):
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
         # export itself --vila 20090406
-        fname = u'\N{Euro Sign}.txt'
+        fname = '\N{Euro Sign}.txt'
         self.build_tree(['tar/' + fname])
         tree.add([fname])
         tree.commit('first')
 
         self.run_bzr('export test.tar -d tar')
-        ball = tarfile.open('test.tar')
-        # all paths are prefixed with the base name of the tarball
-        self.assertEqual([u'test/' + fname],
-                         [osutils.safe_unicode(n) for n in ball.getnames()])
+        with tarfile.open('test.tar') as ball:
+            # all paths are prefixed with the base name of the tarball
+            self.assertEqual(['test/' + fname],
+                             [osutils.safe_unicode(n) for n in ball.getnames()])
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
         self.requireFeature(features.UnicodeFilenameFeature)
-        basedir = u'\N{euro sign}'
+        basedir = '\N{euro sign}'
         os.mkdir(basedir)
         self.run_bzr(['init', basedir])
-        self.run_bzr(['export', '--format', 'tgz', u'test.tar.gz',
+        self.run_bzr(['export', '--format', 'tgz', 'test.tar.gz',
                       '-d', basedir])
 
     def test_zip_export_ignores_bzr(self):
@@ -178,15 +176,15 @@ class TestExport(TestCaseWithTransport):
 
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
         tree = self.make_basic_tree()
-        fname = 'test.%s' % (extension,)
-        self.run_bzr('export -d tree %s' % (fname,))
-        mode = 'r|%s' % (tarfile_flags,)
-        ball = tarfile.open(fname, mode=mode)
-        self.assertTarANameAndContent(ball, root='test/')
+        fname = 'test.{}'.format(extension)
+        self.run_bzr('export -d tree {}'.format(fname))
+        mode = 'r|{}'.format(tarfile_flags)
+        with tarfile.open(fname, mode=mode) as ball:
+            self.assertTarANameAndContent(ball, root='test/')
         content = self.run_bzr_raw(
-            'export -d tree --format=%s -' % (extension,))[0]
-        ball = tarfile.open(mode=mode, fileobj=BytesIO(content))
-        self.assertTarANameAndContent(ball, root='')
+            'export -d tree --format={} -'.format(extension))[0]
+        with tarfile.open(mode=mode, fileobj=BytesIO(content)) as ball:
+            self.assertTarANameAndContent(ball, root='')
 
     def test_tar_export(self):
         self.run_tar_export_disk_and_stdout('tar', '')
@@ -200,7 +198,7 @@ class TestExport(TestCaseWithTransport):
     def test_zip_export_unicode(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
-        fname = u'\N{Euro Sign}.txt'
+        fname = '\N{Euro Sign}.txt'
         self.build_tree(['zip/' + fname])
         tree.add([fname])
         tree.commit('first')
@@ -242,6 +240,23 @@ class TestExport(TestCaseWithTransport):
 
         d_info = zfile.getinfo(names[3])
         self.assertEqual(dir_attr, d_info.external_attr)
+
+    def test_dir_export_nested(self):
+        tree = self.make_branch_and_tree('dir')
+        self.build_tree(['dir/a'])
+        tree.add('a')
+
+        subtree = self.make_branch_and_tree('dir/subdir')
+        tree.add_reference(subtree)
+
+        self.build_tree(['dir/subdir/b'])
+        subtree.add('b')
+
+        self.run_bzr('export --uncommitted direxport1 dir')
+        self.assertFalse(os.path.exists('direxport1/subdir/b'))
+
+        self.run_bzr('export --recurse-nested --uncommitted direxport2 dir')
+        self.assertTrue(os.path.exists('direxport2/subdir/b'))
 
     def test_dir_export(self):
         tree = self.make_branch_and_tree('dir')

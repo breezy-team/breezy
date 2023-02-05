@@ -29,6 +29,7 @@ from .. import (
     revision,
     tests,
     trace,
+    transport as _mod_transport,
     )
 from ..bzr import (
     branch as bzrbranch,
@@ -37,6 +38,7 @@ from ..bzr import (
     )
 
 from ..bzr import groupcompress_repo
+from ..bzr.pack_repo import PackCommitBuilder
 
 # This is the dummy foreign revision control system, used
 # mainly here in the testsuite to test the foreign VCS infrastructure.
@@ -105,8 +107,9 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
         self.controldir = a_controldir
         foreign.ForeignBranch.__init__(self,
                                        DummyForeignVcsMapping(DummyForeignVcs()))
-        bzrbranch.BzrBranch6.__init__(self, _format, _control_files, a_controldir,
-                                      *args, **kwargs)
+        bzrbranch.BzrBranch6.__init__(self, _format=_format,
+                                      _control_files=_control_files, a_controldir=a_controldir,
+                                      **kwargs)
 
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
@@ -123,7 +126,7 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
         return (revno, revid)
 
 
-class DummyForeignCommitBuilder(vf_repository.VersionedFileCommitBuilder):
+class DummyForeignCommitBuilder(PackCommitBuilder):
 
     def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
@@ -258,7 +261,7 @@ class DummyForeignVcsBranchFormat(bzrbranch.BzrBranchFormat6):
                                          a_controldir=a_controldir,
                                          _repository=found_repository,
                                          name=name)
-        except errors.NoSuchFile:
+        except _mod_transport.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
 
@@ -319,14 +322,14 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
     def create_workingtree(self):
         # dirstate requires a ".bzr" entry to exist
         self.root_transport.put_bytes(".bzr", b"foo")
-        return super(DummyForeignVcsDir, self).create_workingtree()
+        return super().create_workingtree()
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
                     possible_transports=None):
         if name is None:
             name = self._get_selected_branch()
         if name != "":
-            raise errors.NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):
@@ -342,7 +345,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
                source_branch=None):
         # dirstate doesn't cope with accelerator_trees well
         # that have a different control dir
-        return super(DummyForeignVcsDir, self).sprout(
+        return super().sprout(
             url=url,
             revision_id=revision_id, force_new_repo=force_new_repo,
             recurse=recurse, possible_transports=possible_transports,
@@ -418,7 +421,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
     """Very basic test for DummyForeignVcs."""
 
     def setUp(self):
-        super(DummyForeignVcsTests, self).setUp()
+        super().setUp()
         register_dummy_foreign_for_test(self)
 
     def test_create(self):

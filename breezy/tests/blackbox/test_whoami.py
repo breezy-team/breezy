@@ -23,7 +23,6 @@ from breezy import (
     errors,
     tests,
     )
-from breezy.sixish import PY3
 
 from ..test_bedding import override_whoami
 
@@ -35,7 +34,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         lines = out.splitlines()
         self.assertLength(1, lines)
-        if PY3 and isinstance(expected, bytes):
+        if isinstance(expected, bytes):
             expected = expected.decode(kwargs.get('encoding', 'ascii'))
         self.assertEqual(expected, lines[0].rstrip())
 
@@ -74,7 +73,7 @@ class TestWhoami(tests.TestCaseWithTransport):
 
     def test_whoami_utf8(self):
         """verify that an identity can be in utf-8."""
-        self.run_bzr(['whoami', u'Branch Identity \u20ac <branch@identi.ty>'],
+        self.run_bzr(['whoami', 'Branch Identity \u20ac <branch@identi.ty>'],
                      encoding='utf-8')
         self.assertWhoAmI(b'Branch Identity \xe2\x82\xac <branch@identi.ty>',
                           encoding='utf-8')
@@ -87,7 +86,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """
         wt = self.make_branch_and_tree('.')
         b = branch.Branch.open('.')
-        self.set_branch_email(b, u'Branch Identity \u20ac <branch@identi.ty>')
+        self.set_branch_email(b, 'Branch Identity \u20ac <branch@identi.ty>')
         self.assertWhoAmI('Branch Identity ? <branch@identi.ty>',
                           encoding='ascii')
         self.assertWhoAmI('branch@identi.ty', '--email',

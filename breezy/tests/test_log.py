@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 import re
 
@@ -28,14 +32,9 @@ from .. import (
     gpg,
     trace,
     )
-from ..sixish import (
-    BytesIO,
-    StringIO,
-    unichr,
-    )
 
 
-class TestLogMixin(object):
+class TestLogMixin:
 
     def wt_commit(self, wt, message, **kwargs):
         """Use some mostly fixed values for commits to simplify tests.
@@ -57,7 +56,7 @@ class TestLogMixin(object):
 class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
 
     def setUp(self):
-        super(TestCaseForLogFormatter, self).setUp()
+        super().setUp()
         # keep a reference to the "current" custom prop. handler registry
         self.properties_handler_registry = log.properties_handler_registry
         # Use a clean registry for log
@@ -139,7 +138,7 @@ class LogCatcher(log.LogFormatter):
 
     def __init__(self, *args, **kwargs):
         kwargs.update(dict(to_file=None))
-        super(LogCatcher, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.revisions = []
 
     def log_revision(self, revision):
@@ -210,8 +209,8 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.build_tree(['hello'])
         wt.add('hello')
         wt.commit('add one file',
-                  committer=u'\u013d\xf3r\xe9m \xcdp\u0161\xfam '
-                            u'<test@example.com>')
+                  committer='\u013d\xf3r\xe9m \xcdp\u0161\xfam '
+                            '<test@example.com>')
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         self.assertEqual(2, len(lf.revisions))
@@ -223,8 +222,8 @@ class TestShowLog(tests.TestCaseWithTransport):
 
     def test_commit_message_with_control_chars(self):
         wt = self.make_branch_and_tree('.')
-        msg = u"All 8-bit chars: " + ''.join([unichr(x) for x in range(256)])
-        msg = msg.replace(u'\r', u'\n')
+        msg = "All 8-bit chars: " + ''.join([chr(x) for x in range(256)])
+        msg = msg.replace('\r', '\n')
         wt.commit(msg)
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
@@ -241,7 +240,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         # newline conversion, neither LF (\x0A) nor CR (\x0D) are
         # included in the test commit message, even though they are
         # valid XML 1.0 characters.
-        msg = "\x09" + ''.join([unichr(x) for x in range(0x20, 256)])
+        msg = "\x09" + ''.join([chr(x) for x in range(0x20, 256)])
         wt.commit(msg)
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
@@ -324,7 +323,7 @@ class TestFormatSignatureValidity(tests.TestCaseWithTransport):
 
     def verify_revision_signature(self, revid, gpg_strategy):
         return (gpg.SIGNATURE_VALID,
-                u'UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>')
+                'UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>')
 
     def test_format_signature_validity_utf(self):
         """Check that GPG signatures containing UTF-8 names are formatted
@@ -339,7 +338,7 @@ class TestFormatSignatureValidity(tests.TestCaseWithTransport):
                           self.verify_revision_signature)
         out = log.format_signature_validity(revid, wt.branch)
         self.assertEqual(
-            u'valid signature from UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>',
+            'valid signature from UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>',
             out)
 
 
@@ -719,7 +718,7 @@ message:
         handlers.
         """
         wt = self.make_standard_commit('error_in_properties_handler',
-                                       revprops={u'first_prop': 'first_value'})
+                                       revprops={'first_prop': 'first_value'})
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
 
@@ -735,7 +734,7 @@ message:
 
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',
-                                       revprops={u'a_prop': 'test_value'})
+                                       revprops={'a_prop': 'test_value'})
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
 
@@ -1069,7 +1068,7 @@ class TestShowChangedRevisions(tests.TestCaseWithTransport):
 class TestLogFormatter(tests.TestCase):
 
     def setUp(self):
-        super(TestLogFormatter, self).setUp()
+        super().setUp()
         self.rev = revision.Revision(b'a-id')
         self.lf = log.LogFormatter(None)
 
@@ -1379,31 +1378,31 @@ Joe Foo 2005-11-22 commit 2a
 class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
 
     def setUp(self):
-        super(TestLogWithBugs, self).setUp()
+        super().setUp()
         log.properties_handler_registry.register(
             'bugs_properties_handler',
             log._bugs_properties_handler)
 
     def make_commits_with_bugs(self):
         """Helper method for LogFormatter tests"""
-        tree = self.make_branch_and_tree(u'.')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b'])
         tree.add('a')
         self.wt_commit(tree, 'simple log message', rev_id=b'a1',
-                       revprops={u'bugs': 'test://bug/id fixed'})
+                       revprops={'bugs': 'test://bug/id fixed'})
         tree.add('b')
         self.wt_commit(tree, 'multiline\nlog\nmessage\n', rev_id=b'a2',
                        authors=['Joe Bar <joe@bar.com>'],
-                       revprops={u'bugs': 'test://bug/id fixed\n'
+                       revprops={'bugs': 'test://bug/id fixed\n'
                                  'test://bug/2 fixed'})
         return tree
 
     def test_bug_broken(self):
-        tree = self.make_branch_and_tree(u'.')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b'])
         tree.add('a')
         self.wt_commit(tree, 'simple log message', rev_id=b'a1',
-                       revprops={u'bugs': 'test://bua g/id fixed'})
+                       revprops={'bugs': 'test://bua g/id fixed'})
 
         logfile = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=logfile)
@@ -1469,10 +1468,10 @@ message:
                                    tree.branch, log.ShortLogFormatter)
 
     def test_wrong_bugs_property(self):
-        tree = self.make_branch_and_tree(u'.')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         self.wt_commit(tree, 'simple log message', rev_id=b'a1',
-                       revprops={u'bugs': 'test://bug/id invalid_value'})
+                       revprops={'bugs': 'test://bug/id invalid_value'})
 
         logfile = self.make_utf8_encoded_stringio()
         formatter = log.ShortLogFormatter(to_file=logfile)
@@ -1497,7 +1496,7 @@ message:
 class TestLogForAuthors(TestCaseForLogFormatter):
 
     def setUp(self):
-        super(TestLogForAuthors, self).setUp()
+        super().setUp()
         self.wt = self.make_standard_commit('nicky',
                                             authors=['John Doe <jdoe@example.com>',
                                                      'Jane Rey <jrey@example.com>'])
@@ -1719,7 +1718,7 @@ class TestLogDefaults(TestCaseForLogFormatter):
 
         class CustomLogFormatter(log.LogFormatter):
             def __init__(self, *args, **kwargs):
-                super(CustomLogFormatter, self).__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)
                 self.revisions = []
 
             def get_levels(self):

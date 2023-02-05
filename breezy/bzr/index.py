@@ -16,8 +16,6 @@
 
 """Indexing facilities."""
 
-from __future__ import absolute_import
-
 __all__ = [
     'CombinedGraphIndex',
     'GraphIndex',
@@ -27,6 +25,7 @@ __all__ = [
     ]
 
 from bisect import bisect_right
+from io import BytesIO
 import re
 
 from ..lazy_import import lazy_import
@@ -40,15 +39,9 @@ from breezy import (
 from .. import (
     debug,
     errors,
+    transport as _mod_transport,
     )
-from ..sixish import (
-    BytesIO,
-    bytesintern,
-    viewvalues,
-    viewitems,
-    zip,
-    )
-from ..static_tuple import StaticTuple
+from .static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = b"key_elements="
@@ -130,7 +123,7 @@ def _missing_keys_from_parent_map(self, keys):
     return set(keys) - set(self.get_parent_map(keys))
 
 
-class GraphIndexBuilder(object):
+class GraphIndexBuilder:
     """A builder that can build a GraphIndex.
 
     The resulting graph has the structure::
@@ -202,7 +195,7 @@ class GraphIndexBuilder(object):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (absent, references, value) in viewitems(self._nodes):
+                for key, (absent, references, value) in self._nodes.items():
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -210,7 +203,7 @@ class GraphIndexBuilder(object):
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (absent, references, value) in viewitems(self._nodes):
+                for key, (absent, references, value) in self._nodes.items():
                     if absent:
                         continue
                     key_dict = nodes_by_key
@@ -334,7 +327,7 @@ class GraphIndexBuilder(object):
         # forward sorted by key. In future we may consider topological sorting,
         # at the cost of table scans for direct lookup, or a second index for
         # direct lookup
-        nodes = sorted(viewitems(self._nodes))
+        nodes = sorted(self._nodes.items())
         # if we do not prepass, we don't know how long it will be up front.
         expected_bytes = None
         # we only need to pre-pass if we have reference lists at all.
@@ -435,7 +428,7 @@ class GraphIndexBuilder(object):
         return parent_map, missing_keys
 
 
-class GraphIndex(object):
+class GraphIndex:
     """An index for data with embedded graphs.
 
     The index maps keys to a list of key reference lists, and a value.
@@ -513,7 +506,7 @@ class GraphIndex(object):
         return hash((type(self), self._transport, self._name, self._size))
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__,
+        return "{}({!r})".format(self.__class__.__name__,
                            self._transport.abspath(self._name))
 
     def _buffer_all(self, stream=None):
@@ -549,7 +542,7 @@ class GraphIndex(object):
             stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
-        for key, absent, references, value in viewvalues(self._keys_by_offset):
+        for key, absent, references, value in self._keys_by_offset.values():
             if absent:
                 continue
             # resolve references:
@@ -580,7 +573,7 @@ class GraphIndex(object):
                              % (ref_list_num, self.node_ref_lists))
         refs = set()
         nodes = self._nodes
-        for key, (value, ref_lists) in viewitems(nodes):
+        for key, (value, ref_lists) in nodes.items():
             ref_list = ref_lists[ref_list_num]
             refs.update([ref for ref in ref_list if ref not in nodes])
         return refs
@@ -589,13 +582,13 @@ class GraphIndex(object):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.node_ref_lists:
-                for key, (value, references) in viewitems(self._nodes):
+                for key, (value, references) in self._nodes.items():
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, value in viewitems(self._nodes):
+                for key, value in self._nodes.items():
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -618,10 +611,10 @@ class GraphIndex(object):
         if self._nodes is None:
             self._buffer_all()
         if self.node_ref_lists:
-            for key, (value, node_ref_lists) in viewitems(self._nodes):
+            for key, (value, node_ref_lists) in self._nodes.items():
                 yield self, key, value, node_ref_lists
         else:
-            for key, value in viewitems(self._nodes):
+            for key, value in self._nodes.items():
                 yield self, key, value
 
     def _read_prefix(self, stream):
@@ -797,8 +790,7 @@ class GraphIndex(object):
                     yield self, key, self._nodes[key]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for entry in _iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from _iter_entries_prefix(self, nodes_by_key, keys)
 
     def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
         """See BTreeIndex._find_ancestors."""
@@ -1153,7 +1145,7 @@ class GraphIndex(object):
                 # must be at the end
                 if self._size:
                     if not (self._size == pos + 1):
-                        raise AssertionError("%s %s" % (self._size, pos))
+                        raise AssertionError("{} {}".format(self._size, pos))
                 trailers += 1
                 continue
             elements = line.split(b'\0')
@@ -1161,8 +1153,7 @@ class GraphIndex(object):
                 raise BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
-            key = tuple([bytesintern(element)
-                         for element in elements[:self._key_length]])
+            key = tuple([element for element in elements[:self._key_length]])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
@@ -1288,7 +1279,7 @@ class GraphIndex(object):
             pass
 
 
-class CombinedGraphIndex(object):
+class CombinedGraphIndex:
     """A GraphIndex made up from smaller GraphIndices.
 
     The backing indices must implement GraphIndex, and are presumed to be
@@ -1325,7 +1316,7 @@ class CombinedGraphIndex(object):
         self._index_names = [None] * len(self._indices)
 
     def __repr__(self):
-        return "%s(%s)" % (
+        return "{}({})".format(
             self.__class__.__name__,
             ', '.join(map(repr, self._indices)))
 
@@ -1382,7 +1373,7 @@ class CombinedGraphIndex(object):
                             yield node
                             seen_keys.add(node[1])
                 return
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 
@@ -1412,7 +1403,7 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
         self._move_to_front(hit_indices)
@@ -1455,7 +1446,7 @@ class CombinedGraphIndex(object):
                     if index_hit:
                         hit_indices.append(index)
                 break
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
         self._move_to_front(hit_indices)
@@ -1602,7 +1593,7 @@ class CombinedGraphIndex(object):
         while True:
             try:
                 return sum((index.key_count() for index in self._indices), 0)
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 
@@ -1637,7 +1628,7 @@ class CombinedGraphIndex(object):
                 for index in self._indices:
                     index.validate()
                 return
-            except errors.NoSuchFile as e:
+            except _mod_transport.NoSuchFile as e:
                 if not self._try_reload(e):
                     raise
 
@@ -1673,11 +1664,11 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             trace.mutter_callsite(3,
                                   "iter_all_entries scales with size of history.")
         if self.reference_lists:
-            for key, (absent, references, value) in viewitems(self._nodes):
+            for key, (absent, references, value) in self._nodes.items():
                 if not absent:
                     yield self, key, value, references
         else:
-            for key, (absent, references, value) in viewitems(self._nodes):
+            for key, (absent, references, value) in self._nodes.items():
                 if not absent:
                     yield self, key, value
 
@@ -1736,8 +1727,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     yield self, key, node[2]
             return
         nodes_by_key = self._get_nodes_by_key()
-        for entry in _iter_entries_prefix(self, nodes_by_key, keys):
-            yield entry
+        yield from _iter_entries_prefix(self, nodes_by_key, keys)
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
@@ -1757,7 +1747,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         return hash(self) < hash(other)
 
 
-class GraphIndexPrefixAdapter(object):
+class GraphIndexPrefixAdapter:
     """An adapter between GraphIndex with different key lengths.
 
     Queries against this will emit queries against the adapted Graph with the
@@ -1910,7 +1900,7 @@ def _iter_entries_prefix(index_or_builder, nodes_by_key, keys):
         if len(elements):
             dicts = [key_dict]
             while dicts:
-                values_view = viewvalues(dicts.pop())
+                values_view = dicts.pop().values()
                 # can't be empty or would not exist
                 value = next(iter(values_view))
                 if isinstance(value, dict):

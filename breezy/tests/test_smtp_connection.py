@@ -14,10 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-try:
-    from email.message import Message
-except ImportError:  # python < 3
-    from email.Message import Message
+from email.message import Message
 import errno
 import smtplib
 import socket
@@ -31,15 +28,11 @@ from breezy import (
     )
 
 
-def connection_refuser():
-    def connect(server):
-        raise socket.error(errno.ECONNREFUSED, 'Connection Refused')
-    smtp = smtplib.SMTP()
-    smtp.connect = connect
-    return smtp
+def connection_refuser(host):
+    raise OSError(errno.ECONNREFUSED, 'Connection Refused')
 
 
-class StubSMTPFactory(object):
+class StubSMTPFactory:
     """A fake SMTP connection to test the connection setup."""
 
     def __init__(self, fail_on=None, smtp_features=None):
@@ -48,12 +41,13 @@ class StubSMTPFactory(object):
         self._smtp_features = smtp_features or []
         self._ehlo_called = False
 
-    def __call__(self):
+    def __call__(self, host='localhost'):
+        self._calls.append(('connect', host))
         # The factory pretends to be a connection
         return self
 
     def connect(self, server):
-        self._calls.append(('connect', server))
+        raise NotImplementedError
 
     def helo(self):
         self._calls.append(('helo',))
@@ -120,14 +114,14 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         self.assertIs(None, conn._smtp_username)
 
         conn = self.get_connection(b'smtp_username=joebody')
-        self.assertEqual(u'joebody', conn._smtp_username)
+        self.assertEqual('joebody', conn._smtp_username)
 
     def test_smtp_password_from_config(self):
         conn = self.get_connection(b'')
         self.assertIs(None, conn._smtp_password)
 
         conn = self.get_connection(b'smtp_password=mypass')
-        self.assertEqual(u'mypass', conn._smtp_password)
+        self.assertEqual('mypass', conn._smtp_password)
 
     def test_smtp_password_from_user(self):
         user = 'joe'
@@ -163,7 +157,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def test_authenticate_with_byte_strings(self):
         user = b'joe'
-        unicode_pass = u'h\xECspass'
+        unicode_pass = 'h\xECspass'
         utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
@@ -221,8 +215,9 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_create_connection_starttls_fails(self):
         # Check that we raise an exception if the server claims to
         # support STARTTLS, but then fails when we try to activate it.
-        factory = StubSMTPFactory(fail_on=['starttls'],
-                                  smtp_features=['starttls'])
+        factory = StubSMTPFactory(
+            fail_on=['starttls'],
+            smtp_features=['starttls'])
         conn = self.get_connection(b'', smtp_factory=factory)
         self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
@@ -239,7 +234,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
         msg['To'] = 'John Doe <john@doe.com>, Jane Doe <jane@doe.com>'
-        msg['CC'] = u'Pepe P\xe9rez <pperez@ejemplo.com>'
+        msg['CC'] = 'Pepe P\xe9rez <pperez@ejemplo.com>'
         msg['Bcc'] = 'user@localhost'
 
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
@@ -251,7 +246,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         msg = email_message.EmailMessage(
             '"J. Random Developer" <jrandom@example.com>',
             ['John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
-             u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost'],
+             'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost'],
             'subject')
 
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)

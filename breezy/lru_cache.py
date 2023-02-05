@@ -16,21 +16,15 @@
 
 """A simple least-recently-used (LRU) cache."""
 
-from __future__ import absolute_import, division
-
 from . import (
     trace,
-    )
-from .sixish import (
-    viewitems,
-    viewkeys,
     )
 
 
 _null_key = object()
 
 
-class _LRUNode(object):
+class _LRUNode:
     """This maintains the linked-list which is the lru internals."""
 
     __slots__ = ('prev', 'next_key', 'key', 'value')
@@ -46,11 +40,11 @@ class _LRUNode(object):
             prev_key = None
         else:
             prev_key = self.prev.key
-        return '%s(%r n:%r p:%r)' % (self.__class__.__name__, self.key,
+        return '{}({!r} n:{!r} p:{!r})'.format(self.__class__.__name__, self.key,
                                      self.next_key, prev_key)
 
 
-class LRUCache(object):
+class LRUCache:
     """A class which manages a cache of entries, removing unused ones."""
 
     def __init__(self, max_cache=100, after_cleanup_count=None):
@@ -136,11 +130,11 @@ class LRUCache(object):
         :return: An unordered list of keys that are currently cached.
         """
         # GZ 2016-06-04: Maybe just make this return the view?
-        return list(viewkeys(self._cache))
+        return list(self._cache.keys())
 
     def as_dict(self):
         """Get a new dict with the same key:value pairs as the cache"""
-        return dict((k, n.value) for k, n in viewitems(self._cache))
+        return {k: n.value for k, n in self._cache.items()}
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.

@@ -16,8 +16,6 @@
 
 """Annotate."""
 
-from __future__ import absolute_import
-
 from dulwich.object_store import (
     tree_lookup_path,
     )
@@ -38,7 +36,7 @@ from .mapping import (
     )
 
 
-class GitBlobContentFactory(object):
+class GitBlobContentFactory:
     """Static data content factory.
 
     This takes a fulltext when created and just returns that during
@@ -82,7 +80,7 @@ class GitBlobContentFactory(object):
                                         self.storage_kind)
 
 
-class GitAbsentContentFactory(object):
+class GitAbsentContentFactory:
     """Absent data content factory.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
@@ -110,7 +108,7 @@ class GitAbsentContentFactory(object):
         raise ValueError
 
 
-class AnnotateProvider(object):
+class AnnotateProvider:
 
     def __init__(self, change_scanner):
         self.change_scanner = change_scanner
@@ -124,7 +122,7 @@ class AnnotateProvider(object):
         path = encode_git_path(path)
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = (
+                (store, path, text_parent) = (
                     self.change_scanner.find_last_change_revision(
                         path, commit_parent))
             except KeyError:

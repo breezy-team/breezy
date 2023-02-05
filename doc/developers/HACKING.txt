@@ -7,7 +7,7 @@ It's meant for people interested in developing Breezy, and some parts will
 also be useful to people developing Breezy plugins.
 
 If you have any questions or something seems to be incorrect, unclear or
-missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
+missing, please talk to us in ``irc://irc.oftc.net/#breezy``, or write to
 the Breezy mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
@@ -28,7 +28,7 @@ perhaps someone else has already fixed it?
 To answer these questions and more, take a moment to explore the
 overall Breezy Platform. Here are some links to browse:
 
-* The Plugins page on the Wiki - http://wiki.bazaar.canonical.com/BzrPlugins
+* The Plugins page on the Wiki - http://wiki.breezy-vcs.org/Plugins
 
 * The Breezy product family on Launchpad - https://launchpad.net/breezy
 
@@ -51,7 +51,7 @@ Planning and Discussing Changes
 ===============================
 
 There is a very active community around Breezy. Mostly we meet on IRC
-(#bzr on irc.freenode.net) and on the mailing list. To join the Breezy
+(#breezy on irc.oftc.net) and on the mailing list. To join the Breezy
 community, see https://www.breezy-vcs.org/pages/support.html.
 
 If you are planning to make a change, it's a very good idea to mention it
@@ -72,8 +72,6 @@ friendly, helpful and always keen to welcome newcomers.
 
 Breezy Development in a Nutshell
 ================================
-
-.. was from http://wiki.bazaar.canonical.com/BzrGivingBack
 
 One of the fun things about working on a version control system like Breezy is
 that the users have a high level of proficiency in contributing back into
@@ -212,7 +210,7 @@ Preparing a Sandbox for Making Changes to Breezy
 ================================================
 
 Breezy supports many ways of organising your work. See
-http://wiki.bazaar.canonical.com/SharedRepositoryLayouts for a summary of the
+http://wiki.breezy-vcs.org/SharedRepositoryLayouts for a summary of the
 popular alternatives.
 
 Of course, the best choice for you will depend on numerous factors:
@@ -239,8 +237,6 @@ the associated branch can be deleted or archived as you wish.
 
 Navigating the Code Base
 ========================
-
-.. Was at <http://wiki.bazaar.canonical.com/NewDeveloperIntroduction>
 
 Some of the key files in this directory are:
 
@@ -513,7 +509,7 @@ changes need to be present in the .pyx file.
 Making Installers for OS Windows
 ================================
 To build a win32 installer, see the instructions on the wiki page:
-http://wiki.bazaar.canonical.com/BzrWin32Installer
+http://wiki.breezy-vcs.org/Win32Installer
 
 Core Developer Tasks
 ####################

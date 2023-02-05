@@ -18,8 +18,6 @@
 
 """
 
-from __future__ import absolute_import
-
 from ... import (
     controldir,
     commands,
@@ -38,7 +36,6 @@ class cmd_check_chk(commands.Command):
     """
 
     hidden = True
-    takes_args = []
     takes_options = ['directory', 'revision']
 
     def run(self, directory='.', revision=None):

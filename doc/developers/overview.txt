@@ -14,7 +14,7 @@ internals.  In particular the user guide doesn't go any deeper than
 like inventories, but this guide does.
 
 If you have any questions, or if something seems to be incorrect, unclear
-or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, write to
+or missing, please talk to us in ``irc://irc.oftc.net/#breezy``, write to
 the Breezy mailing list, or simply file a bug report.
 
 

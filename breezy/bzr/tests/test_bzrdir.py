@@ -50,7 +50,6 @@ import breezy.bzr.branch
 from ..fullhistory import BzrBranchFormat5
 from ...errors import (
     NotBranchError,
-    NoColocatedBranchSupport,
     UnknownFormatError,
     UnsupportedFormatError,
     )
@@ -80,13 +79,16 @@ class TestDefaultFormat(TestCase):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirMetaFormat1
         self.assertIsInstance(old_format, bzrdir.BzrDirMetaFormat1)
-        controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
+        current_default = controldir.format_registry.aliases()['bzr']
+        controldir.format_registry.register('sample', SampleBzrDirFormat, help='Sample')
+        self.addCleanup(controldir.format_registry.remove, 'sample')
+        controldir.format_registry.register_alias('bzr', 'sample')
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
             self.assertIsInstance(result, SampleBzrDir)
         finally:
-            controldir.ControlDirFormat._set_default_format(old_format)
+            controldir.format_registry.register_alias('bzr', current_default)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
@@ -226,7 +228,7 @@ class SampleBzrDir(bzrdir.BzrDir):
     def create_branch(self, name=None):
         """See ControlDir.create_branch."""
         if name is not None:
-            raise NoColocatedBranchSupport(self)
+            raise controldir.NoColocatedBranchSupport(self)
         return SampleBranch(self)
 
     def create_workingtree(self):
@@ -663,7 +665,7 @@ class ChrootedTests(TestCaseWithTransport):
     """
 
     def setUp(self):
-        super(ChrootedTests, self).setUp()
+        super().setUp()
         if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = http_server.HttpServer
 
@@ -1112,7 +1114,7 @@ class NonLocalTests(TestCaseWithTransport):
     """Tests for bzrdir static behaviour on non local paths."""
 
     def setUp(self):
-        super(NonLocalTests, self).setUp()
+        super().setUp()
         self.vfs_transport_factory = memory.MemoryServer
 
     def test_create_branch_convenience(self):
@@ -1157,7 +1159,7 @@ class NonLocalTests(TestCaseWithTransport):
                               workingtree_4.WorkingTreeFormat4)
 
 
-class TestHTTPRedirectionsBase(object):
+class TestHTTPRedirectionsBase:
     """Test redirection between two http servers.
 
     This MUST be used by daughter classes that also inherit from
@@ -1177,7 +1179,7 @@ class TestHTTPRedirectionsBase(object):
         return http_utils.HTTPServerRedirecting()
 
     def setUp(self):
-        super(TestHTTPRedirectionsBase, self).setUp()
+        super().setUp()
         # The redirections will point to the new server
         self.new_server = self.get_readonly_server()
         # The requests to the old server will be redirected
@@ -1218,7 +1220,7 @@ class TestHTTPRedirections(TestHTTPRedirectionsBase,
     _transport = HttpTransport
 
     def _qualified_url(self, host, port):
-        result = 'http://%s:%s' % (host, port)
+        result = 'http://{}:{}'.format(host, port)
         self.permit_url(result)
         return result
 
@@ -1230,7 +1232,7 @@ class TestHTTPRedirections_nosmart(TestHTTPRedirectionsBase,
     _transport = NoSmartTransportDecorator
 
     def _qualified_url(self, host, port):
-        result = 'nosmart+http://%s:%s' % (host, port)
+        result = 'nosmart+http://{}:{}'.format(host, port)
         self.permit_url(result)
         return result
 
@@ -1242,7 +1244,7 @@ class TestHTTPRedirections_readonly(TestHTTPRedirectionsBase,
     _transport = ReadonlyTransportDecorator
 
     def _qualified_url(self, host, port):
-        result = 'readonly+http://%s:%s' % (host, port)
+        result = 'readonly+http://{}:{}'.format(host, port)
         self.permit_url(result)
         return result
 
@@ -1287,7 +1289,7 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
     """
 
     def __init__(self, *args, **kwargs):
-        super(_TestBzrDir, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.test_branch = _TestBranch(self.transport)
         self.test_branch.repository = self.create_repository()
 
@@ -1305,11 +1307,15 @@ class _TestBranchFormat(breezy.branch.BranchFormat):
 class _TestBranch(breezy.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
+    @property
+    def control_transport(self):
+        return self._transport
+
     def __init__(self, transport, *args, **kwargs):
         self._format = _TestBranchFormat()
         self._transport = transport
         self.base = transport.base
-        super(_TestBranch, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.calls = []
         self._parent = None
 
@@ -1430,7 +1436,7 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
     # -- vila 20100909
 
     def setUp(self):
-        super(TestGenerateBackupName, self).setUp()
+        super().setUp()
         self._transport = self.get_transport()
         bzrdir.BzrDir.create(self.get_url(),
                              possible_transports=[self._transport])

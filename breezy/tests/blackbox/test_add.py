@@ -41,7 +41,7 @@ class TestAdd(tests.TestCaseWithTransport):
         ]
 
     def make_branch_and_tree(self, dir):
-        return super(TestAdd, self).make_branch_and_tree(
+        return super().make_branch_and_tree(
             dir, format=self.branch_tree_format)
 
     def test_add_reports(self):
@@ -211,7 +211,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
 
     def test_add_via_symlink(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.make_branch_and_tree('source')
         self.build_tree(['source/top.txt'])
         os.symlink('source', 'link')
@@ -219,7 +219,7 @@ class TestAdd(tests.TestCaseWithTransport):
         self.assertEqual(out, 'adding top.txt\n')
 
     def test_add_symlink_to_abspath(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         self.make_branch_and_tree('tree')
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]
@@ -239,9 +239,9 @@ class TestAdd(tests.TestCaseWithTransport):
     def test_add_multiple_files_in_unicode_cwd(self):
         """Adding multiple files in a non-ascii cwd, see lp:686611"""
         self.requireFeature(features.UnicodeFilenameFeature)
-        self.make_branch_and_tree(u"\xA7")
-        self.build_tree([u"\xA7/a", u"\xA7/b"])
-        out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
+        self.make_branch_and_tree("\xA7")
+        self.build_tree(["\xA7/a", "\xA7/b"])
+        out, err = self.run_bzr(["add", "a", "b"], working_dir="\xA7")
         self.assertEqual(out, "adding a\n" "adding b\n")
         self.assertEqual(err, "")
 

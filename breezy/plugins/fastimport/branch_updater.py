@@ -15,20 +15,19 @@
 
 """An object that updates a bunch of branches based on data imported."""
 
-from __future__ import absolute_import
-
 from operator import itemgetter
 
 from ... import errors, osutils, transport
 from ...trace import show_error, note
 
+from breezy import controldir
 from .helpers import (
     best_format_for_objects_in_a_repository,
     single_plural,
     )
 
 
-class BranchUpdater(object):
+class BranchUpdater:
 
     def __init__(self, repo, branch, cache_mgr, heads_by_ref, last_ref, tags):
         """Create an object responsible for updating branches.

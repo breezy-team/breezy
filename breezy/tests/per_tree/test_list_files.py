@@ -16,89 +16,81 @@
 
 """Test that all trees support Tree.list_files()"""
 
+from breezy import osutils
 from breezy.tests.per_tree import TestCaseWithTree
 from breezy.tests import TestNotApplicable
 
 
 class TestListFiles(TestCaseWithTree):
 
+    def assertFilesListEqual(self, tree, expected, **kwargs):
+        with tree.lock_read():
+            if tree.supports_file_ids:
+                actual = [(path, status, kind, ie.file_id)
+                          for path, status, kind, ie in
+                          tree.list_files(**kwargs)]
+                expected = [
+                    (path, status, kind, tree.path2id(osutils.pathjoin(kwargs.get('from_dir', ''), path)))
+                    for path, status, kind in expected]
+            else:
+                actual = [(path, status, kind)
+                          for path, status, kind, ie in
+                          tree.list_files(**kwargs)]
+                expected = [
+                    (path, status, kind) for path, status, kind in expected]
+        self.assertEqual(expected, actual)
+
     def test_list_files_with_root(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('', 'V', 'directory', tree.path2id('')),
-                    ('a', 'V', 'file', tree.path2id('a')),
-                    ('b', 'V', 'directory', tree.path2id('b')),
-                    ('b/c', 'V', 'file', tree.path2id('b/c')),
+        expected = [('', 'V', 'directory'),
+                    ('a', 'V', 'file'),
+                    ('b', 'V', 'directory'),
+                    ('b/c', 'V', 'file'),
                     ]
-        with tree.lock_read():
-            actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in
-                      tree.list_files(include_root=True)]
-        self.assertEqual(expected, actual)
+
+        self.assertFilesListEqual(tree, expected, include_root=True)
 
     def test_list_files_no_root(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', tree.path2id('a')),
-                    ('b', 'V', 'directory', tree.path2id('b')),
-                    ('b/c', 'V', 'file', tree.path2id('b/c')),
+        expected = [('a', 'V', 'file'),
+                    ('b', 'V', 'directory'),
+                    ('b/c', 'V', 'file'),
                     ]
-        with tree.lock_read():
-            actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in
-                      tree.list_files()]
-        self.assertEqual(expected, actual)
+        self.assertFilesListEqual(tree, expected)
 
     def test_list_files_with_root_no_recurse(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('', 'V', 'directory', tree.path2id('')),
-                    ('a', 'V', 'file', tree.path2id('a')),
+        expected = [('', 'V', 'directory'),
+                    ('a', 'V', 'file'),
                     ]
         expected.append(
-            ('b', 'V', 'directory', tree.path2id('b')))
-        with tree.lock_read():
-            actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in
-                      tree.list_files(include_root=True, recursive=False)]
-        self.assertEqual(expected, actual)
+            ('b', 'V', 'directory'))
+        self.assertFilesListEqual(tree, expected, include_root=True, recursive=False)
 
     def test_list_files_no_root_no_recurse(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', tree.path2id('a'))]
-        expected.append(
-            ('b', 'V', 'directory', tree.path2id('b')))
-        with tree.lock_read():
-            actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in
-                      tree.list_files(recursive=False)]
-        self.assertEqual(expected, actual)
+        expected = [('a', 'V', 'file')]
+        expected.append(('b', 'V', 'directory'))
+        self.assertFilesListEqual(tree, expected, recursive=False)
 
     def test_list_files_from_dir(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('c', 'V', 'file', tree.path2id('b/c')),
-                    ]
-        with tree.lock_read():
-            actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in
-                      tree.list_files(from_dir=u'b')]
-        self.assertEqual(expected, actual)
+        expected = [('c', 'V', 'file')]
+        self.assertFilesListEqual(tree, expected, from_dir='b')
 
     def test_list_files_from_dir_no_recurse(self):
         # The test trees don't have much nesting so test with an explicit root
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', tree.path2id('a'))]
-        expected.append(
-            ('b', 'V', 'directory', tree.path2id('b')))
+        expected = [('a', 'V', 'file')]
+        expected.append(('b', 'V', 'directory'))
 
-        with tree.lock_read():
-            actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in
-                      tree.list_files(from_dir='', recursive=False)]
-        self.assertEqual(expected, actual)
+        self.assertFilesListEqual(tree, expected, from_dir='', recursive=False)
 
     def skip_if_no_reference(self, tree):
         if not getattr(tree, 'supports_tree_reference', lambda: False)():
@@ -120,13 +112,9 @@ class TestListFiles(TestCaseWithTree):
     def test_list_files_with_unfollowed_reference(self):
         tree, subtree = self.create_nested()
         expected = [
-            ('', 'V', 'directory', tree.path2id('')),
-            ('subtree', 'V', 'tree-reference', tree.path2id('subtree'))]
-        with tree.lock_read():
-            actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in
-                      tree.list_files(recursive=True, recurse_nested=False, include_root=True)]
-        self.assertEqual(expected, actual)
+            ('', 'V', 'directory'),
+            ('subtree', 'V', 'tree-reference')]
+        self.assertFilesListEqual(tree, expected, recursive=True, recurse_nested=False, include_root=True)
 
     def test_list_files_with_followed_reference(self):
         tree, subtree = self.create_nested()
@@ -135,10 +123,5 @@ class TestListFiles(TestCaseWithTree):
             ('subtree', 'V', 'directory'),
             ('subtree/a', 'V', 'file'),
             ]
-        with tree.lock_read():
-            actual = [(path, status, kind)
-                      for path, status, kind, ie in
-                      tree.list_files(
-                          recursive=True, recurse_nested=True,
-                          include_root=True)]
-        self.assertEqual(expected, actual)
+        self.assertFilesListEqual(
+            tree, expected, recursive=True, recurse_nested=True, include_root=True)

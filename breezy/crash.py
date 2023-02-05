@@ -16,7 +16,7 @@
 
 """Handling and reporting crashes.
 
-A crash is an exception propagated up almost to the top level of Bazaar.
+A crash is an exception propagated up almost to the top level of Breezy.
 
 If we have apport <https://launchpad.net/apport/>, we store a report of the
 crash using apport into its /var/crash spool directory, from where the user
@@ -36,14 +36,13 @@ To force this off in brz turn set APPORT_DISABLE in the environment or
 -Dno_apport.
 """
 
-from __future__ import absolute_import
-
 # for interactive testing, try the 'brz assert-fail' command
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail
 #
 # to test with apport it's useful to set
 # export APPORT_IGNORE_OBSOLETE_PACKAGES=1
 
+from io import StringIO
 import os
 import platform
 import pprint
@@ -57,9 +56,6 @@ from . import (
     osutils,
     plugin,
     trace,
-    )
-from .sixish import (
-    StringIO,
     )
 
 
@@ -101,14 +97,14 @@ def report_bug_legacy(exc_info, err_file):
         subsequent_indent='    ',
         ) + '\n')
     print_wrapped(
-        'encoding: %r, fsenc: %r, lang: %r\n' % (
+        'encoding: {!r}, fsenc: {!r}, lang: {!r}\n'.format(
             osutils.get_user_encoding(), sys.getfilesystemencoding(),
             os.environ.get('LANG')))
     # We used to show all the plugins here, but it's too verbose.
     err_file.write(
         "\n"
-        "*** Bazaar has encountered an internal error.  This probably indicates a\n"
-        "    bug in Bazaar.  You can help us fix it by filing a bug report at\n"
+        "*** Breezy has encountered an internal error.  This probably indicates a\n"
+        "    bug in Breezy.  You can help us fix it by filing a bug report at\n"
         "        https://bugs.launchpad.net/brz/+filebug\n"
         "    including this traceback and a description of the problem.\n"
         )
@@ -136,7 +132,7 @@ def report_bug_to_apport(exc_info, stderr):
     else:
         trace.print_exception(exc_info, stderr)
         stderr.write("\n"
-                     "You can report this problem to Bazaar's developers by running\n"
+                     "You can report this problem to Breezy's developers by running\n"
                      "    apport-bug %s\n"
                      "if a bug-reporting window does not automatically appear.\n"
                      % (crash_filename))
@@ -227,8 +223,8 @@ def _write_apport_report_to_file(exc_info):
 
 def _attach_log_tail(pr):
     try:
-        brz_log = open(trace._get_brz_log_filename(), 'rt')
-    except (IOError, OSError) as e:
+        brz_log = open(trace._get_brz_log_filename())
+    except OSError as e:
         pr['BrzLogTail'] = repr(e)
         return
     try:
@@ -253,7 +249,7 @@ def _open_crash_file():
         user_part = '.%d' % os.getuid()
     filename = osutils.pathjoin(
         crash_dir,
-        'brz%s.%s.crash' % (
+        'brz{}.{}.crash'.format(
             user_part,
             date_string))
     # be careful here that people can't play tmp-type symlink mischief in the

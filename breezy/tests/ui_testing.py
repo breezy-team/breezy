@@ -14,17 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import io
 
 from .. import (
     ui,
 )
 from ..ui import text as ui_text
-from ..sixish import (
-    text_type,
-)
 
 
 class StringIOWithEncoding(io.StringIO):
@@ -54,13 +49,13 @@ class TextUIFactory(ui_text.TextUIFactory):
     def __init__(self, stdin=None, stdout=None, stderr=None):
         if isinstance(stdin, bytes):
             stdin = stdin.decode()
-        if isinstance(stdin, text_type):
+        if isinstance(stdin, str):
             stdin = StringIOWithEncoding(stdin)
         if stdout is None:
             stdout = StringIOWithEncoding()
         if stderr is None:
             stderr = StringIOWithEncoding()
-        super(TextUIFactory, self).__init__(stdin, stdout, stderr)
+        super().__init__(stdin, stdout, stderr)
 
     def _setup_streams(self):
         self.raw_stdin = self.stdin

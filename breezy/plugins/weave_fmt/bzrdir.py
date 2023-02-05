@@ -16,8 +16,6 @@
 
 """Weave-era BzrDir formats."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ...bzr.bzrdir import (
@@ -29,20 +27,26 @@ from ...controldir import (
     ControlDir,
     Converter,
     MustHaveWorkingTree,
+    NoColocatedBranchSupport,
     format_registry,
     )
 from ... import (
     errors,
+    lockable_files,
+    )
+from ...i18n import gettext
+from ...transport import (
+    get_transport,
+    local,
+    NoSuchFile,
     )
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import os
-import warnings
 
 from breezy import (
     branch as _mod_branch,,
     graph,
-    lockable_files,
     lockdir,
     osutils,
     revision as _mod_revision,
@@ -55,13 +59,8 @@ from breezy.bzr import (
     weave,
     xml5,
     )
-from breezy.i18n import gettext
 from breezy.plugins.weave_fmt.store.versioned import VersionedFileStore
 from breezy.transactions import WriteTransaction
-from breezy.transport import (
-    get_transport,
-    local,
-    )
 from breezy.plugins.weave_fmt import xml4
 """)
 
@@ -143,7 +142,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         """
         from .branch import BzrBranchFormat4
         from .repository import RepositoryFormat5
-        result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
+        result = (super().initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
             branch = BzrBranchFormat4().initialize(result)
@@ -207,7 +206,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         """
         from .branch import BzrBranchFormat4
         from .repository import RepositoryFormat6
-        result = super(BzrDirFormat6, self).initialize_on_transport(transport)
+        result = super().initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
             branch = BzrBranchFormat4().initialize(result)
@@ -232,7 +231,7 @@ class ConvertBzrDir4To5(Converter):
     """Converts format 4 bzr dirs to format 5."""
 
     def __init__(self):
-        super(ConvertBzrDir4To5, self).__init__()
+        super().__init__()
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
@@ -241,8 +240,6 @@ class ConvertBzrDir4To5(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        if pb is not None:
-            warnings.warn(gettext("pb parameter to convert() is deprecated"))
         with ui.ui_factory.nested_progress_bar() as self.pb:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
@@ -260,7 +257,7 @@ class ConvertBzrDir4To5(Converter):
             if not S_ISDIR(stat.st_mode):
                 self.controldir.transport.delete('weaves')
                 self.controldir.transport.mkdir('weaves')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             self.controldir.transport.mkdir('weaves')
         # deliberately not a WeaveFile as we want to build it up slowly.
         self.inv_weave = weave.Weave('inventory')
@@ -305,7 +302,7 @@ class ConvertBzrDir4To5(Converter):
             try:
                 ## assert os.path.getsize(p) == 0
                 self.controldir.transport.delete(n)
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 pass
         self.controldir.transport.delete_tree('inventory-store')
         self.controldir.transport.delete_tree('text-store')
@@ -447,9 +444,9 @@ class ConvertBzrDir4To5(Converter):
 
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map"""
-        return dict((revision_id, self.revisions[revision_id])
+        return {revision_id: self.revisions[revision_id]
                     for revision_id in revision_ids
-                    if revision_id in self.revisions)
+                    if revision_id in self.revisions}
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
@@ -528,7 +525,7 @@ class ConvertBzrDir5To6(Converter):
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, new_name)
-                except errors.NoSuchFile:  # catches missing dirs strangely enough
+                except NoSuchFile:  # catches missing dirs strangely enough
                     store_transport.mkdir(osutils.dirname(new_name))
                     store_transport.move(filename, new_name)
         self.controldir.transport.put_bytes(
@@ -563,7 +560,7 @@ class ConvertBzrDir6ToMeta(Converter):
         try:
             self.step(gettext('Removing ancestry.weave'))
             self.controldir.transport.delete('ancestry.weave')
-        except errors.NoSuchFile:
+        except NoSuchFile:
             pass
         # find out whats there
         self.step(gettext('Finding branch files'))
@@ -649,8 +646,8 @@ class ConvertBzrDir6ToMeta(Converter):
         mandatory = entry[1]
         self.step(gettext('Moving %s') % name)
         try:
-            self.controldir.transport.move(name, '%s/%s' % (new_dir, name))
-        except errors.NoSuchFile:
+            self.controldir.transport.move(name, '{}/{}'.format(new_dir, name))
+        except NoSuchFile:
             if mandatory:
                 raise
 
@@ -730,7 +727,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def __init__(self, _transport, _format):
         """See ControlDir.__init__."""
-        super(BzrDirPreSplitOut, self).__init__(_transport, _format)
+        super().__init__(_transport, _format)
         self._control_files = lockable_files.LockableFiles(
             self.get_branch_transport(None),
             self._format._lock_file_name,
@@ -774,7 +771,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See ControlDir.create_branch."""
         if repository is not None:
             raise NotImplementedError(
-                "create_branch(repository=<not None>) on %r" % (self,))
+                "create_branch(repository=<not None>) on {!r}".format(self))
         return self._format.get_branch_format().initialize(self, name=name,
                                                            append_revisions_only=append_revisions_only)
 
@@ -812,7 +809,7 @@ class BzrDirPreSplitOut(BzrDir):
                     % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
-        except errors.NoSuchFile:
+        except NoSuchFile:
             result = self._init_workingtree()
         if revision_id is not None:
             if revision_id == _mod_revision.NULL_REVISION:
@@ -843,7 +840,7 @@ class BzrDirPreSplitOut(BzrDir):
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
         if name:
-            raise errors.NoColocatedBranchSupport(self)
+            raise NoColocatedBranchSupport(self)
         if branch_format is None:
             return self.transport
         try:
@@ -925,7 +922,7 @@ class BzrDirPreSplitOut(BzrDir):
     def set_branch_reference(self, target_branch, name=None):
         from ...bzr.branch import BranchReferenceFormat
         if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
+            raise NoColocatedBranchSupport(self)
         raise errors.IncompatibleFormat(BranchReferenceFormat, self._format)
 
 

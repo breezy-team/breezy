@@ -21,9 +21,9 @@ import os
 import sys
 import time
 
+import fastbencode as bencode
+
 from .. import (
-    bencode,
-    errors,
     filters,
     osutils,
     revision as _mod_revision,
@@ -53,6 +53,7 @@ from ..errors import (
     ExistingPendingDeletion,
     ImmortalPendingDeletion,
     LockError,
+    StrictCommitFailed,
 )
 from ..osutils import (
     file_kind,
@@ -60,11 +61,6 @@ from ..osutils import (
 )
 from ..merge import Merge3Merger, Merger
 from ..mutabletree import MutableTree
-from ..sixish import (
-    BytesIO,
-    PY3,
-    text_type,
-    )
 from . import (
     features,
     TestCaseInTempDir,
@@ -74,6 +70,7 @@ from .features import (
     HardlinkFeature,
     SymlinkFeature,
     )
+from ..transport import FileExists
 from ..transform import (
     create_from_tree,
     _FileMover,
@@ -86,18 +83,16 @@ from ..transform import (
     ReusingTransform,
     TransformRenameFailed,
 )
-from ..bzr.transform import (
-    InventoryTreeTransform as TreeTransform,
-    )
 
 
-class TransformGroup(object):
+class TransformGroup:
 
     def __init__(self, dirname, root_id):
         self.name = dirname
         os.mkdir(dirname)
         self.wt = ControlDir.create_standalone_workingtree(dirname)
-        self.wt.set_root_id(root_id)
+        if self.wt.supports_file_ids:
+            self.wt.set_root_id(root_id)
         self.b = self.wt.branch
         self.tt = self.wt.transform()
         self.root = self.tt.trans_id_tree_path('')
@@ -147,30 +142,30 @@ class TestTransformMerge(TestCaseInTempDir):
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
         # textual merge
-        with this.wt.get_file(this.wt.id2path(b'a')) as f:
+        with this.wt.get_file('a') as f:
             self.assertEqual(f.read(), b'y\nb\nc\nd\bz\n')
         # three-way text conflict
-        with this.wt.get_file(this.wt.id2path(b'b')) as f:
+        with this.wt.get_file('b') as f:
             self.assertEqual(f.read(), conflict_text(b'b', b'b2'))
         # OTHER wins
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'c')).read(), b'c2')
+        self.assertEqual(this.wt.get_file('c').read(), b'c2')
         # THIS wins
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'd')).read(), b'd2')
+        self.assertEqual(this.wt.get_file('d').read(), b'd2')
         # Ambigious clean merge
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'e')).read(), b'e2')
+        self.assertEqual(this.wt.get_file('e').read(), b'e2')
         # No change
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'f')).read(), b'f')
+        self.assertEqual(this.wt.get_file('f').read(), b'f')
         # Correct correct results when THIS == OTHER
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'g')).read(), b'g')
+        self.assertEqual(this.wt.get_file('g').read(), b'g')
         # Text conflict when THIS & OTHER are text and BASE is dir
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'h')).read(),
+        self.assertEqual(this.wt.get_file('h').read(),
                          conflict_text(b'1\n2\n3\n4\n', b'h\ni\nj\nk\n'))
         self.assertEqual(this.wt.get_file('h.THIS').read(),
                          b'1\n2\n3\n4\n')
         self.assertEqual(this.wt.get_file('h.OTHER').read(),
                          b'h\ni\nj\nk\n')
         self.assertEqual(file_kind(this.wt.abspath('h.BASE')), 'directory')
-        self.assertEqual(this.wt.get_file(this.wt.id2path(b'i')).read(),
+        self.assertEqual(this.wt.get_file('i').read(),
                          conflict_text(b'1\n2\n3\n4\n', b'h\ni\nj\nk\n'))
         self.assertEqual(this.wt.get_file('i.THIS').read(),
                          b'1\n2\n3\n4\n')
@@ -181,7 +176,7 @@ class TestTransformMerge(TestCaseInTempDir):
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        with open(this.wt.abspath(this.wt.id2path(b'a')), 'wb') as f:
+        with open(this.wt.abspath('a'), 'wb') as f:
             f.write(b'booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
@@ -191,7 +186,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.wt.revert()
 
     def test_file_merge(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(SymlinkFeature(self.test_dir))
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
@@ -239,10 +234,10 @@ class TestTransformMerge(TestCaseInTempDir):
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
-        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, b'a')
-                                   for t in [base, this, other]]
-        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, b'b')
-                                   for t in [base, this, other]]
+        base_a, this_a, other_a = (t.tt.new_directory('a', t.root, b'a')
+                                   for t in [base, this, other])
+        base_b, this_b, other_b = (t.tt.new_directory('b', t.root, b'b')
+                                   for t in [base, this, other])
         base.tt.new_directory('c', base_a, b'c')
         this.tt.new_directory('c1', this_a, b'c')
         other.tt.new_directory('c', other_b, b'c')
@@ -272,10 +267,10 @@ class TestTransformMerge(TestCaseInTempDir):
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
-        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, b'a')
-                                   for t in [base, this, other]]
-        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, b'b')
-                                   for t in [base, this, other]]
+        base_a, this_a, other_a = (t.tt.new_directory('a', t.root, b'a')
+                                   for t in [base, this, other])
+        base_b, this_b, other_b = (t.tt.new_directory('b', t.root, b'b')
+                                   for t in [base, this, other])
 
         base.tt.new_file('g', base_a, [b'g'], b'g')
         other.tt.new_file('g1', other_b, [b'g1'], b'g')
@@ -365,21 +360,21 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, [b'contents'], b'file-id')
         trans_id = tt.new_directory('dir', tt.root, b'dir-id')
-        if SymlinkFeature.available():
+        if SymlinkFeature(self.test_dir).available():
             tt.new_symlink('symlink', trans_id, 'target', b'symlink-id')
         tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path(b'file-id'))
         self.assertEqual(b'contents', tree.get_file_text('file'))
         self.assertEqual('dir', tree.id2path(b'dir-id'))
-        if SymlinkFeature.available():
+        if SymlinkFeature(self.test_dir).available():
             self.assertEqual('dir/symlink', tree.id2path(b'symlink-id'))
             self.assertEqual('target', tree.get_symlink_target('dir/symlink'))
 
     def test_add_unversioned(self):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, [b'contents'])
-        self.assertRaises(errors.StrictCommitFailed, tt.commit, branch,
+        self.assertRaises(StrictCommitFailed, tt.commit, branch,
                           'message', strict=True)
 
     def test_modify_strict(self):
@@ -408,7 +403,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43201,
                            committer='me <me@example.com>',
-                           revprops={u'foo': 'bar'}, revision_id=b'revid-1',
+                           revprops={'foo': 'bar'}, revision_id=b'revid-1',
                            authors=['Author1 <author1@example.com>',
                                     'Author2 <author2@example.com>',
                                     ])
@@ -481,7 +476,7 @@ class TestFileMover(tests.TestCaseWithTransport):
         mover.rename('c/e', 'c/d')
         try:
             mover.rename('a', 'c')
-        except errors.FileExists:
+        except FileExists:
             mover.rollback()
         self.assertPathExists('a')
         self.assertPathExists('c/d')
@@ -567,12 +562,8 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         new_globals.update(globals)
         new_func = types.FunctionType(func.__code__, new_globals,
                                       func.__name__, func.__defaults__)
-        if PY3:
-            setattr(instance, method_name,
-                    types.MethodType(new_func, instance))
-        else:
-            setattr(instance, method_name,
-                    types.MethodType(new_func, instance, instance.__class__))
+        setattr(instance, method_name,
+                types.MethodType(new_func, instance))
         self.addCleanup(delattr, instance, method_name)
 
     @staticmethod
@@ -654,7 +645,7 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         child1 = tt.new_file('child1', parent1, [b'contents'])
         parent2 = tt.new_directory('parent2', tt.root)
 
-        class FakeOSModule(object):
+        class FakeOSModule:
             def rename(self, old, new):
                 os.rename(old, new)
                 raise RuntimeError
@@ -674,7 +665,7 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         child1 = tt.new_file('child1', parent1, [b'contents'])
         parent2 = tt.new_directory('parent2', tt.root)
 
-        class FakeOSModule(object):
+        class FakeOSModule:
             def rename(self, old, new):
                 raise RuntimeError
         self._override_globals_in_method(tt, "_rename_in_limbo",
@@ -693,7 +684,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
     def make_tt_with_versioned_dir(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['dir/', ])
-        wt.add(['dir'], [b'dir-id'])
+        wt.add(['dir'], ids=[b'dir-id'])
         wt.commit('Create dir')
         tt = wt.transform()
         self.addCleanup(tt.finalize)
@@ -723,7 +714,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
                          conflicts.pop())
 
 
-class FakeSerializer(object):
+class FakeSerializer:
     """Serializer implementation that simply returns the input.
 
     The input is returned in the order used by pack.ContainerPushParser.
@@ -772,7 +763,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         attribs = self.default_attribs()
         attribs[b'_id_number'] = 3
         attribs[b'_new_name'] = {
-            b'new-1': u'foo\u1234'.encode('utf-8'), b'new-2': b'qux'}
+            b'new-1': 'foo\u1234'.encode(), b'new-2': b'qux'}
         attribs[b'_new_id'] = {b'new-1': b'baz', b'new-2': b'quxx'}
         attribs[b'_new_parent'] = {b'new-1': b'new-0', b'new-2': b'new-0'}
         attribs[b'_new_executability'] = {b'new-1': 1}
@@ -784,7 +775,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
     def test_serialize_creation(self):
         tt = self.get_preview()
-        tt.new_file(u'foo\u1234', tt.root, [b'bar'], b'baz', True)
+        tt.new_file('foo\u1234', tt.root, [b'bar'], b'baz', True)
         tt.new_directory('qux', tt.root, b'quxx')
         self.assertSerializesTo(self.creation_records(), tt)
 
@@ -792,7 +783,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt = self.get_preview()
         tt.deserialize(iter(self.creation_records()))
         self.assertEqual(3, tt._id_number)
-        self.assertEqual({'new-1': u'foo\u1234',
+        self.assertEqual({'new-1': 'foo\u1234',
                           'new-2': 'qux'}, tt._new_name)
         self.assertEqual({'new-1': b'baz', 'new-2': b'quxx'}, tt._new_id)
         self.assertEqual({'new-1': tt.root, 'new-2': tt.root}, tt._new_parent)
@@ -807,29 +798,29 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def symlink_creation_records(self):
         attribs = self.default_attribs()
         attribs[b'_id_number'] = 2
-        attribs[b'_new_name'] = {b'new-1': u'foo\u1234'.encode('utf-8')}
+        attribs[b'_new_name'] = {b'new-1': 'foo\u1234'.encode()}
         attribs[b'_new_parent'] = {b'new-1': b'new-0'}
-        contents = [(b'new-1', b'symlink', u'bar\u1234'.encode('utf-8'))]
+        contents = [(b'new-1', b'symlink', 'bar\u1234'.encode())]
         return self.make_records(attribs, contents)
 
     def test_serialize_symlink_creation(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tt = self.get_preview()
-        tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
+        tt.new_symlink('foo\u1234', tt.root, 'bar\u1234')
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
-        self.requireFeature(features.SymlinkFeature)
+        self.requireFeature(features.SymlinkFeature(self.test_dir))
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
         abspath = tt._limbo_name('new-1')
         foo_content = osutils.readlink(abspath)
-        self.assertEqual(u'bar\u1234', foo_content)
+        self.assertEqual('bar\u1234', foo_content)
 
     def make_destruction_preview(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree([u'foo\u1234', 'bar'])
-        tree.add([u'foo\u1234', 'bar'], [b'foo-id', b'bar-id'])
+        self.build_tree(['foo\u1234', 'bar'])
+        tree.add(['foo\u1234', 'bar'], ids=[b'foo-id', b'bar-id'])
         return self.get_preview(tree)
 
     def destruction_records(self):
@@ -839,14 +830,14 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         attribs[b'_removed_contents'] = [b'new-2']
         attribs[b'_tree_path_ids'] = {
             b'': b'new-0',
-            u'foo\u1234'.encode('utf-8'): b'new-1',
+            'foo\u1234'.encode(): b'new-1',
             b'bar': b'new-2',
             }
         return self.make_records(attribs, [])
 
     def test_serialize_destruction(self):
         tt = self.make_destruction_preview()
-        foo_trans_id = tt.trans_id_tree_path(u'foo\u1234')
+        foo_trans_id = tt.trans_id_tree_path('foo\u1234')
         tt.unversion_file(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_path('bar')
         tt.delete_contents(bar_trans_id)
@@ -855,10 +846,10 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def test_deserialize_destruction(self):
         tt = self.make_destruction_preview()
         tt.deserialize(iter(self.destruction_records()))
-        self.assertEqual({u'foo\u1234': 'new-1',
+        self.assertEqual({'foo\u1234': 'new-1',
                           'bar': 'new-2',
                           '': tt.root}, tt._tree_path_ids)
-        self.assertEqual({'new-1': u'foo\u1234',
+        self.assertEqual({'new-1': 'foo\u1234',
                           'new-2': 'bar',
                           tt.root: ''}, tt._tree_id_paths)
         self.assertEqual({'new-1'}, tt._removed_id)
@@ -886,7 +877,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_TWO = b'z\nbb\nx\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         return self.get_preview(tree), [LINES_TWO]
 
     def modification_records(self):
@@ -916,7 +907,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES = b'a\nb\nc\nd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo/'])
-        tree.add('foo', b'foo-id')
+        tree.add('foo', ids=b'foo-id')
         return self.get_preview(tree), [LINES]
 
     def kind_change_records(self):
@@ -975,7 +966,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_ONE = b'aa\nbb\ncc\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual(([b'aa\n', b'bb\n', b'cc\n', b'dd\n'],),
@@ -985,7 +976,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         LINES_ONE = b'aa\nbb\ncc\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
-        tree.add('file', b'file-id')
+        tree.add('file', ids=b'file-id')
         tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual((LINES_ONE,),
@@ -1006,7 +997,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 
     def _prepare_orphan(self, wt):
         self.build_tree(['dir/', 'dir/file', 'dir/foo'])
-        wt.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
+        wt.add(['dir', 'dir/file'], ids=[b'dir-id', b'file-id'])
         wt.commit('add dir and file ignoring foo')
         tt = wt.transform()
         self.addCleanup(tt.finalize)
@@ -1088,7 +1079,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 class TestTransformHooks(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestTransformHooks, self).setUp()
+        super().setUp()
         self.wt = self.make_branch_and_tree('.')
         os.chdir('..')
 
@@ -1126,10 +1117,9 @@ class TestTransformHooks(tests.TestCaseWithTransport):
 
 class TestLinkTree(tests.TestCaseWithTransport):
 
-    _test_needs_features = [HardlinkFeature]
-
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
+        self.requireFeature(HardlinkFeature(self.test_dir))
         self.parent_tree = self.make_branch_and_tree('parent')
         self.parent_tree.lock_write()
         self.addCleanup(self.parent_tree.unlock)
@@ -1171,7 +1161,7 @@ class TestLinkTree(tests.TestCaseWithTransport):
 class ErrorTests(tests.TestCase):
 
     def test_transform_rename_failed(self):
-        e = TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        e = TransformRenameFailed("from", "to", "readonly file", 2)
         self.assertEqual(
-            u"Failed to rename from to to: readonly file",
+            "Failed to rename from to to: readonly file",
             str(e))

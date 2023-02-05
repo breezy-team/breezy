@@ -8,7 +8,7 @@
 
 import sys
 if sys.frozen == "windows_exe":
-    class Blackhole(object):
+    class Blackhole:
         softspace = 0
         def write(self, text):
             pass

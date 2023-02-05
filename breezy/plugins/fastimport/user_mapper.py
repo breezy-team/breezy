@@ -13,15 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import absolute_import
-
-try:
-    from email.utils import parseaddr
-except ImportError:
-    from email.Utils import parseaddr
+from email.utils import parseaddr
 
 
-class UserMapper(object):
+class UserMapper:
 
     def __init__(self, lines):
         """Create a user-mapper from a list of lines.

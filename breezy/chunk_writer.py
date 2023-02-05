@@ -17,13 +17,12 @@
 
 """ChunkWriter: write compressed data out with a fixed upper bound."""
 
-from __future__ import absolute_import
-
+from typing import Optional, List, Tuple, Callable
 import zlib
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
 
-class ChunkWriter(object):
+class ChunkWriter:
     """ChunkWriter allows writing of compressed data with a fixed size.
 
     If less data is supplied than fills a chunk, the chunk is padded with
@@ -95,7 +94,7 @@ class ChunkWriter(object):
     _repack_opts_for_speed = (0, 8)
     _repack_opts_for_size = (20, 0)
 
-    def __init__(self, chunk_size, reserved=0, optimize_for_size=False):
+    def __init__(self, chunk_size: int, reserved: int = 0, optimize_for_size: bool = False) -> None:
         """Create a ChunkWriter to write chunk_size chunks.
 
         :param chunk_size: The total byte count to emit at the end of the
@@ -106,19 +105,19 @@ class ChunkWriter(object):
         """
         self.chunk_size = chunk_size
         self.compressor = zlib.compressobj()
-        self.bytes_in = []
-        self.bytes_list = []
+        self.bytes_in: List[bytes] = []
+        self.bytes_list: List[bytes] = []
         self.bytes_out_len = 0
         # bytes that have been seen, but not included in a flush to out yet
         self.unflushed_in_bytes = 0
         self.num_repack = 0
         self.num_zsync = 0
-        self.unused_bytes = None
+        self.unused_bytes: Optional[bytes] = None
         self.reserved_size = reserved
         # Default is to make building fast rather than compact
         self.set_optimize(for_size=optimize_for_size)
 
-    def finish(self):
+    def finish(self) -> Tuple[List[bytes], Optional[bytes], int]:
         """Finish the chunk.
 
         This returns the final compressed chunk, and either None, or the
@@ -134,7 +133,7 @@ class ChunkWriter(object):
               could not fit.
             * num_nulls_needed: How many nulls are padded at the end
         """
-        self.bytes_in = None  # Free the data cached so far, we don't need it
+        self.bytes_in = []
         out = self.compressor.flush(Z_FINISH)
         self.bytes_list.append(out)
         self.bytes_out_len += len(out)
@@ -148,7 +147,7 @@ class ChunkWriter(object):
             self.bytes_list.append(b"\x00" * nulls_needed)
         return self.bytes_list, self.unused_bytes, nulls_needed
 
-    def set_optimize(self, for_size=True):
+    def set_optimize(self, for_size: bool = True) -> None:
         """Change how we optimize our writes.
 
         :param for_size: If True, optimize for minimum space usage, otherwise
@@ -161,7 +160,7 @@ class ChunkWriter(object):
             opts = ChunkWriter._repack_opts_for_speed
         self._max_repack, self._max_zsync = opts
 
-    def _recompress_all_bytes_in(self, extra_bytes=None):
+    def _recompress_all_bytes_in(self, extra_bytes: Optional[bytes] = None) -> Tuple[List[bytes], int, "zlib._Compress"]:
         """Recompress the current bytes_in, and optionally more.
 
         :param extra_bytes: Optional, if supplied we will add it with
@@ -174,7 +173,7 @@ class ChunkWriter(object):
               Z_SYNC_FLUSH called.
         """
         compressor = zlib.compressobj()
-        bytes_out = []
+        bytes_out: List[bytes] = []
         append = bytes_out.append
         compress = compressor.compress
         for accepted_bytes in self.bytes_in:
@@ -188,7 +187,7 @@ class ChunkWriter(object):
         bytes_out_len = sum(map(len, bytes_out))
         return bytes_out, bytes_out_len, compressor
 
-    def write(self, bytes, reserved=False):
+    def write(self, bytes: bytes, reserved: bool = False) -> bool:
         """Write some bytes to the chunk.
 
         If the bytes fit, False is returned. Otherwise True is returned

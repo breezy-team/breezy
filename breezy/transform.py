@@ -14,12 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+import contextlib
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
 import time
+from typing import Callable
 
 from . import (
     config as _mod_config,
@@ -33,11 +33,7 @@ from . import (
     )
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    cleanup,
-    multiparent,
-    revision as _mod_revision,
     ui,
-    urlutils,
     )
 from breezy.i18n import gettext
 """)
@@ -52,14 +48,9 @@ from .osutils import (
     pathjoin,
     sha_file,
     splitpath,
-    supports_symlinks,
     )
 from .progress import ProgressPhase
-from .sixish import (
-    text_type,
-    viewitems,
-    viewvalues,
-    )
+from .transport import FileExists, NoSuchFile
 from .tree import (
     InterTree,
     find_previous_path,
@@ -122,7 +113,7 @@ def unique_add(map, key, value):
     map[key] = value
 
 
-class _TransformResults(object):
+class _TransformResults:
 
     def __init__(self, modified_paths, rename_count):
         object.__init__(self)
@@ -130,7 +121,7 @@ class _TransformResults(object):
         self.rename_count = rename_count
 
 
-class TreeTransform(object):
+class TreeTransform:
     """Represent a tree transformation.
 
     This object is designed to support incremental generation of the transform,
@@ -221,7 +212,7 @@ class TreeTransform(object):
         Only new paths and parents of tree files with assigned ids are used.
         """
         by_parent = {}
-        items = list(viewitems(self._new_parent))
+        items = list(self._new_parent.items())
         items.extend((t, self.final_parent(t))
                      for t in list(self._tree_id_paths))
         for trans_id, parent_id in items:
@@ -521,6 +512,9 @@ class TreeTransform(object):
         """
         raise NotImplementedError(self.create_symlink)
 
+    def create_tree_reference(self, reference_revision, trans_id):
+        raise NotImplementedError(self.create_tree_reference)
+
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
         raise NotImplementedError(self.create_hardlink)
@@ -590,14 +584,14 @@ def refuse_orphan(tt, orphan_id, parent_id):
     raise OrphaningForbidden('never')
 
 
-orphaning_registry = registry.Registry()
+orphaning_registry = registry.Registry[str, Callable[[TreeTransform, bytes, bytes], None]]()
 orphaning_registry.register(
-    u'conflict', refuse_orphan,
+    'conflict', refuse_orphan,
     'Leave orphans in place and create a conflict on the directory.')
 orphaning_registry.register(
-    u'move', move_orphan,
+    'move', move_orphan,
     'Move orphans into the brz-orphans directory.')
-orphaning_registry._set_default_key(u'conflict')
+orphaning_registry._set_default_key('conflict')
 
 
 opt_transform_orphan = _mod_config.RegistryOption(
@@ -614,7 +608,7 @@ def joinpath(parent, child):
         return pathjoin(parent, child)
 
 
-class FinalPaths(object):
+class FinalPaths:
     """Make path calculation cheap by memoizing paths.
 
     The underlying tree must not be manipulated between calls, or else
@@ -628,7 +622,7 @@ class FinalPaths(object):
 
     def _determine_path(self, trans_id):
         if trans_id == self.transform.root or trans_id == ROOT_PARENT:
-            return u""
+            return ""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)
         if parent_id == self.transform.root:
@@ -710,6 +704,8 @@ def create_from_tree(tt, trans_id, tree, path, chunks=None,
                 f.close()
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(path), trans_id)
+    elif kind == "tree-reference":
+        tt.create_tree_reference(tree.get_reference_revision(path), trans_id)
     else:
         raise AssertionError('Unknown kind %r' % kind)
 
@@ -739,7 +735,7 @@ def _prepare_revert_transform(es, working_tree, target_tree, tt, filenames,
 def revert(working_tree, target_tree, filenames=None, backups=False,
            pb=None, change_reporter=None, merge_modified=None, basis_tree=None):
     """Revert a working tree's contents to those of a target tree."""
-    with cleanup.ExitStack() as es:
+    with contextlib.ExitStack() as es:
         pb = es.enter_context(ui.ui_factory.nested_progress_bar())
         es.enter_context(target_tree.lock_read())
         tt = es.enter_context(working_tree.transform(pb))
@@ -752,7 +748,7 @@ def revert(working_tree, target_tree, filenames=None, backups=False,
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
-            trace.warning(text_type(conflict))
+            trace.warning(str(conflict))
         pp.next_phase()
         tt.apply()
         if working_tree.supports_merge_modified():
@@ -770,7 +766,7 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
     # reverse.
     change_list = working_tree.iter_changes(
         target_tree, specific_files=specific_files, pb=pb)
-    if not target_tree.is_versioned(u''):
+    if not target_tree.is_versioned(''):
         skip_root = True
     else:
         skip_root = False
@@ -778,7 +774,6 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
     for id_num, change in enumerate(change_list):
         target_path, wt_path = change.path
         target_versioned, wt_versioned = change.versioned
-        target_parent = change.parent_id[0]
         target_name, wt_name = change.name
         target_kind, wt_kind = change.kind
         target_executable, wt_executable = change.executable
@@ -867,6 +862,7 @@ def _alter_files(es, working_tree, target_tree, tt, pb, specific_files,
             if target_path == '':
                 parent_trans = ROOT_PARENT
             else:
+                target_parent = change.parent_id[0]
                 parent_trans = tt.trans_id_file_id(target_parent)
             if wt_path == '' and wt_versioned:
                 tt.adjust_root_path(target_name, parent_trans)
@@ -1051,7 +1047,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
     return new_conflicts
 
 
-class _FileMover(object):
+class _FileMover:
     """Moves and deletes files for TreeTransform, tracking operations"""
 
     def __init__(self):
@@ -1064,7 +1060,7 @@ class _FileMover(object):
             os.rename(from_, to)
         except OSError as e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
-                raise errors.FileExists(to, str(e))
+                raise FileExists(to, str(e))
             # normal OSError doesn't include filenames so it's hard to see where
             # the problem is, see https://bugs.launchpad.net/bzr/+bug/491763
             raise TransformRenameFailed(from_, to, str(e), e.errno)
@@ -1120,7 +1116,7 @@ def link_tree(target_tree, source_tree):
         tt.apply()
 
 
-class PreviewTree(object):
+class PreviewTree:
     """Preview tree."""
 
     def __init__(self, transform):
@@ -1133,6 +1129,9 @@ class PreviewTree(object):
 
     def supports_setting_file_ids(self):
         raise NotImplementedError(self.supports_setting_file_ids)
+
+    def supports_symlinks(self):
+        return self._transform._tree.supports_symlinks()
 
     @property
     def _by_parent(self):
@@ -1213,7 +1212,7 @@ class PreviewTree(object):
                 if e.errno == errno.ENOENT:
                     return False
                 raise
-            except errors.NoSuchFile:
+            except NoSuchFile:
                 return False
 
     def has_filename(self, path):
@@ -1228,7 +1227,7 @@ class PreviewTree(object):
     def get_file_sha1(self, path, stat_value=None):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_sha1(path)
@@ -1239,7 +1238,7 @@ class PreviewTree(object):
     def get_file_verifier(self, path, stat_value=None):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         kind = self._transform._new_contents.get(trans_id)
         if kind is None:
             return self._transform._tree.get_file_verifier(path)
@@ -1250,13 +1249,13 @@ class PreviewTree(object):
     def kind(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         return self._transform.final_kind(trans_id)
 
     def stored_kind(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         try:
             return self._transform._new_contents[trans_id]
         except KeyError:
@@ -1279,7 +1278,7 @@ class PreviewTree(object):
         """See Tree.get_file_size"""
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         kind = self._transform.final_kind(trans_id)
         if kind != 'file':
             return None
@@ -1293,7 +1292,7 @@ class PreviewTree(object):
     def get_reference_revision(self, path):
         trans_id = self._path2trans_id(path)
         if trans_id is None:
-            raise errors.NoSuchFile(path)
+            raise NoSuchFile(path)
         reference_revision = self._transform._new_reference_revision.get(trans_id)
         if reference_revision is None:
             return self._transform._tree.get_reference_revision(path)

@@ -1,12 +1,10 @@
-from __future__ import absolute_import
-
 from ...tests import TestCaseWithTransport
 
 
 class TestBlackbox(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestBlackbox, self).setUp()
+        super().setUp()
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', '#include <stdio.h>\n')])
         wt.add('foo.c')

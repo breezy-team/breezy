@@ -19,7 +19,6 @@ from breezy import (
     tests,
     workingtree,
     )
-from breezy.sixish import PY3
 from breezy.tests import script, features
 
 
@@ -27,9 +26,9 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
                              prefix='my'):
     this_tree = test.make_branch_and_tree(this_path)
     test.build_tree_contents([
-        ('%s/%sfile' % (this_path, prefix), b'this content\n'),
-        ('%s/%s_other_file' % (this_path, prefix), b'this content\n'),
-        ('%s/%sdir/' % (this_path, prefix),),
+        ('{}/{}file'.format(this_path, prefix), b'this content\n'),
+        ('{}/{}_other_file'.format(this_path, prefix), b'this content\n'),
+        ('{}/{}dir/'.format(this_path, prefix),),
         ])
     this_tree.add(prefix + 'file')
     this_tree.add(prefix + '_other_file')
@@ -37,14 +36,14 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
     this_tree.commit(message="new")
     other_tree = this_tree.controldir.sprout(other_path).open_workingtree()
     test.build_tree_contents([
-        ('%s/%sfile' % (other_path, prefix), b'contentsb\n'),
-        ('%s/%s_other_file' % (other_path, prefix), b'contentsb\n'),
+        ('{}/{}file'.format(other_path, prefix), b'contentsb\n'),
+        ('{}/{}_other_file'.format(other_path, prefix), b'contentsb\n'),
         ])
     other_tree.rename_one(prefix + 'dir', prefix + 'dir2')
     other_tree.commit(message="change")
     test.build_tree_contents([
-        ('%s/%sfile' % (this_path, prefix), b'contentsa2\n'),
-        ('%s/%s_other_file' % (this_path, prefix), b'contentsa2\n'),
+        ('{}/{}file'.format(this_path, prefix), b'contentsa2\n'),
+        ('{}/{}_other_file'.format(this_path, prefix), b'contentsa2\n'),
         ])
     this_tree.rename_one(prefix + 'dir', prefix + 'dir3')
     this_tree.commit(message='change')
@@ -55,7 +54,7 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
 class TestConflicts(script.TestCaseWithTransportAndScript):
 
     def setUp(self):
-        super(TestConflicts, self).setUp()
+        super().setUp()
         make_tree_with_conflicts(self, 'branch', 'other')
 
     def test_conflicts(self):
@@ -95,23 +94,23 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
 
     def test_messages(self):
         """Conflict messages involving non-ascii paths are displayed okay"""
-        make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
+        make_tree_with_conflicts(self, "branch", prefix="\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch"],
                                 encoding=self.encoding)
-        self.assertEqual(out if PY3 else out.decode(self.encoding),
-                         u"Text conflict in \xA7_other_file\n"
-                         u"Path conflict: \xA7dir3 / \xA7dir2\n"
-                         u"Text conflict in \xA7file\n")
+        self.assertEqual(out,
+                         "Text conflict in \xA7_other_file\n"
+                         "Path conflict: \xA7dir3 / \xA7dir2\n"
+                         "Text conflict in \xA7file\n")
         self.assertEqual(err, "")
 
     def test_text_conflict_paths(self):
         """Text conflicts on non-ascii paths are displayed okay"""
-        make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
+        make_tree_with_conflicts(self, "branch", prefix="\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch", "--text"],
                                 encoding=self.encoding)
-        self.assertEqual(out if PY3 else out.decode(self.encoding),
-                         u"\xA7_other_file\n"
-                         u"\xA7file\n")
+        self.assertEqual(out,
+                         "\xA7_other_file\n"
+                         "\xA7file\n")
         self.assertEqual(err, "")
 
 

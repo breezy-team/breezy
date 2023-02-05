@@ -15,7 +15,7 @@ Overall developer documentation
   (external link)
   |--| automatically generated API reference information
 
-* `Integrating with Breezy <http://wiki.bazaar.canonical.com/Integrating_with_Bazaar>`_
+* `Integrating with Breezy <http://wiki.breezy-vcs.org/Integrating_with_Breezy>`_
   (wiki) |--| a guide for writing Python programs that work with Breezy.
 
 * `Revision Properties <revision-properties.html>`_ |--| An application
@@ -41,7 +41,7 @@ Process
 
 * `Managing the Breezy PPA <ppa.html>`_ |--| Packaging Breezy for Ubuntu.
 
-* `Giving back <http://wiki.bazaar.canonical.com/BzrGivingBack>`_ (wiki) |--| How to get
+* `Giving back <http://wiki.breezy-vcs.org/GivingBack>`_ (wiki) |--| How to get
   your changes to Breezy integrated into a release.
 
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile

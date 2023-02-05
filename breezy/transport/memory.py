@@ -20,8 +20,6 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-from __future__ import absolute_import
-
 import contextlib
 from io import (
     BytesIO,
@@ -36,20 +34,20 @@ from .. import (
     urlutils,
     )
 from ..errors import (
-    FileExists,
     LockError,
     InProcessTransport,
-    NoSuchFile,
     TransportNotPossible,
     )
 from ..transport import (
     AppendBasedFileStream,
+    FileExists,
+    NoSuchFile,
     _file_streams,
     LateReadError,
     )
 
 
-class MemoryStat(object):
+class MemoryStat:
 
     def __init__(self, size, kind, perms=None):
         self.st_size = size
@@ -72,7 +70,7 @@ class MemoryTransport(transport.Transport):
             url = "memory:///"
         if url[-1] != '/':
             url = url + '/'
-        super(MemoryTransport, self).__init__(url)
+        super().__init__(url)
         split = url.find(':') + 3
         self._scheme = url[:split]
         self._cwd = url[split:]
@@ -164,10 +162,11 @@ class MemoryTransport(transport.Transport):
         self._files[_abspath] = (raw_bytes, mode)
         return len(raw_bytes)
 
-    def symlink(self, source, target):
-        _abspath = self._resolve_symlinks(target)
+    def symlink(self, source, link_name):
+        """Create a symlink pointing to source named link_name."""
+        _abspath = self._abspath(link_name)
         self._check_parent(_abspath)
-        self._symlinks[_abspath] = self._abspath(source)
+        self._symlinks[_abspath] = source.split('/')
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
@@ -317,12 +316,6 @@ class MemoryTransport(transport.Transport):
                 r = self._symlinks.get('/'.join(r), r)
         return '/' + '/'.join(r)
 
-    def symlink(self, source, link_name):
-        """Create a symlink pointing to source named link_name."""
-        _abspath = self._abspath(link_name)
-        self._check_parent(_abspath)
-        self._symlinks[_abspath] = source.split('/')
-
     def readlink(self, link_name):
         _abspath = self._abspath(link_name)
         try:
@@ -331,14 +324,14 @@ class MemoryTransport(transport.Transport):
             raise NoSuchFile(link_name)
 
 
-class _MemoryLock(object):
+class _MemoryLock:
     """This makes a lock."""
 
     def __init__(self, path, transport):
         self.path = path
         self.transport = transport
         if self.path in self.transport._locks:
-            raise LockError('File %r already locked' % (self.path,))
+            raise LockError('File {!r} already locked'.format(self.path))
         self.transport._locks[self.path] = self
 
     def unlock(self):

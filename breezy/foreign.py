@@ -16,9 +16,6 @@
 
 """Foreign branch utilities."""
 
-from __future__ import absolute_import
-
-
 from .branch import (
     Branch,
     )
@@ -30,7 +27,7 @@ from . import (
     )
 
 
-class VcsMapping(object):
+class VcsMapping:
     """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
@@ -42,7 +39,7 @@ class VcsMapping(object):
 
     # Prefix used when importing revisions native to the foreign VCS (as
     # opposed to roundtripping bzr-native revisions) using this mapping.
-    revid_prefix = None
+    revid_prefix: bytes
 
     def __init__(self, vcs):
         """Create a new VcsMapping.
@@ -109,12 +106,12 @@ class ForeignRevision(Revision):
     def __init__(self, foreign_revid, mapping, *args, **kwargs):
         if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = b""
-        super(ForeignRevision, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
 
 
-class ForeignVcs(object):
+class ForeignVcs:
     """A foreign version control system."""
 
     branch_format = None
@@ -194,7 +191,7 @@ class ForeignRepository(Repository):
     """
 
     # This repository's native version control system
-    vcs = None
+    vcs: ForeignVcs
 
     def has_foreign_revision(self, foreign_revid):
         """Check whether the specified foreign revision is present.
@@ -226,4 +223,4 @@ class ForeignBranch(Branch):
 
     def __init__(self, mapping):
         self.mapping = mapping
-        super(ForeignBranch, self).__init__()
+        super().__init__()

@@ -16,14 +16,12 @@
 
 """Counted lock class"""
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     )
 
 
-class CountedLock(object):
+class CountedLock:
     """Decorator around a lock that makes it reentrant.
 
     This can be used with any object that provides a basic Lock interface,
@@ -39,7 +37,7 @@ class CountedLock(object):
         self._lock_count = 0
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__,
+        return "{}({!r})".format(self.__class__.__name__,
                            self._real_lock)
 
     def break_lock(self):

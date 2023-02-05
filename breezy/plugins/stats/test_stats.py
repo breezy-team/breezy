@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from ...tests import TestCase, TestCaseWithTransport
 from ...revision import Revision
 from .cmds import get_revisions_and_committers, collapse_by_person
@@ -45,7 +43,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
         self.assertEqual({('Fero', ''): ('Fero', ''),
                           ('FERO', ''): ('Fero', ''),
                           }, committers)
-        self.assertEquals([b'1', b'2', b'3'], sorted(
+        self.assertEqual([b'1', b'2', b'3'], sorted(
             [r.revision_id for r in revs]))
 
 
@@ -61,9 +59,9 @@ class TestCollapseByPerson(TestCase):
         bar = ('Bar', 'bar@example.com')
         committers = {foo: foo, bar: bar}
         info = collapse_by_person(revisions, committers)
-        self.assertEquals(2, info[0][0])
-        self.assertEquals({'bar@example.com': 2}, info[0][2])
-        self.assertEquals({'Bar': 2}, info[0][3])
+        self.assertEqual(2, info[0][0])
+        self.assertEqual({'bar@example.com': 2}, info[0][2])
+        self.assertEqual({'Bar': 2}, info[0][3])
 
     def test_different_email(self):
         revisions = [
@@ -75,10 +73,10 @@ class TestCollapseByPerson(TestCase):
         bar = ('Foo', 'bar@example.com')
         committers = {foo: foo, bar: foo}
         info = collapse_by_person(revisions, committers)
-        self.assertEquals(3, info[0][0])
-        self.assertEquals(
+        self.assertEqual(3, info[0][0])
+        self.assertEqual(
             {'foo@example.com': 1, 'bar@example.com': 2}, info[0][2])
-        self.assertEquals({'Foo': 3}, info[0][3])
+        self.assertEqual({'Foo': 3}, info[0][3])
 
     def test_different_name(self):
         revisions = [
@@ -90,9 +88,9 @@ class TestCollapseByPerson(TestCase):
         bar = ('Bar', 'foo@example.com')
         committers = {foo: foo, bar: foo}
         info = collapse_by_person(revisions, committers)
-        self.assertEquals(3, info[0][0])
-        self.assertEquals({'foo@example.com': 3}, info[0][2])
-        self.assertEquals({'Foo': 1, 'Bar': 2}, info[0][3])
+        self.assertEqual(3, info[0][0])
+        self.assertEqual({'foo@example.com': 3}, info[0][2])
+        self.assertEqual({'Foo': 1, 'Bar': 2}, info[0][3])
 
     def test_different_name_case(self):
         revisions = [
@@ -104,7 +102,7 @@ class TestCollapseByPerson(TestCase):
         FOO = ('FOO', 'bar@example.com')
         committers = {foo: foo, FOO: foo}
         info = collapse_by_person(revisions, committers)
-        self.assertEquals(3, info[0][0])
-        self.assertEquals(
+        self.assertEqual(3, info[0][0])
+        self.assertEqual(
             {'foo@example.com': 2, 'bar@example.com': 1}, info[0][2])
-        self.assertEquals({'Foo': 2, 'FOO': 1}, info[0][3])
+        self.assertEqual({'Foo': 2, 'FOO': 1}, info[0][3])

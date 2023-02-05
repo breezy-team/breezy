@@ -16,8 +16,6 @@
 
 """File annotate based on weave storage"""
 
-from __future__ import absolute_import
-
 # TODO: Choice of more or less verbose formats:
 #
 # interposed: show more details between blocks of modified lines
@@ -32,7 +30,6 @@ import time
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-
 import patiencediff
 
 from breezy import (
@@ -129,7 +126,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
         # which the given to_file must cope with.
         to_file.write(anno)
-        to_file.write('| %s\n' % (text.decode(encoding),))
+        to_file.write('| {}\n'.format(text.decode(encoding)))
         prevanno = anno
 
 
@@ -160,7 +157,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
     :param branch: A locked branch to query for revision details.
     """
     repository = branch.repository
-    revision_ids = set(o for o, t in annotations)
+    revision_ids = {o for o, t in annotations}
     if current_rev is not None:
         # This can probably become a function on MutableTree, get_revno_map
         # there, or something.
@@ -260,7 +257,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
                              for p in parents_lines[1:])
         lines = []
         for annos in zip(*reannotations):
-            origins = set(a for a, l in annos)
+            origins = {a for a, l in annos}
             if len(origins) == 1:
                 # All the parents agree, so just return the first one
                 lines.append(annos[0])

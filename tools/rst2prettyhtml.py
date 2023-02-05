@@ -2,24 +2,24 @@
 
 import errno
 import os
-from breezy.sixish import StringIO
+from io import StringIO
 import sys
 
 try:
     from docutils.core import publish_file
     from docutils.parsers import rst
-except ImportError:
+except ModuleNotFoundError:
     print("Missing dependency.  Please install docutils.")
     sys.exit(1)
 try:
     from elementtree.ElementTree import XML
     from elementtree import HTMLTreeBuilder
-except ImportError:
+except ModuleNotFoundError:
     print("Missing dependency.  Please install ElementTree.")
     sys.exit(1)
 try:
     import kid
-except ImportError:
+except ModuleNotFoundError:
     print("Missing dependency.  Please install Kid.")
     sys.exit(1)
 
@@ -43,7 +43,7 @@ def kidified_rest(rest_file, template_name):
 def safe_open(filename, mode):
     try:
         return open(filename, mode + 'b')
-    except IOError as e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
         sys.stderr.write('file not found: %s\n' % sys.argv[2])

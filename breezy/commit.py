@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # The newly committed revision is going to have a shape corresponding
 # to that of the working tree.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -57,14 +55,14 @@ from . import (
     ui,
     )
 from .branch import Branch
-from .cleanup import ExitStack
+from contextlib import ExitStack
 import breezy.config
 from .errors import (BzrError,
                      ConflictsInTree,
                      StrictCommitFailed
                      )
 from .osutils import (get_user_encoding,
-                      has_symlinks,
+                      supports_symlinks,
                       is_inside_any,
                       minimum_path_selection,
                       )
@@ -112,7 +110,7 @@ def filter_excluded(iter_changes, exclude):
         yield change
 
 
-class NullCommitReporter(object):
+class NullCommitReporter:
     """I report on progress of a commit."""
 
     def started(self, revno, revid, location):
@@ -181,7 +179,7 @@ class ReportCommitToLog(NullCommitReporter):
         return True
 
 
-class Commit(object):
+class Commit:
     """Task of committing a new revision.
 
     This is a MethodObject: it accumulates state as the commit is
@@ -211,13 +209,13 @@ class Commit(object):
             revprops = {}
         if possible_master_transports is None:
             possible_master_transports = []
-        if (u'branch-nick' not in revprops and
+        if ('branch-nick' not in revprops and
                 branch.repository._format.supports_storing_branch_nick):
-            revprops[u'branch-nick'] = branch._get_nick(
+            revprops['branch-nick'] = branch._get_nick(
                 local,
                 possible_master_transports)
         if authors is not None:
-            if u'author' in revprops or u'authors' in revprops:
+            if 'author' in revprops or 'authors' in revprops:
                 # XXX: maybe we should just accept one of them?
                 raise AssertionError('author property given twice')
             if authors:
@@ -225,7 +223,7 @@ class Commit(object):
                     if '\n' in individual:
                         raise AssertionError('\\n is not a valid character '
                                              'in an author identity')
-                revprops[u'authors'] = '\n'.join(authors)
+                revprops['authors'] = '\n'.join(authors)
         return revprops
 
     def commit(self,
@@ -491,7 +489,7 @@ class Commit(object):
                 self.master_branch.tags)
             if tag_conflicts:
                 warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
-                note(gettext("Conflicting tags in bound branch:\n{0}".format(
+                note(gettext("Conflicting tags in bound branch:\n{}".format(
                     "\n".join(warning_lines))))
 
     def _select_reporter(self):

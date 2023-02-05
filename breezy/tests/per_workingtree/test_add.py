@@ -51,7 +51,7 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b'])
         tree.add(['a'])
         self.assertRaises(
-            inventory.DuplicateFileId, tree.add, ['b'], [tree.path2id('a')])
+            inventory.DuplicateFileId, tree.add, ['b'], ids=[tree.path2id('a')])
         # And the entry should not have been added.
         self.assertTreeLayout(['', 'a'], tree)
 
@@ -66,7 +66,7 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.commit('first')
         # And the entry should not have been added.
         tree.unversion(['a'])
-        tree.add(['b'], [file_id])
+        tree.add(['b'], ids=[file_id])
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''), ('b', 'a')])
@@ -88,21 +88,21 @@ class TestAdd(TestCaseWithWorkingTree):
     def test_add_unicode(self):
         tree = self.make_branch_and_tree('.')
         try:
-            self.build_tree([u'f\xf6'])
+            self.build_tree(['f\xf6'])
         except UnicodeError:
             raise tests.TestSkipped('Filesystem does not support filename.')
-        tree.add([u'f\xf6'])
+        tree.add(['f\xf6'])
 
-        self.assertTreeLayout(['', u'f\xf6'], tree)
+        self.assertTreeLayout(['', 'f\xf6'], tree)
 
     def test_add_subdir_with_ids(self):
         tree = self.make_branch_and_tree('.')
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
-        tree.add(['dir'], [b'dir-id'])
-        tree.add(['dir/subdir'], [b'subdir-id'])
-        tree.add(['dir/subdir/foo'], [b'foo-id'])
+        tree.add(['dir'], ids=[b'dir-id'])
+        tree.add(['dir/subdir'], ids=[b'subdir-id'])
+        tree.add(['dir/subdir/foo'], ids=[b'foo-id'])
         root_id = tree.path2id('')
 
         self.assertTreeLayout([('', root_id), ('dir/', b'dir-id'),
@@ -134,7 +134,7 @@ class TestAdd(TestCaseWithWorkingTree):
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'])
         tree.add(['a', 'b', 'dir', 'dir/subdir', 'dir/subdir/foo'],
-                 [b'a-id', b'b-id', b'dir-id', b'subdir-id', b'foo-id'])
+                 ids=[b'a-id', b'b-id', b'dir-id', b'subdir-id', b'foo-id'])
 
         self.assertTreeLayout([('', tree.path2id('')), ('a', b'a-id'), ('b', b'b-id'),
                                ('dir/', b'dir-id'), ('dir/subdir/', b'subdir-id'),
@@ -189,9 +189,9 @@ class TestAdd(TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['foo'])
-        tree.add(['foo'], [b'foo-id'])
+        tree.add(['foo'], ids=[b'foo-id'])
         tree.unversion(['foo'])
-        tree.add(['foo'], [b'foo-id'])
+        tree.add(['foo'], ids=[b'foo-id'])
         self.assertEqual(b'foo-id', tree.path2id('foo'))
 
     def test_add_present_in_basis(self):
@@ -210,8 +210,8 @@ class TestAdd(TestCaseWithWorkingTree):
         if not tree.supports_setting_file_ids():
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['foo'])
-        tree.add(['foo'], [b'foo-id'])
+        tree.add(['foo'], ids=[b'foo-id'])
         tree.commit('add foo')
         tree.unversion(['foo'])
-        tree.add(['foo'], [b'foo-id'])
+        tree.add(['foo'], ids=[b'foo-id'])
         self.assertEqual(b'foo-id', tree.path2id('foo'))

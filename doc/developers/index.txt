@@ -26,7 +26,7 @@ Working on Breezy
    code-style
    documenting-changes
 
-* `Contributing to Breezy Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
+* `Contributing to Breezy Documentation <http://wiki.breezy-vcs.org/ContributingToTheDocs>`_ (wiki)
 
 
 Architecture overviews

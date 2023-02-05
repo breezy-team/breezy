@@ -37,6 +37,7 @@ from breezy.tests import (
     TestSkipped,
     )
 from breezy.bzr.tests.per_bzrdir import TestCaseWithBzrDir
+from breezy.transport import FileExists
 from breezy.transport.local import (
     LocalTransport,
     )
@@ -121,7 +122,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                     continue
                 try:
                     stat = source.stat(path)
-                except errors.NoSuchFile:
+                except transport.NoSuchFile:
                     self.fail('%s not in source' % path)
                 if S_ISDIR(stat.st_mode):
                     self.assertTrue(S_ISDIR(target.stat(path).st_mode))
@@ -436,8 +437,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(repo.has_revision(b'1'))
         try:
             self.assertTrue(
-                _mod_revision.is_null(_mod_revision.ensure_null(
-                    dir.open_branch().last_revision())))
+                _mod_revision.is_null(dir.open_branch().last_revision()))
         except errors.NotBranchError:
             pass
         target = dir.sprout(self.get_url('target'))
@@ -461,7 +461,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             with open(local_inventory, 'rb') as inventory_f:
                 self.assertContainsRe(inventory_f.read(),
                                       b'<inventory format="5">\n</inventory>\n')
-        except IOError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 
@@ -551,7 +551,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk', ],
                         transport=transport)
         self.assertTrue(transport.has('.bzr'))
-        self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
+        self.assertRaises((FileExists, errors.DirectoryNotEmpty),
                           bd.retire_bzrdir, limit=0)
 
     def test_get_branch_transport(self):

@@ -21,7 +21,6 @@ from .. import (
     multiparent,
     tests,
     )
-from ..sixish import int2byte
 
 
 LINES_1 = b"a\nb\nc\nd\ne\n".splitlines(True)
@@ -30,7 +29,7 @@ LINES_3 = b"a\nb\nc\nd\n".splitlines(True)
 LF_SPLIT_LINES = [b'\x00\n', b'\x00\r\x01\n', b'\x02\r\xff']
 
 
-class Mock(object):
+class Mock:
 
     def __init__(self, **kwargs):
         self.__dict__ = kwargs
@@ -184,7 +183,7 @@ class TestVersionedFile(TestCase):
 
     def add_version(self, vf, text, version_id, parent_ids):
         vf.add_version(
-            [(int2byte(t) + b'\n') for t in bytearray(text)],
+            [(bytes([t]) + b'\n') for t in bytearray(text)],
             version_id, parent_ids)
 
     def make_vf(self):

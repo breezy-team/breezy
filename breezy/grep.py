@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+from io import BytesIO
 import re
 
 from .lazy_import import lazy_import
@@ -40,9 +39,6 @@ from .revisionspec import (
     RevisionSpec_revid,
     RevisionSpec_revno,
     )
-from .sixish import (
-    BytesIO,
-    )
 
 _user_encoding = osutils.get_user_encoding()
 
@@ -51,7 +47,7 @@ class _RevisionNotLinear(Exception):
     """Raised when a revision is not on left-hand history."""
 
 
-class GrepOptions(object):
+class GrepOptions:
     """Container to pass around grep options.
 
     This class is used as a container to pass around user option and
@@ -168,7 +164,7 @@ def is_fixed_string(s):
     return False
 
 
-class _GrepDiffOutputter(object):
+class _GrepDiffOutputter:
     """Precalculate formatting based on options given for diff grep.
     """
 
@@ -335,14 +331,14 @@ def grep_diff(opts):
                     display_file = True
                 elif diff_pattern.search(line):
                     if display_revno:
-                        writerevno("=== revno:%s ===" % (revno,))
+                        writerevno("=== revno:{} ===".format(revno))
                         display_revno = False
                     if display_file:
                         writefileheader(
-                            "  %s" % (file_header.decode(file_encoding, 'replace'),))
+                            "  {}".format(file_header.decode(file_encoding, 'replace')))
                         display_file = False
                     line = line.decode(file_encoding, 'replace')
-                    writeline("    %s" % (line,))
+                    writeline("    {}".format(line))
 
 
 def versioned_grep(opts):
@@ -567,7 +563,7 @@ def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
         opts.outputter.get_writer(path, None, None)()
 
 
-class _Outputter(object):
+class _Outputter:
     """Precalculate formatting based on options given
 
     The idea here is to do this work only once per run, and finally return a

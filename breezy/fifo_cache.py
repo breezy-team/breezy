@@ -16,15 +16,14 @@
 
 """A simple first-in-first-out (FIFO) cache."""
 
-from __future__ import absolute_import, division
-
 from collections import deque
+from typing import Dict, Any, Callable, Deque
 
 
 class FIFOCache(dict):
     """A class which manages a cache of entries, removing old ones."""
 
-    def __init__(self, max_cache=100, after_cleanup_count=None):
+    def __init__(self, max_cache: int = 100, after_cleanup_count=None) -> None:
         dict.__init__(self)
         self._max_cache = max_cache
         if after_cleanup_count is None:
@@ -32,8 +31,8 @@ class FIFOCache(dict):
         else:
             self._after_cleanup_count = min(after_cleanup_count,
                                             self._max_cache)
-        self._cleanup = {}  # map to cleanup functions when items are removed
-        self._queue = deque()  # Track when things are accessed
+        self._cleanup: Dict[Any, Callable[[], None]] = {}  # map to cleanup functions when items are removed
+        self._queue: Deque[Any] = deque()  # Track when things are accessed
 
     def __setitem__(self, key, value):
         """Add a value to the cache, there will be no cleanup function."""

@@ -14,17 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import StringIO
+
 from .. import (
     add,
-    cache_utf8,
     errors,
     tests,
     )
 from ..bzr import (
     inventory,
-    )
-from ..sixish import (
-    StringIO,
     )
 
 
@@ -33,7 +31,7 @@ class AddCustomIDAction(add.AddAction):
     def __call__(self, inv, parent_ie, path, kind):
         # The first part just logs if appropriate
         # Now generate a custom id
-        file_id = cache_utf8.encode(kind + '-' + path.replace('/', '%'))
+        file_id = (kind + '-' + path.replace('/', '%')).encode('utf-8')
         if self.should_print:
             self._to_file.write('added %s with id %s\n'
                                 % (path, file_id.decode('utf-8')))
@@ -129,7 +127,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.build_tree(['new/subby/', 'new/subby/a', 'new/subby/b'])
 
         subdir_file_id = self.base_tree.path2id('dir/subdir')
-        new_tree.add(['subby'], [subdir_file_id])
+        new_tree.add(['subby'], ids=[subdir_file_id])
         self.add_helper(self.base_tree, '', new_tree, ['new'])
         # Because 'subby' already points to subdir, we should add
         # 'b' with the same id

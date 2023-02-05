@@ -1,5 +1,4 @@
 # Copyright (C) 2007-2012, 2016 Canonical Ltd
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -163,26 +162,11 @@ class TestSwitch(TestCaseWithTransport):
         self.build_tree(['repo/'])
         tree1 = self.make_branch_and_tree('repo/brancha')
         tree1.commit('foo')
-        tree2 = self.make_branch_and_tree(u'repo/branch\xe9')
+        tree2 = self.make_branch_and_tree('repo/branch\xe9')
         tree2.pull(tree1.branch)
         branchb_id = tree2.commit('bar')
         checkout = tree1.branch.create_checkout('checkout', lightweight=True)
-        self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
-        self.assertEqual(branchb_id, checkout.last_revision())
-        checkout = checkout.controldir.open_workingtree()
-        self.assertEqual(tree2.branch.base, checkout.branch.base)
-
-    def test_switch_finds_relative_unicode_branch(self):
-        """Switch will find 'foo' relative to the branch the checkout is of."""
-        self.requireFeature(UnicodeFilenameFeature)
-        self.build_tree(['repo/'])
-        tree1 = self.make_branch_and_tree('repo/brancha')
-        tree1.commit('foo')
-        tree2 = self.make_branch_and_tree(u'repo/branch\xe9')
-        tree2.pull(tree1.branch)
-        branchb_id = tree2.commit('bar')
-        checkout = tree1.branch.create_checkout('checkout', lightweight=True)
-        self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
+        self.run_bzr(['switch', 'branch\xe9'], working_dir='checkout')
         self.assertEqual(branchb_id, checkout.last_revision())
         checkout = checkout.controldir.open_workingtree()
         self.assertEqual(tree2.branch.base, checkout.branch.base)
@@ -268,12 +252,12 @@ class TestSwitch(TestCaseWithTransport):
         self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
         tree.add('file-1')
         revid1 = tree.commit('rev1')
-        self.run_bzr(['switch', '-b', u'branch\xe9'], working_dir='branch-1')
+        self.run_bzr(['switch', '-b', 'branch\xe9'], working_dir='branch-1')
         bzrdir = ControlDir.open("branch-1")
         self.assertEqual(
             {b.name for b in bzrdir.list_branches()},
-            {"foo", u"branch\xe9"})
-        self.assertEqual(bzrdir.open_branch().name, u"branch\xe9")
+            {"foo", "branch\xe9"})
+        self.assertEqual(bzrdir.open_branch().name, "branch\xe9")
         self.assertEqual(bzrdir.open_branch().last_revision(), revid1)
 
     def test_switch_only_revision(self):
@@ -344,7 +328,7 @@ class TestSwitch(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = branch.create_checkout('tree', lightweight=True)
 
-        class FooLookup(object):
+        class FooLookup:
             def look_up(self, name, url, purpose=None):
                 return 'foo-' + name
         directories.register('foo:', FooLookup, 'Create branches named foo-')
@@ -402,7 +386,7 @@ class TestSwitchParentLocationBase(TestCaseWithTransport):
 
     def setUp(self):
         """Set up a repository and branch ready for testing."""
-        super(TestSwitchParentLocationBase, self).setUp()
+        super().setUp()
         self.script_runner = script.ScriptRunner()
         self.script_runner.run_script(self, '''
                 $ brz init-shared-repo --no-trees repo

@@ -16,30 +16,15 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
-from __future__ import absolute_import
-
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-
-import patiencediff
-
-from breezy import (
-    annotate, # Must be lazy to avoid circular importing
-    graph as _mod_graph,
-    )
-""")
 from . import (
     errors,
+    graph as _mod_graph,
     osutils,
     ui,
     )
-from .sixish import (
-    range,
-    viewitems,
-    )
 
 
-class Annotator(object):
+class Annotator:
     """Class that drives performing annotations."""
 
     def __init__(self, vf):
@@ -95,7 +80,7 @@ class Annotator(object):
                     vf_keys_needed.add(key)
             needed_keys = set()
             next_parent_map.update(self._vf.get_parent_map(parent_lookup))
-            for key, parent_keys in viewitems(next_parent_map):
+            for key, parent_keys in next_parent_map.items():
                 if parent_keys is None:  # No graph versionedfile
                     parent_keys = ()
                     next_parent_map[key] = ()
@@ -150,7 +135,8 @@ class Annotator(object):
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
-        matcher = patiencediff.PatienceSequenceMatcher(
+        from patiencediff import PatienceSequenceMatcher
+        matcher = PatienceSequenceMatcher(
             None, parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
@@ -269,8 +255,8 @@ class Annotator(object):
                 self._annotate_one(text_key, text, num_lines)
         try:
             annotations = self._annotations_cache[key]
-        except KeyError:
-            raise errors.RevisionNotPresent(key, self._vf)
+        except KeyError as exc:
+            raise errors.RevisionNotPresent(key, self._vf) from exc
         return annotations, self._text_cache[key]
 
     def _get_heads_provider(self):
@@ -298,7 +284,8 @@ class Annotator(object):
         :return: [(ann_key, line)]
             A list of tuples with a single annotation key for each line.
         """
-        custom_tiebreaker = annotate._break_annotation_tie
+        from .annotate import _break_annotation_tie
+        custom_tiebreaker = _break_annotation_tie
         annotations, lines = self.annotate(key)
         out = []
         heads = self._get_heads_provider().heads

@@ -33,8 +33,6 @@ commitfromnews attempts to create a sensible default commit message by
 including sections from a NEWS or ChangeLog file.
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from ... import hooks
 from ...config import (
@@ -65,7 +63,7 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["{}.{}".format(__name__, tmn) for tmn in testmod_names]))
     return basic_tests
 
 

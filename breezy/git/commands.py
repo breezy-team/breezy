@@ -21,8 +21,6 @@
 
 """Git-specific subcommands for Bazaar."""
 
-from __future__ import absolute_import
-
 import breezy.bzr  # noqa: F401
 from breezy import controldir
 from ..commands import (
@@ -32,10 +30,6 @@ from ..commands import (
 from ..option import (
     Option,
     RegistryOption,
-    )
-from ..sixish import (
-    text_type,
-    viewitems,
     )
 
 
@@ -141,7 +135,7 @@ class cmd_git_import(Command):
         mapping = source_repo.get_mapping()
         result = interrepo.fetch()
         with ui.ui_factory.nested_progress_bar() as pb:
-            for i, (name, sha) in enumerate(viewitems(result.refs)):
+            for i, (name, sha) in enumerate(result.refs.items()):
                 try:
                     branch_name = ref_to_branch_name(name)
                 except ValueError:
@@ -186,7 +180,7 @@ class cmd_git_object(Command):
     takes_args = ["sha1?"]
     takes_options = [Option('directory',
                             short_name='d',
-                            help='Location of repository.', type=text_type),
+                            help='Location of repository.', type=str),
                      Option('pretty', help='Pretty-print objects.')]
     encoding_type = 'exact'
 
@@ -247,7 +241,7 @@ class cmd_git_refs(Command):
         object_store = get_object_store(repo)
         with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
-            for k, v in sorted(viewitems(refs.as_dict())):
+            for k, v in sorted(refs.as_dict().items()):
                 self.outf.write("%s -> %s\n" %
                                 (k.decode('utf-8'), v.decode('utf-8')))
 
@@ -281,7 +275,7 @@ class cmd_git_apply(Command):
         message = c.message.decode('utf-8')
         if signoff:
             signed_off_by = wt.branch.get_config().username()
-            message += "Signed-off-by: %s\n" % (signed_off_by, )
+            message += "Signed-off-by: {}\n".format(signed_off_by)
         wt.commit(authors=[c.author.decode('utf-8')], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
@@ -295,7 +289,7 @@ class cmd_git_apply(Command):
             raise UncommittedChanges(tree)
         with tree.lock_write():
             for patch in patches_list:
-                with open(patch, 'r') as f:
+                with open(patch) as f:
                     self._apply_patch(tree, f, signoff=signoff)
 
 
@@ -304,7 +298,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
 
     takes_options = [Option('directory',
                             short_name='d',
-                            help='Location of repository.', type=text_type)]
+                            help='Location of repository.', type=str)]
     takes_args = ['target', 'package']
 
     def run(self, target, package, directory='.'):
@@ -346,7 +340,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
                         "Ignoring.", name)
                     continue
                 upstream_version = name[len("upstream/"):]
-                filename = '%s_%s.orig.tar.%s' % (
+                filename = '{}_{}.orig.tar.{}'.format(
                     package, upstream_version, kind)
                 if gitid not in target:
                     warning(

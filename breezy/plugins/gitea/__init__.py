@@ -21,8 +21,8 @@ from __future__ import absolute_import
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
-from ...propose import hosters
-hosters.register_lazy("gitea", __name__ + '.hoster', "Gitea")
+from ...propose import forges
+forges.register_lazy("gitea", __name__ + '.forge', "Gitea")
 
 
 def test_suite():

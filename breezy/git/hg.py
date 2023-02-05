@@ -17,9 +17,7 @@
 
 """Compatibility for hg-git."""
 
-from __future__ import absolute_import
-
-import urllib
+import urllib.parse
 
 
 def format_hg_metadata(renames, branch, extra):
@@ -44,7 +42,7 @@ def format_hg_metadata(renames, branch, extra):
             continue
         else:
             extra_message += "extra : " + key + \
-                " : " + urllib.quote(value) + "\n"
+                " : " + urllib.parse.quote(value) + "\n"
 
     if extra_message:
         return "\n--HG--\n" + extra_message
@@ -77,7 +75,7 @@ def extract_hg_metadata(message):
                 branch = data
             elif command == 'extra':
                 before, after = data.split(" : ", 1)
-                extra[before] = urllib.unquote(after)
+                extra[before] = urllib.parse.unquote(after)
             else:
                 raise KeyError("unknown hg-git metadata command %s" % command)
     return (message, renames, branch, extra)

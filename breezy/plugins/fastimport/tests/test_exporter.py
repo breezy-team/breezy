@@ -15,8 +15,6 @@
 
 """Test the exporter."""
 
-from __future__ import absolute_import
-
 import os
 import tempfile
 import gzip
@@ -49,7 +47,7 @@ class TestOutputStream(tests.TestCase):
             stream.write(b"bla")
         # files ending in .gz are automatically decompressed.
         with gzip.GzipFile(filename) as f:
-            self.assertEquals(b"bla", f.read())
+            self.assertEqual(b"bla", f.read())
 
     def test_get_source_file(self):
         # other files are opened as regular files.
@@ -57,8 +55,8 @@ class TestOutputStream(tests.TestCase):
         os.close(fd)
         with _get_output_stream(filename) as stream:
             stream.write(b"foo")
-        with open(filename, 'r') as f:
-            self.assertEquals("foo", f.read())
+        with open(filename) as f:
+            self.assertEqual("foo", f.read())
 
 
 # from dulwich.tests.test_repository:

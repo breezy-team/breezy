@@ -20,8 +20,6 @@ Loosely based on the manpage generator autodoc_man.py.
 Written by the Bazaar/Breezy community.
 """
 
-from __future__ import absolute_import
-
 import time
 
 import breezy
@@ -88,9 +86,9 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
         heading, text = help.split("\n", 1)
         if not text.startswith(hdg_level2):
             underline = hdg_level2 * len(heading)
-            help = "%s\n%s\n\n%s\n\n" % (heading, underline, text)
+            help = "{}\n{}\n\n{}\n\n".format(heading, underline, text)
         else:
-            help = "%s\n%s\n\n" % (heading, text)
+            help = "{}\n{}\n\n".format(heading, text)
         if file_per_topic:
             topic_id = _dump_text(output_dir, topic, help)
             lines.append("   %s" % topic_id)
@@ -116,7 +114,7 @@ def _get_commands_section(registry, title="Commands", hdg_level1="#",
         heading = cmd_name
         underline = hdg_level2 * len(heading)
         text = cmd_object.get_help_text(plain=False, see_also_as_links=True)
-        help = "%s\n%s\n\n%s\n\n" % (heading, underline, text)
+        help = "{}\n{}\n\n{}\n\n".format(heading, underline, text)
         if file_per_topic:
             topic_id = _dump_text(output_dir, cmd_name, help)
             lines.append("   %s" % topic_id)
@@ -128,7 +126,7 @@ def _get_commands_section(registry, title="Commands", hdg_level1="#",
 
 def _dump_text(output_dir, topic, text):
     """Dump text for a topic to a file."""
-    topic_id = "%s-%s" % (topic, "help")
+    topic_id = "{}-{}".format(topic, "help")
     filename = breezy.osutils.pathjoin(output_dir, topic_id + ".txt")
     with open(filename, "wb") as f:
         f.write(text.encode('utf-8'))

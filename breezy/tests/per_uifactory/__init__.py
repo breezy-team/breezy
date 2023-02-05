@@ -48,7 +48,7 @@ from ..ui_testing import (
     )
 
 
-class UIFactoryTestMixin(object):
+class UIFactoryTestMixin:
     """Common tests for UIFactories.
 
     These are supposed to be expressed with no assumptions about how the
@@ -70,7 +70,7 @@ class UIFactoryTestMixin(object):
         # confirm_action should be answered by every ui factory; even
         # noninteractive ones should have a reasonable default
         self._load_responses([True])
-        result = self.factory.confirm_action(u'Break a lock?',
+        result = self.factory.confirm_action('Break a lock?',
                                              'bzr.lock.break.confirm',
                                              {})
         # will be true either because we read it from the input or because
@@ -124,7 +124,7 @@ class UIFactoryTestMixin(object):
 class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def setUp(self):
-        super(TestTextUIFactory, self).setUp()
+        super().setUp()
         self.factory = self._create_ui_factory()
         self.factory.__enter__()
         self.addCleanup(self.factory.__exit__, None, None, None)
@@ -133,7 +133,7 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         self.stderr = self.factory.stderr
 
     def _create_ui_factory(self):
-        return TextUIFactory(u'')
+        return TextUIFactory('')
 
     def _check_note(self, note_text):
         self.assertEqual("%s\n" % note_text,
@@ -182,7 +182,7 @@ class TestTTYTextUIFactory(TestTextUIFactory):
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
         self.overrideEnv('TERM', None)
-        return TextUIFactory(u'', StringIOAsTTY(), StringIOAsTTY())
+        return TextUIFactory('', StringIOAsTTY(), StringIOAsTTY())
 
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
@@ -202,7 +202,7 @@ class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, therefore tests for output expect nothing
 
     def setUp(self):
-        super(TestSilentUIFactory, self).setUp()
+        super().setUp()
         self.factory = ui.SilentUIFactory()
 
     def _check_note(self, note_text):
@@ -235,7 +235,7 @@ class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, reads input from variables
 
     def setUp(self):
-        super(TestCannedInputUIFactory, self).setUp()
+        super().setUp()
         self.factory = ui.CannedInputUIFactory([])
 
     def _check_note(self, note_text):

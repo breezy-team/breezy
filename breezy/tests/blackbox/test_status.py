@@ -23,6 +23,10 @@ interface later, they will be non blackbox tests.
 """
 
 import codecs
+from io import (
+    BytesIO,
+    StringIO,
+    )
 from os import mkdir, chdir, rmdir, unlink
 import sys
 
@@ -38,11 +42,6 @@ from breezy.bzr import (
 import breezy.branch
 from ...osutils import pathjoin
 from ...revisionspec import RevisionSpec
-from ...sixish import (
-    BytesIO,
-    StringIO,
-    PY3,
-    )
 from ...status import show_tree_status
 from .. import TestCaseWithTransport, TestSkipped
 from ...workingtree import WorkingTree
@@ -51,7 +50,7 @@ from ...workingtree import WorkingTree
 class BranchStatus(TestCaseWithTransport):
 
     def setUp(self):
-        super(BranchStatus, self).setUp()
+        super().setUp()
         # As TestCase.setUp clears all hooks, we install this default
         # post_status hook handler for the test.
         status.hooks.install_named_hook('post_status',
@@ -178,7 +177,7 @@ class BranchStatus(TestCaseWithTransport):
         b_2_dir = b.controldir.sprout('./copy')
         b_2 = b_2_dir.open_branch()
         wt2 = b_2_dir.open_workingtree()
-        wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
+        wt.commit("\N{TIBETAN DIGIT TWO} Empty commit 2")
         wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
@@ -591,7 +590,7 @@ class BranchStatus(TestCaseWithTransport):
 class CheckoutStatus(BranchStatus):
 
     def setUp(self):
-        super(CheckoutStatus, self).setUp()
+        super().setUp()
         mkdir('codir')
         chdir('codir')
 
@@ -773,8 +772,8 @@ class TestStatusEncodings(TestCaseWithTransport):
 
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
-        working_tree = self.make_branch_and_tree(u'.')
-        filename = u'hell\u00d8'
+        working_tree = self.make_branch_and_tree('.')
+        filename = 'hell\u00d8'
         try:
             self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
@@ -798,10 +797,8 @@ added:
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 
-        expected = u"""\
+        expected = """\
 added:
   hell\u00d8
 """
-        if not PY3:
-            expected = expected.encode('latin-1')
         self.assertEqual(stdout, expected)

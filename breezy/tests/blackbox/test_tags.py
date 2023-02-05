@@ -30,7 +30,6 @@ from breezy.bzr import (
 from breezy.branch import (
     Branch,
     )
-from breezy.sixish import PY3
 from breezy.tests import (
     script,
     TestCaseWithTransport,
@@ -77,7 +76,7 @@ class TestTagging(TestCaseWithTransport):
         # regression test: make sure a unicode revision from the user
         # gets turned into a str object properly. The use of a unicode
         # object for the revid is intentional.
-        self.run_bzr(['tag', '-d', 'branch', 'tag3', u'-rrevid:first-revid'])
+        self.run_bzr(['tag', '-d', 'branch', 'tag3', '-rrevid:first-revid'])
         self.assertEqual(t.branch.tags.lookup_tag('tag3'), b'first-revid')
         # can also delete an existing tag
         out, err = self.run_bzr('tag --delete -d branch tag2')
@@ -220,42 +219,42 @@ class TestTagging(TestCaseWithTransport):
 
         b1 = tree1.branch
         # note how the tag for revid-1 sorts after the one for revid-2
-        b1.tags.set_tag(u'tag1\u30d0', b'revid-2')
+        b1.tags.set_tag('tag1\u30d0', b'revid-2')
         # not present in repository
-        b1.tags.set_tag(u'tag10\u30d0', b'missing')
-        b1.tags.set_tag(u'tag2\u30d0', b'revid-1')
+        b1.tags.set_tag('tag10\u30d0', b'missing')
+        b1.tags.set_tag('tag2\u30d0', b'revid-1')
 
         # natural order
         out, err = self.run_bzr_raw('tags -d branch1', encoding='utf-8')
         self.assertEqual(err, b'')
-        self.assertContainsRe(out, (u'^tag1\u30d0  *2\ntag2\u30d0  *1\n' +
-                                    u'tag10\u30d0 *\\?\n').encode('utf-8'))
+        self.assertContainsRe(out, ('^tag1\u30d0  *2\ntag2\u30d0  *1\n' +
+                                    'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         # lexicographical order
         out, err = self.run_bzr_raw('tags --sort=alpha -d branch1',
                                     encoding='utf-8')
         self.assertEqual(err, b'')
-        self.assertContainsRe(out, (u'^tag10\u30d0  *\\?\ntag1\u30d0  *2\n' +
-                                    u'tag2\u30d0 *1\n').encode('utf-8'))
+        self.assertContainsRe(out, ('^tag10\u30d0  *\\?\ntag1\u30d0  *2\n' +
+                                    'tag2\u30d0 *1\n').encode('utf-8'))
 
         out, err = self.run_bzr_raw('tags --sort=alpha --show-ids -d branch1',
                                     encoding='utf-8')
         self.assertEqual(err, b'')
-        self.assertContainsRe(out, (u'^tag10\u30d0  *missing\n' +
-                                    u'tag1\u30d0  *revid-2\ntag2\u30d0 *revid-1\n').encode('utf-8'))
+        self.assertContainsRe(out, ('^tag10\u30d0  *missing\n' +
+                                    'tag1\u30d0  *revid-2\ntag2\u30d0 *revid-1\n').encode('utf-8'))
 
         # chronological order
         out, err = self.run_bzr_raw('tags --sort=time -d branch1',
                                     encoding='utf-8')
         self.assertEqual(err, b'')
-        self.assertContainsRe(out, (u'^tag2\u30d0  *1\ntag1\u30d0  *2\n' +
-                                    u'tag10\u30d0 *\\?\n').encode('utf-8'))
+        self.assertContainsRe(out, ('^tag2\u30d0  *1\ntag1\u30d0  *2\n' +
+                                    'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         out, err = self.run_bzr_raw('tags --sort=time --show-ids -d branch1',
                                     encoding='utf-8')
         self.assertEqual(err, b'')
-        self.assertContainsRe(out, (u'^tag2\u30d0  *revid-1\n' +
-                                    u'tag1\u30d0  *revid-2\ntag10\u30d0 *missing\n').encode('utf-8'))
+        self.assertContainsRe(out, ('^tag2\u30d0  *revid-1\n' +
+                                    'tag1\u30d0  *revid-2\ntag10\u30d0 *missing\n').encode('utf-8'))
 
         # now test dotted revnos
         tree2 = tree1.controldir.sprout('branch2').open_workingtree()
@@ -318,10 +317,10 @@ class TestTagging(TestCaseWithTransport):
         tree1.commit(allow_pointless=True, message='revision 4',
                      rev_id=b'revid-4')
         b1 = tree1.branch
-        b1.tags.set_tag(u'tag 1', b'revid-1')
-        b1.tags.set_tag(u'tag 2', b'revid-2')
-        b1.tags.set_tag(u'tag 3', b'revid-3')
-        b1.tags.set_tag(u'tag 4', b'revid-4')
+        b1.tags.set_tag('tag 1', b'revid-1')
+        b1.tags.set_tag('tag 2', b'revid-2')
+        b1.tags.set_tag('tag 3', b'revid-3')
+        b1.tags.set_tag('tag 4', b'revid-4')
         self._check_tag_filter('', (1, 2, 3, 4))
         self._check_tag_filter('-r ..', (1, 2, 3, 4))
         self._check_tag_filter('-r ..2', (1, 2))
@@ -356,11 +355,11 @@ class TestTagging(TestCaseWithTransport):
 
         b1 = tree1.branch
 
-        b1.tags.set_tag(u'tag..', b'revid-2')
-        b1.tags.set_tag(u'tag....', b'missing')  # not present in repository
-        b1.tags.set_tag(u'tag.', b'revid-1')
-        b1.tags.set_tag(u'tag...', b'revid-1')
-        b1.tags.set_tag(u'tag....', b'revid-1')
+        b1.tags.set_tag('tag..', b'revid-2')
+        b1.tags.set_tag('tag....', b'missing')  # not present in repository
+        b1.tags.set_tag('tag.', b'revid-1')
+        b1.tags.set_tag('tag...', b'revid-1')
+        b1.tags.set_tag('tag....', b'revid-1')
 
         # sorted by number of dots
         out, err = self.run_bzr('tags --sort=dots -d branch1')
@@ -376,7 +375,7 @@ class TestTagging(TestCaseWithTransport):
         # upper bound of laziness
         out, err = self.run_bzr('tags ' + argstr)
         self.assertEqual(err, '')
-        self.assertContainsRe(out, "^" + ''.join(["tag %s +%s\n" % (
+        self.assertContainsRe(out, "^" + ''.join(["tag {} +{}\n".format(
             revno, revno) for revno in expected_revnos]) + "$")
 
     def test_conflicting_tags(self):
@@ -385,25 +384,17 @@ class TestTagging(TestCaseWithTransport):
         t2 = self.make_branch_and_tree('two')
         b1 = t1.branch
         b2 = t2.branch
-        tagname = u'\u30d0zaar'
+        tagname = '\u30d0zaar'
         b1.tags.set_tag(tagname, b'revid1')
         b2.tags.set_tag(tagname, b'revid2')
         # push should give a warning about the tags
         out, err = self.run_bzr('push -d one two', encoding='utf-8')
-        if PY3:
-            self.assertContainsRe(out, 'Conflicting tags:\n.*' + tagname)
-        else:
-            self.assertContainsRe(
-                out, 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        self.assertContainsRe(out, 'Conflicting tags:\n.*' + tagname)
         # pull should give a warning about the tags
         out, err = self.run_bzr('pull -d one two', encoding='utf-8',
                                 retcode=1)
-        if PY3:
-            self.assertContainsRe(out,
-                                  'Conflicting tags:\n.*' + tagname)
-        else:
-            self.assertContainsRe(out,
-                                  'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        self.assertContainsRe(out,
+                              'Conflicting tags:\n.*' + tagname)
         # merge should give a warning about the tags -- not implemented yet
         ## out, err = self.run_bzr('merge -d one two', encoding='utf-8')
         # self.assertContainsRe(out,

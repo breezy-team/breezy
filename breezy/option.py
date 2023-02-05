@@ -17,18 +17,16 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
-from __future__ import absolute_import
+__docformat__ = "google"
 
 import optparse
 import re
+from typing import Dict, Callable
 
 from . import (
     errors,
     registry as _mod_registry,
     revisionspec,
-    )
-from .sixish import (
-    text_type,
     )
 
 
@@ -111,7 +109,7 @@ def _parse_change_str(revstr):
     >>> _parse_change_str('123..124')
     Traceback (most recent call last):
       ...
-    RangeInChangeOption: Option --change does not accept revision ranges
+    breezy.errors.RangeInChangeOption: Option --change does not accept revision ranges
     """
     revs = _parse_revision_str(revstr)
     if len(revs) > 1:
@@ -138,47 +136,43 @@ def get_merge_type(typestring):
         raise errors.CommandError(msg)
 
 
-class Option(object):
+class Option:
     """Description of a command line option
 
-    :ivar _short_name: If this option has a single-letter name, this is it.
-    Otherwise None.
+    Attributes:
+      _short_name: If this option has a single-letter name, this is it.
+         Otherwise None.
     """
 
     # The dictionary of standard options. These are always legal.
-    STD_OPTIONS = {}
+    STD_OPTIONS: Dict[str, "Option"] = {}
 
     # The dictionary of commonly used options. these are only legal
     # if a command explicitly references them by name in the list
     # of supported options.
-    OPTIONS = {}
+    OPTIONS: Dict[str, "Option"] = {}
 
     def __init__(self, name, help='', type=None, argname=None,
                  short_name=None, param_name=None, custom_callback=None,
                  hidden=False):
         """Make a new command option.
 
-        :param name: regular name of the command, used in the double-dash
+        Args:
+          name: regular name of the command, used in the double-dash
             form and also as the parameter to the command's run()
             method (unless param_name is specified).
-
-        :param help: help message displayed in command help
-
-        :param type: function called to parse the option argument, or
+          help: help message displayed in command help
+          type: function called to parse the option argument, or
             None (default) if this option doesn't take an argument.
-
-        :param argname: name of option argument, if any
-
-        :param short_name: short option code for use with a single -, e.g.
+          argname: name of option argument, if any
+          short_name: short option code for use with a single -, e.g.
             short_name="v" to enable parsing of -v.
-
-        :param param_name: name of the parameter which will be passed to
+          param_name: name of the parameter which will be passed to
             the command's run() method.
-
-        :param custom_callback: a callback routine to be called after normal
+          custom_callback: a callback routine to be called after normal
             processing. The signature of the callback routine is
             (option, name, new_value, parser).
-        :param hidden: If True, the option should be hidden in help and
+          hidden: If True, the option should be hidden in help and
             documentation.
         """
         self.name = name
@@ -250,7 +244,7 @@ class Option(object):
             v = self.type(value)
         except ValueError as e:
             raise optparse.OptionValueError(
-                'invalid value for option %s: %s' % (option, value))
+                'invalid value for option {}: {}'.format(option, value))
         setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
@@ -328,20 +322,21 @@ class RegistryOption(Option):
         """
         Constructor.
 
-        :param name: The option name.
-        :param help: Help for the option.
-        :param registry: A Registry containing the values
-        :param converter: Callable to invoke with the value name to produce
+        Args:
+          name: The option name.
+          help: Help for the option.
+          registry: A Registry containing the values
+          converter: Callable to invoke with the value name to produce
             the value.  If not supplied, self.registry.get is used.
-        :param value_switches: If true, each possible value is assigned its
+          value_switches: If true, each possible value is assigned its
             own switch.  For example, instead of '--format knit',
             '--knit' can be used interchangeably.
-        :param enum_switch: If true, a switch is provided with the option name,
+          enum_switch: If true, a switch is provided with the option name,
             which takes a value.
-        :param lazy_registry: A tuple of (module name, attribute name) for a
+          lazy_registry: A tuple of (module name, attribute name) for a
             registry to be lazily loaded.
-        :param short_name: The short name for the enum switch, if any
-        :param short_value_switches: A dict mapping values to short names
+          short_name: The short name for the enum switch, if any
+          short_value_switches: A dict mapping values to short names
         """
         Option.__init__(self, name, help, type=self.convert,
                         short_name=short_name)
@@ -432,8 +427,7 @@ class RegistryOption(Option):
 
         :return: an iterator of (name, short_name, argname, help)
         """
-        for value in Option.iter_switches(self):
-            yield value
+        yield from Option.iter_switches(self)
         if self.value_switches:
             for key in sorted(self.registry.keys()):
                 yield key, None, None, self.registry.get_help(key)
@@ -564,9 +558,9 @@ _global_option('change',
                short_name='c',
                param_name='revision',
                help='Select changes introduced by the specified revision. See also "help revisionspec".')
-_global_option('directory', short_name='d', type=text_type,
+_global_option('directory', short_name='d', type=str,
                help='Branch to operate on, instead of working directory.')
-_global_option('file', type=text_type, short_name='F')
+_global_option('file', type=str, short_name='F')
 _global_registry_option('log-format', "Use specified log format.",
                         lazy_registry=('breezy.log', 'log_formatter_registry'),
                         value_switches=True, title='Log format',
@@ -574,7 +568,7 @@ _global_registry_option('log-format', "Use specified log format.",
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         lazy_registry=('breezy.merge', 'merge_type_registry'),
                         value_switches=True, title='Merge algorithm')
-_global_option('message', type=text_type,
+_global_option('message', type=str,
                short_name='m',
                help='Message string.')
 _global_option('null', short_name='0',
@@ -595,6 +589,6 @@ _global_option('timezone',
                type=str,
                help='Display timezone as local, original, or utc.')
 
-diff_writer_registry = _mod_registry.Registry()
+diff_writer_registry = _mod_registry.Registry[str, Callable]()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
 diff_writer_registry.default_key = 'plain'

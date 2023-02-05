@@ -16,8 +16,6 @@
 
 """GitHub command implementations."""
 
-from __future__ import absolute_import
-
 from ... import (
     errors,
     )
@@ -39,7 +37,7 @@ class cmd_github_login(Command):
         authconfig = AuthenticationConfig()
         if username is None:
             username = authconfig.get_user(
-                'https', 'github.com', prompt=u'GitHub username', ask=True)
+                'https', 'github.com', prompt='GitHub username', ask=True)
         password = authconfig.get_password('https', 'github.com', username)
         client = Github(username, password)
         user = client.get_user()
@@ -51,11 +49,8 @@ class cmd_github_login(Command):
             errs = e.data.get('errors', [])
             if errs:
                 err_code = errs[0].get('code')
-                if err_code == u'already_exists':
+                if err_code == 'already_exists':
                     raise errors.CommandError('token already exists')
             raise errors.CommandError(e.data['message'])
-        # TODO(jelmer): This should really use something in
-        # AuthenticationConfig
-        from .github import store_github_token
-        store_github_token(scheme='https', host='github.com',
-                           token=authorization.token)
+        from .forge import store_github_token
+        store_github_token(token=authorization.token)

@@ -16,11 +16,10 @@
 
 """Lists of ignore files, etc."""
 
-from __future__ import absolute_import
-
 import errno
 from io import BytesIO
 import os
+from typing import Set
 
 import breezy
 from .lazy_import import lazy_import
@@ -93,7 +92,7 @@ def get_user_ignores():
     patterns = set(USER_DEFAULTS)
     try:
         f = open(path, 'rb')
-    except (IOError, OSError) as e:
+    except OSError as e:
         # open() shouldn't return an IOError without errno, but just in case
         err = getattr(e, 'errno', None)
         if err not in (errno.ENOENT,):
@@ -103,7 +102,7 @@ def get_user_ignores():
         # since get_* should be a safe operation
         try:
             _set_user_ignores(USER_DEFAULTS)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno not in (errno.EPERM, errno.ENOENT):
                 raise
         return patterns
@@ -156,7 +155,7 @@ def add_unique_user_ignores(new_ignores):
     return to_add
 
 
-_runtime_ignores = set()
+_runtime_ignores: Set[str] = set()
 
 
 def add_runtime_ignores(ignores):

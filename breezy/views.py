@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+__docformat__ = "google"
+
 """View management.
 
 Views are contained within a working tree and normally constructed
@@ -22,13 +24,12 @@ when first accessed.  Clients should do, for example, ...
   tree.views.lookup_view()
 """
 
-from __future__ import absolute_import
-
 import re
 
 from . import (
     errors,
     osutils,
+    transport,
     )
 
 
@@ -40,7 +41,7 @@ class NoSuchView(errors.BzrError):
     """A view does not exist.
     """
 
-    _fmt = u"No such view: %(view_name)s."
+    _fmt = "No such view: %(view_name)s."
 
     def __init__(self, view_name):
         self.view_name = view_name
@@ -67,7 +68,7 @@ class FileOutsideView(errors.BzrError):
         self.view_str = ", ".join(view_files)
 
 
-class _Views(object):
+class _Views:
     """Base class for View managers."""
 
     def supports_views(self):
@@ -111,7 +112,7 @@ class PathBasedViews(_Views):
     def get_view_info(self):
         """Get the current view and dictionary of views.
 
-        :return: current, views where
+        Returns: current, views where
           current = the name of the current view or None if no view is enabled
           views = a map from view name to list of files/directories
         """
@@ -121,9 +122,10 @@ class PathBasedViews(_Views):
     def set_view_info(self, current, views):
         """Set the current view and dictionary of views.
 
-        :param current: the name of the current view or None if no view is
-          enabled
-        :param views: a map from view name to list of files/directories
+        Args:
+          current: the name of the current view or None if no view is
+              enabled
+          views: a map from view name to list of files/directories
         """
         if current is not None and current not in views:
             raise NoSuchView(current)
@@ -135,8 +137,11 @@ class PathBasedViews(_Views):
     def lookup_view(self, view_name=None):
         """Return the contents of a view.
 
-        :param view_Name: name of the view or None to lookup the current view
-        :return: the list of files/directories in the requested view
+        Args:
+          view_Name: name of the view or None to lookup the current view
+
+        Returns:
+          the list of files/directories in the requested view
         """
         self._load_view_info()
         try:
@@ -152,9 +157,10 @@ class PathBasedViews(_Views):
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
 
-        :param view_name: the name of the view
-        :param view_files: the list of files/directories in the view
-        :param make_current: make this view the current one or not
+        Args:
+          view_name: the name of the view
+          view_files: the list of files/directories in the view
+          make_current: make this view the current one or not
         """
         with self.tree.lock_write():
             self._load_view_info()
@@ -198,7 +204,7 @@ class PathBasedViews(_Views):
             with self.tree.lock_read():
                 try:
                     view_content = self.tree._transport.get_bytes('views')
-                except errors.NoSuchFile:
+                except transport.NoSuchFile:
                     self._current, self._views = None, {}
                 else:
                     keywords, self._views = \
@@ -210,12 +216,12 @@ class PathBasedViews(_Views):
         """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
         for key in keywords:
-            line = "%s=%s\n" % (key, keywords[key])
+            line = "{}={}\n".format(key, keywords[key])
             lines.append(line.encode('utf-8'))
         if view_dict:
-            lines.append("views:\n".encode('utf-8'))
+            lines.append(b"views:\n")
             for view in sorted(view_dict):
-                view_data = "%s\0%s\n" % (view, "\0".join(view_dict[view]))
+                view_data = "{}\0{}\n".format(view, "\0".join(view_dict[view]))
                 lines.append(view_data.encode('utf-8'))
         return b"".join(lines)
 
@@ -284,8 +290,9 @@ class DisabledViews(_Views):
 def view_display_str(view_files, encoding=None):
     """Get the display string for a list of view files.
 
-    :param view_files: the list of file names
-    :param encoding: the encoding to display the files in
+    Args:
+      view_files: the list of file names
+      encoding: the encoding to display the files in
     """
     if encoding is None:
         return ", ".join(view_files)

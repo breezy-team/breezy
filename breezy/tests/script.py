@@ -41,8 +41,7 @@ def split(s):
     scanner = shlex.shlex(s)
     scanner.quotes = '\'"`'
     scanner.whitespace_split = True
-    for t in list(scanner):
-        yield t
+    yield from list(scanner)
 
 
 def _script_to_commands(text, file_name=None):
@@ -128,7 +127,7 @@ def _script_to_commands(text, file_name=None):
             # if the prompt has leading whitespace
             if output is None:
                 if cmd_cur is None:
-                    raise SyntaxError('No command for line %r' % (line,),
+                    raise SyntaxError('No command for line {!r}'.format(line),
                                       (file_name, lineno, 1, orig))
                 output = []
             output.append(line + '\n')
@@ -176,7 +175,7 @@ def _scan_redirection_options(args):
     return in_name, out_name, out_mode, remaining
 
 
-class ScriptRunner(object):
+class ScriptRunner:
     """Run a shell-like script from a test.
 
     Can be used as:
@@ -219,7 +218,7 @@ class ScriptRunner(object):
         mname = 'do_' + cmd[0]
         method = getattr(self, mname, None)
         if method is None:
-            raise SyntaxError('Command not found "%s"' % (cmd[0],),
+            raise SyntaxError('Command not found "{}"'.format(cmd[0]),
                               (None, 1, 1, ' '.join(cmd)))
         if input is None:
             str_input = ''
@@ -293,14 +292,13 @@ class ScriptRunner(object):
                         # We care more about order stability than performance
                         # here
                         matches.sort()
-                        for m in matches:
-                            yield m
+                        yield from matches
                 else:
                     yield arg
 
     def _read_input(self, input, in_name):
         if in_name is not None:
-            infile = open(in_name, 'r')
+            infile = open(in_name)
             try:
                 # Command redirection takes precedence over provided input
                 input = infile.read()
@@ -320,19 +318,10 @@ class ScriptRunner(object):
 
     def do_brz(self, test_case, input, args):
         encoding = osutils.get_user_encoding()
-        if sys.version_info[0] == 2:
-            stdout = ui_testing.BytesIOWithEncoding()
-            stderr = ui_testing.BytesIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-
-            # FIXME: don't call into logging here
-            handler = trace.EncodedStreamHandler(
-                stderr, errors="replace")
-        else:
-            stdout = ui_testing.StringIOWithEncoding()
-            stderr = ui_testing.StringIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-            handler = logging.StreamHandler(stderr)
+        stdout = ui_testing.StringIOWithEncoding()
+        stderr = ui_testing.StringIOWithEncoding()
+        stdout.encoding = stderr.encoding = encoding
+        handler = logging.StreamHandler(stderr)
         handler.setLevel(logging.INFO)
 
         logger = logging.getLogger('')
@@ -360,23 +349,23 @@ class ScriptRunner(object):
         for in_name in input_names:
             try:
                 inputs.append(self._read_input(None, in_name))
-            except IOError as e:
+            except OSError as e:
                 # Some filenames are illegal on Windows and generate EINVAL
                 # rather than just saying the filename doesn't exist
                 if e.errno in (errno.ENOENT, errno.EINVAL):
                     return (1, None,
-                            '%s: No such file or directory\n' % (in_name,))
+                            '{}: No such file or directory\n'.format(in_name))
                 raise
         # Basically cat copy input to output
         output = ''.join(inputs)
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except IOError as e:
+        except OSError as e:
             # If out_name cannot be created, we may get 'ENOENT', however if
             # out_name is something like '', we can get EINVAL
             if e.errno in (errno.ENOENT, errno.EINVAL):
-                return 1, None, '%s: No such file or directory\n' % (out_name,)
+                return 1, None, '{}: No such file or directory\n'.format(out_name)
             raise
         return 0, output, None
 
@@ -393,9 +382,9 @@ class ScriptRunner(object):
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except IOError as e:
+        except OSError as e:
             if e.errno in (errno.ENOENT, errno.EINVAL):
-                return 1, None, '%s: No such file or directory\n' % (out_name,)
+                return 1, None, '{}: No such file or directory\n'.format(out_name)
             raise
         return 0, output, None
 
@@ -405,7 +394,7 @@ class ScriptRunner(object):
     def _ensure_in_jail(self, test_case, path):
         jail_root = self._get_jail_root(test_case)
         if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
-            raise ValueError('%s is not inside %s' % (path, jail_root))
+            raise ValueError('{} is not inside {}'.format(path, jail_root))
 
     def do_cd(self, test_case, input, args):
         if len(args) > 1:
@@ -431,7 +420,7 @@ class ScriptRunner(object):
         err = None
 
         def error(msg, path):
-            return "rm: cannot remove '%s': %s\n" % (path, msg)
+            return "rm: cannot remove '{}': {}\n".format(path, msg)
 
         force, recursive = False, False
         opts = None
@@ -475,7 +464,7 @@ class ScriptRunner(object):
         err = None
 
         def error(msg, src, dst):
-            return "mv: cannot move %s to %s: %s\n" % (src, dst, msg)
+            return "mv: cannot move {} to {}: {}\n".format(src, dst, msg)
 
         if not args or len(args) != 2:
             raise SyntaxError("Usage: mv path1 path2")
@@ -506,7 +495,7 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
     """
 
     def setUp(self):
-        super(TestCaseWithMemoryTransportAndScript, self).setUp()
+        super().setUp()
         self.script_runner = ScriptRunner()
         # FIXME: See shelf_ui.Shelver._char_based. This allow using shelve in
         # scripts while providing a line-based input (better solution in
@@ -540,7 +529,7 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
     """
 
     def setUp(self):
-        super(TestCaseWithTransportAndScript, self).setUp()
+        super().setUp()
         self.script_runner = ScriptRunner()
         # FIXME: See shelf_ui.Shelver._char_based. This allow using shelve in
         # scripts while providing a line-based input (better solution in

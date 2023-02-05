@@ -16,14 +16,11 @@
 
 """Debug commands for the bzr formats."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from .. import (
     errors,
     osutils,
-    static_tuple,
     transport,
     )
 from ..workingtree import WorkingTree
@@ -32,9 +29,9 @@ from ..commands import (
     display_command,
     )
 from ..option import Option
-from ..sixish import PY3
 from . import (
     btree_index,
+    static_tuple,
     )
 
 
@@ -118,19 +115,16 @@ class cmd_dump_btree(Command):
                 refs_as_tuples = None
             else:
                 refs_as_tuples = static_tuple.as_tuples(refs)
-            if PY3:
-                if refs_as_tuples is not None:
-                    refs_as_tuples = tuple(
-                        tuple(tuple(r.decode('utf-8')
-                                    for r in t1) for t1 in t2)
-                        for t2 in refs_as_tuples)
-                as_tuple = (
-                    tuple([r.decode('utf-8') for r in node[1]]),
-                    node[2].decode('utf-8'),
-                    refs_as_tuples)
-            else:
-                as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
-            self.outf.write('%s\n' % (as_tuple,))
+            if refs_as_tuples is not None:
+                refs_as_tuples = tuple(
+                    tuple(tuple(r.decode('utf-8')
+                                for r in t1) for t1 in t2)
+                    for t2 in refs_as_tuples)
+            as_tuple = (
+                tuple([r.decode('utf-8') for r in node[1]]),
+                node[2].decode('utf-8'),
+                refs_as_tuples)
+            self.outf.write('{}\n'.format(as_tuple))
 
 
 class cmd_file_id(Command):

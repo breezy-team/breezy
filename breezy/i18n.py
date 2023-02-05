@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007 Lukáš Lalinský <lalinsky@gmail.com>
 # Copyright (C) 2007,2009 Alexander Belchenko <bialix@ukr.net>
@@ -21,8 +20,6 @@
 # This module is copied from Bazaar Explorer and modified for brz.
 
 """i18n and l10n support for Bazaar."""
-
-from __future__ import absolute_import
 
 import gettext as _gettext
 import os
@@ -71,10 +68,10 @@ def gettext_per_paragraph(message):
     :returns: concatenated translated message as unicode.
     """
     install()
-    paragraphs = message.split(u'\n\n')
+    paragraphs = message.split('\n\n')
     # Be careful not to translate the empty string -- it holds the
     # meta data of the .po file.
-    return u'\n\n'.join(gettext(p) if p else u'' for p in paragraphs)
+    return '\n\n'.join(gettext(p) if p else '' for p in paragraphs)
 
 
 def disable_i18n():
@@ -141,24 +138,17 @@ def _get_locale_dir(base):
 
     :param base: plugins can specify their own local directory
     """
-    if sys.version_info > (3,):
-        decode_path = str
-    else:
-        fs_enc = sys.getfilesystemencoding()
-
-        def decode_path(path):
-            return path.decode(fs_enc)
     if getattr(sys, 'frozen', False):
         if base is None:
-            base = os.path.dirname(decode_path(sys.executable))
-        return os.path.join(base, u'locale')
+            base = os.path.dirname(sys.executable)
+        return os.path.join(base, 'locale')
     else:
         if base is None:
-            base = os.path.dirname(decode_path(__file__))
-        dirpath = os.path.realpath(os.path.join(base, u'locale'))
+            base = os.path.dirname(__file__)
+        dirpath = os.path.realpath(os.path.join(base, 'locale'))
         if os.path.exists(dirpath):
             return dirpath
-    return os.path.join(decode_path(sys.prefix), u"share", u"locale")
+    return os.path.join(sys.prefix, "share", "locale")
 
 
 def _check_win32_locale():

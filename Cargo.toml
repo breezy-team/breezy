@@ -1,0 +1,22 @@
+[package]
+name = "breezy"
+version = "3.3.2"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+edition = "2018"
+publish = false
+default-run = "brz"
+license = "GPL-2.0+"
+description = "Friendly distributed version control system"
+repository = "https://code.launchpad.net/brz"
+homepage = "https://www.breezy-vcs.org/"
+documentation = "https://www.breezy-vcs.org/doc/"
+
+[workspace]
+members = ["lib-rio"]
+
+[[bin]]
+name = "brz"
+path = "breezy/main.rs"
+
+[dependencies]
+pyo3 = ">=0.14,<0.16"

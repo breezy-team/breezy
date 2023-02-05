@@ -14,11 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-from __future__ import print_function
 
 from ...controldir import ControlDir
-from ...commands import Command, Option
+from ...commands import Command
+from ...option import Option
 from ... import errors, urlutils
 
 
@@ -40,18 +39,18 @@ class cmd_fetch_all_records(Command):
                help="Show what would be done, but don't actually do anything."),
         ]
 
-    def run(self, source_repo, directory=u'.', dry_run=False):
+    def run(self, source_repo, directory='.', dry_run=False):
         try:
             source = ControlDir.open(source_repo).open_repository()
         except (errors.NotBranchError, urlutils.InvalidURL):
-            print(u"Not a branch or invalid URL: %s" % source_repo,
+            print("Not a branch or invalid URL: %s" % source_repo,
                   file=self.outf)
             return
 
         try:
             target = ControlDir.open(directory).open_repository()
         except (errors.NotBranchError, urlutils.InvalidURL):
-            print(u"Not a branch or invalid URL: %s" %
+            print("Not a branch or invalid URL: %s" %
                   directory, file=self.outf)
             return
 

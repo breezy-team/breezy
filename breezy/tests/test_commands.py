@@ -47,7 +47,7 @@ class TestCommands(tests.TestCase):
     def test_display_command(self):
         """EPIPE message is selectively suppressed"""
         def pipe_thrower():
-            raise IOError(errno.EPIPE, "Bogus pipe error")
+            raise OSError(errno.EPIPE, "Bogus pipe error")
         self.assertRaises(IOError, pipe_thrower)
 
         @display_command
@@ -57,14 +57,14 @@ class TestCommands(tests.TestCase):
 
         @display_command
         def other_thrower():
-            raise IOError(errno.ESPIPE, "Bogus pipe error")
+            raise OSError(errno.ESPIPE, "Bogus pipe error")
         self.assertRaises(IOError, other_thrower)
 
     def test_unicode_command(self):
         # This error is thrown when we can't find the command in the
         # list of available commands
         self.assertRaises(errors.CommandError,
-                          commands.run_bzr, [u'cmd\xb5'])
+                          commands.run_bzr, ['cmd\xb5'])
 
     def test_unicode_option(self):
         # This error is actually thrown by optparse, when it
@@ -73,7 +73,7 @@ class TestCommands(tests.TestCase):
         if optparse.__version__ == "1.5.3":
             raise TestSkipped("optparse 1.5.3 can't handle unicode options")
         self.assertRaises(errors.CommandError,
-                          commands.run_bzr, ['log', u'--option\xb5'])
+                          commands.run_bzr, ['log', '--option\xb5'])
 
     @staticmethod
     def get_command(options):
@@ -131,29 +131,29 @@ class TestGetAlias(tests.TestCase):
     def test_simple(self):
         my_config = self._get_config("[ALIASES]\n"
                                      "diff=diff -r -2..-1\n")
-        self.assertEqual([u'diff', u'-r', u'-2..-1'],
+        self.assertEqual(['diff', '-r', '-2..-1'],
                          commands.get_alias("diff", config=my_config))
 
     def test_single_quotes(self):
         my_config = self._get_config("[ALIASES]\n"
                                      "diff=diff -r -2..-1 --diff-options "
                                      "'--strip-trailing-cr -wp'\n")
-        self.assertEqual([u'diff', u'-r', u'-2..-1', u'--diff-options',
-                          u'--strip-trailing-cr -wp'],
+        self.assertEqual(['diff', '-r', '-2..-1', '--diff-options',
+                          '--strip-trailing-cr -wp'],
                          commands.get_alias("diff", config=my_config))
 
     def test_double_quotes(self):
         my_config = self._get_config("[ALIASES]\n"
                                      "diff=diff -r -2..-1 --diff-options "
                                      "\"--strip-trailing-cr -wp\"\n")
-        self.assertEqual([u'diff', u'-r', u'-2..-1', u'--diff-options',
-                          u'--strip-trailing-cr -wp'],
+        self.assertEqual(['diff', '-r', '-2..-1', '--diff-options',
+                          '--strip-trailing-cr -wp'],
                          commands.get_alias("diff", config=my_config))
 
     def test_unicode(self):
         my_config = self._get_config("[ALIASES]\n"
-                                     u'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n')
-        self.assertEqual([u'whoami', u'Erik B\u00e5gfors <erik@bagfors.nu>'],
+                                     'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n')
+        self.assertEqual(['whoami', 'Erik B\u00e5gfors <erik@bagfors.nu>'],
                          commands.get_alias("iam", config=my_config))
 
 
@@ -196,7 +196,7 @@ class TestSeeAlso(tests.TestCase):
 class TestRegisterLazy(tests.TestCase):
 
     def setUp(self):
-        super(TestRegisterLazy, self).setUp()
+        super().setUp()
         import breezy.tests.fake_command
         del sys.modules['breezy.tests.fake_command']
         global lazy_command_imported
@@ -319,7 +319,7 @@ class TestGetCommandHook(tests.TestCase):
 class TestCommandNotFound(tests.TestCase):
 
     def setUp(self):
-        super(TestCommandNotFound, self).setUp()
+        super().setUp()
         commands._register_builtin_commands()
         commands.install_bzr_command_hooks()
 
@@ -448,7 +448,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
             "post_command", post_command, None)
 
         self.assertEqual([], hook_calls)
-        self.assertRaises(self.TestError, commands.run_bzr, [u'rocks'])
+        self.assertRaises(self.TestError, commands.run_bzr, ['rocks'])
         self.assertEqual(['run', 'post'], hook_calls)
 
     def test_pre_command_error(self):
@@ -458,8 +458,7 @@ class TestPreAndPostCommandHooks(tests.TestCase):
 
         def pre_command(cmd):
             hook_calls.append('pre')
-            # verify that all subclasses of CommandError caught too
-            raise commands.BzrOptionError()
+            raise errors.CommandError()
 
         def post_command(cmd, e):
             self.fail('post_command should not be called')
@@ -476,14 +475,14 @@ class TestPreAndPostCommandHooks(tests.TestCase):
 
         self.assertEqual([], hook_calls)
         self.assertRaises(errors.CommandError,
-                          commands.run_bzr, [u'rocks'])
+                          commands.run_bzr, ['rocks'])
         self.assertEqual(['pre'], hook_calls)
 
 
 class GuessCommandTests(tests.TestCase):
 
     def setUp(self):
-        super(GuessCommandTests, self).setUp()
+        super().setUp()
         commands._register_builtin_commands()
         commands.install_bzr_command_hooks()
 

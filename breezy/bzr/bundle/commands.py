@@ -21,7 +21,7 @@ This should have commands for both generating a changeset,
 and for applying a changeset.
 """
 
-from __future__ import absolute_import
+from io import BytesIO
 
 from ... import (
     errors,
@@ -40,10 +40,6 @@ from breezy.i18n import gettext
 """)
 
 from ...commands import Command
-from ...sixish import (
-    BytesIO,
-    viewitems,
-    )
 
 
 class cmd_bundle_info(Command):
@@ -81,7 +77,7 @@ class cmd_bundle_info(Command):
             if file_id is not None:
                 file_ids.add(file_id)
         self.outf.write(gettext('Records\n'))
-        for kind, records in sorted(viewitems(by_kind)):
+        for kind, records in sorted(by_kind.items()):
             multiparent = sum(1 for b, m, k, r, f in records if
                               len(m.get('parents', [])) > 1)
             self.outf.write(gettext('{0}: {1} ({2} multiparent)\n').format(
@@ -98,8 +94,8 @@ class cmd_bundle_info(Command):
         self.outf.write(gettext('Revisions\n'))
         self.outf.write((gettext('nicks: %s\n')
                          % ', '.join(sorted(nicks))).encode(term_encoding, 'replace'))
-        self.outf.write((gettext('committers: \n%s\n') %
-                         '\n'.join(sorted(committers)).encode(term_encoding, 'replace')))
+        self.outf.write(gettext('committers: \n%s\n') %
+                         '\n'.join(sorted(committers)).encode(term_encoding, 'replace'))
         if verbose:
             self.outf.write('\n')
             bundle_file.seek(0)

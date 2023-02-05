@@ -14,13 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import bz2
+from io import (
+    BytesIO,
+    )
 import re
 
+import fastbencode as bencode
+
 from .... import (
-    bencode,
     errors,
     iterablefile,
     lru_cache,
@@ -38,17 +40,13 @@ from ... import (
     )
 from .. import bundle_data, serializer as bundle_serializer
 from ....i18n import ngettext
-from ....sixish import (
-    BytesIO,
-    viewitems,
-    )
 
 
 class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
     """Generate Inventory diffs serialized inventories."""
 
     def __init__(self, repo, inventory_keys):
-        super(_MPDiffInventoryGenerator, self).__init__(repo.inventories,
+        super().__init__(repo.inventories,
                                                         inventory_keys)
         self.repo = repo
         self.sha1s = {}
@@ -81,7 +79,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
             yield revision_id, parent_ids, sha1, diff
 
 
-class BundleWriter(object):
+class BundleWriter:
     """Writer for bundle-format files.
 
     This serves roughly the same purpose as ContainerReader, but acts as a
@@ -186,7 +184,7 @@ class BundleWriter(object):
             self._container.add_bytes_record([bytes], len(bytes), [])
 
 
-class BundleReader(object):
+class BundleReader:
     """Reader for bundle-format files.
 
     This serves roughly the same purpose as ContainerReader, but acts as a
@@ -291,7 +289,7 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
         return serializer.format_registry.get(info[b'serializer'].decode('ascii'))
 
 
-class BundleWriteOperation(object):
+class BundleWriteOperation:
     """Perform the operation of writing revisions to a bundle"""
 
     def __init__(self, base, target, repository, fileobj, revision_ids=None):
@@ -335,7 +333,7 @@ class BundleWriteOperation(object):
         text_keys = []
         altered_fileids = self.repository.fileids_altered_by_revision_ids(
             self.revision_ids)
-        for file_id, revision_ids in viewitems(altered_fileids):
+        for file_id, revision_ids in altered_fileids.items():
             for revision_id in revision_ids:
                 text_keys.append((file_id, revision_id))
         self._add_mp_records_keys('file', self.repository.texts, text_keys)
@@ -432,7 +430,7 @@ class BundleWriteOperation(object):
                                                item_key[-1], file_id)
 
 
-class BundleInfoV4(object):
+class BundleInfoV4:
 
     """Provide (most of) the BundleInfo interface"""
 
@@ -506,7 +504,7 @@ class BundleInfoV4(object):
     target = property(_get_target)
 
 
-class RevisionInstaller(object):
+class RevisionInstaller:
     """Installs revisions into a repository"""
 
     def __init__(self, container, serializer, repository):

@@ -16,8 +16,6 @@
 
 """Inventory/revision serialization."""
 
-from __future__ import absolute_import
-
 from .. import errors, registry
 
 
@@ -42,7 +40,7 @@ class UnsupportedInventoryKind(errors.BzrError):
         self.kind = kind
 
 
-class Serializer(object):
+class Serializer:
     """Inventory and revision serialization/deserialization."""
 
     squashes_xml_invalid_characters = False

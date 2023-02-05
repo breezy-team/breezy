@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Breezy documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 21 17:04:52 2009.
@@ -22,61 +21,61 @@ brz_locale = 'en'
 
 # Translations & supporting helper function
 brz_titles = {
-    u'Table of Contents (%s)': None,
-    u'Breezy User Guide': None,
-    u'Breezy User Reference': None,
-    u'Breezy Release Notes': None,
-    u'Breezy Upgrade Guide': None,
-    u"Breezy System Administrator's Guide": None,
-    u'Breezy in five minutes': None,
-    u'Breezy Tutorial': None,
-    u'Using Breezy With Launchpad': None,
-    u'Centralized Workflow Tutorial': None,
-    u"What's New in Breezy 2.1?": None,
+    'Table of Contents (%s)': None,
+    'Breezy User Guide': None,
+    'Breezy User Reference': None,
+    'Breezy Release Notes': None,
+    'Breezy Upgrade Guide': None,
+    "Breezy System Administrator's Guide": None,
+    'Breezy in five minutes': None,
+    'Breezy Tutorial': None,
+    'Using Breezy With Launchpad': None,
+    'Centralized Workflow Tutorial': None,
+    "What's New in Breezy 2.1?": None,
     }
 def brz_title(s):
     return brz_titles.get(s) or s
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = brz_title(u"Table of Contents (%s)") % (release,)
+html_short_title = brz_title("Table of Contents (%s)") % (release,)
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
 html_additional_pages = {'index': 'index.html'}
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'brz-%s' % (brz_locale,)
+htmlhelp_basename = 'brz-{}'.format(brz_locale)
 
 # Grouping the document tree into files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 brz_documents = [
     # Manuals
-    ('user-guide/index', 'brz-%s-user-guide' % (brz_locale,),
-     brz_title(u'Breezy User Guide'), brz_team, 'manual'),
-    ('user-reference/index', 'brz-%s-user-reference' % (brz_locale,),
-     brz_title(u'Breezy User Reference'), brz_team, 'manual'),
-    ('release-notes/index', 'brz-%s-release-notes' % (brz_locale,),
-     brz_title(u'Breezy Release Notes'), brz_team, 'manual'),
-    ('upgrade-guide/index', 'brz-%s-upgrade-guide' % (brz_locale,),
-     brz_title(u'Breezy Upgrade Guide'), brz_team, 'manual'),
-    ('admin-guide/index', 'brz-%s-admin-guide' % (brz_locale,),
-     brz_title(u"Breezy System Administrator's Guide"), brz_team, 'manual'),
+    ('user-guide/index', 'brz-{}-user-guide'.format(brz_locale),
+     brz_title('Breezy User Guide'), brz_team, 'manual'),
+    ('user-reference/index', 'brz-{}-user-reference'.format(brz_locale),
+     brz_title('Breezy User Reference'), brz_team, 'manual'),
+    ('release-notes/index', 'brz-{}-release-notes'.format(brz_locale),
+     brz_title('Breezy Release Notes'), brz_team, 'manual'),
+    ('upgrade-guide/index', 'brz-{}-upgrade-guide'.format(brz_locale),
+     brz_title('Breezy Upgrade Guide'), brz_team, 'manual'),
+    ('admin-guide/index', 'brz-{}-admin-guide'.format(brz_locale),
+     brz_title("Breezy System Administrator's Guide"), brz_team, 'manual'),
     # Tutorials
-    ('mini-tutorial/index', 'brz-%s-tutorial-mini' % (brz_locale,),
-     brz_title(u'Breezy in five minutes'), brz_team, 'howto'),
-    ('tutorials/tutorial', 'brz-%s-tutorial' % (brz_locale,),
-     brz_title(u'Breezy Tutorial'), brz_team, 'howto'),
+    ('mini-tutorial/index', 'brz-{}-tutorial-mini'.format(brz_locale),
+     brz_title('Breezy in five minutes'), brz_team, 'howto'),
+    ('tutorials/tutorial', 'brz-{}-tutorial'.format(brz_locale),
+     brz_title('Breezy Tutorial'), brz_team, 'howto'),
     ('tutorials/using_breezy_with_github',
-     'brz-%s-tutorial-with-github' % (brz_locale,),
-     brz_title(u'Using Breezy With GitHub'), brz_team, 'howto'),
+     'brz-{}-tutorial-with-github'.format(brz_locale),
+     brz_title('Using Breezy With GitHub'), brz_team, 'howto'),
     ('tutorials/using_breezy_with_launchpad',
-     'brz-%s-tutorial-with-launchpad' % (brz_locale,),
-     brz_title(u'Using Breezy With Launchpad'), brz_team, 'howto'),
+     'brz-{}-tutorial-with-launchpad'.format(brz_locale),
+     brz_title('Using Breezy With Launchpad'), brz_team, 'howto'),
     ('tutorials/centralized_workflow',
-     'brz-%s-tutorial-centralized' % (brz_locale,),
-     brz_title(u'Centralized Workflow Tutorial'), brz_team, 'howto'),
-    ('whats-new/whats-new-in-3.1', 'brz-%s-whats-new' % (brz_locale,),
-     brz_title(u"What's New in Breezy 3.1?"), brz_team, 'howto'),
+     'brz-{}-tutorial-centralized'.format(brz_locale),
+     brz_title('Centralized Workflow Tutorial'), brz_team, 'howto'),
+    ('whats-new/whats-new-in-3.1', 'brz-{}-whats-new'.format(brz_locale),
+     brz_title("What's New in Breezy 3.1?"), brz_team, 'howto'),
 ]
 
 latex_documents = [

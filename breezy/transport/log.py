@@ -16,8 +16,6 @@
 
 """Transport decorator that logs transport operations to brz.log."""
 
-from __future__ import absolute_import
-
 # see also the transportstats plugin, which gives you some summary information
 # in a machine-readable dump
 
@@ -41,7 +39,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
     """
 
     def __init__(self, *args, **kw):
-        super(TransportLogDecorator, self).__init__(*args, **kw)
+        super().__init__(*args, **kw)
 
         def _make_hook(hookname):
             def _hook(relpath, *args, **kw):

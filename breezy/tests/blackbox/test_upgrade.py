@@ -21,7 +21,7 @@ import stat
 from breezy import (
     bzr,
     controldir,
-    lockable_files,
+    lockdir,
     ui,
     urlutils,
     )
@@ -57,7 +57,7 @@ class ConvertOldTestToMeta(controldir.Converter):
 
 class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
 
-    _lock_class = lockable_files.TransportLock
+    _lock_class = lockdir.LockDir
 
     def get_converter(self, format=None):
         return ConvertOldTestToMeta()
@@ -73,7 +73,7 @@ class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
 class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestWithUpgradableBranches, self).setUp()
+        super().setUp()
 
     def make_current_format_branch_and_checkout(self):
         current_tree = self.make_branch_and_tree('current_format_branch',
@@ -149,13 +149,13 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=2a', url])
-        self.assertEqualDiff("""Upgrading branch %s/ ...
-starting upgrade of %s/
-making backup of %s/.bzr
-  to %s/%s
+        self.assertEqualDiff("""Upgrading branch {}/ ...
+starting upgrade of {}/
+making backup of {}/.bzr
+  to {}/{}
 starting upgrade from old test format to 2a
 finished
-""" % (display_url, display_url, display_url, display_url, backup_dir), out)
+""".format(display_url, display_url, display_url, display_url, backup_dir), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
             controldir.ControlDir.open(self.get_url(path))._format,
@@ -172,14 +172,14 @@ finished
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=pack-0.92', url])
-        self.assertEqualDiff("""Upgrading branch %s/ ...
-starting upgrade of %s/
-making backup of %s/.bzr
-  to %s/%s
+        self.assertEqualDiff("""Upgrading branch {}/ ...
+starting upgrade of {}/
+making backup of {}/.bzr
+  to {}/{}
 starting repository conversion
 repository converted
 finished
-""" % (display_url, display_url, display_url, display_url, backup_dir),
+""".format(display_url, display_url, display_url, display_url, backup_dir),
             out)
         self.assertEqualDiff("", err)
         converted_dir = controldir.ControlDir.open(self.get_url('branch'))
@@ -196,7 +196,7 @@ finished
         # Confirm that an option is legal. (Lower level tests are
         # expected to validate the actual functionality.)
         self.run_bzr('init --format=pack-0.92 branch-foo')
-        self.run_bzr('upgrade --format=2a branch-foo %s' % (option_str,))
+        self.run_bzr('upgrade --format=2a branch-foo {}'.format(option_str))
 
     def assertBranchFormat(self, dir, format):
         branch = controldir.ControlDir.open_tree_or_branch(self.get_url(dir))[
@@ -239,14 +239,14 @@ finished
         t.mkdir(backup_dir1)
         (out, err) = self.run_bzr(
             ['upgrade', '--format=2a', url])
-        self.assertEqualDiff("""Upgrading branch %s/ ...
-starting upgrade of %s/
-making backup of %s/.bzr
-  to %s/%s
+        self.assertEqualDiff("""Upgrading branch {}/ ...
+starting upgrade of {}/
+making backup of {}/.bzr
+  to {}/{}
 starting repository conversion
 repository converted
 finished
-""" % (display_url, display_url, display_url, display_url, backup_dir2), out)
+""".format(display_url, display_url, display_url, display_url, backup_dir2), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
             controldir.ControlDir.open(
@@ -266,14 +266,14 @@ class SFTPTests(TestCaseWithSFTPServer):
                                                     'utf-8')
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
         backup_dir = 'backup.bzr.~1~'
-        self.assertEqualDiff("""Upgrading branch %s ...
-starting upgrade of %s
-making backup of %s.bzr
-  to %s%s
+        self.assertEqualDiff("""Upgrading branch {} ...
+starting upgrade of {}
+making backup of {}.bzr
+  to {}{}
 starting repository conversion
 repository converted
 finished
-""" % (display_url, display_url, display_url, display_url, backup_dir), out)
+""".format(display_url, display_url, display_url, display_url, backup_dir), out)
         self.assertEqual('', err)
 
 

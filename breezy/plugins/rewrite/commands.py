@@ -16,8 +16,6 @@
 
 """Bazaar command-line subcommands."""
 
-from __future__ import absolute_import
-
 from ...commands import (
     Command,
     display_command,
@@ -25,7 +23,6 @@ from ...commands import (
 from ...errors import (
     CommandError,
     ConflictsInTree,
-    NoSuchFile,
     NoWorkingTree,
     UncommittedChanges,
     )
@@ -34,6 +31,9 @@ from ...option import (
     )
 from ...trace import (
     note,
+    )
+from ...transport import (
+    NoSuchFile,
     )
 
 from ...i18n import gettext
@@ -521,7 +521,7 @@ class cmd_rebase_foreign(Command):
             f = open(idmap_file, 'w')
             try:
                 for oldid, newid in renames.iteritems():
-                    f.write("%s\t%s\n" % (oldid, newid))
+                    f.write("{}\t{}\n".format(oldid, newid))
             finally:
                 f.close()
 
