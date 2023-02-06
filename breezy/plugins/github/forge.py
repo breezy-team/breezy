@@ -130,8 +130,6 @@ class GitHubMergeProposal(MergeProposal):
     def __repr__(self):
         return "<{} at {!r}>".format(type(self).__name__, self.url)
 
-    name = 'GitHub'
-
     def get_web_url(self):
         return self._pr['html_url']
 

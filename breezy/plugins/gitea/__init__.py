@@ -20,8 +20,11 @@ from __future__ import absolute_import
 
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
+from ...commands import plugin_cmds
 
-from ...propose import forges
+plugin_cmds.register_lazy("cmd_gitea_login", ["gitea-login"], __name__ + ".cmds")
+
+from ...forge import forges
 forges.register_lazy("gitea", __name__ + '.forge', "Gitea")
 
 
