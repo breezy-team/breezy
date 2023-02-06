@@ -26,10 +26,10 @@ import subprocess
 import tempfile
 import os
 import re
-from typing import Optional
+from typing import Optional, Tuple, Iterator
 
 from debian import deb822
-from debian.changelog import Changelog, ChangelogParseError
+from debian.changelog import Changelog, ChangelogParseError, Version
 from debian.copyright import Copyright, NotMachineReadableError
 
 from debmutate.changelog import (
@@ -552,9 +552,9 @@ def find_previous_upload(tree, subpath, merge=False):
     Ubuntu.
     """
     try:
-        cl, top_level = find_changelog(tree, subpath, merge, max_blocks=None)
-    except ChangelogParseError as e:
-        raise UnableToFindPreviousUpload() from e
+        cl, _top_level = find_changelog(tree, subpath, merge, max_blocks=None)
+    except ChangelogParseError as ex:
+        raise UnableToFindPreviousUpload() from ex
     return changelog_find_previous_upload(cl)
 
 
@@ -620,8 +620,8 @@ def tree_get_source_format(tree, subpath=''):
     filename = osutils.pathjoin(subpath, "debian/source/format")
     try:
         text = tree.get_file_text(filename)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
+    except OSError as ex:
+        if ex.errno == errno.ENOENT:
             return FORMAT_1_0
         raise
     except NoSuchFile:
@@ -702,11 +702,11 @@ def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
 
 def component_from_orig_tarball(tarball_filename, package, version):
     tarball_filename = os.path.basename(tarball_filename)
-    prefix = "{}_{}.orig".format(package, version)
+    prefix = f"{package}_{version}.orig"
     if not tarball_filename.startswith(prefix):
         raise ValueError(
-            "invalid orig tarball file {} does not have expected prefix {}"
-            .format(tarball_filename, prefix))
+            f"invalid orig tarball file {tarball_filename} "
+            f"does not have expected prefix {prefix}")
     base = tarball_filename[len(prefix):]
     for ext in (".tar.gz", ".tar.bz2", ".tar.lzma", ".tar.xz"):
         if tarball_filename.endswith(ext):
@@ -714,7 +714,7 @@ def component_from_orig_tarball(tarball_filename, package, version):
             break
     else:
         raise ValueError(
-            "orig tarball file %s has unknown extension" % tarball_filename)
+            f"orig tarball file {tarball_filename} has unknown extension")
     if base == "":
         return None
     elif base[0] == "-":
@@ -722,8 +722,7 @@ def component_from_orig_tarball(tarball_filename, package, version):
         return base[1:]
     else:
         raise ValueError(
-            "Invalid extra characters in tarball filename %s" %
-            tarball_filename)
+            f"Invalid extra characters in tarball filename {tarball_filename}")
 
 
 class TarFailed(BzrError):
@@ -743,7 +742,7 @@ def needs_strip_components(tf):
 
 
 def extract_orig_tarball(tarball_filename, component, target,
-                         strip_components=None):
+                         strip_components: Optional[bool] = None) -> None:
     """Extract an orig tarball.
 
     :param tarball: Path to the tarball
@@ -807,13 +806,13 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
             strip_components=strip_components)
 
 
-def dput_changes(path):
+def dput_changes(path: str) -> None:
     """Upload a package."""
     (bd, changes_file) = os.path.split(path)
     subprocess.check_call(["dput", changes_file], cwd=bd)
 
 
-def find_changes_files(path, package, version):
+def find_changes_files(path: str, package: str, version: Version) -> Iterator[Tuple[str, os.DirEntry]]:
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version

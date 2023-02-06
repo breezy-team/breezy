@@ -3,6 +3,8 @@
 
 """Import upstream source into a branch"""
 
+from contextlib import ExitStack
+
 from io import BytesIO
 
 from ...upstream_import import (
@@ -13,8 +15,6 @@ from ...upstream_import import (
     DirWrapper,
     )
 from ...bzr import generate_ids
-
-from contextlib import ExitStack
 
 from ...errors import BzrError
 from ...osutils import (
