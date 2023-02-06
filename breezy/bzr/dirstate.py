@@ -224,28 +224,16 @@ import contextlib
 import errno
 import operator
 import os
-from stat import S_IEXEC
 import stat
 import sys
 import time
 import zlib
+from stat import S_IEXEC
 
-from . import (
-    inventory,
-    static_tuple,
-    )
-from .. import (
-    cache_utf8,
-    config,
-    debug,
-    errors,
-    lock,
-    osutils,
-    trace,
-    urlutils,
-    )
+from .. import (cache_utf8, config, debug, errors, lock, osutils, trace,
+                urlutils)
+from . import inventory, static_tuple
 from .inventorytree import InventoryTreeChange
-
 
 # This is the Windows equivalent of ENOTDIR
 # It is defined in pywin32.winerror, but we don't want a strong dependency for
@@ -4343,26 +4331,17 @@ class ProcessEntryPython:
 
 # Try to load the compiled form if possible
 try:
-    from ._dirstate_helpers_pyx import (
-        _read_dirblocks,
-        bisect_dirblock,
-        _bisect_path_left,
-        _bisect_path_right,
-        lt_by_dirs,
-        pack_stat,
-        ProcessEntryC as _process_entry,
-        update_entry as update_entry,
-        )
+    from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry
+    from ._dirstate_helpers_pyx import (_bisect_path_left, _bisect_path_right,
+                                        _read_dirblocks, bisect_dirblock,
+                                        lt_by_dirs, pack_stat)
+    from ._dirstate_helpers_pyx import update_entry as update_entry
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._dirstate_helpers_py import (
-        _read_dirblocks,
-        bisect_dirblock,
-        _bisect_path_left,
-        _bisect_path_right,
-        lt_by_dirs,
-        pack_stat,
-        )
+    from ._dirstate_helpers_py import (_bisect_path_left, _bisect_path_right,
+                                       _read_dirblocks, bisect_dirblock,
+                                       lt_by_dirs, pack_stat)
+
     # FIXME: It would be nice to be able to track moved lines so that the
     # corresponding python code can be moved to the _dirstate_helpers_py
     # module. I don't want to break the history for this important piece of

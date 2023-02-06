@@ -21,7 +21,6 @@ import weakref
 
 from ... import trace
 
-
 # I'm pretty sure this has to be global, since signal handling is per-process.
 _on_sighup = None
 # TODO: Using a dict means that the order of calls is unordered. We could use a

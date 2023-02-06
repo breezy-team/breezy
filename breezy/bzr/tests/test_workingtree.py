@@ -16,9 +16,8 @@
 
 """Tests for InventoryWorkingTree"""
 
-from . import TestCase
-
 from ..workingtree import InventoryModified
+from . import TestCase
 
 
 class ErrorTests(TestCase):

@@ -16,22 +16,12 @@
 
 """Unit tests for the breezy.help module."""
 
+import re
 import textwrap
 
-from .. import (
-    builtins,
-    commands,
-    config,
-    errors,
-    help,
-    help_topics,
-    i18n,
-    plugin,
-    tests,
-    )
-
+from .. import (builtins, commands, config, errors, help, help_topics, i18n,
+                plugin, tests)
 from .test_i18n import ZzzTranslations
-import re
 
 
 class TestErrors(tests.TestCase):

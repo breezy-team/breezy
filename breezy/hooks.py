@@ -18,13 +18,11 @@ __docformat__ = "google"
 
 """Support for plugin hooking logic."""
 
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
 
-from . import (
-    errors,
-    registry,
-    )
+from . import errors, registry
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     _format_version_tuple,

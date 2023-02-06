@@ -17,11 +17,7 @@
 import random
 import time
 
-
-from breezy import (
-    tests,
-    timestamp,
-    )
+from breezy import tests, timestamp
 from breezy.osutils import local_time_offset
 
 

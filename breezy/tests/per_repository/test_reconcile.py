@@ -17,9 +17,7 @@
 """Tests for reconciliation of repositories."""
 
 
-from breezy.tests.per_repository import (
-    TestCaseWithRepository,
-    )
+from breezy.tests.per_repository import TestCaseWithRepository
 
 
 class TestRepeatedReconcile(TestCaseWithRepository):

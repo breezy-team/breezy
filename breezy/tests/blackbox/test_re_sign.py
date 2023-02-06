@@ -18,12 +18,9 @@
 """Black-box tests for brz re-sign.
 """
 
-from breezy import (
-    gpg,
-    tests,
-    )
-from breezy.controldir import ControlDir
+from breezy import gpg, tests
 from breezy.bzr.testament import Testament
+from breezy.controldir import ControlDir
 
 
 class ReSign(tests.TestCaseInTempDir):

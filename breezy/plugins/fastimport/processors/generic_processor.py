@@ -17,38 +17,19 @@
 
 
 import time
-from .... import (
-    debug,
-    delta,
-    errors,
-    osutils,
-    progress,
-    revision as _mod_revision,
-    )
-from ....bzr.knitpack_repo import KnitPackRepository
-from ....trace import (
-    mutter,
-    note,
-    warning,
-    )
-import configobj
-from .. import (
-    branch_updater,
-    cache_manager,
-    helpers,
-    idmapfile,
-    marks_file,
-    revision_store,
-    )
-from fastimport import (
-    commands,
-    errors as plugin_errors,
-    processor,
-    )
-from fastimport.helpers import (
-    invert_dictset,
-    )
 
+import configobj
+from fastimport import commands
+from fastimport import errors as plugin_errors
+from fastimport import processor
+from fastimport.helpers import invert_dictset
+
+from .... import debug, delta, errors, osutils, progress
+from .... import revision as _mod_revision
+from ....bzr.knitpack_repo import KnitPackRepository
+from ....trace import mutter, note, warning
+from .. import (branch_updater, cache_manager, helpers, idmapfile, marks_file,
+                revision_store)
 
 # How many commits before automatically reporting progress
 _DEFAULT_AUTO_PROGRESS = 1000
@@ -200,6 +181,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def _load_info_and_params(self):
         from .. import bzr_commit_handler
+
         # This is currently hard-coded but might be configurable via
         # parameters one day if that's needed
         repo_transport = self.repo.control_transport

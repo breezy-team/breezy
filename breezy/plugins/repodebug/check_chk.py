@@ -18,17 +18,8 @@
 
 """
 
-from ... import (
-    controldir,
-    commands,
-    trace,
-    transport,
-    ui,
-    )
-from ...bzr import (
-    chk_map,
-    groupcompress,
-    )
+from ... import commands, controldir, trace, transport, ui
+from ...bzr import chk_map, groupcompress
 
 
 class cmd_check_chk(commands.Command):

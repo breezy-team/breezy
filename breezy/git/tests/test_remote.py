@@ -16,49 +16,30 @@
 
 """Test the smart client."""
 
-from io import BytesIO
-
 import gzip
 import os
 import time
-
-from ...branch import Branch
-from ...controldir import ControlDir, BranchReferenceLoop
-from ...errors import (
-    ConnectionReset,
-    DivergedBranches,
-    NotBranchError,
-    NoSuchTag,
-    PermissionDenied,
-    TransportError,
-    UnexpectedHttpStatus,
-    )
-
-from ...tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
-from ...tests.features import ExecutableFeature
-from ...urlutils import join as urljoin
-
-from ..mapping import default_mapping
-from ..remote import (
-    GitSmartRemoteNotSupported,
-    GitRemoteRevisionTree,
-    split_git_url,
-    parse_git_error,
-    parse_git_hangup,
-    HeadUpdateFailed,
-    ProtectedBranchHookDeclined,
-    RemoteGitError,
-    RemoteGitBranchFormat,
-    _git_url_and_path_from_transport,
-    )
-from ..tree import MissingNestedTree
+from io import BytesIO
 
 from dulwich import porcelain
 from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
+
+from ...branch import Branch
+from ...controldir import BranchReferenceLoop, ControlDir
+from ...errors import (ConnectionReset, DivergedBranches, NoSuchTag,
+                       NotBranchError, PermissionDenied, TransportError,
+                       UnexpectedHttpStatus)
+from ...tests import TestCase, TestCaseWithTransport
+from ...tests.features import ExecutableFeature
+from ...urlutils import join as urljoin
+from ..mapping import default_mapping
+from ..remote import (GitRemoteRevisionTree, GitSmartRemoteNotSupported,
+                      HeadUpdateFailed, ProtectedBranchHookDeclined,
+                      RemoteGitBranchFormat, RemoteGitError,
+                      _git_url_and_path_from_transport, parse_git_error,
+                      parse_git_hangup, split_git_url)
+from ..tree import MissingNestedTree
 
 
 class SplitUrlTests(TestCase):

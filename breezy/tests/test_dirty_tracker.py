@@ -19,9 +19,7 @@
 
 import os
 
-from breezy.tests import (
-    TestCaseWithTransport,
-    )
+from breezy.tests import TestCaseWithTransport
 
 
 class DirtyTrackerTests(TestCaseWithTransport):

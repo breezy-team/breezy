@@ -19,25 +19,20 @@ client and server.
 """
 
 
-from collections import deque
-
-from io import BytesIO
+import _thread
 import struct
 import sys
-import _thread
 import time
+from collections import deque
+from io import BytesIO
 
 from fastbencode import bdecode_as_tuple, bencode
 
 import breezy
-from ... import (
-    debug,
-    errors,
-    osutils,
-    )
-from . import message, request
-from ...trace import log_exception_quietly, mutter
 
+from ... import debug, errors, osutils
+from ...trace import log_exception_quietly, mutter
+from . import message, request
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
 # responses to identify the protocol version being used. (There are no version
@@ -56,6 +51,7 @@ class SmartMessageHandlerError(errors.InternalBzrError):
 
     def __init__(self, exc_info):
         import traceback
+
         # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
         self.exc_type, self.exc_value, self.exc_tb = exc_info
         self.exc_info = exc_info

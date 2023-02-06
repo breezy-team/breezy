@@ -19,15 +19,9 @@
 
 import os
 
-from breezy import (
-    osutils,
-    tests,
-    workingtree,
-    )
+from breezy import osutils, tests, workingtree
+from breezy.tests import features
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.tests import (
-    features,
-    )
 
 
 class TestSmartAddTree(TestCaseWithWorkingTree):

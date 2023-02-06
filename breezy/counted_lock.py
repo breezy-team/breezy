@@ -16,9 +16,7 @@
 
 """Counted lock class"""
 
-from . import (
-    errors,
-    )
+from . import errors
 
 
 class CountedLock:

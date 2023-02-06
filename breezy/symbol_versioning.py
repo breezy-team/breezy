@@ -36,7 +36,6 @@ from warnings import warn
 
 import breezy
 
-
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
 
 

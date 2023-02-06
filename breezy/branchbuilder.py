@@ -16,12 +16,7 @@
 
 """Utility for create branches with particular contents."""
 
-from . import (
-    controldir,
-    commit,
-    errors,
-    revision,
-    )
+from . import commit, controldir, errors, revision
 
 
 class BranchBuilder:

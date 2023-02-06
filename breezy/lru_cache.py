@@ -16,10 +16,7 @@
 
 """A simple least-recently-used (LRU) cache."""
 
-from . import (
-    trace,
-    )
-
+from . import trace
 
 _null_key = object()
 

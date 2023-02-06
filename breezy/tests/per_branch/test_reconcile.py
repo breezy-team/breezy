@@ -19,8 +19,8 @@
 from breezy import errors, reconcile
 from breezy.bzr.branch import BzrBranch
 from breezy.symbol_versioning import deprecated_in
-from breezy.tests.per_branch import TestCaseWithBranch
 from breezy.tests import TestNotApplicable
+from breezy.tests.per_branch import TestCaseWithBranch
 
 
 class TestBranchReconcile(TestCaseWithBranch):

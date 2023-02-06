@@ -15,31 +15,12 @@
 
 """CommitHandlers that build and save revisions & their inventories."""
 
-from ... import (
-    debug,
-    errors,
-    osutils,
-    revision,
-    )
-from ...bzr import (
-    generate_ids,
-    inventory,
-    serializer,
-    )
-from ...trace import (
-    mutter,
-    note,
-    warning,
-    )
-from fastimport import (
-    helpers,
-    processor,
-    )
+from fastimport import helpers, processor
 
-from .helpers import (
-    mode_to_kind,
-    )
-
+from ... import debug, errors, osutils, revision
+from ...bzr import generate_ids, inventory, serializer
+from ...trace import mutter, note, warning
+from .helpers import mode_to_kind
 
 _serializer_handles_escaping = hasattr(serializer.Serializer,
                                        'squashes_xml_invalid_characters')

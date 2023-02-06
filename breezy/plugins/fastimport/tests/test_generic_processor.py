@@ -15,15 +15,9 @@
 
 import time
 
-from .... import (
-    tests,
-    )
-from ..helpers import (
-    kind_to_mode,
-    )
-from . import (
-    FastimportFeature,
-    )
+from .... import tests
+from ..helpers import kind_to_mode
+from . import FastimportFeature
 
 try:
     from fastimport import commands
@@ -51,9 +45,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     branch_format = "pack-0.92"
 
     def get_handler(self):
-        from ..processors import (
-            generic_processor,
-            )
+        from ..processors import generic_processor
         branch = self.make_branch('.', format=self.branch_format)
         handler = generic_processor.GenericProcessor(branch.controldir)
         return handler, branch

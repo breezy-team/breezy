@@ -16,12 +16,7 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
-from . import (
-    lock,
-    iterablefile,
-    revision,
-    tree,
-    )
+from . import iterablefile, lock, revision, tree
 
 
 class RevisionTree(tree.Tree):

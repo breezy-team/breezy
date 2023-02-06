@@ -19,22 +19,10 @@
 import os
 from typing import List
 
-from .. import (
-    osutils,
-    tests,
-    win32utils,
-    )
-from . import (
-    TestCase,
-    TestCaseInTempDir,
-    TestSkipped,
-    )
+from .. import osutils, tests, win32utils
+from ..win32utils import get_app_path, glob_expand
+from . import TestCase, TestCaseInTempDir, TestSkipped, features
 from .features import backslashdir_feature
-from ..win32utils import glob_expand, get_app_path
-from . import (
-    features,
-    )
-
 
 Win32RegistryFeature = features.ModuleAvailableFeature('_winreg')
 

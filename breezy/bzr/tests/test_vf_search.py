@@ -14,15 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ... import (
-    graph as _mod_graph,
-    tests,
-    )
-from .. import (
-    vf_search,
-    )
+from ... import graph as _mod_graph
+from ... import tests
 from ...revision import NULL_REVISION
 from ...tests.test_graph import TestGraphBase
+from .. import vf_search
 
 # Ancestry 1:
 #

@@ -18,18 +18,10 @@
 """GPG signing and checking logic."""
 
 import os
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional
 
-from . import (
-    config,
-    errors,
-    trace,
-    ui,
-    )
-from .i18n import (
-    gettext,
-    ngettext,
-    )
+from . import config, errors, trace, ui
+from .i18n import gettext, ngettext
 
 # verification results
 SIGNATURE_VALID = 0

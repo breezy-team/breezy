@@ -15,10 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from ...controldir import ControlDir
-from ...commands import Command
-from ...option import Option
 from ... import errors, urlutils
+from ...commands import Command
+from ...controldir import ControlDir
+from ...option import Option
 
 
 class cmd_fetch_all_records(Command):

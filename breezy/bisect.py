@@ -17,9 +17,10 @@
 """bisect command implementations."""
 
 import sys
-from .controldir import ControlDir
+
 from . import revision as _mod_revision
 from .commands import Command
+from .controldir import ControlDir
 from .errors import CommandError
 from .option import Option
 from .trace import note

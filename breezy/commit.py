@@ -48,27 +48,18 @@
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
 
-from . import (
-    debug,
-    errors,
-    trace,
-    ui,
-    )
-from .branch import Branch
 from contextlib import ExitStack
+
 import breezy.config
-from .errors import (BzrError,
-                     ConflictsInTree,
-                     StrictCommitFailed
-                     )
-from .osutils import (get_user_encoding,
-                      supports_symlinks,
-                      is_inside_any,
-                      minimum_path_selection,
-                      )
-from .trace import mutter, note, is_quiet
-from .urlutils import unescape_for_display
+
+from . import debug, errors, trace, ui
+from .branch import Branch
+from .errors import BzrError, ConflictsInTree, StrictCommitFailed
 from .i18n import gettext
+from .osutils import (get_user_encoding, is_inside_any, minimum_path_selection,
+                      supports_symlinks)
+from .trace import is_quiet, mutter, note
+from .urlutils import unescape_for_display
 
 
 class PointlessCommit(BzrError):

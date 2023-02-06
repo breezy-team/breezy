@@ -17,9 +17,7 @@
 import sys
 
 from ...builtins import cmd_cat
-from ...tests import (
-    ui_testing,
-    )
+from ...tests import ui_testing
 from ...tests.transport_util import TestCaseWithConnectionHookedTransport
 
 

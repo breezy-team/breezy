@@ -22,39 +22,16 @@ import os
 
 from dulwich.refs import SymrefLoop
 
-from .. import (
-    branch as _mod_branch,
-    errors as brz_errors,
-    trace,
-    osutils,
-    urlutils,
-    )
-from ..transport import (
-    do_catching_redirections,
-    get_transport_from_path,
-    FileExists,
-    NoSuchFile,
-    )
-
-from ..controldir import (
-    BranchReferenceLoop,
-    ControlDir,
-    ControlDirFormat,
-    format_registry,
-    RepositoryAcquisitionPolicy,
-    )
-
-from .mapping import (
-    decode_git_path,
-    encode_git_path,
-    )
-from .push import (
-    GitPushResult,
-    )
-from .transportgit import (
-    OBJECTDIR,
-    TransportObjectStore,
-    )
+from .. import branch as _mod_branch
+from .. import errors as brz_errors
+from .. import osutils, trace, urlutils
+from ..controldir import (BranchReferenceLoop, ControlDir, ControlDirFormat,
+                          RepositoryAcquisitionPolicy, format_registry)
+from ..transport import (FileExists, NoSuchFile, do_catching_redirections,
+                         get_transport_from_path)
+from .mapping import decode_git_path, encode_git_path
+from .push import GitPushResult
+from .transportgit import OBJECTDIR, TransportObjectStore
 
 
 class GitDirConfig:
@@ -160,8 +137,8 @@ class GitDir(ControlDir):
                accelerator_tree=None, hardlink=False, stacked=False,
                source_branch=None, create_tree_if_local=True):
         from ..repository import InterRepository
-        from ..transport.local import LocalTransport
         from ..transport import get_transport
+        from ..transport.local import LocalTransport
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir()
@@ -246,8 +223,8 @@ class GitDir(ControlDir):
                            tag_selector=None):
         """See ControlDir.clone_on_transport."""
         from ..repository import InterRepository
-        from .mapping import default_mapping
         from ..transport.local import LocalTransport
+        from .mapping import default_mapping
         from .refs import is_peeled
         if no_tree:
             format = BareLocalGitControlDirFormat()
@@ -620,9 +597,7 @@ class LocalGitDir(GitDir):
         return None
 
     def find_branch_format(self, name=None):
-        from .branch import (
-            LocalGitBranchFormat,
-            )
+        from .branch import LocalGitBranchFormat
         return LocalGitBranchFormat()
 
     def get_branch_transport(self, branch_format, name=None):

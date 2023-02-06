@@ -17,26 +17,10 @@
 import os
 import sys
 
-
-from .... import (
-    bedding,
-    controldir,
-    errors,
-    osutils,
-    revisionspec,
-    tests,
-    transport,
-    workingtree,
-    uncommit,
-    )
-from ....tests import (
-    features,
-    per_branch,
-    per_transport,
-    )
-from .. import (
-    cmds,
-    )
+from .... import (bedding, controldir, errors, osutils, revisionspec, tests,
+                  transport, uncommit, workingtree)
+from ....tests import features, per_branch, per_transport
+from .. import cmds
 
 
 def get_transport_scenarios():

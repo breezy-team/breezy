@@ -21,14 +21,14 @@ do any sort of delta compression.
 """
 
 import gzip
-from io import BytesIO
 import os
+from io import BytesIO
 
 from .... import osutils
 from ....errors import BzrError
-from . import TransportStore
 from ....trace import mutter
-from ....transport import NoSuchFile, FileExists
+from ....transport import FileExists, NoSuchFile
+from . import TransportStore
 
 
 class TextStore(TransportStore):

@@ -15,13 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-
 import stat
 
-from breezy import (
-    errors,
-    osutils,
-    )
+from breezy import errors, osutils
 
 # not forksafe - but we dont fork.
 _pid = os.getpid()

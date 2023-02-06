@@ -18,10 +18,8 @@
 """
 
 from collections import deque
-from . import (
-    errors,
-    revision,
-    )
+
+from . import errors, revision
 
 
 class _KnownGraphNode:

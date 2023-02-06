@@ -71,11 +71,7 @@ Testament format 1
 
 from copy import copy
 
-from ..osutils import (
-    contains_whitespace,
-    contains_linebreaks,
-    sha_strings,
-    )
+from ..osutils import contains_linebreaks, contains_whitespace, sha_strings
 from ..tree import Tree
 
 

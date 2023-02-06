@@ -18,26 +18,16 @@
 
 from io import StringIO
 
-from ... import (
-    branch as _mod_branch,
-    controldir,
-    errors,
-    log as _mod_log,
-    missing as _mod_missing,
-    msgeditor,
-    urlutils,
-    )
-from ...i18n import gettext
+from ... import branch as _mod_branch
+from ... import controldir, errors
+from ... import forge as _mod_forge
+from ... import log as _mod_log
+from ... import missing as _mod_missing
+from ... import msgeditor, urlutils
 from ...commands import Command
-from ...option import (
-    ListOption,
-    Option,
-    RegistryOption,
-    )
+from ...i18n import gettext
+from ...option import ListOption, Option, RegistryOption
 from ...trace import note, warning
-from ... import (
-    forge as _mod_forge,
-    )
 
 
 def branch_name(branch):
@@ -377,6 +367,7 @@ class cmd_web_open(Command):
         note(gettext('Opening %s in web browser') % web_url)
         if not dry_run:
             import webbrowser
+
             # otherwise brz.exe lacks this module
             webbrowser.open(web_url)
 

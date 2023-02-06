@@ -78,14 +78,15 @@ up=pull
 
 import os
 import sys
+from io import BytesIO
+from typing import Callable, Dict, Iterable, Tuple, cast
 
 import configobj
-from io import BytesIO
-
-from typing import Tuple, Iterable, Dict, Callable, cast
 
 import breezy
+
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import errno
 import fnmatch
@@ -104,18 +105,9 @@ from breezy import (
     )
 from breezy.i18n import gettext
 """)
-from . import (
-    commands,
-    bedding,
-    errors,
-    hooks,
-    lazy_regex,
-    registry,
-    trace,
-    transport,
-    )
+from . import (bedding, commands, errors, hooks, lazy_regex, registry, trace,
+               transport)
 from .option import Option as CommandOption
-
 
 CHECK_IF_POSSIBLE = 0
 CHECK_ALWAYS = 1
@@ -610,6 +602,7 @@ class Config:
 
     def find_merge_tool(self, name):
         from .mergetools import known_merge_tools
+
         # We fake a defaults mechanism here by checking if the given name can
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism

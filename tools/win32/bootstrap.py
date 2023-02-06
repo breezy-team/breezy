@@ -20,7 +20,12 @@ use the -c option to specify an alternate configuration file.
 $Id: bootstrap.py 90478 2008-08-27 22:44:46Z georgyberdyshev $
 """
 
-import os, shutil, sys, tempfile, urllib2
+import os
+import shutil
+import sys
+import tempfile
+
+import urllib2
 
 tmpeggs = tempfile.mkdtemp()
 
@@ -69,5 +74,6 @@ else:
 ws.add_entry(tmpeggs)
 ws.require('zc.buildout')
 import zc.buildout.buildout
+
 zc.buildout.buildout.main(sys.argv[1:] + ['bootstrap'])
 shutil.rmtree(tmpeggs)

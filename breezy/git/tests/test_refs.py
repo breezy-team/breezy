@@ -18,13 +18,8 @@
 """Tests for ref handling."""
 
 from ... import tests
-
 from ..object_store import BazaarObjectStore
-from ..refs import (
-    BazaarRefsContainer,
-    ref_to_branch_name,
-    branch_name_to_ref,
-    )
+from ..refs import BazaarRefsContainer, branch_name_to_ref, ref_to_branch_name
 
 
 class BranchNameRefConversionTests(tests.TestCase):

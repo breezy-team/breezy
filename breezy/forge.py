@@ -19,12 +19,7 @@
 import re
 from typing import Optional, Type
 
-from . import (
-    errors,
-    hooks,
-    registry,
-    urlutils,
-    )
+from . import errors, hooks, registry, urlutils
 
 
 class NoSuchProject(errors.BzrError):

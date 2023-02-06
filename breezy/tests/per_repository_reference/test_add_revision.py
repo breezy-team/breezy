@@ -18,9 +18,8 @@
 
 from breezy import errors
 from breezy.repository import WriteGroup
-from breezy.tests.per_repository_reference import (
-    TestCaseWithExternalReferenceRepository,
-    )
+from breezy.tests.per_repository_reference import \
+    TestCaseWithExternalReferenceRepository
 
 
 class TestAddRevision(TestCaseWithExternalReferenceRepository):

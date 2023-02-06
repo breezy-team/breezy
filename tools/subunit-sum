@@ -20,10 +20,11 @@
 Each test have (or not) the counter as a named detail in the stream.
 """
 
-import subunit
 import sys
-import testtools
 import unittest
+
+import subunit
+import testtools
 
 
 class TestSumCounter(testtools.TestResult):

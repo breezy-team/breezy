@@ -22,34 +22,15 @@ For interface contract tests, see tests/per_bzr_dir.
 import os
 import sys
 
-from ... import (
-    branch,
-    controldir,
-    errors,
-    repository,
-    upgrade,
-    urlutils,
-    workingtree,
-    )
-from ...bzr import (
-    bzrdir,
-    )
-from ...osutils import (
-    getcwd,
-    )
+from ... import (branch, controldir, errors, repository, upgrade, urlutils,
+                 workingtree)
+from ...bzr import bzrdir
 from ...bzr.tests import test_bundle
+from ...osutils import getcwd
+from ...tests import TestCaseWithTransport
 from ...tests.test_sftp_transport import TestCaseWithSFTPServer
-from ...tests import (
-    TestCaseWithTransport,
-    )
-
-from .branch import (
-    BzrBranchFormat4,
-    )
-from .bzrdir import (
-    BzrDirFormat5,
-    BzrDirFormat6,
-    )
+from .branch import BzrBranchFormat4
+from .bzrdir import BzrDirFormat5, BzrDirFormat6
 
 
 class TestFormat5(TestCaseWithTransport):

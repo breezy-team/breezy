@@ -14,34 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from io import BytesIO
 import os
+from io import BytesIO
 
-from ... import (
-    revision as _mod_revision,
-    tests,
-    trace,
-    )
-from ...diff import show_diff_trees
-from ...merge import Merger, Merge3Merger
-from ...transform import (
-    ROOT_PARENT,
-    resolve_conflicts,
-    )
-from ...tree import (
-    find_previous_path,
-    TreeChange,
-    )
-
-from breezy.tests.per_tree import TestCaseWithTree
 from breezy.tests.matchers import MatchesTreeChanges
+from breezy.tests.per_tree import TestCaseWithTree
 
-
-from ..features import (
-    SymlinkFeature,
-    UnicodeFilenameFeature,
-    )
-
+from ... import revision as _mod_revision
+from ... import tests, trace
+from ...diff import show_diff_trees
+from ...merge import Merge3Merger, Merger
+from ...transform import ROOT_PARENT, resolve_conflicts
+from ...tree import TreeChange, find_previous_path
+from ..features import SymlinkFeature, UnicodeFilenameFeature
 
 
 class TestTransformPreview(TestCaseWithTree):

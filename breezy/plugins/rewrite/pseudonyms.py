@@ -18,12 +18,7 @@
 
 from collections import defaultdict
 
-from breezy import (
-    errors,
-    foreign,
-    ui,
-    urlutils,
-    )
+from breezy import errors, foreign, ui, urlutils
 
 
 def parse_git_svn_id(text):

@@ -17,24 +17,22 @@
 """Import upstream source into a branch"""
 
 import errno
-from io import (
-    BytesIO,
-    )
 import os
 import re
 import stat
 import tarfile
 import zipfile
+from io import BytesIO
 
 from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
-from .errors import (BzrError, CommandError, NotBranchError)
-from .osutils import (pathjoin, isdir, file_iterator, basename,
-                      file_kind, splitpath)
+from .errors import BzrError, CommandError, NotBranchError
+from .osutils import (basename, file_iterator, file_kind, isdir, pathjoin,
+                      splitpath)
 from .trace import warning
 from .transform import resolve_conflicts
-from .transport import get_transport, NoSuchFile
+from .transport import NoSuchFile, get_transport
 from .workingtree import WorkingTree
 
 

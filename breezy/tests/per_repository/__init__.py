@@ -24,15 +24,9 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/per_branch/*.py.
 """
 
-from breezy import (
-    repository,
-    )
+from breezy import repository
 from breezy.bzr.remote import RemoteRepositoryFormat
-from breezy.tests import (
-    default_transport,
-    multiply_tests,
-    test_server,
-    )
+from breezy.tests import default_transport, multiply_tests, test_server
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import memory
 

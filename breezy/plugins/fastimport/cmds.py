@@ -18,12 +18,7 @@
 from ... import controldir
 from ...commands import Command
 from ...option import Option, RegistryOption
-
-
-from . import (
-    helpers,
-    load_fastimport,
-    )
+from . import helpers, load_fastimport
 
 
 def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
@@ -35,9 +30,10 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     :param processor_factory: a callable for creating a processor
     :param user_map: if not None, the file containing the user map.
     """
-    from fastimport.errors import ParsingError
-    from ...errors import CommandError
     from fastimport import parser
+    from fastimport.errors import ParsingError
+
+    from ...errors import CommandError
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
     proc = processor_factory(verbose=verbose, **kwargs)
@@ -290,10 +286,8 @@ class cmd_fast_import(Command):
             mode=None, import_marks=None, export_marks=None, format=None,
             user_map=None):
         load_fastimport()
+        from .helpers import open_destination_directory
         from .processors import generic_processor
-        from .helpers import (
-            open_destination_directory,
-            )
         control = open_destination_directory(destination, format=format)
 
         # If an information file was given and the source isn't stdin,
@@ -321,10 +315,12 @@ class cmd_fast_import(Command):
 
     def _generate_info(self, source):
         from io import StringIO
+
         from fastimport import parser
         from fastimport.errors import ParsingError
-        from ...errors import CommandError
         from fastimport.processors import info_processor
+
+        from ...errors import CommandError
         stream = _get_source_stream(source)
         output = StringIO()
         try:

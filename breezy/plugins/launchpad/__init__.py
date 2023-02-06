@@ -34,17 +34,13 @@ The plugin also provides the following commands:
 
 # see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
-from ... import (
-    branch as _mod_branch,
-    config as _mod_config,
-    lazy_regex,
-    # Since we are a built-in plugin we share the breezy version
-    trace,
-    version_info,  # noqa: F401
-    )
-from ...commands import (
-    plugin_cmds,
-    )
+from ... import \
+    branch as \
+    _mod_branch  # Since we are a built-in plugin we share the breezy version
+from ... import config as _mod_config
+from ... import version_info  # noqa: F401
+from ... import lazy_regex, trace
+from ...commands import plugin_cmds
 from ...directory_service import directories
 from ...help_topics import topic_registry
 
@@ -111,4 +107,5 @@ topic_registry.register('launchpad',
 
 
 from ...forge import forges
+
 forges.register_lazy("launchpad", __name__ + '.forge', "Launchpad")

@@ -17,14 +17,9 @@
 """Tests for reconiliation behaviour that is repository independent."""
 
 
-from breezy import (
-    errors,
-    tests,
-    )
-from breezy.bzr import (
-    bzrdir,
-    )
-from breezy.reconcile import reconcile, Reconciler
+from breezy import errors, tests
+from breezy.bzr import bzrdir
+from breezy.reconcile import Reconciler, reconcile
 from breezy.tests import per_repository
 
 

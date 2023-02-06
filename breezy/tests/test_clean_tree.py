@@ -21,19 +21,10 @@ import shutil
 import sys
 
 from .. import tests, ui
-from ..controldir import (
-    ControlDir,
-    )
-from ..clean_tree import (
-    clean_tree,
-    iter_deletables,
-    )
-from ..osutils import (
-    supports_symlinks,
-    )
-from . import (
-    TestCaseInTempDir,
-    )
+from ..clean_tree import clean_tree, iter_deletables
+from ..controldir import ControlDir
+from ..osutils import supports_symlinks
+from . import TestCaseInTempDir
 
 
 class TestCleanTree(TestCaseInTempDir):

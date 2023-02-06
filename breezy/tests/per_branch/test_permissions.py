@@ -27,13 +27,13 @@ So if the directory is group writable, the files and subdirs should be as well.
 #                    the truly desired behavior?
 
 import os
-import sys
 import stat
+import sys
 
 from breezy import tests
 from breezy.bzr.branch import BzrBranch
-from breezy.controldir import ControlDir
 from breezy.bzr.remote import RemoteBranchFormat
+from breezy.controldir import ControlDir
 from breezy.tests.test_permissions import check_mode_r
 
 

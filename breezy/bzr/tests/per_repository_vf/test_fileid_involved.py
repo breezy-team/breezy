@@ -17,22 +17,13 @@
 import sys
 import time
 
-from breezy import (
-    errors,
-    revision as _mod_revision,
-    tests,
-    transform,
-    )
-from breezy.bzr import (
-    inventory,
-    remote,
-    )
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from breezy import errors
+from breezy import revision as _mod_revision
+from breezy import tests, transform
+from breezy.bzr import inventory, remote
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository,
-    all_repository_vf_format_scenarios,
-    )
-
+    TestCaseWithRepository, all_repository_vf_format_scenarios)
+from breezy.tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 

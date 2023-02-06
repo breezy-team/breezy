@@ -17,19 +17,11 @@
 import subprocess
 import tempfile
 
-from ... import (
-    errors,
-    revision as _mod_revision,
-    )
-from ...config import (
-    ListOption,
-    Option,
-    bool_from_store,
-    int_from_store,
-    )
-
-from ...smtp_connection import SMTPConnection
+from ... import errors
+from ... import revision as _mod_revision
+from ...config import ListOption, Option, bool_from_store, int_from_store
 from ...email_message import EmailMessage
+from ...smtp_connection import SMTPConnection
 
 
 class EmailSender:
@@ -120,6 +112,7 @@ class EmailSender:
             return
 
         from ...diff import show_diff_trees
+
         # optionally show the diff if its smaller than the post_commit_difflimit option
         revid_new = self.revision.revision_id
         if self.revision.parent_ids:

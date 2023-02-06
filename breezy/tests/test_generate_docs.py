@@ -23,6 +23,7 @@ and produce non-empty output.
 from io import StringIO
 
 import breezy.commands
+
 from . import TestCase
 
 

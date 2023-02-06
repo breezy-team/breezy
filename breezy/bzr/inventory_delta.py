@@ -26,8 +26,8 @@ __all__ = ['InventoryDeltaSerializer']
 
 from .. import errors
 from ..osutils import basename
-from . import inventory
 from ..revision import NULL_REVISION
+from . import inventory
 
 FORMAT_1 = b'bzr inventory delta v1 (bzr 1.14)'
 

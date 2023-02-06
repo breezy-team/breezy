@@ -20,14 +20,11 @@
 
 import os
 
-from .... import (
-    errors,
-    osutils,
-    transport as _mod_transport,
-    ui,
-    )
-from . import TransportStore
+from .... import errors, osutils
+from .... import transport as _mod_transport
+from .... import ui
 from ....trace import mutter
+from . import TransportStore
 
 
 class VersionedFileStore(TransportStore):

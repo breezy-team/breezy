@@ -16,10 +16,8 @@
 
 from io import StringIO
 
-from breezy import (
-    osutils,
-    trace,
-    )
+from breezy import osutils, trace
+
 from .bzr.inventorytree import InventoryTreeChange
 
 

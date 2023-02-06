@@ -16,7 +16,7 @@
 
 import sys
 import threading
-from typing import Optional, List, Type, Callable, Union
+from typing import Callable, List, Optional, Type, Union
 
 
 class CatchingExceptionThread(threading.Thread):

@@ -19,9 +19,7 @@
 import re
 from typing import Iterator, Optional
 
-from .rio import (
-    Stanza,
-    )
+from .rio import Stanza
 
 _tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
 

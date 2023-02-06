@@ -15,16 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from breezy import (
-    branch,
-    builtins,
-    errors,
-    lock,
-    )
-from breezy.tests import (
-    transport_util,
-    TestCaseInTempDir,
-    )
+
+from breezy import branch, builtins, errors, lock
+from breezy.tests import TestCaseInTempDir, transport_util
 
 
 class TestRevert(TestCaseInTempDir):

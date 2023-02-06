@@ -15,14 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
-    errors,
-    tests,
-    urlutils,
-    )
-from breezy.bzr import (
-    remote,
-    )
+from breezy import errors, tests, urlutils
+from breezy.bzr import remote
 from breezy.tests.per_repository import TestCaseWithRepository
 
 

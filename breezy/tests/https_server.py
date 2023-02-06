@@ -18,11 +18,7 @@
 
 import ssl
 
-from . import (
-    http_server,
-    ssl_certs,
-    test_server,
-    )
+from . import http_server, ssl_certs, test_server
 
 
 class TestingHTTPSServerMixin:

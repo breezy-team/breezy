@@ -16,16 +16,16 @@
 
 """Versioned text file storage api."""
 
-from copy import copy
-from io import BytesIO
 import itertools
 import os
 import struct
-from typing import Tuple, Any
+from copy import copy
+from io import BytesIO
+from typing import Any, Tuple
 from zlib import adler32
 
-
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import fastbencode as bencode
 
@@ -39,19 +39,13 @@ from breezy.bzr import (
     knit,
     )
 """)
-from .. import (
-    errors,
-    graph as _mod_graph,
-    osutils,
-    transport as _mod_transport,
-    )
+from .. import errors
+from .. import graph as _mod_graph
+from .. import osutils
+from .. import transport as _mod_transport
 from ..registry import Registry
 from ..textmerge import TextMerge
-
-from . import (
-    index,
-    )
-
+from . import index
 
 adapter_registry = Registry[Tuple[str, str], Any]()
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
@@ -2006,6 +2000,7 @@ def sort_groupcompress(parent_map):
     :return: A sorted-list of keys
     """
     from ..tsort import topo_sort
+
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}

@@ -40,12 +40,8 @@ to build the certificate authority files (--ca) or the server files (--server).
 
 import optparse
 import os
-from subprocess import (
-    CalledProcessError,
-    Popen,
-    PIPE,
-)
 import sys
+from subprocess import PIPE, CalledProcessError, Popen
 
 # We want to use the right breezy: the one we are part of
 # FIXME: The following is correct but looks a bit ugly

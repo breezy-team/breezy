@@ -18,24 +18,10 @@
 
 """Definition of a class that is similar to Set with some small changes."""
 
-from cpython.object cimport (
-    hashfunc,
-    Py_EQ,
-    PyObject_Hash,
-    PyTypeObject,
-    Py_TYPE,
-    richcmpfunc,
-    traverseproc,
-    visitproc,
-    )
-from cpython.mem cimport (
-    PyMem_Malloc,
-    PyMem_Free,
-    )
-from cpython.ref cimport (
-    Py_INCREF,
-    Py_DECREF,
-    )
+from cpython.mem cimport PyMem_Free, PyMem_Malloc
+from cpython.object cimport (Py_EQ, Py_TYPE, PyObject_Hash, PyTypeObject,
+                             hashfunc, richcmpfunc, traverseproc, visitproc)
+from cpython.ref cimport Py_DECREF, Py_INCREF
 from libc.string cimport memset
 
 

@@ -17,6 +17,7 @@
 from typing import Type
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import itertools
 
@@ -38,25 +39,15 @@ from breezy.bzr import (
     xml7,
     )
 """)
-from .. import (
-    errors,
-    transport as _mod_transport,
-    )
-from ..repository import (
-    InterRepository,
-    IsInWriteGroupError,
-    Repository,
-    )
-from .repository import (
-    RepositoryFormatMetaDir,
-    )
+from .. import errors
+from .. import transport as _mod_transport
+from ..repository import InterRepository, IsInWriteGroupError, Repository
+from .repository import RepositoryFormatMetaDir
 from .serializer import Serializer
-from .vf_repository import (
-    InterSameDataRepository,
-    MetaDirVersionedFileRepository,
-    MetaDirVersionedFileRepositoryFormat,
-    VersionedFileCommitBuilder,
-    )
+from .vf_repository import (InterSameDataRepository,
+                            MetaDirVersionedFileRepository,
+                            MetaDirVersionedFileRepositoryFormat,
+                            VersionedFileCommitBuilder)
 
 
 class _KnitParentsProvider:

@@ -21,6 +21,7 @@ import os
 import struct
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import ctypes
 
@@ -345,6 +346,7 @@ def get_app_path(appname):
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     from ctypes.wintypes import BOOL, DWORD, LPWSTR
+
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
     SetFileAttributes = ctypes.windll.kernel32.SetFileAttributesW
     SetFileAttributes.argtypes = LPWSTR, DWORD

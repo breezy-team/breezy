@@ -7,6 +7,7 @@
 # message, So also blackhole stderr.
 
 import sys
+
 if sys.frozen == "windows_exe":
     class Blackhole:
         softspace = 0
@@ -21,6 +22,7 @@ if sys.frozen == "windows_exe":
 # add more directories to sys.path to allow "installing" third-party libs
 # required by some plugins (see bug #743256)
 import os
+
 sys.path.append(os.path.join(os.path.dirname(sys.executable), 'site-packages'))
 del os
 del sys
@@ -32,6 +34,8 @@ del sys
 # someone elses removable or network drive so the getline() call
 # causes it to ask them to insert a disk in that drive.
 import linecache
+
+
 def fake_getline(filename, lineno, module_globals=None):
     return ''
 linecache.orig_getline = linecache.getline

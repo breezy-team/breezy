@@ -14,21 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from typing import List, Type, Optional
+from typing import List, Optional, Type
 
-from breezy import (
-    revision,
-    workingtree,
-    )
+from breezy import revision, workingtree
 from breezy.i18n import gettext
 
-from . import (
-    errors,
-    lazy_regex,
-    registry,
-    revision as _mod_revision,
-    trace,
-    )
+from . import errors, lazy_regex, registry
+from . import revision as _mod_revision
+from . import trace
 
 
 class InvalidRevisionSpec(errors.BzrError):
@@ -403,6 +396,7 @@ class RevisionSpec_revno(RevisionSpec):
 
         if branch_spec:
             from .branch import Branch
+
             # the user has overriden the branch to look in.
             branch = Branch.open(branch_spec)
 
@@ -642,6 +636,7 @@ _date_regex = lazy_regex.lazy_compile(
 
 def _parse_datespec(spec):
     import datetime
+
     #  XXX: This doesn't actually work
     #  So the proper way of saying 'give me all entries for today' is:
     #      -r date:yesterday..date:today

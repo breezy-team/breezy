@@ -16,19 +16,10 @@
 
 """A generator which creates a rio stanza of the current tree info"""
 
-from breezy import (
-    errors,
-    hooks,
-    )
-from breezy.revision import (
-    NULL_REVISION,
-    )
+from breezy import errors, hooks
 from breezy.bzr.rio import RioWriter, Stanza
-
-from breezy.version_info_formats import (
-    create_date_str,
-    VersionInfoBuilder,
-    )
+from breezy.revision import NULL_REVISION
+from breezy.version_info_formats import VersionInfoBuilder, create_date_str
 
 
 class RioVersionInfoBuilder(VersionInfoBuilder):

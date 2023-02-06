@@ -25,44 +25,18 @@ also see this file.
 from stat import S_ISDIR
 
 import breezy
-from breezy.errors import (
-    UnknownFormatError,
-    )
-from breezy import (
-    tests,
-    transport,
-    )
-from breezy.bzr import (
-    bzrdir,
-    btree_index,
-    inventory,
-    repository as bzrrepository,
-    versionedfile,
-    vf_repository,
-    vf_search,
-    )
+from breezy import controldir, errors, osutils, repository
+from breezy import revision as _mod_revision
+from breezy import tests, transport, upgrade, workingtree
+from breezy.bzr import (btree_index, bzrdir, groupcompress_repo, inventory,
+                        knitpack_repo, knitrepo, pack_repo)
+from breezy.bzr import repository as bzrrepository
+from breezy.bzr import versionedfile, vf_repository, vf_search
 from breezy.bzr.btree_index import BTreeBuilder, BTreeGraphIndex
 from breezy.bzr.index import GraphIndex
+from breezy.errors import UnknownFormatError
 from breezy.repository import RepositoryFormat
-from breezy.tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
-from breezy import (
-    controldir,
-    errors,
-    osutils,
-    repository,
-    revision as _mod_revision,
-    upgrade,
-    workingtree,
-    )
-from breezy.bzr import (
-    groupcompress_repo,
-    knitrepo,
-    knitpack_repo,
-    pack_repo,
-    )
+from breezy.tests import TestCase, TestCaseWithTransport
 
 
 class TestDefaultFormat(TestCase):

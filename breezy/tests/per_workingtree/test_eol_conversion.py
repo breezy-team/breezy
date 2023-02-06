@@ -16,14 +16,13 @@
 
 """Tests for eol conversion."""
 
-from io import BytesIO
 import sys
+from io import BytesIO
 
 from ... import rules, status
+from ...workingtree import WorkingTree
 from .. import TestSkipped
 from . import TestCaseWithWorkingTree
-from ...workingtree import WorkingTree
-
 
 # Sample files
 _sample_text = b"""hello\nworld\r\n"""

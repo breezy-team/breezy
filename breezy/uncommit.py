@@ -18,10 +18,8 @@
 
 # TODO: make the guts of this methods on tree, branch.
 
-from . import (
-    errors,
-    revision as _mod_revision,
-    )
+from . import errors
+from . import revision as _mod_revision
 from .branch import Branch
 from .errors import BoundBranchOutOfDate
 

@@ -21,57 +21,30 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+import itertools
 from gzip import GzipFile
 from io import BytesIO
-import itertools
 
-from ... import (
-    errors,
-    graph as _mod_graph,
-    osutils,
-    progress,
-    transport,
-    ui,
-    )
-from .. import (
-    groupcompress,
-    knit as _mod_knit,
-    )
-from ...errors import (
-    RevisionNotPresent,
-    RevisionAlreadyPresent,
-    )
-from ..knit import (
-    cleanup_pack_knit,
-    make_file_factory,
-    make_pack_factory,
-    )
-from ...tests import (
-    TestCase,
-    TestCaseWithMemoryTransport,
-    TestNotApplicable,
-    TestSkipped,
-    )
+from ... import errors
+from ... import graph as _mod_graph
+from ... import osutils, progress, transport, ui
+from ...errors import RevisionAlreadyPresent, RevisionNotPresent
+from ...tests import (TestCase, TestCaseWithMemoryTransport, TestNotApplicable,
+                      TestSkipped)
 from ...tests.http_utils import TestCaseWithWebserver
-from ...transport.memory import MemoryTransport
-from .. import versionedfile as versionedfile
-from ..versionedfile import (
-    ChunkedContentFactory,
-    ConstantMapper,
-    ExistingContent,
-    HashEscapedPrefixMapper,
-    PrefixMapper,
-    UnavailableRepresentation,
-    VirtualVersionedFiles,
-    make_versioned_files_factory,
-    )
-from ..weave import (
-    WeaveFile,
-    WeaveInvalidChecksum,
-    )
-from ..weavefile import write_weave
 from ...tests.scenarios import load_tests_apply_scenarios
-
+from ...transport.memory import MemoryTransport
+from .. import groupcompress
+from .. import knit as _mod_knit
+from .. import versionedfile as versionedfile
+from ..knit import cleanup_pack_knit, make_file_factory, make_pack_factory
+from ..versionedfile import (ChunkedContentFactory, ConstantMapper,
+                             ExistingContent, HashEscapedPrefixMapper,
+                             PrefixMapper, UnavailableRepresentation,
+                             VirtualVersionedFiles,
+                             make_versioned_files_factory)
+from ..weave import WeaveFile, WeaveInvalidChecksum
+from ..weavefile import write_weave
 
 load_tests = load_tests_apply_scenarios
 
@@ -420,6 +393,7 @@ class VersionedFileTestMixIn:
     def test_add_lines_with_matching_blocks_noeol_last_line(self):
         """Add a text with an unchanged last line with no eol should work."""
         from breezy import multiparent
+
         # Hand verified sha1 of the text we're adding.
         sha1 = '6a1d115ec7b60afb664dc14890b5af5ce3c827a4'
         # Create a mpdiff which adds a new line before the trailing line, and

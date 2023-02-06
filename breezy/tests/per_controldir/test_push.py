@@ -16,18 +16,12 @@
 
 """Tests for controldir implementations - push."""
 
+from breezy.tests.per_controldir import TestCaseWithControlDir
+
 from ...controldir import NoColocatedBranchSupport
-from ...errors import (
-    LossyPushToSameVCS,
-    TagsNotSupported,
-    NoSuchRevision,
-    )
+from ...errors import LossyPushToSameVCS, NoSuchRevision, TagsNotSupported
 from ...revision import NULL_REVISION
 from .. import TestNotApplicable
-
-from breezy.tests.per_controldir import (
-    TestCaseWithControlDir,
-    )
 
 
 class TestPush(TestCaseWithControlDir):

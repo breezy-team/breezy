@@ -22,13 +22,8 @@ import shutil
 import stat
 import sys
 
-
-from .. import (
-    KnownFailure,
-    TestCaseWithTransport,
-    TestSkipped,
-    )
 from ...controldir import ControlDir
+from .. import KnownFailure, TestCaseWithTransport, TestSkipped
 
 
 class BisectTestCase(TestCaseWithTransport):

@@ -17,10 +17,7 @@
 """Walk multiple trees simultaneously.
 """
 
-from . import (
-    errors,
-    osutils,
-    )
+from . import errors, osutils
 
 
 class MultiWalker:

@@ -42,21 +42,16 @@ To force this off in brz turn set APPORT_DISABLE in the environment or
 # to test with apport it's useful to set
 # export APPORT_IGNORE_OBSOLETE_PACKAGES=1
 
-from io import StringIO
 import os
 import platform
 import pprint
 import sys
 import time
+from io import StringIO
 
 import breezy
-from . import (
-    bedding,
-    debug,
-    osutils,
-    plugin,
-    trace,
-    )
+
+from . import bedding, debug, osutils, plugin, trace
 
 
 def report_bug(exc_info, stderr):
@@ -145,6 +140,7 @@ def report_bug_to_apport(exc_info, stderr):
 
 def _write_apport_report_to_file(exc_info):
     import traceback
+
     from apport.report import Report
 
     exc_type, exc_object, exc_tb = exc_info

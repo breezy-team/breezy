@@ -24,17 +24,8 @@ __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
 from io import BytesIO
 
-from .. import (
-    config,
-    debug,
-    errors,
-    trace,
-    transport,
-    urlutils,
-    )
-from ..bzr import (
-    remote,
-    )
+from .. import config, debug, errors, trace, transport, urlutils
+from ..bzr import remote
 from ..bzr.smart import client, medium
 
 

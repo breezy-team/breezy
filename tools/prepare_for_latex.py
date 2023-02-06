@@ -30,8 +30,8 @@ import os
 import re
 import shutil
 import sys
-from sys import argv
 from subprocess import call
+from sys import argv
 
 verbose = False
 

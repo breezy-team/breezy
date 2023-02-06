@@ -38,7 +38,6 @@ _start_time = time.time()
 import codecs
 import sys
 
-
 __copyright__ = (
     "Copyright 2005-2012 Canonical Ltd.\n"
     "Copyright 2017-2022 Breezy developers"

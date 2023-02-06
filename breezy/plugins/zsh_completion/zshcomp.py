@@ -14,17 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ... import (
-    cmdline,
-    commands,
-    config,
-    help_topics,
-    option,
-    plugin,
-)
-import breezy
 import re
 import sys
+
+import breezy
+
+from ... import cmdline, commands, config, help_topics, option, plugin
 
 
 class ZshCodeGen:
