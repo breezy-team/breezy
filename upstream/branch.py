@@ -724,7 +724,7 @@ def run_dist_command(
             package_fullpath = os.path.join(package_dir, subpath)
         else:
             export_with_nested(rev_tree, package_dir, format='dir',
-                               subpath=subpath)
+                               subdir=subpath)
             package_fullpath = package_dir
         existing_files = os.listdir(package_fullpath)
         try:
