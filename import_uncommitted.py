@@ -390,7 +390,7 @@ def import_uncommitted(
         tree.merge_from_branch(tree.branch, to_revision=to_merge)
         revid = debcommit(
             tree, subpath=subpath,
-            message='Merge archive versions: %r' % ', '.join([
+            message='Merge archive versions: %s' % ', '.join([
                 str(v) for (t, v, r) in ret]))
         parent_ids = tree.branch.repository.get_revision(revid).parent_ids
         assert parent_ids == [merge_into, to_merge], \
