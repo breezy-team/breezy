@@ -62,11 +62,13 @@ class cmd_publish_derived(Command):
         Option('no-allow-lossy',
                help='Allow fallback to lossy push, if necessary.'),
         Option('overwrite', help="Overwrite existing commits."),
+        'revision',
         ]
     takes_args = ['submit_branch?']
 
     def run(self, submit_branch=None, owner=None, name=None, project=None,
-            no_allow_lossy=False, overwrite=False, directory='.'):
+            no_allow_lossy=False, overwrite=False, directory='.',
+            revision=None):
         local_branch = _mod_branch.Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_write().unlock)
         if submit_branch is None:
@@ -80,10 +82,14 @@ class cmd_publish_derived(Command):
         if name is None:
             name = branch_name(local_branch)
         forge = _mod_forge.get_forge(submit_branch)
+        if revision is None:
+            stop_revision = None
+        else:
+            stop_revision = revision.as_revision_id(branch)
         remote_branch, public_url = forge.publish_derived(
             local_branch, submit_branch, name=name, project=project,
             owner=owner, allow_lossy=not no_allow_lossy,
-            overwrite=overwrite)
+            overwrite=overwrite, revision_id=stop_revision)
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
         local_branch.set_submit_branch(submit_branch.user_url)
@@ -155,6 +161,7 @@ class cmd_propose_merge(Command):
         Option('overwrite', help="Overwrite existing commits."),
         Option('open', help='Open merge proposal in web browser'),
         Option('delete-source-after-merge', help='Delete source branch when proposal is merged'),
+        'revision',
         ]
     takes_args = ['submit_branch?']
 
@@ -164,7 +171,7 @@ class cmd_propose_merge(Command):
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
             allow_collaboration=False, allow_empty=False, overwrite=False,
-            open=False, auto=False, delete_source_after_merge=None):
+            open=False, auto=False, delete_source_after_merge=None, revision=None):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -183,9 +190,13 @@ class cmd_propose_merge(Command):
             forge = forge.probe(target)
         if name is None:
             name = branch_name(branch)
+        if revision is None:
+            stop_revision = None
+        else:
+            stop_revision = revision.as_revision_id(branch)
         remote_branch, public_branch_url = forge.publish_derived(
             branch, target, name=name, allow_lossy=not no_allow_lossy,
-            overwrite=overwrite)
+            overwrite=overwrite, revision_id=stop_revision)
         branch.set_push_location(remote_branch.user_url)
         branch.set_submit_branch(target.user_url)
         note(gettext('Published branch to %s'),
