@@ -336,7 +336,7 @@ def main(argv=None):
     from breezy.workspace import check_clean_tree
     from breezy.branch import Branch
 
-    from .apt_repo import RemoteApt, LocalApt
+    from .apt_repo import RemoteApt, LocalApt, NoAptSources
     from .directory import source_package_vcs_url
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -432,8 +432,14 @@ def main(argv=None):
 
             with apt:
                 versions = []
-                for source in apt.iter_source_by_name(package):
-                    versions.append((source['Version'], source))
+                try:
+                    for source in apt.iter_source_by_name(package):
+                        versions.append((source['Version'], source))
+                except NoAptSources:
+                    report_fatal(
+                        "no-apt-sources",
+                        "No sources configured in /etc/apt/sources.list")
+                    return 1
 
             versions.sort()
             try:
