@@ -1,4 +1,4 @@
-breezy-debian (2.8.76) UNRELEASED; urgency=medium
+breezy-debian (2.8.76) unstable; urgency=medium
 
   * Export package.json and META.json.
   * deb-merge: Fall back to importing .dsc.
@@ -10,7 +10,7 @@ breezy-debian (2.8.76) UNRELEASED; urgency=medium
   * Integrate deb-merge and deb-auto-backport.
   * Improve errors messages from deb-vcs-up-to-date
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Dec 2022 16:51:51 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 11 Feb 2023 14:03:54 +0000
 
 breezy-debian (2.8.75) unstable; urgency=medium
 
