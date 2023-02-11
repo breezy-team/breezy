@@ -20,6 +20,8 @@
 
 import os
 
+from breezy.mutabletree import MutableTree
+
 from debmutate.changelog import (
     release as mark_for_release,
     ChangelogEditor,
@@ -31,7 +33,7 @@ from .changelog import debcommit_release
 from .util import find_changelog
 
 
-def release(local_tree, subpath):
+def release(local_tree: MutableTree, subpath: str):
     """Release a tree."""
     (changelog, top_level) = find_changelog(
         local_tree, subpath, merge=False, max_blocks=2)
@@ -49,3 +51,40 @@ def release(local_tree, subpath):
             mark_for_release(e.changelog)
         return debcommit_release(local_tree, subpath=subpath)
     return None
+
+
+class SuccessReleaseMarker(object):
+
+    def __init__(self, local_tree, subpath):
+        self.local_tree = local_tree
+        self.subpath = subpath
+
+    def __enter__(self):
+        self.old_revid = self.local_tree.last_revision()
+        (changelog, top_level) = find_changelog(
+            self.local_tree, self.subpath, merge=False, max_blocks=2)
+
+        # TODO(jelmer): If this changelog is automatically updated,
+        # insert missing entries now.
+        if distribution_is_unreleased(changelog.distributions):
+            if top_level:
+                self.changelog_path = 'changelog'
+            else:
+                self.changelog_path = 'debian/changelog'
+            self.changelog_abspath = self.local_tree.abspath(
+                os.path.join(self.subpath, self.changelog_path))
+            with ChangelogEditor(self.changelog_abspath) as e:
+                mark_for_release(e.changelog)
+            self.new_revid = debcommit_release(self.local_tree, subpath=self.subpath)
+        else:
+            self.new_revid = None
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            if self.new_revid:
+                self.local_tree.set_last_revision(self.old_revid)
+                self.local_tree.branch.set_last_revision(self.old_revid)
+                self.local_tree.revert([self.changelog_path])
+        return False

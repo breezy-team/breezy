@@ -1649,7 +1649,7 @@ class cmd_debrelease(Command):
     def run(self, location='.', strict=True, skip_upload=False,
             builder=DEFAULT_BUILDER, apt_repository=None,
             apt_repository_key=None):
-        from .release import release
+        from .release import SuccessReleaseMarker
         from .util import (
             dput_changes,
             )
@@ -1667,13 +1667,12 @@ class cmd_debrelease(Command):
         # clean.
         with LocalTree(branch) as local_tree:
             _check_tree(local_tree, subpath, strict)
-            release(local_tree, subpath)
-
             with tempfile.TemporaryDirectory() as td:
-                changes_files = _build_helper(
-                    local_tree, subpath, local_tree.branch,
-                    target_dir=(td if not skip_upload else None),
-                    builder=builder, apt=apt)
+                with SuccessReleaseMarker(local_tree, subpath):
+                    changes_files = _build_helper(
+                        local_tree, subpath, local_tree.branch,
+                        target_dir=(td if not skip_upload else None),
+                        builder=builder, apt=apt)
                 if not skip_upload:
                     try:
                         source_path = changes_files['source']
