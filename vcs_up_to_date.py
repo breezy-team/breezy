@@ -26,12 +26,16 @@ __all__ = [
 import asyncio
 import logging
 import os
+from typing import List
 
+from debian.changelog import Version
 from debmutate.changelog import distribution_is_unreleased
 
+from breezy.tree import Tree
 from breezy.workingtree import WorkingTree
 from breezy.plugins.debian.util import find_changelog, MissingChangelogError
 from breezy.plugins.debian.apt_repo import (
+    Apt,
     LocalApt,
     RemoteApt,
 )
@@ -63,7 +67,7 @@ class TreeVersionNotInArchive(Exception):
         )
 
 
-def check_up_to_date(tree, subpath, apt):
+def check_up_to_date(tree: Tree, subpath: str, apt: Apt) -> None:
     released_tree_versions = []
     tree_cl, top_level = find_changelog(tree, subpath, max_blocks=None)
     for block in tree_cl:
@@ -89,10 +93,10 @@ def check_up_to_date(tree, subpath, apt):
         return
     last_released_tree_version = released_tree_versions[-1]
 
-    archive_versions = []
+    archive_versions: List[Version] = []
     with apt:
         for entry in apt.iter_source_by_name(package):
-            archive_versions.append(entry['Version'])
+            archive_versions.append(Version(entry['Version']))
 
     archive_versions.sort()
 
@@ -104,13 +108,14 @@ def check_up_to_date(tree, subpath, apt):
 
     last_archive_version = archive_versions[-1]
 
+    if (last_archive_version not in released_tree_versions and
+            last_archive_version > last_released_tree_version):
+        raise NewArchiveVersion(
+            last_archive_version, last_released_tree_version)
+
     if last_released_tree_version not in archive_versions:
         raise TreeVersionNotInArchive(
             last_released_tree_version, archive_versions)
-
-    if last_archive_version not in released_tree_versions:
-        raise NewArchiveVersion(
-            last_archive_version, last_released_tree_version)
 
 
 def main():
@@ -149,8 +154,10 @@ def main():
         check_up_to_date(tree, subpath, apt)
     except TreeVersionNotInArchive as exc:
         logging.fatal(
-            'Last released tree version %s not in archive',
-            exc.tree_version)
+            'Last released tree version %s not in archive (%s)',
+            exc.tree_version,
+            f"latest: {exc.archive_versions[-1]}"
+            if exc.archive_versions else "not present")
         return 1
     except NewArchiveVersion as exc:
         logging.fatal(

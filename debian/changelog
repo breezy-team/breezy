@@ -8,6 +8,7 @@ breezy-debian (2.8.76) UNRELEASED; urgency=medium
   * deb-import-uncommitted: Skip noop uploads.
   * deb-auto-backport: Add --apt-repository argument.
   * Integrate deb-merge and deb-auto-backport.
+  * Improve errors messages from deb-vcs-up-to-date
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 14 Dec 2022 16:51:51 +0000
 
