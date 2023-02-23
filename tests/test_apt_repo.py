@@ -76,12 +76,22 @@ class MockSources:
             return False
 
 
+class MockAptConfig:
+
+    def __init__(self):
+        self._d = {}
+
+    def set(self, name, value):
+        self._d[name] = value
+
+
 class MockAptPkg:
 
     def __init__(self, sources):
         self.init_called_times = 0
         self.get_pkg_source_records_called_times = 0
         self.sources = sources
+        self.config = MockAptConfig()
 
     def init(self):
         self.init_called_times += 1

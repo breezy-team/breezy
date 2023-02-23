@@ -75,7 +75,8 @@ class SuccessReleaseMarker(object):
                 os.path.join(self.subpath, self.changelog_path))
             with ChangelogEditor(self.changelog_abspath) as e:
                 mark_for_release(e.changelog)
-            self.new_revid = debcommit_release(self.local_tree, subpath=self.subpath)
+            self.new_revid = debcommit_release(
+                self.local_tree, subpath=self.subpath)
         else:
             self.new_revid = None
 

@@ -812,7 +812,9 @@ def dput_changes(path: str) -> None:
     subprocess.check_call(["dput", changes_file], cwd=bd)
 
 
-def find_changes_files(path: str, package: str, version: Version) -> Iterator[Tuple[str, os.DirEntry]]:
+def find_changes_files(
+        path: str, package: str, version: Version) -> Iterator[
+            Tuple[str, os.DirEntry]]:
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version

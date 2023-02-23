@@ -21,6 +21,7 @@ import pwd
 import shutil
 import subprocess
 import tempfile
+from threading import Semaphore
 from typing import Optional
 
 from debian.deb822 import Dsc, Deb822
@@ -78,6 +79,9 @@ class Apt:
         raise NotImplementedError(self.retrieve_source)
 
 
+_apt_semaphore = Semaphore()
+
+
 class LocalApt(Apt):
 
     def __init__(self, rootdir=None):
@@ -99,48 +103,60 @@ class LocalApt(Apt):
             self.cache = apt.Cache(rootdir=self._rootdir)
         except apt_pkg.Error as e:
             raise _convert_apt_pkg_error(e) from e
+        return self
+
+    def _set_dir(self):
         if self._rootdir is not None:
             self.apt_pkg.config.set("Dir", self._rootdir)
         else:
             self.apt_pkg.config.set("Dir", '/')
-        return self
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
         return False
 
     def iter_sources(self):
-        try:
-            sources = self.apt_pkg.SourceRecords()
-        except SystemError as e:
-            raise NoAptSources() from e
+        with _apt_semaphore:
+            self._set_dir()
+            try:
+                sources = self.apt_pkg.SourceRecords()
+            except SystemError as e:
+                raise NoAptSources() from e
 
-        sources.restart()
-        while sources.step():
-            yield Dsc(sources.record)
+            sources.restart()
+            while sources.step():
+                yield Dsc(sources.record)
 
     def iter_source_by_name(self, source_name):
-        try:
-            sources = self.apt_pkg.SourceRecords()
-        except SystemError as e:
-            raise NoAptSources() from e
+        with _apt_semaphore:
+            self._set_dir()
+            try:
+                sources = self.apt_pkg.SourceRecords()
+            except SystemError as e:
+                raise NoAptSources() from e
 
-        sources.restart()
-        while sources.lookup(source_name):
-            yield Dsc(sources.record)
+            sources.restart()
+            while sources.lookup(source_name):
+                yield Dsc(sources.record)
 
     def iter_binaries(self):
-        for pkg in self.cache:
-            for version in pkg.versions:
-                yield Deb822(version._records.record)
+        with _apt_semaphore:
+            self._set_dir()
+
+            for pkg in self.cache:
+                for version in pkg.versions:
+                    yield Deb822(version._records.record)
 
     def iter_binary_by_name(self, binary_name):
-        try:
-            pkg = self.cache[binary_name]
-        except KeyError:
-            pass
-        else:
-            for version in pkg.versions:
-                yield Deb822(version._records.record)
+        with _apt_semaphore:
+            self._set_dir()
+
+            try:
+                pkg = self.cache[binary_name]
+            except KeyError:
+                pass
+            else:
+                for version in pkg.versions:
+                    yield Deb822(version._records.record)
 
     def retrieve_source(self, package_name, target, source_version=None,
                         tar_only=False):
@@ -239,6 +255,9 @@ class RemoteApt(LocalApt):
         self.cache.update()
         self.apt_pkg = apt_pkg
         self.apt_pkg.init()
+        return self
+
+    def _set_dir(self):
         try:
             username = pwd.getpwuid(os.getuid()).pw_name
         except KeyError:
@@ -246,7 +265,6 @@ class RemoteApt(LocalApt):
         else:
             self.apt_pkg.config.set("APT::Sandbox::User", username)
         self.apt_pkg.config.set("Dir", self._rootdir)
-        return self
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
         shutil.rmtree(self._rootdir)

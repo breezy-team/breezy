@@ -168,7 +168,7 @@ def main():
         logging.fatal(
             '%s not found in the specified archive', exc.package)
         return 1
-    except MissingChangelogError as exc:
+    except MissingChangelogError:
         logging.fatal('Unable to find a changelog file')
         return 1
 
