@@ -248,13 +248,14 @@ class RemoteApt(LocalApt):
             import apt_pkg
         except ImportError as e:
             raise DependencyNotPresent('apt_pkg', e) from e
+        self.apt_pkg = apt_pkg
+        self.apt_pkg.init()
         try:
             self.cache = apt.Cache(rootdir=self._rootdir)
         except apt_pkg.Error as e:
             raise _convert_apt_pkg_error(e) from e
+        self._set_dir()
         self.cache.update()
-        self.apt_pkg = apt_pkg
-        self.apt_pkg.init()
         return self
 
     def _set_dir(self):
