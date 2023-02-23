@@ -101,6 +101,8 @@ class LocalApt(Apt):
             raise _convert_apt_pkg_error(e) from e
         if self._rootdir is not None:
             self.apt_pkg.config.set("Dir", self._rootdir)
+        else:
+            self.apt_pkg.config.set("Dir", '/')
         return self
 
     def __exit__(self, exc_tp, exc_val, exc_tb):
