@@ -1181,6 +1181,7 @@ def main(argv=None):
     # TODO(jelmer): Support "auto"
     parser.add_argument(
         "--version-kind", choices=["snapshot", "release"],
+        default="release",
         help="Version kind to merge.")
     args = parser.parse_args(argv)
 
