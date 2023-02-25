@@ -821,7 +821,7 @@ class InterGitGitRepository(InterFromGitRepository):
         ref_changes = {}
 
         def determine_wants(heads, depth=None):
-            old_refs = {k: (v, None) for (k, v) in heads.items()}
+            old_refs.update({k: (v, None) for (k, v) in heads.items()})
             new_refs = update_refs(old_refs)
             ret = []
             for name, (sha1, bzr_revid) in list(new_refs.items()):

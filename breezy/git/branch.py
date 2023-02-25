@@ -2118,7 +2118,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         return result
 
 
-def _update_pure_git_refs(result, new_refs, overwrite, tag_selector, old_refs):
+def _update_pure_git_refs(
+    result, new_refs, overwrite, tag_selector, old_refs, resolve_git_sha=None
+):
     """Update Git refs and handle tag conflicts.
 
     Args:
@@ -2127,6 +2129,8 @@ def _update_pure_git_refs(result, new_refs, overwrite, tag_selector, old_refs):
         overwrite: Whether to overwrite existing refs.
         tag_selector: Optional function to filter which tags to process.
         old_refs: Dictionary of existing refs.
+        resolve_git_sha: Optional callable mapping a bzr revid to its git
+            sha, used to fill in a ref's git sha when only the revid is known.
 
     Returns:
         dict: Updated refs dictionary with resolved conflicts.
@@ -2168,6 +2172,8 @@ def _update_pure_git_refs(result, new_refs, overwrite, tag_selector, old_refs):
                 if tag_selector and not tag_selector(tag_name):
                     continue
                 result.tag_updates[tag_name] = revid
+            if git_sha is None and resolve_git_sha is not None:
+                git_sha = resolve_git_sha(revid)
             ret[ref] = (git_sha, revid)
         else:
             # FIXME: Check diverged
@@ -2368,7 +2374,14 @@ class InterToGitBranch(branch.GenericInterBranch):
             )
 
             update_refs = partial(
-                _update_pure_git_refs, result, new_refs, overwrite, tag_selector
+                _update_pure_git_refs,
+                result,
+                new_refs,
+                overwrite,
+                tag_selector,
+                resolve_git_sha=lambda revid: self.target.lookup_bzr_revision_id(revid)[
+                    0
+                ],
             )
             try:
                 result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
@@ -2425,7 +2438,14 @@ class InterToGitBranch(branch.GenericInterBranch):
             )
 
             update_refs = partial(
-                _update_pure_git_refs, result, new_refs, overwrite, tag_selector
+                _update_pure_git_refs,
+                result,
+                new_refs,
+                overwrite,
+                tag_selector,
+                resolve_git_sha=lambda revid: self.target.lookup_bzr_revision_id(revid)[
+                    0
+                ],
             )
             try:
                 result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(

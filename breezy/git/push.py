@@ -16,6 +16,8 @@
 
 """Basic push implementation."""
 
+from dulwich.objects import ObjectID
+
 from ..push import PushResult
 from .errors import GitSmartRemoteNotSupported
 
@@ -135,7 +137,7 @@ class ObjectStoreParentsProvider:
         return ret
 
 
-def remote_divergence(old_sha, new_sha, store):
+def remote_divergence(old_sha: ObjectID, new_sha: ObjectID, store):
     """Check if the remote branch has diverged.
 
     Args:
