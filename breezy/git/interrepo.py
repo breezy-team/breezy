@@ -590,12 +590,13 @@ class InterGitGitRepository(InterFromGitRepository):
     def fetch_refs(self, update_refs, lossy, overwrite=False):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
-        old_refs = self.target.controldir.get_refs_container()
         ref_changes = {}
 
+        old_refs = {}
+
         def determine_wants(heads):
-            old_refs = {k: (v, None)
-                             for (k, v) in heads.items()}
+            old_refs.update({k: (v, None)
+                             for (k, v) in heads.items()})
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
             return [sha1 for (sha1, bzr_revid) in new_refs.values()]

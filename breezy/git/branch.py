@@ -1406,6 +1406,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                     if tag_selector and not tag_selector(tag_name):
                         continue
                     result.tag_updates[tag_name] = revid
+                if git_sha is None:
+                    git_sha, mapping = self.target.lookup_bzr_revision_id(revid)
                 ret[ref] = (git_sha, revid)
             else:
                 # FIXME: Check diverged

@@ -19,6 +19,8 @@
 from ..push import PushResult
 from .errors import GitSmartRemoteNotSupported
 
+from dulwich.objects import ObjectID
+
 
 class GitPushResult(PushResult):
 
@@ -110,7 +112,7 @@ class ObjectStoreParentsProvider:
         return ret
 
 
-def remote_divergence(old_sha, new_sha, store):
+def remote_divergence(old_sha: ObjectID, new_sha: ObjectID, store):
     if old_sha is None:
         return False
     if not isinstance(old_sha, bytes):
