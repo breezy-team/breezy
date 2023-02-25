@@ -1,3 +1,10 @@
+breezy-debian (2.8.77) UNRELEASED; urgency=medium
+
+  * merge-upstream: when current version is a snapshot, default to also
+    merging snapshot.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Feb 2023 15:03:38 +0000
+
 breezy-debian (2.8.76) unstable; urgency=medium
 
   * Export package.json and META.json.

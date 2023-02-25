@@ -521,10 +521,19 @@ class UpstreamBranchSource(UpstreamSource):
                 return current_version, current_version
             return version
         elif self.version_kind == "auto":
-            version = self.get_latest_release_version(package, current_version)
-            if version is None:
+            snapshot_data = get_snapshot_revision(current_version)
+            if snapshot_data is None:
                 note(gettext(
-                    'No upstream releases found, falling back to snapshot.'))
+                    'Current version is release, merging new release.'))
+                version = self.get_latest_release_version(
+                    package, current_version)
+                if version is None:
+                    note(gettext(
+                        'No upstream releases found, falling back to snapshot.'))
+                    version = self.get_latest_snapshot_version(package, current_version)
+            else:
+                note(gettext(
+                    'Current version is snapshot, merging new snapshot.'))
                 version = self.get_latest_snapshot_version(
                     package, current_version)
             return version
@@ -626,7 +635,7 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
 
     def __init__(self, upstream_branch_url, upstream_revision_map=None,
                  config=None, create_dist=None, other_repository=None,
-                 version_kind="snapshot", subpath=None):
+                 version_kind="auto", subpath=None):
         self.upstream_branch_url = upstream_branch_url
         self.version_kind = version_kind
         self._upstream_branch = None

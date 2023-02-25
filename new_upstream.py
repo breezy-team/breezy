@@ -1178,6 +1178,10 @@ def main(argv=None):
     parser.add_argument(
         "--skip-empty", action="store_true",
         help="Skip releases without changes")
+    # TODO(jelmer): Support "auto"
+    parser.add_argument(
+        "--version-kind", choices=["snapshot", "release"],
+        help="Version kind to merge.")
     args = parser.parse_args(argv)
 
     if args.verbose:
@@ -1224,7 +1228,7 @@ def main(argv=None):
         if args.snapshot:
             version_kind = "snapshot"
         else:
-            version_kind = "release"
+            version_kind = args.version_kind
 
         try:
             if not args.import_only:
