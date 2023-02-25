@@ -521,21 +521,30 @@ class UpstreamBranchSource(UpstreamSource):
                 return current_version, current_version
             return version
         elif self.version_kind == "auto":
-            snapshot_data = get_snapshot_revision(current_version)
-            if snapshot_data is None:
-                note(gettext(
-                    'Current version is release, merging new release.'))
+            if current_version is not None:
+                snapshot_data = get_snapshot_revision(current_version)
+                if snapshot_data is None:
+                    note(gettext(
+                        'Current version is release, merging new release.'))
+                    version_kind = "release"
+                else:
+                    note(gettext(
+                        'Current version is snapshot, merging new snapshot.'))
+                    version_kind = "snapshot"
+            else:
+                version_kind = "release"
+            if version_kind == "release":
                 version = self.get_latest_release_version(
                     package, current_version)
                 if version is None:
                     note(gettext(
                         'No upstream releases found, falling back to snapshot.'))
                     version = self.get_latest_snapshot_version(package, current_version)
-            else:
-                note(gettext(
-                    'Current version is snapshot, merging new snapshot.'))
+            elif version_kind == "snapshot":
                 version = self.get_latest_snapshot_version(
                     package, current_version)
+            else:
+                raise ValueError(version_kind)
             return version
         else:
             raise ValueError(self.version_kind)
