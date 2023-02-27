@@ -24,8 +24,8 @@ Build-Depends-Indep: brz (>= 3.3~),
                      python3-testtools,
                      python3-yaml,
                      quilt
-Vcs-Bzr: https://code.breezy-vcs.org/breezy-debian/unstable
-Vcs-Browser: https://code.breezy-vcs.org/breezy-debian/unstable
+Vcs-Bzr: https://code.launchpad.net/brz-debian
+Vcs-Browser: https://code.launchpad.net/brz-debian
 Rules-Requires-Root: no
 Standards-Version: 4.5.0
 

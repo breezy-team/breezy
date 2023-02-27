@@ -2,6 +2,8 @@ breezy-debian (2.8.77) UNRELEASED; urgency=medium
 
   * merge-upstream: when current version is a snapshot, default to also
     merging snapshot.
+  * Fix Vcs-Bzr location since code.breezy-vcs.org is down. Closes:
+    #1031997
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 25 Feb 2023 15:03:38 +0000
 
