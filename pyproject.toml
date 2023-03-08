@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brz-debian"
+description = "Build Debian packages from versioned sources"
+authors = [{name = "Breezy Developers", email = "breezy-core@googlegroups.com"}]
+license = {text = "GNU GPL v2"}
+dependencies = [
+    "pyyaml",
+    "breezy>=3.3.0.dev.0",
+    "debmutate[watch]>=0.60",
+    "python_debian",
+    "python-apt",
+    "distro-info",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://code.breezy-vcs.org/breezy-debian"
+
+[project.optional-dependencies]
+launchpad = ["launchpadlib"]
+udd = ["psycopg2"]
+
+[project.scripts]
+deb-update-packaging = "breezy.plugins.debian.update_packaging:main"
+deb-vcs-up-to-date = "breezy.plugins.debian.vcs_up_to_date:main"
+deb-move-orphaned = "breezy.plugins.debian.move_orphaned:main"
+deb-import-uncommitted = "breezy.plugins.debian.import_uncommitted:main"
+deb-auto-backport = "breezy.plugins.debian.merge_package:auto_backport"
+deb-new-upstream = "breezy.plugins.debian.new_upstream:main"
+deb-merge = "breezy.plugins.debian.merge_package:main"
+
+[tool.setuptools]
+"python-requires >" = "3.9"
+packages = [
+    "breezy.plugins.debian",
+    "breezy.plugins.debian.tests",
+    "breezy.plugins.debian.tests.blackbox",
+    "breezy.plugins.debian.upstream",
+]
+package-dir = {"breezy.plugins.debian" = "."}
+include-package-data = false
+
+[tool.setuptools.package-data]
+"breezy.plugins.debian" = ["py.typed"]
