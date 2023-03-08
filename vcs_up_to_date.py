@@ -160,6 +160,7 @@ def main():
             if exc.archive_versions else "not present")
         return 1
     except NewArchiveVersion as exc:
+        # TODO(jelmer): Downgrade to a warning if there are only no-op changes
         logging.fatal(
             'New archive version %s is missing in tree',
             exc.archive_version)

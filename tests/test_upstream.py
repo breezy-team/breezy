@@ -593,6 +593,7 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
 
     def test_get_latest_version(self):
         self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("1.0", NULL_REVISION)
         self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
         source = LazyUpstreamBranchSource(
             self.tree.branch.base,
@@ -601,8 +602,18 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertEqual(
             ("2.1", "2.1"), source.get_latest_version("foo", "1.0"))
         self.tree.commit("msg")
+        source.version_kind = "auto"
         self.assertEqual(
-            ("2.1+bzr2", "2.1+bzr2"), source.get_latest_version("foo", "1.0"))
+            ("2.1", "2.1"),
+            source.get_latest_version("foo", "1.0"))
+        source.version_kind = "release"
+        self.assertEqual(
+            ("2.1", "2.1"),
+            source.get_latest_version("foo", "1.0"))
+        source.version_kind = "snapshot"
+        self.assertEqual(
+            ("2.1+bzr2", "2.1+bzr2"),
+            source.get_latest_version("foo", "1.0"))
         self.assertIsNot(None, source._upstream_branch)
 
     def test_get_recent_versions(self):
