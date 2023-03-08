@@ -17,19 +17,15 @@
 """Tests for breezy.export."""
 
 import gzip
-from io import BytesIO
 import os
 import tarfile
 import time
 import zipfile
+from io import BytesIO
 
-from .. import (
-    errors,
-    export,
-    tests,
-    )
-from ..export import get_root_name
+from .. import errors, export, tests
 from ..archive.tar import tarball_generator
+from ..export import get_root_name
 from . import features
 
 

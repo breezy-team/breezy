@@ -15,19 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from ... import (
-    bedding,
-    errors,
-    osutils,
-    )
-from ...tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
-from ...tests.features import (
-    ModuleAvailableFeature,
-    )
-
+from ... import bedding, errors, osutils
+from ...tests import TestCase, TestCaseWithTransport
+from ...tests.features import ModuleAvailableFeature
 
 launchpadlib_feature = ModuleAvailableFeature('launchpadlib')
 

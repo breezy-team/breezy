@@ -30,8 +30,9 @@ import stat
 import sys
 
 from .. import errors, osutils
+from ..osutils import (is_inside, is_inside_any, parent_directories, pathjoin,
+                       splitpath)
 from .dirstate import DirState, DirstateCorrupt
-from ..osutils import parent_directories, pathjoin, splitpath, is_inside_any, is_inside
 from .inventorytree import InventoryTreeChange
 
 
@@ -122,17 +123,9 @@ cdef extern from "string.h":
     void *memchr(void *s, int c, size_t len)
     int memcmp(void *b1, void *b2, size_t len)
 
-from ._str_helpers cimport (
-    _my_memrchr,
-    safe_string_from_size,
-    )
-
-from ._static_tuple_c cimport (
-    import_static_tuple_c,
-    StaticTuple,
-    StaticTuple_New,
-    StaticTuple_SET_ITEM
-    )
+from ._static_tuple_c cimport (StaticTuple, StaticTuple_New,
+                               StaticTuple_SET_ITEM, import_static_tuple_c)
+from ._str_helpers cimport _my_memrchr, safe_string_from_size
 
 import_static_tuple_c()
 

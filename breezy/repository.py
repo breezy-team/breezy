@@ -16,9 +16,8 @@
 
 __docformat__ = "google"
 
-from typing import List, Type, TYPE_CHECKING
-
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import time
 
@@ -32,19 +31,13 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from . import (
-    controldir,
-    errors,
-    registry,
-    ui,
-    )
+from . import controldir, errors, registry, ui
 from .decorators import only_raises
 from .inter import InterObject
-from .lock import _RelockDebugMixin, LogicalLockResult
-from .trace import (
-    log_exception_quietly, note, mutter, mutter_callsite, warning)
+from .lock import LogicalLockResult, _RelockDebugMixin
 from .revisiontree import RevisionTree
-
+from .trace import (log_exception_quietly, mutter, mutter_callsite, note,
+                    warning)
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
@@ -931,6 +924,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           children are included.
         """
         from .tree import InterTree
+
         # Get the revision-ids of interest
         required_trees = set()
         for revision in revisions:
@@ -1449,94 +1443,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         params = RepoInitHookParams(repository, self, controldir, shared)
         for hook in hooks:
             hook(params)
-
-
-# formats which have no format string are not discoverable or independently
-# creatable on disk, so are not registered in format_registry.  They're
-# all in breezy.bzr.knitreponow.  When an instance of one of these is
-# needed, it's constructed directly by the ControlDir.  Non-native formats where
-# the repository is not separately opened are similar.
-
-format_registry.register_lazy(
-    b'Bazaar-NG Knit Repository Format 1',
-    'breezy.bzr.knitrepo',
-    'RepositoryFormatKnit1',
-    )
-
-format_registry.register_lazy(
-    b'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
-    'breezy.bzr.knitrepo',
-    'RepositoryFormatKnit3',
-    )
-
-format_registry.register_lazy(
-    b'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
-    'breezy.bzr.knitrepo',
-    'RepositoryFormatKnit4',
-    )
-
-# Pack-based formats. There is one format for pre-subtrees, and one for
-# post-subtrees to allow ease of testing.
-# NOTE: These are experimental in 0.92. Stable in 1.0 and above
-format_registry.register_lazy(
-    b'Bazaar pack repository format 1 (needs bzr 0.92)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack1',
-    )
-format_registry.register_lazy(
-    b'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack3',
-    )
-format_registry.register_lazy(
-    b'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack4',
-    )
-format_registry.register_lazy(
-    b'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack5',
-    )
-format_registry.register_lazy(
-    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack5RichRoot',
-    )
-format_registry.register_lazy(
-    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack5RichRootBroken',
-    )
-format_registry.register_lazy(
-    b'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack6',
-    )
-format_registry.register_lazy(
-    b'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatKnitPack6RichRoot',
-    )
-format_registry.register_lazy(
-    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
-    'breezy.bzr.groupcompress_repo',
-    'RepositoryFormat2a',
-    )
-
-# Development formats.
-# Check their docstrings to see if/when they are obsolete.
-format_registry.register_lazy(
-    (b"Bazaar development format 2 with subtree support "
-        b"(needs bzr.dev from before 1.8)\n"),
-    'breezy.bzr.knitpack_repo',
-    'RepositoryFormatPackDevelopment2Subtree',
-    )
-format_registry.register_lazy(
-    b'Bazaar development format 8\n',
-    'breezy.bzr.groupcompress_repo',
-    'RepositoryFormat2aSubtree',
-    )
 
 
 class InterRepository(InterObject[Repository]):

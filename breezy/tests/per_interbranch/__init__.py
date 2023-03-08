@@ -23,20 +23,11 @@ Specific tests for individual formats are in the tests for the formats
 itself rather than in tests/per_interbranch/*.py.
 """
 
-from typing import List, Any
+from typing import Any, List
 
-
-from breezy import (
-    branchbuilder,
-    )
-from breezy.branch import (
-    GenericInterBranch,
-    InterBranch,
-    )
-from breezy.tests import (
-    TestCaseWithTransport,
-    multiply_tests,
-    )
+from breezy import branchbuilder
+from breezy.branch import GenericInterBranch, InterBranch
+from breezy.tests import TestCaseWithTransport, multiply_tests
 
 
 def make_scenarios(test_list):

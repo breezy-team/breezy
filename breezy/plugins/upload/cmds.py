@@ -16,14 +16,8 @@
 
 """bzr-upload command implementations."""
 
-from ... import (
-    commands,
-    config,
-    errors,
-    lazy_import,
-    option,
-    osutils,
-    )
+from ... import commands, config, errors, lazy_import, option, osutils
+
 lazy_import.lazy_import(globals(), """
 import stat
 

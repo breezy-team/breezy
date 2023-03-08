@@ -24,15 +24,8 @@ run.
 """
 
 from breezy.controldir import ControlDirFormat
-from breezy.tests import (
-    default_transport,
-    multiply_tests,
-    test_server,
-    )
-from breezy.tests.per_controldir import (
-    TestCaseWithControlDir,
-    make_scenarios,
-    )
+from breezy.tests import default_transport, multiply_tests, test_server
+from breezy.tests.per_controldir import TestCaseWithControlDir, make_scenarios
 from breezy.transport import memory
 
 

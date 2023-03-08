@@ -17,12 +17,7 @@
 
 """Tests of bound branches (binding, unbinding, commit, etc) command."""
 
-from breezy import (
-    branch,
-    controldir,
-    errors,
-    tests,
-    )
+from breezy import branch, controldir, errors, tests
 from breezy.tests import script
 
 

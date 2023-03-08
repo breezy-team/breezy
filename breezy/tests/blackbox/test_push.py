@@ -19,30 +19,11 @@
 
 import re
 
-from breezy import (
-    branch,
-    controldir,
-    directory_service,
-    errors,
-    osutils,
-    tests,
-    transport,
-    uncommit,
-    urlutils,
-    workingtree
-    )
-from breezy.bzr import (
-    bzrdir,
-    )
-from breezy.bzr import knitrepo
-from breezy.tests import (
-    http_server,
-    scenarios,
-    script,
-    test_foreign,
-    )
+from breezy import (branch, controldir, directory_service, errors, osutils,
+                    tests, transport, uncommit, urlutils, workingtree)
+from breezy.bzr import bzrdir, knitrepo
+from breezy.tests import http_server, scenarios, script, test_foreign
 from breezy.transport import memory
-
 
 load_tests = scenarios.load_tests_apply_scenarios
 

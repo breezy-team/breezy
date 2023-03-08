@@ -19,13 +19,13 @@
 
 """build_mo command for setup.py"""
 
+import os
+import re
 from distutils import log
 from distutils.core import Command
 from distutils.dep_util import newer
 from distutils.spawn import find_executable
-import os
-import re
-from typing import Optional, List
+from typing import List, Optional
 
 
 class build_mo(Command):

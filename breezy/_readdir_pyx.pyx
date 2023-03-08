@@ -22,6 +22,7 @@
 import os
 import sys
 
+
 cdef extern from "python-compat.h":
     pass
 
@@ -167,6 +168,7 @@ cdef class _Stat:
 
 
 from . import osutils
+
 
 cdef object _safe_utf8
 _safe_utf8 = osutils.safe_utf8

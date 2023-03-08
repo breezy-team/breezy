@@ -16,9 +16,7 @@
 
 import io
 
-from .. import (
-    ui,
-)
+from .. import ui
 from ..ui import text as ui_text
 
 

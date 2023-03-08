@@ -16,10 +16,11 @@
 
 """Logic to create commit templates."""
 
+import re
+
 import patiencediff
 
 from ... import bugtracker, osutils
-import re
 
 _BUG_MATCH = re.compile(r'lp:(\d+)')
 

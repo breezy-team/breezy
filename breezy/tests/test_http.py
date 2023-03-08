@@ -23,54 +23,26 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: Should be renamed to breezy.transport.http.tests?
 # TODO: What about renaming to breezy.tests.transport.http ?
 
-from http.client import UnknownProtocol, parse_headers
-from http.server import SimpleHTTPRequestHandler
 import io
 import socket
 import sys
 import threading
+from http.client import UnknownProtocol, parse_headers
+from http.server import SimpleHTTPRequestHandler
 
 import breezy
-from .. import (
-    config,
-    controldir,
-    debug,
-    errors,
-    osutils,
-    tests,
-    trace,
-    transport,
-    ui,
-    urlutils,
-    )
-from ..bzr import (
-    remote as _mod_remote,
-    )
-from . import (
-    features,
-    http_server,
-    http_utils,
-    test_server,
-    )
-from .scenarios import (
-    load_tests_apply_scenarios,
-    multiply_scenarios,
-    )
-from ..transport import (
-    remote,
-    )
-from ..transport.http import urllib
-from ..transport.http.urllib import (
-    AbstractAuthHandler,
-    BasicAuthHandler,
-    HttpTransport,
-    HTTPAuthHandler,
-    HTTPConnection,
-    HTTPSConnection,
-    ProxyHandler,
-    Request,
-    )
 
+from .. import (config, controldir, debug, errors, osutils, tests, trace,
+                transport, ui, urlutils)
+from ..bzr import remote as _mod_remote
+from ..transport import remote
+from ..transport.http import urllib
+from ..transport.http.urllib import (AbstractAuthHandler, BasicAuthHandler,
+                                     HTTPAuthHandler, HTTPConnection,
+                                     HTTPSConnection, HttpTransport,
+                                     ProxyHandler, Request)
+from . import features, http_server, http_utils, test_server
+from .scenarios import load_tests_apply_scenarios, multiply_scenarios
 
 load_tests = load_tests_apply_scenarios
 
@@ -133,9 +105,7 @@ def vary_by_http_activity():
         # (like allowing them in a test specific authentication.conf for
         # example), we need some specialized urllib transport for tests.
         # -- vila 2012-01-20
-        from . import (
-            ssl_certs,
-            )
+        from . import ssl_certs
 
         class HTTPS_transport(HttpTransport):
 

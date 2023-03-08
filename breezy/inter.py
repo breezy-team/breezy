@@ -16,7 +16,7 @@
 
 """Inter-object utility class."""
 
-from typing import Generic, TypeVar, List, Type
+from typing import Generic, List, Type, TypeVar
 
 from .errors import BzrError
 from .lock import LogicalLockResult

@@ -16,10 +16,7 @@
 
 """Tests that an enabled view is reported and impacts expected commands."""
 
-from breezy import (
-    osutils,
-    tests,
-    )
+from breezy import osutils, tests
 
 
 class TestViewFileOperations(tests.TestCaseWithTransport):

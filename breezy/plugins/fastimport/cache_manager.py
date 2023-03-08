@@ -21,16 +21,11 @@ import shutil
 import tempfile
 import weakref
 
+from fastimport.reftracker import RefTracker
+
 from ... import lru_cache, trace
-from . import (
-    branch_mapper,
-    )
-from fastimport.reftracker import (
-    RefTracker,
-    )
-from .helpers import (
-    single_plural,
-    )
+from . import branch_mapper
+from .helpers import single_plural
 
 
 class _Cleanup:

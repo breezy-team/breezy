@@ -17,10 +17,7 @@
 """Test the git revision specifiers."""
 
 from ...tests import TestCase
-
-from ..revspec import (
-    valid_git_sha1,
-    )
+from ..revspec import valid_git_sha1
 
 
 class Sha1ValidTests(TestCase):

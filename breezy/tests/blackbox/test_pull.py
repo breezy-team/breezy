@@ -20,24 +20,11 @@
 import os
 import sys
 
-from breezy import (
-    branch,
-    debug,
-    osutils,
-    tests,
-    uncommit,
-    urlutils,
-    workingtree,
-    )
-from breezy.bzr import (
-    remote,
-    )
-
+from breezy import (branch, debug, osutils, tests, uncommit, urlutils,
+                    workingtree)
+from breezy.bzr import remote
 from breezy.directory_service import directories
-from breezy.tests import (
-    fixtures,
-    script,
-    )
+from breezy.tests import fixtures, script
 
 
 class TestPull(tests.TestCaseWithTransport):
@@ -275,6 +262,7 @@ class TestPull(tests.TestCaseWithTransport):
 
     def test_pull_bundle(self):
         from breezy.bzr.testament import Testament
+
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree('branch_a')
         with open('branch_a/a', 'wb') as f:

@@ -17,20 +17,10 @@
 
 """Upgrading revisions made with older versions of the mapping."""
 
-from ... import (
-    osutils,
-    trace,
-    ui,
-    )
-from ...errors import (
-    BzrError,
-    )
-from .rebase import (
-    generate_transpose_plan,
-    CommitBuilderRevisionRewriter,
-    rebase,
-    rebase_todo,
-    )
+from ... import osutils, trace, ui
+from ...errors import BzrError
+from .rebase import (CommitBuilderRevisionRewriter, generate_transpose_plan,
+                     rebase, rebase_todo)
 
 
 class UpgradeChangesContent(BzrError):

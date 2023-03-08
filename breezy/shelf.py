@@ -21,6 +21,7 @@ import fastbencode as bencode
 
 from . import errors
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     merge,
@@ -274,8 +275,8 @@ class ShelfCreator:
         target_lines = self.target_tree.get_file_lines(target_path)
         work_path = self.work_tree.id2path(file_id)
         work_lines = self.work_tree.get_file_lines(work_path)
-        from merge3 import Merge3
         import patiencediff
+        from merge3 import Merge3
         return Merge3(
             new_lines, target_lines, work_lines,
             sequence_matcher=patiencediff.PatienceSequenceMatcher,

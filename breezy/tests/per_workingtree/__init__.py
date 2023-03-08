@@ -22,17 +22,9 @@ Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/per_workingtree/*.py.
 """
 
-from breezy import (
-    branchbuilder,
-    tests,
-    transport,
-    workingtree,
-    )
+from breezy import branchbuilder, tests, transport, workingtree
+from breezy.tests import per_controldir, test_server
 from breezy.transport import memory
-from breezy.tests import (
-    per_controldir,
-    test_server,
-    )
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats,

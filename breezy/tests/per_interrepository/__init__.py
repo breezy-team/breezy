@@ -26,28 +26,13 @@ rather than in tests/per_interrepository/*.py.
 """
 
 
-from breezy import (
-    pyutils,
-    transport,
-    )
-from breezy.errors import (
-    UninitializableFormat,
-    )
-
-from breezy.repository import (
-    format_registry,
-    InterRepository,
-    )
-from breezy.tests import (
-    TestSkipped,
-    default_transport,
-    multiply_tests,
-    )
+from breezy import pyutils, transport
+from breezy.bzr.vf_repository import InterDifferingSerializer
+from breezy.errors import UninitializableFormat
+from breezy.repository import InterRepository, format_registry
+from breezy.tests import TestSkipped, default_transport, multiply_tests
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import FileExists
-from breezy.bzr.vf_repository import (
-    InterDifferingSerializer,
-    )
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -73,11 +58,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
-    from breezy.bzr import (
-        groupcompress_repo,
-        knitrepo,
-        knitpack_repo,
-        )
+    from breezy.bzr import groupcompress_repo, knitpack_repo, knitrepo
     result = []
 
     def add_combo(interrepo_cls, from_format, to_format, extra_setup=None,

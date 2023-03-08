@@ -16,21 +16,13 @@
 
 """A convenience class around smtplib."""
 
-from email.utils import getaddresses, parseaddr
-
 import errno
 import smtplib
 import socket
+from email.utils import getaddresses, parseaddr
 
-from . import (
-    config,
-    osutils,
-    )
-from .errors import (
-    BzrError,
-    InternalBzrError,
-    )
-
+from . import config, osutils
+from .errors import BzrError, InternalBzrError
 
 smtp_password = config.Option('smtp_password', default=None,
                               help='''\

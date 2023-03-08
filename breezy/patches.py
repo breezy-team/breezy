@@ -15,14 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from .errors import (
-    BzrError,
-    )
-
 import os
 import re
-from typing import List, Optional, Iterator
+from typing import Iterator, List, Optional
 
+from .errors import BzrError
 
 binary_files_re = b'Binary files (.*) and (.*) differ\n'
 
@@ -601,6 +598,7 @@ def apply_patches(tt, patches, prefix=1):
         return '/'.join(p.split('/')[1:])
 
     from breezy.bzr.generate_ids import gen_file_id
+
     # TODO(jelmer): Extract and set mode
     for patch in patches:
         if patch.oldname == b'/dev/null':

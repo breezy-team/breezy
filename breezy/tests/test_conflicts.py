@@ -15,23 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from typing import List, Tuple, Dict, Any, Callable, Type
+from typing import Any, Callable, Dict, List, Tuple, Type
 
-from .. import (
-    conflicts,
-    errors,
-    option,
-    osutils,
-    tests,
-    transform,
-    )
-from ..workingtree import WorkingTree
+from .. import conflicts, errors, option, osutils, tests, transform
 from ..bzr import conflicts as bzr_conflicts
-from . import (
-    script,
-    scenarios,
-    )
-
+from ..workingtree import WorkingTree
+from . import scenarios, script
 
 load_tests = scenarios.load_tests_apply_scenarios
 

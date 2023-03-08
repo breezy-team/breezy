@@ -16,73 +16,34 @@
 
 import codecs
 import errno
-from io import BytesIO, StringIO
 import os
 import sys
 import time
+from io import BytesIO, StringIO
 
 import fastbencode as bencode
 
-from .. import (
-    filters,
-    osutils,
-    revision as _mod_revision,
-    rules,
-    tests,
-    trace,
-    transform,
-    urlutils,
-    )
-from ..bzr import (
-    generate_ids,
-    )
-from ..bzr.conflicts import (
-    DeletingParent,
-    DuplicateEntry,
-    DuplicateID,
-    MissingParent,
-    NonDirectoryParent,
-    ParentLoop,
-    UnversionedParent,
-)
+from .. import filters, osutils
+from .. import revision as _mod_revision
+from .. import rules, tests, trace, transform, urlutils
+from ..bzr import generate_ids
+from ..bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
+                             MissingParent, NonDirectoryParent, ParentLoop,
+                             UnversionedParent)
 from ..controldir import ControlDir
 from ..diff import show_diff_trees
-from ..errors import (
-    DuplicateKey,
-    ExistingLimbo,
-    ExistingPendingDeletion,
-    ImmortalPendingDeletion,
-    LockError,
-    StrictCommitFailed,
-)
-from ..osutils import (
-    file_kind,
-    pathjoin,
-)
+from ..errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
+                      ImmortalPendingDeletion, LockError, StrictCommitFailed)
 from ..merge import Merge3Merger, Merger
 from ..mutabletree import MutableTree
-from . import (
-    features,
-    TestCaseInTempDir,
-    TestSkipped,
-    )
-from .features import (
-    HardlinkFeature,
-    SymlinkFeature,
-    )
+from ..osutils import file_kind, pathjoin
+from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
+                         MalformedTransform, NoFinalPath, ReusingTransform,
+                         TransformRenameFailed, _FileMover, create_from_tree,
+                         resolve_conflicts)
 from ..transport import FileExists
-from ..transform import (
-    create_from_tree,
-    _FileMover,
-    FinalPaths,
-    resolve_conflicts,
-    ROOT_PARENT,
-    ImmortalLimbo,
-    MalformedTransform,
-    NoFinalPath,
-    ReusingTransform,
-    TransformRenameFailed,
-)
+from . import TestCaseInTempDir, TestSkipped, features
+from .features import HardlinkFeature, SymlinkFeature
 
 
 class TransformGroup:

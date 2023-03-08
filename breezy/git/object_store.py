@@ -17,60 +17,24 @@
 
 """Map from Git sha's to Bazaar objects."""
 
-from typing import Iterator, List, Dict, Iterable
-
-from dulwich.objects import (
-    ShaFile,
-    Blob,
-    Commit,
-    Tree,
-    sha_to_hex,
-    ZERO_SHA,
-    ObjectID,
-    )
-from dulwich.object_store import (
-    BaseObjectStore,
-    )
-from dulwich.pack import (
-    pack_objects_to_data,
-    PackData,
-    Pack,
-    )
-
-from .. import (
-    errors,
-    lru_cache,
-    trace,
-    osutils,
-    ui,
-    )
-from ..lock import LogicalLockResult
-from ..revision import (
-    NULL_REVISION,
-    )
-from ..tree import InterTree
-from ..bzr.testament import (
-    StrictTestament3,
-    )
-
-from .cache import (
-    from_repository as cache_from_repository,
-    )
-from .mapping import (
-    default_mapping,
-    encode_git_path,
-    entry_mode,
-    extract_unusual_modes,
-    mapping_registry,
-    symlink_to_blob,
-    )
-from .unpeel_map import (
-    UnpeelMap,
-    )
-
 import posixpath
 import stat
+from typing import Dict, Iterable, Iterator, List
 
+from dulwich.object_store import BaseObjectStore
+from dulwich.objects import (ZERO_SHA, Blob, Commit, ObjectID, ShaFile, Tree,
+                             sha_to_hex)
+from dulwich.pack import Pack, PackData, pack_objects_to_data
+
+from .. import errors, lru_cache, osutils, trace, ui
+from ..bzr.testament import StrictTestament3
+from ..lock import LogicalLockResult
+from ..revision import NULL_REVISION
+from ..tree import InterTree
+from .cache import from_repository as cache_from_repository
+from .mapping import (default_mapping, encode_git_path, entry_mode,
+                      extract_unusual_modes, mapping_registry, symlink_to_blob)
+from .unpeel_map import UnpeelMap
 
 BANNED_FILENAMES = ['.git']
 
@@ -813,8 +777,8 @@ class BazaarObjectStore(BaseObjectStore):
                             seen.add(obj.id)
 
     def add_thin_pack(self):
-        import tempfile
         import os
+        import tempfile
         fd, path = tempfile.mkstemp(suffix=".pack")
         f = os.fdopen(fd, 'wb')
 

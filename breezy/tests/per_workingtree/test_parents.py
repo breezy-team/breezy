@@ -16,29 +16,18 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-from io import BytesIO
 import os
+from io import BytesIO
 
-from ... import (
-    errors,
-    revision as _mod_revision,
-    )
-from ...bzr.inventory import (
-    Inventory,
-    InventoryFile,
-    InventoryDirectory,
-    InventoryLink,
-    )
-from ...bzr.inventorytree import (
-    InventoryRevisionTree,
-    InventoryTree,
-    )
+from ... import errors
+from ... import revision as _mod_revision
+from ...bzr.inventory import (Inventory, InventoryDirectory, InventoryFile,
+                              InventoryLink)
+from ...bzr.inventorytree import InventoryRevisionTree, InventoryTree
 from ...tests import TestNotApplicable
-from ..per_workingtree import TestCaseWithWorkingTree
-from .. import (
-    features,
-    )
 from ...uncommit import uncommit
+from .. import features
+from ..per_workingtree import TestCaseWithWorkingTree
 
 
 class TestParents(TestCaseWithWorkingTree):

@@ -17,11 +17,8 @@
 
 import os
 
-
 from breezy import tests
-from breezy.tests import (
-    features,
-    )
+from breezy.tests import features
 
 
 class TestTreeShape(tests.TestCaseWithTransport):

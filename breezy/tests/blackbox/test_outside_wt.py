@@ -20,12 +20,7 @@
 import os
 import tempfile
 
-from breezy import (
-    osutils,
-    tests,
-    transport,
-    urlutils,
-    )
+from breezy import osutils, tests, transport, urlutils
 
 
 class TestOutsideWT(tests.ChrootedTestCase):

@@ -19,16 +19,11 @@
 
 import os
 
-from ... import (
-    osutils,
-    tests,
-    )
-from .. import KnownFailure
+from ... import osutils, tests
 from ...osutils import canonical_relpath, pathjoin
+from .. import KnownFailure
+from ..features import CaseInsCasePresFilenameFeature
 from ..script import run_script
-from ..features import (
-    CaseInsCasePresFilenameFeature,
-    )
 
 
 class TestCICPBase(tests.TestCaseWithTransport):

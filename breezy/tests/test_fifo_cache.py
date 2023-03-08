@@ -16,10 +16,7 @@
 
 """Tests for the fifo_cache module."""
 
-from .. import (
-    fifo_cache,
-    tests,
-    )
+from .. import fifo_cache, tests
 
 
 class TestFIFOCache(tests.TestCase):

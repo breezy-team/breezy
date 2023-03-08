@@ -18,10 +18,7 @@ import os
 import sys
 import tempfile
 
-from .. import (
-    mergetools,
-    tests
-)
+from .. import mergetools, tests
 
 
 class TestFilenameSubstitution(tests.TestCaseInTempDir):

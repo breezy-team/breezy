@@ -18,7 +18,6 @@
 
 from breezy import errors
 from breezy.tests import TestNotApplicable
-
 from breezy.tests.per_branch import TestCaseWithBranch
 
 

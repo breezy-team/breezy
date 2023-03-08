@@ -18,15 +18,11 @@ import errno
 import os
 import shutil
 
-from . import (
-    controldir,
-    errors,
-    ui,
-    )
+from . import controldir, errors, ui
+from .i18n import gettext
 from .osutils import isdir
 from .trace import note
 from .workingtree import WorkingTree
-from .i18n import gettext
 
 
 def is_detritus(subp):

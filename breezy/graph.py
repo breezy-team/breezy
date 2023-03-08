@@ -16,13 +16,7 @@
 
 import time
 
-from . import (
-    debug,
-    errors,
-    osutils,
-    revision,
-    trace,
-    )
+from . import debug, errors, osutils, revision, trace
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 

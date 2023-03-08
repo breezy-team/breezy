@@ -19,13 +19,9 @@
 Currently only tells the user that Mercurial is not supported.
 """
 
-from ... import (
-    controldir,
-    errors,
-    transport as _mod_transport,
-    )
-
 from ... import version_info  # noqa: F401
+from ... import controldir, errors
+from ... import transport as _mod_transport
 
 
 class MercurialUnsupportedError(errors.UnsupportedVcs):

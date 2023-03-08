@@ -17,13 +17,7 @@
 import os
 import smtplib
 
-from breezy import (
-    gpg,
-    merge_directive,
-    tests,
-    workingtree,
-    )
-
+from breezy import gpg, merge_directive, tests, workingtree
 
 EMAIL1 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: bar

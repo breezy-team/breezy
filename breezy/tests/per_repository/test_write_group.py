@@ -16,13 +16,8 @@
 
 """Tests for repository write groups."""
 
-from breezy import (
-    errors,
-    )
-from breezy.tests import (
-    per_repository,
-    test_server,
-    )
+from breezy import errors
+from breezy.tests import per_repository, test_server
 from breezy.transport import memory
 
 

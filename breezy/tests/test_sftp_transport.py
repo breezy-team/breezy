@@ -20,28 +20,16 @@ import socket
 import sys
 import time
 
-from breezy import (
-    config,
-    controldir,
-    errors,
-    tests,
-    transport as _mod_transport,
-    ui,
-    )
-from breezy.osutils import (
-    lexists,
-    )
-from breezy.tests import (
-    features,
-    TestCaseWithTransport,
-    TestCase,
-    TestSkipped,
-    )
+from breezy import config, controldir, errors, tests
+from breezy import transport as _mod_transport
+from breezy import ui
+from breezy.osutils import lexists
+from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
 from breezy.tests.http_server import HttpServer
 
 if features.paramiko.available():
-    from breezy.transport import sftp as _mod_sftp
     from breezy.tests import stub_sftp
+    from breezy.transport import sftp as _mod_sftp
 
 
 def set_test_transport_to_sftp(testcase):
@@ -169,6 +157,7 @@ class SFTPNonServerTest(TestCase):
     def test_get_paramiko_vendor(self):
         """Test that if no 'ssh' is available we get builtin paramiko"""
         from breezy.transport import ssh
+
         # set '.' as the only location in the path, forcing no 'ssh' to exist
         self.overrideAttr(ssh, '_ssh_vendor_manager')
         self.overrideEnv('PATH', '.')

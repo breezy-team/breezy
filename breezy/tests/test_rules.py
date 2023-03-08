@@ -18,10 +18,7 @@
 
 import sys
 
-from breezy import (
-    rules,
-    tests,
-    )
+from breezy import rules, tests
 
 
 class TestErrors(tests.TestCase):

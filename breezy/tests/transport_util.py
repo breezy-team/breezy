@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from ..transport import Transport
-
 # SFTPTransport is the only bundled transport that properly counts connections
 # at the moment.
 from . import test_sftp_transport

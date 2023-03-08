@@ -17,14 +17,9 @@
 
 """Black-box tests for brz config."""
 
-from ... import (
-    config,
-    tests,
-    )
-from .. import (
-    script,
-    test_config as _t_config,
-    )
+from ... import config, tests
+from .. import script
+from .. import test_config as _t_config
 
 
 class TestWithoutConfig(tests.TestCaseWithTransport):

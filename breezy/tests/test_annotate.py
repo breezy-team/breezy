@@ -19,10 +19,7 @@
 import codecs
 from io import BytesIO, StringIO
 
-from .. import (
-    annotate,
-    tests,
-    )
+from .. import annotate, tests
 from .ui_testing import StringIOWithEncoding
 
 

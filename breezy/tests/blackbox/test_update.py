@@ -19,15 +19,8 @@
 
 import os
 
-from breezy import (
-    branch,
-    osutils,
-    tests,
-    workingtree,
-    )
-from breezy.bzr import (
-    bzrdir,
-    )
+from breezy import branch, osutils, tests, workingtree
+from breezy.bzr import bzrdir
 from breezy.tests.script import ScriptRunner
 
 

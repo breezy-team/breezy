@@ -22,15 +22,12 @@ responses.
 """
 
 import cgi
-from io import BytesIO
-import os
-import http.client as http_client
 import email.utils as email_utils
+import http.client as http_client
+import os
+from io import BytesIO
 
-from ... import (
-    errors,
-    osutils,
-    )
+from ... import errors, osutils
 
 
 class ResponseFile:

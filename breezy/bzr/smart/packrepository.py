@@ -16,14 +16,8 @@
 
 """Server-side pack repository related request implmentations."""
 
-from .request import (
-    SuccessfulSmartServerResponse,
-    )
-
-
-from .repository import (
-    SmartServerRepositoryRequest,
-    )
+from .repository import SmartServerRepositoryRequest
+from .request import SuccessfulSmartServerResponse
 
 
 class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):

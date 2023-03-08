@@ -16,10 +16,7 @@
 
 """Tests of the WorkingTree.unversion API."""
 
-from breezy import (
-    errors,
-    transport,
-    )
+from breezy import errors, transport
 from breezy.tests.matchers import HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 

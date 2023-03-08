@@ -5,6 +5,58 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.3.3
+#########
+
+:3.3.3: UNRELEASED
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+* Drop support for the ubuntu: and debianlp: aliases.
+  These imports have long been broken.
+  (Jelmer Vernooĳ)
+
+brz 3.3.2
+#########
+
+:3.3.2: 2023-01-21
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance
+   or memory usage, or better results.
+
+* Update Git code to use newer Dulwich APIs for pack generation,
+  significantly improving performance. (Jelmer Vernooĳ)
+
+* gitlab: Support URL schemes https, http. (Jelmer Vernooĳ)
+
+* Bundle the webdav plugin. (Jelmer Vernooĳ)
+
+* Add supports_auto_merge setting. (Jelmer Vernooĳ)
+
+* Add --auto argument for "brz propose". 
+  (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+* Fix anonymous access of lp: URLs. (Jelmer Vernooĳ, #2000806)
+
+* gitlab: Handle GitLab consistently returning 500 when updating
+  description in some versions. (Jelmer Vernooĳ)
+
+* github: Support multiple pages when enumerating forks.
+  (Jelmer Vernooĳ)
+
+
 brz 3.3.1
 #########
 

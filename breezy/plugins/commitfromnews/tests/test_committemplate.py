@@ -16,12 +16,9 @@
 
 """Tests for the commit template creation."""
 
-from ... import commitfromnews
-from .... import (
-    config,
-    msgeditor,
-    )
+from .... import config, msgeditor
 from ....tests import TestCaseWithTransport
+from ... import commitfromnews
 
 INITIAL_NEWS_CONTENT = b"""----------------------------
 commitfromnews release notes

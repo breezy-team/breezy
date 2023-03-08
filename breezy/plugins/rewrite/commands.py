@@ -16,33 +16,17 @@
 
 """Bazaar command-line subcommands."""
 
-from ...commands import (
-    Command,
-    display_command,
-    )
-from ...errors import (
-    CommandError,
-    ConflictsInTree,
-    NoWorkingTree,
-    UncommittedChanges,
-    )
-from ...option import (
-    Option,
-    )
-from ...trace import (
-    note,
-    )
-from ...transport import (
-    NoSuchFile,
-    )
-
+from ...commands import Command, display_command
+from ...errors import (CommandError, ConflictsInTree, NoWorkingTree,
+                       UncommittedChanges)
 from ...i18n import gettext
+from ...option import Option
+from ...trace import note
+from ...transport import NoSuchFile
 
 
 def finish_rebase(state, wt, replace_map, replayer):
-    from .rebase import (
-        rebase,
-        )
+    from .rebase import rebase
     try:
         # Start executing plan from current Branch.last_revision()
         rebase(wt.branch.repository, replace_map, replayer)
@@ -119,14 +103,9 @@ class cmd_rebase(Command):
         from ...branch import Branch
         from ...revisionspec import RevisionSpec
         from ...workingtree import WorkingTree
-        from .rebase import (
-            generate_simple_plan,
-            rebase,
-            RebaseState1,
-            WorkingTreeRevisionRewriter,
-            regenerate_default_revid,
-            rebase_todo,
-            )
+        from .rebase import (RebaseState1, WorkingTreeRevisionRewriter,
+                             generate_simple_plan, rebase, rebase_todo,
+                             regenerate_default_revid)
         if revision is not None and pending_merges:
             raise CommandError(gettext(
                 "--revision and --pending-merges are mutually exclusive"))
@@ -248,11 +227,8 @@ class cmd_rebase_abort(Command):
 
     @display_command
     def run(self, directory="."):
-        from .rebase import (
-            RebaseState1,
-            complete_revert,
-            )
         from ...workingtree import WorkingTree
+        from .rebase import RebaseState1, complete_revert
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         try:
@@ -279,11 +255,8 @@ class cmd_rebase_continue(Command):
 
     @display_command
     def run(self, merge_type=None, directory="."):
-        from .rebase import (
-            RebaseState1,
-            WorkingTreeRevisionRewriter,
-            )
         from ...workingtree import WorkingTree
+        from .rebase import RebaseState1, WorkingTreeRevisionRewriter
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         try:
@@ -323,11 +296,8 @@ class cmd_rebase_todo(Command):
             type=str)]
 
     def run(self, directory="."):
-        from .rebase import (
-            RebaseState1,
-            rebase_todo,
-            )
         from ...workingtree import WorkingTree
+        from .rebase import RebaseState1, rebase_todo
         wt = WorkingTree.open_containing(directory)[0]
         with wt.lock_read():
             state = RebaseState1(wt)
@@ -358,14 +328,11 @@ class cmd_replay(Command):
     hidden = True
 
     def run(self, location, revision=None, merge_type=None, directory="."):
+        from ... import ui
         from ...branch import Branch
         from ...workingtree import WorkingTree
-        from ... import ui
-        from .rebase import (
-            RebaseState1,
-            regenerate_default_revid,
-            WorkingTreeRevisionRewriter,
-            )
+        from .rebase import (RebaseState1, WorkingTreeRevisionRewriter,
+                             regenerate_default_revid)
 
         from_branch = Branch.open_containing(location)[0]
 
@@ -447,23 +414,14 @@ class cmd_rebase_foreign(Command):
         ]
 
     def run(self, new_base=None, verbose=False, idmap_file=None, directory="."):
-        from ... import (
-            urlutils,
-            )
+        from ... import urlutils
         from ...branch import Branch
+        from ...foreign import update_workingtree_fileids
         from ...workingtree import WorkingTree
-        from .pseudonyms import (
-            find_pseudonyms,
-            generate_rebase_map_from_pseudonyms,
-            pseudonyms_as_dict,
-            )
-        from .upgrade import (
-            create_deterministic_revid,
-            upgrade_branch,
-            )
-        from ...foreign import (
-            update_workingtree_fileids,
-            )
+        from .pseudonyms import (find_pseudonyms,
+                                 generate_rebase_map_from_pseudonyms,
+                                 pseudonyms_as_dict)
+        from .upgrade import create_deterministic_revid, upgrade_branch
 
         try:
             wt_to = WorkingTree.open(directory)

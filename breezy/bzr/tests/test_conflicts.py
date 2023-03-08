@@ -17,19 +17,11 @@
 
 import os
 
+from ... import tests
 from ...conflicts import resolve
-from ... import (
-    tests,
-    )
-
-from ...tests import (
-    scenarios,
-    )
+from ...tests import scenarios
 from ...tests.test_conflicts import vary_by_conflicts
-
-
 from .. import conflicts as bzr_conflicts
-
 
 load_tests = scenarios.load_tests_apply_scenarios
 

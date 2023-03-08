@@ -16,10 +16,7 @@
 
 """Tests for temporarily upgrading to a WriteLock."""
 
-from breezy import (
-    errors,
-    )
-
+from breezy import errors
 from breezy.tests.per_lock import TestCaseWithLock
 
 

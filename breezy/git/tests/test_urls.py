@@ -17,9 +17,7 @@
 """Tests for url handling."""
 
 from ...tests import TestCase
-from ..urls import (
-    git_url_to_bzr_url,
-    )
+from ..urls import git_url_to_bzr_url
 
 
 class TestConvertURL(TestCase):

@@ -16,37 +16,18 @@
 
 
 import errno
-from io import BytesIO
 import os
 import subprocess
 import sys
 import threading
+from io import BytesIO
 
-from .. import (
-    errors,
-    osutils,
-    tests,
-    transport,
-    urlutils,
-    )
-from ..transport import (
-    chroot,
-    fakenfs,
-    http,
-    local,
-    memory,
-    pathfilter,
-    readonly,
-    FileExists,
-    NoSuchFile,
-    UnsupportedProtocol,
-    )
 import breezy.transport.trace
-from . import (
-    features,
-    test_server,
-    )
 
+from .. import errors, osutils, tests, transport, urlutils
+from ..transport import (FileExists, NoSuchFile, UnsupportedProtocol, chroot,
+                         fakenfs, http, local, memory, pathfilter, readonly)
+from . import features, test_server
 
 # TODO: Should possibly split transport-specific tests into their own files.
 
@@ -569,6 +550,7 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
 
     def test_http_parameters(self):
         from breezy.tests.http_server import HttpServer
+
         # connect to '.' via http which is not listable
         server = HttpServer()
         self.start_server(server)
@@ -596,6 +578,7 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
         # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
         from breezy.tests.http_server import HttpServer
+
         # connect to '.' via http which is not listable
         server = HttpServer()
         self.start_server(server)

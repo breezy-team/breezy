@@ -27,30 +27,15 @@ import sys
 
 dulwich_minimum_version = (0, 19, 11)
 
-from .. import (  # noqa: F401
-    __version__ as breezy_version,
-    errors as brz_errors,
-    trace,
-    urlutils,
-    version_info,
-    )
-
-from ..controldir import (
-    ControlDirFormat,
-    Prober,
-    format_registry,
-    network_format_registry as controldir_network_format_registry,
-    )
-
-from ..transport import (
-    register_lazy_transport,
-    register_transport_proto,
-    transport_server_registry,
-    )
-from ..commands import (
-    plugin_cmds,
-    )
-
+from .. import __version__ as breezy_version  # noqa: F401
+from .. import errors as brz_errors
+from .. import trace, urlutils, version_info
+from ..commands import plugin_cmds
+from ..controldir import ControlDirFormat, Prober, format_registry
+from ..controldir import \
+    network_format_registry as controldir_network_format_registry
+from ..transport import (register_lazy_transport, register_transport_proto,
+                         transport_server_registry)
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
@@ -93,7 +78,8 @@ format_registry.register_lazy(
     help='Bare GIT repository (no working tree).', native=False,
     experimental=False)
 
-from ..revisionspec import (RevisionSpec_dwim, revspec_registry)
+from ..revisionspec import RevisionSpec_dwim, revspec_registry
+
 revspec_registry.register_lazy("git:", __name__ + ".revspec",
                                "RevisionSpec_git")
 RevisionSpec_dwim.append_possible_lazy_revspec(
@@ -120,10 +106,7 @@ class LocalGitProber(Prober):
         if not transport.has_any(['objects', '.git/objects', '.git']):
             raise brz_errors.NotBranchError(path=transport.base)
         lazy_check_versions()
-        from .dir import (
-            BareLocalGitControlDirFormat,
-            LocalGitControlDirFormat,
-            )
+        from .dir import BareLocalGitControlDirFormat, LocalGitControlDirFormat
         if transport.has_any(['.git/objects', '.git']):
             return LocalGitControlDirFormat()
         if transport.has('info') and transport.has('objects'):
@@ -132,10 +115,7 @@ class LocalGitProber(Prober):
 
     @classmethod
     def known_formats(cls):
-        from .dir import (
-            BareLocalGitControlDirFormat,
-            LocalGitControlDirFormat,
-            )
+        from .dir import BareLocalGitControlDirFormat, LocalGitControlDirFormat
         return [BareLocalGitControlDirFormat(), LocalGitControlDirFormat()]
 
 
@@ -193,9 +173,7 @@ class RemoteGitProber(Prober):
             from .remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
         elif not ct:
-            from .dir import (
-                BareLocalGitControlDirFormat,
-                )
+            from .dir import BareLocalGitControlDirFormat
             ret = BareLocalGitControlDirFormat()
             ret._refs_text = resp.read()
             return ret
@@ -216,10 +194,7 @@ class RemoteGitProber(Prober):
             raise brz_errors.NotBranchError(transport.base)
 
         # little ugly, but works
-        from .remote import (
-            GitSmartTransport,
-            RemoteGitControlDirFormat,
-            )
+        from .remote import GitSmartTransport, RemoteGitControlDirFormat
         if isinstance(transport, GitSmartTransport):
             return RemoteGitControlDirFormat()
         raise brz_errors.NotBranchError(path=transport.base)
@@ -281,6 +256,7 @@ def update_stanza(rev, stanza):
 
 
 from ..hooks import install_lazy_named_hook
+
 install_lazy_named_hook(
     "breezy.version_info_formats.format_rio",
     "RioVersionInfoBuilder.hooks", "revision", update_stanza,
@@ -288,7 +264,7 @@ install_lazy_named_hook(
 
 
 def rewrite_instead_of(location, purpose):
-    from dulwich.config import apply_instead_of, StackedConfig
+    from dulwich.config import StackedConfig, apply_instead_of
 
     config = StackedConfig.default()
 
@@ -296,6 +272,7 @@ def rewrite_instead_of(location, purpose):
 
 
 from ..location import hooks as location_hooks
+
 location_hooks.install_named_hook(
     "rewrite_location", rewrite_instead_of,
     "apply Git insteadOf / pushInsteadOf")
@@ -313,10 +290,10 @@ transport_server_registry.register_lazy(
     'serve_git_upload_pack',
     help='Git Smart server upload pack command. (inetd mode only)')
 
-from ..repository import (
-    format_registry as repository_format_registry,
-    network_format_registry as repository_network_format_registry,
-    )
+from ..repository import format_registry as repository_format_registry
+from ..repository import \
+    network_format_registry as repository_network_format_registry
+
 repository_network_format_registry.register_lazy(
     b'git', __name__ + '.repository', 'GitRepositoryFormat')
 
@@ -325,16 +302,14 @@ register_extra_lazy_repository_format = getattr(repository_format_registry,
 register_extra_lazy_repository_format(__name__ + '.repository',
                                       'GitRepositoryFormat')
 
-from ..branch import (
-    network_format_registry as branch_network_format_registry,
-    )
+from ..branch import network_format_registry as branch_network_format_registry
+
 branch_network_format_registry.register_lazy(
     b'git', __name__ + '.branch', 'LocalGitBranchFormat')
 
 
-from ..branch import (
-    format_registry as branch_format_registry,
-    )
+from ..branch import format_registry as branch_format_registry
+
 branch_format_registry.register_extra_lazy(
     __name__ + '.branch',
     'LocalGitBranchFormat',
@@ -345,9 +320,8 @@ branch_format_registry.register_extra_lazy(
     )
 
 
-from ..workingtree import (
-    format_registry as workingtree_format_registry,
-    )
+from ..workingtree import format_registry as workingtree_format_registry
+
 workingtree_format_registry.register_extra_lazy(
     __name__ + '.workingtree',
     'GitWorkingTreeFormat',
@@ -358,17 +332,18 @@ controldir_network_format_registry.register_lazy(
 
 
 from ..diff import format_registry as diff_format_registry
+
 diff_format_registry.register_lazy(
     'git', __name__ + '.send',
     'GitDiffTree', 'Git am-style diff format')
 
-from ..send import (
-    format_registry as send_format_registry,
-    )
+from ..send import format_registry as send_format_registry
+
 send_format_registry.register_lazy('git', __name__ + '.send',
                                    'send_git', 'Git am-style diff format')
 
 from ..directory_service import directories
+
 directories.register_lazy('github:', __name__ + '.directory',
                           'GitHubDirectory',
                           'GitHub directory.')
@@ -376,15 +351,13 @@ directories.register_lazy('git@github.com:', __name__ + '.directory',
                           'GitHubDirectory',
                           'GitHub directory.')
 
-from ..help_topics import (
-    topic_registry,
-    )
+from ..help_topics import topic_registry
+
 topic_registry.register_lazy(
     'git', __name__ + '.help', 'help_git', 'Using Bazaar with Git')
 
-from ..foreign import (
-    foreign_vcs_registry,
-    )
+from ..foreign import foreign_vcs_registry
+
 foreign_vcs_registry.register_lazy(
     "git", __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
 
@@ -450,11 +423,7 @@ install_lazy_named_hook("breezy.plugins.loggerhead.apps.branch",
                         loggerhead_git_hook, "git support")
 
 
-from ..config import (
-    option_registry,
-    Option,
-    bool_from_store,
-    )
+from ..config import Option, bool_from_store, option_registry
 
 option_registry.register(
     Option('git.http',

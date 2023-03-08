@@ -45,9 +45,9 @@ This extra metadata is stored in so-called "supplements":
   * TreeSupplement
 """
 
-from .. import osutils
-
 from io import BytesIO
+
+from .. import osutils
 
 
 class CommitSupplement:

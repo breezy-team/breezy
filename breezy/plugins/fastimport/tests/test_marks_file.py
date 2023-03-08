@@ -16,7 +16,6 @@
 """Test the marks file methods."""
 
 from .... import tests
-
 from .. import marks_file
 
 

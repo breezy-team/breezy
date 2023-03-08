@@ -6,9 +6,8 @@ Written by Alexander Belchenko, 2006
 
 import os
 
-import pywintypes   # from pywin32 (http://pywin32.sf.net)
-import win32api     # from pywin32 (http://pywin32.sf.net)
-
+import pywintypes  # from pywin32 (http://pywin32.sf.net)
+import win32api  # from pywin32 (http://pywin32.sf.net)
 
 __all__ = ['get_file_version', 'FileNotFound', 'VersionNotAvailable']
 __docformat__ = "restructuredtext"

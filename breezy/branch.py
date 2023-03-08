@@ -16,9 +16,11 @@
 
 __docformat__ = "google"
 
-from typing import Optional, Tuple, List, cast, Dict, TextIO, TYPE_CHECKING, Union
+from typing import (TYPE_CHECKING, Dict, List, Optional, TextIO, Tuple, Union,
+                    cast)
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     ui,
@@ -33,27 +35,18 @@ from breezy.bzr import (
 import contextlib
 import itertools
 
-from . import (
-    config as _mod_config,
-    debug,
-    errors,
-    revision as _mod_revision,
-    repository,
-    registry,
-    urlutils,
-    )
-from .controldir import (
-    ControlDir,
-    ControlComponent,
-    ControlComponentFormat,
-    ControlComponentFormatRegistry,
-)
+from . import config as _mod_config
+from . import debug, errors, registry, repository
+from . import revision as _mod_revision
+from . import urlutils
+from .controldir import (ControlComponent, ControlComponentFormat,
+                         ControlComponentFormatRegistry, ControlDir)
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
 from .revision import RevisionID
-from .trace import mutter, mutter_callsite, note, is_quiet, warning
-from .transport import get_transport, Transport
+from .trace import is_quiet, mutter, mutter_callsite, note, warning
+from .transport import Transport, get_transport
 
 if TYPE_CHECKING:
     from .tag import TagConflict, TagUpdates
@@ -1850,27 +1843,6 @@ BranchFormat.network_name() for more detail.
 format_registry = BranchFormatRegistry(network_format_registry)
 
 
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
-format_registry.register_lazy(
-    b"Bazaar-NG branch format 5\n", "breezy.bzr.fullhistory",
-    "BzrBranchFormat5")
-format_registry.register_lazy(
-    b"Bazaar Branch Format 6 (bzr 0.15)\n",
-    "breezy.bzr.branch", "BzrBranchFormat6")
-format_registry.register_lazy(
-    b"Bazaar Branch Format 7 (needs bzr 1.6)\n",
-    "breezy.bzr.branch", "BzrBranchFormat7")
-format_registry.register_lazy(
-    b"Bazaar Branch Format 8 (needs bzr 1.15)\n",
-    "breezy.bzr.branch", "BzrBranchFormat8")
-format_registry.register_lazy(
-    b"Bazaar-NG Branch Reference Format 1\n",
-    "breezy.bzr.branch", "BranchReferenceFormat")
-
-format_registry.set_default_key(b"Bazaar Branch Format 7 (needs bzr 1.6)\n")
-
-
 class BranchWriteLockResult(LogicalLockResult):
     """The result of write locking a branch.
 
@@ -1973,6 +1945,7 @@ class BranchPushResult(_Result):
 
     def report(self, to_file: TextIO) -> None:
         from breezy.i18n import gettext, ngettext
+
         # TODO: This function gets passed a to_file, but then
         # ignores it and calls note() instead. This is also
         # inconsistent with PullResult(), which writes to stdout.

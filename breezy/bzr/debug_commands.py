@@ -18,21 +18,11 @@
 
 from io import BytesIO
 
-from .. import (
-    errors,
-    osutils,
-    transport,
-    )
-from ..workingtree import WorkingTree
-from ..commands import (
-    Command,
-    display_command,
-    )
+from .. import errors, osutils, transport
+from ..commands import Command, display_command
 from ..option import Option
-from . import (
-    btree_index,
-    static_tuple,
-    )
+from ..workingtree import WorkingTree
+from . import btree_index, static_tuple
 
 
 class cmd_dump_btree(Command):

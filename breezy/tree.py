@@ -19,15 +19,12 @@
 
 __docformat__ = "google"
 
-from typing import List, Type, TYPE_CHECKING, Optional, Iterator, Dict, Union, cast
+from typing import (TYPE_CHECKING, Dict, Iterator, List, Optional, Type, Union,
+                    cast)
 
-from . import (
-    errors,
-    lock,
-    osutils,
-    revision as _mod_revision,
-    trace,
-    )
+from . import errors, lock, osutils
+from . import revision as _mod_revision
+from . import trace
 from .inter import InterObject
 
 

@@ -19,6 +19,7 @@ import os
 import re
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 
 from breezy import (
@@ -29,15 +30,10 @@ from breezy import (
     )
 """)
 
-from ..conflicts import (
-    Conflict as BaseConflict,
-    ConflictList as BaseConflictList,
-    )
 from .. import transport as _mod_transport
-from . import (
-    rio,
-    )
-
+from ..conflicts import Conflict as BaseConflict
+from ..conflicts import ConflictList as BaseConflictList
+from . import rio
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 

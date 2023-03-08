@@ -17,75 +17,38 @@
 
 """An adapter between a Git index and a Bazaar Working Tree"""
 
-import itertools
-from collections import defaultdict
 import errno
-from dulwich.ignore import (
-    IgnoreFilterManager,
-    )
-from dulwich.config import ConfigFile as GitConfigFile
-from dulwich.file import GitFile, FileLocked
-from dulwich.index import (
-    Index,
-    IndexEntry,
-    SHA1Writer,
-    build_index_from_tree,
-    index_entry_from_path,
-    index_entry_from_stat,
-    FLAG_STAGEMASK,
-    read_submodule_head,
-    validate_path,
-    write_index_dict,
-    )
-from dulwich.object_store import (
-    iter_tree_contents,
-    )
-from dulwich.objects import (
-    S_ISGITLINK,
-    )
+import itertools
 import os
 import posixpath
 import re
 import stat
 import sys
+from collections import defaultdict
 
-from .. import (
-    branch as _mod_branch,
-    conflicts as _mod_conflicts,
-    errors,
-    controldir as _mod_controldir,
-    globbing,
-    lock,
-    osutils,
-    revision as _mod_revision,
-    trace,
-    transport as _mod_transport,
-    tree,
-    urlutils,
-    workingtree,
-    )
-from ..decorators import (
-    only_raises,
-    )
-from ..mutabletree import (
-    BadReferenceTarget,
-    MutableTree,
-    )
+from dulwich.config import ConfigFile as GitConfigFile
+from dulwich.file import FileLocked, GitFile
+from dulwich.ignore import IgnoreFilterManager
+from dulwich.index import (FLAG_STAGEMASK, Index, IndexEntry, SHA1Writer,
+                           build_index_from_tree, index_entry_from_path,
+                           index_entry_from_stat, read_submodule_head,
+                           validate_path, write_index_dict)
+from dulwich.object_store import iter_tree_contents
+from dulwich.objects import S_ISGITLINK
 
-
-from .dir import (
-    LocalGitDir,
-    BareLocalGitControlDirFormat,
-    )
-from .tree import (
-    MutableGitIndexTree,
-    )
-from .mapping import (
-    encode_git_path,
-    decode_git_path,
-    mode_kind,
-    )
-
+from .. import branch as _mod_branch
+from .. import conflicts as _mod_conflicts
+from .. import controldir as _mod_controldir
+from .. import errors, globbing, lock, osutils
+from .. import revision as _mod_revision
+from .. import trace
+from .. import transport as _mod_transport
+from .. import tree, urlutils, workingtree
+from ..decorators import only_raises
+from ..mutabletree import BadReferenceTarget, MutableTree
+from .dir import BareLocalGitControlDirFormat, LocalGitDir
+from .mapping import decode_git_path, encode_git_path, mode_kind
+from .tree import MutableGitIndexTree
 
 CONFLICT_SUFFIXES = ['.BASE', '.OTHER', '.THIS']
 
@@ -1006,8 +969,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         If the tree is not locked, it may cause an error to be raised,
         depending on the tree implementation.
         """
-        from bisect import bisect_left
         import operator
+        from bisect import bisect_left
         disk_top = self.abspath(prefix)
         if disk_top.endswith('/'):
             disk_top = disk_top[:-1]
@@ -1194,6 +1157,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         maybe_file_parent_keys.append(parent_text_key)
             # Now we have the parents of this content
             from breezy.annotate import Annotator
+
             from .annotate import AnnotateProvider
             annotate_provider = AnnotateProvider(
                 self.branch.repository._file_change_scanner)

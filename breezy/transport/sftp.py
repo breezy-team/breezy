@@ -33,36 +33,21 @@ import sys
 import time
 import warnings
 
-from .. import (
-    config,
-    debug,
-    errors,
-    urlutils,
-    )
-from ..errors import (TransportError,
-                      LockError,
-                      PathError,
-                      ParamikoNotPresent,
-                      )
+from .. import config, debug, errors, urlutils
+from ..errors import LockError, ParamikoNotPresent, PathError, TransportError
 from ..osutils import fancy_rename
 from ..trace import mutter, warning
-from ..transport import (
-    FileFileStream,
-    FileExists,
-    NoSuchFile,
-    _file_streams,
-    ssh,
-    ConnectedTransport,
-    )
+from ..transport import (ConnectedTransport, FileExists, FileFileStream,
+                         NoSuchFile, _file_streams, ssh)
 
 try:
     import paramiko
 except ModuleNotFoundError as e:
     raise ParamikoNotPresent(e)
 else:
-    from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
+    from paramiko.sftp import (CMD_HANDLE, CMD_OPEN, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
-                               CMD_HANDLE, CMD_OPEN)
+                               SFTP_FLAG_WRITE)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
 
@@ -70,8 +55,8 @@ else:
 # GZ 2017-05-25: Some dark hackery to monkeypatch out issues with paramiko's
 # Python 3 compatibility code. Replace broken b() and asbytes() code.
 try:
-    from paramiko.py3compat import b as _bad
     from paramiko.common import asbytes as _bad_asbytes
+    from paramiko.py3compat import b as _bad
 except ImportError:
     pass
 else:

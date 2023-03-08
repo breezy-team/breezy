@@ -20,40 +20,22 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
-from io import BytesIO
 import os
 import stat
 import sys
+from io import BytesIO
 
-from .. import (
-    errors,
-    osutils,
-    pyutils,
-    tests,
-    transport as _mod_transport,
-    urlutils,
-    )
-from ..errors import (ConnectionError,
-                      PathError,
-                      TransportNotPossible,
-                      )
+from .. import errors, osutils, pyutils, tests
+from .. import transport as _mod_transport
+from .. import urlutils
+from ..errors import ConnectionError, PathError, TransportNotPossible
 from ..osutils import getcwd
-from . import (
-    TestSkipped,
-    TestNotApplicable,
-    multiply_tests,
-    )
-from . import test_server
-from .test_transport import TestTransportImplementation
-from ..transport import (
-    ConnectedTransport,
-    NoSuchFile,
-    FileExists,
-    Transport,
-    _get_transport_modules,
-    )
+from ..transport import (ConnectedTransport, FileExists, NoSuchFile, Transport,
+                         _get_transport_modules)
 from ..transport.memory import MemoryTransport
 from ..transport.remote import RemoteTransport
+from . import TestNotApplicable, TestSkipped, multiply_tests, test_server
+from .test_transport import TestTransportImplementation
 
 
 def get_transport_test_permutations(module):

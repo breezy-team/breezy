@@ -19,75 +19,30 @@
 
 
 import contextlib
-from io import BytesIO
 from collections import defaultdict
+from io import BytesIO
 from typing import Dict, Optional, Set, Tuple
 
-from dulwich.config import (
-    ConfigFile as GitConfigFile,
-    parse_submodules,
-    )
-
-from dulwich.objects import (
-    NotCommitError,
-    ZERO_SHA,
-    )
+from dulwich.config import ConfigFile as GitConfigFile
+from dulwich.config import parse_submodules
+from dulwich.objects import ZERO_SHA, NotCommitError
 from dulwich.repo import check_ref_format
 
-from .. import (
-    branch,
-    config,
-    controldir,
-    errors,
-    lock,
-    repository as _mod_repository,
-    revision,
-    trace,
-    transport,
-    urlutils,
-    )
+from .. import branch, config, controldir, errors, lock
+from .. import repository as _mod_repository
+from .. import revision, trace, transport, urlutils
 from ..foreign import ForeignBranch
-from ..revision import (
-    NULL_REVISION,
-    )
-from ..tag import (
-    Tags,
-    InterTags,
-    TagSelector,
-    TagConflict,
-    TagUpdates,
-    )
-from ..trace import (
-    is_quiet,
-    mutter,
-    warning,
-    )
-
-from .errors import (
-    NoPushSupport,
-    )
-from .mapping import (
-    encode_git_path,
-    decode_git_path,
-    )
-from .push import (
-    remote_divergence,
-    )
-from .refs import (
-    branch_name_to_ref,
-    is_tag,
-    ref_to_branch_name,
-    ref_to_tag_name,
-    tag_name_to_ref,
-    )
-from .unpeel_map import (
-    UnpeelMap,
-    )
-from .urls import (
-    git_url_to_bzr_url,
-    bzr_url_to_git_url,
-    )
-
+from ..revision import NULL_REVISION
+from ..tag import InterTags, TagConflict, Tags, TagSelector, TagUpdates
+from ..trace import is_quiet, mutter, warning
+from .errors import NoPushSupport
+from .mapping import decode_git_path, encode_git_path
+from .push import remote_divergence
+from .refs import (branch_name_to_ref, is_tag, ref_to_branch_name,
+                   ref_to_tag_name, remote_refs_dict_to_tag_refs,
+                   tag_name_to_ref)
+from .unpeel_map import UnpeelMap
+from .urls import bzr_url_to_git_url, git_url_to_bzr_url
 
 
 def _update_tip(source, target, revid, overwrite=False):
@@ -758,6 +713,7 @@ class GitBranch(ForeignBranch):
     def reconcile(self, thorough=True):
         """Make sure the data stored in this branch is consistent."""
         from ..reconcile import ReconcileResult
+
         # Nothing to do here
         return ReconcileResult()
 

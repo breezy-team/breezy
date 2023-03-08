@@ -16,18 +16,10 @@
 
 """brz upgrade logic."""
 
-from . import (
-    errors,
-    trace,
-    ui,
-    urlutils,
-    )
-from .controldir import (
-    ControlDir,
-    format_registry,
-    )
-from .i18n import gettext
+from . import errors, trace, ui, urlutils
 from .bzr.remote import RemoteBzrDir
+from .controldir import ControlDir, format_registry
+from .i18n import gettext
 
 
 class Convert:

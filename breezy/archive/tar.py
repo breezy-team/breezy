@@ -16,16 +16,13 @@
 
 """Export a tree to a tarball."""
 
-from contextlib import closing
-from io import BytesIO
 import os
 import sys
 import tarfile
+from contextlib import closing
+from io import BytesIO
 
-from .. import (
-    errors,
-    osutils,
-    )
+from .. import errors, osutils
 from ..export import _export_iter_entries
 
 

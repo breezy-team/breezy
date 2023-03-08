@@ -15,14 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+import subprocess
 import sys
 
 import breezy
 from breezy import commands, osutils, tests
-from breezy.tests import features
 from breezy.plugins.bash_completion.bashcomp import *
-
-import subprocess
+from breezy.tests import features
 
 
 class BashCompletionMixin:

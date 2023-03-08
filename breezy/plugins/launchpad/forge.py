@@ -20,29 +20,17 @@
 import re
 import shutil
 import tempfile
-from typing import Optional, List, Any
+from typing import Any, List, Optional
 
-from ...forge import (
-    Forge,
-    LabelsUnsupported,
-    MergeProposal,
-    MergeProposalBuilder,
-    MergeProposalExists,
-    UnsupportedForge,
-    TitleUnsupported,
-    AutoMergeUnsupported,
-    )
-
-from ... import (
-    branch as _mod_branch,
-    controldir,
-    errors,
-    hooks,
-    urlutils,
-    )
-from ...trace import mutter
+from ... import branch as _mod_branch
+from ... import controldir, errors, hooks, urlutils
+from ...forge import (AutoMergeUnsupported, Forge, LabelsUnsupported,
+                      MergeProposal, MergeProposalBuilder, MergeProposalExists,
+                      TitleUnsupported, UnsupportedForge)
 from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
+from ...trace import mutter
+
 lazy_import(globals(), """
 from breezy.plugins.launchpad import (
     lp_api,
@@ -51,7 +39,6 @@ from breezy.plugins.launchpad import (
 
 """)
 from ...transport import get_transport
-
 
 DEFAULT_PREFERRED_SCHEMES = ['ssh', 'http']
 
@@ -581,9 +568,9 @@ class Launchpad(Forge):
         mp = self.launchpad.load(api_url)
         return LaunchpadMergeProposal(mp)
 
-    def create_project(self, path):
+    def create_project(self, path, summary=None):
         self.launchpad.projects.new_project(
-            display_name=path, name=path, summary=path, title=path)
+            display_name=path, name=path, summary=summary, title=path)
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):

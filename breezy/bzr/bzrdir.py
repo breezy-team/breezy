@@ -27,9 +27,10 @@ objects returned.
 
 import contextlib
 import sys
-from typing import Set, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Set, cast
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
@@ -54,23 +55,10 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 """)
 
-from ..trace import (
-    mutter,
-    note,
-    warning,
-    )
-
-from .. import (
-    config,
-    controldir,
-    errors,
-    lockdir,
-    transport as _mod_transport,
-    )
-from ..transport import (
-    do_catching_redirections,
-    local,
-    )
+from .. import config, controldir, errors, lockdir
+from .. import transport as _mod_transport
+from ..trace import mutter, note, warning
+from ..transport import do_catching_redirections, local
 
 if TYPE_CHECKING:
     from .branch import BzrBranch
@@ -1328,6 +1316,7 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 pass
             else:
                 from .remote import RemoteBzrDirFormat
+
                 # TODO: lookup the local format from a server hint.
                 remote_dir_format = RemoteBzrDirFormat()
                 remote_dir_format._network_name = self.network_name()
@@ -1714,9 +1703,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __get_workingtree_format(self):
         if self._workingtree_format is None:
-            from .workingtree import (
-                format_registry as wt_format_registry,
-                )
+            from .workingtree import format_registry as wt_format_registry
             self._workingtree_format = wt_format_registry.get_default()
         return self._workingtree_format
 

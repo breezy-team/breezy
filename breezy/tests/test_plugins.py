@@ -18,21 +18,17 @@
 """Tests for plugins"""
 
 import importlib
-from io import StringIO
 import logging
 import os
 import sys
 import types
-from typing import Dict, List, Any
+from io import StringIO
+from typing import Any, Dict, List
 
 import breezy
-from .. import (
-    osutils,
-    plugin,
-    tests,
-    )
-from ..tests.features import importlib_metadata_feature
 
+from .. import osutils, plugin, tests
+from ..tests.features import importlib_metadata_feature
 
 # TODO: Write a test for plugin decoration of commands.
 
@@ -936,7 +932,7 @@ class TestLoadEnvPlugin(BaseTestPlugins):
         # check the plugin is not loaded already
         self.assertPluginUnknown('plugin')
         # write a plugin that _cannot_ fail to load.
-        from importlib.metadata import Distribution, entry_points, EntryPoint
+        from importlib.metadata import Distribution, EntryPoint, entry_points
         class DummyDistribution:
 
             def __init__(self, name, entry_points):

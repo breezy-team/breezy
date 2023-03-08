@@ -4,8 +4,9 @@
 # Author: Matt Zimmerman <mdz@canonical.com>
 #         and others
 
-from apport.hookutils import *
 import os
+
+from apport.hookutils import *
 
 brz_log = os.path.expanduser('~/.brz.log')
 dot_brz = os.path.expanduser('~/.config/breezy')

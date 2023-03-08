@@ -20,18 +20,11 @@ Bundles contain the serialized form, so changes in serialization based on
 repository effects the final bundle.
 """
 
-from breezy import (
-    merge_directive,
-    )
-from breezy.bzr import (
-    chk_map,
-    )
-
-from breezy.tests.scenarios import load_tests_apply_scenarios
+from breezy import merge_directive
+from breezy.bzr import chk_map
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository,
-    all_repository_vf_format_scenarios,
-    )
+    TestCaseWithRepository, all_repository_vf_format_scenarios)
+from breezy.tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 

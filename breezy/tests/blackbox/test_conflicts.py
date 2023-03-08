@@ -14,12 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import (
-    conflicts,
-    tests,
-    workingtree,
-    )
-from breezy.tests import script, features
+from breezy import conflicts, tests, workingtree
+from breezy.tests import features, script
 
 
 def make_tree_with_conflicts(test, this_path='this', other_path='other',

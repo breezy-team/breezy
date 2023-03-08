@@ -20,14 +20,9 @@ import time
 
 from ... import osutils
 from ...errors import BzrError
+from ...tests import TestCaseInTempDir
+from ...tests.features import OsFifoFeature
 from ..hashcache import HashCache
-from ...tests import (
-    TestCaseInTempDir,
-    )
-from ...tests.features import (
-    OsFifoFeature,
-    )
-
 
 sha1 = osutils.sha_string
 
