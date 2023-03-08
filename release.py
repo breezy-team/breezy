@@ -86,6 +86,6 @@ class SuccessReleaseMarker(object):
         if exc_type:
             if self.new_revid:
                 self.local_tree.set_last_revision(self.old_revid)
-                self.local_tree.branch.set_last_revision(self.old_revid)
+                self.local_tree.branch.generate_revision_history(self.old_revid)
                 self.local_tree.revert([self.changelog_path])
         return False

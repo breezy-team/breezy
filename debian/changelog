@@ -1,8 +1,8 @@
-breezy-debian (2.8.78) UNRELEASED; urgency=medium
+breezy-debian (2.8.78) unstable; urgency=medium
 
   * Fix latest version retrieval. Closes: #1032247
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 08 Mar 2023 20:09:16 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 08 Mar 2023 22:04:28 +0000
 
 breezy-debian (2.8.77) unstable; urgency=medium
 

@@ -16,6 +16,7 @@ dependencies = [
     "distro-info",
 ]
 dynamic = ["version"]
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://code.breezy-vcs.org/breezy-debian"
@@ -34,7 +35,6 @@ deb-new-upstream = "breezy.plugins.debian.new_upstream:main"
 deb-merge = "breezy.plugins.debian.merge_package:main"
 
 [tool.setuptools]
-"python-requires >" = "3.9"
 packages = [
     "breezy.plugins.debian",
     "breezy.plugins.debian.tests",
