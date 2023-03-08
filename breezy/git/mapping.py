@@ -463,7 +463,10 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.parent_ids = list(parents)
         unknown_extra_fields = []
         extra_lines = []
-        extra = getattr(commit, "_extra", None) or getattr(commit, "extra", None)
+        try:
+            extra = commit._extra
+        except AttributeError:
+            extra = commit.extra
         for k, v in extra:
             if k == HG_RENAME_SOURCE:
                 extra_lines.append(
