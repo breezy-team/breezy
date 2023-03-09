@@ -397,6 +397,21 @@ class TestVersionInfoYaml(VersionInfoTestCase):
         self.assertEqual(['r1', 'r3', 'r2'],
                          [r['revision'] for r in file_rev_stanza])
 
+    def test_no_wt(self):
+        wt = self.create_branch()
+        self.build_tree(['branch/a', 'branch/c'])
+        wt.add('c')
+        wt.rename_one('b', 'd')
+
+        bio = StringIO()
+        builder = YamlVersionInfoBuilder(
+            wt.branch, working_tree=None, check_for_clean=True,
+            include_file_revisions=True, revision_id=None)
+        builder.generate(bio)
+        bio.seek(0)
+        stanza = yaml.safe_load(bio)
+        self.assertEqual([], stanza['file-revisions'])
+
 
 class PythonVersionInfoTests(VersionInfoTestCase):
 
