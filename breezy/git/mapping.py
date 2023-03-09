@@ -361,7 +361,10 @@ class BzrGitMapping(foreign.VcsMapping):
                 Tag.from_string(rev.properties[propname].encode('utf-8', 'surrogateescape')))
             i += 1
             propname = 'git-mergetag-%d' % i
-        extra = getattr(commit, "_extra", None) or getattr(commit, "extra", None)
+        try:
+            extra = commit._extra
+        except AttributeError:
+            extra = commit.extra
         if 'git-extra' in rev.properties:
             for l in rev.properties['git-extra'].splitlines():
                 (k, v) = l.split(' ', 1)
