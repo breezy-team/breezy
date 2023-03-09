@@ -314,3 +314,6 @@ check-dist-tarball:
 	tar Cxz $$tmpdir -f $$tarball && \
 	$(MAKE) -C $$tmpdir/breezy-$$version check && \
 	rm -rf $$tmpdir
+
+reformat:
+	isort .

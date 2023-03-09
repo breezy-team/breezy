@@ -16,38 +16,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from dulwich.server import TCPGitServer
-
 import sys
 
-from .. import (
-    errors,
-    trace,
-    )
-
-from ..controldir import (
-    ControlDir,
-    )
-
-from .mapping import (
-    default_mapping,
-    decode_git_path,
-    )
-from .object_store import (
-    BazaarObjectStore,
-    get_object_store,
-    )
-from .refs import (
-    get_refs_container,
-    )
-
+from dulwich.object_store import MissingObjectFinder, peel_sha
 from dulwich.protocol import Protocol
-from dulwich.server import (
-    Backend,
-    BackendRepo,
-    ReceivePackHandler,
-    UploadPackHandler,
-    )
+from dulwich.server import (Backend, BackendRepo, ReceivePackHandler,
+                            TCPGitServer, UploadPackHandler)
+
+from .. import errors, trace
+from ..controldir import ControlDir
+from .mapping import decode_git_path, default_mapping
+from .object_store import BazaarObjectStore, get_object_store
+from .refs import get_refs_container
 
 
 class BzrBackend(Backend):
@@ -81,9 +61,9 @@ class BzrBackendRepo(BackendRepo):
         cached = self.refs.get_peeled(name)
         if cached is not None:
             return cached
-        return self.object_store.peel_sha(self.refs[name]).id
+        return peel_sha(self.object_store, self.refs[name])[1].id
 
-    def fetch_objects(self, determine_wants, graph_walker, progress,
+    def find_missing_objects(self, determine_wants, graph_walker, progress,
                       get_tagged=None):
         """Yield git objects to send to client """
         with self.object_store.lock_read():
@@ -93,16 +73,13 @@ class BzrBackendRepo(BackendRepo):
                 return
             shallows = getattr(graph_walker, 'shallow', frozenset())
             if isinstance(self.object_store, BazaarObjectStore):
-                return self.object_store.generate_pack_contents(
+                return self.object_store.find_missing_objects(
                     have, wants, shallow=shallows,
                     progress=progress, get_tagged=get_tagged, lossy=True)
             else:
-                if shallows:
-                    return self.object_store.generate_pack_contents(
-                        have, wants, shallow=shallows, progress=progress)
-                else:
-                    return self.object_store.generate_pack_contents(
-                        have, wants, progress=progress)
+                return MissingObjectFinder(
+                    self.object_store,
+                    have, wants, shallow=shallows, progress=progress)
 
 
 class BzrTCPGitServer(TCPGitServer):
@@ -126,7 +103,8 @@ def serve_git(transport, host=None, port=None, inet=False, timeout=None):
 
 
 def git_http_hook(branch, method, path):
-    from dulwich.web import HTTPGitApplication, HTTPGitRequest, DEFAULT_HANDLERS
+    from dulwich.web import (DEFAULT_HANDLERS, HTTPGitApplication,
+                             HTTPGitRequest)
     handler = None
     for (smethod, spath) in HTTPGitApplication.services:
         if smethod != method:

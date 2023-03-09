@@ -17,11 +17,7 @@
 """Tests for breezy.debug"""
 
 
-from .. import (
-    config,
-    debug,
-    tests,
-    )
+from .. import config, debug, tests
 
 
 class TestDebugFlags(tests.TestCaseInTempDir):

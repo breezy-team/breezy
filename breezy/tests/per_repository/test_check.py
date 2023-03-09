@@ -17,9 +17,7 @@
 
 """Test operations that check the repository for corruption"""
 
-from breezy import (
-    revision as _mod_revision,
-    )
+from breezy import revision as _mod_revision
 from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests.per_repository import TestCaseWithRepository
 

@@ -23,13 +23,9 @@ import errno
 import os
 import signal
 import subprocess
-from ... import (
-    errors,
-    osutils,
-    trace,
-    transport as _mod_transport,
-    )
 
+from ... import errors, osutils, trace
+from ... import transport as _mod_transport
 
 DEFAULT_PATCHES_DIR = 'patches'
 DEFAULT_SERIES_FILE = 'series'

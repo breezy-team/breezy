@@ -21,30 +21,15 @@
 import os
 import shutil
 
-from .... import (
-    bedding,
-    config,
-    errors,
-    trace,
-    )
+from .... import bedding, config, errors, trace
 from ....merge import Merger
 from ....mutabletree import MutableTree
-from ....tests import (
-    TestCaseWithTransport,
-    TestSkipped,
-    )
-
-from .. import (
-    pre_merge_quilt,
-    start_commit_check_quilt,
-    post_build_tree_quilt,
-    post_merge_quilt_cleanup,
-    )
-from ..quilt import QuiltPatches
+from ....tests import TestCaseWithTransport, TestSkipped
+from .. import (post_build_tree_quilt, post_merge_quilt_cleanup,
+                pre_merge_quilt, start_commit_check_quilt)
 from ..merge import tree_unapply_patches
-
+from ..quilt import QuiltPatches
 from . import quilt_feature
-
 
 TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 +++ base/a	2012-01-02 20:03:59.710666215 +0100

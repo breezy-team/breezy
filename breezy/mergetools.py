@@ -23,6 +23,7 @@ import sys
 import tempfile
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     cmdline,

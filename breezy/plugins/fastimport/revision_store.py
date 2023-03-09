@@ -17,16 +17,12 @@
 
 from io import BytesIO
 
-from ... import (
-    errors,
-    graph as _mod_graph,
-    osutils,
-    revision as _mod_revision,
-    )
+from ... import errors
+from ... import graph as _mod_graph
+from ... import osutils
+from ... import revision as _mod_revision
+from ...bzr import inventory
 from ...bzr.inventorytree import InventoryTreeChange
-from ...bzr import (
-    inventory,
-    )
 
 
 class _TreeShim:
@@ -201,6 +197,7 @@ class RevisionStore:
     def _init_chk_inventory(self, revision_id, root_id):
         """Generate a CHKInventory for a parentless revision."""
         from ...bzr import chk_map
+
         # Get the creation parameters
         chk_store = self.repo.chk_bytes
         serializer = self.repo._format._serializer

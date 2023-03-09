@@ -15,28 +15,18 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import contextlib
-from io import BytesIO
 import os
 import re
 import subprocess
 import sys
 import tempfile
+from io import BytesIO
 
-from .. import (
-    diff,
-    errors,
-    osutils,
-    revision as _mod_revision,
-    revisionspec,
-    revisiontree,
-    tests,
-    )
-from ..tests import (
-    features,
-    EncodingAdapter,
-    )
+from .. import diff, errors, osutils
+from .. import revision as _mod_revision
+from .. import revisionspec, revisiontree, tests
+from ..tests import EncodingAdapter, features
 from ..tests.scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 

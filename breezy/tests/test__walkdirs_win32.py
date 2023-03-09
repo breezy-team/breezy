@@ -18,14 +18,8 @@
 
 import errno
 
-from .. import (
-    osutils,
-    tests,
-    )
-from . import (
-    features,
-    )
-
+from .. import osutils, tests
+from . import features
 
 win32_readdir_feature = features.ModuleAvailableFeature(
     'breezy._walkdirs_win32')
@@ -37,9 +31,7 @@ class TestWin32Finder(tests.TestCaseInTempDir):
 
     def setUp(self):
         super().setUp()
-        from ._walkdirs_win32 import (
-            Win32ReadDir,
-            )
+        from ._walkdirs_win32 import Win32ReadDir
         self.reader = Win32ReadDir()
 
     def _remove_stat_from_dirblock(self, dirblock):

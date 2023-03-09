@@ -17,11 +17,12 @@
 
 import os
 
-from breezy.iterablefile import IterableFile
 from breezy.errors import BinaryFile
-from breezy.patch import diff3, PatchInvokeError, run_patch, iter_patched_from_hunks
+from breezy.iterablefile import IterableFile
+from breezy.patch import (PatchInvokeError, diff3, iter_patched_from_hunks,
+                          run_patch)
 from breezy.patches import parse_patch
-from breezy.tests import TestCaseInTempDir, TestCase
+from breezy.tests import TestCase, TestCaseInTempDir
 
 
 class TestPatch(TestCaseInTempDir):

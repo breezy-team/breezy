@@ -17,8 +17,8 @@
 "bash_completion.py - create bash completion script from built-in brz help"
 
 import breezy
-import breezy.help
 import breezy.commands
+import breezy.help
 from breezy.doc_generate import get_autodoc_datetime
 
 

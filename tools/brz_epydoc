@@ -7,8 +7,8 @@
 
 # This will enable the lazy_import compatibility code
 import brz_epydoc_uid
-
 from epydoc.cli import cli
+
 cli()
 
 

@@ -19,17 +19,9 @@
 See MutableTree for more details.
 """
 
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
-
-from . import (
-    errors,
-    hooks,
-    osutils,
-    trace,
-    tree,
-    )
-
+from . import errors, hooks, osutils, trace, tree
 
 
 class BadReferenceTarget(errors.InternalBzrError):

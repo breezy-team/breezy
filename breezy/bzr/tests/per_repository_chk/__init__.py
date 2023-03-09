@@ -23,25 +23,13 @@ have the test_unsupported tests run; the others have the test_supported tests
 run.
 """
 
-from breezy import (
-    repository,
-    )
-from breezy.bzr import (
-    remote,
-    )
-from breezy.bzr.knitpack_repo import (
-    RepositoryFormatKnitPack5,
-    )
-from breezy.bzr.groupcompress_repo import (
-    RepositoryFormat2a,
-    )
-from breezy.tests import (
-    multiply_tests,
-    )
-from breezy.tests.per_repository import (
-    all_repository_format_scenarios,
-    TestCaseWithRepository,
-    )
+from breezy import repository
+from breezy.bzr import remote
+from breezy.bzr.groupcompress_repo import RepositoryFormat2a
+from breezy.bzr.knitpack_repo import RepositoryFormatKnitPack5
+from breezy.tests import multiply_tests
+from breezy.tests.per_repository import (TestCaseWithRepository,
+                                         all_repository_format_scenarios)
 
 
 class TestCaseWithRepositoryCHK(TestCaseWithRepository):

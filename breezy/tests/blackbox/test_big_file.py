@@ -27,14 +27,8 @@ import os
 import resource
 import sys
 
-from breezy import (
-    osutils,
-    tests,
-    )
-from breezy.tests import (
-    features,
-    script,
-    )
+from breezy import osutils, tests
+from breezy.tests import features, script
 
 BIG_FILE_SIZE = 1024 * 1024 * 500
 BIG_FILE_CHUNK_SIZE = 1024

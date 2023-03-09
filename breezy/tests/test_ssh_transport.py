@@ -15,16 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from breezy import config
-from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.errors import SSHVendorNotFound, UnknownSSH
-from breezy.transport.ssh import (
-    OpenSSHSubprocessVendor,
-    PLinkSubprocessVendor,
-    SSHCorpSubprocessVendor,
-    LSHSubprocessVendor,
-    SSHVendorManager,
-    StrangeHostname,
-    )
+from breezy.tests import TestCase, TestCaseWithTransport
+from breezy.transport.ssh import (LSHSubprocessVendor, OpenSSHSubprocessVendor,
+                                  PLinkSubprocessVendor,
+                                  SSHCorpSubprocessVendor, SSHVendorManager,
+                                  StrangeHostname)
 
 
 class TestSSHVendorManager(SSHVendorManager):

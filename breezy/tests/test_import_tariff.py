@@ -21,17 +21,12 @@ import os
 
 from testtools import content
 
-from .. import (
-    plugins as _mod_plugins,
-    trace,
-    )
-from ..controldir import ControlDir
+from .. import plugins as _mod_plugins
+from .. import trace
 from ..bzr.smart import medium
+from ..controldir import ControlDir
 from ..transport import remote
-
-from . import (
-    TestCaseWithTransport,
-    )
+from . import TestCaseWithTransport
 
 old_format_modules = [
     'breezy.bzr.knitrepo',

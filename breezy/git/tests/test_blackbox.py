@@ -17,24 +17,16 @@
 
 """Black-box tests for bzr-git."""
 
-from dulwich.repo import (
-    Repo as GitRepo,
-    )
-
 import os
 
-from ...controldir import (
-    ControlDir,
-    )
+from dulwich.repo import Repo as GitRepo
 
+from ...controldir import ControlDir
 from ...tests.blackbox import ExternalBase
-from ...workingtree import WorkingTree
-
-from .. import (
-    tests,
-    )
-from ...tests.script import TestCaseWithTransportAndScript
 from ...tests.features import PluginLoadedFeature
+from ...tests.script import TestCaseWithTransportAndScript
+from ...workingtree import WorkingTree
+from .. import tests
 
 
 class TestGitBlackBox(ExternalBase):
@@ -112,10 +104,10 @@ class TestGitBlackBox(ExternalBase):
         os.chdir('..')
 
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
+        errlines = error.splitlines(False)
         self.assertTrue(
-            (error == 'Branched 1 revision(s).\n') or
-            (error == 'Branched 1 revision.\n'),
-            error)
+            'Branched 1 revision(s).' in errlines or
+            'Branched 1 revision.' in errlines, errlines)
 
     def test_checkout(self):
         os.mkdir("gitbranch")

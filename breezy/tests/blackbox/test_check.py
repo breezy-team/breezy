@@ -16,8 +16,7 @@
 
 """Tests for the 'check' CLI command."""
 
-from breezy.tests import ChrootedTestCase
-from breezy.tests import TestCaseWithTransport
+from breezy.tests import ChrootedTestCase, TestCaseWithTransport
 
 
 class TestCheck(TestCaseWithTransport):

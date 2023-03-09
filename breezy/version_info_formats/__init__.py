@@ -16,14 +16,13 @@
 
 """Routines for extracting all version information from a bzr branch."""
 
+from contextlib import ExitStack
 import time
 from typing import Type
 
-from breezy.osutils import local_time_offset, format_date
-from breezy import (
-    registry,
-    revision as _mod_revision,
-    )
+from breezy import registry
+from breezy import revision as _mod_revision
+from breezy.osutils import format_date, local_time_offset
 
 
 def create_date_str(timestamp=None, offset=None):
@@ -90,20 +89,23 @@ class VersionInfoBuilder:
     def _extract_file_revisions(self):
         """Extract the working revisions for all files"""
 
+        if self._tree is None:
+            return
+
         # Things seem clean if we never look :)
         self._clean = True
 
-        if self._working_tree is self._tree:
-            basis_tree = self._working_tree.basis_tree()
-            # TODO: jam 20070215 The working tree should actually be locked at
-            #       a higher level, but this will do for now.
-            self._working_tree.lock_read()
-        else:
-            basis_tree = self._branch.repository.revision_tree(
-                self._revision_id)
+        with ExitStack() as es:
+            if self._working_tree is self._tree:
+                basis_tree = self._working_tree.basis_tree()
+                # TODO: jam 20070215 The working tree should actually be locked at
+                #       a higher level, but this will do for now.
+                es.enter_context(self._working_tree.lock_read())
+            else:
+                basis_tree = self._branch.repository.revision_tree(
+                    self._revision_id)
 
-        basis_tree.lock_read()
-        try:
+            es.enter_context(basis_tree.lock_read())
             # Build up the list from the basis inventory
             for info in basis_tree.list_files(include_root=True):
                 self._file_revisions[info[0]] = info[-1].revision
@@ -143,10 +145,6 @@ class VersionInfoBuilder:
             for change in delta.unversioned:
                 self._clean = False
                 self._file_revisions[change.path[1]] = 'unversioned'
-        finally:
-            basis_tree.unlock()
-            if self._working_tree is not None:
-                self._working_tree.unlock()
 
     def _iter_revision_history(self):
         """Find the messages for all revisions in history."""

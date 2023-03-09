@@ -16,10 +16,7 @@
 
 """Tests for WorkingTree.check_state."""
 
-from breezy import (
-    errors,
-    tests,
-    )
+from breezy import errors, tests
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 

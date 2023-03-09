@@ -18,14 +18,8 @@
 
 import os
 
-from breezy import (
-    osutils,
-    tests,
-    )
-from breezy.tests import per_tree
-from breezy.tests import (
-    features,
-    )
+from breezy import osutils, tests
+from breezy.tests import features, per_tree
 
 
 class TestGetSymlinkTarget(per_tree.TestCaseWithTree):

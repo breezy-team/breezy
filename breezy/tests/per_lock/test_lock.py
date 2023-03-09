@@ -16,14 +16,8 @@
 
 """Tests for OS level locks."""
 
-from breezy import (
-    errors,
-    osutils,
-    )
-
-from breezy.tests import (
-    features,
-    )
+from breezy import errors, osutils
+from breezy.tests import features
 from breezy.tests.per_lock import TestCaseWithLock
 
 

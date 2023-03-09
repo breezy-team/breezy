@@ -16,30 +16,14 @@
 
 """Tests for branch.push behaviour."""
 
-from io import BytesIO
 import os
+from io import BytesIO
 
-from ... import (
-    branch,
-    builtins,
-    controldir,
-    check,
-    errors,
-    push,
-    revision,
-    tests,
-    transport,
-    )
-from ...bzr import (
-    branch as bzrbranch,
-    )
-from ...bzr.smart import (
-    client,
-    )
-from .. import (
-    per_branch,
-    test_server,
-    )
+from ... import (branch, builtins, check, controldir, errors, push, revision,
+                 tests, transport)
+from ...bzr import branch as bzrbranch
+from ...bzr.smart import client
+from .. import per_branch, test_server
 
 
 class TestPush(per_branch.TestCaseWithBranch):

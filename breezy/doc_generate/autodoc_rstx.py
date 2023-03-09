@@ -23,9 +23,9 @@ Written by the Bazaar/Breezy community.
 import time
 
 import breezy
+import breezy.commands
 import breezy.help
 import breezy.help_topics
-import breezy.commands
 import breezy.osutils
 
 

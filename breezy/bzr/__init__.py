@@ -16,15 +16,11 @@
 
 from typing import TYPE_CHECKING
 
-from .. import (
-    config,
-    errors,
-    controldir,
-    pyutils,
-    registry,
-    transport as _mod_transport,
-    )
-
+from .. import config, controldir, errors, pyutils, registry
+from .. import transport as _mod_transport
+from ..branch import format_registry as branch_format_registry
+from ..repository import format_registry as repository_format_registry
+from ..workingtree import format_registry as workingtree_format_registry
 
 if TYPE_CHECKING:
     from .bzrdir import BzrDirFormat
@@ -190,6 +186,126 @@ def register_metadir(registry, key,
                       experimental)
 
 
+# formats which have no format string are not discoverable
+# and not independently creatable, so are not registered.
+branch_format_registry.register_lazy(
+    b"Bazaar-NG branch format 5\n", "breezy.bzr.fullhistory",
+    "BzrBranchFormat5")
+branch_format_registry.register_lazy(
+    b"Bazaar Branch Format 6 (bzr 0.15)\n",
+    "breezy.bzr.branch", "BzrBranchFormat6")
+branch_format_registry.register_lazy(
+    b"Bazaar Branch Format 7 (needs bzr 1.6)\n",
+    "breezy.bzr.branch", "BzrBranchFormat7")
+branch_format_registry.register_lazy(
+    b"Bazaar Branch Format 8 (needs bzr 1.15)\n",
+    "breezy.bzr.branch", "BzrBranchFormat8")
+branch_format_registry.register_lazy(
+    b"Bazaar-NG Branch Reference Format 1\n",
+    "breezy.bzr.branch", "BranchReferenceFormat")
+
+branch_format_registry.set_default_key(b"Bazaar Branch Format 7 (needs bzr 1.6)\n")
+
+
+# formats which have no format string are not discoverable or independently
+# creatable on disk, so are not registered in format_registry.  They're
+# all in breezy.bzr.knitreponow.  When an instance of one of these is
+# needed, it's constructed directly by the ControlDir.  Non-native formats where
+# the repository is not separately opened are similar.
+
+repository_format_registry.register_lazy(
+    b'Bazaar-NG Knit Repository Format 1',
+    'breezy.bzr.knitrepo',
+    'RepositoryFormatKnit1',
+    )
+
+repository_format_registry.register_lazy(
+    b'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
+    'breezy.bzr.knitrepo',
+    'RepositoryFormatKnit3',
+    )
+
+repository_format_registry.register_lazy(
+    b'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
+    'breezy.bzr.knitrepo',
+    'RepositoryFormatKnit4',
+    )
+
+# Pack-based formats. There is one format for pre-subtrees, and one for
+# post-subtrees to allow ease of testing.
+# NOTE: These are experimental in 0.92. Stable in 1.0 and above
+repository_format_registry.register_lazy(
+    b'Bazaar pack repository format 1 (needs bzr 0.92)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack1',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack3',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack4',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack5',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack5RichRoot',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack5RichRootBroken',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack6',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatKnitPack6RichRoot',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'breezy.bzr.groupcompress_repo',
+    'RepositoryFormat2a',
+    )
+
+# Development formats.
+# Check their docstrings to see if/when they are obsolete.
+repository_format_registry.register_lazy(
+    (b"Bazaar development format 2 with subtree support "
+        b"(needs bzr.dev from before 1.8)\n"),
+    'breezy.bzr.knitpack_repo',
+    'RepositoryFormatPackDevelopment2Subtree',
+    )
+repository_format_registry.register_lazy(
+    b'Bazaar development format 8\n',
+    'breezy.bzr.groupcompress_repo',
+    'RepositoryFormat2aSubtree',
+    )
+
+
+workingtree_format_registry.register_lazy(b"Bazaar Working Tree Format 4 (bzr 0.15)\n",
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
+workingtree_format_registry.register_lazy(b"Bazaar Working Tree Format 5 (bzr 1.11)\n",
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
+workingtree_format_registry.register_lazy(b"Bazaar Working Tree Format 6 (bzr 1.14)\n",
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
+workingtree_format_registry.register_lazy(b"Bazaar-NG Working Tree format 3",
+                              "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
+workingtree_format_registry.set_default_key(b"Bazaar Working Tree Format 6 (bzr 1.14)\n")
+
+
 register_metadir(
     controldir.format_registry, 'knit',
     'breezy.bzr.knitrepo.RepositoryFormatKnit1',
@@ -234,6 +350,7 @@ register_metadir(
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     experimental=True,
+    deprecated=True,
     hidden=True,
     )
 register_metadir(
@@ -343,6 +460,7 @@ register_metadir(
     branch_format='breezy.bzr.branch.BzrBranchFormat8',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
+    deprecated=True,
     hidden=True,
     )
 register_metadir(
@@ -357,6 +475,7 @@ register_metadir(
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
+    deprecated=True,
     hidden=True,
     )
 
@@ -381,6 +500,7 @@ register_metadir(controldir.format_registry, '2a',
                  branch_format='breezy.bzr.branch.BzrBranchFormat7',
                  tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
                  experimental=False,
+                 deprecated=False,
                  )
 
 # The following format should be an alias for the rich root equivalent

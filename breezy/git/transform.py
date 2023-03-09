@@ -18,46 +18,28 @@
 import errno
 import os
 import posixpath
-from stat import S_IEXEC, S_ISREG
 import tempfile
 import time
+from stat import S_IEXEC, S_ISREG
 
-from .mapping import encode_git_path, mode_kind, mode_is_executable, object_mode
-from .tree import GitTree, GitTreeDirectory, GitTreeSymlink, GitTreeFile
-from .mapping import decode_git_path
+from dulwich.index import blob_from_path_and_stat, commit_tree
+from dulwich.objects import Blob
 
-from .. import (
-    annotate,
-    conflicts,
-    errors,
-    multiparent,
-    osutils,
-    revision as _mod_revision,
-    trace,
-    transport as _mod_transport,
-    ui,
-    urlutils,
-    )
+from .. import annotate, conflicts, errors, multiparent, osutils
+from .. import revision as _mod_revision
+from .. import trace
+from .. import transport as _mod_transport
+from .. import ui, urlutils
 from ..i18n import gettext
 from ..mutabletree import MutableTree
+from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
+                         MalformedTransform, PreviewTree, ReusingTransform,
+                         TransformRenameFailed, TreeTransform, _FileMover,
+                         _TransformResults, joinpath, unique_add)
 from ..tree import InterTree, TreeChange
-from ..transform import (
-    PreviewTree,
-    TreeTransform,
-    _TransformResults,
-    _FileMover,
-    FinalPaths,
-    joinpath,
-    unique_add,
-    TransformRenameFailed,
-    ImmortalLimbo,
-    ROOT_PARENT,
-    ReusingTransform,
-    MalformedTransform,
-    )
-
-from dulwich.index import commit_tree, blob_from_path_and_stat
-from dulwich.objects import Blob
+from .mapping import (decode_git_path, encode_git_path, mode_is_executable,
+                      mode_kind, object_mode)
+from .tree import GitTree, GitTreeDirectory, GitTreeFile, GitTreeSymlink
 
 
 class TreeTransformBase(TreeTransform):

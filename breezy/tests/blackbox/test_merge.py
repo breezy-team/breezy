@@ -24,23 +24,10 @@ import os
 
 from testtools import matchers
 
-from breezy import (
-    branch,
-    controldir,
-    merge_directive,
-    osutils,
-    tests,
-    urlutils,
-    workingtree,
-    )
-from breezy.bzr import (
-    conflicts,
-    )
-from breezy.tests import (
-    scenarios,
-    script,
-    )
-
+from breezy import (branch, controldir, merge_directive, osutils, tests,
+                    urlutils, workingtree)
+from breezy.bzr import conflicts
+from breezy.tests import scenarios, script
 
 load_tests = scenarios.load_tests_apply_scenarios
 

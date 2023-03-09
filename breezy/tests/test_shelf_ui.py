@@ -15,22 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from io import BytesIO
 import os
 import sys
+from io import BytesIO
 from textwrap import dedent
 
-from .. import (
-    errors,
-    shelf_ui,
-    revision,
-    shelf,
-    tests,
-    )
-from . import script
-from . import (
-    features,
-    )
+from .. import errors, revision, shelf, shelf_ui, tests
+from . import features, script
 
 
 class ExpectShelver(shelf_ui.Shelver):

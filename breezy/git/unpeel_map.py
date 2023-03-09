@@ -20,11 +20,8 @@
 from collections import defaultdict
 from io import BytesIO
 
-from .. import (
-    errors,
-    trace,
-    transport as _mod_transport,
-    )
+from .. import errors, trace
+from .. import transport as _mod_transport
 
 
 class UnpeelMap:

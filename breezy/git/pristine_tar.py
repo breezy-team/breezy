@@ -17,16 +17,10 @@
 
 """Support for pristine tar deltas."""
 
-from base64 import (
-    standard_b64decode,
-    )
-
-from dulwich.objects import (
-    Blob,
-    Tree,
-    )
-
 import stat
+from base64 import standard_b64decode
+
+from dulwich.objects import Blob, Tree
 
 README_CONTENTS = b"""\
 This branch contains delta files that pristine-tar can use to

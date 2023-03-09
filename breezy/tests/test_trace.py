@@ -19,27 +19,19 @@
 """Tests for trace library"""
 
 import errno
-from io import StringIO
 import logging
 import os
 import re
 import sys
 import tempfile
+from io import StringIO
 
-from .. import (
-    debug,
-    errors,
-    trace,
-    )
-from . import features, TestCaseInTempDir, TestCase, TestSkipped
-from ..trace import (
-    mutter, mutter_callsite, report_exception,
-    set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
-    pop_log_file,
-    push_log_file,
-    _rollover_trace_maybe,
-    show_error,
-    )
+from .. import debug, errors, trace
+from ..trace import (_rollover_trace_maybe, be_quiet, get_verbosity_level,
+                     is_quiet, is_verbose, mutter, mutter_callsite,
+                     pop_log_file, push_log_file, report_exception,
+                     set_verbosity_level, show_error)
+from . import TestCase, TestCaseInTempDir, TestSkipped, features
 
 
 def _format_exception():

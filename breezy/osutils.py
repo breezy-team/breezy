@@ -14,17 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import codecs
 import errno
-from functools import partial
 import os
 import re
 import stat
 import sys
 import time
-import codecs
+from functools import partial
 from typing import Dict, List
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import locale
 import ntpath
@@ -46,17 +47,12 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from hashlib import (
-    md5,
-    sha1 as sha,
-    )
-
+from hashlib import md5
+from hashlib import sha1 as sha
 
 import breezy
-from . import (
-    errors,
-    )
 
+from . import errors
 
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
@@ -212,6 +208,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         succeeds
     """
     from .transport import NoSuchFile
+
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
@@ -1503,8 +1500,8 @@ def _win32_terminal_size(width, height):
 
 def _ioctl_terminal_size(width, height):
     try:
-        import struct
         import fcntl
+        import struct
         import termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
@@ -2126,9 +2123,8 @@ def file_kind_from_stat_mode_thunk(mode):
         except ImportError:
             # This is one time where we won't warn that an extension failed to
             # load. The extension is never available on Windows anyway.
-            from ._readdir_py import (
+            from ._readdir_py import \
                 _kind_from_mode as file_kind_from_stat_mode
-                )
     return file_kind_from_stat_mode(mode)
 
 
@@ -2179,8 +2175,8 @@ if sys.platform == "win32":
         return msvcrt.getch()
 else:
     def getchar():
-        import tty
         import termios
+        import tty
         fd = sys.stdin.fileno()
         settings = termios.tcgetattr(fd)
         try:

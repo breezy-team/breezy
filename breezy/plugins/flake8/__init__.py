@@ -130,4 +130,5 @@ def _check_flake8(local, master, old_revno, old_revid, future_revno,
 
 
 from breezy.branch import Branch
+
 Branch.hooks.install_named_hook("pre_commit", _check_flake8, "Check flake8")  # type: ignore

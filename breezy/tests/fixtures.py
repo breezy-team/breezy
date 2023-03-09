@@ -24,8 +24,8 @@ should live only for the duration of a single test, and its tearDown method
 should be passed to `addCleanup` on the test.
 """
 
-from contextlib import ExitStack
 import itertools
+from contextlib import ExitStack
 
 
 def generate_unicode_names():

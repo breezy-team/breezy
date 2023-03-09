@@ -19,10 +19,7 @@
 
 import inspect
 
-from .. import (
-    decorators,
-    lock,
-    )
+from .. import decorators, lock
 from . import TestCase
 
 

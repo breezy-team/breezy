@@ -19,47 +19,21 @@
 
 from io import BytesIO
 
-from dulwich.errors import (
-    NotCommitError,
-    )
-from dulwich.objects import (
-    Commit,
-    ZERO_SHA,
-    )
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
+from dulwich.errors import NotCommitError
+from dulwich.object_store import peel_sha, tree_lookup_path
+from dulwich.objects import ZERO_SHA, Commit
 
-
-from .. import (
-    check,
-    errors,
-    graph as _mod_graph,
-    lock,
-    repository,
-    revision as _mod_revision,
-    trace,
-    transactions,
-    ui,
-    )
+from .. import check, errors
+from .. import graph as _mod_graph
+from .. import lock, repository
+from .. import revision as _mod_revision
+from .. import trace, transactions, ui
 from ..decorators import only_raises
-from ..foreign import (
-    ForeignRepository,
-    )
-
-from .filegraph import (
-    GitFileLastChangeScanner,
-    GitFileParentProvider,
-    )
-from .mapping import (
-    default_mapping,
-    encode_git_path,
-    foreign_vcs_git,
-    mapping_registry,
-    )
-from .tree import (
-    GitRevisionTree,
-    )
+from ..foreign import ForeignRepository
+from .filegraph import GitFileLastChangeScanner, GitFileParentProvider
+from .mapping import (default_mapping, encode_git_path, foreign_vcs_git,
+                      mapping_registry)
+from .tree import GitRevisionTree
 
 
 class GitCheck(check.Check):
@@ -252,9 +226,7 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
-        from .commit import (
-            GitCommitBuilder,
-            )
+        from .commit import GitCommitBuilder
         builder = GitCommitBuilder(
             self, parents, config, timestamp, timezone, committer, revprops,
             revision_id, lossy)
@@ -440,10 +412,10 @@ class LocalGitRepository(GitRepository):
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return _mod_revision.NULL_REVISION
-        commit = self._git.object_store.peel_sha(foreign_revid)
-        if not isinstance(commit, Commit):
-            raise NotCommitError(commit.id)
-        revid = mapping.get_revision_id(commit)
+        unpeeled, peeled = peel_sha(self._git.object_store, foreign_revid)
+        if not isinstance(peeled, Commit):
+            raise NotCommitError(peeled.id)
+        revid = mapping.get_revision_id(peeled)
         # FIXME: check testament before doing this?
         return revid
 
@@ -601,9 +573,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return target_repo_format.rich_root_data
 
     def get_foreign_tests_repository_factory(self):
-        from .tests.test_repository import (
-            ForeignTestsRepositoryFactory,
-            )
+        from .tests.test_repository import ForeignTestsRepositoryFactory
         return ForeignTestsRepositoryFactory()
 
     def network_name(self):

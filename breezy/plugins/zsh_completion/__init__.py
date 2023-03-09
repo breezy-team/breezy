@@ -19,7 +19,6 @@ __doc__ = """Generate a shell function for zsh command line completion.
 
 from ... import commands, version_info  # noqa: F401
 
-
 bzr_plugin_name = 'zsh_completion'
 bzr_commands = ['zsh-completion']
 

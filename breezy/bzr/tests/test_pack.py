@@ -19,9 +19,7 @@
 from io import BytesIO
 
 from ... import tests
-from .. import (
-    pack,
-    )
+from .. import pack
 
 
 class TestContainerSerialiser(tests.TestCase):

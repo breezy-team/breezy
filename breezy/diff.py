@@ -19,9 +19,10 @@ import difflib
 import os
 import re
 import sys
-from typing import Optional, List, Union, Type
+from typing import List, Optional, Type, Union
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import errno
 import patiencediff
@@ -38,17 +39,11 @@ from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext
 """)
 
-from . import (
-    errors,
-    osutils,
-    transport as _mod_transport,
-    )
-from .registry import (
-    Registry,
-    )
+from . import errors, osutils
+from . import transport as _mod_transport
+from .registry import Registry
 from .trace import mutter, note, warning
-from .tree import Tree, FileTimestampUnavailable
-
+from .tree import FileTimestampUnavailable, Tree
 
 DEFAULT_CONTEXT_AMOUNT = 3
 
@@ -255,6 +250,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
     import tempfile
+
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 

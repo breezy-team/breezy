@@ -26,16 +26,11 @@ __docformat__ = "google"
 import contextlib
 import os
 import sys
-from typing import Type, List, Union, Optional
+from typing import List, Optional, Type, Union
 
-from . import (
-    i18n,
-    option,
-    osutils,
-    trace,
-    )
-
+from . import i18n, option, osutils, trace
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 
 import breezy
@@ -46,10 +41,10 @@ from breezy import (
     )
 """)
 
+from . import errors, registry
 from .hooks import Hooks
 from .i18n import gettext
 from .plugin import disable_plugins, load_plugins, plugin_name
-from . import errors, registry
 
 
 class CommandAvailableInPlugin(Exception):
@@ -1002,8 +997,9 @@ def apply_coveraged(the_callable, *args, **kwargs):
 
 
 def apply_profiled(the_callable, *args, **kwargs):
-    import hotshot
     import tempfile
+
+    import hotshot
     import hotshot.stats
     pffileno, pfname = tempfile.mkstemp()
     try:

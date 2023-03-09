@@ -18,13 +18,9 @@
 
 import re
 
-from breezy.bzr.tests.test_testament import (
-    osutils,
-    REV_1_SHORT,
-    REV_1_SHORT_STRICT,
-    REV_2_TESTAMENT,
-    TestamentSetup,
-    )
+from breezy.bzr.tests.test_testament import (REV_1_SHORT, REV_1_SHORT_STRICT,
+                                             REV_2_TESTAMENT, TestamentSetup,
+                                             osutils)
 
 
 class TestTestament(TestamentSetup):

@@ -21,114 +21,50 @@ import re
 
 from dulwich.refs import SymrefLoop
 
-from .. import (
-    config,
-    debug,
-    errors,
-    osutils,
-    trace,
-    ui,
-    urlutils,
-    )
+from .. import config, debug, errors, osutils, trace, ui, urlutils
 from ..controldir import BranchReferenceLoop
-from ..push import (
-    PushResult,
-    )
-from ..errors import (
-    AlreadyBranchError,
-    BzrError,
-    ConnectionReset,
-    DivergedBranches,
-    InProcessTransport,
-    InvalidRevisionId,
-    LockContention,
-    NoSuchRevision,
-    NoSuchTag,
-    NotBranchError,
-    NotLocalUrl,
-    PermissionDenied,
-    TransportError,
-    UnexpectedHttpStatus,
-    UninitializableFormat,
-    )
+from ..errors import (AlreadyBranchError, BzrError, ConnectionReset,
+                      DivergedBranches, InProcessTransport, InvalidRevisionId,
+                      LockContention, NoSuchRevision, NoSuchTag,
+                      NotBranchError, NotLocalUrl, PermissionDenied,
+                      TransportError, UnexpectedHttpStatus,
+                      UninitializableFormat)
+from ..push import PushResult
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
-from ..transport import (
-    NoSuchFile,
-    Transport,
-    register_urlparse_netloc_protocol,
-    )
+from ..transport import (NoSuchFile, Transport,
+                         register_urlparse_netloc_protocol)
+from . import is_github_url, lazy_check_versions, user_agent_for_github
 
-from . import (
-    lazy_check_versions,
-    is_github_url,
-    user_agent_for_github,
-    )
 lazy_check_versions()
 
-from .branch import (
-    GitBranch,
-    GitBranchFormat,
-    GitBranchPushResult,
-    GitTags,
-    _quick_lookup_revno,
-    )
-from .dir import (
-    GitControlDirFormat,
-    GitDir,
-    )
-from .errors import (
-    GitSmartRemoteNotSupported,
-    )
-from .mapping import (
-    encode_git_path,
-    mapping_registry,
-    )
-from .object_store import (
-    get_object_store,
-    )
-from .push import (
-    remote_divergence,
-    )
-from .repository import (
-    GitRepository,
-    GitRepositoryFormat,
-    )
-from .refs import (
-    branch_name_to_ref,
-    is_peeled,
-    ref_to_tag_name,
-    tag_name_to_ref,
-    )
+import os
+import select
+import urllib.parse as urlparse
 
 import dulwich
 import dulwich.client
-from dulwich.errors import (
-    GitProtocolError,
-    HangupException,
-    )
-from dulwich.pack import (
-    Pack,
-    pack_objects_to_data,
-    )
+from dulwich.errors import GitProtocolError, HangupException
+from dulwich.pack import (PACK_SPOOL_FILE_MAX_SIZE, Pack, load_pack_index,
+                          pack_objects_to_data)
 from dulwich.protocol import ZERO_SHA
-from dulwich.refs import (
-    DictRefsContainer,
-    SYMREF,
-    )
-from dulwich.repo import (
-    NotGitRepository,
-    )
-import os
-import select
+from dulwich.refs import SYMREF, DictRefsContainer
+from dulwich.repo import NotGitRepository
 
-import urllib.parse as urlparse
+from .branch import (GitBranch, GitBranchFormat, GitBranchPushResult, GitTags,
+                     _quick_lookup_revno)
+from .dir import GitControlDirFormat, GitDir
+from .errors import GitSmartRemoteNotSupported
+from .mapping import encode_git_path, mapping_registry
+from .object_store import get_object_store
+from .push import remote_divergence
+from .refs import (branch_name_to_ref, is_peeled, ref_to_tag_name,
+                   tag_name_to_ref)
+from .repository import GitRepository, GitRepositoryFormat
 
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
 register_urlparse_netloc_protocol('git+ssh')
-
-from dulwich.pack import load_pack_index
 
 
 class GitPushResult(PushResult):
@@ -556,7 +492,7 @@ class RemoteGitDir(GitDir):
             ret[refname] = dulwich.client.ZERO_SHA
             return ret
 
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.send_pack(get_changed_refs, generate_pack_data)
         error = result.ref_status.get(refname)
@@ -948,8 +884,8 @@ class GitRemoteRevisionTree(RevisionTree):
             raise NotImplementedError('recurse_nested is not yet supported')
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
-        import tempfile
-        f = tempfile.SpooledTemporaryFile()
+        from tempfile import SpooledTemporaryFile
+        f = SpooledTemporaryFile(max_size=PACK_SPOOL_FILE_MAX_SIZE, prefix='incoming-')
         # git-upload-archive(1) generaly only supports refs. So let's see if we
         # can find one.
         reverse_refs = {
@@ -1062,7 +998,7 @@ class RemoteGitTagDict(GitTags):
             ret[ref] = sha
             return ret
 
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)
@@ -1142,7 +1078,7 @@ class RemoteGitBranch(GitBranch):
         sha = self.lookup_bzr_revision_id(revision_id)[0]
         def get_changed_refs(old_refs):
             return {self.ref: sha}
-        def generate_pack_data(have, want, ofs_delta=False):
+        def generate_pack_data(have, want, ofs_delta=False, progress=None):
             return pack_objects_to_data([])
         result = self.repository.send_pack(
             get_changed_refs, generate_pack_data)

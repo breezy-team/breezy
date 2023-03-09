@@ -18,15 +18,11 @@ import os
 import tarfile
 import zipfile
 
+from breezy import osutils, tests
 from breezy.errors import UnsupportedOperation
 from breezy.export import export
-from breezy import osutils
-from breezy import tests
+from breezy.tests import TestNotApplicable, features
 from breezy.tests.per_tree import TestCaseWithTree
-from breezy.tests import (
-    features,
-    TestNotApplicable,
-    )
 
 
 class ExportTest:

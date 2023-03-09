@@ -16,37 +16,24 @@
 
 """Support for GitLab."""
 
-from datetime import datetime
 import json
 import os
 import re
 import time
+from datetime import datetime
 from typing import Optional
 
-from ... import (
-    bedding,
-    branch as _mod_branch,
-    controldir,
-    errors,
-    urlutils,
-    )
+from ... import bedding
+from ... import branch as _mod_branch
+from ... import controldir, errors, urlutils
+from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
+                      MergeProposalBuilder, MergeProposalExists, NoSuchProject,
+                      PrerequisiteBranchUnsupported,
+                      SourceNotDerivedFromTarget, UnsupportedForge,
+                      determine_title)
 from ...git.urls import git_url_to_bzr_url
 from ...trace import mutter
 from ...transport import get_transport
-
-from ...forge import (
-    determine_title,
-    Forge,
-    MergeProposal,
-    MergeProposalBuilder,
-    MergeProposalExists,
-    NoSuchProject,
-    PrerequisiteBranchUnsupported,
-    SourceNotDerivedFromTarget,
-    UnsupportedForge,
-    ForgeLoginRequired,
-    )
-
 
 _DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
 DEFAULT_PAGE_SIZE = 50
@@ -328,7 +315,7 @@ class GitLabMergeProposal(MergeProposal):
             preferred_schemes=preferred_schemes)
 
     def set_target_branch_name(self, name):
-        self._update(branch=name)
+        self._update(target_branch=name)
 
     def _get_project_name(self, project_id):
         source_project = self.gl._get_project(project_id)
@@ -471,19 +458,34 @@ class GitLab(Forge):
             return json.loads(response.data)
         _unexpected_status(path, response)
 
-    def create_project(self, project_name):
+    def _get_namespace(self, namespace):
+        path = 'namespaces/' + urlutils.quote(str(namespace), '')
+        response = self._api_request('GET', path)
+        if response.status == 200:
+            return json.loads(response.data)
+        if response.status == 404:
+            return None
+        _unexpected_status(path, response)
+
+    def create_project(self, project_name, summary=None):
         if project_name.endswith('.git'):
             project_name = project_name[:-4]
         if '/' in project_name:
-            namespace, path = project_name.rsplit('/', 1)
+            namespace_path, path = project_name.lstrip('/').rsplit('/', 1)
         else:
-            namespace = None
+            namespace_path = ''
             path = project_name
+
+        namespace = self._get_namespace(namespace_path)
+        if namespace is None:
+            raise Exception('namespace %s does not exist' % namespace_path)
+
         fields = {
             'path': path,
-            'name': path.replace('-', '_'),
-            'namespace_path': namespace,
+            'namespace_id': namespace['id'],
             }
+        if summary is not None:
+            fields['description'] = summary
         response = self._api_request('POST', 'projects', fields=fields)
         if response.status == 400:
             ret = json.loads(response.data)
@@ -955,10 +957,7 @@ def register_gitlab_instance(shortname, url):
     :param shortname: Short name (e.g. "gitlab")
     :param url: URL to the gitlab instance
     """
-    from breezy.bugtracker import (
-        tracker_registry,
-        ProjectIntegerBugTracker,
-        )
+    from breezy.bugtracker import ProjectIntegerBugTracker, tracker_registry
     tracker_registry.register(
         shortname, ProjectIntegerBugTracker(
             shortname, url + '/{project}/issues/{id}'))

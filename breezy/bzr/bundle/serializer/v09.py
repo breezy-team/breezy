@@ -14,12 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import _get_bundle_header
-from .v08 import BundleSerializerV08, BundleReader
-from ..bundle_data import BundleInfo
-
 from ...testament import StrictTestament3
-
+from ..bundle_data import BundleInfo
+from . import _get_bundle_header
+from .v08 import BundleReader, BundleSerializerV08
 
 """Serializer for bundle format 0.9"""
 

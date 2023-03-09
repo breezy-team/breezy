@@ -17,11 +17,9 @@
 
 """Tests to verify that blackbox commands don't use more VFS calls."""
 
-from . import TestCaseWithTransport
-
 from ... import branch, gpg
 from ...tests import fixtures
-
+from . import TestCaseWithTransport
 from .matchers import ContainsNoVfsCalls
 
 

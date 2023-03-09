@@ -25,7 +25,6 @@ import gettext as _gettext
 import os
 import sys
 
-
 _translations = None
 
 

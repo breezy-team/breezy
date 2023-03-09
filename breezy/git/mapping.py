@@ -24,34 +24,13 @@ from typing import Optional
 
 import fastbencode as bencode
 
-from .. import (
-    errors,
-    foreign,
-    trace,
-    urlutils,
-    )
-from ..foreign import (
-    ForeignVcs,
-    VcsMappingRegistry,
-    ForeignRevision,
-    )
-from ..revision import (
-    NULL_REVISION,
-    Revision,
-    )
-from .errors import (
-    NoPushSupport,
-    )
-from .hg import (
-    format_hg_metadata,
-    extract_hg_metadata,
-    )
-from .roundtrip import (
-    extract_bzr_metadata,
-    inject_bzr_metadata,
-    CommitSupplement,
-    )
-
+from .. import errors, foreign, trace, urlutils
+from ..foreign import ForeignRevision, ForeignVcs, VcsMappingRegistry
+from ..revision import NULL_REVISION, Revision
+from .errors import NoPushSupport
+from .hg import extract_hg_metadata, format_hg_metadata
+from .roundtrip import (CommitSupplement, extract_bzr_metadata,
+                        inject_bzr_metadata)
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0o644
 HG_RENAME_SOURCE = b"HG:rename-source"
@@ -382,10 +361,14 @@ class BzrGitMapping(foreign.VcsMapping):
                 Tag.from_string(rev.properties[propname].encode('utf-8', 'surrogateescape')))
             i += 1
             propname = 'git-mergetag-%d' % i
+        try:
+            extra = commit._extra
+        except AttributeError:
+            extra = commit.extra
         if 'git-extra' in rev.properties:
             for l in rev.properties['git-extra'].splitlines():
                 (k, v) = l.split(' ', 1)
-                commit.extra.append(
+                extra.append(
                     (k.encode('utf-8', 'surrogateescape'),
                      v.encode('utf-8', 'surrogateescape')))
         return commit
@@ -483,7 +466,11 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.parent_ids = list(parents)
         unknown_extra_fields = []
         extra_lines = []
-        for k, v in commit.extra:
+        try:
+            extra = commit._extra
+        except AttributeError:
+            extra = commit.extra
+        for k, v in extra:
             if k == HG_RENAME_SOURCE:
                 extra_lines.append(
                     k.decode('utf-8', 'surrogateescape') + ' ' +

@@ -20,7 +20,6 @@ import epydoc.uid
 
 import breezy.lazy_import
 
-
 _ObjectUID = epydoc.uid.ObjectUID
 _ScopeReplacer = breezy.lazy_import.ScopeReplacer
 

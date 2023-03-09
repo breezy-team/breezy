@@ -22,19 +22,12 @@ repositories for some data, and are run for each repository format supporting
 this.
 """
 
-from breezy import (
-    errors,
-    urlutils,
-    )
-from breezy.bzr import (
-    remote,
-    )
+from breezy import errors, urlutils
+from breezy.bzr import remote
 from breezy.controldir import ControlDir
 from breezy.tests import multiply_tests
-from breezy.tests.per_repository import (
-    all_repository_format_scenarios,
-    TestCaseWithRepository,
-    )
+from breezy.tests.per_repository import (TestCaseWithRepository,
+                                         all_repository_format_scenarios)
 
 
 class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):

@@ -21,13 +21,8 @@ import platform
 import sys
 
 import breezy
-from . import (
-    bedding,
-    controldir,
-    errors,
-    osutils,
-    trace,
-    )
+
+from . import bedding, controldir, errors, osutils, trace
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):

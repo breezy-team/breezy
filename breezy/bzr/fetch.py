@@ -26,10 +26,7 @@ branch.
 
 import operator
 
-from .. import (
-    errors,
-    ui,
-    )
+from .. import errors, ui
 from ..i18n import gettext
 from ..revision import NULL_REVISION
 from ..trace import mutter

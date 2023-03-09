@@ -17,11 +17,7 @@
 
 """Tests of the breezy.utextwrap."""
 
-from .. import (
-    tests,
-    utextwrap,
-    )
-
+from .. import tests, utextwrap
 
 # Japanese "Good morning".
 # Each character have double width. So total 8 width on console.

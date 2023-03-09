@@ -17,11 +17,7 @@
 """Black-box tests for brz nick."""
 
 import breezy
-from breezy import (
-    branch,
-    osutils,
-    tests,
-    )
+from breezy import branch, osutils, tests
 
 
 class TestNick(tests.TestCaseWithTransport):

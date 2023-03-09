@@ -76,6 +76,7 @@ import stat
 
 from . import _readdir_py
 
+
 cdef object osutils
 osutils = None
 

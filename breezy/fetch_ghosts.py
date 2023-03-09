@@ -17,8 +17,8 @@
 import contextlib
 
 from .branch import Branch
+from .errors import CommandError, NoSuchRevision
 from .trace import note
-from .errors import NoSuchRevision, CommandError
 
 
 class GhostFetcher:

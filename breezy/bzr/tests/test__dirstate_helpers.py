@@ -20,26 +20,12 @@ import bisect
 import os
 import time
 
-from ... import (
-    osutils,
-    tests,
-    )
-from .. import (
-    dirstate,
-    _dirstate_helpers_py,
-    )
-from . import (
-    test_dirstate,
-    )
+from ... import osutils, tests
+from ...tests import features
+from ...tests.scenarios import load_tests_apply_scenarios, multiply_scenarios
 from ...tests.test_osutils import dir_reader_scenarios
-from ...tests.scenarios import (
-    load_tests_apply_scenarios,
-    multiply_scenarios,
-    )
-from ...tests import (
-    features,
-    )
-
+from .. import _dirstate_helpers_py, dirstate
+from . import test_dirstate
 
 load_tests = load_tests_apply_scenarios
 

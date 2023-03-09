@@ -16,45 +16,27 @@
 
 """Support for GitHub."""
 
-from datetime import datetime
 import json
 import os
-from typing import Optional, Dict, Any, List
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from ...forge import (
-    determine_title,
-    Forge,
-    ForgeLoginRequired,
-    MergeProposal,
-    MergeProposalBuilder,
-    MergeProposalExists,
-    NoSuchProject,
-    PrerequisiteBranchUnsupported,
-    ReopenFailed,
-    UnsupportedForge,
-    )
-
-from ... import (
-    bedding,
-    branch as _mod_branch,
-    controldir,
-    errors,
-    hooks,
-    urlutils,
-    version_string as breezy_version,
-    )
+from ... import bedding
+from ... import branch as _mod_branch
+from ... import controldir, errors, hooks, urlutils
+from ... import version_string as breezy_version
 from ...config import AuthenticationConfig, GlobalStack
-from ...errors import (
-    InvalidHttpResponse,
-    PermissionDenied,
-    UnexpectedHttpStatus,
-    )
+from ...errors import (InvalidHttpResponse, PermissionDenied,
+                       UnexpectedHttpStatus)
+from ...forge import (Forge, ForgeLoginRequired, MergeProposal,
+                      MergeProposalBuilder, MergeProposalExists, NoSuchProject,
+                      PrerequisiteBranchUnsupported, ReopenFailed,
+                      UnsupportedForge, determine_title)
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...trace import note
 from ...transport import get_transport
 from ...transport.http import default_user_agent
-
 
 GITHUB_HOST = 'github.com'
 WEB_GITHUB_URL = 'https://github.com'
@@ -241,8 +223,17 @@ mutation ($pullRequestId: ID!) {
   }
 }
 """
-            self._gh._graphql_request(
-                graphql_query, pullRequestId=self._pr["node_id"])
+            try:
+                self._gh._graphql_request(
+                    graphql_query, pullRequestId=self._pr["node_id"])
+            except GraphqlErrors as e:
+                mutter('graphql errors: %r', e.errors)
+                first_error = e.errors[0]
+                if (first_error['type'] == 'UNPROCESSABLE' and
+                        first_error['path'] == 'enablePullRequestAutoMerge'):
+                    # TODO(jelmer): better exception type
+                    raise Exception(first_error['message'])
+                raise Exception(first_error['message'])
         else:
             # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
             data = {}
@@ -766,14 +757,14 @@ class GitHub(Forge):
             return json.loads(response.text)
         raise UnexpectedHttpStatus(path, response.status, headers=response.getheaders())
 
-    def create_project(self, path, *, description=None, homepage=None,
+    def create_project(self, path, *, homepage=None,
                        private=False, has_issues=True, has_projects=False,
-                       has_wiki=False):
+                       has_wiki=False, summary=None):
         owner, name = path.split('/')
         path = 'repos'
         data = {
             "name": "name",
-            "description": description,
+            "description": summary,
             "homepage": homepage,
             "private": private,
             "has_issues": has_issues,

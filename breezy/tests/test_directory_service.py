@@ -16,17 +16,10 @@
 
 """Test directory service implementation"""
 
-from .. import (
-    transport,
-    urlutils,
-    )
-from ..directory_service import (
-    AliasDirectory,
-    DirectoryServiceRegistry,
-    InvalidLocationAlias,
-    UnsetLocationAlias,
-    directories,
-    )
+from .. import transport, urlutils
+from ..directory_service import (AliasDirectory, DirectoryServiceRegistry,
+                                 InvalidLocationAlias, UnsetLocationAlias,
+                                 directories)
 from . import TestCase, TestCaseWithTransport
 
 

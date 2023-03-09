@@ -21,11 +21,7 @@
 
 import os
 
-from breezy import (
-    bedding,
-    tests,
-    workingtree,
-    )
+from breezy import bedding, tests, workingtree
 
 
 class TestLogFormats(tests.TestCaseWithTransport):

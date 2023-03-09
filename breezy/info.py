@@ -16,23 +16,17 @@
 
 __all__ = ['show_bzrdir_info']
 
-from io import StringIO
-import time
 import sys
+import time
+from io import StringIO
 
-from . import (
-    branch as _mod_branch,
-    controldir,
-    errors,
-    hooks as _mod_hooks,
-    osutils,
-    urlutils,
-    )
-from .bzr import (
-    bzrdir,
-    )
-from .errors import (NoWorkingTree, NotBranchError,
-                     NoRepositoryPresent, NotLocalUrl)
+from . import branch as _mod_branch
+from . import controldir, errors
+from . import hooks as _mod_hooks
+from . import osutils, urlutils
+from .bzr import bzrdir
+from .errors import (NoRepositoryPresent, NotBranchError, NotLocalUrl,
+                     NoWorkingTree)
 from .missing import find_unmerged
 
 

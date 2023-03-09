@@ -16,8 +16,7 @@
 
 """Transport implementation that disables listing to simulate HTTP cheaply."""
 
-from ..transport import Transport
-from ..transport import decorator
+from ..transport import Transport, decorator
 
 
 class UnlistableTransportDecorator(decorator.TransportDecorator):

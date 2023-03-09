@@ -14,14 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ... import (
-    branch,
-    builtins,
-    )
-from .. import (
-    transport_util,
-    ui_testing,
-    )
+from ... import branch, builtins
+from .. import transport_util, ui_testing
 
 
 class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):

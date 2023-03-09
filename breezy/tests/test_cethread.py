@@ -16,10 +16,7 @@
 
 import threading
 
-from .. import (
-    cethread,
-    tests,
-    )
+from .. import cethread, tests
 
 
 class TestCatchingExceptionThread(tests.TestCase):

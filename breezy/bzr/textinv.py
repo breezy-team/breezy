@@ -17,7 +17,6 @@
 from .errors import BzrError
 from .inventory import Inventory
 
-
 START_MARK = "# bzr inventory format 3\n"
 END_MARK = "# end of inventory\n"
 

@@ -17,20 +17,11 @@
 """Tests for interface conformance of inventories of trees."""
 
 
-from breezy import (
-    osutils,
-    tests,
-    )
+from breezy import osutils, tests
 from breezy.git.branch import GitBranch
-from breezy.tests import (
-    per_tree,
-    )
 from breezy.mutabletree import MutableTree
-from breezy.tests import TestSkipped
+from breezy.tests import TestSkipped, features, per_tree
 from breezy.transform import PreviewTree
-from breezy.tests import (
-    features,
-    )
 
 
 def get_entry(tree, path):

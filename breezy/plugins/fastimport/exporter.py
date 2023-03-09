@@ -43,28 +43,18 @@
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-from email.utils import parseaddr
+import re
 import sys
 import time
-import re
+from email.utils import parseaddr
 
 import breezy.branch
 import breezy.revision
-from ... import (
-    builtins,
-    errors,
-    lazy_import,
-    lru_cache,
-    osutils,
-    progress,
-    trace,
-    transport as _mod_transport,
-    )
 
-from . import (
-    helpers,
-    marks_file,
-    )
+from ... import (builtins, errors, lazy_import, lru_cache, osutils, progress,
+                 trace)
+from ... import transport as _mod_transport
+from . import helpers, marks_file
 
 lazy_import.lazy_import(globals(),
                         """

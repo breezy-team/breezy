@@ -16,9 +16,7 @@
 
 """Tests for utf8 caching."""
 
-from .. import (
-    cache_utf8,
-    )
+from .. import cache_utf8
 from . import TestCase
 
 

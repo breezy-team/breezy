@@ -16,9 +16,7 @@
 
 """Config file handling for Git."""
 
-from .. import (
-    config,
-    )
+from .. import config
 
 
 class GitBranchConfig(config.BranchConfig):

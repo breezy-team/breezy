@@ -17,18 +17,12 @@
 import datetime
 import time
 
-from breezy import (
-    errors,
-    revision as _mod_revision,
-    )
+from breezy import errors
+from breezy import revision as _mod_revision
+from breezy.revisionspec import (InvalidRevisionSpec, RevisionInfo,
+                                 RevisionSpec, RevisionSpec_dwim,
+                                 RevisionSpec_tag)
 from breezy.tests import TestCaseWithTransport
-from breezy.revisionspec import (
-    InvalidRevisionSpec,
-    RevisionInfo,
-    RevisionSpec,
-    RevisionSpec_dwim,
-    RevisionSpec_tag,
-    )
 
 
 def spec_in_history(spec, branch):

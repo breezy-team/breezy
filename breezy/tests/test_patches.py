@@ -17,30 +17,15 @@
 
 import os.path
 
-from breezy.tests import TestCase, TestCaseWithTransport
-
 from breezy.iterablefile import IterableFile
-from breezy.patches import (
-    AppliedPatches,
-    MalformedLine,
-    MalformedHunkHeader,
-    MalformedPatchHeader,
-    BinaryPatch,
-    BinaryFiles,
-    Patch,
-    ContextLine,
-    InsertLine,
-    RemoveLine,
-    difference_index,
-    get_patch_names,
-    hunk_from_header,
-    iter_patched,
-    iter_patched_from_hunks,
-    parse_line,
-    parse_patch,
-    parse_patches,
-    NO_NL,
-    )
+from breezy.patches import (NO_NL, AppliedPatches, BinaryFiles, BinaryPatch,
+                            ContextLine, InsertLine, MalformedHunkHeader,
+                            MalformedLine, MalformedPatchHeader, Patch,
+                            RemoveLine, difference_index, get_patch_names,
+                            hunk_from_header, iter_patched,
+                            iter_patched_from_hunks, parse_line, parse_patch,
+                            parse_patches)
+from breezy.tests import TestCase, TestCaseWithTransport
 
 
 class PatchesTester(TestCase):

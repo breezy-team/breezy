@@ -19,62 +19,30 @@
 cdef extern from "python-compat.h":
     pass
 
-from libc.stdio cimport (
-    sprintf,
-    )
-from libc.stdlib cimport (
-    strtol,
-    )
-from libc.string cimport (
-    memcmp,
-    memcpy,
-    memchr,
-    )
-
-from cpython.bytes cimport (
-    PyBytes_CheckExact,
-    PyBytes_FromStringAndSize,
-    PyBytes_AS_STRING,
-    PyBytes_GET_SIZE,
-    )
-from cpython.dict cimport (
-    PyDict_SetItem,
-    )
-from cpython.int cimport (
-    PyInt_AsUnsignedLongMask,
-    )
-from cpython.object cimport (
-    PyObject,
-    )
-from cpython.ref cimport (
-    Py_INCREF,
-    )
-from cpython.tuple cimport (
-    PyTuple_CheckExact,
-    PyTuple_GET_SIZE,
-    )
-
-from ._str_helpers cimport (
-    _my_memrchr,
-    safe_interned_string_from_size,
-    )
+from cpython.bytes cimport (PyBytes_AS_STRING, PyBytes_CheckExact,
+                            PyBytes_FromStringAndSize, PyBytes_GET_SIZE)
+from cpython.dict cimport PyDict_SetItem
+from cpython.int cimport PyInt_AsUnsignedLongMask
+from cpython.object cimport PyObject
+from cpython.ref cimport Py_INCREF
+from cpython.tuple cimport PyTuple_CheckExact, PyTuple_GET_SIZE
+from libc.stdio cimport sprintf
+from libc.stdlib cimport strtol
+from libc.string cimport memchr, memcmp, memcpy
 
 # cimport all of the definitions we will need to access
-from ._static_tuple_c cimport (
-    import_static_tuple_c,
-    StaticTuple,
-    StaticTuple_New,
-    StaticTuple_Intern,
-    StaticTuple_SET_ITEM,
-    StaticTuple_CheckExact,
-    StaticTuple_GET_SIZE,
-    )
+from ._static_tuple_c cimport (StaticTuple, StaticTuple_CheckExact,
+                               StaticTuple_GET_SIZE, StaticTuple_Intern,
+                               StaticTuple_New, StaticTuple_SET_ITEM,
+                               import_static_tuple_c)
+from ._str_helpers cimport _my_memrchr, safe_interned_string_from_size
 
 # Set up the StaticTuple C_API functionality
 import_static_tuple_c()
 
 cdef object crc32
 from zlib import crc32
+
 
 cdef object _LeafNode
 _LeafNode = None

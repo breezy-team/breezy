@@ -22,12 +22,9 @@ __all__ = [
     ]
 
 
-from . import (
-    errors,
-    ui,
-    )
-from .trace import mutter
+from . import errors, ui
 from .i18n import gettext
+from .trace import mutter
 
 
 def reconcile(dir, canonicalize_chks=False):

@@ -47,15 +47,13 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from .. import (
-    ui,
-    )
+from .. import ui
 from ..branch import Branch
 from ..check import Check
+from ..i18n import gettext
 from ..revision import NULL_REVISION
 from ..trace import note
 from ..workingtree import WorkingTree
-from ..i18n import gettext
 
 
 class VersionedFileCheck(Check):

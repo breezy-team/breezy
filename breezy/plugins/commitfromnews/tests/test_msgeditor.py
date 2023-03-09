@@ -16,9 +16,9 @@
 
 """Tests for msg editor interactions.."""
 
-from ... import commitfromnews
 from .... import msgeditor
 from ....tests import TestCaseWithTransport
+from ... import commitfromnews
 
 
 class TestRegisters(TestCaseWithTransport):

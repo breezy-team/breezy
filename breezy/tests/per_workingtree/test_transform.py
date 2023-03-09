@@ -15,65 +15,30 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
-from io import BytesIO
 import os
 import sys
 import time
-
-from ... import (
-    osutils,
-    tests,
-    trace,
-    transform,
-    urlutils,
-    )
-from ...transport import FileExists
-from ...tree import TreeChange
-from ...bzr.conflicts import (
-    DeletingParent,
-    DuplicateEntry,
-    DuplicateID,
-    MissingParent,
-    NonDirectoryParent,
-    ParentLoop,
-    UnversionedParent,
-)
-from ...errors import (
-    DuplicateKey,
-    ExistingLimbo,
-    ExistingPendingDeletion,
-    ImmortalPendingDeletion,
-    LockError,
-)
-from ...osutils import (
-    file_kind,
-    pathjoin,
-)
-from .. import (
-    features,
-    TestSkipped,
-    )
-from ..features import (
-    HardlinkFeature,
-    SymlinkFeature,
-    )
-from ...transform import (
-    create_from_tree,
-    FinalPaths,
-    resolve_conflicts,
-    ROOT_PARENT,
-    ImmortalLimbo,
-    MalformedTransform,
-    NoFinalPath,
-    ReusingTransform,
-    TransformRenameFailed,
-)
+from io import BytesIO
 
 from breezy.bzr.transform import resolve_checkout
-
-from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 from breezy.tests.matchers import MatchesTreeChanges
+from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
+from ... import osutils, tests, trace, transform, urlutils
+from ...bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
+                              MissingParent, NonDirectoryParent, ParentLoop,
+                              UnversionedParent)
+from ...errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
+                       ImmortalPendingDeletion, LockError)
+from ...osutils import file_kind, pathjoin
+from ...transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
+                          MalformedTransform, NoFinalPath, ReusingTransform,
+                          TransformRenameFailed, create_from_tree,
+                          resolve_conflicts)
+from ...transport import FileExists
+from ...tree import TreeChange
+from .. import TestSkipped, features
+from ..features import HardlinkFeature, SymlinkFeature
 
 
 class TestTreeTransform(TestCaseWithWorkingTree):

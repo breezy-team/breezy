@@ -19,6 +19,7 @@ import tempfile
 from typing import Type
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import patiencediff
 
@@ -33,18 +34,12 @@ from breezy.bzr import (
     )
 from breezy.i18n import gettext
 """)
-from . import (
-    decorators,
-    errors,
-    hooks,
-    osutils,
-    registry,
-    revision as _mod_revision,
-    transform,
-    transport as _mod_transport,
-    trace,
-    tree as _mod_tree,
-    )
+from . import decorators, errors, hooks, osutils, registry
+from . import revision as _mod_revision
+from . import trace, transform
+from . import transport as _mod_transport
+from . import tree as _mod_tree
+
 # TODO: Report back as changes are merged in
 
 
@@ -1410,6 +1405,7 @@ class Merge3Merger:
     def text_merge(self, trans_id, paths):
         """Perform a three-way text merge on a file"""
         from merge3 import Merge3
+
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
         base_path, other_path, this_path = paths

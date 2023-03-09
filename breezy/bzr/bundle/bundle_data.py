@@ -17,37 +17,22 @@
 """Read in a bundle stream, and process it into a BundleReader object."""
 
 import base64
-from io import BytesIO
 import os
 import pprint
+from io import BytesIO
 
-from ... import (
-    cache_utf8,
-    osutils,
-    timestamp,
-    )
-from . import apply_bundle
-from ...errors import (
-    TestamentMismatch,
-    BzrError,
-    NoSuchId,
-    )
-from ..inventory import (
-    Inventory,
-    InventoryDirectory,
-    InventoryFile,
-    InventoryLink,
-    )
-from ..inventorytree import InventoryTree
-from ...osutils import sha_string, sha_strings, pathjoin
-from ...revision import Revision, NULL_REVISION
-from ..testament import StrictTestament
+from ... import cache_utf8, osutils, timestamp
+from ...errors import BzrError, NoSuchId, TestamentMismatch
+from ...osutils import pathjoin, sha_string, sha_strings
+from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
-from ...tree import (
-    InterTree,
-    Tree,
-    )
+from ...tree import InterTree, Tree
+from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
+                         InventoryLink)
+from ..inventorytree import InventoryTree
+from ..testament import StrictTestament
 from ..xml5 import serializer_v5
+from . import apply_bundle
 
 
 class RevisionInfo:
@@ -147,6 +132,7 @@ class BundleInfo:
         when information is missing.
         """
         from breezy.timestamp import unpack_highres_date
+
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -694,7 +680,7 @@ class BundleTree(InventoryTree):
 
         This need to be called before ever accessing self.inventory
         """
-        from os.path import dirname, basename
+        from os.path import basename, dirname
         inv = Inventory(None, self.revision_id)
 
         def add_entry(path, file_id):
@@ -779,8 +765,8 @@ class BundleTree(InventoryTree):
 
 def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
-    from breezy.patches import iter_patched
     from breezy.iterablefile import IterableFile
+    from breezy.patches import iter_patched
     if file_patch == b"":
         return IterableFile(())
     # string.splitlines(True) also splits on '\r', but the iter_patched code

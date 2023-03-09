@@ -21,11 +21,7 @@ from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.utils import make_object
 
 from ...tests import TestCaseWithTransport
-
-from ..transportgit import (
-    TransportObjectStore,
-    TransportRefsContainer,
-    )
+from ..transportgit import TransportObjectStore, TransportRefsContainer
 
 
 class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):
@@ -42,7 +38,7 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         self.store.add_object(make_object(Blob, data=b"data"))
         self.assertEqual(0, len(self.store.packs))
         self.store.pack_loose_objects()
-        self.assertEqual(1, len(self.store.packs))
+        self.assertEqual(1, len(self.store.packs), self.store.packs)
         packname = list(self.store.packs)[0].name()
         self.assertEqual({'pack-%s' % packname.decode('ascii')},
                          set(self.store._pack_names()))

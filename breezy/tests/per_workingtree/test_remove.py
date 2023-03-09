@@ -16,8 +16,8 @@
 
 """Tests for interface conformance of 'WorkingTree.remove'"""
 
-from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 from breezy import ignores, osutils
+from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestRemove(TestCaseWithWorkingTree):

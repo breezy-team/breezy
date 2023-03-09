@@ -17,67 +17,34 @@
 
 """Git Trees."""
 
-from collections import deque
 import errno
+import os
+import posixpath
+import stat
+from collections import deque
 from functools import partial
 from io import BytesIO
-import os
 
-from dulwich.config import (
-    parse_submodules,
-    ConfigFile as GitConfigFile,
-    )
-from dulwich.diff_tree import tree_changes, RenameDetector
+from dulwich.config import ConfigFile as GitConfigFile
+from dulwich.config import parse_submodules
+from dulwich.diff_tree import RenameDetector, tree_changes
 from dulwich.errors import NotTreeError
-from dulwich.index import (
-    blob_from_path_and_stat,
-    cleanup_mode,
-    commit_tree,
-    index_entry_from_stat,
-    Index,
-    IndexEntry,
-    )
-from dulwich.object_store import (
-    OverlayObjectStore,
-    )
-from dulwich.objects import (
-    Blob,
-    Tree,
-    ZERO_SHA,
-    S_IFGITLINK,
-    S_ISGITLINK,
-    )
-import stat
-import posixpath
+from dulwich.index import (Index, IndexEntry, blob_from_path_and_stat,
+                           cleanup_mode, commit_tree, index_entry_from_stat)
+from dulwich.object_store import OverlayObjectStore, iter_tree_contents
+from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree
 
-from .. import (
-    controldir as _mod_controldir,
-    delta,
-    errors,
-    mutabletree,
-    osutils,
-    revisiontree,
-    trace,
-    transport as _mod_transport,
-    tree as _mod_tree,
-    urlutils,
-    workingtree,
-    )
-from ..revision import (
-    CURRENT_REVISION,
-    NULL_REVISION,
-    )
+from .. import controldir as _mod_controldir
+from .. import delta, errors, mutabletree, osutils, revisiontree, trace
+from .. import transport as _mod_transport
+from .. import tree as _mod_tree
+from .. import urlutils, workingtree
+from ..bzr.inventorytree import InventoryTreeChange
+from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
 from ..tree import MissingNestedTree
-
-from .mapping import (
-    encode_git_path,
-    decode_git_path,
-    mode_is_executable,
-    mode_kind,
-    default_mapping,
-    )
-from ..bzr.inventorytree import InventoryTreeChange
+from .mapping import (decode_git_path, default_mapping, encode_git_path,
+                      mode_is_executable, mode_kind)
 
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
@@ -729,8 +696,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     def _iter_tree_contents(self, include_trees=False):
         if self.tree is None:
             return iter([])
-        return self.store.iter_tree_contents(
-            self.tree, include_trees=include_trees)
+        return iter_tree_contents(
+            self.store, self.tree, include_trees=include_trees)
 
     def annotate_iter(self, path, default_revision=CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
@@ -745,6 +712,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         with self.lock_read():
             # Now we have the parents of this content
             from breezy.annotate import Annotator
+
             from .annotate import AnnotateProvider
             annotator = Annotator(AnnotateProvider(
                 self._repository._file_change_scanner))

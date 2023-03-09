@@ -16,9 +16,7 @@
 
 """ssl_certs -- provides access to ssl keys and certificates needed by tests"""
 
-from breezy import (
-    osutils,
-    )
+from breezy import osutils
 
 # Directory containing all ssl files, keys or certificates
 base_dir = osutils.dirname(osutils.realpath(__file__))

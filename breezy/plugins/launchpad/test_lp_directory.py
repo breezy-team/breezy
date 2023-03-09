@@ -17,32 +17,19 @@
 """Tests for directory lookup through Launchpad.net"""
 
 import os
-
-from xmlrpc.client import Fault
 from http.client import parse_headers
+from xmlrpc.client import Fault
 
 import breezy
-from ... import (
-    debug,
-    tests,
-    transport,
-    urlutils,
-    )
+
+from ... import debug, tests, transport, urlutils
 from ...branch import Branch
 from ...directory_service import directories
-from ...tests import (
-    features,
-    ssl_certs,
-    TestCaseInTempDir,
-    TestCaseWithMemoryTransport
-)
-from . import (
-    _register_directory,
-    )
-from .lp_directory import (
-    LaunchpadDirectory)
+from ...tests import (TestCaseInTempDir, TestCaseWithMemoryTransport, features,
+                      http_server, ssl_certs)
+from . import _register_directory
 from .account import get_lp_login, set_lp_login
-from ...tests import http_server
+from .lp_directory import LaunchpadDirectory
 
 
 class FakeResolveFactory:
@@ -98,31 +85,6 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         # care that you are asking for 'ubuntu'
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu',
                            'lp:ubuntu')
-
-    def test_ubuntu_invalid(self):
-        """Invalid ubuntu urls don't crash.
-
-        :seealso: http://pad.lv/843900
-        """
-        # This ought to be natty-updates.
-        self.assertRaises(urlutils.InvalidURL,
-                          self.assertResolve,
-                          '',
-                          'ubuntu:natty/updates/smartpm')
-
-    def test_ubuntu_apt(self):
-        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/apt',
-                           'lp:ubuntu/apt')
-
-    def test_ubuntu_natty_apt(self):
-        self.assertResolve(
-            'bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/natty/apt',
-            'lp:ubuntu/natty/apt')
-
-    def test_ubuntu_natty_apt_filename(self):
-        self.assertResolve(
-            'bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/natty/apt/filename',
-            'lp:ubuntu/natty/apt/filename')
 
     def test_user_two_part(self):
         # We fall back to the ResolveFactory. The real Launchpad one will raise
@@ -349,116 +311,9 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
 
         directories.remove('lp:')
         directories.remove('lp+bzr:')
-        directories.remove('ubuntu:')
-        directories.remove('debianlp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
         self.addCleanup(directories.remove, 'lp:')
         t = transport.get_transport('lp:///apt')
         branch = Branch.open_from_transport(t)
         self.assertEqual(target_branch.base, branch.base)
-
-
-class TestDebuntuExpansions(TestCaseInTempDir):
-    """Test expansions for ubuntu: and debianlp: schemes."""
-
-    def setUp(self):
-        super().setUp()
-        self.directory = LaunchpadDirectory()
-
-    def _make_factory(self, package='foo', distro='ubuntu', series=None):
-        if series is None:
-            path = '{}/{}'.format(distro, package)
-            url_suffix = '~branch/{}/{}'.format(distro, package)
-        else:
-            path = '{}/{}/{}'.format(distro, series, package)
-            url_suffix = '~branch/{}/{}/{}'.format(distro, series, package)
-        return FakeResolveFactory(
-            self, path, dict(urls=[
-                'http://bazaar.launchpad.net/' + url_suffix]))
-
-    def assertURL(self, expected_url, shortcut, package='foo', distro='ubuntu',
-                  series=None):
-        factory = self._make_factory(package=package, distro=distro,
-                                     series=series)
-        self.assertEqual('http://bazaar.launchpad.net/~branch/' + expected_url,
-                         self.directory._resolve(shortcut, factory))
-
-    # Bogus distro.
-
-    def test_bogus_distro(self):
-        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
-        self.assertRaises(urlutils.InvalidURL,
-                          self.directory._resolve, 'gentoo:foo', factory)
-
-    def test_trick_bogus_distro_u(self):
-        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
-        self.assertRaises(urlutils.InvalidURL,
-                          self.directory._resolve, 'utube:foo', factory)
-
-    def test_trick_bogus_distro_d(self):
-        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
-        self.assertRaises(urlutils.InvalidURL,
-                          self.directory._resolve, 'debuntu:foo', factory)
-
-    def test_missing_ubuntu_distroseries_without_project(self):
-        # Launchpad does not hold source packages for Intrepid.  Missing or
-        # bogus distroseries with no project name is treated like a project.
-        self.assertURL('ubuntu/intrepid', 'ubuntu:intrepid',
-                       package='intrepid')
-
-    def test_missing_ubuntu_distroseries_with_project(self):
-        # Launchpad does not hold source packages for Intrepid.  Missing or
-        # bogus distroseries with a project name is treated like an unknown
-        # series (i.e. we keep it verbatim).
-        self.assertURL('ubuntu/intrepid/foo',
-                       'ubuntu:intrepid/foo', series='intrepid')
-
-    def test_missing_debian_distroseries(self):
-        # Launchpad does not hold source packages for unstable.  Missing or
-        # bogus distroseries is treated like a project.
-        self.assertURL('debian/sid',
-                       'debianlp:sid', package='sid', distro='debian')
-
-    # Ubuntu Default distro series.
-
-    def test_ubuntu_default_distroseries_expansion(self):
-        self.assertURL('ubuntu/foo', 'ubuntu:foo')
-
-    def test_ubuntu_natty_distroseries_expansion(self):
-        self.assertURL('ubuntu/natty/foo', 'ubuntu:natty/foo', series='natty')
-
-    def test_ubuntu_maverick_distroseries_expansion(self):
-        self.assertURL('ubuntu/maverick/foo', 'ubuntu:maverick/foo',
-                       series='maverick')
-
-    def test_ubuntu_lucid_distroseries_expansion(self):
-        self.assertURL('ubuntu/lucid/foo', 'ubuntu:lucid/foo', series='lucid')
-
-    def test_ubuntu_karmic_distroseries_expansion(self):
-        self.assertURL('ubuntu/karmic/foo', 'ubuntu:karmic/foo',
-                       series='karmic')
-
-    def test_ubuntu_jaunty_distroseries_expansion(self):
-        self.assertURL('ubuntu/jaunty/foo', 'ubuntu:jaunty/foo',
-                       series='jaunty')
-
-    def test_ubuntu_hardy_distroseries_expansion(self):
-        self.assertURL('ubuntu/hardy/foo', 'ubuntu:hardy/foo', series='hardy')
-
-    def test_ubuntu_dapper_distroseries_expansion(self):
-        self.assertURL('ubuntu/dapper/foo', 'ubuntu:dapper/foo',
-                       series='dapper')
-
-    # Debian default distro series.
-
-    def test_debian_default_distroseries_expansion(self):
-        self.assertURL('debian/foo', 'debianlp:foo', distro='debian')
-
-    def test_debian_squeeze_distroseries_expansion(self):
-        self.assertURL('debian/squeeze/foo', 'debianlp:squeeze/foo',
-                       distro='debian', series='squeeze')
-
-    def test_debian_lenny_distroseries_expansion(self):
-        self.assertURL('debian/lenny/foo', 'debianlp:lenny/foo',
-                       distro='debian', series='lenny')

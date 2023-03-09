@@ -17,15 +17,9 @@
 #
 
 from .... import tests
-
-from ....tests import (
-    TestUtil,
-    multiply_tests,
-    TestCaseWithTransport,
-    TestCaseInTempDir,
-    )
+from ....tests import (TestCaseInTempDir, TestCaseWithTransport, TestUtil,
+                       multiply_tests)
 from ....tests.features import ExecutableFeature
-
 
 quilt_feature = ExecutableFeature('quilt')
 

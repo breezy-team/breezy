@@ -16,13 +16,8 @@
 
 """Tests for implementations of Repository.has_same_location."""
 
-from breezy import (
-    controldir,
-    transport,
-    )
-from breezy.tests import (
-    TestNotApplicable,
-    )
+from breezy import controldir, transport
+from breezy.tests import TestNotApplicable
 from breezy.tests.per_repository import TestCaseWithRepository
 
 
