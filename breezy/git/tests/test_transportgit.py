@@ -21,11 +21,7 @@ from dulwich.tests.test_object_store import PackBasedObjectStoreTests
 from dulwich.tests.utils import make_object
 
 from ...tests import TestCaseWithTransport
-
-from ..transportgit import (
-    TransportObjectStore,
-    TransportRefsContainer,
-    )
+from ..transportgit import TransportObjectStore, TransportRefsContainer
 
 
 class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):

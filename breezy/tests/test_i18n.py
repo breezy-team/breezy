@@ -18,12 +18,7 @@
 
 import io
 
-from .. import (
-    i18n,
-    tests,
-    errors,
-    workingtree,
-    )
+from .. import errors, i18n, tests, workingtree
 
 
 class ZzzTranslations:

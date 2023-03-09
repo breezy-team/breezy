@@ -25,7 +25,6 @@ import sys
 from ..errors import BzrError
 from ..filters import ContentFilter
 
-
 # Real Unix newline - \n without \r before it
 _UNIX_NL_RE = re.compile(br'(?<!\r)\n')
 

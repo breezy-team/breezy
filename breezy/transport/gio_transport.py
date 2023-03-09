@@ -24,34 +24,18 @@ It provides the gio+XXX:// protocols where XXX is any of the protocols
 supported by gio.
 """
 
-from io import BytesIO
 import os
 import random
 import stat
 import time
-from urllib.parse import (
-    urlparse,
-    urlunparse,
-    )
+from io import BytesIO
+from urllib.parse import urlparse, urlunparse
 
-from .. import (
-    config,
-    errors,
-    osutils,
-    urlutils,
-    debug,
-    ui,
-    )
-from ..trace import mutter
-from . import (
-    FileStream,
-    ConnectedTransport,
-    NoSuchFile,
-    FileExists,
-    _file_streams,
-    )
-
+from .. import config, debug, errors, osutils, ui, urlutils
 from ..tests.test_server import TestServer
+from ..trace import mutter
+from . import (ConnectedTransport, FileExists, FileStream, NoSuchFile,
+               _file_streams)
 
 try:
     import glib

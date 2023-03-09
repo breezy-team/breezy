@@ -1,20 +1,96 @@
 [build-system]
 requires = [
-    "packaging",
     "setuptools>=60",
-    "setuptools-gettext",
     "setuptools-rust",
-    "configobj",
+    "setuptools-gettext",
     "cython>=0.29",
-    "pyyaml",
-    "wheel",
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "breezy"
+maintainers = [{name = "Breezy Developers", email = "team@breezy-vcs.org"}]
+description = "Friendly distributed version control system"
+readme = "README.rst"
+license = {text = "GNU GPL v2"}
+classifiers = [
+    "Development Status :: 6 - Mature",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Programming Language :: C",
+    "Topic :: Software Development :: Version Control",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "configobj",
+    "fastbencode",
+    "patiencediff",
+    "merge3",
+    "dulwich>=0.21.2",
+    "urllib3>=1.24.1",
+    "pyyaml",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://www.breezy-vcs.org/"
+Download = "https://launchpad.net/brz/+download"
+
+[project.optional-dependencies]
+fastimport = ["fastimport"]
+git = ["dulwich>=0.21.2"]
+launchpad = ["launchpadlib>=1.6.3"]
+workspace = ["pyinotify"]
+doc = [
+    "docutils",
+    "setuptools",
+    "sphinx",
+    "sphinx_epytext",
+]
+pgp = ["gpg"]
+github = ["github"]
+paramiko = ["paramiko"]
+subunit = ["python-subunit"]
+dev = [
+    "testtools",
+    "testscenarios",
+    "python-subunit",
+    "flake8",
+]
+testing = [
+    "testtools",
+    "testscenarios",
+    "python-subunit",
+    "dulwich>=0.21.2",
+]
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["breezy*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+breezy = [
+    "doc/api/*.txt",
+    "tests/test_patches_data/*",
+    "help_topics/en/*.txt",
+    "tests/ssl_certs/ca.crt",
+    "tests/ssl_certs/server_without_pass.key",
+    "tests/ssl_certs/server_with_pass.key",
+    "tests/ssl_certs/server.crt",
+    "py.typed",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "breezy.__version__"}
+
 [tool.mypy]
-python_version = "3.7"
 ignore_missing_imports = true
-warn_return_any = true
-warn_unused_configs = true
-#check_untyped_defs = true
-exclude = ['^breezy/util/simplemapi\.py$']

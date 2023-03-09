@@ -22,24 +22,13 @@ import sys
 
 from .knit import KnitCorrupt
 
+from cpython.bytes cimport (PyBytes_AsString, PyBytes_CheckExact,
+                            PyBytes_FromStringAndSize, PyBytes_Size)
+from cpython.dict cimport PyDict_CheckExact, PyDict_SetItem
+from cpython.list cimport PyList_Append, PyList_CheckExact, PyList_GET_ITEM
 from libc.stdlib cimport strtol
 from libc.string cimport memchr
 
-from cpython.bytes cimport (
-    PyBytes_AsString,
-    PyBytes_CheckExact,
-    PyBytes_FromStringAndSize,
-    PyBytes_Size,
-    )
-from cpython.dict cimport (
-    PyDict_CheckExact,
-    PyDict_SetItem,
-    )
-from cpython.list cimport (
-    PyList_Append,
-    PyList_CheckExact,
-    PyList_GET_ITEM,
-    )
 
 cdef extern from "Python.h":
     void *PyDict_GetItem_void "PyDict_GetItem" (object p, object key)

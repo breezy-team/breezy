@@ -17,14 +17,8 @@
 """Tests for OS Locks."""
 
 
-from .. import (
-    debug,
-    errors,
-    lock,
-    tests,
-    )
+from .. import debug, errors, lock, tests
 from .scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 

@@ -33,6 +33,7 @@ def shellcomplete_on_command(cmdname, outfile=None):
         outfile = sys.stdout
 
     from inspect import getdoc
+
     from . import commands
     cmdobj = commands.get_cmd_object(cmdname)
 
@@ -58,8 +59,9 @@ def shellcomplete_on_options(options, outfile=None):
 
 def shellcomplete_commands(outfile=None):
     """List all commands"""
-    from . import commands
     from inspect import getdoc
+
+    from . import commands
 
     commands.install_bzr_command_hooks()
 

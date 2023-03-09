@@ -19,80 +19,29 @@
 import itertools
 from typing import Callable, Dict, Tuple, Optional
 
-from dulwich.errors import (
-    NotCommitError,
-    )
+from dulwich.errors import NotCommitError
 from dulwich.objects import ObjectID
-from dulwich.object_store import (
-    ObjectStoreGraphWalker,
-    )
+from dulwich.object_store import ObjectStoreGraphWalker
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
-from dulwich.protocol import (
-    CAPABILITY_THIN_PACK,
-    ZERO_SHA,
-    )
-from dulwich.refs import (
-    ANNOTATED_TAG_SUFFIX,
-    SYMREF,
-    )
+from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
+from dulwich.refs import ANNOTATED_TAG_SUFFIX, SYMREF
 from dulwich.walk import Walker
 
-from ..errors import (
-    DivergedBranches,
-    FetchLimitUnsupported,
-    InvalidRevisionId,
-    LossyPushToSameVCS,
-    NoRoundtrippingSupport,
-    NoSuchRevision,
-    )
-from ..repository import (
-    AbstractSearchResult,
-    FetchResult,
-    InterRepository,
-    )
-from ..revision import (
-    NULL_REVISION,
-    RevisionID,
-    )
-from .. import (
-    config,
-    trace,
-    ui,
-    )
-
-from .errors import (
-    NoPushSupport,
-    )
-from .fetch import (
-    import_git_objects,
-    DetermineWantsRecorder,
-    )
-from .mapping import (
-    needs_roundtripping,
-    )
-from .object_store import (
-    get_object_store,
-    )
-from .push import (
-    MissingObjectsIterator,
-    remote_divergence,
-    )
-from .refs import (
-    is_tag,
-    ref_to_tag_name,
-    )
-from .repository import (
-    GitRepository,
-    LocalGitRepository,
-    GitRepositoryFormat,
-    )
-from .remote import (
-    RemoteGitRepository,
-    RemoteGitError,
-    )
-from .unpeel_map import (
-    UnpeelMap,
-    )
+from .. import config, trace, ui
+from ..errors import (DivergedBranches, FetchLimitUnsupported,
+                      InvalidRevisionId, LossyPushToSameVCS,
+                      NoRoundtrippingSupport, NoSuchRevision)
+from ..repository import FetchResult, InterRepository, AbstractSearchResult
+from ..revision import NULL_REVISION, RevisionID
+from .errors import NoPushSupport
+from .fetch import DetermineWantsRecorder, import_git_objects
+from .mapping import needs_roundtripping
+from .object_store import get_object_store
+from .push import MissingObjectsIterator, remote_divergence
+from .refs import is_tag, ref_to_tag_name
+from .remote import RemoteGitError, RemoteGitRepository
+from .repository import GitRepository, GitRepositoryFormat, LocalGitRepository
+from .unpeel_map import UnpeelMap
 
 
 EitherId = Tuple[Optional[RevisionID], Optional[ObjectID]]

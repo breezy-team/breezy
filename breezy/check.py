@@ -36,12 +36,10 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 
 import contextlib
 
-from . import (
-    errors,
-    )
+from . import errors
 from .controldir import ControlDir
-from .trace import note
 from .i18n import gettext
+from .trace import note
 
 
 class Check:

@@ -16,26 +16,13 @@
 
 """Weave-era branch implementations."""
 
-from ... import (
-    controldir as _mod_controldir,
-    errors,
-    lockable_files,
-    )
-
-from ...decorators import (
-    only_raises,
-    )
+from ... import controldir as _mod_controldir
+from ... import errors, lockable_files
+from ...branch import BindingUnsupported, BranchFormat, BranchWriteLockResult
+from ...bzr.fullhistory import FullHistoryBzrBranch
+from ...decorators import only_raises
 from ...lock import LogicalLockResult
 from ...trace import mutter
-
-from ...branch import (
-    BindingUnsupported,
-    BranchFormat,
-    BranchWriteLockResult,
-    )
-from ...bzr.fullhistory import (
-    FullHistoryBzrBranch,
-    )
 
 
 class BzrBranch4(FullHistoryBzrBranch):
@@ -93,8 +80,8 @@ class BzrBranch4(FullHistoryBzrBranch):
     def _get_checkout_format(self, lightweight=False):
         """Return the most suitable metadir for a checkout of this branch.
         """
-        from .repository import RepositoryFormat7
         from ...bzr.bzrdir import BzrDirMetaFormat1
+        from .repository import RepositoryFormat7
         format = BzrDirMetaFormat1()
         if lightweight:
             format.set_branch_format(self._format)
@@ -177,9 +164,7 @@ class BzrBranchFormat4(BranchFormat):
 
     def __init__(self):
         super().__init__()
-        from .bzrdir import (
-            BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
-            )
+        from .bzrdir import BzrDirFormat4, BzrDirFormat5, BzrDirFormat6
         self._matchingcontroldir = BzrDirFormat6()
         self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5,
                                     BzrDirFormat6]

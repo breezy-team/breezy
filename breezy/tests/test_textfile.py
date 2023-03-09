@@ -17,8 +17,8 @@
 from io import BytesIO
 
 from ..errors import BinaryFile
+from ..textfile import check_text_lines, check_text_path, text_file
 from . import TestCase, TestCaseInTempDir
-from ..textfile import text_file, check_text_lines, check_text_path
 
 
 class TextFile(TestCase):

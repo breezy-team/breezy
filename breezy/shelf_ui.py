@@ -15,26 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import contextlib
-import patiencediff
 import shutil
 import sys
 import tempfile
-
 from io import BytesIO
 
-from . import (
-    builtins,
-    delta,
-    diff,
-    errors,
-    osutils,
-    patches,
-    shelf,
-    textfile,
-    trace,
-    ui,
-    workingtree,
-)
+import patiencediff
+
+from . import (builtins, delta, diff, errors, osutils, patches, shelf,
+               textfile, trace, ui, workingtree)
 from .i18n import gettext
 
 

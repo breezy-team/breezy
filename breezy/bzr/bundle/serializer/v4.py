@@ -15,31 +15,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bz2
-from io import (
-    BytesIO,
-    )
 import re
+from io import BytesIO
 
 import fastbencode as bencode
 
-from .... import (
-    errors,
-    iterablefile,
-    lru_cache,
-    multiparent,
-    osutils,
-    repository as _mod_repository,
-    revision as _mod_revision,
-    trace,
-    ui,
-    )
-from ... import (
-    pack,
-    serializer,
-    versionedfile as _mod_versionedfile,
-    )
-from .. import bundle_data, serializer as bundle_serializer
+from .... import errors, iterablefile, lru_cache, multiparent, osutils
+from .... import repository as _mod_repository
+from .... import revision as _mod_revision
+from .... import trace, ui
 from ....i18n import ngettext
+from ... import pack, serializer
+from ... import versionedfile as _mod_versionedfile
+from .. import bundle_data
+from .. import serializer as bundle_serializer
 
 
 class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):

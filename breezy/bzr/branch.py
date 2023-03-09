@@ -16,9 +16,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from io import BytesIO
-from typing import Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     cache_utf8,
@@ -33,30 +34,18 @@ from breezy.bzr import (
     )
 """)
 
+from .. import errors, lockable_files
+from .. import revision as _mod_revision
+from .. import transport as _mod_transport
+from .. import urlutils
+from ..branch import (Branch, BranchFormat, BranchWriteLockResult,
+                      UnstackableBranchFormat, format_registry)
+from ..controldir import ControlDir
+from ..decorators import only_raises
+from ..lock import LogicalLockResult, _RelockDebugMixin
+from ..trace import mutter
 from . import bzrdir, rio
 from .repository import MetaDirRepository
-from .. import (
-    errors,
-    lockable_files,
-    revision as _mod_revision,
-    transport as _mod_transport,
-    urlutils,
-    )
-from ..branch import (
-    Branch,
-    BranchFormat,
-    BranchWriteLockResult,
-    format_registry,
-    UnstackableBranchFormat,
-    )
-from ..controldir import ControlDir
-from ..decorators import (
-    only_raises,
-    )
-from ..lock import _RelockDebugMixin, LogicalLockResult
-from ..trace import (
-    mutter,
-    )
 
 if TYPE_CHECKING:
     from .remote import RemoteRepository

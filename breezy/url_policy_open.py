@@ -18,20 +18,10 @@
 
 import threading
 
-from . import (
-    errors,
-    trace,
-    urlutils,
-    )
+from . import errors, trace, urlutils
 from .branch import Branch
-from .controldir import (
-    ControlDir,
-    ControlDirFormat,
-    )
-from .transport import (
-    do_catching_redirections,
-    get_transport,
-    )
+from .controldir import ControlDir, ControlDirFormat
+from .transport import do_catching_redirections, get_transport
 
 
 class BadUrl(errors.BzrError):

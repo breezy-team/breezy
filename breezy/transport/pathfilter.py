@@ -17,13 +17,7 @@
 """A transport decorator that filters all paths that are passed to it."""
 
 from .. import urlutils
-
-from . import (
-    register_transport,
-    Server,
-    Transport,
-    unregister_transport,
-    )
+from . import Server, Transport, register_transport, unregister_transport
 
 
 class PathFilteringServer(Server):

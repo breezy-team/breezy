@@ -23,12 +23,8 @@ find_ids_across_trees.
 
 from breezy import errors
 from breezy.bzr.inventorytree import InventoryTree
-from breezy.tests import (
-    features,
-    TestNotApplicable,
-    )
+from breezy.tests import TestNotApplicable, features
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-
 
 # TODO: This needs an additional test: do a merge, then do a
 # paths2id(trees=left parent only), and also with (trees=all parents) to check

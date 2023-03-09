@@ -16,14 +16,8 @@
 
 from io import StringIO
 
-from .. import (
-    add,
-    errors,
-    tests,
-    )
-from ..bzr import (
-    inventory,
-    )
+from .. import add, errors, tests
+from ..bzr import inventory
 
 
 class AddCustomIDAction(add.AddAction):

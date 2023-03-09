@@ -26,12 +26,7 @@ when first accessed.  Clients should do, for example, ...
 
 import re
 
-from . import (
-    errors,
-    osutils,
-    transport,
-    )
-
+from . import errors, osutils, transport
 
 _VIEWS_FORMAT_MARKER_RE = re.compile(b'Bazaar views format (\\d+)')
 _VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"

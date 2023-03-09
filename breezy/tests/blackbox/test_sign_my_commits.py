@@ -16,10 +16,7 @@
 
 """Black-box tests for brz sign-my-commits."""
 
-from breezy import (
-    gpg,
-    tests,
-    )
+from breezy import gpg, tests
 
 
 class SignMyCommits(tests.TestCaseWithTransport):

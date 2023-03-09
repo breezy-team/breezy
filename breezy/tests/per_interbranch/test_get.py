@@ -16,12 +16,8 @@
 
 """Tests for breezy.branch.InterBranch.get."""
 
-from breezy import (
-    branch,
-    )
-from breezy.tests.per_interbranch import (
-    TestCaseWithInterBranch,
-    )
+from breezy import branch
+from breezy.tests.per_interbranch import TestCaseWithInterBranch
 
 
 class TestInterBranchGet(TestCaseWithInterBranch):

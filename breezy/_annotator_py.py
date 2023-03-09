@@ -16,12 +16,9 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
-from . import (
-    errors,
-    graph as _mod_graph,
-    osutils,
-    ui,
-    )
+from . import errors
+from . import graph as _mod_graph
+from . import osutils, ui
 
 
 class Annotator:

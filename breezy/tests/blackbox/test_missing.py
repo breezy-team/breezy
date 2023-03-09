@@ -16,10 +16,7 @@
 
 """Black-box tests for brz missing."""
 
-from breezy import (
-    osutils,
-    tests,
-    )
+from breezy import osutils, tests
 
 
 class TestMissing(tests.TestCaseWithTransport):

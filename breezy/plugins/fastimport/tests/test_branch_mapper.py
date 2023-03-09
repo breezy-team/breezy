@@ -16,14 +16,8 @@
 """Test the BranchMapper methods."""
 
 from .... import tests
-
-from .. import (
-    branch_mapper,
-    )
-
-from . import (
-    FastimportFeature,
-    )
+from .. import branch_mapper
+from . import FastimportFeature
 
 
 class TestBranchMapper(tests.TestCase):

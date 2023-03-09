@@ -16,10 +16,7 @@
 
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
-from . import (
-    errors,
-    log,
-    )
+from . import errors, log
 
 
 def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):

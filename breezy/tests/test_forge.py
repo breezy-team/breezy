@@ -17,23 +17,10 @@
 import os
 from typing import List
 
-from ..forge import (
-    determine_title,
-    get_proposal_by_url,
-    get_forge,
-    Forge,
-    MergeProposal,
-    UnsupportedForge,
-    )
-from .. import (
-    forge as _mod_forge,
-    registry,
-    urlutils,
-    )
-
-from .. import (
-    tests,
-    )
+from .. import forge as _mod_forge
+from .. import registry, tests, urlutils
+from ..forge import (Forge, MergeProposal, UnsupportedForge, determine_title,
+                     get_forge, get_proposal_by_url)
 
 
 class SampleMergeProposal(MergeProposal):

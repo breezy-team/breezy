@@ -16,9 +16,7 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-from breezy import (
-    uncommit,
-    )
+from breezy import uncommit
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 

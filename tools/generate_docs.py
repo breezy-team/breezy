@@ -38,12 +38,10 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import breezy
-from breezy import (
-    commands,
-    doc_generate,
-    )
 from contextlib import ExitStack
+
+import breezy
+from breezy import commands, doc_generate
 
 
 def main(argv):

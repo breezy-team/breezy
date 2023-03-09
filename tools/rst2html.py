@@ -17,10 +17,11 @@ except:
     pass
 
 import docutils
-from docutils.core import publish_cmdline, default_description
+from docutils.core import default_description, publish_cmdline
 
 if True: # this is still required in the distutils trunk as-at June 2008.
     from docutils.parsers.rst.states import Body
+
     # we have some option names that contain dot; which is not allowed by
     # python-docutils 0.4-4 -- so monkeypatch in a better pattern
     #
@@ -37,6 +38,7 @@ description = ('Generates (X)HTML documents from standalone reStructuredText '
 
 # workaround for bug with <xxx id="tags" name="tags"> in IE
 from docutils.writers import html4css1
+
 
 class IESafeHtmlTranslator(html4css1.HTMLTranslator):
 

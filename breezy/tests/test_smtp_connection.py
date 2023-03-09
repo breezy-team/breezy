@@ -14,18 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from email.message import Message
 import errno
 import smtplib
 import socket
+from email.message import Message
 
-from breezy import (
-    config,
-    email_message,
-    smtp_connection,
-    tests,
-    ui,
-    )
+from breezy import config, email_message, smtp_connection, tests, ui
 
 
 def connection_refuser(host):

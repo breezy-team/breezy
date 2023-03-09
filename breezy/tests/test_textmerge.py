@@ -15,8 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
-from breezy.textmerge import Merge2
 from breezy.tests import TestCase
+from breezy.textmerge import Merge2
 
 
 class TestMerge2(TestCase):

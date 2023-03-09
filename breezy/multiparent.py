@@ -15,10 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
-from io import (
-    BytesIO,
-    )
 import os
+from io import BytesIO
 
 from .lazy_import import lazy_import
 
@@ -31,9 +29,7 @@ from breezy import (
     ui,
     )
 """)
-from . import (
-    errors,
-    )
+from . import errors
 from .i18n import gettext
 
 

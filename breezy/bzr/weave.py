@@ -64,36 +64,27 @@
 
 # FIXME: the conflict markers should be *7* characters
 
+import os
 from copy import copy
 from io import BytesIO
-import os
+
 import patiencediff
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import tsort
 """)
-from .. import (
-    errors,
-    osutils,
-    transport as _mod_transport,
-    )
-from ..errors import (
-    RevisionAlreadyPresent,
-    RevisionNotPresent,
-    )
+from .. import errors, osutils
+from .. import transport as _mod_transport
+from ..errors import RevisionAlreadyPresent, RevisionNotPresent
 from ..osutils import dirname, sha, sha_strings, split_lines
 from ..revision import NULL_REVISION
 from ..trace import mutter
-from .versionedfile import (
-    AbsentContentFactory,
-    adapter_registry,
-    ContentFactory,
-    ExistingContent,
-    sort_groupcompress,
-    UnavailableRepresentation,
-    VersionedFile,
-    )
+from .versionedfile import (AbsentContentFactory, ContentFactory,
+                            ExistingContent, UnavailableRepresentation,
+                            VersionedFile, adapter_registry,
+                            sort_groupcompress)
 from .weavefile import _read_weave_v5, write_weave_v5
 
 

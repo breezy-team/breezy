@@ -15,15 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from collections import deque
+from io import BytesIO
 
-from io import (
-    BytesIO,
-    )
-
-from ... import (
-    debug,
-    errors,
-    )
+from ... import debug, errors
 from ...trace import mutter
 
 

@@ -19,21 +19,14 @@
 They are useful for testing code quality, checking coverage metric etc.
 """
 
-import os
 import ast
+import os
 import re
 import sys
 
-from breezy import (
-    osutils,
-    )
 import breezy.branch
-from breezy.tests import (
-    features,
-    TestCase,
-    TestSkipped,
-    )
-
+from breezy import osutils
+from breezy.tests import TestCase, TestSkipped, features
 
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.

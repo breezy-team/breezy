@@ -16,26 +16,15 @@
 
 """Tests for repository implementations - tests a repository format."""
 
-from breezy import (
-    errors,
-    gpg,
-    repository as _mod_repository,
-    revision as _mod_revision,
-    tests,
-    )
-from breezy.bzr import (
-    inventory,
-    versionedfile,
-    vf_repository,
-    )
-
-from breezy.tests.matchers import MatchesAncestry
+from breezy import errors, gpg
+from breezy import repository as _mod_repository
+from breezy import revision as _mod_revision
+from breezy import tests
+from breezy.bzr import inventory, versionedfile, vf_repository
 from breezy.bzr.tests.per_repository_vf import (
-    TestCaseWithRepository,
-    all_repository_vf_format_scenarios,
-    )
+    TestCaseWithRepository, all_repository_vf_format_scenarios)
+from breezy.tests.matchers import MatchesAncestry
 from breezy.tests.scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 

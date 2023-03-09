@@ -19,10 +19,7 @@
 
 """
 
-from breezy import (
-    foreign,
-    tests,
-    )
+from breezy import foreign, tests
 
 
 def vcs_scenarios():

@@ -18,8 +18,8 @@
 
 import logging
 import unittest
-from typing import List, Dict
 import weakref
+from typing import Dict, List
 
 from .. import pyutils
 

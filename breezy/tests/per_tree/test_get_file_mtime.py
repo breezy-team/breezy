@@ -19,7 +19,6 @@
 import time
 
 from breezy import transport
-
 from breezy.tests.per_tree import TestCaseWithTree
 
 

@@ -19,16 +19,13 @@
 
 import importlib
 import os
-import subprocess
 import stat
+import subprocess
 import sys
 import tempfile
 import warnings
 
-from .. import (
-    osutils,
-    symbol_versioning,
-    )
+from .. import osutils, symbol_versioning
 
 
 class Feature:

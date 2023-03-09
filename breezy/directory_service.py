@@ -22,12 +22,10 @@ to true URLs.  Examples include lp:urls and per-user location aliases.
 
 from typing import Callable, Optional
 
-from . import (
-    branch as _mod_branch,
-    errors,
-    registry,
-    )
+from . import branch as _mod_branch
+from . import errors, registry
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     controldir as _mod_controldir,

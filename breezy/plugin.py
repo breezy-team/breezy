@@ -39,16 +39,11 @@ plugins.
 import os
 import re
 import sys
-
 from importlib import util as importlib_util
 
 import breezy
-from . import (
-    debug,
-    errors,
-    osutils,
-    trace,
-    )
+
+from . import debug, errors, osutils, trace
 
 _MODULE_PREFIX = "breezy.plugins."
 

@@ -21,13 +21,7 @@ import re
 import socket
 import sys
 
-from .. import (
-    controldir,
-    errors,
-    osutils,
-    tests,
-    urlutils,
-    )
+from .. import controldir, errors, osutils, tests, urlutils
 
 
 class TestErrors(tests.TestCase):

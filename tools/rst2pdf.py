@@ -51,16 +51,17 @@ try:
 except:
     pass
 
-from docutils.core import default_usage, default_description, Publisher
+import sys
+
+from docutils.core import Publisher, default_description, default_usage
 
 # Rubber (rubber is not installed in the PYTHONPATH)::
 
-import sys
 sys.path.append("/usr/share/rubber")
 
 try:
-    import rubber.cmdline
     import rubber.cmd_pipe
+    import rubber.cmdline
 except ModuleNotFoundError:
     print("Cannot find the rubber modules, rubber not installed correctly.")
     sys.exit(1)

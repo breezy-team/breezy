@@ -33,7 +33,7 @@ import contextlib
 import errno
 import os
 import sys
-from typing import Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
     from .branch import Branch
@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 import breezy
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import stat
 
@@ -50,23 +51,13 @@ from breezy import (
     )
 """)
 
-from . import (
-    errors,
-    revision as _mod_revision,
-    )
-from .controldir import (
-    ControlComponent,
-    ControlComponentFormatRegistry,
-    ControlComponentFormat,
-    ControlDir,
-    ControlDirFormat,
-    )
-from . import (
-    osutils,
-    )
+from . import errors, mutabletree, osutils
+from . import revision as _mod_revision
+from .controldir import (ControlComponent, ControlComponentFormat,
+                         ControlComponentFormatRegistry, ControlDir,
+                         ControlDirFormat)
 from .i18n import gettext
-from . import mutabletree
-from .symbol_versioning import deprecated_method, deprecated_in
+from .symbol_versioning import deprecated_in, deprecated_method
 from .trace import mutter, note
 from .transport import NoSuchFile
 
@@ -645,7 +636,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             of the branch when it is supplied. If None, to_revision defaults to
             branch.last_revision().
         """
-        from .merge import Merger, Merge3Merger
+        from .merge import Merge3Merger, Merger
         with self.lock_write():
             merger = Merger(self.branch, this_tree=self)
             # check that there are no local alterations
@@ -1374,12 +1365,4 @@ class WorkingTreeFormat(ControlComponentFormat):
         return self._matchingcontroldir
 
 
-format_registry.register_lazy(b"Bazaar Working Tree Format 4 (bzr 0.15)\n",
-                              "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
-format_registry.register_lazy(b"Bazaar Working Tree Format 5 (bzr 1.11)\n",
-                              "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
-format_registry.register_lazy(b"Bazaar Working Tree Format 6 (bzr 1.14)\n",
-                              "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
-format_registry.register_lazy(b"Bazaar-NG Working Tree format 3",
-                              "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
-format_registry.set_default_key(b"Bazaar Working Tree Format 6 (bzr 1.14)\n")
+

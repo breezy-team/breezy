@@ -16,10 +16,7 @@
 
 """Tests for repository break-lock."""
 
-from breezy import (
-    errors,
-    ui,
-    )
+from breezy import errors, ui
 from breezy.tests import per_repository
 
 

@@ -14,19 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import (
-    branch as _mod_branch,
-    controldir,
-    errors,
-    reconfigure,
-    repository,
-    tests,
-    workingtree,
-    )
-from breezy.bzr import (
-    branch as _mod_bzrbranch,
-    vf_repository,
-    )
+from breezy import branch as _mod_branch
+from breezy import (controldir, errors, reconfigure, repository, tests,
+                    workingtree)
+from breezy.bzr import branch as _mod_bzrbranch
+from breezy.bzr import vf_repository
 
 
 class TestReconfigure(tests.TestCaseWithTransport):

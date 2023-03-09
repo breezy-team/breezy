@@ -21,14 +21,7 @@ constructing a class or using a factory method on Reconfigure.
 """
 
 
-from . import (
-    branch,
-    controldir,
-    errors,
-    trace,
-    ui,
-    urlutils,
-    )
+from . import branch, controldir, errors, trace, ui, urlutils
 from .i18n import gettext
 
 # TODO: common base class for all reconfigure operations, making no

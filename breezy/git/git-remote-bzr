@@ -24,23 +24,22 @@ import optparse
 import signal
 import sys
 
+
 def handle_sigint(signal, frame):
     sys.exit(0)
 
 signal.signal(signal.SIGINT, handle_sigint)
 
 import breezy
+
 breezy.initialize()
 
 from breezy.plugin import load_plugins
+
 load_plugins()
 
-from breezy.git.git_remote_helper import (
-    RemoteHelper,
-    open_local_dir,
-    open_remote_dir,
-    )
-
+from breezy.git.git_remote_helper import (RemoteHelper, open_local_dir,
+                                          open_remote_dir)
 from breezy.trace import warning
 
 parser = optparse.OptionParser()

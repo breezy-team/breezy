@@ -17,12 +17,8 @@
 
 """Black-box tests for brz rmbranch."""
 
-from breezy import (
-    controldir,
-    )
-from breezy.tests import (
-    TestCaseWithTransport,
-    )
+from breezy import controldir
+from breezy.tests import TestCaseWithTransport
 
 
 class TestRemoveBranch(TestCaseWithTransport):

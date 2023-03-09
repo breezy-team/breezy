@@ -23,7 +23,6 @@ configuring_bazaar.txt.
 import re
 from typing import List, Optional, Tuple
 
-
 _whitespace_match = re.compile('\\s', re.UNICODE).match
 
 

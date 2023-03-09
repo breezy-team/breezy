@@ -17,11 +17,9 @@
 """Tests for BzrLibraryState."""
 
 import breezy
-from .. import (
-    library_state,
-    tests,
-    ui as _mod_ui
-    )
+
+from .. import library_state, tests
+from .. import ui as _mod_ui
 from . import fixtures
 
 

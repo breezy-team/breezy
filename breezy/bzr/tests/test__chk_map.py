@@ -16,13 +16,10 @@
 
 """Tests for _chk_map_*."""
 
-from ... import (
-    tests,
-    )
-from .. import (
-    chk_map,
-    )
+from ... import tests
+from .. import chk_map
 from ..static_tuple import StaticTuple
+
 stuple = StaticTuple
 
 

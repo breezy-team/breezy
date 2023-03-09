@@ -41,17 +41,10 @@ Note that context is currently only supported for write converters.
 """
 
 
-from io import (
-    BytesIO,
-    )
+from io import BytesIO
+from typing import Callable, Dict, List, Tuple
 
-from typing import List, Tuple, Dict, Callable
-
-from .. import (
-    errors,
-    osutils,
-    registry,
-    )
+from .. import errors, osutils, registry
 
 
 class ContentFilter:

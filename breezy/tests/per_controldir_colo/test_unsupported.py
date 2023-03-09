@@ -20,14 +20,8 @@ Colocated branch support is optional, and when it is not supported the methods
 and attributes colocated branch support added should fail in known ways.
 """
 
-from breezy import (
-    controldir,
-    errors,
-    tests,
-    )
-from breezy.tests import (
-    per_controldir,
-    )
+from breezy import controldir, errors, tests
+from breezy.tests import per_controldir
 
 
 class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):

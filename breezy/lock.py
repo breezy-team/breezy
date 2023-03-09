@@ -37,19 +37,13 @@ import contextlib
 import errno
 import os
 import sys
-from typing import Dict, Set, List, Tuple, Optional, Any
 import warnings
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from . import (
-    debug,
-    errors,
-    osutils,
-    trace,
-    )
+from . import debug, errors, osutils, trace
 from .hooks import Hooks
 from .i18n import gettext
 from .transport import Transport
-
 
 LockToken = bytes
 
@@ -375,8 +369,8 @@ if have_fcntl:
 
 
 if have_ctypes_win32:
-    from ctypes.wintypes import DWORD, LPWSTR
     import ctypes
+    from ctypes.wintypes import DWORD, LPWSTR
     LPSECURITY_ATTRIBUTES = ctypes.c_void_p  # used as NULL no need to declare
     HANDLE = ctypes.c_int  # rather than unsigned as in ctypes.wintypes
     _function_name = "CreateFileW"

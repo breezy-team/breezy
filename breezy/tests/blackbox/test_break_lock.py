@@ -16,17 +16,8 @@
 
 """Tests for lock-breaking user interface"""
 
-from breezy import (
-    branch,
-    config,
-    controldir,
-    errors,
-    osutils,
-    tests,
-    )
-from breezy.tests.script import (
-    run_script,
-    )
+from breezy import branch, config, controldir, errors, osutils, tests
+from breezy.tests.script import run_script
 
 
 class TestBreakLock(tests.TestCaseWithTransport):

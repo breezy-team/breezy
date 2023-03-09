@@ -18,17 +18,10 @@
 
 import pprint
 
-from .. import (
-    errors,
-    _known_graph_py,
-    tests,
-    )
-from . import test_graph
+from .. import _known_graph_py, errors, tests
 from ..revision import NULL_REVISION
+from . import features, test_graph
 from .scenarios import load_tests_apply_scenarios
-from . import (
-    features,
-    )
 
 
 def caching_scenarios():

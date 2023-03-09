@@ -14,12 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy.tests import (
-    per_tree,
-    )
-from breezy.tests.features import (
-    SymlinkFeature,
-    )
+from breezy.tests import per_tree
+from breezy.tests.features import SymlinkFeature
 
 
 class TestIsExecutable(per_tree.TestCaseWithTree):

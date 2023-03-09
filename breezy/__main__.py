@@ -20,7 +20,6 @@
 import os
 import sys
 
-
 profiling = False
 if '--profile-imports' in sys.argv:
     import profile_imports

@@ -16,10 +16,7 @@
 
 """Tests for Tree.revision_tree."""
 
-from breezy import (
-    errors,
-    tests,
-    )
+from breezy import errors, tests
 from breezy.tests import per_tree
 
 

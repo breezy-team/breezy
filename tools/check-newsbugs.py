@@ -2,7 +2,10 @@
 # Simple script that will check which bugs mentioned in NEWS
 # are not yet marked Fix Released in Launchpad
 
-import getopt, re, sys
+import getopt
+import re
+import sys
+
 try:
     from launchpadlib.launchpad import Launchpad
     from lazr.restfulclient import errors

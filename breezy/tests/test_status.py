@@ -16,10 +16,8 @@
 
 from io import StringIO
 
-from .. import (
-    config,
-    status as _mod_status,
-    )
+from .. import config
+from .. import status as _mod_status
 from ..revisionspec import RevisionSpec
 from ..status import show_pending_merges, show_tree_status
 from . import TestCaseWithTransport

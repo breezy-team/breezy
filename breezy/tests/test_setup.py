@@ -16,12 +16,13 @@
 
 """Test for setup.py build process"""
 
-from distutils import version
 import os
-import sys
 import subprocess
+import sys
+from distutils import version
 
 import breezy
+
 from .. import tests
 
 # TODO: Run bzr from the installed copy to see if it works.  Really we need to

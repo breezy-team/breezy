@@ -18,12 +18,8 @@
 
 import os
 
-from breezy import (
-    tests,
-    )
-from breezy.tests import (
-    script,
-    )
+from breezy import tests
+from breezy.tests import script
 
 
 class TestTestScript(tests.TestCaseInTempDir):

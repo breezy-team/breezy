@@ -16,16 +16,8 @@
 
 """Tests for Annotators."""
 
-from .. import (
-    annotate,
-    errors,
-    revision,
-    tests,
-    )
-
-from ..bzr import (
-    knit,
-    )
+from .. import annotate, errors, revision, tests
+from ..bzr import knit
 
 
 def load_tests(loader, standard_tests, pattern):

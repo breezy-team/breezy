@@ -20,10 +20,7 @@ import pickle
 import re
 from typing import List, Tuple
 
-from .. import (
-    lazy_regex,
-    tests,
-    )
+from .. import lazy_regex, tests
 
 
 class TestErrors(tests.TestCase):

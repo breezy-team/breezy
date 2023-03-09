@@ -16,12 +16,8 @@
 
 """Basic push implementation."""
 
-from ..push import (
-    PushResult,
-    )
-from .errors import (
-    GitSmartRemoteNotSupported,
-    )
+from ..push import PushResult
+from .errors import GitSmartRemoteNotSupported
 
 
 class GitPushResult(PushResult):

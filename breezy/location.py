@@ -19,9 +19,7 @@
 
 import re
 
-from . import (
-    urlutils,
-    )
+from . import urlutils
 from .hooks import Hooks
 
 

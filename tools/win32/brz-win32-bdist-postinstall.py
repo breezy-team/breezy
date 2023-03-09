@@ -20,6 +20,7 @@
 
 import os
 import sys
+
 import _winreg
 
 from breezy import win32utils

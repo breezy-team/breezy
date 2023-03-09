@@ -16,62 +16,27 @@
 
 """Fetching from git into bzr."""
 
-from dulwich.objects import (
-    Commit,
-    Tag,
-    Tree,
-    S_IFGITLINK,
-    S_ISGITLINK,
-    ZERO_SHA,
-    )
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
 import posixpath
 import stat
 
-from .. import (
-    debug,
-    errors,
-    osutils,
-    trace,
-    )
-from ..errors import (
-    BzrError,
-    )
-from ..bzr.inventory import (
-    InventoryDirectory,
-    InventoryFile,
-    InventoryLink,
-    TreeReference,
-    )
-from ..revision import (
-    NULL_REVISION,
-    )
-from ..bzr.inventorytree import InventoryRevisionTree
-from ..bzr.testament import (
-    StrictTestament3,
-    )
-from ..tree import InterTree
-from ..transport import NoSuchFile
-from ..tsort import (
-    topo_sort,
-    )
-from ..bzr.versionedfile import (
-    ChunkedContentFactory,
-    )
+from dulwich.object_store import tree_lookup_path
+from dulwich.objects import (S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Commit, Tag,
+                             Tree)
 
-from .mapping import (
-    DEFAULT_FILE_MODE,
-    decode_git_path,
-    mode_is_executable,
-    mode_kind,
-    warn_unusual_mode,
-    )
-from .object_store import (
-    LRUTreeCache,
-    _tree_to_objects,
-    )
+from .. import debug, errors, osutils, trace
+from ..bzr.inventory import (InventoryDirectory, InventoryFile, InventoryLink,
+                             TreeReference)
+from ..bzr.inventorytree import InventoryRevisionTree
+from ..bzr.testament import StrictTestament3
+from ..bzr.versionedfile import ChunkedContentFactory
+from ..errors import BzrError
+from ..revision import NULL_REVISION
+from ..transport import NoSuchFile
+from ..tree import InterTree
+from ..tsort import topo_sort
+from .mapping import (DEFAULT_FILE_MODE, decode_git_path, mode_is_executable,
+                      mode_kind, warn_unusual_mode)
+from .object_store import LRUTreeCache, _tree_to_objects
 
 
 def import_git_blob(texts, mapping, path, name, hexshas,

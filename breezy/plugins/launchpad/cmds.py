@@ -16,23 +16,12 @@
 
 """Launchpad plugin commands."""
 
-from ... import (
-    branch as _mod_branch,
-    controldir,
-    trace,
-    )
-from ...commands import (
-    Command,
-    )
-from ...errors import (
-    CommandError,
-    NotBranchError,
-    )
+from ... import branch as _mod_branch
+from ... import controldir, trace
+from ...commands import Command
+from ...errors import CommandError, NotBranchError
 from ...i18n import gettext
-from ...option import (
-    Option,
-    ListOption,
-    )
+from ...option import ListOption, Option
 
 
 class cmd_launchpad_open(Command):
@@ -156,9 +145,10 @@ class cmd_lp_find_proposal(Command):
     takes_options = ['revision']
 
     def run(self, revision=None):
+        import webbrowser
+
         from ... import ui
         from . import uris
-        import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
         with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
             if revision is None:
@@ -173,7 +163,8 @@ class cmd_lp_find_proposal(Command):
                 webbrowser.open(uris.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
-        from . import uris, lp_api
+        from . import lp_api, uris
+
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
         lp_base_url = uris.LPNET_SERVICE_ROOT
         launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')

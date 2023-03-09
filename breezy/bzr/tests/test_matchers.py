@@ -18,12 +18,8 @@
 
 from testtools.matchers import *
 
+from ...tests import CapturedCall, TestCase
 from ..smart.client import CallHookParams
-
-from ...tests import (
-    CapturedCall,
-    TestCase,
-    )
 from .matchers import *
 
 

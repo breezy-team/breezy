@@ -23,6 +23,7 @@ import sys
 import warnings
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import time
 
@@ -32,15 +33,8 @@ from breezy import (
     )
 """)
 
-from .. import (
-    config,
-    osutils,
-    trace,
-    )
-from . import (
-    NullProgressView,
-    UIFactory,
-    )
+from .. import config, osutils, trace
+from . import NullProgressView, UIFactory
 
 
 class _ChooseUI:
@@ -239,6 +233,7 @@ class TextUIFactory(UIFactory):
         isatty = getattr(self.stdin, 'isatty', None)
         if isatty is not None and isatty():
             import getpass
+
             # getpass() ensure the password is not echoed and other
             # cross-platform niceties
             password = getpass.getpass('')

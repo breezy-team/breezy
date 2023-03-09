@@ -16,10 +16,7 @@
 
 """Black-box tests for brz verify-signatures."""
 
-from breezy import (
-    gpg,
-    tests,
-    )
+from breezy import gpg, tests
 
 
 class TestVerifySignatures(tests.TestCaseWithTransport):

@@ -19,13 +19,8 @@
 
 import os
 
-from ... import (
-    tests,
-    )
-
-from ..features import (
-    HardlinkFeature,
-    )
+from ... import tests
+from ..features import HardlinkFeature
 
 
 class TestLinkTreeCommand(tests.TestCaseWithTransport):

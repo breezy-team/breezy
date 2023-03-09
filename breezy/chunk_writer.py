@@ -17,8 +17,8 @@
 
 """ChunkWriter: write compressed data out with a fixed upper bound."""
 
-from typing import Optional, List, Tuple, Callable
 import zlib
+from typing import Callable, List, Optional, Tuple
 from zlib import Z_FINISH, Z_SYNC_FLUSH
 
 

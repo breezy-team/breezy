@@ -18,20 +18,10 @@
 
 from typing import List, Tuple
 
-from breezy import (
-    errors,
-    revision,
-    )
-from breezy.tests import (
-    TestCase,
-    TestCaseWithTransport,
-    )
-from breezy.tree import (
-    FileTimestampUnavailable,
-    InterTree,
-    find_previous_paths,
-    get_canonical_path,
-    )
+from breezy import errors, revision
+from breezy.tests import TestCase, TestCaseWithTransport
+from breezy.tree import (FileTimestampUnavailable, InterTree,
+                         find_previous_paths, get_canonical_path)
 
 
 class TestErrors(TestCase):

@@ -16,13 +16,8 @@
 
 """Mapping upgrade tests."""
 
-from ....tests import (
-    TestCase,
-    )
-
-from ..upgrade import (
-    UpgradeChangesContent,
-    )
+from ....tests import TestCase
+from ..upgrade import UpgradeChangesContent
 
 
 class TestUpgradeChangesContent(TestCase):

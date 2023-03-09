@@ -14,19 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from .. import (
-    errors,
-    osutils,
-    )
-from . import (
-    inventory,
-    xml6,
-    )
-from .xml_serializer import (
-    encode_and_escape,
-    get_utf8_or_ascii,
-    unpack_inventory_entry,
-    )
+from .. import errors, osutils
+from . import inventory, xml6
+from .xml_serializer import (encode_and_escape, get_utf8_or_ascii,
+                             unpack_inventory_entry)
 
 
 class Serializer_v5(xml6.Serializer_v6):

@@ -23,13 +23,8 @@ import sys
 import breezy.bzr
 import breezy.git
 
-from . import (
-    controldir,
-    errors,
-    transport,
-    )
+from . import controldir, errors, lazy_import, transport
 
-from . import lazy_import
 lazy_import.lazy_import(globals(), """
 import time
 
@@ -66,23 +61,11 @@ from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext, ngettext
 """)
 
-from .commands import (
-    Command,
-    builtin_command_registry,
-    display_command,
-    )
-from .option import (
-    ListOption,
-    Option,
-    RegistryOption,
-    custom_help,
-    _parse_revision_str,
-    )
-from .revisionspec import (
-    RevisionSpec,
-    RevisionInfo,
-    )
-from .trace import mutter, note, warning, is_quiet, get_verbosity_level
+from .commands import Command, builtin_command_registry, display_command
+from .option import (ListOption, Option, RegistryOption, _parse_revision_str,
+                     custom_help)
+from .revisionspec import RevisionInfo, RevisionSpec
+from .trace import get_verbosity_level, is_quiet, mutter, note, warning
 
 
 def _get_branch_location(control_dir, possible_transports=None):
@@ -2155,7 +2138,7 @@ class cmd_init(Command):
                 raise errors.CommandError(gettext('This branch format cannot be set'
                                                   ' to append-revisions-only.  Try --default.')) from exc
         if not is_quiet():
-            from .info import describe_layout, describe_format
+            from .info import describe_format, describe_layout
             try:
                 tree = a_controldir.open_workingtree(recommend_upgrade=False)
             except (errors.NoWorkingTree, errors.NotLocalUrl):
@@ -2795,11 +2778,7 @@ class cmd_log(Command):
             match_bugs=None,
             omit_merges=False,
             ):
-        from .log import (
-            Logger,
-            make_log_request_dict,
-            _get_info_for_log_files,
-            )
+        from .log import Logger, _get_info_for_log_files, make_log_request_dict
         direction = (forward and 'forward') or 'reverse'
         if include_merged is None:
             include_merged = False
@@ -3378,7 +3357,7 @@ class cmd_export(Command):
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
             root=None, filters=False, per_file_timestamps=False, uncommitted=False,
             directory='.', recurse_nested=False):
-        from .export import export, guess_format, get_root_name
+        from .export import export, get_root_name, guess_format
 
         if branch_or_subdir is None:
             branch_or_subdir = directory
@@ -3652,19 +3631,13 @@ class cmd_commit(Command):
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
         import itertools
-        from .commit import (
-            PointlessCommit,
-            )
-        from .errors import (
-            ConflictsInTree,
-            StrictCommitFailed
-        )
-        from .msgeditor import (
-            edit_commit_message_encoded,
-            generate_commit_message_template,
-            make_commit_message_template_encoded,
-            set_commit_message,
-        )
+
+        from .commit import PointlessCommit
+        from .errors import ConflictsInTree, StrictCommitFailed
+        from .msgeditor import (edit_commit_message_encoded,
+                                generate_commit_message_template,
+                                make_commit_message_template_encoded,
+                                set_commit_message)
 
         commit_stamp = offset = None
         if commit_time is not None:
@@ -5221,6 +5194,7 @@ class cmd_plugins(Command):
     @display_command
     def run(self, verbose=False):
         from . import plugin
+
         # Don't give writelines a generator as some codecs don't like that
         self.outf.writelines(
             list(plugin.describe_plugins(show_paths=verbose)))
@@ -5238,7 +5212,7 @@ class cmd_testament(Command):
 
     @display_command
     def run(self, branch='.', revision=None, long=False, strict=False):
-        from .bzr.testament import Testament, StrictTestament
+        from .bzr.testament import StrictTestament, Testament
         if strict is True:
             testament_class = StrictTestament
         else:
@@ -5284,9 +5258,7 @@ class cmd_annotate(Command):
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False, directory=None):
-        from .annotate import (
-            annotate_file_tree,
-            )
+        from .annotate import annotate_file_tree
         wt, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
         if wt is not None:
@@ -6962,9 +6934,11 @@ class cmd_grep(Command):
             path_list=None, revision=None, pattern=None, include=None,
             exclude=None, fixed_string=False, files_with_matches=False,
             files_without_match=False, color=None, diff=False):
-        from breezy import _termcolor
-        from . import grep
         import re
+
+        from breezy import _termcolor
+
+        from . import grep
         if path_list is None:
             path_list = ['.']
         else:

@@ -17,10 +17,11 @@
 """Core compression logic for compressing streams of related files."""
 
 import time
-from typing import Type
 import zlib
+from typing import Type
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     debug,
@@ -36,23 +37,14 @@ from breezy.bzr import (
 from breezy.i18n import gettext
 """)
 
-from .. import (
-    errors,
-    osutils,
-    trace,
-)
-from .btree_index import BTreeBuilder
+from .. import errors, osutils, trace
 from ..lru_cache import LRUSizeCache
-from .versionedfile import (
-    _KeyRefs,
-    adapter_registry,
-    AbsentContentFactory,
-    ChunkedContentFactory,
-    ExistingContent,
-    FulltextContentFactory,
-    VersionedFilesWithFallbacks,
-    UnavailableRepresentation,
-)
+from .btree_index import BTreeBuilder
+from .versionedfile import (AbsentContentFactory, ChunkedContentFactory,
+                            ExistingContent, FulltextContentFactory,
+                            UnavailableRepresentation,
+                            VersionedFilesWithFallbacks, _KeyRefs,
+                            adapter_registry)
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
 # groupcompress blocks.
@@ -2242,22 +2234,14 @@ class _GCGraphIndex:
 GroupCompressor: Type[_CommonGroupCompressor]
 
 
-from ._groupcompress_py import (
-    apply_delta,
-    apply_delta_to_source,
-    encode_base128_int,
-    decode_base128_int,
-    decode_copy_instruction,
-    LinesDeltaIndex,
-    )
+from ._groupcompress_py import (LinesDeltaIndex, apply_delta,
+                                apply_delta_to_source, decode_base128_int,
+                                decode_copy_instruction, encode_base128_int)
+
 try:
-    from ._groupcompress_pyx import (  # type: ignore
-        apply_delta,
-        apply_delta_to_source,
-        DeltaIndex,
-        encode_base128_int,
-        decode_base128_int,
-        )
+    from ._groupcompress_pyx import (DeltaIndex, apply_delta,  # type: ignore
+                                     apply_delta_to_source, decode_base128_int,
+                                     encode_base128_int)
     GroupCompressor = PyrexGroupCompressor
 except ImportError as e:
     osutils.failed_to_load_extension(e)
