@@ -39,8 +39,7 @@ from .errors import NoPushSupport
 from .mapping import decode_git_path, encode_git_path
 from .push import remote_divergence
 from .refs import (branch_name_to_ref, is_tag, ref_to_branch_name,
-                   ref_to_tag_name, remote_refs_dict_to_tag_refs,
-                   tag_name_to_ref)
+                   ref_to_tag_name, tag_name_to_ref)
 from .unpeel_map import UnpeelMap
 from .urls import bzr_url_to_git_url, git_url_to_bzr_url
 
