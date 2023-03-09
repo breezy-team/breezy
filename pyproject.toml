@@ -61,6 +61,7 @@ dev = [
     "testscenarios",
     "python-subunit",
     "flake8",
+    "cython>=0.29",
 ]
 testing = [
     "testtools",
