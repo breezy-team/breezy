@@ -5,14 +5,7 @@ edition = "2018"
 
 [lib]
 crate-type = ["cdylib"]
-name = "rio"
-path = "pyrio.rs"
 
-[dependencies.pyo3]
-version = ">=0.14"
-
-[dependencies.lazy_static]
-version = "1.4.0"
-
-[dependencies.regex]
-version = "1.5.4"
+[dependencies]
+pyo3 = { version = ">=0.14", features = ["extension-module"]}
+bazaar-rio = { path = "../rio" }
