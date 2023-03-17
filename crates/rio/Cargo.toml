@@ -1,15 +1,11 @@
 [package]
-name = "rio-py"
+name = "bazaar-rio"
 version = "3.3.3"
 edition = "2018"
+description = "The RIO serialization format used by Bazaar"
+license = "GPLv2+"
 
 [lib]
-crate-type = ["cdylib"]
-name = "rio"
-path = "pyrio.rs"
-
-[dependencies.pyo3]
-version = ">=0.14"
 
 [dependencies.lazy_static]
 version = "1.4.0"

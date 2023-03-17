@@ -1,13 +1,10 @@
-#[macro_use]
-extern crate lazy_static;
-
 use pyo3::prelude::*;
 
-pub mod rio;
+use bazaar_rio::rio::valid_tag;
 
 #[pyfunction]
 fn _valid_tag(tag: &str) -> bool {
-    return rio::valid_tag(tag);
+    return bazaar_rio::rio::valid_tag(tag);
 }
 
 #[pymodule]

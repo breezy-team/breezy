@@ -12,7 +12,7 @@ homepage = "https://www.breezy-vcs.org/"
 documentation = "https://www.breezy-vcs.org/doc/"
 
 [workspace]
-members = ["lib-rio"]
+members = ["crates/*"]
 
 [[bin]]
 name = "brz"
