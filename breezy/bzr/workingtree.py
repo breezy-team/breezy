@@ -54,6 +54,7 @@ from breezy import (
     conflicts as _mod_conflicts,
     globbing,
     ignores,
+    iteratoblefile as _mod_iterablefile,
     merge,
     )
 from breezy.bzr import (
@@ -920,7 +921,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
-        my_file = _mod_rio.rio_file(stanzas, header)
+        my_file = _mod_iterablefile.IterableFile(_mod_rio_iter(stanzas, header))
         self._transport.put_file(filename, my_file,
                                  mode=self.controldir._get_file_mode())
 
