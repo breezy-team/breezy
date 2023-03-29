@@ -256,10 +256,17 @@ class BzrGitMapping(foreign.VcsMapping):
         return message, metadata
 
     def _decode_commit_message(self, rev, message, encoding):
-        return message.decode(encoding), CommitSupplement()
+        if message is None:
+            decoded_message = None
+        else:
+            decoded_message = message.decode(encoding)
+        return decoded_message, CommitSupplement()
 
     def _encode_commit_message(self, rev, message, encoding):
-        return message.encode(encoding)
+        if message is None:
+            return None
+        else:
+            return message.encode(encoding)
 
     def export_commit(self, rev, tree_sha, parent_lookup, lossy,
                       verifiers):
@@ -378,14 +385,15 @@ class BzrGitMapping(foreign.VcsMapping):
             encoding = commit.encoding.decode('ascii')
         else:
             encoding = 'utf-8'
-        try:
-            message, metadata = self._decode_commit_message(
-                None, commit.message, encoding)
-        except UnicodeDecodeError:
-            pass
-        else:
-            if metadata.revision_id:
-                return metadata.revision_id
+        if commit.message is not None:
+            try:
+                message, metadata = self._decode_commit_message(
+                    None, commit.message, encoding)
+            except UnicodeDecodeError:
+                pass
+            else:
+                if metadata.revision_id:
+                    return metadata.revision_id
         return self.revision_id_foreign_to_bzr(commit.id)
 
     def import_commit(self, commit, lookup_parent_revid, strict=True):
