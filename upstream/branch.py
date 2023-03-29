@@ -538,8 +538,10 @@ class UpstreamBranchSource(UpstreamSource):
                     package, current_version)
                 if version is None:
                     note(gettext(
-                        'No upstream releases found, falling back to snapshot.'))
-                    version = self.get_latest_snapshot_version(package, current_version)
+                        'No upstream releases found, '
+                        'falling back to snapshot.'))
+                    version = self.get_latest_snapshot_version(
+                        package, current_version)
             elif version_kind == "snapshot":
                 version = self.get_latest_snapshot_version(
                     package, current_version)

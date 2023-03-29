@@ -20,12 +20,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from info import brz_plugin_version
+from setuptools import setup
 
-if __name__ == '__main__':
-    from setuptools import setup
-
-    version_string = ".".join(
-            [str(v) for v in brz_plugin_version[:3]])
-
-    setup(version=version_string)
+setup()

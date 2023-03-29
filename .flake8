@@ -1,1 +1,1 @@
-exclude = build,.eggs,scripts/*~
+exclude = build,.eggs,scripts/,*~

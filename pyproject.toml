@@ -44,5 +44,8 @@ packages = [
 package-dir = {"breezy.plugins.debian" = "."}
 include-package-data = false
 
+[tool.setuptools.dynamic]
+version = {attr = "breezy.plugins.debian.version:__version__"}
+
 [tool.setuptools.package-data]
 "breezy.plugins.debian" = ["py.typed"]
