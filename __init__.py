@@ -34,8 +34,6 @@ from .info import (  # noqa: F401
     brz_plugin_version as version_info,
 )
 
-__version__ = ".".join([str(v) for v in version_info[:3]])
-
 from ...directory_service import (
     AliasDirectory,
     directories,
