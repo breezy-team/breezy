@@ -61,7 +61,7 @@ class BashCompletionMixin:
         (out, err) = proc.communicate(input)
         errlines = [
             line for line in err.splitlines()
-            if not line.startswith(b'brz: warning: ')]:
+            if not line.startswith(b'brz: warning: ')]
         if [] != errlines:
             raise AssertionError('Unexpected error message:\n%s' % err)
         self.assertEqual(b'', b''.join(errlines), 'No messages to standard error')
