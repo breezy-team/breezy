@@ -16,18 +16,11 @@
 
 import sys
 
-from .. import (
-    branch as _mod_branch,
-    controldir,
-    errors,
-    info,
-    tests,
-    workingtree,
-    repository as _mod_repository,
-    )
-from ..bzr import (
-    branch as _mod_bzrbranch,
-    )
+from .. import branch as _mod_branch
+from .. import controldir, errors, info
+from .. import repository as _mod_repository
+from .. import tests, workingtree
+from ..bzr import branch as _mod_bzrbranch
 
 
 class TestInfo(tests.TestCaseWithTransport):

@@ -18,8 +18,8 @@
 
 import os
 import sys
-from ...trace import mutter
 
+from ...trace import mutter
 
 _ca_path = None
 

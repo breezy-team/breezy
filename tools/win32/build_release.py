@@ -26,7 +26,6 @@ import shutil
 import subprocess
 import sys
 
-
 BRZ_EXE = None
 def brz():
     global BRZ_EXE

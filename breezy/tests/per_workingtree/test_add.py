@@ -16,13 +16,8 @@
 
 """Tests for interface conformance of 'WorkingTree.add'"""
 
-from breezy import (
-    errors,
-    tests,
-    )
-from breezy.bzr import (
-    inventory,
-    )
+from breezy import errors, tests
+from breezy.bzr import inventory
 from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 

@@ -17,17 +17,9 @@
 
 from io import StringIO
 
-from fastimport import (
-    commands,
-    parser,
-    )
-
 import testtools
-
-from fastimport.reftracker import (
-    RefTracker,
-    )
-
+from fastimport import commands, parser
+from fastimport.reftracker import RefTracker
 
 # A sample input stream that only adds files to a branch
 _SAMPLE_MAINLINE = \

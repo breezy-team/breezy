@@ -38,14 +38,12 @@ import re
 import sys
 
 import breezy
-from breezy import (
-    osutils,
-    )
+from breezy import osutils
 from breezy.branch import Branch
 from breezy.errors import CommandError
+from breezy.tests import TestCaseWithTransport
 from breezy.tests.http_utils import TestCaseWithWebserver
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.tests import TestCaseWithTransport
 from breezy.workingtree import WorkingTree
 
 
@@ -265,7 +263,7 @@ class TestCommands(TestCaseWithTransport):
         result = self.run_bzr('status')[0]
         self.assertIn(
             "conflicts:\n  Text conflict in hello\n"
-                        "  Text conflict in question\n",
+            "  Text conflict in question\n",
             result,
             result
         )

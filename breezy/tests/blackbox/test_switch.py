@@ -19,19 +19,12 @@
 
 import os
 
+from breezy import branch, osutils, urlutils
 from breezy.controldir import ControlDir
-from breezy import (
-    osutils,
-    urlutils,
-    branch,
-    )
-from breezy.workingtree import WorkingTree
-from breezy.tests import (
-    TestCaseWithTransport,
-    script,
-    )
-from breezy.tests.features import UnicodeFilenameFeature
 from breezy.directory_service import directories
+from breezy.tests import TestCaseWithTransport, script
+from breezy.tests.features import UnicodeFilenameFeature
+from breezy.workingtree import WorkingTree
 
 
 class TestSwitch(TestCaseWithTransport):

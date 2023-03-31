@@ -19,12 +19,7 @@
 """
 
 
-from breezy import (
-    config,
-    i18n,
-    tests,
-    )
-
+from breezy import config, i18n, tests
 from breezy.tests.test_i18n import ZzzTranslations
 
 
@@ -76,21 +71,21 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_repositories(self):
         """Smoke test for 'brz help repositories'"""
         out, err = self.run_bzr('help repositories')
-        from breezy.help_topics import help_as_plain_text, _repositories
+        from breezy.help_topics import _repositories, help_as_plain_text
         expected = help_as_plain_text(_repositories)
         self.assertEqual(expected, out)
 
     def test_help_working_trees(self):
         """Smoke test for 'brz help working-trees'"""
         out, err = self.run_bzr('help working-trees')
-        from breezy.help_topics import help_as_plain_text, _working_trees
+        from breezy.help_topics import _working_trees, help_as_plain_text
         expected = help_as_plain_text(_working_trees)
         self.assertEqual(expected, out)
 
     def test_help_status_flags(self):
         """Smoke test for 'brz help status-flags'"""
         out, err = self.run_bzr('help status-flags')
-        from breezy.help_topics import help_as_plain_text, _status_flags
+        from breezy.help_topics import _status_flags, help_as_plain_text
         expected = help_as_plain_text(_status_flags)
         self.assertEqual(expected, out)
 

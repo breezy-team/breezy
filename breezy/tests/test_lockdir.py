@@ -20,32 +20,12 @@ import os
 import time
 
 import breezy
-from .. import (
-    config,
-    errors,
-    lock,
-    lockdir,
-    osutils,
-    tests,
-    transport,
-    )
-from ..errors import (
-    LockBreakMismatch,
-    LockBroken,
-    LockContention,
-    LockFailed,
-    LockNotHeld,
-    )
-from ..lockdir import (
-    LockDir,
-    LockHeldInfo,
-    )
-from . import (
-    features,
-    TestCase,
-    TestCaseInTempDir,
-    TestCaseWithTransport,
-    )
+
+from .. import config, errors, lock, lockdir, osutils, tests, transport
+from ..errors import (LockBreakMismatch, LockBroken, LockContention,
+                      LockFailed, LockNotHeld)
+from ..lockdir import LockDir, LockHeldInfo
+from . import TestCase, TestCaseInTempDir, TestCaseWithTransport, features
 
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport

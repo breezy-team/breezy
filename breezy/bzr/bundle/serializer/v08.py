@@ -17,28 +17,17 @@
 """Serializer factory for reading and writing bundles.
 """
 
-from .... import (
-    errors,
-    transport as _mod_transport,
-    ui,
-    )
-from . import (
-    BundleSerializer,
-    _get_bundle_header,
-    binary_diff,
-    )
-from ..bundle_data import (
-    RevisionInfo,
-    BundleInfo,
-    )
+from .... import errors
+from .... import transport as _mod_transport
+from .... import ui
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
-from ...testament import StrictTestament
-from ....timestamp import (
-    format_highres_date,
-    )
 from ....textfile import text_file
+from ....timestamp import format_highres_date
 from ....trace import mutter
+from ...testament import StrictTestament
+from ..bundle_data import BundleInfo, RevisionInfo
+from . import BundleSerializer, _get_bundle_header, binary_diff
 
 bool_text = {True: 'yes', False: 'no'}
 

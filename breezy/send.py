@@ -18,21 +18,10 @@ import os
 import time
 from typing import Callable
 
-from . import (
-    controldir,
-    errors,
-    osutils,
-    registry,
-    trace,
-    )
+from . import controldir, errors, osutils, registry, trace
+from .branch import Branch
 from .i18n import gettext
-from .branch import (
-    Branch,
-    )
-from .revision import (
-    NULL_REVISION,
-    )
-
+from .revision import NULL_REVISION
 
 format_registry = registry.Registry[str, Callable]()
 

@@ -21,13 +21,7 @@ import re
 import socket
 import sys
 
-from .. import (
-    controldir,
-    errors,
-    osutils,
-    tests,
-    urlutils,
-    )
+from .. import controldir, errors, osutils, tests, urlutils
 
 
 class TestErrors(tests.TestCase):
@@ -50,8 +44,7 @@ class TestErrors(tests.TestCase):
                     'message',
                     args,
                     'Argument name "message" not allowed for '
-                                  '"errors.%s.__init__"' % c.__name__
-                )
+                    f'"errors.{c.__name__}.__init__"')
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(True, ('"message" not allowed in '
                                         '"errors.%s._fmt"' % c.__name__))

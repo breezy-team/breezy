@@ -17,17 +17,13 @@
 
 """Tests being able to ignore bad filetypes."""
 
-from io import StringIO
 import os
+from io import StringIO
 
-from .. import (
-    errors,
-    )
+from .. import errors
 from ..status import show_tree_status
 from . import TestCaseWithTransport
-from .features import (
-    OsFifoFeature,
-    )
+from .features import OsFifoFeature
 
 
 def verify_status(tester, tree, value):

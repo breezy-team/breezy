@@ -20,10 +20,8 @@ import os
 import sys
 
 from .. import osutils, urlutils
-from ..errors import (
-    PathNotChild,
-    )
-from . import features, TestCaseInTempDir, TestCase, TestSkipped
+from ..errors import PathNotChild
+from . import TestCase, TestCaseInTempDir, TestSkipped, features
 
 
 class TestUrlToPath(TestCase):

@@ -14,24 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from io import (
-    BytesIO,
-    StringIO,
-    )
 import os
 import re
+from io import BytesIO, StringIO
 
-from .. import (
-    branchbuilder,
-    errors,
-    log,
-    registry,
-    revision,
-    revisionspec,
-    tests,
-    gpg,
-    trace,
-    )
+from .. import (branchbuilder, errors, gpg, log, registry, revision,
+                revisionspec, tests, trace)
 
 
 class TestLogMixin:

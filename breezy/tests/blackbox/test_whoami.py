@@ -17,12 +17,7 @@
 
 """Black-box tests for brz whoami."""
 
-from breezy import (
-    branch,
-    config,
-    errors,
-    tests,
-    )
+from breezy import branch, config, errors, tests
 
 from ..test_bedding import override_whoami
 

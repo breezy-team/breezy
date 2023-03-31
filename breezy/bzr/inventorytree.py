@@ -17,36 +17,19 @@
 """Tree classes, representing directory at point in time.
 """
 
-from collections import deque
-
 import os
 import re
-from typing import Type, TYPE_CHECKING, Optional
+from collections import deque
+from typing import TYPE_CHECKING, Optional, Type
 
+from .. import branch as _mod_branch
+from .. import controldir, debug, errors, lazy_import, osutils, revision, trace
+from .. import transport as _mod_transport
+from ..controldir import ControlDir
+from ..mutabletree import MutableTree
+from ..repository import Repository
+from ..revisiontree import RevisionTree
 
-from .. import (
-    branch as _mod_branch,
-    controldir,
-    debug,
-    errors,
-    lazy_import,
-    osutils,
-    revision,
-    trace,
-    transport as _mod_transport,
-    )
-from ..controldir import (
-    ControlDir,
-    )
-from ..mutabletree import (
-    MutableTree,
-    )
-from ..repository import (
-    Repository,
-    )
-from ..revisiontree import (
-    RevisionTree,
-    )
 lazy_import.lazy_import(globals(), """
 from breezy import (
     add,
@@ -55,14 +38,8 @@ from breezy.bzr import (
     inventory as _mod_inventory,
     )
 """)
-from ..tree import (
-    FileTimestampUnavailable,
-    InterTree,
-    MissingNestedTree,
-    Tree,
-    TreeChange,
-    TreeFile,
-    )
+from ..tree import (FileTimestampUnavailable, InterTree, MissingNestedTree,
+                    Tree, TreeChange, TreeFile)
 
 
 class InventoryTreeChange(TreeChange):

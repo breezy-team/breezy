@@ -18,40 +18,16 @@
 
 import sys
 
-from dulwich.object_store import (
-    MissingObjectFinder,
-    peel_sha,
-)
+from dulwich.object_store import MissingObjectFinder, peel_sha
 from dulwich.protocol import Protocol
-from dulwich.server import (
-    TCPGitServer,
-    Backend,
-    BackendRepo,
-    ReceivePackHandler,
-    UploadPackHandler,
-    )
+from dulwich.server import (Backend, BackendRepo, ReceivePackHandler,
+                            TCPGitServer, UploadPackHandler)
 
-
-from .. import (
-    errors,
-    trace,
-    )
-
-from ..controldir import (
-    ControlDir,
-    )
-
-from .mapping import (
-    default_mapping,
-    decode_git_path,
-    )
-from .object_store import (
-    BazaarObjectStore,
-    get_object_store,
-    )
-from .refs import (
-    get_refs_container,
-    )
+from .. import errors, trace
+from ..controldir import ControlDir
+from .mapping import decode_git_path, default_mapping
+from .object_store import BazaarObjectStore, get_object_store
+from .refs import get_refs_container
 
 
 class BzrBackend(Backend):
@@ -127,7 +103,8 @@ def serve_git(transport, host=None, port=None, inet=False, timeout=None):
 
 
 def git_http_hook(branch, method, path):
-    from dulwich.web import HTTPGitApplication, HTTPGitRequest, DEFAULT_HANDLERS
+    from dulwich.web import (DEFAULT_HANDLERS, HTTPGitApplication,
+                             HTTPGitRequest)
     handler = None
     for (smethod, spath) in HTTPGitApplication.services:
         if smethod != method:

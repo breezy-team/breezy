@@ -15,35 +15,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from io import BytesIO
 import os
+from io import BytesIO
 
-from .. import (
-    conflicts,
-    errors,
-    symbol_versioning,
-    trace,
-    transport,
-    workingtree,
-    )
-from ..bzr import (
-    bzrdir,
-    conflicts as _mod_bzr_conflicts,
-    workingtree as bzrworkingtree,
-    workingtree_3,
-    workingtree_4,
-    )
+from .. import (conflicts, errors, symbol_versioning, trace, transport,
+                workingtree)
+from ..bzr import bzrdir
+from ..bzr import conflicts as _mod_bzr_conflicts
+from ..bzr import workingtree as bzrworkingtree
+from ..bzr import workingtree_3, workingtree_4
 from ..lock import write_locked
 from ..lockdir import LockDir
+from ..tree import TreeDirectory, TreeEntry, TreeFile, TreeLink
 from . import TestCase, TestCaseWithTransport, TestSkipped
-from ..tree import (
-    TreeEntry,
-    TreeDirectory,
-    TreeFile,
-    TreeLink,
-    )
-
 from .features import SymlinkFeature
+
 
 class TestTreeDirectory(TestCaseWithTransport):
 

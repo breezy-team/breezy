@@ -17,10 +17,7 @@
 
 from unittest import TestLoader
 
-from .... import (
-    config,
-    tests,
-    )
+from .... import config, tests
 from ....bzr.bzrdir import BzrDir
 from ....tests import TestCaseInTempDir
 from ..emailer import EmailSender

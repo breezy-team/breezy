@@ -21,30 +21,16 @@ so this is primarily useful for testing.
 """
 
 import contextlib
-from io import (
-    BytesIO,
-    )
+import errno
 import itertools
 import os
-import errno
-from stat import S_IFREG, S_IFDIR, S_IFLNK, S_ISDIR
+from io import BytesIO
+from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR
 
-from .. import (
-    transport,
-    urlutils,
-    )
-from ..errors import (
-    LockError,
-    InProcessTransport,
-    TransportNotPossible,
-    )
-from ..transport import (
-    AppendBasedFileStream,
-    FileExists,
-    NoSuchFile,
-    _file_streams,
-    LateReadError,
-    )
+from .. import transport, urlutils
+from ..errors import InProcessTransport, LockError, TransportNotPossible
+from ..transport import (AppendBasedFileStream, FileExists, LateReadError,
+                         NoSuchFile, _file_streams)
 
 
 class MemoryStat:

@@ -19,8 +19,8 @@
 
 from .. import errors, transport
 from ..memorytree import MemoryTree
-from . import TestCaseWithTransport
 from ..treebuilder import TreeBuilder
+from . import TestCaseWithTransport
 
 
 class TestMemoryTree(TestCaseWithTransport):

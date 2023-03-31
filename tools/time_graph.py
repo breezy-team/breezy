@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
-import random
-import os
-import time
-import sys
 import optparse
-from breezy import (
-    branch,
-    commands,
-    graph,
-    osutils,
-    ui,
-    trace,
-    _known_graph_py,
-    _known_graph_pyx,
-    )
+import os
+import random
+import sys
+import time
+
+from breezy import (_known_graph_py, _known_graph_pyx, branch, commands, graph,
+                    osutils, trace, ui)
 from breezy.ui import text
 
 p = optparse.OptionParser()

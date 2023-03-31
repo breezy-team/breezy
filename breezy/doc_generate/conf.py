@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 #
 # Bazaar documentation build configuration file, created by
@@ -50,6 +50,7 @@ copyright = '2009-2011 Canonical Ltd, 2017-2018 Breezy Developers'
 #
 # The short X.Y version.
 import breezy
+
 version = '.'.join(str(p) for p in breezy.version_info[:2])
 # The full version, including alpha/beta/rc tags.
 release = breezy.version_string

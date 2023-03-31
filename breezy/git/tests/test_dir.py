@@ -17,22 +17,14 @@
 
 """Test the GitDir class"""
 
-from dulwich.repo import Repo as GitRepo
 import os
 
-from ... import (
-    controldir,
-    errors,
-    urlutils,
-    )
-from ...transport import get_transport
-from ...tests import TestSkipped
+from dulwich.repo import Repo as GitRepo
 
-from .. import (
-    dir,
-    tests,
-    workingtree,
-    )
+from ... import controldir, errors, urlutils
+from ...tests import TestSkipped
+from ...transport import get_transport
+from .. import dir, tests, workingtree
 
 
 class TestGitDir(tests.TestCaseInTempDir):

@@ -18,29 +18,14 @@
 
 from io import BytesIO
 
-from ...bzr.bzrdir import (
-    BzrDir,
-    BzrDirFormat,
-    BzrDirMetaFormat1,
-    )
-from ...controldir import (
-    ControlDir,
-    Converter,
-    MustHaveWorkingTree,
-    NoColocatedBranchSupport,
-    format_registry,
-    )
-from ... import (
-    errors,
-    lockable_files,
-    )
+from ... import errors, lockable_files
+from ...bzr.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
+from ...controldir import (ControlDir, Converter, MustHaveWorkingTree,
+                           NoColocatedBranchSupport, format_registry)
 from ...i18n import gettext
-from ...transport import (
-    get_transport,
-    local,
-    NoSuchFile,
-    )
 from ...lazy_import import lazy_import
+from ...transport import NoSuchFile, get_transport, local
+
 lazy_import(globals(), """
 import os
 
@@ -539,8 +524,8 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        from .repository import RepositoryFormat7
         from ...bzr.fullhistory import BzrBranchFormat5
+        from .repository import RepositoryFormat7
         self.controldir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0

@@ -16,15 +16,11 @@
 
 """Tests for the wedav plugin."""
 
+import stat
 from http.client import parse_headers
 from io import StringIO
-import stat
 
-
-from breezy import (
-    errors,
-    tests,
-    )
+from breezy import errors, tests
 from breezy.plugins.webdav import webdav
 from breezy.tests import http_server
 

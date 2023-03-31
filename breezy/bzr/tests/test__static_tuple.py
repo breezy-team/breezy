@@ -16,22 +16,13 @@
 
 """Tests for the StaticTuple type."""
 
-import pickle
 import operator
+import pickle
 import sys
 
-from breezy import (
-    debug,
-    osutils,
-    tests,
-    )
-from breezy.bzr import (
-    _static_tuple_py,
-    static_tuple,
-    )
-from breezy.tests import (
-    features,
-    )
+from breezy import debug, osutils, tests
+from breezy.bzr import _static_tuple_py, static_tuple
+from breezy.tests import features
 
 
 def load_tests(loader, standard_tests, pattern):

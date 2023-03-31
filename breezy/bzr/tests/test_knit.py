@@ -17,58 +17,26 @@
 """Tests for Knit data structure"""
 
 import gzip
-from io import BytesIO
-from patiencediff import PatienceSequenceMatcher
 import sys
+from io import BytesIO
 
-from ... import (
-    errors,
-    multiparent,
-    osutils,
-    tests,
-    transport as _mod_transport,
-    )
-from .. import (
-    knit,
-    pack,
-    )
+from patiencediff import PatienceSequenceMatcher
+
+from ... import errors, multiparent, osutils, tests
+from ... import transport as _mod_transport
+from ...tests import (TestCase, TestCaseWithMemoryTransport,
+                      TestCaseWithTransport, TestNotApplicable, features)
+from .. import knit, knitpack_repo, pack, pack_repo
 from ..index import *
-from ..knit import (
-    AnnotatedKnitContent,
-    KnitContent,
-    KnitCorrupt,
-    KnitDataStreamIncompatible,
-    KnitDataStreamUnknown,
-    KnitHeaderError,
-    KnitIndexUnknownMethod,
-    KnitVersionedFiles,
-    PlainKnitContent,
-    _VFContentMapGenerator,
-    _KndxIndex,
-    _KnitGraphIndex,
-    _KnitKeyAccess,
-    make_file_factory,
-    )
-from .. import (
-    knitpack_repo,
-    pack_repo,
-    )
-from ...tests import (
-    TestCase,
-    TestCaseWithMemoryTransport,
-    TestCaseWithTransport,
-    TestNotApplicable,
-    )
-from ..versionedfile import (
-    AbsentContentFactory,
-    ConstantMapper,
-    network_bytes_to_kind_and_offset,
-    RecordingVersionedFilesDecorator,
-    )
-from ...tests import (
-    features,
-    )
-
+from ..knit import (AnnotatedKnitContent, KnitContent, KnitCorrupt,
+                    KnitDataStreamIncompatible, KnitDataStreamUnknown,
+                    KnitHeaderError, KnitIndexUnknownMethod,
+                    KnitVersionedFiles, PlainKnitContent, _KndxIndex,
+                    _KnitGraphIndex, _KnitKeyAccess, _VFContentMapGenerator,
+                    make_file_factory)
+from ..versionedfile import (AbsentContentFactory, ConstantMapper,
+                             RecordingVersionedFilesDecorator,
+                             network_bytes_to_kind_and_offset)
 
 compiled_knit_feature = features.ModuleAvailableFeature(
     'breezy.bzr._knit_load_data_pyx')

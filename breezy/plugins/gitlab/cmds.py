@@ -16,14 +16,9 @@
 
 """GitLab command implementations."""
 
-from ... import (
-    errors,
-    urlutils,
-    )
+from ... import errors, urlutils
 from ...commands import Command
-from ...option import (
-    Option,
-    )
+from ...option import Option
 from ...trace import note
 
 
@@ -56,6 +51,7 @@ class cmd_gitlab_login(Command):
 
     def run(self, url, private_token=None, name=None, no_check=False):
         from breezy import ui
+
         from .forge import store_gitlab_token
         if name is None:
             try:
@@ -69,6 +65,7 @@ class cmd_gitlab_login(Command):
             private_token = ui.ui_factory.get_password('Private token')
         if not no_check:
             from breezy.transport import get_transport
+
             from .forge import GitLab
             GitLab(get_transport(url), private_token=private_token)
         store_gitlab_token(name=name, url=url, private_token=private_token)

@@ -17,9 +17,7 @@
 """Transport implementation that doesn't detect clashing renames.
 """
 
-from .. import (
-    urlutils,
-    )
+from .. import urlutils
 from ..transport import FileExists
 from . import decorator
 

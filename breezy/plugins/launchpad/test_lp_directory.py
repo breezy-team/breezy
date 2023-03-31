@@ -17,32 +17,19 @@
 """Tests for directory lookup through Launchpad.net"""
 
 import os
-
-from xmlrpc.client import Fault
 from http.client import parse_headers
+from xmlrpc.client import Fault
 
 import breezy
-from ... import (
-    debug,
-    tests,
-    transport,
-    urlutils,
-    )
+
+from ... import debug, tests, transport, urlutils
 from ...branch import Branch
 from ...directory_service import directories
-from ...tests import (
-    features,
-    ssl_certs,
-    TestCaseInTempDir,
-    TestCaseWithMemoryTransport
-)
-from . import (
-    _register_directory,
-    )
-from .lp_directory import (
-    LaunchpadDirectory)
+from ...tests import (TestCaseInTempDir, TestCaseWithMemoryTransport, features,
+                      http_server, ssl_certs)
+from . import _register_directory
 from .account import get_lp_login, set_lp_login
-from ...tests import http_server
+from .lp_directory import LaunchpadDirectory
 
 
 class FakeResolveFactory:

@@ -14,10 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from io import BytesIO
 import re
+from io import BytesIO
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from fnmatch import fnmatch
 
@@ -27,18 +28,10 @@ from breezy import (
     diff,
     )
 """)
-from . import (
-    controldir,
-    errors,
-    osutils,
-    revision as _mod_revision,
-    trace,
-    )
-from .revisionspec import (
-    RevisionSpec,
-    RevisionSpec_revid,
-    RevisionSpec_revno,
-    )
+from . import controldir, errors, osutils
+from . import revision as _mod_revision
+from . import trace
+from .revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
 
 _user_encoding = osutils.get_user_encoding()
 

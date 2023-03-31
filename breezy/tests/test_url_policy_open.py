@@ -19,45 +19,18 @@
 from typing import List
 
 from .. import urlutils
-from ..branch import (
-    Branch,
-    )
-from ..bzr.branch import (
-    BranchReferenceFormat,
-    )
-from ..bzr import (
-    BzrProber,
-    )
-from ..controldir import (
-    ControlDir,
-    ControlDirFormat,
-    )
-from ..errors import (
-    NotBranchError,
-    RedirectRequested,
-    )
-from ..url_policy_open import (
-    BadUrl,
-    _BlacklistPolicy,
-    BranchLoopError,
-    BranchReferenceForbidden,
-    open_only_scheme,
-    BranchOpener,
-    WhitelistPolicy,
-    )
-from . import (
-    TestCase,
-    TestCaseWithTransport,
-    )
-from ..transport import (
-    chroot,
-    get_transport,
-    register_transport_proto,
-    register_transport,
-    unregister_transport,
-    transport_list_registry,
-    Transport,
-    )
+from ..branch import Branch
+from ..bzr import BzrProber
+from ..bzr.branch import BranchReferenceFormat
+from ..controldir import ControlDir, ControlDirFormat
+from ..errors import NotBranchError, RedirectRequested
+from ..transport import (Transport, chroot, get_transport, register_transport,
+                         register_transport_proto, transport_list_registry,
+                         unregister_transport)
+from ..url_policy_open import (BadUrl, BranchLoopError, BranchOpener,
+                               BranchReferenceForbidden, WhitelistPolicy,
+                               _BlacklistPolicy, open_only_scheme)
+from . import TestCase, TestCaseWithTransport
 
 
 class TestBranchOpenerCheckAndFollowBranchReference(TestCase):

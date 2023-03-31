@@ -22,24 +22,23 @@ when the branch is opened.  Clients should typically do
   Branch.tags.add('name', 'value')
 """
 
-from collections import defaultdict
 import contextlib
 import itertools
 import re
 import sys
-from typing import Dict, List, Callable, Set, Tuple, Optional
+from collections import defaultdict
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
-# NOTE: I was going to call this tags.py, but vim seems to think all files
-# called tags* are ctags files... mbp 20070220.
-
+from . import branch as _mod_branch
+from . import errors
 from .inter import InterObject
 from .registry import Registry
 from .revision import RevisionID
 
-from . import (
-    branch as _mod_branch,
-    errors,
-    )
+# NOTE: I was going to call this tags.py, but vim seems to think all files
+# called tags* are ctags files... mbp 20070220.
+
+
 
 
 TagSelector = Callable[[str], bool]

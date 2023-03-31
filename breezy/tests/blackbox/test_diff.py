@@ -20,17 +20,10 @@
 import os
 import re
 
-from breezy import (
-    tests,
-    workingtree,
-    )
-from breezy.diff import (
-    DiffTree,
-    format_registry as diff_format_registry,
-    )
-from breezy.tests import (
-    features,
-    )
+from breezy import tests, workingtree
+from breezy.diff import DiffTree
+from breezy.diff import format_registry as diff_format_registry
+from breezy.tests import features
 
 
 def subst_dates(string):
@@ -270,8 +263,8 @@ class TestDiff(DiffBase):
                              "\n", subst_dates(out))
 
     def test_diff_color_always(self):
-        from ...terminal import colorstring
         from ... import colordiff
+        from ...terminal import colorstring
         self.overrideAttr(colordiff, 'GLOBAL_COLORDIFFRC', None)
         self.example_branches()
         branch2_tree = workingtree.WorkingTree.open_containing('branch2')[0]

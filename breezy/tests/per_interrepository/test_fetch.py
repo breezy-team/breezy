@@ -17,35 +17,16 @@
 
 import sys
 
-from breezy import (
-    errors,
-    osutils,
-    repository,
-    )
-from breezy.bzr import (
-    inventory,
-    versionedfile,
-    )
-from breezy.errors import (
-    NoSuchRevision,
-    )
-from breezy.bzr.vf_search import (
-    SearchResult,
-    )
+from breezy import errors, osutils, repository
+from breezy.bzr import inventory, versionedfile
+from breezy.bzr.vf_search import SearchResult
+from breezy.errors import NoSuchRevision
 from breezy.repository import WriteGroup
-from breezy.revision import (
-    NULL_REVISION,
-    Revision,
-    )
-from breezy.tests import (
-    TestNotApplicable,
-    )
-from breezy.tests.per_interrepository import (
-    TestCaseWithInterRepository,
-    )
-from breezy.tests.per_interrepository.test_interrepository import (
+from breezy.revision import NULL_REVISION, Revision
+from breezy.tests import TestNotApplicable
+from breezy.tests.per_interrepository import TestCaseWithInterRepository
+from breezy.tests.per_interrepository.test_interrepository import \
     check_repo_format_for_funky_id_on_win32
-    )
 
 
 class TestInterRepository(TestCaseWithInterRepository):

@@ -19,14 +19,9 @@
 import os
 import sys
 
-from breezy import (
-    osutils,
-    tests,
-    urlutils,
-    )
+from breezy import osutils, tests, urlutils
 from breezy.tests import EncodingAdapter
 from breezy.tests.scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 

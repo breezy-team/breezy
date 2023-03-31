@@ -16,9 +16,7 @@
 
 """GitHub command implementations."""
 
-from ... import (
-    errors,
-    )
+from ... import errors
 from ...commands import Command
 
 
@@ -33,6 +31,7 @@ class cmd_github_login(Command):
 
     def run(self, username=None):
         from github import Github, GithubException
+
         from breezy.config import AuthenticationConfig
         authconfig = AuthenticationConfig()
         if username is None:

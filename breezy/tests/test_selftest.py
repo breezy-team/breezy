@@ -16,10 +16,8 @@
 
 """Tests for the test framework."""
 
-import gc
 import doctest
-from functools import reduce
-from io import BytesIO, StringIO, TextIOWrapper
+import gc
 import os
 import signal
 import sys
@@ -27,59 +25,28 @@ import threading
 import time
 import unittest
 import warnings
+from functools import reduce
+from io import BytesIO, StringIO, TextIOWrapper
 
-from testtools import (
-    ExtendedToOriginalDecorator,
-    MultiTestResult,
-    )
+import testtools.testresult.doubles
+from testtools import ExtendedToOriginalDecorator, MultiTestResult
 from testtools.content import Content
 from testtools.content_type import ContentType
-from testtools.matchers import (
-    DocTestMatches,
-    Equals,
-    )
-import testtools.testresult.doubles
+from testtools.matchers import DocTestMatches, Equals
 
 import breezy
-from .. import (
-    branchbuilder,
-    controldir,
-    errors,
-    hooks,
-    lockdir,
-    memorytree,
-    osutils,
-    repository,
-    symbol_versioning,
-    tests,
-    transport,
-    workingtree,
-    )
-from ..bzr import (
-    bzrdir,
-    remote,
-    workingtree_3,
-    workingtree_4,
-    )
-from ..bzr import (
-    groupcompress_repo,
-    )
-from ..git import (
-    workingtree as git_workingtree,
-    )
-from ..symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
-from . import (
-    features,
-    test_lsprof,
-    test_server,
-    TestUtil,
-    )
-from ..trace import note, mutter
+
+from .. import (branchbuilder, controldir, errors, hooks, lockdir, memorytree,
+                osutils, repository, symbol_versioning, tests, transport,
+                workingtree)
+from ..bzr import (bzrdir, groupcompress_repo, remote, workingtree_3,
+                   workingtree_4)
+from ..git import workingtree as git_workingtree
+from ..symbol_versioning import (deprecated_function, deprecated_in,
+                                 deprecated_method)
+from ..trace import mutter, note
 from ..transport import memory
+from . import TestUtil, features, test_lsprof, test_server
 
 
 def _test_ids(test_suite):
@@ -150,8 +117,8 @@ class TestTransportScenarios(tests.TestCase):
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
         # combination with the tests for setting the right classes below.
-        from .per_transport import transport_test_permutations
         from ..transport import _get_transport_modules
+        from .per_transport import transport_test_permutations
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
@@ -385,14 +352,10 @@ class TestTreeScenarios(tests.TestCase):
         # 'return_parameter' and the revision one set to
         # revision_tree_from_workingtree.
 
-        from .per_tree import (
-            _dirstate_tree_from_workingtree,
-            make_scenarios,
-            preview_tree_pre,
-            preview_tree_post,
-            return_parameter,
-            revision_tree_from_workingtree
-            )
+        from .per_tree import (_dirstate_tree_from_workingtree, make_scenarios,
+                               preview_tree_post, preview_tree_pre,
+                               return_parameter,
+                               revision_tree_from_workingtree)
         server1 = "a"
         server2 = "b"
         smart_server = test_server.SmartTCPServer_for_testing
@@ -489,14 +452,10 @@ class TestInterTreeScenarios(tests.TestCase):
         # unlike the TestProviderAdapter we dont want to automatically add a
         # parameterized one for WorkingTree - the optimisers will tell us what
         # ones to add.
-        from .per_tree import (
-            return_parameter,
-            )
-        from .per_intertree import (
-            make_scenarios,
-            )
         from ..bzr.workingtree_3 import WorkingTreeFormat3
         from ..bzr.workingtree_4 import WorkingTreeFormat4
+        from .per_intertree import make_scenarios
+        from .per_tree import return_parameter
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
@@ -686,8 +645,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
-        from .http_server import HttpServer
         from ..transport.http.urllib import HttpTransport
+        from .http_server import HttpServer
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.

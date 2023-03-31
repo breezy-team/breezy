@@ -22,34 +22,14 @@
 cdef extern from "python-compat.h":
     pass
 
-from cpython.dict cimport (
-    PyDict_GetItem,
-    PyDict_SetItem,
-    )
-from cpython.list cimport (
-    PyList_Append,
-    PyList_CheckExact,
-    PyList_GET_ITEM,
-    PyList_GET_SIZE,
-    PyList_SetItem,
-    PyList_Sort,
-    )
-from cpython.object cimport (
-    Py_EQ,
-    Py_LT,
-    PyObject,
-    PyObject_RichCompareBool,
-    )
-from cpython.ref cimport (
-    Py_INCREF,
-    )
-from cpython.tuple cimport (
-    PyTuple_CheckExact,
-    PyTuple_GET_ITEM,
-    PyTuple_GET_SIZE,
-    PyTuple_New,
-    PyTuple_SET_ITEM,
-    )
+from cpython.dict cimport PyDict_GetItem, PyDict_SetItem
+from cpython.list cimport (PyList_Append, PyList_CheckExact, PyList_GET_ITEM,
+                           PyList_GET_SIZE, PyList_SetItem, PyList_Sort)
+from cpython.object cimport Py_EQ, Py_LT, PyObject, PyObject_RichCompareBool
+from cpython.ref cimport Py_INCREF
+from cpython.tuple cimport (PyTuple_CheckExact, PyTuple_GET_ITEM,
+                            PyTuple_GET_SIZE, PyTuple_New, PyTuple_SET_ITEM)
+
 
 cdef extern from "Python.h":
     void PyTuple_SET_ITEM_ptr "PyTuple_SET_ITEM" (object, Py_ssize_t,

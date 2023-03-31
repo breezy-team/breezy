@@ -20,17 +20,15 @@ import errno
 import os.path
 import socket
 import sys
-import time
 import threading
+import time
 
+from ... import errors, trace
+from ... import transport as _mod_transport
 from ...hooks import Hooks
-from ... import (
-    errors,
-    trace,
-    transport as _mod_transport,
-)
 from ...i18n import gettext
 from ...lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy.bzr.smart import (
     medium,
@@ -95,8 +93,8 @@ class SmartTCPServer:
         # let connections timeout so that we get a chance to terminate
         # Keep a reference to the exceptions we want to catch because the socket
         # module's globals get set to None during interpreter shutdown.
-        from socket import timeout as socket_timeout
         from socket import error as socket_error
+        from socket import timeout as socket_timeout
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
         addrs = socket.getaddrinfo(host, port, socket.AF_UNSPEC,
@@ -455,6 +453,7 @@ class BzrServerFactory:
 
     def _change_globals(self):
         from breezy import lockdir, ui
+
         # For the duration of this server, no UI output is permitted. note
         # that this may cause problems with blackbox tests. This should be
         # changed with care though, as we dont want to use bandwidth sending

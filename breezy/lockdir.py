@@ -109,38 +109,18 @@ but helps protect against colliding host names.
 
 import os
 import time
+
 import yaml
 
-from . import (
-    config,
-    debug,
-    errors,
-    lock,
-    osutils,
-    ui,
-    urlutils,
-    )
+from . import config, debug, errors, lock, osutils, ui, urlutils
 from .decorators import only_raises
-from .errors import (
-    DirectoryNotEmpty,
-    LockBreakMismatch,
-    LockBroken,
-    LockContention,
-    LockCorrupt,
-    LockFailed,
-    LockNotHeld,
-    PathError,
-    ResourceBusy,
-    TransportError,
-    )
+from .errors import (DirectoryNotEmpty, LockBreakMismatch, LockBroken,
+                     LockContention, LockCorrupt, LockFailed, LockNotHeld,
+                     PathError, ResourceBusy, TransportError)
 from .i18n import gettext
-from .osutils import format_delta, rand_chars, get_host_name
+from .osutils import format_delta, get_host_name, rand_chars
 from .trace import mutter, note
-from .transport import (
-    FileExists,
-    NoSuchFile,
-    )
-
+from .transport import FileExists, NoSuchFile
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a

@@ -16,19 +16,9 @@
 
 import os
 
-from . import (
-    TestCaseWithTransport,
-    multiply_scenarios,
-    features,
-    )
+from ..workspace import Workspace, WorkspaceDirty, check_clean_tree
+from . import TestCaseWithTransport, features, multiply_scenarios
 from .scenarios import load_tests_apply_scenarios
-
-from ..workspace import (
-    WorkspaceDirty,
-    Workspace,
-    check_clean_tree,
-    )
-
 
 load_tests = load_tests_apply_scenarios
 

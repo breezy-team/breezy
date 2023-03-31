@@ -16,15 +16,14 @@
 
 """Directory lookup that uses pypi."""
 
+import json
+from urllib.error import HTTPError
+from urllib.parse import urlparse
+from urllib.request import urlopen
+
 from breezy.errors import BzrError
 from breezy.trace import note
 from breezy.urlutils import InvalidURL
-
-import json
-
-from urllib.request import urlopen
-from urllib.parse import urlparse
-from urllib.error import HTTPError
 
 
 class PypiProjectWithoutRepositoryURL(InvalidURL):

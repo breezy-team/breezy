@@ -32,7 +32,6 @@ import re
 import sys
 from optparse import OptionParser
 
-
 preamble_plain = """\
 ####################
 Breezy Release Notes

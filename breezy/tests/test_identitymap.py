@@ -21,8 +21,8 @@
 
 # import breezy specific imports here
 from .. import errors as errors
-from . import TestCase
 from .. import identitymap as identitymap
+from . import TestCase
 
 
 class TestIdentityMap(TestCase):

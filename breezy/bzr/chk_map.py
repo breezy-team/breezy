@@ -41,13 +41,7 @@ import heapq
 import threading
 from typing import Callable
 
-from .. import (
-    errors,
-    lru_cache,
-    osutils,
-    registry,
-    trace,
-    )
+from .. import errors, lru_cache, osutils, registry, trace
 from .static_tuple import StaticTuple, expect_static_tuple
 
 # approx 4MB
@@ -1717,22 +1711,15 @@ def iter_interesting_nodes(store, interesting_root_keys,
 
 
 try:
-    from ._chk_map_pyx import (
-        _bytes_to_text_key,
-        _search_key_16,
-        _search_key_255,
-        _deserialise_leaf_node,
-        _deserialise_internal_node,
-        )
+    from ._chk_map_pyx import (_bytes_to_text_key, _deserialise_internal_node,
+                               _deserialise_leaf_node, _search_key_16,
+                               _search_key_255)
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._chk_map_py import (
-        _bytes_to_text_key,
-        _search_key_16,
-        _search_key_255,
-        _deserialise_leaf_node,
-        _deserialise_internal_node,
-        )  # noqa: F401
+    from ._chk_map_py import _bytes_to_text_key  # noqa: F401
+    from ._chk_map_py import (_deserialise_internal_node,
+                              _deserialise_leaf_node, _search_key_16,
+                              _search_key_255)
 search_key_registry.register(b'hash-16-way', _search_key_16)
 search_key_registry.register(b'hash-255-way', _search_key_255)
 

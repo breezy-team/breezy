@@ -19,37 +19,18 @@ import os
 from io import BytesIO
 
 import breezy
-from .. import (
-    config,
-    controldir,
-    errors,
-    trace,
-    transport as _mod_transport,
-    )
+
+from .. import config, controldir, errors, trace
+from .. import transport as _mod_transport
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
-from ..commit import (
-    CannotCommitSelectedFileMerge,
-    Commit,
-    NullCommitReporter,
-    PointlessCommit,
-    filter_excluded,
-    )
-from ..errors import (
-    BzrError,
-    LockContention,
-    )
+from ..commit import (CannotCommitSelectedFileMerge, Commit,
+                      NullCommitReporter, PointlessCommit, filter_excluded)
+from ..errors import BzrError, LockContention
 from ..tree import TreeChange
-from . import (
-    TestCase,
-    TestCaseWithTransport,
-    test_foreign,
-    )
-from .features import (
-    SymlinkFeature,
-    )
+from . import TestCase, TestCaseWithTransport, test_foreign
+from .features import SymlinkFeature
 from .matchers import MatchesAncestry, MatchesTreeChanges
-
 
 # TODO: Test commit with some added, and added-but-missing files
 
@@ -440,8 +421,8 @@ class TestCommit(TestCaseWithTransport):
         wt.commit(message='add hello', strict=False)
 
     def test_signed_commit(self):
-        import breezy.gpg
         import breezy.commit as commit
+        import breezy.gpg
         oldstrategy = breezy.gpg.GPGStrategy
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
@@ -449,6 +430,7 @@ class TestCommit(TestCaseWithTransport):
         self.assertFalse(branch.repository.has_signature_for_revision_id(b'A'))
         try:
             from ..bzr.testament import Testament
+
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             conf = config.MemoryStack(b'''
@@ -468,8 +450,8 @@ create_signatures=always
             breezy.gpg.GPGStrategy = oldstrategy
 
     def test_commit_failed_signature(self):
-        import breezy.gpg
         import breezy.commit as commit
+        import breezy.gpg
         oldstrategy = breezy.gpg.GPGStrategy
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
@@ -494,8 +476,8 @@ create_signatures=always
             breezy.gpg.GPGStrategy = oldstrategy
 
     def test_commit_failed_signature_optional(self):
-        import breezy.gpg
         import breezy.commit as commit
+        import breezy.gpg
         oldstrategy = breezy.gpg.GPGStrategy
         wt = self.make_branch_and_tree('.')
         branch = wt.branch

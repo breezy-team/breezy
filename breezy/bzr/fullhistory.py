@@ -16,21 +16,11 @@
 
 """Full history branch formats."""
 
-from .. import (
-    debug,
-    errors,
-    revision as _mod_revision,
-    )
-
-from ..branch import (
-    Branch,
-    )
-from .branch import (
-    BzrBranch,
-    BranchFormatMetadir,
-    )
-
+from .. import debug, errors
+from .. import revision as _mod_revision
+from ..branch import Branch
 from ..trace import mutter_callsite
+from .branch import BranchFormatMetadir, BzrBranch
 
 
 class FullHistoryBzrBranch(BzrBranch):

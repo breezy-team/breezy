@@ -23,54 +23,27 @@ import os
 import subprocess
 import sys
 
-from ... import (
-    branch,
-    bzr,
-    config,
-    controldir,
-    errors,
-    help_topics,
-    lock,
-    repository,
-    revision as _mod_revision,
-    osutils,
-    transport as _mod_transport,
-    urlutils,
-    win32utils,
-    )
-from .. import (
-    branch as bzrbranch,
-    bzrdir,
-    remote,
-    workingtree_3,
-    workingtree_4,
-    )
 import breezy.branch
 import breezy.bzr.branch
-from ..fullhistory import BzrBranchFormat5
-from ...errors import (
-    NotBranchError,
-    UnknownFormatError,
-    UnsupportedFormatError,
-    )
-from ...tests import (
-    TestCase,
-    TestCaseWithMemoryTransport,
-    TestCaseWithTransport,
-    TestSkipped,
-    )
-from ...tests import (
-    http_server,
-    http_utils,
-    )
-from ...transport import (
-    memory,
-    pathfilter,
-    )
+
+from ... import (branch, bzr, config, controldir, errors, help_topics, lock,
+                 osutils, repository)
+from ... import revision as _mod_revision
+from ... import transport as _mod_transport
+from ... import urlutils, win32utils
+from ...errors import (NotBranchError, UnknownFormatError,
+                       UnsupportedFormatError)
+from ...tests import (TestCase, TestCaseWithMemoryTransport,
+                      TestCaseWithTransport, TestSkipped, http_server,
+                      http_utils)
+from ...transport import memory, pathfilter
 from ...transport.http.urllib import HttpTransport
 from ...transport.nosmart import NoSmartTransportDecorator
 from ...transport.readonly import ReadonlyTransportDecorator
-from .. import knitrepo, knitpack_repo
+from .. import branch as bzrbranch
+from .. import (bzrdir, knitpack_repo, knitrepo, remote, workingtree_3,
+                workingtree_4)
+from ..fullhistory import BzrBranchFormat5
 
 
 class TestDefaultFormat(TestCase):

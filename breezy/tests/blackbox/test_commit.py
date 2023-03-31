@@ -24,18 +24,9 @@ import sys
 
 from testtools.matchers import DocTestMatches
 
-from ... import (
-    config,
-    osutils,
-    ignores,
-    msgeditor,
-    )
+from ... import config, ignores, msgeditor, osutils
 from ...controldir import ControlDir
-from .. import (
-    test_foreign,
-    features,
-    )
-from .. import TestCaseWithTransport
+from .. import TestCaseWithTransport, features, test_foreign
 from ..test_bedding import override_whoami
 
 

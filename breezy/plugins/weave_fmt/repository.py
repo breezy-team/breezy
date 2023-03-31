@@ -21,10 +21,11 @@ ghosts.
 """
 
 import gzip
-from io import BytesIO
 import os
+from io import BytesIO
 
 from ...lazy_import import lazy_import
+
 lazy_import(globals(), """
 import itertools
 
@@ -36,44 +37,22 @@ from breezy.bzr import (
     xml5,
     )
 """)
-from ... import (
-    debug,
-    errors,
-    lockable_files,
-    lockdir,
-    osutils,
-    trace,
-    transport as _mod_transport,
-    urlutils,
-    )
-from ...bzr import (
-    tuned_gzip,
-    versionedfile,
-    weave,
-    weavefile,
-    )
-from ...repository import (
-    InterRepository,
-    )
-from ...bzr.repository import (
-    RepositoryFormatMetaDir,
-    )
-from .store.text import TextStore
-from ...bzr.versionedfile import (
-    AbsentContentFactory,
-    FulltextContentFactory,
-    VersionedFiles,
-    )
-from ...bzr.vf_repository import (
-    InterSameDataRepository,
-    VersionedFileCommitBuilder,
-    VersionedFileRepository,
-    VersionedFileRepositoryFormat,
-    MetaDirVersionedFileRepository,
-    MetaDirVersionedFileRepositoryFormat,
-    )
-
+from ... import debug, errors, lockable_files, lockdir, osutils, trace
+from ... import transport as _mod_transport
+from ... import urlutils
+from ...bzr import tuned_gzip, versionedfile, weave, weavefile
+from ...bzr.repository import RepositoryFormatMetaDir
+from ...bzr.versionedfile import (AbsentContentFactory, FulltextContentFactory,
+                                  VersionedFiles)
+from ...bzr.vf_repository import (InterSameDataRepository,
+                                  MetaDirVersionedFileRepository,
+                                  MetaDirVersionedFileRepositoryFormat,
+                                  VersionedFileCommitBuilder,
+                                  VersionedFileRepository,
+                                  VersionedFileRepositoryFormat)
+from ...repository import InterRepository
 from . import bzrdir as weave_bzrdir
+from .store.text import TextStore
 
 
 class AllInOneRepository(VersionedFileRepository):

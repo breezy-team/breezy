@@ -20,8 +20,7 @@
 import re
 import sys
 import time
-from typing import Dict, Tuple, List
-
+from typing import Dict, List, Tuple
 
 _parent_stack: List[Tuple[int, str]] = []
 _total_stack: Dict[Tuple[int, str], List[Tuple[int, str]]] = {}

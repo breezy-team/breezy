@@ -23,28 +23,19 @@ interface later, they will be non blackbox tests.
 """
 
 import codecs
-from io import (
-    BytesIO,
-    StringIO,
-    )
-from os import mkdir, chdir, rmdir, unlink
 import sys
+from io import BytesIO, StringIO
+from os import chdir, mkdir, rmdir, unlink
 
-from ... import (
-    errors,
-    osutils,
-    status,
-    )
-from breezy.bzr import (
-    bzrdir,
-    conflicts,
-    )
 import breezy.branch
+from breezy.bzr import bzrdir, conflicts
+
+from ... import errors, osutils, status
 from ...osutils import pathjoin
 from ...revisionspec import RevisionSpec
 from ...status import show_tree_status
-from .. import TestCaseWithTransport, TestSkipped
 from ...workingtree import WorkingTree
+from .. import TestCaseWithTransport, TestSkipped
 
 
 class BranchStatus(TestCaseWithTransport):

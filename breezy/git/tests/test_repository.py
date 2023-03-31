@@ -17,36 +17,17 @@
 
 """Tests for interfacing with a Git Repository"""
 
-import dulwich
-from dulwich.repo import (
-    Repo as GitRepo,
-    )
 import os
 
-from ... import (
-    config,
-    errors,
-    revision,
-    )
-from ...repository import (
-    InterRepository,
-    Repository,
-    )
+import dulwich
+from dulwich.repo import Repo as GitRepo
 
-from .. import (
-    dir,
-    repository,
-    tests,
-    )
-from ..mapping import (
-    default_mapping,
-    )
-from ..object_store import (
-    BazaarObjectStore,
-    )
-from ..push import (
-    MissingObjectsIterator,
-    )
+from ... import config, errors, revision
+from ...repository import InterRepository, Repository
+from .. import dir, repository, tests
+from ..mapping import default_mapping
+from ..object_store import BazaarObjectStore
+from ..push import MissingObjectsIterator
 
 
 class TestGitRepositoryFeatures(tests.TestCaseInTempDir):

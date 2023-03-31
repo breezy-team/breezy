@@ -16,17 +16,12 @@
 
 """Tests for versioning of breezy."""
 
-from io import StringIO
 import platform
 import re
+from io import StringIO
 
-from .. import (
-    tests,
-    version,
-    workingtree,
-    )
+from .. import tests, version, workingtree
 from .scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 

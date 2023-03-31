@@ -20,11 +20,11 @@ If possible, uses inotify to track changes in the tree - providing
 high performance in large trees with a small number of changes.
 """
 
-from contextlib import ExitStack
 import errno
 import os
 import shutil
-from typing import Optional, List
+from contextlib import ExitStack
+from typing import List, Optional
 
 from .clean_tree import iter_deletables
 from .errors import BzrError, DependencyNotPresent

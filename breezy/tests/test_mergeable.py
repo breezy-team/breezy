@@ -16,18 +16,11 @@
 
 import socketserver
 
-from ..mergeable import read_mergeable_from_url
+from .. import errors, tests
+from ..bzr.tests import test_read_bundle
 from ..directory_service import directories
-from .. import (
-    errors,
-    tests,
-    )
-from ..bzr.tests import (
-    test_read_bundle,
-    )
-from . import (
-    test_server,
-    )
+from ..mergeable import read_mergeable_from_url
+from . import test_server
 
 
 class TestReadMergeableFromUrl(tests.TestCaseWithTransport):

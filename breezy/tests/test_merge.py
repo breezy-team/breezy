@@ -17,34 +17,22 @@
 import contextlib
 import os
 
-from .. import (
-    branch as _mod_branch,
-    conflicts,
-    errors,
-    memorytree,
-    merge as _mod_merge,
-    option,
-    revision as _mod_revision,
-    tests,
-    transform,
-    )
-from ..bzr import (
-    inventory,
-    knit,
-    versionedfile,
-    )
+from .. import branch as _mod_branch
+from .. import conflicts, errors, memorytree
+from .. import merge as _mod_merge
+from .. import option
+from .. import revision as _mod_revision
+from .. import tests, transform
+from ..bzr import inventory, knit, versionedfile
+from ..bzr.conflicts import (ContentsConflict, DeletingParent, MissingParent,
+                             TextConflict, UnversionedParent)
 from ..conflicts import ConflictList
-from ..bzr.conflicts import TextConflict, MissingParent, UnversionedParent, DeletingParent, ContentsConflict
-from ..errors import UnrelatedBranches, NoCommits
-from ..merge import transform_tree, merge_inner, _PlanMerge
-from ..osutils import basename, pathjoin, file_kind
-from . import (
-    features,
-    TestCaseWithMemoryTransport,
-    TestCaseWithTransport,
-    test_merge_core,
-    )
-from ..workingtree import WorkingTree, PointlessMerge
+from ..errors import NoCommits, UnrelatedBranches
+from ..merge import _PlanMerge, merge_inner, transform_tree
+from ..osutils import basename, file_kind, pathjoin
+from ..workingtree import PointlessMerge, WorkingTree
+from . import (TestCaseWithMemoryTransport, TestCaseWithTransport, features,
+               test_merge_core)
 
 
 class TestMerge(TestCaseWithTransport):

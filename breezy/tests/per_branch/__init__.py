@@ -24,10 +24,7 @@ Specific tests for individual formats are in the `tests/test_branch` file
 rather than in `tests/per_branch/*.py`.
 """
 
-from breezy import (
-    errors,
-    tests,
-    )
+from breezy import errors, tests
 from breezy.branch import format_registry
 from breezy.bzr.remote import RemoteBranchFormat
 from breezy.tests import test_server

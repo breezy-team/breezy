@@ -16,18 +16,14 @@
 
 import sys
 
-from . import (
-    delta as _mod_delta,
-    hooks as _mod_hooks,
-    log,
-    osutils,
-    tsort,
-    revision as _mod_revision,
-    )
+from . import delta as _mod_delta
 from . import errors as errors
+from . import hooks as _mod_hooks
+from . import log, osutils
+from . import revision as _mod_revision
+from . import tsort
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported
-
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)

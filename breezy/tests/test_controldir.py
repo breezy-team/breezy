@@ -19,14 +19,8 @@
 For interface contract tests, see tests/per_control_dir.
 """
 
-from .. import (
-    controldir,
-    errors,
-    tests,
-    ui,
-    )
+from .. import controldir, errors, tests, ui
 from .scenarios import load_tests_apply_scenarios
-
 
 load_tests = load_tests_apply_scenarios
 

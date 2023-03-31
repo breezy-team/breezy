@@ -19,11 +19,8 @@
 from breezy import branch
 from breezy.errors import NoRoundtrippingSupport
 from breezy.tests import TestNotApplicable
-from breezy.tests.per_interbranch import (
-    StubMatchingInter,
-    StubWithFormat,
-    TestCaseWithInterBranch,
-    )
+from breezy.tests.per_interbranch import (StubMatchingInter, StubWithFormat,
+                                          TestCaseWithInterBranch)
 
 
 class TestCopyContentInto(TestCaseWithInterBranch):

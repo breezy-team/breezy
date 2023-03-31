@@ -21,12 +21,8 @@ import sys
 
 import breezy
 from breezy import osutils, trace
-from breezy.tests import (
-    probe_unicode_in_user_encoding,
-    TestCase,
-    TestCaseInTempDir,
-    TestSkipped,
-    )
+from breezy.tests import (TestCase, TestCaseInTempDir, TestSkipped,
+                          probe_unicode_in_user_encoding)
 
 
 class TestVersion(TestCase):

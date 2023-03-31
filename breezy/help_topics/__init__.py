@@ -34,13 +34,7 @@ rendering on the screen naturally.
 """
 
 import breezy
-from breezy import (
-    config,
-    osutils,
-    registry,
-    i18n,
-    )
-
+from breezy import config, i18n, osutils, registry
 
 # Section identifiers (map topics to the right place in the manual)
 SECT_COMMAND = "command"
@@ -146,6 +140,7 @@ def _load_from_file(topic_name):
 def _help_on_revisionspec(name):
     """Generate the help for revision specs."""
     import re
+
     import breezy.revisionspec
 
     out = []
@@ -208,10 +203,9 @@ The keywords used as revision selection methods are the following:
 
 
 def _help_on_transport(name):
-    from breezy.transport import (
-        transport_list_registry,
-    )
     import textwrap
+
+    from breezy.transport import transport_list_registry
 
     def add_string(proto, help, maxl, prefix_width=20):
         help_lines = textwrap.wrap(help, maxl - prefix_width,
@@ -912,6 +906,7 @@ class RegisteredTopic:
 def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
     import re
+
     # Remove the standalone code block marker
     text = re.sub(r"(?m)^\s*::\n\s*$", "", text)
     lines = text.splitlines()

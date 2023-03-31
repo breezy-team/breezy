@@ -20,17 +20,8 @@
 
 import os
 
-from breezy import (
-    branchbuilder,
-    errors,
-    log,
-    osutils,
-    tests,
-    )
-from breezy.tests import (
-    test_log,
-    features,
-    )
+from breezy import branchbuilder, errors, log, osutils, tests
+from breezy.tests import features, test_log
 
 
 class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):

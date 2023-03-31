@@ -16,20 +16,12 @@
 
 from io import BytesIO
 
-from ... import (
-    errors,
-    fifo_cache,
-    )
-from .. import (
-    inventory,
-    serializer,
-    xml6,
-    xml7,
-    xml8,
-    )
+import breezy.bzr.xml5
+
+from ... import errors, fifo_cache
+from .. import inventory, serializer, xml6, xml7, xml8
 from ..inventory import Inventory
 from . import TestCase
-import breezy.bzr.xml5
 
 _revision_v5 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"

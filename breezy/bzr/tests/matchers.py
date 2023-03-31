@@ -30,10 +30,10 @@ __all__ = [
     'ContainsNoVfsCalls',
     ]
 
-from breezy.bzr.smart.request import request_handlers as smart_request_handlers
-from breezy.bzr.smart import vfs
+from testtools.matchers import Matcher, Mismatch
 
-from testtools.matchers import Mismatch, Matcher
+from breezy.bzr.smart import vfs
+from breezy.bzr.smart.request import request_handlers as smart_request_handlers
 
 
 class _NoVfsCallsMismatch(Mismatch):

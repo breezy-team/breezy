@@ -24,9 +24,10 @@ see breezy.bzrdir.BzrDir.
 
 """
 
-from typing import List, Type, Optional, TYPE_CHECKING, Dict, Set, Tuple, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Type, cast
 
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 import textwrap
 
@@ -39,14 +40,10 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from . import (
-    errors,
-    hooks,
-    registry,
-    revision as _mod_revision,
-    trace,
-    transport as _mod_transport,
-    )
+from . import errors, hooks, registry
+from . import revision as _mod_revision
+from . import trace
+from . import transport as _mod_transport
 
 if TYPE_CHECKING:
     from .branch import Branch
@@ -458,6 +455,7 @@ class ControlDir(ControlComponent):
                     tag_selector=None, name=None):
         """Push the source branch into this ControlDir."""
         from .push import PushResult
+
         # If we can open a branch, use its direct repository, otherwise see
         # if there is a repository without a branch.
         try:
@@ -734,6 +732,7 @@ class ControlDir(ControlComponent):
         """
         if force_new_tree:
             from breezy.transport import local
+
             # check for non local urls
             t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):

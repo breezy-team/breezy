@@ -17,23 +17,12 @@
 """Commit message editor support."""
 
 import codecs
-from io import (
-    BytesIO,
-    StringIO,
-    )
 import os
-from subprocess import call
 import sys
+from io import BytesIO, StringIO
+from subprocess import call
 
-from . import (
-    bedding,
-    cmdline,
-    config,
-    osutils,
-    trace,
-    transport,
-    ui,
-    )
+from . import bedding, cmdline, config, osutils, trace, transport, ui
 from .errors import BzrError
 from .hooks import Hooks
 

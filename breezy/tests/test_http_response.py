@@ -37,23 +37,14 @@ Some properties are common to all kinds:
   InvalidHttpResponse.
 """
 
-from io import BytesIO
-
 import http.client as http_client
+from io import BytesIO
 
 parse_headers = http_client.parse_headers
 
-from .. import (
-    errors,
-    tests,
-    )
-from ..transport.http import (
-    response,
-    urllib,
-    )
-from .file_utils import (
-    FakeReadFile,
-    )
+from .. import errors, tests
+from ..transport.http import response, urllib
+from .file_utils import FakeReadFile
 
 
 class ReadSocket:

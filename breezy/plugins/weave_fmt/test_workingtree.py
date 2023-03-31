@@ -19,18 +19,9 @@
 
 import os
 
-from ... import (
-    conflicts,
-    )
-from ...bzr.conflicts import TextConflict, ContentsConflict
-from ... import (
-    errors,
-    )
-
-from ...tests import (
-    TestCaseWithTransport,
-    )
-
+from ... import conflicts, errors
+from ...bzr.conflicts import ContentsConflict, TextConflict
+from ...tests import TestCaseWithTransport
 from .bzrdir import BzrDirFormat6
 
 

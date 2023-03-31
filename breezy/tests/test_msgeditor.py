@@ -20,31 +20,15 @@
 import os
 import sys
 
-from .. import (
-    commit,
-    config,
-    errors,
-    msgeditor,
-    osutils,
-    trace,
-    transport as _mod_transport,
-    )
-from ..msgeditor import (
-    make_commit_message_template_encoded,
-    edit_commit_message_encoded
-)
-from . import (
-    features,
-    TestCaseInTempDir,
-    TestCaseWithTransport,
-    TestNotApplicable,
-    multiply_tests,
-    probe_bad_non_ascii,
-    probe_unicode_in_user_encoding,
-    split_suite_by_re,
-    )
-from .EncodingAdapter import encoding_scenarios
+from .. import commit, config, errors, msgeditor, osutils, trace
+from .. import transport as _mod_transport
+from ..msgeditor import (edit_commit_message_encoded,
+                         make_commit_message_template_encoded)
 from ..trace import mutter
+from . import (TestCaseInTempDir, TestCaseWithTransport, TestNotApplicable,
+               features, multiply_tests, probe_bad_non_ascii,
+               probe_unicode_in_user_encoding, split_suite_by_re)
+from .EncodingAdapter import encoding_scenarios
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -394,8 +378,8 @@ class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
     def test_subprocess_call_bad_file(self):
         if sys.platform != "win32":
             raise TestNotApplicable("Workarounds for windows only")
-        import subprocess
         import errno
+        import subprocess
         ERROR_BAD_EXE_FORMAT = 193
         open("textfile.txt", "w").close()
         e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")

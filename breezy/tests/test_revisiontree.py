@@ -17,11 +17,9 @@
 
 """Tests for the RevisionTree class."""
 
-from breezy import (
-    revision,
-    )
-from breezy.tree import FileTimestampUnavailable
+from breezy import revision
 from breezy.tests import TestCaseWithTransport
+from breezy.tree import FileTimestampUnavailable
 
 
 class TestTreeWithCommits(TestCaseWithTransport):

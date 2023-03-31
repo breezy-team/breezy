@@ -24,24 +24,12 @@ also see this file.
 
 from io import StringIO
 
-from .. import (
-    bedding,
-    branch as _mod_branch,
-    config,
-    controldir,
-    errors,
-    tests,
-    trace,
-    urlutils,
-    )
-from ..bzr import (
-    branch as _mod_bzrbranch,
-    bzrdir,
-    )
-from ..bzr.fullhistory import (
-    BzrBranch5,
-    BzrBranchFormat5,
-    )
+from .. import bedding
+from .. import branch as _mod_branch
+from .. import config, controldir, errors, tests, trace, urlutils
+from ..bzr import branch as _mod_bzrbranch
+from ..bzr import bzrdir
+from ..bzr.fullhistory import BzrBranch5, BzrBranchFormat5
 
 
 class TestErrors(tests.TestCase):

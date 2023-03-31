@@ -17,9 +17,7 @@
 """Tests for revision properties."""
 
 from breezy.tests import TestNotApplicable
-from breezy.tests.per_repository import (
-    TestCaseWithRepository,
-    )
+from breezy.tests.per_repository import TestCaseWithRepository
 
 
 class TestRevProps(TestCaseWithRepository):

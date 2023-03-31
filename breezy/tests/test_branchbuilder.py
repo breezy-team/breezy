@@ -16,15 +16,11 @@
 
 """Tests for the BranchBuilder class."""
 
-from .. import (
-    branch as _mod_branch,
-    revision as _mod_revision,
-    tests,
-    )
-from ..bzr import (
-    branch as _mod_bzrbranch,
-    )
+from .. import branch as _mod_branch
+from .. import revision as _mod_revision
+from .. import tests
 from ..branchbuilder import BranchBuilder
+from ..bzr import branch as _mod_bzrbranch
 
 
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):

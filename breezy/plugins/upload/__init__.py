@@ -143,14 +143,8 @@ Known Issues
 # remote files...
 
 
-from ... import (
-    commands,
-    config,
-    hooks,
-    )
-
-
 from ... import version_info  # noqa: F401
+from ... import commands, config, hooks
 
 
 def register_option(key, member):
@@ -170,16 +164,10 @@ commands.plugin_cmds.register_lazy(
 
 
 def auto_upload_hook(params):
-    from ... import (
-        osutils,
-        trace,
-        transport,
-        urlutils,
-        )
-    from .cmds import (
-        BzrUploader,
-        )
     import sys
+
+    from ... import osutils, trace, transport, urlutils
+    from .cmds import BzrUploader
     source_branch = params.branch
     conf = source_branch.get_config_stack()
     destination = conf.get('upload_location')

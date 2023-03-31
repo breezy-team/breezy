@@ -18,13 +18,13 @@
 import re
 import sys
 from os.path import expanduser
+
 import patiencediff
 
-from . import trace, terminal
+from . import terminal, trace
 from .commands import get_cmd_object
-from .patches import (hunk_from_header, InsertLine, RemoveLine,
-                      ContextLine, Hunk, HunkLine)
-
+from .patches import (ContextLine, Hunk, HunkLine, InsertLine, RemoveLine,
+                      hunk_from_header)
 
 GLOBAL_COLORDIFFRC = '/etc/colordiffrc'
 

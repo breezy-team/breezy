@@ -19,9 +19,7 @@
 import sys
 import unittest
 
-from breezy import (
-    tests,
-    )
+from breezy import tests
 
 
 class TestLocale(tests.TestCaseWithTransport):

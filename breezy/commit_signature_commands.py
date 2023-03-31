@@ -16,16 +16,12 @@
 
 """Command that signs unsigned commits by the current user. """
 
-from . import (
-    controldir,
-    errors,
-    gpg,
-    repository as _mod_repository,
-    revision as _mod_revision,
-    )
+from . import controldir, errors, gpg
+from . import repository as _mod_repository
+from . import revision as _mod_revision
 from .commands import Command
-from .option import Option
 from .i18n import gettext, ngettext
+from .option import Option
 
 
 class cmd_sign_my_commits(Command):

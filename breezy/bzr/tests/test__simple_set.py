@@ -18,12 +18,8 @@
 
 import sys
 
-from breezy import (
-    tests,
-    )
-from breezy.tests import (
-    features,
-    )
+from breezy import tests
+from breezy.tests import features
 
 try:
     from .. import _simple_set_pyx  # type: ignore

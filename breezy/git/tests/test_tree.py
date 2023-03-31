@@ -18,21 +18,17 @@
 """Tests for breezy.git.tests."""
 
 import stat
-from breezy.errors import PathsNotVersionedError
-from breezy.tests import TestCase, TestCaseWithTransport
 
-from dulwich.objects import Tree, Blob
+from dulwich.objects import Blob, Tree
 
-from breezy.delta import TreeDelta
 from breezy.bzr.inventorytree import InventoryTreeChange as TreeChange
-from breezy.git.tree import (
-    changes_from_git_changes,
-    tree_delta_from_git_changes,
-    )
-
+from breezy.delta import TreeDelta
+from breezy.errors import PathsNotVersionedError
 from breezy.git.mapping import default_mapping
+from breezy.git.tree import (changes_from_git_changes,
+                             tree_delta_from_git_changes)
+from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.workingtree import WorkingTree
-
 
 REG_MODE = stat.S_IFREG | 0o644
 

@@ -24,17 +24,10 @@ import os
 import socket
 import subprocess
 import sys
-from typing import Tuple, Type, Set, Dict, Optional
 from binascii import hexlify
+from typing import Dict, Optional, Set, Tuple, Type
 
-from .. import (
-    config,
-    bedding,
-    errors,
-    osutils,
-    trace,
-    ui,
-    )
+from .. import bedding, config, errors, osutils, trace, ui
 
 try:
     import paramiko
@@ -672,6 +665,7 @@ def os_specific_subprocess_params():
 
 
 import weakref
+
 _subproc_weakrefs: Set[weakref.ref] = set()
 
 

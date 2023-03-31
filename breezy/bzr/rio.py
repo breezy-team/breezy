@@ -342,15 +342,8 @@ def read_patch_stanza(line_iter):
 
 
 try:
-    from ._rio_pyx import (
-        _read_stanza_utf8,
-        )
-    from ._rio_rs import (
-        _valid_tag,
-        )
+    from ._rio_pyx import _read_stanza_utf8
+    from ._rio_rs import _valid_tag
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._rio_py import (
-        _read_stanza_utf8,
-        _valid_tag,
-        )
+    from ._rio_py import _read_stanza_utf8, _valid_tag

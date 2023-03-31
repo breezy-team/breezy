@@ -18,7 +18,6 @@
 
 import stat
 
-
 _directory = 'directory'
 _chardev = 'chardev'
 _block = 'block'

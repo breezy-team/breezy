@@ -17,21 +17,13 @@
 
 """The basic test suite for bzr-git."""
 
+import time
 from io import BytesIO
 
-import time
-
-from ... import (
-    errors as bzr_errors,
-    tests,
-    )
-from ...tests.features import (
-    Feature,
-    ModuleAvailableFeature,
-    )
-from .. import (
-    import_dulwich,
-    )
+from ... import errors as bzr_errors
+from ... import tests
+from ...tests.features import Feature, ModuleAvailableFeature
+from .. import import_dulwich
 
 TestCase = tests.TestCase
 TestCaseInTempDir = tests.TestCaseInTempDir

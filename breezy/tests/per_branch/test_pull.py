@@ -16,17 +16,8 @@
 
 """Tests for branch.pull behaviour."""
 
-from breezy import (
-    branch,
-    controldir,
-    errors,
-    revision,
-    )
-from breezy.tests import (
-    fixtures,
-    per_branch,
-    TestNotApplicable,
-    )
+from breezy import branch, controldir, errors, revision
+from breezy.tests import TestNotApplicable, fixtures, per_branch
 
 
 class TestPull(per_branch.TestCaseWithBranch):

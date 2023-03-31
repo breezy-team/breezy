@@ -12,11 +12,11 @@ homepage = "https://www.breezy-vcs.org/"
 documentation = "https://www.breezy-vcs.org/doc/"
 
 [workspace]
-members = ["lib-rio"]
+members = ["crates/*"]
 
 [[bin]]
 name = "brz"
 path = "breezy/main.rs"
 
 [dependencies]
-pyo3 = ">=0.14,<0.16"
+pyo3 = ">=0.14"

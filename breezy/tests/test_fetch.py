@@ -14,21 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from .. import (
-    errors,
-    osutils,
-    revision as _mod_revision,
-    )
-from ..bzr import (
-    bzrdir,
-    versionedfile,
-    )
+from .. import errors, osutils
+from .. import revision as _mod_revision
 from ..branch import Branch
-from ..bzr import knitrepo
-from . import TestCaseWithTransport
-from .test_revision import make_branches
+from ..bzr import bzrdir, knitrepo, versionedfile
 from ..upgrade import Convert
 from ..workingtree import WorkingTree
+from . import TestCaseWithTransport
+from .test_revision import make_branches
 
 # These tests are a bit old; please instead add new tests into
 # per_interrepository/ so they'll run on all relevant

@@ -2,8 +2,8 @@
 
 import errno
 import os
-from io import StringIO
 import sys
+from io import StringIO
 
 try:
     from docutils.core import publish_file
@@ -12,8 +12,8 @@ except ModuleNotFoundError:
     print("Missing dependency.  Please install docutils.")
     sys.exit(1)
 try:
-    from elementtree.ElementTree import XML
     from elementtree import HTMLTreeBuilder
+    from elementtree.ElementTree import XML
 except ModuleNotFoundError:
     print("Missing dependency.  Please install ElementTree.")
     sys.exit(1)

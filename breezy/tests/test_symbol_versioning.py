@@ -19,11 +19,8 @@
 import warnings
 
 from breezy import symbol_versioning
-from breezy.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
+from breezy.symbol_versioning import (deprecated_function, deprecated_in,
+                                      deprecated_method)
 from breezy.tests import TestCase
 
 

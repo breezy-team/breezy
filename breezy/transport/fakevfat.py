@@ -42,7 +42,6 @@ import re
 
 from . import decorator
 
-
 # TODO: It might be nice if these hooks were available in a more general way
 # on all paths passed in to the Transport, so that we didn't have to hook
 # every single method.

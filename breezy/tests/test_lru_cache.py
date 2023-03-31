@@ -16,10 +16,7 @@
 
 """Tests for the lru_cache module."""
 
-from .. import (
-    lru_cache,
-    tests,
-    )
+from .. import lru_cache, tests
 
 
 def walk_lru(lru):

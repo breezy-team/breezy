@@ -15,38 +15,26 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bz2
-from io import BytesIO
 import os
 import sys
 import tempfile
+from io import BytesIO
 
-from ... import (
-    diff,
-    errors,
-    merge,
-    osutils,
-    revision as _mod_revision,
-    tests,
-    treebuilder,
-    transport as _mod_transport,
-    )
-from .. import (
-    bzrdir,
-    inventory,
-    )
+from ... import diff, errors, merge, osutils
+from ... import revision as _mod_revision
+from ... import tests
+from ... import transport as _mod_transport
+from ... import treebuilder
+from ...tests import features, test_commit
+from ...tree import InterTree
+from .. import bzrdir, inventory, knitrepo
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
-from ..bundle.serializer import write_bundle, read_bundle, v09, v4
+from ..bundle.serializer import read_bundle, v4, v09, write_bundle
+from ..bundle.serializer.v4 import BundleSerializerV4
 from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
-from ..bundle.serializer.v4 import BundleSerializerV4
-from ..import knitrepo
 from ..inventorytree import InventoryTree
-from ...tests import (
-    features,
-    test_commit,
-    )
-from ...tree import InterTree
 
 
 def get_text(vf, key):
@@ -65,7 +53,7 @@ def get_inventory_text(repo, revision_id):
 class MockTree(InventoryTree):
 
     def __init__(self):
-        from ..inventory import InventoryDirectory, ROOT_ID
+        from ..inventory import ROOT_ID, InventoryDirectory
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
@@ -115,7 +103,7 @@ class MockTree(InventoryTree):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..inventory import (InventoryFile, InventoryDirectory,
+        from ..inventory import (InventoryDirectory, InventoryFile,
                                  InventoryLink)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
@@ -1410,8 +1398,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
 
     def test_copy_signatures(self):
         tree_a = self.make_branch_and_tree('tree_a')
-        import breezy.gpg
         import breezy.commit as commit
+        import breezy.gpg
         oldstrategy = breezy.gpg.GPGStrategy
         branch = tree_a.branch
         repo_a = branch.repository
@@ -1419,6 +1407,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         self.assertFalse(branch.repository.has_signature_for_revision_id(b'A'))
         try:
             from ..testament import Testament
+
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig()

@@ -19,10 +19,7 @@
 Most functionality of MutableTree is tested as part of WorkingTree.
 """
 
-from .. import (
-    mutabletree,
-    tests,
-    )
+from .. import mutabletree, tests
 
 
 class TestHooks(tests.TestCase):

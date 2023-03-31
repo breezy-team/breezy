@@ -16,7 +16,7 @@
 
 """Implementation of Transport that adapts another transport to be readonly."""
 
-from ..errors import TransportNotPossible, NoSmartMedium
+from ..errors import NoSmartMedium, TransportNotPossible
 from ..transport import decorator
 
 

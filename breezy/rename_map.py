@@ -16,11 +16,7 @@
 
 from io import BytesIO
 
-from . import (
-    osutils,
-    progress,
-    trace,
-    )
+from . import osutils, progress, trace
 from .i18n import gettext
 from .ui import ui_factory
 

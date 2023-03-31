@@ -17,15 +17,9 @@
 
 """Tests of the 'brz dump-btree' command."""
 
-from breezy import (
-    tests,
-    )
-from breezy.bzr import (
-    btree_index,
-    )
-from breezy.tests import (
-    http_server,
-    )
+from breezy import tests
+from breezy.bzr import btree_index
+from breezy.tests import http_server
 
 
 class TestDumpBtree(tests.TestCaseWithTransport):

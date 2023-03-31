@@ -17,6 +17,7 @@
 """Common code for generating file or revision ids."""
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 import time
 
@@ -26,9 +27,7 @@ from breezy import (
     )
 """)
 
-from .. import (
-    lazy_regex,
-    )
+from .. import lazy_regex
 
 # the regex removes any weird characters; we don't escape them
 # but rather just pull them out

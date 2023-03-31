@@ -17,19 +17,13 @@
 """A collection of function for handling URL operations."""
 
 import os
+import posixpath
 import re
 import sys
 from typing import Tuple, Union
-
 from urllib import parse as urlparse
 
-from . import (
-    errors,
-    osutils,
-    )
-
-import posixpath
-
+from . import errors, osutils
 
 
 class InvalidURL(errors.PathError):

@@ -26,12 +26,12 @@ PLUGINS_TO_DOCUMENT = ["launchpad"]
 import textwrap
 
 import breezy
+import breezy.commands
 import breezy.help
 import breezy.help_topics
-import breezy.commands
 from breezy.doc_generate import get_autodoc_datetime
-
 from breezy.plugin import load_plugins
+
 load_plugins()
 
 

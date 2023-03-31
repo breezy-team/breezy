@@ -1,15 +1,10 @@
-#[macro_use]
-extern crate lazy_static;
-
 use pyo3::prelude::*;
-use regex::Regex;
+
+use bazaar_rio::rio::valid_tag;
 
 #[pyfunction]
 fn _valid_tag(tag: &str) -> bool {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^[-a-zA-Z0-9_]+$").unwrap();
-    }
-    RE.is_match(tag)
+    return bazaar_rio::rio::valid_tag(tag);
 }
 
 #[pymodule]

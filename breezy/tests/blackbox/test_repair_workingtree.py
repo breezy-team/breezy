@@ -15,9 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from breezy import (
-    workingtree,
-    )
+from breezy import workingtree
 from breezy.tests import TestCaseWithTransport
 
 

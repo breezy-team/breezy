@@ -24,11 +24,12 @@ __all__ = [
     'InMemoryGraphIndex',
     ]
 
+import re
 from bisect import bisect_right
 from io import BytesIO
-import re
 
 from ..lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     bisect_multi,
@@ -36,11 +37,8 @@ from breezy import (
     trace,
     )
 """)
-from .. import (
-    debug,
-    errors,
-    transport as _mod_transport,
-    )
+from .. import debug, errors
+from .. import transport as _mod_transport
 from .static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)

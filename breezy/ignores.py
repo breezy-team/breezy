@@ -17,12 +17,14 @@
 """Lists of ignore files, etc."""
 
 import errno
-from io import BytesIO
 import os
+from io import BytesIO
 from typing import Set
 
 import breezy
+
 from .lazy_import import lazy_import
+
 lazy_import(globals(), """
 from breezy import (
     atomicfile,
@@ -30,9 +32,7 @@ from breezy import (
     trace,
     )
 """)
-from . import (
-    bedding,
-    )
+from . import bedding
 
 # ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist
