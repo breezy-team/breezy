@@ -2207,8 +2207,6 @@ class TestCase(testtools.TestCase):
             for env_var, value in old_env.items():
                 osutils.set_or_unset_env(env_var, value)
 
-        bzr_path = self.get_brz_path()
-
         cwd = None
         if working_dir is not None:
             cwd = osutils.getcwd()
@@ -2222,7 +2220,7 @@ class TestCase(testtools.TestCase):
             # Include the subprocess's log file in the test details, in case
             # the test fails due to an error in the subprocess.
             self._add_subprocess_log(trace._get_brz_log_filename())
-            command = [bzr_path]
+            command = self.get_brz_command()
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
@@ -2283,6 +2281,13 @@ class TestCase(testtools.TestCase):
             # We are probably installed. Assume sys.argv is the right file
             brz_path = sys.argv[0]
         return brz_path
+
+    def get_brz_command(self):
+        bzr_path = self.get_brz_path()
+        if bzr_path.endswith('__main__.py'):
+            return [sys.executable, '-m', 'breezy']
+        else:
+            return [bzr_path]
 
     def finish_brz_subprocess(self, process, retcode=0, send_signal=None,
                               universal_newlines=False, process_args=None):
