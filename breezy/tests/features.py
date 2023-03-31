@@ -400,7 +400,6 @@ testtools = ModuleAvailableFeature('testtools')
 flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
 lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
-importlib_metadata_feature = ModuleAvailableFeature('importlib.metadata')
 
 pyinotify = ModuleAvailableFeature('pyinotify')
 
