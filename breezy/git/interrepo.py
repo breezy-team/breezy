@@ -24,7 +24,11 @@ from dulwich.objects import ObjectID
 from dulwich.object_store import ObjectStoreGraphWalker
 from dulwich.pack import PACK_SPOOL_FILE_MAX_SIZE
 from dulwich.protocol import CAPABILITY_THIN_PACK, ZERO_SHA
-from dulwich.refs import ANNOTATED_TAG_SUFFIX, SYMREF
+from dulwich.refs import SYMREF
+try:
+    from dulwich.refs import PEELED_TAG_SUFFIX
+except ImportError:  # dulwich < 0.21.3
+    from dulwich.refs import ANNOTATED_TAG_SUFFIX as PEELED_TAG_SUFFIX
 from dulwich.walk import Walker
 
 from .. import config, trace, ui
@@ -378,12 +382,12 @@ class InterFromGitRepository(InterRepository):
         def determine_wants(refs):
             unpeel_lookup = {}
             for k, v in refs.items():
-                if k.endswith(ANNOTATED_TAG_SUFFIX):
-                    unpeel_lookup[v] = refs[k[:-len(ANNOTATED_TAG_SUFFIX)]]
+                if k.endswith(PEELED_TAG_SUFFIX):
+                    unpeel_lookup[v] = refs[k[:-len(PEELED_TAG_SUFFIX)]]
             potential = {unpeel_lookup.get(w, w) for w in wants}
             if include_tags:
                 for k, sha in refs.items():
-                    if k.endswith(ANNOTATED_TAG_SUFFIX):
+                    if k.endswith(PEELED_TAG_SUFFIX):
                         continue
                     try:
                         tag_name = ref_to_tag_name(k)
@@ -686,7 +690,7 @@ class InterGitGitRepository(InterFromGitRepository):
                 if value == ZERO_SHA:
                     continue
 
-                if name.endswith(ANNOTATED_TAG_SUFFIX):
+                if name.endswith(PEELED_TAG_SUFFIX):
                     continue
 
                 if name in branches or (include_tags and is_tag(name)):
@@ -697,7 +701,7 @@ class InterGitGitRepository(InterFromGitRepository):
     def determine_wants_all(self, refs):
         potential = {
             v for k, v in refs.items()
-            if not v == ZERO_SHA and not k.endswith(ANNOTATED_TAG_SUFFIX)}
+            if not v == ZERO_SHA and not k.endswith(PEELED_TAG_SUFFIX)}
         return list(potential - self._target_has_shas(potential))
 
 
