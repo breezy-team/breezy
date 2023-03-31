@@ -87,33 +87,12 @@ def load_plugins(path=None, state=None, warn_load_problems=True):
         from breezy.plugins import __path__ as path
 
     state.plugin_warnings = {}
-    _load_plugins_from_path(state, path)
-    if (None, 'entrypoints') in _env_plugin_path():
-        _load_plugins_from_entrypoints(state)
+    _load_plugins(state, path)
     state.plugins = plugins()
     if warn_load_problems:
         for plugin, errors in state.plugin_warnings.items():
             for error in errors:
                 trace.warning('%s', error)
-
-
-def _load_plugins_from_entrypoints(state):
-    try:
-        from importlib.metadata import entry_points
-    except ModuleNotFoundError:
-        # No importlib.metadata, no entrypoints.
-        pass
-    else:
-        try:
-            eps = entry_points(group='breezy.plugin')
-        except TypeError:  # python < 3.10 didn't support group argument
-            eps = [ep[0] for ep in entry_points().values()
-                    if ep[0].group == 'breezy.plugin']
-        for ep in eps:
-            fullname = _MODULE_PREFIX + ep.name
-            if fullname in sys.modules:
-                continue
-            sys.modules[fullname] = ep.load()
 
 
 def plugin_name(module_name):
@@ -216,7 +195,7 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
     """Gives list of paths and contexts for plugins from environ key.
 
     Each entry is either a specific path to load plugins from and the value
-    'path', or None and one of the values 'user', 'core', 'entrypoints', 'site'.
+    'path', or None and one of the three values 'user', 'core', 'site'.
     """
     path_details = []
     env = os.environ.get(key)
@@ -224,7 +203,6 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
         "user": not env,
         "core": True,
         "site": True,
-        'entrypoints': False,
         }
     if env:
         # Add paths specified by user in order
@@ -238,7 +216,7 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
                 path_details.append((p, 'path'))
 
     # Add any remaining default paths
-    for name in ('user', 'core', 'entrypoints', 'site'):
+    for name in ('user', 'core', 'site'):
         if defaults[name]:
             path_details.append((None, name))
 
@@ -272,7 +250,7 @@ def _install_importer_if_needed(plugin_details):
         sys.meta_path.insert(2, finder)
 
 
-def _load_plugins_from_path(state, paths):
+def _load_plugins(state, paths):
     """Do the importing all plugins from paths."""
     imported_names = set()
     for name, path in _iter_possible_plugins(paths):

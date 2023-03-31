@@ -28,7 +28,6 @@ from typing import Any, Dict, List
 import breezy
 
 from .. import osutils, plugin, tests
-from ..tests.features import importlib_metadata_feature
 
 # TODO: Write a test for plugin decoration of commands.
 
@@ -610,7 +609,6 @@ class TestEnvPluginPath(tests.TestCase):
     user = "USER"
     core = "CORE"
     site = "SITE"
-    entrypoints = "ENTRYPOINTS"
 
     def check_path(self, expected_dirs, setting_dirs):
         if setting_dirs is None:
@@ -635,10 +633,6 @@ class TestEnvPluginPath(tests.TestCase):
     def test_override_policy(self):
         self.check_path([self.user, self.site, self.core],
                         ['+user', '+site', '+core'])
-
-    def test_enable_entrypoints(self):
-        self.check_path([self.user, self.core, self.site, self.entrypoints],
-                        ['+user', '+core', '+site', '+entrypoints'])
 
     def test_disable_user(self):
         self.check_path([self.core, self.site], ['-user'])
@@ -681,9 +675,7 @@ class TestEnvPluginPath(tests.TestCase):
                         ['mycore', '-core'])
 
     def test_my_plugin_only(self):
-        self.check_path(
-            ['myplugin'],
-            ['myplugin', '-user', '-core', '-site', '-entrypoints'])
+        self.check_path(['myplugin'], ['myplugin', '-user', '-core', '-site'])
 
     def test_my_plugin_first(self):
         self.check_path(['myplugin', self.core, self.site, self.user],
@@ -917,54 +909,3 @@ good 0.1.0
   Hi there
 
 """, ''.join(plugin.describe_plugins(state=self)))
-
-
-class DummyPlugin:
-    """Plugin."""
-
-
-class TestLoadEnvPlugin(BaseTestPlugins):
-
-    _test_needs_features = [importlib_metadata_feature]
-
-    def setup_plugin(self, source=""):
-        # This test tests a new plugin appears in breezy.plugin.plugins().
-        # check the plugin is not loaded already
-        self.assertPluginUnknown('plugin')
-        # write a plugin that _cannot_ fail to load.
-        from importlib.metadata import Distribution, EntryPoint, entry_points
-        class DummyDistribution:
-
-            def __init__(self, name, entry_points):
-                self._normalized_name = self.name = name
-                self.entry_points = entry_points
-        ep = EntryPoint(name='plugin', group='breezy.plugin',
-                        value=__name__ + ':DummyPlugin')
-        d = DummyDistribution('lala', [ep])
-        old_discover = Distribution.discover
-        def override_discover(**kwargs):
-            yield from old_discover(**kwargs)
-            yield d
-        self.overrideAttr(Distribution, 'discover', override_discover)
-        try:
-            eps = entry_points(group='breezy.plugin')
-        except TypeError:  # python < 3.10
-            eps = [ep[0] for ep in entry_points().values()
-                   if ep[0].group == 'breezy.plugin']
-        self.assertEqual(['plugin'], [ep.name for ep in eps])
-        self.load_with_paths(['.'])
-
-    def test_plugin_loaded(self):
-        self.assertPluginUnknown('plugin')
-        self.overrideEnv('BRZ_PLUGIN_PATH', '+entrypoints')
-        self.setup_plugin()
-        p = self.plugins['plugin']
-        self.assertIsInstance(p, breezy.plugin.PlugIn)
-        self.assertIs(p.module, sys.modules[self.module_prefix + 'plugin'])
-
-    def test_plugin_loaded_disabled(self):
-        self.assertPluginUnknown('plugin')
-        self.overrideEnv('BRZ_PLUGIN_PATH', '+entrypoints')
-        self.overrideEnv('BRZ_DISABLE_PLUGINS', 'plugin')
-        self.setup_plugin()
-        self.assertNotIn('plugin', self.plugins)
