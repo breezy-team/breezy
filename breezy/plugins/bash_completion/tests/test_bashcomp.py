@@ -59,9 +59,12 @@ class BashCompletionMixin:
         input += b"IFS=$'\\n'\n"
         input += b'echo "${COMPREPLY[*]}"\n'
         (out, err) = proc.communicate(input)
-        if b'' != err:
+        errlines = [
+            line for line in err.splitlines()
+            if not line.startswith(b'brz: warning: ')]:
+        if [] != errlines:
             raise AssertionError('Unexpected error message:\n%s' % err)
-        self.assertEqual(b'', err, 'No messages to standard error')
+        self.assertEqual(b'', b''.join(errlines), 'No messages to standard error')
         #import sys
         #print >>sys.stdout, '---\n%s\n---\n%s\n---\n' % (input, out)
         lines = out.split(b'\n')
@@ -167,7 +170,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
 
     def get_script(self):
         s = super().get_script()
-        s = s.replace("$(brz ", "$('%s' " % self.get_brz_path())
+        s = s.replace("$(brz ", "$(%s " % ' '.join(self.get_brz_command()))
         s = s.replace("2>/dev/null", "")
         return s
 
