@@ -2618,14 +2618,25 @@ class TestStartBzrSubProcess(tests.TestCase):
     def test_run_brz_subprocess_no_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [])
         command = self._popen_args[0]
-        self.assertEqual(self.get_brz_path(), command[0])
-        self.assertEqual(['--no-plugins'], command[1:])
+        if self.get_brz_path().endswith('__main__.py'):
+            self.assertEqual(sys.executable, command[0])
+            self.assertEqual('-m', command[1])
+            self.assertEqual('breezy', command[2])
+            rest = command[3:]
+        else:
+            self.assertEqual(self.get_brz_path(), command[0])
+            rest = command[1:]
+        self.assertEqual(['--no-plugins'], rest)
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess, self.start_brz_subprocess, [],
                           allow_plugins=True)
         command = self._popen_args[0]
-        self.assertEqual([], command[2:])
+        if self.get_brz_path().endswith('__main__.py'):
+            rest = command[3:]
+        else:
+            rest = command[1:]
+        self.assertEqual([], rest)
 
     def test_set_env(self):
         self.assertFalse('EXISTANT_ENV_VAR' in os.environ)

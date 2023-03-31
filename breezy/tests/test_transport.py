@@ -1048,8 +1048,8 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         self.start_server(ssh_server)
         port = ssh_server.port
 
-        bzr_remote_path = self.get_brz_path()
-        self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
+        bzr_remote_command = self.get_brz_command()
+        self.overrideEnv('BZR_REMOTE_PATH', ' '.join(bzr_remote_command))
         self.overrideEnv('PYTHONPATH', ':'.join(sys.path))
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
@@ -1066,7 +1066,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
 
         self.assertEqual(
             [b'%s serve --inet --directory=/ --allow-writes' %
-                bzr_remote_path.encode()],
+                ' '.join(bzr_remote_command).encode()],
             self.command_executed)
         # Make sure to disconnect, so that the remote process can stop, and we
         # can cleanup. Then pause the test until everything is shutdown
