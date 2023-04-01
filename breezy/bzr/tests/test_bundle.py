@@ -197,14 +197,14 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.path2id("grandparent/parent"), b"b")
         self.assertEqual(btree.path2id("grandparent/parent/file"), b"c")
 
-        self.assertIs(btree.path2id("grandparent2"), None)
-        self.assertIs(btree.path2id("grandparent2/parent"), None)
-        self.assertIs(btree.path2id("grandparent2/parent/file"), None)
+        self.assertIsNone(btree.path2id("grandparent2"))
+        self.assertIsNone(btree.path2id("grandparent2/parent"))
+        self.assertIsNone(btree.path2id("grandparent2/parent/file"))
 
         btree.note_rename("grandparent", "grandparent2")
-        self.assertIs(btree.old_path("grandparent"), None)
-        self.assertIs(btree.old_path("grandparent/parent"), None)
-        self.assertIs(btree.old_path("grandparent/parent/file"), None)
+        self.assertIsNone(btree.old_path("grandparent"))
+        self.assertIsNone(btree.old_path("grandparent/parent"))
+        self.assertIsNone(btree.old_path("grandparent/parent/file"))
 
         self.assertEqual(btree.id2path(b"a"), "grandparent2")
         self.assertEqual(btree.id2path(b"b"), "grandparent2/parent")
@@ -214,9 +214,9 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.path2id("grandparent2/parent"), b"b")
         self.assertEqual(btree.path2id("grandparent2/parent/file"), b"c")
 
-        self.assertTrue(btree.path2id("grandparent") is None)
-        self.assertTrue(btree.path2id("grandparent/parent") is None)
-        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
+        self.assertIsNone(btree.path2id("grandparent"))
+        self.assertIsNone(btree.path2id("grandparent/parent"))
+        self.assertIsNone(btree.path2id("grandparent/parent/file"))
 
         btree.note_rename("grandparent/parent", "grandparent2/parent2")
         self.assertEqual(btree.id2path(b"a"), "grandparent2")
@@ -227,8 +227,8 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.path2id("grandparent2/parent2"), b"b")
         self.assertEqual(btree.path2id("grandparent2/parent2/file"), b"c")
 
-        self.assertTrue(btree.path2id("grandparent2/parent") is None)
-        self.assertTrue(btree.path2id("grandparent2/parent/file") is None)
+        self.assertIsNone(btree.path2id("grandparent2/parent"))
+        self.assertIsNone(btree.path2id("grandparent2/parent/file"))
 
         btree.note_rename("grandparent/parent/file",
                           "grandparent2/parent2/file2")
@@ -240,7 +240,7 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(btree.path2id("grandparent2/parent2"), b"b")
         self.assertEqual(btree.path2id("grandparent2/parent2/file2"), b"c")
 
-        self.assertTrue(btree.path2id("grandparent2/parent2/file") is None)
+        self.assertIsNone(btree.path2id("grandparent2/parent2/file"))
 
     def test_moves(self):
         """Ensure that file moves have the proper effect on children"""
@@ -249,7 +249,7 @@ class BTreeTester(tests.TestCase):
                           "grandparent/alt_parent/file")
         self.assertEqual(btree.id2path(b"c"), "grandparent/alt_parent/file")
         self.assertEqual(btree.path2id("grandparent/alt_parent/file"), b"c")
-        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
+        self.assertIsNone(btree.path2id("grandparent/parent/file"))
 
     def unified_diff(self, old, new):
         out = BytesIO()
@@ -520,7 +520,7 @@ class BundleTester:
         original_parents = to_tree.get_parent_ids()
         repository = to_tree.branch.repository
         original_parents = to_tree.get_parent_ids()
-        self.assertIs(repository.has_revision(base_rev_id), True)
+        self.assertTrue(repository.has_revision(base_rev_id))
         for rev in info.real_revisions:
             self.assertTrue(not repository.has_revision(rev.revision_id),
                             'Revision {%s} present before applying bundle'

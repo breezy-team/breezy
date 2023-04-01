@@ -39,4 +39,4 @@ class TestCleanRepository(TestCaseWithRepository):
         result = branch.repository.check(None, check_repo=True)
         result.report_results(True)
         log = self.get_log()
-        self.assertFalse('Missing' in log, "Something was missing in %r" % log)
+        self.assertNotIn('Missing', log, "Something was missing in %r" % log)

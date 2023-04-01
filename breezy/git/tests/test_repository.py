@@ -111,7 +111,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo.pack()
         with repo.lock_read():
             repo.all_revision_ids()
-            self.assertTrue(len(repo._git.object_store._pack_cache) > 0)
+            self.assertGreater(len(repo._git.object_store._pack_cache), 0)
         self.assertEqual(len(repo._git.object_store._pack_cache), 0)
 
     def test_revision_tree(self):

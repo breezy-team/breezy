@@ -780,7 +780,7 @@ create_signatures=when-possible
         try:
             tree.commit()
         except Exception as e:
-            self.assertTrue(isinstance(e, BzrError))
+            self.assertIsInstance(e, BzrError)
             self.assertEqual('The message or message_callback keyword'
                              ' parameter is required for commit().', str(e))
         else:
@@ -846,8 +846,8 @@ create_signatures=when-possible
         tree = self.make_branch_and_tree('foo')
         rev_id = tree.commit('commit 1')
         rev = tree.branch.repository.get_revision(rev_id)
-        self.assertFalse('author' in rev.properties)
-        self.assertFalse('authors' in rev.properties)
+        self.assertNotIn('author', rev.properties)
+        self.assertNotIn('authors', rev.properties)
 
     def test_commit_author(self):
         """Passing a non-empty authors kwarg to MutableTree.commit should add
@@ -860,15 +860,15 @@ create_signatures=when-possible
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>',
                          rev.properties['authors'])
-        self.assertFalse('author' in rev.properties)
+        self.assertNotIn('author', rev.properties)
 
     def test_commit_empty_authors_list(self):
         """Passing an empty list to authors shouldn't add the property."""
         tree = self.make_branch_and_tree('foo')
         rev_id = tree.commit('commit 1', authors=[])
         rev = tree.branch.repository.get_revision(rev_id)
-        self.assertFalse('author' in rev.properties)
-        self.assertFalse('authors' in rev.properties)
+        self.assertNotIn('author', rev.properties)
+        self.assertNotIn('authors', rev.properties)
 
     def test_multiple_authors(self):
         tree = self.make_branch_and_tree('foo')
@@ -878,7 +878,7 @@ create_signatures=when-possible
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>\n'
                          'Jane Rey <jrey@example.com>', rev.properties['authors'])
-        self.assertFalse('author' in rev.properties)
+        self.assertNotIn('author', rev.properties)
 
     def test_author_with_newline_rejected(self):
         tree = self.make_branch_and_tree('foo')

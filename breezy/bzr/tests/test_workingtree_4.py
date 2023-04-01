@@ -343,7 +343,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         def lock_and_compare_all_current_dirstate(tree, lock_method):
             getattr(tree, lock_method)()
             state = tree.current_dirstate()
-            self.assertFalse(state in known_dirstates)
+            self.assertNotIn(state, known_dirstates)
             known_dirstates.add(state)
             tree.unlock()
         tree = self.make_workingtree()
@@ -381,12 +381,16 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev_tree2 = tree.branch.repository.revision_tree(rev_id2)
         optimiser = InterTree.get(rev_tree, rev_tree2)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
         optimiser = InterTree.get(rev_tree2, rev_tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
 
     def test_revtree_not_in_dirstate_to_dirstate_not_interdirstate(self):
         # we should not get a dirstate optimiser when the revision id for of
@@ -398,12 +402,16 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.lock_read()
         optimiser = InterTree.get(rev_tree, tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
         optimiser = InterTree.get(tree, rev_tree)
         self.assertIsInstance(optimiser, InterTree)
-        self.assertFalse(isinstance(
-            optimiser, workingtree_4.InterDirStateTree))
+        self.assertNotIsInstance(
+            optimiser,
+            workingtree_4.InterDirStateTree
+        )
         tree.unlock()
 
     def test_empty_basis_to_dirstate_tree(self):

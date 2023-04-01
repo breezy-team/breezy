@@ -507,7 +507,7 @@ class TestRegisteredTopic(TestHelp):
     def test_contruct(self):
         """Construction takes the help topic name for the registered item."""
         # validate our test
-        self.assertTrue('basic' in help_topics.topic_registry)
+        self.assertIn('basic', help_topics.topic_registry)
         topic = help_topics.RegisteredTopic('basic')
         self.assertEqual('basic', topic.topic)
 

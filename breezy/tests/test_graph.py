@@ -709,8 +709,8 @@ class TestGraph(TestCaseWithMemoryTransport):
         args = [b'rev2a', b'rev3', b'rev1']
         topo_args = list(graph.iter_topo_order(args))
         self.assertEqual(set(args), set(topo_args))
-        self.assertTrue(topo_args.index(b'rev2a') > topo_args.index(b'rev1'))
-        self.assertTrue(topo_args.index(b'rev2a') < topo_args.index(b'rev3'))
+        self.assertGreater(topo_args.index(b'rev2a'), topo_args.index(b'rev1'))
+        self.assertLess(topo_args.index(b'rev2a'), topo_args.index(b'rev3'))
 
     def test_is_ancestor(self):
         graph = self.make_graph(ancestry_1)
@@ -726,7 +726,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_provider = InstrumentedParentsProvider(graph)
         instrumented_graph = _mod_graph.Graph(instrumented_provider)
         instrumented_graph.is_ancestor(b'rev2a', b'rev2b')
-        self.assertTrue(b'null:' not in instrumented_provider.calls)
+        self.assertNotIn(b'null:', instrumented_provider.calls)
 
     def test_is_between(self):
         graph = self.make_graph(ancestry_1)
@@ -749,7 +749,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_provider = InstrumentedParentsProvider(graph)
         graph = _mod_graph.Graph(instrumented_provider)
         self.assertFalse(graph.is_ancestor(b'a', b'c'))
-        self.assertTrue(b'null:' not in instrumented_provider.calls)
+        self.assertNotIn(b'null:', instrumented_provider.calls)
 
     def test_iter_ancestry(self):
         nodes = boundary.copy()

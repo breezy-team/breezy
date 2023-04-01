@@ -180,7 +180,7 @@ class BranchStatus(TestCaseWithTransport):
         wt2.merge_from_branch(wt.branch)
         message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
-        self.assertTrue("Empty commit 3" in message)
+        self.assertIn("Empty commit 3", message)
         self.assertEndsWith(message, "...\n")
 
     def test_tree_status_ignores(self):

@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 
 from ... import debug, errors, trace, transport
 from ...i18n import gettext
-from ...urlutils import InvalidURL
+from ...urlutils import InvalidURL, split, join
 from .account import get_lp_login
 from .uris import DEFAULT_INSTANCE, LAUNCHPAD_DOMAINS, LPNET_SERVICE_ROOT
 
@@ -63,10 +63,17 @@ def _update_url_scheme(url):
 def _resolve_via_api(path, url, api_base_url=LPNET_SERVICE_ROOT):
     from .lp_api import connect_launchpad
     lp = connect_launchpad(api_base_url, version='devel')
-    lp_branch = lp.branches.getByPath(path=path)
+    subpaths = []
+    while path:
+        lp_branch = lp.branches.getByPath(path=path)
+        if lp_branch:
+            break
+        path, subpath = split(path)
+        subpaths.insert(0, subpath)
     if not lp_branch:
-        raise InvalidURL("Unknown Launchpad path: %s" % path)
-    return {'urls': [lp_branch.composePublicURL(scheme='bzr+ssh'), lp_branch.composePublicURL(scheme='http')]}
+        raise errors.InvalidURL("Unknown Launchpad path: %s" % url)
+    return {'urls': [join(lp_branch.composePublicURL(scheme='bzr+ssh'), *subpaths),
+                     join(lp_branch.composePublicURL(scheme='http'), *subpaths)]}
 
 
 class LaunchpadDirectory:

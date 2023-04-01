@@ -171,7 +171,7 @@ class TestHooks(tests.TestCase):
             obj = pyutils.get_named_object(module_name, member_name)
             self.assertEqual(obj._module, module_name)
             self.assertEqual(obj._member_name, member_name)
-            self.assertTrue(hook_name in obj)
+            self.assertIn(hook_name, obj)
             self.assertIs(callbacks, obj[hook_name]._callbacks)
 
 

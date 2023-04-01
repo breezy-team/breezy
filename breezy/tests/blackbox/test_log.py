@@ -443,7 +443,7 @@ class TestLogTags(TestLog):
         branch.tags.set_tag('tag3', branch.last_revision())
 
         log = self.run_bzr("log -r-1")[0]
-        self.assertTrue('tags: tag3' in log)
+        self.assertIn('tags: tag3', log)
 
         log = self.run_bzr("log -r1")[0]
         # I guess that we can't know the order of tags in the output
@@ -475,7 +475,7 @@ class TestLogSignatures(TestLog):
         tree = self.make_linear_branch(format='dirstate-tags')
 
         log = self.run_bzr("log --signatures")[0]
-        self.assertTrue('signature: no signature' in log)
+        self.assertIn('signature: no signature', log)
 
     def test_log_without_signatures(self):
         self.requireFeature(features.gpg)
@@ -483,7 +483,7 @@ class TestLogSignatures(TestLog):
         tree = self.make_linear_branch(format='dirstate-tags')
 
         log = self.run_bzr("log")[0]
-        self.assertFalse('signature: no signature' in log)
+        self.assertNotIn('signature: no signature', log)
 
 
 class TestLogVerbose(TestLog):

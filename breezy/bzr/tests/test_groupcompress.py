@@ -94,7 +94,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         # Even after adding some content
         text = b'some\nbytes\n'
         compressor.compress(('content',), [text], len(text), None)
-        self.assertTrue(compressor.endpoint > 0)
+        self.assertGreater(compressor.endpoint, 0)
         sha1, start_point, end_point, kind = compressor.compress(
             ('empty2',), [], 0, None)
         self.assertEqual(0, start_point)
@@ -433,9 +433,9 @@ class TestGroupCompressBlock(tests.TestCase):
         block._ensure_content(100)
         self.assertIsNot(None, block._content)
         # We have decompressed at least 100 bytes
-        self.assertTrue(len(block._content) >= 100)
+        self.assertGreaterEqual(len(block._content), 100)
         # We have not decompressed the whole content
-        self.assertTrue(len(block._content) < 158634)
+        self.assertLess(len(block._content), 158634)
         self.assertEqualDiff(content[:len(block._content)], block._content)
         # ensuring content that we already have shouldn't cause any more data
         # to be extracted
@@ -445,8 +445,8 @@ class TestGroupCompressBlock(tests.TestCase):
         # Now we want a bit more content
         cur_len += 10
         block._ensure_content(cur_len)
-        self.assertTrue(len(block._content) >= cur_len)
-        self.assertTrue(len(block._content) < 158634)
+        self.assertGreaterEqual(len(block._content), cur_len)
+        self.assertLess(len(block._content), 158634)
         self.assertEqualDiff(content[:len(block._content)], block._content)
         # And now lets finish
         block._ensure_content(158634)
@@ -774,7 +774,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         for record in vf.get_record_stream([(b'a',), (b'b',)], 'unordered',
                                            True):
             pass
-        self.assertTrue(len(vf._group_cache) > 0)
+        self.assertGreater(len(vf._group_cache), 0)
         vf.clear_cache()
         self.assertEqual(0, len(vf._group_cache))
 
@@ -1002,7 +1002,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         block_length = len(block.to_bytes())
         # We should have triggered a strip, since we aren't using any content
         stripped_block = manager._block.to_bytes()
-        self.assertTrue(block_length > len(stripped_block))
+        self.assertGreater(block_length, len(stripped_block))
         empty_z_header = zlib.compress(b'')
         self.assertEqual(b'groupcompress-block\n'
                          b'8\n'  # len(compress(''))
@@ -1079,7 +1079,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.add_key_to_manager((b'key1',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
-        self.assertTrue(block._content_length > manager._block._content_length)
+        self.assertGreater(block._content_length, manager._block._content_length)
         # We should be able to still get the content out of this block, though
         # it should only have 1 entry
         for record in manager.get_record_stream():
@@ -1094,7 +1094,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.add_key_to_manager((b'key4',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
-        self.assertTrue(block._content_length > manager._block._content_length)
+        self.assertGreater(block._content_length, manager._block._content_length)
         for record in manager.get_record_stream():
             self.assertEqual((b'key4',), record.key)
             self.assertEqual(self._texts[record.key],
@@ -1147,7 +1147,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         # Because of the new max_bytes_to_index, we do a poor job of
         # rebuilding. This is a side-effect of the change, but at least it does
         # show the setting had an effect.
-        self.assertTrue(old_block._content_length < new_block._content_length)
+        self.assertLess(old_block._content_length, new_block._content_length)
 
     def test_check_is_well_utilized_all_keys(self):
         block, manager = self.make_block_and_full_manager(self._texts)

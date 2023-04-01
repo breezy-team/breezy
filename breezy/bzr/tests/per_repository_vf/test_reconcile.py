@@ -50,7 +50,7 @@ class TestReconcile(TestCaseWithRepository):
         """Check that there is no backup inventory in aBzrDir."""
         repo = aBzrDir.open_repository()
         for path in repo.control_transport.list_dir('.'):
-            self.assertFalse('inventory.backup' in path)
+            self.assertNotIn('inventory.backup', path)
 
 
 class TestBadRevisionParents(TestCaseWithBrokenRevisionIndex):

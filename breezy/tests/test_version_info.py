@@ -157,8 +157,8 @@ class TestVersionInfoRio(VersionInfoTestCase):
     def test_build_date(self):
         wt = self.create_branch()
         stanza = self.regen(wt)
-        self.assertTrue('date' in stanza)
-        self.assertTrue('build-date' in stanza)
+        self.assertIn('date', stanza)
+        self.assertIn('build-date', stanza)
         self.assertEqual(['3'], stanza.get_all('revno'))
         self.assertEqual(['r3'], stanza.get_all('revision-id'))
 
@@ -316,8 +316,8 @@ class TestVersionInfoYaml(VersionInfoTestCase):
     def test_build_date(self):
         wt = self.create_branch()
         stanza = self.regen(wt)
-        self.assertTrue('date' in stanza)
-        self.assertTrue('build-date' in stanza)
+        self.assertIn('date', stanza)
+        self.assertIn('build-date', stanza)
         self.assertEqual('3', stanza['revno'])
         self.assertEqual('r3', stanza['revision-id'])
 
@@ -451,7 +451,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         tvi = self.regen(wt)
         self.assertEqual('3', tvi['version_info']['revno'])
         self.assertEqual(b'r3', tvi['version_info']['revision_id'])
-        self.assertTrue('date' in tvi['version_info'])
+        self.assertIn('date', tvi['version_info'])
         self.assertEqual(None, tvi['version_info']['clean'])
 
         tvi = self.regen(wt, check_for_clean=True)

@@ -179,7 +179,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
         """
         # The state should already be write locked, since we just had to do
         # some operation to get here.
-        self.assertTrue(state._lock_token is not None)
+        self.assertIsNotNone(state._lock_token)
         try:
             self.assertEqual(expected_result[0], state.get_parent_ids())
             # there should be no ghosts in this tree.
@@ -2446,7 +2446,7 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         expected_sha = osutils.sha_string(text)
         p = dirstate.DefaultSHA1Provider()
         statvalue, sha1 = p.stat_and_sha1('foo')
-        self.assertTrue(len(statvalue) >= 10)
+        self.assertGreaterEqual(len(statvalue), 10)
         self.assertEqual(len(text), statvalue.st_size)
         self.assertEqual(expected_sha, sha1)
 

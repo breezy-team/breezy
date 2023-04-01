@@ -28,7 +28,6 @@ from typing import Any, Dict, List
 import breezy
 
 from .. import osutils, plugin, tests
-from ..tests.features import importlib_metadata_feature
 
 # TODO: Write a test for plugin decoration of commands.
 
@@ -138,14 +137,15 @@ dir_source = '{}'
             plugin_dict)
 
     def assertPluginUnknown(self, name):
-        self.assertTrue(getattr(self.module, name, None) is None)
-        self.assertFalse(self.module_prefix + name in sys.modules)
+        self.assertIsNone(getattr(self.module, name, None))
+        self.assertNotIn(self.module_prefix + name, sys.modules)
 
     def assertPluginKnown(self, name):
-        self.assertTrue(
-            getattr(self.module, name, None) is not None,
-            'plugins known: %r' % dir(self.module))
-        self.assertTrue(self.module_prefix + name in sys.modules)
+        self.assertIsNotNone(
+            getattr(self.module, name, None),
+            'plugins known: %r' % dir(self.module)
+        )
+        self.assertIn(self.module_prefix + name, sys.modules)
 
 
 class TestLoadingPlugins(BaseTestPlugins):
@@ -158,12 +158,12 @@ class TestLoadingPlugins(BaseTestPlugins):
         # file name we can use which is also a valid attribute for accessing in
         # activeattributes. - we cannot give import parameters.
         tempattribute = "0"
-        self.assertFalse(tempattribute in self.activeattributes)
+        self.assertNotIn(tempattribute, self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         self.__class__.activeattributes[tempattribute] = []
-        self.assertTrue(tempattribute in self.activeattributes)
+        self.assertIn(tempattribute, self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -187,21 +187,21 @@ class TestLoadingPlugins(BaseTestPlugins):
             del self.activeattributes[tempattribute]
 
     def test_plugins_from_different_dirs_can_demand_load(self):
-        self.assertFalse('breezy.plugins.pluginone' in sys.modules)
-        self.assertFalse('breezy.plugins.plugintwo' in sys.modules)
+        self.assertNotIn('breezy.plugins.pluginone', sys.modules)
+        self.assertNotIn('breezy.plugins.plugintwo', sys.modules)
         # This test tests that having two plugins in different
         # directories with different names allows them both to be loaded, when
         # we do a direct import statement.
         # Determine a file name we can use which is also a valid attribute
         # for accessing in activeattributes. - we cannot give import parameters.
         tempattribute = "different-dirs"
-        self.assertFalse(tempattribute in self.activeattributes)
+        self.assertNotIn(tempattribute, self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         breezy.tests.test_plugins.TestLoadingPlugins.activeattributes[tempattribute] = [
             ]
-        self.assertTrue(tempattribute in self.activeattributes)
+        self.assertIn(tempattribute, self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -236,13 +236,13 @@ class TestLoadingPlugins(BaseTestPlugins):
         # check the plugin is not loaded already
         self.assertPluginUnknown('ts_plugin')
         tempattribute = "trailing-slash"
-        self.assertFalse(tempattribute in self.activeattributes)
+        self.assertNotIn(tempattribute, self.activeattributes)
         # set a place for the plugin to record its loading, and at the same
         # time validate that the location the plugin should record to is
         # valid and correct.
         breezy.tests.test_plugins.TestLoadingPlugins.activeattributes[tempattribute] = [
             ]
-        self.assertTrue(tempattribute in self.activeattributes)
+        self.assertIn(tempattribute, self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
         # write a plugin that will record when its loaded in the
@@ -511,7 +511,7 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         # make a new plugin here for this test, even if we're run with
         # --no-plugins
-        self.assertFalse('breezy.plugins.demo_module' in sys.modules)
+        self.assertNotIn('breezy.plugins.demo_module', sys.modules)
         demo_module = FakeModule('', 'breezy.plugins.demo_module')
         sys.modules['breezy.plugins.demo_module'] = demo_module
         try:
@@ -537,7 +537,7 @@ class TestHelpIndex(tests.TestCase):
     def test_get_plugin_topic_with_prefix(self):
         """Searching for plugins/demo_module returns help."""
         index = plugin.PluginsHelpIndex()
-        self.assertFalse('breezy.plugins.demo_module' in sys.modules)
+        self.assertNotIn('breezy.plugins.demo_module', sys.modules)
         demo_module = FakeModule('', 'breezy.plugins.demo_module')
         sys.modules['breezy.plugins.demo_module'] = demo_module
         try:
@@ -610,7 +610,6 @@ class TestEnvPluginPath(tests.TestCase):
     user = "USER"
     core = "CORE"
     site = "SITE"
-    entrypoints = "ENTRYPOINTS"
 
     def check_path(self, expected_dirs, setting_dirs):
         if setting_dirs is None:
@@ -635,10 +634,6 @@ class TestEnvPluginPath(tests.TestCase):
     def test_override_policy(self):
         self.check_path([self.user, self.site, self.core],
                         ['+user', '+site', '+core'])
-
-    def test_enable_entrypoints(self):
-        self.check_path([self.user, self.core, self.site, self.entrypoints],
-                        ['+user', '+core', '+site', '+entrypoints'])
 
     def test_disable_user(self):
         self.check_path([self.core, self.site], ['-user'])
@@ -681,9 +676,7 @@ class TestEnvPluginPath(tests.TestCase):
                         ['mycore', '-core'])
 
     def test_my_plugin_only(self):
-        self.check_path(
-            ['myplugin'],
-            ['myplugin', '-user', '-core', '-site', '-entrypoints'])
+        self.check_path(['myplugin'], ['myplugin', '-user', '-core', '-site'])
 
     def test_my_plugin_first(self):
         self.check_path(['myplugin', self.core, self.site, self.user],
@@ -917,54 +910,3 @@ good 0.1.0
   Hi there
 
 """, ''.join(plugin.describe_plugins(state=self)))
-
-
-class DummyPlugin:
-    """Plugin."""
-
-
-class TestLoadEnvPlugin(BaseTestPlugins):
-
-    _test_needs_features = [importlib_metadata_feature]
-
-    def setup_plugin(self, source=""):
-        # This test tests a new plugin appears in breezy.plugin.plugins().
-        # check the plugin is not loaded already
-        self.assertPluginUnknown('plugin')
-        # write a plugin that _cannot_ fail to load.
-        from importlib.metadata import Distribution, EntryPoint, entry_points
-        class DummyDistribution:
-
-            def __init__(self, name, entry_points):
-                self._normalized_name = self.name = name
-                self.entry_points = entry_points
-        ep = EntryPoint(name='plugin', group='breezy.plugin',
-                        value=__name__ + ':DummyPlugin')
-        d = DummyDistribution('lala', [ep])
-        old_discover = Distribution.discover
-        def override_discover(**kwargs):
-            yield from old_discover(**kwargs)
-            yield d
-        self.overrideAttr(Distribution, 'discover', override_discover)
-        try:
-            eps = entry_points(group='breezy.plugin')
-        except TypeError:  # python < 3.10
-            eps = [ep[0] for ep in entry_points().values()
-                   if ep[0].group == 'breezy.plugin']
-        self.assertEqual(['plugin'], [ep.name for ep in eps])
-        self.load_with_paths(['.'])
-
-    def test_plugin_loaded(self):
-        self.assertPluginUnknown('plugin')
-        self.overrideEnv('BRZ_PLUGIN_PATH', '+entrypoints')
-        self.setup_plugin()
-        p = self.plugins['plugin']
-        self.assertIsInstance(p, breezy.plugin.PlugIn)
-        self.assertIs(p.module, sys.modules[self.module_prefix + 'plugin'])
-
-    def test_plugin_loaded_disabled(self):
-        self.assertPluginUnknown('plugin')
-        self.overrideEnv('BRZ_PLUGIN_PATH', '+entrypoints')
-        self.overrideEnv('BRZ_DISABLE_PLUGINS', 'plugin')
-        self.setup_plugin()
-        self.assertNotIn('plugin', self.plugins)

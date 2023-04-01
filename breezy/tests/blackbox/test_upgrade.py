@@ -146,9 +146,10 @@ starting upgrade from old test format to 2a
 finished
 """.format(display_url, display_url, display_url, display_url, backup_dir), out)
         self.assertEqualDiff("", err)
-        self.assertTrue(isinstance(
+        self.assertIsInstance(
             controldir.ControlDir.open(self.get_url(path))._format,
-            bzrdir.BzrDirMetaFormat1))
+            bzrdir.BzrDirMetaFormat1
+        )
 
     def test_upgrade_explicit_knit(self):
         # users can force an upgrade to knit format from a metadir pack 0.92
@@ -172,10 +173,14 @@ finished
             out)
         self.assertEqualDiff("", err)
         converted_dir = controldir.ControlDir.open(self.get_url('branch'))
-        self.assertTrue(isinstance(converted_dir._format,
-                                   bzrdir.BzrDirMetaFormat1))
-        self.assertTrue(isinstance(converted_dir.open_repository()._format,
-                                   RepositoryFormatKnitPack1))
+        self.assertIsInstance(
+            converted_dir._format,
+            bzrdir.BzrDirMetaFormat1
+        )
+        self.assertIsInstance(
+            converted_dir.open_repository()._format,
+            RepositoryFormatKnitPack1
+        )
 
     def test_upgrade_repo(self):
         self.run_bzr('init-shared-repository --format=pack-0.92 repo')
@@ -214,7 +219,7 @@ finished
         os.chmod('.bzr', old_perms)
         self.run_bzr('upgrade')
         new_perms = os.stat(backup_dir).st_mode & 0o777
-        self.assertTrue(new_perms == old_perms)
+        self.assertEqual(new_perms, old_perms)
 
     def test_upgrade_with_existing_backup_dir(self):
         self.make_branch_and_tree("old_format_branch", format="knit")
@@ -237,10 +242,11 @@ repository converted
 finished
 """.format(display_url, display_url, display_url, display_url, backup_dir2), out)
         self.assertEqualDiff("", err)
-        self.assertTrue(isinstance(
+        self.assertIsInstance(
             controldir.ControlDir.open(
                 self.get_url("old_format_branch"))._format,
-            bzrdir.BzrDirMetaFormat1))
+            bzrdir.BzrDirMetaFormat1
+        )
         self.assertTrue(t.has(backup_dir2))
 
 

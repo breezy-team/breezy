@@ -41,9 +41,9 @@ class TestRio(TestCase):
     def test_stanza(self):
         """Construct rio stanza in memory"""
         s = Stanza(number='42', name="fred")
-        self.assertTrue('number' in s)
-        self.assertFalse('color' in s)
-        self.assertFalse('42' in s)
+        self.assertIn('number', s)
+        self.assertNotIn('color', s)
+        self.assertNotIn('42', s)
         self.assertEqual(list(s.iter_pairs()),
                          [('name', 'fred'), ('number', '42')])
         self.assertEqual(s.get('number'), '42')
@@ -105,7 +105,7 @@ timezone: 36000
 committer: Martin Pool <mbp@test.sourcefrog.net>
 """.splitlines(True)
         s = read_stanza(lines)
-        self.assertTrue('revision' in s)
+        self.assertIn('revision', s)
         self.assertEqual(s.get('revision'), 'mbp@sourcefrog.net-123-abc')
         self.assertEqual(list(s.iter_pairs()),
                          [('revision', 'mbp@sourcefrog.net-123-abc'),
@@ -180,7 +180,7 @@ tabs: \t\t\t
         """Detect end of rio file"""
         s = read_stanza([])
         self.assertEqual(s, None)
-        self.assertTrue(s is None)
+        self.assertIsNone(s)
 
     def test_read_nul_byte(self):
         """File consisting of a nul byte causes an error."""
@@ -364,9 +364,9 @@ s: both\\\"
         lines = rio.to_patch_lines(stanza)
         for line in lines:
             self.assertContainsRe(line, b'^# ')
-            self.assertTrue(72 >= len(line))
+            self.assertGreaterEqual(72, len(line))
         for line in rio.to_patch_lines(stanza, max_width=12):
-            self.assertTrue(12 >= len(line))
+            self.assertGreaterEqual(12, len(line))
         new_stanza = rio.read_patch_stanza(self.mail_munge(lines,
                                                            dos_nl=False))
         lines = self.mail_munge(lines)

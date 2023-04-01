@@ -26,8 +26,8 @@ class TestNode(tests.TestCase):
 
     def assertCommonPrefix(self, expected_common, prefix, key):
         common = Node.common_prefix(prefix, key)
-        self.assertTrue(len(common) <= len(prefix))
-        self.assertTrue(len(common) <= len(key))
+        self.assertLessEqual(len(common), len(prefix))
+        self.assertLessEqual(len(common), len(key))
         self.assertStartsWith(prefix, common)
         self.assertStartsWith(key, common)
         self.assertEqual(expected_common, common)
@@ -1569,7 +1569,7 @@ class TestLeafNode(TestCaseWithStore):
         node.set_maximum_size(10)
         result = node.map(None, (b"foo bar",), b"baz quux")
         self.assertEqual((b"foo bar", [(b"", node)]), result)
-        self.assertTrue(10 < node._current_size())
+        self.assertLess(10, node._current_size())
 
     def test_map_exceeding_max_size_second_entry_early_difference_new(self):
         node = LeafNode()

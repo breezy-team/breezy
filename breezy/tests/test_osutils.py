@@ -174,8 +174,8 @@ class TestRename(tests.TestCaseInTempDir):
         except OSError as e:
             self.assertEqual(e.old_filename, 'nonexistent_path')
             self.assertEqual(e.new_filename, 'different_nonexistent_path')
-            self.assertTrue('nonexistent_path' in e.strerror)
-            self.assertTrue('different_nonexistent_path' in e.strerror)
+            self.assertIn('nonexistent_path', e.strerror)
+            self.assertIn('different_nonexistent_path', e.strerror)
 
 
 class TestRandChars(tests.TestCase):
@@ -406,7 +406,7 @@ class TestDateTime(tests.TestCase):
     def test_local_time_offset(self):
         """Test that local_time_offset() returns a sane value."""
         offset = osutils.local_time_offset()
-        self.assertTrue(isinstance(offset, int))
+        self.assertIsInstance(offset, int)
         # Test that the offset is no more than a eighteen hours in
         # either direction.
         # Time zone handling is system specific, so it is difficult to
@@ -418,7 +418,7 @@ class TestDateTime(tests.TestCase):
     def test_local_time_offset_with_timestamp(self):
         """Test that local_time_offset() works with a timestamp."""
         offset = osutils.local_time_offset(1000000000.1234567)
-        self.assertTrue(isinstance(offset, int))
+        self.assertIsInstance(offset, int)
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
 
@@ -591,7 +591,7 @@ class TestPumpFile(tests.TestCase):
         """Read data in blocks with the requested read size bracketing the
         block size."""
         # make sure test data is larger than max read size
-        self.assertTrue(self.test_data_len > self.block_size)
+        self.assertGreater(self.test_data_len, self.block_size)
 
         from_file = file_utils.FakeReadFile(self.test_data)
         to_file = BytesIO()
@@ -635,7 +635,7 @@ class TestPumpFile(tests.TestCase):
         """Request a transfer larger than the maximum block size and verify
         that the maximum read doesn't exceed the block_size."""
         # make sure test data is larger than max read size
-        self.assertTrue(self.test_data_len > self.block_size)
+        self.assertGreater(self.test_data_len, self.block_size)
 
         # retrieve data in blocks
         from_file = file_utils.FakeReadFile(self.test_data)
@@ -644,7 +644,7 @@ class TestPumpFile(tests.TestCase):
                          self.block_size)
 
         # verify read size was equal to the maximum read size
-        self.assertTrue(from_file.get_max_read_size() > 0)
+        self.assertGreater(from_file.get_max_read_size(), 0)
         self.assertEqual(from_file.get_max_read_size(), self.block_size)
         self.assertEqual(from_file.get_read_count(), 3)
 
@@ -659,7 +659,7 @@ class TestPumpFile(tests.TestCase):
         """Read to end-of-file and verify that the reads are not larger than
         the maximum read size."""
         # make sure test data is larger than max read size
-        self.assertTrue(self.test_data_len > self.block_size)
+        self.assertGreater(self.test_data_len, self.block_size)
 
         # retrieve data to EOF
         from_file = file_utils.FakeReadFile(self.test_data)
@@ -2136,15 +2136,20 @@ class TestFindExecutableInPath(tests.TestCase):
     def test_windows(self):
         if sys.platform != 'win32':
             raise tests.TestSkipped('test requires win32')
-        self.assertTrue(osutils.find_executable_on_path(
-            'explorer') is not None)
-        self.assertTrue(
-            osutils.find_executable_on_path('explorer.exe') is not None)
-        self.assertTrue(
-            osutils.find_executable_on_path('EXPLORER.EXE') is not None)
-        self.assertTrue(
-            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
-        self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
+        self.assertIsNotNone(
+            osutils.find_executable_on_path(
+            'explorer')
+        )
+        self.assertIsNotNone(
+            osutils.find_executable_on_path('explorer.exe')
+        )
+        self.assertIsNotNone(
+            osutils.find_executable_on_path('EXPLORER.EXE')
+        )
+        self.assertIsNone(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST')
+        )
+        self.assertIsNone(osutils.find_executable_on_path('file.txt'))
 
     def test_windows_app_path(self):
         if sys.platform != 'win32':
@@ -2152,15 +2157,18 @@ class TestFindExecutableInPath(tests.TestCase):
         # Override PATH env var so that exe can only be found on App Path
         self.overrideEnv('PATH', '')
         # Internt Explorer is always registered in the App Path
-        self.assertTrue(osutils.find_executable_on_path(
-            'iexplore') is not None)
+        self.assertIsNotNone(
+            osutils.find_executable_on_path(
+            'iexplore')
+        )
 
     def test_other(self):
         if sys.platform == 'win32':
             raise tests.TestSkipped('test requires non-win32')
-        self.assertTrue(osutils.find_executable_on_path('sh') is not None)
-        self.assertTrue(
-            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+        self.assertIsNotNone(osutils.find_executable_on_path('sh'))
+        self.assertIsNone(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST')
+        )
 
 
 class SupportsExecutableTests(tests.TestCaseInTempDir):
@@ -2242,6 +2250,6 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
             osutils.MtabFilesystemFinder([]))
-        self.assertIs(osutils.get_fs_type('/home/jelmer/blah'), None)
-        self.assertIs(osutils.get_fs_type(b'/home/jelmer/blah'), None)
-        self.assertIs(osutils.get_fs_type('/home/jelmer'), None)
+        self.assertIsNone(osutils.get_fs_type('/home/jelmer/blah'))
+        self.assertIsNone(osutils.get_fs_type(b'/home/jelmer/blah'))
+        self.assertIsNone(osutils.get_fs_type('/home/jelmer'))

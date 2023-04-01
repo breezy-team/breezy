@@ -44,7 +44,7 @@ class TestVersion(TestCase):
     def test_version(self):
         self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
-        self.assertTrue(len(out) > 0)
+        self.assertGreater(len(out), 0)
         self.assertEqualDiff(out.splitlines()[0],
                              "Breezy (brz) %s" % breezy.__version__)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
@@ -76,7 +76,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
             out = self.run_bzr(args)[0]
         finally:
             trace._brz_log_filename = old_trace_file
-        self.assertTrue(len(out) > 0)
+        self.assertGreater(len(out), 0)
         self.assertContainsRe(out, r'(?m)^  Breezy log file:.*brz\.log')
 
     def test_command(self):
@@ -94,7 +94,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         self.overrideEnv('BRZ_HOME', uni_val)
         self.permit_source_tree_branch_repo()
         out = self.run_bzr_raw("version")[0]
-        self.assertTrue(len(out) > 0)
+        self.assertGreater(len(out), 0)
         self.assertContainsRe(out, br"(?m)^  Breezy configuration: " + str_val)
 
 
@@ -108,7 +108,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.overrideEnv('BRZ_LOG', brz_log)
         self.assertPathDoesNotExist([self.default_log(), brz_log])
         out = self.run_brz_subprocess('version')[0]
-        self.assertTrue(len(out) > 0)
+        self.assertGreater(len(out), 0)
         self.assertContainsRe(
             out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
         self.assertPathExists(brz_log)
@@ -124,7 +124,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.overrideEnv('BRZ_LOG', brz_log)
         self.assertPathDoesNotExist(self.default_log())
         out = self.run_brz_subprocess('version')[0]
-        self.assertTrue(len(out) > 0)
+        self.assertGreater(len(out), 0)
         self.assertContainsRe(
             out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
         self.assertPathDoesNotExist(self.default_log())
