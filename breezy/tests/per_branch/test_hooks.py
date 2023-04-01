@@ -119,7 +119,7 @@ class TestOpen(tests.TestCaseWithMemoryTransport):
         # Branches opened on the server don't have comparable URLs, so we just
         # assert that it is not a RemoteBranch.
         self.assertIsInstance(b, _mod_branch.Branch)
-        self.assertFalse(isinstance(b, remote.RemoteBranch))
+        self.assertNotIsInstance(b, remote.RemoteBranch)
 
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):

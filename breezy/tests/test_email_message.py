@@ -179,7 +179,7 @@ class TestEmailMessage(tests.TestCase):
         address = 'Pepe P\xe9rez <pperez@ejemplo.com>'  # unicode ok
         encoded = EmailMessage.address_to_encoded_header(address)
         # addr must be unencoded
-        self.assertTrue('pperez@ejemplo.com' in encoded)
+        self.assertIn('pperez@ejemplo.com', encoded)
         self.assertEqual(address, decode(encoded))
 
         address = b'Pepe P\xe9rez <pperez@ejemplo.com>'  # ISO-8859-1 not ok

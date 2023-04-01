@@ -75,7 +75,7 @@ class TestBuildTree(TestCaseWithTransport):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         build_tree(basis, b)
-        self.assertIs(os.path.isdir('b/foo'), True)
+        self.assertTrue(os.path.isdir('b/foo'))
         with open('b/foo/bar', 'rb') as f:
             self.assertEqual(f.read(), b"contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')

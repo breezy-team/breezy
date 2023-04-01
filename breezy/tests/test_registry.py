@@ -34,7 +34,7 @@ class TestRegistry(tests.TestCase):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
 
-        self.assertTrue(a_registry.default_key is None)
+        self.assertIsNone(a_registry.default_key)
 
         # test get() (self.default_key is None)
         self.assertRaises(KeyError, a_registry.get)
@@ -44,7 +44,7 @@ class TestRegistry(tests.TestCase):
 
         # test _set_default_key
         a_registry.default_key = 'five'
-        self.assertTrue(a_registry.default_key == 'five')
+        self.assertEqual(a_registry.default_key, 'five')
         self.assertEqual(5, a_registry.get())
         self.assertEqual(5, a_registry.get(None))
         # If they ask for a specific entry, they should get KeyError
@@ -59,9 +59,9 @@ class TestRegistry(tests.TestCase):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
 
-        self.assertTrue('one' in a_registry)
+        self.assertIn('one', a_registry)
         a_registry.remove('one')
-        self.assertFalse('one' in a_registry)
+        self.assertNotIn('one', a_registry)
         self.assertRaises(KeyError, a_registry.get, 'one')
 
         a_registry.register('one', 'one')
@@ -268,7 +268,7 @@ class TestRegistryIter(tests.TestCase):
         count = 0
         for name, func in iter_func():
             count += 1
-            self.assertFalse(name in ('hidden', 'more hidden'))
+            self.assertNotIn(name, ('hidden', 'more hidden'))
             if func is not None:
                 # Using an object register another one as a side effect
                 func()
@@ -329,7 +329,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         self.assertEqual(['function', 'klass', 'module', 'obj'],
                          sorted(a_registry.keys()))
         # The plugin should not be loaded until we grab the first object
-        self.assertFalse(plugin_name in sys.modules)
+        self.assertNotIn(plugin_name, sys.modules)
 
         # By default the plugin won't be in the search path
         self.assertRaises(ImportError, a_registry.get, 'obj')
@@ -339,7 +339,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         try:
             obj = a_registry.get('obj')
             self.assertEqual('foo', obj)
-            self.assertTrue(plugin_name in sys.modules)
+            self.assertIn(plugin_name, sys.modules)
 
             # Now grab another object
             func = a_registry.get('function')

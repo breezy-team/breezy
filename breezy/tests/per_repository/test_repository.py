@@ -527,7 +527,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map([b'ghost', rev2])
-        self.assertTrue(b'ghost' not in parents)
+        self.assertNotIn(b'ghost', parents)
         self.assertEqual(parents[rev2], (rev1, b'ghost'))
 
     def test_get_known_graph_ancestry(self):

@@ -1844,9 +1844,12 @@ class TestSmartServerRepositoryIterRevisions(
             [(b"rev1", ), (b"rev2", )], "unordered", True)]
 
         contents = b"".join(response.body_stream)
-        self.assertTrue(contents in (
+        self.assertIn(
+            contents,
+            (
             b"".join([entries[0], entries[1]]),
-            b"".join([entries[1], entries[0]])))
+            b"".join([entries[1], entries[0]]))
+        )
 
     def test_missing(self):
         backing = self.get_transport()

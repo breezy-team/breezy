@@ -271,7 +271,7 @@ class TestSerializer(TestCase):
             key = (entry.file_id, entry.revision)
             if entry.file_id is inv.root.file_id:
                 # The root id is inferred for xml v5
-                self.assertFalse(key in entry_cache)
+                self.assertNotIn(key, entry_cache)
             else:
                 self.assertIsNot(entry, entry_cache[key])
 
@@ -287,7 +287,7 @@ class TestSerializer(TestCase):
             key = (entry.file_id, entry.revision)
             if entry.file_id is inv.root.file_id:
                 # The root id is inferred for xml v5
-                self.assertFalse(key in entry_cache)
+                self.assertNotIn(key, entry_cache)
             else:
                 self.assertIs(entry, entry_cache[key])
 

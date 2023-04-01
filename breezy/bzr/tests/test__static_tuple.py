@@ -107,7 +107,7 @@ class TestStaticTuple(tests.TestCase):
         t = k.as_tuple()
         self.assertEqual(('foo',), t)
         self.assertIsInstance(t, tuple)
-        self.assertFalse(isinstance(t, self.module.StaticTuple))
+        self.assertNotIsInstance(t, self.module.StaticTuple)
         k = self.module.StaticTuple('foo', 'bar')
         t = k.as_tuple()
         self.assertEqual(('foo', 'bar'), t)
@@ -191,10 +191,10 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual("StaticTuple('foo', 'bar', 'baz', 'bing')", repr(k))
 
     def assertCompareEqual(self, k1, k2):
-        self.assertTrue(k1 == k2)
-        self.assertTrue(k1 <= k2)
-        self.assertTrue(k1 >= k2)
-        self.assertFalse(k1 != k2)
+        self.assertEqual(k1, k2)
+        self.assertLessEqual(k1, k2)
+        self.assertGreaterEqual(k1, k2)
+        self.assertEqual(k1, k2)
         self.assertFalse(k1 < k2)
         self.assertFalse(k1 > k2)
 
@@ -281,13 +281,13 @@ class TestStaticTuple(tests.TestCase):
         return False
 
     def assertCompareDifferent(self, k_small, k_big, mismatched_types=False):
-        self.assertFalse(k_small == k_big)
-        self.assertTrue(k_small != k_big)
+        self.assertNotEqual(k_small, k_big)
+        self.assertNotEqual(k_small, k_big)
         if not self.check_strict_compare(k_small, k_big, mismatched_types):
             self.assertFalse(k_small >= k_big)
             self.assertFalse(k_small > k_big)
-            self.assertTrue(k_small <= k_big)
-            self.assertTrue(k_small < k_big)
+            self.assertLessEqual(k_small, k_big)
+            self.assertLess(k_small, k_big)
 
     def assertCompareNoRelation(self, k1, k2, mismatched_types=False):
         """Run the comparison operators, make sure they do something.
@@ -296,8 +296,8 @@ class TestStaticTuple(tests.TestCase):
         stuff like cross-class comparisons. We don't want to segfault/raise an
         exception, but we don't care about the sort order.
         """
-        self.assertFalse(k1 == k2)
-        self.assertTrue(k1 != k2)
+        self.assertNotEqual(k1, k2)
+        self.assertNotEqual(k1, k2)
         if not self.check_strict_compare(k1, k2, mismatched_types):
             # Do the comparison, but we don't care about the result
             k1 >= k2
@@ -474,13 +474,13 @@ class TestStaticTuple(tests.TestCase):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         key2 = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertEqual(key, key2)
         self.assertIsNot(key, key2)
         key3 = key.intern()
         self.assertIs(key, key3)
-        self.assertTrue(key in self.module._interned_tuples)
+        self.assertIn(key, self.module._interned_tuples)
         self.assertEqual(key, self.module._interned_tuples[key])
         key2 = key2.intern()
         self.assertIs(key, key2)
@@ -492,7 +492,7 @@ class TestStaticTuple(tests.TestCase):
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertRefcount(1, key)
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         self.assertFalse(key._is_interned())
         key2 = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertRefcount(1, key)
@@ -502,7 +502,7 @@ class TestStaticTuple(tests.TestCase):
 
         key3 = key.intern()
         self.assertIs(key, key3)
-        self.assertTrue(key in self.module._interned_tuples)
+        self.assertIn(key, self.module._interned_tuples)
         self.assertEqual(key, self.module._interned_tuples[key])
         # key and key3, but we 'hide' the one in _interned_tuples
         self.assertRefcount(2, key)
@@ -526,18 +526,18 @@ class TestStaticTuple(tests.TestCase):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         self.assertRefcount(1, key)
         key = key.intern()
         self.assertRefcount(1, key)
-        self.assertTrue(key in self.module._interned_tuples)
+        self.assertIn(key, self.module._interned_tuples)
         self.assertTrue(key._is_interned())
         del key
         # Create a new entry, which would point to the same location
         key = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertRefcount(1, key)
         # This old entry in _interned_tuples should be gone
-        self.assertFalse(key in self.module._interned_tuples)
+        self.assertNotIn(key, self.module._interned_tuples)
         self.assertFalse(key._is_interned())
 
     def test__c_has_C_API(self):

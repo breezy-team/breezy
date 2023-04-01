@@ -432,8 +432,8 @@ altered in u2
         self.build_tree(['a', 'b', 'c'])
         tree.smart_add(['.'])
         out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b'])
-        self.assertFalse('added b' in out)
-        self.assertFalse('added b' in err)
+        self.assertNotIn('added b', out)
+        self.assertNotIn('added b', err)
         # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(['added'])
         self.assertEqual('b\n', out)
@@ -445,14 +445,14 @@ altered in u2
         self.build_tree(['a', 'b', 'c'])
         tree.smart_add(['.'])
         out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b', '-x', 'c'])
-        self.assertFalse('added b' in out)
-        self.assertFalse('added c' in out)
-        self.assertFalse('added b' in err)
-        self.assertFalse('added c' in err)
+        self.assertNotIn('added b', out)
+        self.assertNotIn('added c', out)
+        self.assertNotIn('added b', err)
+        self.assertNotIn('added c', err)
         # If b was excluded it will still be 'added' in status.
         out, err = self.run_bzr(['added'])
-        self.assertTrue('b\n' in out)
-        self.assertTrue('c\n' in out)
+        self.assertIn('b\n', out)
+        self.assertIn('c\n', out)
         self.assertEqual('', err)
 
     def test_commit_respects_spec_for_removals(self):
@@ -551,7 +551,7 @@ altered in u2
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = dict(last_rev.properties)
         del properties['branch-nick']
-        self.assertFalse('bugs' in properties)
+        self.assertNotIn('bugs', properties)
 
     def test_bugs_sets_property(self):
         """commit --bugs=lp:234 sets the lp:234 revprop to 'related'."""
@@ -686,7 +686,7 @@ altered in u2
         self.run_bzr('commit -m hello tree/hello.txt')
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertFalse('author' in properties)
+        self.assertNotIn('author', properties)
 
     def test_author_sets_property(self):
         """commit --author='John Doe <jdoe@example.com>' sets the author

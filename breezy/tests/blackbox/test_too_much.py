@@ -160,7 +160,7 @@ class TestCommands(TestCaseWithTransport):
 
         added_message = out.find('message:\n  foo')
         self.assertNotEqual(added_message, -1)
-        self.assertTrue(added_loc < added_message)
+        self.assertLess(added_loc, added_message)
 
     def test_locations(self):
         """Using and remembering different locations"""
@@ -245,24 +245,28 @@ class TestCommands(TestCaseWithTransport):
         self.run_bzr('merge ../other --show-base', retcode=1)
         with open('hello') as f:
             conflict_text = f.read()
-        self.assertTrue('<<<<<<<' in conflict_text)
-        self.assertTrue('>>>>>>>' in conflict_text)
-        self.assertTrue('=======' in conflict_text)
-        self.assertTrue('|||||||' in conflict_text)
-        self.assertTrue('hi world' in conflict_text)
+        self.assertIn('<<<<<<<', conflict_text)
+        self.assertIn('>>>>>>>', conflict_text)
+        self.assertIn('=======', conflict_text)
+        self.assertIn('|||||||', conflict_text)
+        self.assertIn('hi world', conflict_text)
         self.run_bzr('revert')
         self.run_bzr('resolve --all')
         self.run_bzr('merge ../other', retcode=1)
         with open('hello') as f:
             conflict_text = f.read()
-        self.assertTrue('|||||||' not in conflict_text)
-        self.assertTrue('hi world' not in conflict_text)
+        self.assertNotIn('|||||||', conflict_text)
+        self.assertNotIn('hi world', conflict_text)
         result = self.run_bzr('conflicts')[0]
         self.assertEqual(result, "Text conflict in hello\nText conflict in"
                          " question\n")
         result = self.run_bzr('status')[0]
-        self.assertTrue("conflicts:\n  Text conflict in hello\n"
-                        "  Text conflict in question\n" in result, result)
+        self.assertIn(
+            "conflicts:\n  Text conflict in hello\n"
+            "  Text conflict in question\n",
+            result,
+            result
+        )
         self.run_bzr('resolve hello')
         result = self.run_bzr('conflicts')[0]
         self.assertEqual(result, "Text conflict in question\n")
@@ -429,20 +433,22 @@ class OldTests(TestCaseWithTransport):
         self.run_bzr('log -v --forward')
         self.run_bzr('log -m', retcode=3)
         log_out = self.run_bzr('log -m commit')[0]
-        self.assertTrue("this is my new commit\n  and" in log_out)
-        self.assertTrue("rename nested" not in log_out)
-        self.assertTrue('revision-id' not in log_out)
-        self.assertTrue(
-            'revision-id' in self.run_bzr('log --show-ids -m commit')[0])
+        self.assertIn("this is my new commit\n  and", log_out)
+        self.assertNotIn("rename nested", log_out)
+        self.assertNotIn('revision-id', log_out)
+        self.assertIn(
+            'revision-id',
+            self.run_bzr('log --show-ids -m commit')[0]
+        )
 
         log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
         max_width = osutils.terminal_width()
         if max_width is not None:
             for line in log_out.splitlines():
-                self.assertTrue(len(line) <= max_width - 1, len(line))
-        self.assertTrue("this is my new commit and" not in log_out)
-        self.assertTrue("this is my new commit" in log_out)
+                self.assertLessEqual(len(line), max_width - 1, len(line))
+        self.assertNotIn("this is my new commit and", log_out)
+        self.assertIn("this is my new commit", log_out)
 
         progress("file with spaces in name")
         mkdir('sub directory')
@@ -548,7 +554,7 @@ class OldTests(TestCaseWithTransport):
             chdir("exp5.tmp")
             self.assertEqual(listdir_sorted("."), ["d2", "link2"])
             self.assertTrue(os.path.islink("link2"))
-            self.assertTrue(listdir_sorted("d2") == ["link3"])
+            self.assertEqual(listdir_sorted("d2"), ["link3"])
             chdir("..")
 
             self.run_bzr('export -r 8 exp6.tmp')

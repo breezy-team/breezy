@@ -162,9 +162,9 @@ class TestDeprecationWarnings(TestCase):
 
             a_deprecated_dict['b'] = 42
             self.assertEqual(a_deprecated_dict['b'], 42)
-            self.assertTrue('b' in a_deprecated_dict)
+            self.assertIn('b', a_deprecated_dict)
             del a_deprecated_dict['b']
-            self.assertFalse('b' in a_deprecated_dict)
+            self.assertNotIn('b', a_deprecated_dict)
             self.assertEqual([expected_warning] * 6, self._warnings)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)

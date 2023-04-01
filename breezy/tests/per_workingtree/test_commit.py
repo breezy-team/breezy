@@ -542,10 +542,14 @@ class TestCommitProgress(TestCaseWithWorkingTree):
     def test_post_commit_hook(self):
         """Make sure a post_commit hook is called after a commit."""
         def post_commit_hook_test_params(params):
-            self.assertTrue(isinstance(params,
-                                       mutabletree.PostCommitHookParams))
-            self.assertTrue(isinstance(params.mutable_tree,
-                                       mutabletree.MutableTree))
+            self.assertIsInstance(
+                params,
+                mutabletree.PostCommitHookParams
+            )
+            self.assertIsInstance(
+                params.mutable_tree,
+                mutabletree.MutableTree
+            )
             with open(tree.abspath("newfile"), 'w') as f:
                 f.write("data")
             params.mutable_tree.add(["newfile"])

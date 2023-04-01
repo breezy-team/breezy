@@ -158,7 +158,7 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties['author'])
         self.assertEqual("iso8859-1", rev.properties["git-explicit-encoding"])
-        self.assertTrue("git-implicit-encoding" not in rev.properties)
+        self.assertNotIn("git-implicit-encoding", rev.properties)
 
     def test_explicit_encoding_false(self):
         c = Commit()
@@ -178,7 +178,7 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties['author'])
         self.assertEqual("false", rev.properties["git-explicit-encoding"])
-        self.assertTrue("git-implicit-encoding" not in rev.properties)
+        self.assertNotIn("git-implicit-encoding", rev.properties)
 
     def test_implicit_encoding_fallback(self):
         c = Commit()
@@ -197,7 +197,7 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties['author'])
         self.assertEqual("latin1", rev.properties["git-implicit-encoding"])
-        self.assertTrue("git-explicit-encoding" not in rev.properties)
+        self.assertNotIn("git-explicit-encoding", rev.properties)
 
     def test_implicit_encoding_utf8(self):
         c = Commit()
@@ -215,8 +215,8 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual("Authér", rev.properties['author'])
-        self.assertTrue("git-explicit-encoding" not in rev.properties)
-        self.assertTrue("git-implicit-encoding" not in rev.properties)
+        self.assertNotIn("git-explicit-encoding", rev.properties)
+        self.assertNotIn("git-implicit-encoding", rev.properties)
 
     def test_unknown_extra(self):
         c = Commit()

@@ -84,7 +84,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         iterable = app(environ, self.start_response)
         self.read_response(iterable)
         self.assertEqual('405 Method not allowed', self.status)
-        self.assertTrue(('Allow', 'POST') in self.headers)
+        self.assertIn(('Allow', 'POST'), self.headers)
 
     def _fake_make_request(self, transport, write_func, bytes, rcp):
         request = FakeRequest(transport, write_func)
@@ -287,9 +287,10 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
         decoder = protocol.ProtocolThreeDecoder(
             message_handler, expect_version_marker=True)
         decoder.accept_bytes(response_bytes)
-        self.assertTrue(
-            ('structure', (b'branch', branch._format.network_name()))
-            in message_handler.event_log)
+        self.assertIn(
+            ('structure', (b'branch', branch._format.network_name())),
+            message_handler.event_log
+        )
 
 
 class FakeRequest:

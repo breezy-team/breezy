@@ -137,14 +137,15 @@ dir_source = '{}'
             plugin_dict)
 
     def assertPluginUnknown(self, name):
-        self.assertTrue(getattr(self.module, name, None) is None)
-        self.assertFalse(self.module_prefix + name in sys.modules)
+        self.assertIsNone(getattr(self.module, name, None))
+        self.assertNotIn(self.module_prefix + name, sys.modules)
 
     def assertPluginKnown(self, name):
-        self.assertTrue(
-            getattr(self.module, name, None) is not None,
-            'plugins known: %r' % dir(self.module))
-        self.assertTrue(self.module_prefix + name in sys.modules)
+        self.assertIsNotNone(
+            getattr(self.module, name, None),
+            'plugins known: %r' % dir(self.module)
+        )
+        self.assertIn(self.module_prefix + name, sys.modules)
 
 
 class TestLoadingPlugins(BaseTestPlugins):
@@ -157,12 +158,12 @@ class TestLoadingPlugins(BaseTestPlugins):
         # file name we can use which is also a valid attribute for accessing in
         # activeattributes. - we cannot give import parameters.
         tempattribute = "0"
-        self.assertFalse(tempattribute in self.activeattributes)
+        self.assertNotIn(tempattribute, self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         self.__class__.activeattributes[tempattribute] = []
-        self.assertTrue(tempattribute in self.activeattributes)
+        self.assertIn(tempattribute, self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -186,21 +187,21 @@ class TestLoadingPlugins(BaseTestPlugins):
             del self.activeattributes[tempattribute]
 
     def test_plugins_from_different_dirs_can_demand_load(self):
-        self.assertFalse('breezy.plugins.pluginone' in sys.modules)
-        self.assertFalse('breezy.plugins.plugintwo' in sys.modules)
+        self.assertNotIn('breezy.plugins.pluginone', sys.modules)
+        self.assertNotIn('breezy.plugins.plugintwo', sys.modules)
         # This test tests that having two plugins in different
         # directories with different names allows them both to be loaded, when
         # we do a direct import statement.
         # Determine a file name we can use which is also a valid attribute
         # for accessing in activeattributes. - we cannot give import parameters.
         tempattribute = "different-dirs"
-        self.assertFalse(tempattribute in self.activeattributes)
+        self.assertNotIn(tempattribute, self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         breezy.tests.test_plugins.TestLoadingPlugins.activeattributes[tempattribute] = [
             ]
-        self.assertTrue(tempattribute in self.activeattributes)
+        self.assertIn(tempattribute, self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -235,13 +236,13 @@ class TestLoadingPlugins(BaseTestPlugins):
         # check the plugin is not loaded already
         self.assertPluginUnknown('ts_plugin')
         tempattribute = "trailing-slash"
-        self.assertFalse(tempattribute in self.activeattributes)
+        self.assertNotIn(tempattribute, self.activeattributes)
         # set a place for the plugin to record its loading, and at the same
         # time validate that the location the plugin should record to is
         # valid and correct.
         breezy.tests.test_plugins.TestLoadingPlugins.activeattributes[tempattribute] = [
             ]
-        self.assertTrue(tempattribute in self.activeattributes)
+        self.assertIn(tempattribute, self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
         # write a plugin that will record when its loaded in the
@@ -510,7 +511,7 @@ class TestHelpIndex(tests.TestCase):
         index = plugin.PluginsHelpIndex()
         # make a new plugin here for this test, even if we're run with
         # --no-plugins
-        self.assertFalse('breezy.plugins.demo_module' in sys.modules)
+        self.assertNotIn('breezy.plugins.demo_module', sys.modules)
         demo_module = FakeModule('', 'breezy.plugins.demo_module')
         sys.modules['breezy.plugins.demo_module'] = demo_module
         try:
@@ -536,7 +537,7 @@ class TestHelpIndex(tests.TestCase):
     def test_get_plugin_topic_with_prefix(self):
         """Searching for plugins/demo_module returns help."""
         index = plugin.PluginsHelpIndex()
-        self.assertFalse('breezy.plugins.demo_module' in sys.modules)
+        self.assertNotIn('breezy.plugins.demo_module', sys.modules)
         demo_module = FakeModule('', 'breezy.plugins.demo_module')
         sys.modules['breezy.plugins.demo_module'] = demo_module
         try:

@@ -312,8 +312,8 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           self.fe_key: 1,
                           self.ff_key: 1,
                           }, self.ann._num_needed_children)
-        self.assertTrue(self.fa_key in self.ann._text_cache)
-        self.assertTrue(self.fa_key in self.ann._annotations_cache)
+        self.assertIn(self.fa_key, self.ann._text_cache)
+        self.assertIn(self.fa_key, self.ann._annotations_cache)
         self.ann._record_annotation(self.fc_key, [self.fa_key], [])
         self.ann._record_annotation(
             self.fd_key, [self.fb_key, self.fc_key], [])
@@ -324,12 +324,12 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           self.fe_key: 1,
                           self.ff_key: 1,
                           }, self.ann._num_needed_children)
-        self.assertTrue(self.fa_key in self.ann._text_cache)
-        self.assertTrue(self.fa_key in self.ann._annotations_cache)
-        self.assertFalse(self.fb_key in self.ann._text_cache)
-        self.assertFalse(self.fb_key in self.ann._annotations_cache)
-        self.assertFalse(self.fc_key in self.ann._text_cache)
-        self.assertFalse(self.fc_key in self.ann._annotations_cache)
+        self.assertIn(self.fa_key, self.ann._text_cache)
+        self.assertIn(self.fa_key, self.ann._annotations_cache)
+        self.assertNotIn(self.fb_key, self.ann._text_cache)
+        self.assertNotIn(self.fb_key, self.ann._annotations_cache)
+        self.assertNotIn(self.fc_key, self.ann._text_cache)
+        self.assertNotIn(self.fc_key, self.ann._annotations_cache)
 
     def test_annotate_special_text(self):
         # Things like WT and PreviewTree want to annotate an arbitrary text

@@ -60,8 +60,10 @@ class TestDefaultFormat(TestCaseWithTransport):
     def test_get_set_default_format(self):
         old_format = workingtree.format_registry.get_default()
         # default is 6
-        self.assertTrue(isinstance(
-            old_format, workingtree_4.WorkingTreeFormat6))
+        self.assertIsInstance(
+            old_format,
+            workingtree_4.WorkingTreeFormat6
+        )
         workingtree.format_registry.set_default(SampleTreeFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -89,8 +91,10 @@ class TestDefaultFormat(TestCaseWithTransport):
         format = SampleTreeFormat()
         workingtree.format_registry.register(format)
         self.addCleanup(workingtree.format_registry.remove, format)
-        self.assertTrue(isinstance(
-            old_format, workingtree_4.WorkingTreeFormat6))
+        self.assertIsInstance(
+            old_format,
+            workingtree_4.WorkingTreeFormat6
+        )
         workingtree.format_registry.set_default_key(format.get_format_string())
         try:
             # the default branch format is used by the meta dir format

@@ -196,7 +196,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
-        self.assertFalse(b.id in self.store)
+        self.assertNotIn(b.id, self.store)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
         bb.build_snapshot(None,
@@ -205,10 +205,10 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
                            ])
         bb.finish_series()
         # read locks cache
-        self.assertFalse(b.id in self.store)
+        self.assertNotIn(b.id, self.store)
         self.store.unlock()
         self.store.lock_read()
-        self.assertTrue(b.id in self.store)
+        self.assertIn(b.id, self.store)
 
 
 class TreeToObjectsTests(TestCaseWithTransport):
@@ -304,7 +304,7 @@ class DirectoryToTreeTests(TestCase):
         child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, ".mydummy",
                               allow_empty=False)
-        self.assertTrue(".mydummy" in t)
+        self.assertIn(".mydummy", t)
 
     def test_empty_root(self):
         child_ie = InventoryDirectory(b'bar', 'bar', b'bar')

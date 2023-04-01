@@ -827,7 +827,7 @@ class TestRangeFileSizeReadLimited(tests.TestCase):
         response_data = range_file.read(self.test_data_len)
 
         # verify read size was equal to the maximum read size
-        self.assertTrue(mock_read_file.get_max_read_size() > 0)
+        self.assertGreater(mock_read_file.get_max_read_size(), 0)
         self.assertEqual(mock_read_file.get_max_read_size(),
                          response.RangeFile._max_read_size)
         self.assertEqual(mock_read_file.get_read_count(), 3)
