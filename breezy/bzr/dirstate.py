@@ -4329,18 +4329,20 @@ class ProcessEntryPython:
         return dir_info
 
 
+from ._dirstate_rs import lt_by_dirs
+
 # Try to load the compiled form if possible
 try:
     from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry
     from ._dirstate_helpers_pyx import (_bisect_path_left, _bisect_path_right,
                                         _read_dirblocks, bisect_dirblock,
-                                        lt_by_dirs, pack_stat)
+                                        pack_stat)
     from ._dirstate_helpers_pyx import update_entry as update_entry
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from ._dirstate_helpers_py import (_bisect_path_left, _bisect_path_right,
                                        _read_dirblocks, bisect_dirblock,
-                                       lt_by_dirs, pack_stat)
+                                       pack_stat)
 
     # FIXME: It would be nice to be able to track moved lines so that the
     # corresponding python code can be moved to the _dirstate_helpers_py

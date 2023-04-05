@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-fn lt_by_dirs(path1: &str, path2: &str) -> bool {
+pub fn lt_by_dirs(path1: &str, path2: &str) -> bool {
     let path1_parts = path1.as_bytes().split(|c| *c == b'/').filter(|&part| part != b"");
     let path2_parts = path2.as_bytes().split(|c| *c == b'/').filter(|&part| part != b"");
     let mut path1_parts_iter = path1_parts.into_iter();
