@@ -1710,16 +1710,15 @@ def iter_interesting_nodes(store, interesting_root_keys,
     return iterator.process()
 
 
+from ._chk_map_rs import _search_key_16, _search_key_255, _bytes_to_text_key
+
 try:
-    from ._chk_map_pyx import (_bytes_to_text_key, _deserialise_internal_node,
-                               _deserialise_leaf_node, _search_key_16,
-                               _search_key_255)
+    from ._chk_map_pyx import (_deserialise_internal_node,
+                               _deserialise_leaf_node)
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._chk_map_py import _bytes_to_text_key  # noqa: F401
     from ._chk_map_py import (_deserialise_internal_node,
-                              _deserialise_leaf_node, _search_key_16,
-                              _search_key_255)
+                              _deserialise_leaf_node)
 search_key_registry.register(b'hash-16-way', _search_key_16)
 search_key_registry.register(b'hash-255-way', _search_key_255)
 
