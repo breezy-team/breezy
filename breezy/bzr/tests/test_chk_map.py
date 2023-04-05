@@ -18,7 +18,7 @@
 
 from ... import errors, osutils, tests
 from .. import chk_map, groupcompress
-from ..chk_map import CHKMap, InternalNode, LeafNode, Node, _search_key_16, _search_key_255
+from ..chk_map import CHKMap, InternalNode, LeafNode, Node, _search_key_16, _search_key_255, _bytes_to_text_key
 from ..static_tuple import StaticTuple
 
 stuple = StaticTuple
@@ -2862,4 +2862,41 @@ class TestSearchKeys(tests.TestCase):
         self.assertEqual({b'\n'}, unused_chars)
 
 
+class Test_BytesToTextKey(tests.TestCase):
 
+    def assertBytesToTextKey(self, key, bytes):
+        self.assertEqual(key, _bytes_to_text_key(bytes))
+
+    def assertBytesToTextKeyRaises(self, bytes):
+        # These are invalid bytes, and we want to make sure the code under test
+        # raises an exception rather than segfaults, etc. We don't particularly
+        # care what exception.
+        self.assertRaises(Exception, _bytes_to_text_key, bytes)
+
+    def test_file(self):
+        self.assertBytesToTextKey((b'file-id', b'revision-id'),
+                                  b'file: file-id\nparent-id\nname\nrevision-id\n'
+                                  b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+
+    def test_invalid_no_kind(self):
+        self.assertBytesToTextKeyRaises(
+            b'file  file-id\nparent-id\nname\nrevision-id\n'
+            b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+
+    def test_invalid_no_space(self):
+        self.assertBytesToTextKeyRaises(
+            b'file:file-id\nparent-id\nname\nrevision-id\n'
+            b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+
+    def test_invalid_too_short_file_id(self):
+        self.assertBytesToTextKeyRaises(b'file:file-id')
+
+    def test_invalid_too_short_parent_id(self):
+        self.assertBytesToTextKeyRaises(b'file:file-id\nparent-id')
+
+    def test_invalid_too_short_name(self):
+        self.assertBytesToTextKeyRaises(b'file:file-id\nparent-id\nname')
+
+    def test_dir(self):
+        self.assertBytesToTextKey((b'dir-id', b'revision-id'),
+                                  b'dir: dir-id\nparent-id\nname\nrevision-id')
