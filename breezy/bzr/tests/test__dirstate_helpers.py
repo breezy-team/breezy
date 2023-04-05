@@ -368,15 +368,7 @@ class TestLtByDirs(tests.TestCase):
 
     lt_by_dirs() compares 2 paths by their directory sections, rather than as
     plain strings.
-
-    Child test cases can override ``get_lt_by_dirs`` to test a specific
-    implementation.
     """
-
-    def get_lt_by_dirs(self):
-        """Get a specific implementation of lt_by_dirs."""
-        from .._dirstate_helpers_py import lt_by_dirs
-        return lt_by_dirs
 
     def assertCmpByDirs(self, expected, str1, str2):
         """Compare the two strings, in both directions.
@@ -386,17 +378,16 @@ class TestLtByDirs(tests.TestCase):
         :param str1: string to compare
         :param str2: string to compare
         """
-        lt_by_dirs = self.get_lt_by_dirs()
         if expected == 0:
             self.assertEqual(str1, str2)
-            self.assertFalse(lt_by_dirs(str1, str2))
-            self.assertFalse(lt_by_dirs(str2, str1))
+            self.assertFalse(dirstate.lt_by_dirs(str1, str2))
+            self.assertFalse(dirstate.lt_by_dirs(str2, str1))
         elif expected > 0:
-            self.assertFalse(lt_by_dirs(str1, str2))
-            self.assertTrue(lt_by_dirs(str2, str1))
+            self.assertFalse(dirstate.lt_by_dirs(str1, str2))
+            self.assertTrue(dirstate.lt_by_dirs(str2, str1))
         else:
-            self.assertTrue(lt_by_dirs(str1, str2))
-            self.assertFalse(lt_by_dirs(str2, str1))
+            self.assertTrue(dirstate.lt_by_dirs(str1, str2))
+            self.assertFalse(dirstate.lt_by_dirs(str2, str1))
 
     def test_cmp_empty(self):
         """Compare against the empty string."""
@@ -463,10 +454,8 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, b'ab/cd', b'ab-cd')
 
     def test_cmp_unicode_not_allowed(self):
-        lt_by_dirs = self.get_lt_by_dirs()
-        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', b'str')
-        self.assertRaises(TypeError, lt_by_dirs, b'str', 'Unicode')
-        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', 'Unicode')
+        self.assertRaises(TypeError, dirstate.lt_by_dirs, 'Unicode', b'str')
+        self.assertRaises(TypeError, dirstate.lt_by_dirs, b'str', 'Unicode')
 
     def test_cmp_non_ascii(self):
         self.assertCmpByDirs(-1, b'\xc2\xb5', b'\xc3\xa5')  # u'\xb5', u'\xe5'
@@ -474,16 +463,6 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, b'b', b'\xc2\xb5')  # u'b', u'\xb5'
         self.assertCmpByDirs(-1, b'a/b', b'a/\xc3\xa5')  # u'a/b', u'a/\xe5'
         self.assertCmpByDirs(-1, b'b/a', b'b/\xc2\xb5')  # u'b/a', u'b/\xb5'
-
-
-class TestCompiledLtByDirs(TestLtByDirs):
-    """Test the pyrex implementation of lt_by_dirs"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_lt_by_dirs(self):
-        from .._dirstate_helpers_pyx import lt_by_dirs
-        return lt_by_dirs
 
 
 class TestLtPathByDirblock(tests.TestCase):
@@ -627,49 +606,6 @@ class TestCompiledLtPathByDirblock(TestLtPathByDirblock):
         return _lt_path_by_dirblock
 
 
-class TestMemRChr(tests.TestCase):
-    """Test memrchr functionality"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def assertMemRChr(self, expected, s, c):
-        from .._dirstate_helpers_pyx import _py_memrchr
-        self.assertEqual(expected, _py_memrchr(s, c))
-
-    def test_missing(self):
-        self.assertMemRChr(None, b'', b'a')
-        self.assertMemRChr(None, b'', b'c')
-        self.assertMemRChr(None, b'abcdefghijklm', b'q')
-        self.assertMemRChr(None, b'aaaaaaaaaaaaaaaaaaaaaaa', b'b')
-
-    def test_single_entry(self):
-        self.assertMemRChr(0, b'abcdefghijklm', b'a')
-        self.assertMemRChr(1, b'abcdefghijklm', b'b')
-        self.assertMemRChr(2, b'abcdefghijklm', b'c')
-        self.assertMemRChr(10, b'abcdefghijklm', b'k')
-        self.assertMemRChr(11, b'abcdefghijklm', b'l')
-        self.assertMemRChr(12, b'abcdefghijklm', b'm')
-
-    def test_multiple(self):
-        self.assertMemRChr(10, b'abcdefjklmabcdefghijklm', b'a')
-        self.assertMemRChr(11, b'abcdefjklmabcdefghijklm', b'b')
-        self.assertMemRChr(12, b'abcdefjklmabcdefghijklm', b'c')
-        self.assertMemRChr(20, b'abcdefjklmabcdefghijklm', b'k')
-        self.assertMemRChr(21, b'abcdefjklmabcdefghijklm', b'l')
-        self.assertMemRChr(22, b'abcdefjklmabcdefghijklm', b'm')
-        self.assertMemRChr(22, b'aaaaaaaaaaaaaaaaaaaaaaa', b'a')
-
-    def test_with_nulls(self):
-        self.assertMemRChr(10, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'a')
-        self.assertMemRChr(11, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'b')
-        self.assertMemRChr(12, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'c')
-        self.assertMemRChr(20, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'k')
-        self.assertMemRChr(21, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'l')
-        self.assertMemRChr(22, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'm')
-        self.assertMemRChr(22, b'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', b'a')
-        self.assertMemRChr(9, b'\0\0\0\0\0\0\0\0\0\0', b'\0')
-
-
 class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
     """Test an implementation of _read_dirblocks()
 
@@ -757,10 +693,7 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
         self.assertIs(_bisect_path_right, dirstate._bisect_path_right)
 
     def test_lt_by_dirs(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import lt_by_dirs
-        else:
-            from .._dirstate_helpers_py import lt_by_dirs
+        from .._dirstate_rs import lt_by_dirs
         self.assertIs(lt_by_dirs, dirstate.lt_by_dirs)
 
     def test__read_dirblocks(self):

@@ -224,6 +224,7 @@ site.ENABLE_USER_SITE = "--user" in sys.argv
 
 rust_extensions = [
     RustExtension("breezy.bzr._rio_rs", "crates/rio-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy.bzr._dirstate_rs", "crates/dirstate-py/Cargo.toml", binding=Binding.PyO3),
 ]
 entry_points = {}
 

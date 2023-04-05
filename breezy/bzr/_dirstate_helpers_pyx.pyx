@@ -130,29 +130,6 @@ from ._str_helpers cimport _my_memrchr, safe_string_from_size
 import_static_tuple_c()
 
 
-def _py_memrchr(s, c):
-    """Just to expose _my_memrchr for testing.
-
-    :param s: The Python string to search
-    :param c: The character to search for
-    :return: The offset to the last instance of 'c' in s
-    """
-    cdef void *_s
-    cdef void *found
-    cdef int length
-    cdef char *_c
-
-    assert PyBytes_Size(c) == 1, 'Expected single character string not %r' % c
-    _c = PyBytes_AsString(c)
-    _s = PyBytes_AsString(s)
-    length = PyBytes_Size(s)
-
-    found = _my_memrchr(_s, _c[0], length)
-    if found == NULL:
-        return None
-    return <char*>found - <char*>_s
-
-
 cdef int _is_aligned(void *ptr): # cannot_raise
     """Is this pointer aligned to an integer size offset?
 
