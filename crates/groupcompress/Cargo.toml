@@ -1,0 +1,8 @@
+[package]
+name = "bazaar-groupcompress"
+version = "3.3.3"
+edition = "2018"
+description = "The groupcompress format used by Bazaar"
+license = "GPLv2+"
+
+[lib]

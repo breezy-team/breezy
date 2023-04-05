@@ -2234,14 +2234,12 @@ class _GCGraphIndex:
 GroupCompressor: Type[_CommonGroupCompressor]
 
 
-from ._groupcompress_py import (LinesDeltaIndex, apply_delta,
-                                apply_delta_to_source, decode_base128_int,
-                                decode_copy_instruction, encode_base128_int)
+from ._groupcompress_rs import decode_base128_int, encode_base128_int, decode_copy_instruction, apply_delta, apply_delta_to_source
+
+from ._groupcompress_py import LinesDeltaIndex
 
 try:
-    from ._groupcompress_pyx import (DeltaIndex, apply_delta,  # type: ignore
-                                     apply_delta_to_source, decode_base128_int,
-                                     encode_base128_int)
+    from ._groupcompress_pyx import DeltaIndex
     GroupCompressor = PyrexGroupCompressor
 except ImportError as e:
     osutils.failed_to_load_extension(e)

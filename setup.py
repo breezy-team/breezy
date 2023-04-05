@@ -226,6 +226,7 @@ rust_extensions = [
     RustExtension("breezy.bzr._rio_rs", "crates/rio-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._dirstate_rs", "crates/dirstate-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._chk_map_rs", "crates/chk-map-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy.bzr._groupcompress_rs", "crates/groupcompress-py/Cargo.toml", binding=Binding.PyO3),
 ]
 entry_points = {}
 
