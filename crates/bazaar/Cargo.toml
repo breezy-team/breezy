@@ -1,10 +1,10 @@
 [package]
 name = "bazaar"
 version = "3.3.3"
-authors = ["Martin Packman", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 edition = "2018"
 description = "Rust implementation of the Bazaar formats and protocols"
-license = "GPLv2+"
+license = "GPL-2.0+"
 homepage = "https://www.breezy-vcs.org/"
 
 [lib]
