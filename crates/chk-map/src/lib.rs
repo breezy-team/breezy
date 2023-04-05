@@ -1,5 +1,6 @@
 use crc32fast::Hasher;
 use std::fmt::Write;
+use std::error::Error;
 
 fn _crc32(bit: &[u8]) -> u32 {
     let mut hasher = Hasher::new();
@@ -12,6 +13,7 @@ pub fn search_key_16(key: &[&[u8]]) -> Vec<u8> {
     for bit in key {
         write!(&mut result, "{:08X}\x00", _crc32(bit)).unwrap();
     }
+    result.pop();
     result.as_bytes().to_vec()
 }
 
@@ -23,16 +25,22 @@ pub fn search_key_255(key: &[&[u8]]) -> Vec<u8> {
         result.extend(&crc_bytes);
         result.push(0x00);
     }
+    result.pop();
     result.iter().map(|b| if *b == 0x0A { b'_'} else { *b }).collect()
 }
 
-pub fn bytes_to_text_key(data: &[u8]) -> (&[u8], &[u8]) {
+pub fn bytes_to_text_key(data: &[u8]) -> Result<(&[u8], &[u8]), String> {
     let sections: Vec<&[u8]> = data.split(|&byte| byte == b'\n').collect();
 
-    let first_section: Vec<&[u8]> = sections[0].split(|&byte| byte == b':').collect();
-    let file_id = first_section[1].split(|&byte| !byte.is_ascii_whitespace()).collect::<Vec<&[u8]>>()[0];
+    let delimiter_position = sections[0]
+        .windows(2)
+        .position(|window| window == b": ");
 
-    let rev_id = sections[3];
+    if delimiter_position.is_none() {
+        return Err("Invalid key file".to_string());
+    }
 
-    (file_id, rev_id)
+    let (_kind, file_id) = sections[0].split_at(delimiter_position.unwrap() + 2);
+
+    Ok((file_id, sections[3]))
 }
