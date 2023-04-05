@@ -113,7 +113,7 @@ class ContentFilterContext:
         return self._revision
 
 
-def filtered_input_file(f, filters):
+def filtered_input_file(f, filters) -> tuple[BytesIO, int]:
     """Get an input file that converts external to internal content.
 
     Args:
