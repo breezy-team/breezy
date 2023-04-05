@@ -52,62 +52,6 @@ cdef object _unknown
 _unknown = None
 
 
-def _search_key_16(key):
-    """See chk_map._search_key_16."""
-    cdef Py_ssize_t num_bits
-    cdef Py_ssize_t i, j
-    cdef Py_ssize_t num_out_bytes
-    cdef unsigned long crc_val
-    cdef Py_ssize_t out_off
-    cdef char *c_out
-
-    num_bits = len(key)
-    # 4 bytes per crc32, and another 1 byte between bits
-    num_out_bytes = (9 * num_bits) - 1
-    out = PyBytes_FromStringAndSize(NULL, num_out_bytes)
-    c_out = PyBytes_AS_STRING(out)
-    for i from 0 <= i < num_bits:
-        if i > 0:
-            c_out[0] = c'\x00'
-            c_out = c_out + 1
-        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i])) & 0xFFFFFFFFUL
-        # Hex(val) order
-        sprintf(c_out, '%08lX', crc_val)
-        c_out = c_out + 8
-    return out
-
-
-def _search_key_255(key):
-    """See chk_map._search_key_255."""
-    cdef Py_ssize_t num_bits
-    cdef Py_ssize_t i, j
-    cdef Py_ssize_t num_out_bytes
-    cdef unsigned long crc_val
-    cdef Py_ssize_t out_off
-    cdef char *c_out
-
-    num_bits = len(key)
-    # 4 bytes per crc32, and another 1 byte between bits
-    num_out_bytes = (5 * num_bits) - 1
-    out = PyBytes_FromStringAndSize(NULL, num_out_bytes)
-    c_out = PyBytes_AS_STRING(out)
-    for i from 0 <= i < num_bits:
-        if i > 0:
-            c_out[0] = c'\x00'
-            c_out = c_out + 1
-        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
-        # MSB order
-        c_out[0] = (crc_val >> 24) & 0xFF
-        c_out[1] = (crc_val >> 16) & 0xFF
-        c_out[2] = (crc_val >> 8) & 0xFF
-        c_out[3] = (crc_val >> 0) & 0xFF
-        for j from 0 <= j < 4:
-            if c_out[j] == c'\n':
-                c_out[j] = c'_'
-        c_out = c_out + 4
-    return out
-
-
 cdef int _get_int_from_line(char **cur, char *end, char *message) except -1:
     """Read a positive integer from the data stream.
 

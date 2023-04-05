@@ -1,0 +1,11 @@
+[package]
+name = "bazaar-chk-map"
+version = "3.3.3"
+edition = "2018"
+description = "The chk_map format used by Bazaar"
+license = "GPLv2+"
+
+[lib]
+
+[dependencies]
+crc32fast = "1.2.0"

@@ -16,44 +16,11 @@
 
 """Python implementation of _search_key functions, etc."""
 
-import struct
-import zlib
-
 from .static_tuple import StaticTuple
 
 _LeafNode = None
 _InternalNode = None
 _unknown = None
-
-
-def _crc32(bit):
-    # Depending on python version and platform, zlib.crc32 will return either a
-    # signed (<= 2.5 >= 3.0) or an unsigned (2.5, 2.6).
-    # http://docs.python.org/library/zlib.html recommends using a mask to force
-    # an unsigned value to ensure the same numeric value (unsigned) is obtained
-    # across all python versions and platforms.
-    # Note: However, on 32-bit platforms this causes an upcast to PyLong, which
-    #       are generally slower than PyInts. However, if performance becomes
-    #       critical, we should probably write the whole thing as an extension
-    #       anyway.
-    #       Though we really don't need that 32nd bit of accuracy. (even 2**24
-    #       is probably enough node fan out for realistic trees.)
-    return zlib.crc32(bit) & 0xFFFFFFFF
-
-
-def _search_key_16(key):
-    """Map the key tuple into a search key string which has 16-way fan out."""
-    return b'\x00'.join([b'%08X' % _crc32(bit) for bit in key])
-
-
-def _search_key_255(key):
-    """Map the key tuple into a search key string which has 255-way fan out.
-
-    We use 255-way because '\n' is used as a delimiter, and causes problems
-    while parsing.
-    """
-    data = b'\x00'.join([struct.pack('>L', _crc32(bit)) for bit in key])
-    return data.replace(b'\n', b'_')
 
 
 def _deserialise_leaf_node(data, key, search_key_func=None):
