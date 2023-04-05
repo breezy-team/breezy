@@ -21,7 +21,7 @@ import sys
 from ... import tests
 from ...tests import features
 from ...tests.scenarios import load_tests_apply_scenarios
-from .. import _groupcompress_py
+from .. import _groupcompress_py, _groupcompress_rs
 
 
 def module_scenarios():
@@ -37,18 +37,12 @@ def module_scenarios():
 
 def two_way_scenarios():
     scenarios = [
-        ('PP', {'make_delta': _groupcompress_py.make_delta,
-                'apply_delta': _groupcompress_py.apply_delta})
+        ('PR', {'make_delta': _groupcompress_py.make_delta})
         ]
     if compiled_groupcompress_feature.available():
         gc_module = compiled_groupcompress_feature.module
         scenarios.extend([
-            ('CC', {'make_delta': gc_module.make_delta,
-                    'apply_delta': gc_module.apply_delta}),
-            ('PC', {'make_delta': _groupcompress_py.make_delta,
-                    'apply_delta': gc_module.apply_delta}),
-            ('CP', {'make_delta': gc_module.make_delta,
-                    'apply_delta': _groupcompress_py.apply_delta}),
+            ('CR', {'make_delta': gc_module.make_delta})
             ])
     return scenarios
 
@@ -125,8 +119,8 @@ class TestMakeAndApplyDelta(tests.TestCase):
     def setUp(self):
         super().setUp()
         self.make_delta = self._gc_module.make_delta
-        self.apply_delta = self._gc_module.apply_delta
-        self.apply_delta_to_source = self._gc_module.apply_delta_to_source
+        self.apply_delta = _groupcompress_rs.apply_delta
+        self.apply_delta_to_source = _groupcompress_rs.apply_delta_to_source
 
     def test_make_delta_is_typesafe(self):
         self.make_delta(b'a string', b'another string')
@@ -233,7 +227,7 @@ class TestMakeAndApplyCompatible(tests.TestCase):
     scenarios = two_way_scenarios()
 
     make_delta = None  # Set by load_tests
-    apply_delta = None  # Set by load_tests
+    apply_delta = _groupcompress_rs.apply_delta
 
     def assertMakeAndApply(self, source, target):
         """Assert that generating a delta and applying gives success."""
@@ -461,7 +455,7 @@ class TestCopyInstruction(tests.TestCase):
     def assertDecode(self, exp_offset, exp_length, exp_newpos, data, pos):
         cmd = data[pos]
         pos += 1
-        out = _groupcompress_py.decode_copy_instruction(data, cmd, pos)
+        out = _groupcompress_rs.decode_copy_instruction(data, cmd, pos)
         self.assertEqual((exp_offset, exp_length, exp_newpos), out)
 
     def test_encode_no_length(self):
@@ -542,41 +536,3 @@ class TestCopyInstruction(tests.TestCase):
         self.assertDecode(1, 1, 6, b'abc\x91\x01\x01def', 3)
         self.assertDecode(9, 10, 5, b'ab\x91\x09\x0ade', 2)
         self.assertDecode(254, 255, 6, b'not\x91\xfe\xffcopy', 3)
-
-
-class TestBase128Int(tests.TestCase):
-
-    scenarios = module_scenarios()
-
-    _gc_module = None  # Set by load_tests
-
-    def assertEqualEncode(self, bytes, val):
-        self.assertEqual(bytes, self._gc_module.encode_base128_int(val))
-
-    def assertEqualDecode(self, val, num_decode, bytes):
-        self.assertEqual((val, num_decode),
-                         self._gc_module.decode_base128_int(bytes))
-
-    def test_encode(self):
-        self.assertEqualEncode(b'\x01', 1)
-        self.assertEqualEncode(b'\x02', 2)
-        self.assertEqualEncode(b'\x7f', 127)
-        self.assertEqualEncode(b'\x80\x01', 128)
-        self.assertEqualEncode(b'\xff\x01', 255)
-        self.assertEqualEncode(b'\x80\x02', 256)
-        self.assertEqualEncode(b'\xff\xff\xff\xff\x0f', 0xFFFFFFFF)
-
-    def test_decode(self):
-        self.assertEqualDecode(1, 1, b'\x01')
-        self.assertEqualDecode(2, 1, b'\x02')
-        self.assertEqualDecode(127, 1, b'\x7f')
-        self.assertEqualDecode(128, 2, b'\x80\x01')
-        self.assertEqualDecode(255, 2, b'\xff\x01')
-        self.assertEqualDecode(256, 2, b'\x80\x02')
-        self.assertEqualDecode(0xFFFFFFFF, 5, b'\xff\xff\xff\xff\x0f')
-
-    def test_decode_with_trailing_bytes(self):
-        self.assertEqualDecode(1, 1, b'\x01abcdef')
-        self.assertEqualDecode(127, 1, b'\x7f\x01')
-        self.assertEqualDecode(128, 2, b'\x80\x01abcdef')
-        self.assertEqualDecode(255, 2, b'\xff\x01\xff')
