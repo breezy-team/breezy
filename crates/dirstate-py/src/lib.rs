@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use pyo3::types::{PyBytes,PyUnicode};
+use std::path::Path;
 
 use bazaar_dirstate;
 
@@ -31,7 +32,7 @@ fn lt_by_dirs(path1: &PyAny, path2: &PyAny) -> PyResult<bool> {
     } else {
         return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("path1 and path2 must be either bytes or str"));
     }
-    Ok(bazaar_dirstate::lt_by_dirs(&pathstr1, &pathstr2))
+    Ok(bazaar_dirstate::lt_by_dirs(Path::new(&pathstr1), Path::new(&pathstr2)))
 }
 
 /// Helpers for the dirstate module.
