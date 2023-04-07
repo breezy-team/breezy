@@ -3,6 +3,9 @@ name = "bazaar-groupcompress"
 version = "3.3.3"
 edition = "2018"
 description = "The groupcompress format used by Bazaar"
-license = "GPLv2+"
+license = "GPL-2.0+"
+homepage = "https://www.breezy-vcs.org/"
+documentation = "https://www.breezy-vcs.org/doc/"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 
 [lib]

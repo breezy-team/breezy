@@ -3982,7 +3982,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_branch',
         'breezy.tests.test_branchbuilder',
         'breezy.tests.test_bugtracker',
-        'breezy.tests.test__chunks_to_lines',
         'breezy.tests.test_cache_utf8',
         'breezy.tests.test_chunk_writer',
         'breezy.tests.test_clean_tree',

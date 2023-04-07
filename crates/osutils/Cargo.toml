@@ -1,0 +1,11 @@
+[package]
+name = "breezy-osutils"
+version = "3.3.3"
+edition = "2018"
+description = "Low level OS wrappers for Breezy"
+license = "GPL-2.0+"
+
+[lib]
+
+[dependencies]
+memchr = "2.3.3"

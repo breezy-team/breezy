@@ -1,6 +1,5 @@
 use crc32fast::Hasher;
 use std::fmt::Write;
-use std::error::Error;
 
 fn _crc32(bit: &[u8]) -> u32 {
     let mut hasher = Hasher::new();

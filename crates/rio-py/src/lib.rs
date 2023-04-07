@@ -1,7 +1,5 @@
 use pyo3::prelude::*;
 
-use bazaar_rio::rio::valid_tag;
-
 #[pyfunction]
 fn _valid_tag(tag: &str) -> bool {
     return bazaar_rio::rio::valid_tag(tag);

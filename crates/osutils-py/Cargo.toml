@@ -1,0 +1,12 @@
+[package]
+name = "osutils-py"
+version = "3.3.3"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.14", features = ["extension-module"]}
+breezy-osutils = { path = "../osutils" }
+memchr = "2.3.4"
