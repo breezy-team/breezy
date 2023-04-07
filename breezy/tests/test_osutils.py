@@ -1029,14 +1029,7 @@ class TestChunksToLines(tests.TestCase):
                          osutils.chunks_to_lines([b'foo\nbar', b'\nbaz\n']))
         self.assertEqual([b'foo\n', b'bar\n', b'baz\n'],
                          osutils.chunks_to_lines([b'foo\n', b'bar\n', b'baz\n']))
-
-    def test_osutils_binding(self):
-        from . import test__chunks_to_lines
-        if test__chunks_to_lines.compiled_chunkstolines_feature.available():
-            from .._chunks_to_lines_pyx import chunks_to_lines
-        else:
-            from .._chunks_to_lines_py import chunks_to_lines
-        self.assertIs(chunks_to_lines, osutils.chunks_to_lines)
+        self.assertRaises(TypeError, osutils.chunks_to_lines, ['foo\n'])
 
 
 class TestSplitLines(tests.TestCase):

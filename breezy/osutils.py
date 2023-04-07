@@ -1029,11 +1029,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-try:
-    from ._chunks_to_lines_pyx import chunks_to_lines
-except ImportError as e:
-    failed_to_load_extension(e)
-    from ._chunks_to_lines_py import chunks_to_lines
+from ._osutils_rs import chunks_to_lines
 
 
 def split_lines(s):
