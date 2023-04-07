@@ -7,11 +7,11 @@ fn assert_chunks_to_lines(input: Vec<&str>, expected: Vec<&str>) {
 
 #[test]
 fn test_chunks_to_lines() {
-    assert_chunks_to_lines(vec![""], vec![""]);
     assert_chunks_to_lines(vec!["a"], vec!["a"]);
     assert_chunks_to_lines(vec!["a\n"], vec!["a\n"]);
     assert_chunks_to_lines(vec!["a\nb\n"], vec!["a\n", "b\n"]);
     assert_chunks_to_lines(vec!["a\n", "b\n"], vec!["a\n", "b\n"]);
     assert_chunks_to_lines(vec!["a", "\n", "b", "\n"], vec!["a\n", "b\n"]);
     assert_chunks_to_lines(vec!["a", "a", "\n", "b", "\n"], vec!["aa\n", "b\n"]);
+    assert_chunks_to_lines(vec![""], vec![]);
 }
