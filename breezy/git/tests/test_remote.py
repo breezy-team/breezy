@@ -770,7 +770,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         remote.open_branch().tags.set_tag(
-            b'blah', default_mapping.revision_id_foreign_to_bzr(c1))
+            'blah', default_mapping.revision_id_foreign_to_bzr(c1))
         self.assertEqual(
             self.remote_real.get_refs(),
             {b'refs/heads/master': self.remote_real.head(),
