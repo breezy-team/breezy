@@ -63,7 +63,7 @@ class GitBlobContentFactory:
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind == 'lines':
-            return iter(osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks()))
+            return osutils.chunks_to_lines_iter(iter(self.store[self.blob_id].as_raw_chunks()))
         elif storage_kind == 'chunked':
             return iter(self.store[self.blob_id].as_raw_chunks())
         raise UnavailableRepresentation(self.key, storage_kind,

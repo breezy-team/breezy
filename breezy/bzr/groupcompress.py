@@ -484,7 +484,7 @@ class _LazyGroupCompressFactory:
         if storage_kind == 'chunked':
             return iter(self._chunks)
         elif storage_kind == 'lines':
-            return iter(osutils.chunks_to_lines(self._chunks))
+            return osutils.chunks_to_lines_iter(iter(self._chunks))
         raise UnavailableRepresentation(self.key, storage_kind,
                                         self.storage_kind)
 
