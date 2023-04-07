@@ -1029,7 +1029,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import chunks_to_lines
+from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter
 
 
 def split_lines(s):

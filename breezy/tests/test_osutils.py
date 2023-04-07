@@ -1027,8 +1027,10 @@ class TestChunksToLines(tests.TestCase):
     def assertChunksToLines(self, lines, chunks, already_lines=False):
         result = osutils.chunks_to_lines(chunks)
         self.assertEqual(list(lines), result)
-        # if already_lines:
-        #    self.assertIs(chunks, result)
+        if already_lines:
+            self.assertEqual(len(chunks), len(result))
+            for a, b in zip(chunks, result):
+                self.assertIs(a, b)
 
     def test_fulltext_chunk_to_lines(self):
         self.assertChunksToLines(
@@ -1040,7 +1042,7 @@ class TestChunksToLines(tests.TestCase):
             [b'foo\n', b'bar\n', b'\n', b'baz\n', b'\n', b'\n'],
             [b'foo\nbar\n\nbaz\n\n\n'])
         self.assertChunksToLines(
-            [b'foobarbaz'], [b'foobarbaz'], already_lines=True)
+            [b'foobarbaz'], [b'foobarbaz'])
         self.assertChunksToLines([b'foobarbaz'], [b'foo', b'bar', b'baz'])
 
     def test_newlines(self):
@@ -1061,14 +1063,11 @@ class TestChunksToLines(tests.TestCase):
         self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
                                  [b'foo\nbar\r\nba\rz'])
         self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
-                                 [b'foo\n', b'bar\r\n', b'ba\rz'],
-                                 already_lines=True)
+                                 [b'foo\n', b'bar\r\n', b'ba\rz'])
         self.assertChunksToLines((b'foo\n', b'bar\r\n', b'ba\rz'),
-                                 (b'foo\n', b'bar\r\n', b'ba\rz'),
-                                 already_lines=True)
+                                 (b'foo\n', b'bar\r\n', b'ba\rz'))
         self.assertChunksToLines([], [], already_lines=True)
-        self.assertChunksToLines([b'foobarbaz'], [b'foobarbaz'],
-                                 already_lines=True)
+        self.assertChunksToLines([b'foobarbaz'], [b'foobarbaz'])
         self.assertChunksToLines([], [b''])
 
     def test_mixed(self):
@@ -1094,6 +1093,17 @@ class TestChunksToLines(tests.TestCase):
                           [object()])
         self.assertRaises(TypeError, osutils.chunks_to_lines,
                           [b'foo', object()])
+
+
+class TestChunksToLinesIter(tests.TestCase):
+
+    def assertChunksToLines(self, lines, chunks, already_lines=False):
+        result = list(osutils.chunks_to_lines_iter(chunks))
+        self.assertEqual(list(lines), result)
+        if already_lines:
+            self.assertEqual(len(chunks), len(result))
+            for a, b in zip(chunks, result):
+                self.assertIs(a, b)
 
 
 class TestSplitLines(tests.TestCase):
