@@ -1,7 +1,9 @@
 use crate::chunks_to_lines;
 
 fn assert_chunks_to_lines(input: Vec<&str>, expected: Vec<&str>) {
-    let got = chunks_to_lines(input.iter().map(|l| l.as_bytes())).map(|l| String::from_utf8(l)).collect::<Result<Vec<_>, _>>().unwrap();
+    let iter = input.iter().map(|l| Ok::<&[u8], String>(l.as_bytes()));
+    let got = chunks_to_lines(iter);
+    let got = got.map(|l| String::from_utf8(l.unwrap())).collect::<Result<Vec<_>, _>>().unwrap();
     assert_eq!(got, expected);
 }
 

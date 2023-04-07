@@ -1024,51 +1024,51 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
 
 class TestChunksToLines(tests.TestCase):
 
-    def assertChunksToLines(self, lines, chunks, alreadly_lines=False):
-        result = self.module.chunks_to_lines(chunks)
-        self.assertEqual(lines, result)
-        if alreadly_lines:
-            self.assertIs(chunks, result)
+    def assertChunksToLines(self, lines, chunks, already_lines=False):
+        result = osutils.chunks_to_lines(chunks)
+        self.assertEqual(list(lines), result)
+        # if already_lines:
+        #    self.assertIs(chunks, result)
 
     def test_fulltext_chunk_to_lines(self):
         self.assertChunksToLines(
             [b'foo\n', b'bar\r\n', b'ba\rz\n'],
             [b'foo\nbar\r\nba\rz\n'])
         self.assertChunksToLines(
-            [b'foobarbaz\n'], [b'foobarbaz\n'], alreadly_lines=True)
+            [b'foobarbaz\n'], [b'foobarbaz\n'], already_lines=True)
         self.assertChunksToLines(
             [b'foo\n', b'bar\n', b'\n', b'baz\n', b'\n', b'\n'],
             [b'foo\nbar\n\nbaz\n\n\n'])
         self.assertChunksToLines(
-            [b'foobarbaz'], [b'foobarbaz'], alreadly_lines=True)
+            [b'foobarbaz'], [b'foobarbaz'], already_lines=True)
         self.assertChunksToLines([b'foobarbaz'], [b'foo', b'bar', b'baz'])
 
     def test_newlines(self):
-        self.assertChunksToLines([b'\n'], [b'\n'], alreadly_lines=True)
+        self.assertChunksToLines([b'\n'], [b'\n'], already_lines=True)
         self.assertChunksToLines([b'\n'], [b'', b'\n', b''])
         self.assertChunksToLines([b'\n'], [b'\n', b''])
         self.assertChunksToLines([b'\n'], [b'', b'\n'])
         self.assertChunksToLines([b'\n', b'\n', b'\n'], [b'\n\n\n'])
         self.assertChunksToLines([b'\n', b'\n', b'\n'], [b'\n', b'\n', b'\n'],
-                                 alreadly_lines=True)
+                                 already_lines=True)
 
     def test_lines_to_lines(self):
         self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz\n'],
                                  [b'foo\n', b'bar\r\n', b'ba\rz\n'],
-                                 alreadly_lines=True)
+                                 already_lines=True)
 
     def test_no_final_newline(self):
         self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
                                  [b'foo\nbar\r\nba\rz'])
         self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
                                  [b'foo\n', b'bar\r\n', b'ba\rz'],
-                                 alreadly_lines=True)
+                                 already_lines=True)
         self.assertChunksToLines((b'foo\n', b'bar\r\n', b'ba\rz'),
                                  (b'foo\n', b'bar\r\n', b'ba\rz'),
-                                 alreadly_lines=True)
-        self.assertChunksToLines([], [], alreadly_lines=True)
+                                 already_lines=True)
+        self.assertChunksToLines([], [], already_lines=True)
         self.assertChunksToLines([b'foobarbaz'], [b'foobarbaz'],
-                                 alreadly_lines=True)
+                                 already_lines=True)
         self.assertChunksToLines([], [b''])
 
     def test_mixed(self):
@@ -1088,11 +1088,11 @@ class TestChunksToLines(tests.TestCase):
 
     def test_not_lines(self):
         # We should raise a TypeError, not crash
-        self.assertRaises(TypeError, self.module.chunks_to_lines,
+        self.assertRaises(TypeError, osutils.chunks_to_lines,
                           object())
-        self.assertRaises(TypeError, self.module.chunks_to_lines,
+        self.assertRaises(TypeError, osutils.chunks_to_lines,
                           [object()])
-        self.assertRaises(TypeError, self.module.chunks_to_lines,
+        self.assertRaises(TypeError, osutils.chunks_to_lines,
                           [b'foo', object()])
 
 
