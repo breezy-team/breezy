@@ -16,6 +16,7 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+import hashlib
 import os
 import threading
 
@@ -823,7 +824,7 @@ class IndexGitShaMap(GitShaMap):
         if self._builder is not None:
             raise bzr_errors.BzrError('builder already open')
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
-        self._name = osutils.sha()
+        self._name = hashlib.sha1()
 
     def commit_write_group(self):
         if self._builder is None:

@@ -9,3 +9,5 @@ license = "GPL-2.0+"
 
 [dependencies]
 memchr = "2.3.3"
+walkdir = "2"
+sha1 = "0.10.1"
