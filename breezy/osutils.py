@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from functools import partial
-from typing import Dict, List
+from typing import Dict, List, Iterable
 
 from .lazy_import import lazy_import
 
@@ -1005,13 +1005,12 @@ def split_lines(s):
         return _split_lines(s)
 
 
-def _split_lines(s):
+def _split_lines(s: Iterable[bytes]) -> List[bytes]:
     """Split s into lines, but without removing the newline characters.
 
     This supports Unicode or plain string objects.
     """
-    nl = b'\n' if isinstance(s, bytes) else '\n'
-    lines = s.split(nl)
+    lines = s.split(b'\n')
     result = [line + nl for line in lines[:-1]]
     if lines[-1]:
         result.append(lines[-1])
@@ -1040,6 +1039,16 @@ def delete_any(path):
 
     Will delete even if readonly.
     """
+    def _delete_file_or_dir(path):
+        # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+        # Forgiveness than Permission (EAFP) because:
+        # - root can damage a solaris file system by using unlink,
+        # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+        #   EACCES, OSX: EPERM) when invoked on a directory.
+        if isdir(path):  # Takes care of symlinks
+            os.rmdir(path)
+        else:
+            os.unlink(path)
     try:
         _delete_file_or_dir(path)
     except OSError as e:
@@ -1052,18 +1061,6 @@ def delete_any(path):
             _delete_file_or_dir(path)
         else:
             raise
-
-
-def _delete_file_or_dir(path):
-    # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-    # Forgiveness than Permission (EAFP) because:
-    # - root can damage a solaris file system by using unlink,
-    # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-    #   EACCES, OSX: EPERM) when invoked on a directory.
-    if isdir(path):  # Takes care of symlinks
-        os.rmdir(path)
-    else:
-        os.unlink(path)
 
 
 def supports_hardlinks(path):
