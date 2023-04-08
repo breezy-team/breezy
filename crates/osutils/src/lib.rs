@@ -55,5 +55,7 @@ where
     })
 }
 
+pub mod sha;
+
 #[cfg(test)]
 mod tests;

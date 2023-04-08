@@ -15,11 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import base64
+import hashlib
 import re
 from io import BytesIO
 from urllib.request import parse_http_list, parse_keqv_list
 
-from .. import errors, osutils, tests, transport
+from .. import errors, tests, transport
 from ..bzr.smart import medium
 from ..transport import chroot
 from . import http_server
@@ -458,7 +459,7 @@ class DigestAuthServer(AuthServer):
         A2 = ('{}:{}'.format(command, auth['uri'])).encode('utf-8')
 
         def H(x):
-            return osutils.md5(x).hexdigest()
+            return hashlib.md5(x).hexdigest()
 
         def KD(secret, data):
             return H(("{}:{}".format(secret, data)).encode('utf-8'))

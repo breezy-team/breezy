@@ -1,5 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
+use std::path::PathBuf;
+use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
 use pyo3::exceptions::PyTypeError;
 use std::iter::Iterator;
@@ -102,9 +104,54 @@ fn chunks_to_lines_iter(chunk_iter: PyObject) -> PyResult<PyObject> {
     })
 }
 
+#[pyfunction]
+fn sha_file_by_name(object: &PyAny) -> PyResult<String> {
+    let pathbuf: PathBuf;
+    // Convert object to PathBuf, allowing it to either be PyString or PyBytes
+    if let Ok(path) = object.extract::<Vec<u8>>() {
+        pathbuf = PathBuf::from(String::from_utf8(path).unwrap());
+    } else if let Ok(path) = object.extract::<PathBuf>() {
+        pathbuf = path;
+    } else {
+        return Err(PyTypeError::new_err("path must be a string or bytes"));
+    }
+    let digest = breezy_osutils::sha::sha_file_by_name(pathbuf.as_path()).map_err(PyErr::from)?;
+    Ok(digest)
+}
+
+#[pyfunction]
+fn sha_string(string: &[u8]) -> PyResult<String> {
+    Ok(breezy_osutils::sha::sha_string(string))
+}
+
+#[pyfunction]
+fn sha_strings(strings: &PyAny) -> PyResult<String> {
+    let iter = strings.iter()?;
+    Ok(breezy_osutils::sha::sha_strings(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
+}
+
+#[pyfunction]
+fn sha_file(file: PyObject) -> PyResult<String> {
+    let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+    let digest = breezy_osutils::sha::sha_file(&mut file).map_err(PyErr::from)?;
+    Ok(digest)
+}
+
+#[pyfunction]
+fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
+    let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+    let (size, digest) = breezy_osutils::sha::size_sha_file(&mut file).map_err(PyErr::from)?;
+    Ok((size, digest))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines_iter))?;
+    m.add_wrapped(wrap_pyfunction!(sha_file_by_name))?;
+    m.add_wrapped(wrap_pyfunction!(sha_string))?;
+    m.add_wrapped(wrap_pyfunction!(sha_strings))?;
+    m.add_wrapped(wrap_pyfunction!(sha_file))?;
+    m.add_wrapped(wrap_pyfunction!(size_sha_file))?;
     Ok(())
 }

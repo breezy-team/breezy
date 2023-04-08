@@ -47,12 +47,9 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from hashlib import md5
-from hashlib import sha1 as sha
-
 import breezy
 
-from . import errors
+from . import errors, _osutils_rs
 
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
@@ -650,25 +647,12 @@ def file_iterator(input_file, readsize=32768):
         yield b
 
 
-# GZ 2017-09-16: Makes sense in general for hexdigest() result to be text, but
-# used as bytes through most interfaces so encode with this wrapper.
-def _hexdigest(hashobj):
-    return hashobj.hexdigest().encode()
-
-
 def sha_file(f):
     """Calculate the hexdigest of an open file.
 
     The file cursor should be already at the start.
     """
-    s = sha()
-    BUFSIZE = 128 << 10
-    while True:
-        b = f.read(BUFSIZE)
-        if not b:
-            break
-        s.update(b)
-    return _hexdigest(s)
+    return _osutils_rs.sha_file(f).encode('ascii')
 
 
 def size_sha_file(f):
@@ -677,49 +661,27 @@ def size_sha_file(f):
     The file cursor should be already at the start and
     the caller is responsible for closing the file afterwards.
     """
-    size = 0
-    s = sha()
-    BUFSIZE = 128 << 10
-    while True:
-        b = f.read(BUFSIZE)
-        if not b:
-            break
-        size += len(b)
-        s.update(b)
-    return size, _hexdigest(s)
+    (size, sha) = _osutils_rs.size_sha_file(f)
+    return (size, sha.encode('utf-8'))
 
 
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
-    s = sha()
-    f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
-    try:
-        while True:
-            b = os.read(f, 1 << 16)
-            if not b:
-                return _hexdigest(s)
-            s.update(b)
-    finally:
-        os.close(f)
+    return _osutils_rs.sha_file_by_name(fname).encode('utf-8')
 
 
-def sha_strings(strings, _factory=sha):
+def sha_strings(strings):
     """Return the sha-1 of concatenation of strings"""
-    s = _factory()
-    for string in strings:
-        s.update(string)
-    return _hexdigest(s)
+    return _osutils_rs.sha_strings(strings).encode('utf-8')
 
 
-def sha_string(f, _factory=sha):
-    # GZ 2017-09-16: Dodgy if factory is ever not sha, probably shouldn't be.
-    return _hexdigest(_factory(f))
+def sha_string(string):
+    return _osutils_rs.sha_string(string).encode('utf-8')
 
 
 def fingerprint_file(f):
-    b = f.read()
-    return {'size': len(b),
-            'sha1': _hexdigest(sha(b))}
+    (size, sha) = size_sha_file(f)
+    return {'size': size, 'sha1': sha}
 
 
 def compare_files(a, b):

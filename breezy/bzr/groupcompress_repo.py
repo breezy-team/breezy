@@ -16,6 +16,7 @@
 
 """Repository formats using CHK inventories and groupcompress compression."""
 
+import hashlib
 import time
 
 from .. import controldir, debug, errors, osutils
@@ -87,7 +88,7 @@ class GCPack(NewPack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = osutils.md5()
+        self._hash = hashlib.md5()
         # a four-tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
