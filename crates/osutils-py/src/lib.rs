@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
 use pyo3::exceptions::PyTypeError;
@@ -108,8 +108,8 @@ fn chunks_to_lines_iter(chunk_iter: PyObject) -> PyResult<PyObject> {
 fn sha_file_by_name(object: &PyAny) -> PyResult<String> {
     let pathbuf: PathBuf;
     // Convert object to PathBuf, allowing it to either be PyString or PyBytes
-    if let Ok(path) = object.extract::<&PyBytes>() {
-        pathbuf = PathBuf::from(path.to_string());
+    if let Ok(path) = object.extract::<Vec<u8>>() {
+        pathbuf = PathBuf::from(String::from_utf8(path).unwrap());
     } else if let Ok(path) = object.extract::<PathBuf>() {
         pathbuf = path;
     } else {
