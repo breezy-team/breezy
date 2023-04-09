@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from functools import partial
-from typing import Dict, List
+from typing import Dict, List, Iterable
 
 from .lazy_import import lazy_import
 
@@ -1040,6 +1040,16 @@ def delete_any(path):
 
     Will delete even if readonly.
     """
+    def _delete_file_or_dir(path):
+        # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+        # Forgiveness than Permission (EAFP) because:
+        # - root can damage a solaris file system by using unlink,
+        # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+        #   EACCES, OSX: EPERM) when invoked on a directory.
+        if isdir(path):  # Takes care of symlinks
+            os.rmdir(path)
+        else:
+            os.unlink(path)
     try:
         _delete_file_or_dir(path)
     except OSError as e:
@@ -1052,18 +1062,6 @@ def delete_any(path):
             _delete_file_or_dir(path)
         else:
             raise
-
-
-def _delete_file_or_dir(path):
-    # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-    # Forgiveness than Permission (EAFP) because:
-    # - root can damage a solaris file system by using unlink,
-    # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-    #   EACCES, OSX: EPERM) when invoked on a directory.
-    if isdir(path):  # Takes care of symlinks
-        os.rmdir(path)
-    else:
-        os.unlink(path)
 
 
 def supports_hardlinks(path):
