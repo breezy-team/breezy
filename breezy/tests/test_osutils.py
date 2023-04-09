@@ -1108,11 +1108,11 @@ class TestChunksToLinesIter(tests.TestCase):
 
 class TestSplitLines(tests.TestCase):
 
-    def test_split_unicode(self):
-        self.assertEqual(['foo\n', 'bar\xae'],
-                         osutils.split_lines('foo\nbar\xae'))
-        self.assertEqual(['foo\n', 'bar\xae\n'],
-                         osutils.split_lines('foo\nbar\xae\n'))
+    def test_split(self):
+        self.assertEqual([b'foo\n', b'bar\xae'],
+                         osutils.split_lines(b'foo\nbar\xae'))
+        self.assertEqual([b'foo\n', b'bar\xae\n'],
+                         osutils.split_lines(b'foo\nbar\xae\n'))
 
     def test_split_with_carriage_returns(self):
         self.assertEqual([b'foo\rbar\n'],
