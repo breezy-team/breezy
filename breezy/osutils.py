@@ -1002,20 +1002,7 @@ def split_lines(s):
         # chunks_to_lines only supports 8-bit strings
         return chunks_to_lines([s])
     else:
-        return _split_lines(s)
-
-
-def _split_lines(s):
-    """Split s into lines, but without removing the newline characters.
-
-    This supports Unicode or plain string objects.
-    """
-    nl = b'\n' if isinstance(s, bytes) else '\n'
-    lines = s.split(nl)
-    result = [line + nl for line in lines[:-1]]
-    if lines[-1]:
-        result.append(lines[-1])
-    return result
+        return chunks_to_lines(s)
 
 
 def hardlinks_good():
