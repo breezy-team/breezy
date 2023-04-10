@@ -1,8 +1,10 @@
+use base64;
 use std::cmp::Ordering;
 use std::path::Path;
 use breezy_osutils::sha::{sha_file_by_name,sha_file};
 use std::fs::File;
 use std::fs::Metadata;
+use std::os::unix::fs::MetadataExt;
 
 pub trait SHA1Provider : Send + Sync {
     fn sha1(&self, path: &Path) -> std::io::Result<String>;
@@ -93,4 +95,55 @@ pub fn bisect_path_right(paths: &[&Path], path: &Path) -> usize {
         }
     }
     lo
+}
+
+pub fn pack_stat(metadata: &Metadata) -> String {
+    let size = metadata.len() & 0xFFFFFFFF;
+    let mtime = metadata.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() & 0xFFFFFFFF;
+    let ctime = metadata.created().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() & 0xFFFFFFFF;
+    let dev = metadata.dev() & 0xFFFFFFFF;
+    let ino = metadata.ino() & 0xFFFFFFFF;
+    let mode = metadata.mode() & 0xFFFFFFFF;
+
+    let packed_data = [
+        (size >> 24) as u8,
+        (size >> 16) as u8,
+        (size >> 8) as u8,
+        size as u8,
+        (mtime >> 24) as u8,
+        (mtime >> 16) as u8,
+        (mtime >> 8) as u8,
+        mtime as u8,
+        (ctime >> 24) as u8,
+        (ctime >> 16) as u8,
+        (ctime >> 8) as u8,
+        ctime as u8,
+        (dev >> 24) as u8,
+        (dev >> 16) as u8,
+        (dev >> 8) as u8,
+        dev as u8,
+        (ino >> 24) as u8,
+        (ino >> 16) as u8,
+        (ino >> 8) as u8,
+        ino as u8,
+        (mode >> 24) as u8,
+        (mode >> 16) as u8,
+        (mode >> 8) as u8,
+        mode as u8,
+    ];
+
+    base64::encode(&packed_data)
+}
+
+pub fn stat_to_minikind(metadata: &Metadata) -> char {
+    let file_type = metadata.file_type();
+    if file_type.is_dir() {
+        'd'
+    } else if file_type.is_file() {
+        'f'
+    } else if file_type.is_symlink() {
+        'l'
+    } else {
+        panic!("Unsupported file type");
+    }
 }
