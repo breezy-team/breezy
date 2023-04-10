@@ -4,8 +4,7 @@ use breezy_osutils::sha::{sha_file_by_name,sha_file};
 use std::fs::File;
 use std::fs::Metadata;
 
-pub trait SHA1Provider {
-
+pub trait SHA1Provider : Send + Sync {
     fn sha1(&self, path: &Path) -> std::io::Result<String>;
 
     fn stat_and_sha1(&self, path: &Path) -> std::io::Result<(Metadata, String)>;
@@ -13,6 +12,12 @@ pub trait SHA1Provider {
 
 /// A SHA1Provider that reads directly from the filesystem."""
 pub struct DefaultSHA1Provider;
+
+impl DefaultSHA1Provider {
+    pub fn new() -> DefaultSHA1Provider {
+        DefaultSHA1Provider {}
+    }
+}
 
 impl SHA1Provider for DefaultSHA1Provider {
     /// Return the sha1 of a file given its absolute path.
