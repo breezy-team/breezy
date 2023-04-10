@@ -16,6 +16,7 @@
 
 """Tests for the compiled dirstate helpers."""
 
+import binascii
 import bisect
 import os
 import struct
