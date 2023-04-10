@@ -7,8 +7,9 @@ use std::io::{BufReader};
 use std::fs;
 use std::fs::{File,Metadata,Permissions};
 use std::collections::HashMap;
+use log::{debug, info};
 use breezy_osutils::sha::sha_string;
-use bazaar::filters::{ContentFilterStack, ContentFilter};
+use bazaar::filters::{ContentFilterStack, ContentFilter, ContentFilterProvider};
 use tempfile::NamedTempFile;
 
 /// TODO: Up-front, stat all files in order and remove those which are deleted or
@@ -90,14 +91,14 @@ pub struct HashCache {
     needs_write: bool,
     permissions: Option<Permissions>,
     cache_file_name: PathBuf,
-    filter_provider: Option<Box<dyn Fn(&Path, u64) -> ContentFilterStack + Send>>,
+    filter_provider: Option<Box<ContentFilterProvider>>,
 }
 
 impl HashCache {
     /// Create a hash cache in base dir, and set the file mode to mode.
     ///
     /// Args:
-    ///    content_filter_stack_provider: a function that takes a
+    ///    content_filter_provider: a function that takes a
     ///       path (relative to the top of the tree) and a file-id as
     ///       parameters and returns a stack of ContentFilters.
     ///       If None, no content filtering is performed.
@@ -105,8 +106,7 @@ impl HashCache {
         root: &Path,
         cache_file_name: &Path,
         permissions: Option<Permissions>,
-        content_filter_stack_provider: Option<
-            Box<dyn Fn(&Path, u64) -> ContentFilterStack + Send>,
+        content_filter_provider: Option<Box<ContentFilterProvider>,
         >,
     ) -> Self {
         HashCache {
@@ -121,7 +121,7 @@ impl HashCache {
             needs_write: false,
             permissions,
             cache_file_name: cache_file_name.to_path_buf(),
-            filter_provider: content_filter_stack_provider,
+            filter_provider: content_filter_provider,
         }
     }
 
@@ -188,10 +188,10 @@ impl HashCache {
 
             match file_fp.mode & libc::S_IFMT {
                 libc::S_IFREG => {
-                    let filters = if let Some(ref filter_provider) = self.filter_provider {
+                    let filters: Box<dyn ContentFilter> = if let Some(filter_provider) = self.filter_provider.as_ref() {
                         filter_provider(path, file_fp.ctime as u64)
                     } else {
-                        ContentFilterStack::new()
+                        Box::new(ContentFilterStack::new())
                     };
                     let digest = filters.sha1_file(&abspath)?;
 
@@ -288,10 +288,9 @@ impl HashCache {
         }
         outf.persist(self.cache_file_name())?;
         self.needs_write = false;
-        // mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
-        //        self.cache_file_name(), self.hit_count, self.miss_count,
-        // self.stat_count,
-        // self.danger_count, self.update_count)
+        debug!("write hash cache: {} hits={} misses={} stat={} recent={} updates={}",
+               self.cache_file_name().display(), self.hit_count, self.miss_count,
+               self.stat_count, self.danger_count, self.update_count);
         Ok(())
     }
 
@@ -303,61 +302,64 @@ impl HashCache {
     /// the cache.
     pub fn read(&mut self) -> Result<(), std::io::Error> {
         self.cache = HashMap::new();
-        if let Ok(file) = File::open(self.cache_file_name()) {
-            let reader = BufReader::new(file);
-            let mut lines = reader.lines();
-            if let Some(header) = lines.next() {
-                if header?.as_bytes().eq(CACHE_HEADER) {
-                    self.needs_write = true;
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("cache header marker not found at top of {}; discarding cache", self.cache_file_name().display()),
-                    ));
-                }
-            } else {
+        let file = File::open(self.cache_file_name());
+        if file.is_err() {
+            debug!("failed to open {}: {}", self.cache_file_name().display(), file.err().unwrap());
+            self.needs_write = true;
+            return Ok(());
+        }
+        let file = file.unwrap();
+        let reader = BufReader::with_capacity(65000, file);
+        let mut lines = reader.lines();
+        if let Some(header) = lines.next() {
+            if header?.as_bytes().eq(CACHE_HEADER) {
                 self.needs_write = true;
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
-                    format!("error reading cache file header", )));
+                    format!("cache header marker not found at top of {}; discarding cache", self.cache_file_name().display()),
+                ));
             }
-            for line in lines {
-                let line = line?;
-                let pos = line.find("// ").unwrap();
-                let path = PathBuf::from(&line[..pos]);
-                if self.cache.contains_key(&path) {
-                    eprintln!("duplicated path {} in cache", path.display());
-                    continue;
-                }
-                let pos = pos + 3;
-                let fields = line[pos..].split(' ').collect::<Vec<_>>();
-                if fields.len() != 7 {
-                    eprintln!("bad line in hashcache: {}", line);
-                    continue;
-                }
-                let sha1 = fields[0].to_owned();
-                if sha1.len() != 40 {
-                    eprintln!("bad sha1 in hashcache: {}", sha1);
-                    continue;
-                }
-                let fp = Fingerprint {
-                    size: fields[1].parse::<u64>().unwrap(),
-                    mtime: fields[2].parse::<i64>().unwrap(),
-                    ctime: fields[3].parse::<i64>().unwrap(),
-                    ino: fields[4].parse::<u64>().unwrap(),
-                    dev: fields[5].parse::<u64>().unwrap(),
-                    mode: fields[6].parse::<u32>().unwrap(),
-                };
-                self.cache.insert(path, (sha1, fp));
-            }
-            self.needs_write = false;
-            Ok(())
         } else {
             self.needs_write = true;
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("error opening cache file {}", self.cache_file_name().display()),
-            ));
+                format!("error reading cache file header", )));
         }
+        for line in lines {
+            let line = line?;
+            let pos = line.find("// ").unwrap();
+            let path = PathBuf::from(&line[..pos]);
+            if self.cache.contains_key(&path) {
+                info!("duplicated path {} in cache", path.display());
+                continue;
+            }
+            let pos = pos + 3;
+            let fields = line[pos..].split(' ').collect::<Vec<_>>();
+            if fields.len() != 7 {
+                info!("bad line in hashcache: {}", line);
+                continue;
+            }
+            let sha1 = fields[0].to_owned();
+            if sha1.len() != 40 {
+                info!("bad sha1 in hashcache: {}", sha1);
+                continue;
+            }
+            let fp = Fingerprint {
+                size: fields[1].parse::<u64>().unwrap(),
+                mtime: fields[2].parse::<i64>().unwrap(),
+                ctime: fields[3].parse::<i64>().unwrap(),
+                ino: fields[4].parse::<u64>().unwrap(),
+                dev: fields[5].parse::<u64>().unwrap(),
+                mode: fields[6].parse::<u32>().unwrap(),
+            };
+            self.cache.insert(path, (sha1, fp));
+        }
+        self.needs_write = false;
+        Ok(())
+    }
+
+    pub fn needs_write(&self) -> bool {
+        self.needs_write
     }
 
     /// Return cutoff time.

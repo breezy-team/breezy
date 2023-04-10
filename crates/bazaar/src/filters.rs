@@ -4,16 +4,18 @@ use std::io::Read;
 use std::io::Error;
 use breezy_osutils::sha::sha_chunks;
 
+pub type ContentFilterProvider = dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send;
+
 pub trait ContentFilter {
     fn reader(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>;
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>;
 
     fn writer(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>;
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>;
 
     fn sha1_file(&self, path: &Path) -> Result<String, std::io::Error> {
         let mut file = File::open(path)?;
@@ -72,16 +74,16 @@ impl ContentFilterStack {
 impl ContentFilter for ContentFilterStack {
     fn reader(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>
     {
         self.filters.iter().fold(input, |input, filter| filter.reader(input))
     }
 
     fn writer(
         &self,
-        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>>>
+        input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>
     {
         self.filters.iter().fold(input, |input, filter| filter.writer(input))
     }
