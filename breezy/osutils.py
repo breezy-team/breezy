@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from functools import partial
-from typing import Dict, List
+from typing import Dict, List, Iterable
 
 from .lazy_import import lazy_import
 
@@ -47,12 +47,9 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from hashlib import md5
-from hashlib import sha1 as sha
-
 import breezy
 
-from . import errors
+from . import errors, _osutils_rs
 
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
@@ -650,25 +647,12 @@ def file_iterator(input_file, readsize=32768):
         yield b
 
 
-# GZ 2017-09-16: Makes sense in general for hexdigest() result to be text, but
-# used as bytes through most interfaces so encode with this wrapper.
-def _hexdigest(hashobj):
-    return hashobj.hexdigest().encode()
-
-
 def sha_file(f):
     """Calculate the hexdigest of an open file.
 
     The file cursor should be already at the start.
     """
-    s = sha()
-    BUFSIZE = 128 << 10
-    while True:
-        b = f.read(BUFSIZE)
-        if not b:
-            break
-        s.update(b)
-    return _hexdigest(s)
+    return _osutils_rs.sha_file(f).encode('ascii')
 
 
 def size_sha_file(f):
@@ -677,49 +661,27 @@ def size_sha_file(f):
     The file cursor should be already at the start and
     the caller is responsible for closing the file afterwards.
     """
-    size = 0
-    s = sha()
-    BUFSIZE = 128 << 10
-    while True:
-        b = f.read(BUFSIZE)
-        if not b:
-            break
-        size += len(b)
-        s.update(b)
-    return size, _hexdigest(s)
+    (size, sha) = _osutils_rs.size_sha_file(f)
+    return (size, sha.encode('utf-8'))
 
 
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
-    s = sha()
-    f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
-    try:
-        while True:
-            b = os.read(f, 1 << 16)
-            if not b:
-                return _hexdigest(s)
-            s.update(b)
-    finally:
-        os.close(f)
+    return _osutils_rs.sha_file_by_name(fname).encode('utf-8')
 
 
-def sha_strings(strings, _factory=sha):
+def sha_strings(strings):
     """Return the sha-1 of concatenation of strings"""
-    s = _factory()
-    for string in strings:
-        s.update(string)
-    return _hexdigest(s)
+    return _osutils_rs.sha_strings(strings).encode('utf-8')
 
 
-def sha_string(f, _factory=sha):
-    # GZ 2017-09-16: Dodgy if factory is ever not sha, probably shouldn't be.
-    return _hexdigest(_factory(f))
+def sha_string(string):
+    return _osutils_rs.sha_string(string).encode('utf-8')
 
 
 def fingerprint_file(f):
-    b = f.read()
-    return {'size': len(b),
-            'sha1': _hexdigest(sha(b))}
+    (size, sha) = size_sha_file(f)
+    return {'size': size, 'sha1': sha}
 
 
 def compare_files(a, b):
@@ -1029,11 +991,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-try:
-    from ._chunks_to_lines_pyx import chunks_to_lines
-except ImportError as e:
-    failed_to_load_extension(e)
-    from ._chunks_to_lines_py import chunks_to_lines
+from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter
 
 
 def split_lines(s):
@@ -1044,20 +1002,7 @@ def split_lines(s):
         # chunks_to_lines only supports 8-bit strings
         return chunks_to_lines([s])
     else:
-        return _split_lines(s)
-
-
-def _split_lines(s):
-    """Split s into lines, but without removing the newline characters.
-
-    This supports Unicode or plain string objects.
-    """
-    nl = b'\n' if isinstance(s, bytes) else '\n'
-    lines = s.split(nl)
-    result = [line + nl for line in lines[:-1]]
-    if lines[-1]:
-        result.append(lines[-1])
-    return result
+        return chunks_to_lines(s)
 
 
 def hardlinks_good():
@@ -1082,6 +1027,16 @@ def delete_any(path):
 
     Will delete even if readonly.
     """
+    def _delete_file_or_dir(path):
+        # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+        # Forgiveness than Permission (EAFP) because:
+        # - root can damage a solaris file system by using unlink,
+        # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+        #   EACCES, OSX: EPERM) when invoked on a directory.
+        if isdir(path):  # Takes care of symlinks
+            os.rmdir(path)
+        else:
+            os.unlink(path)
     try:
         _delete_file_or_dir(path)
     except OSError as e:
@@ -1094,18 +1049,6 @@ def delete_any(path):
             _delete_file_or_dir(path)
         else:
             raise
-
-
-def _delete_file_or_dir(path):
-    # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-    # Forgiveness than Permission (EAFP) because:
-    # - root can damage a solaris file system by using unlink,
-    # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-    #   EACCES, OSX: EPERM) when invoked on a directory.
-    if isdir(path):  # Takes care of symlinks
-        os.rmdir(path)
-    else:
-        os.unlink(path)
 
 
 def supports_hardlinks(path):

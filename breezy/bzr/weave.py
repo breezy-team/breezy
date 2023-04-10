@@ -68,6 +68,7 @@ import os
 from copy import copy
 from io import BytesIO
 
+import hashlib
 import patiencediff
 
 from ..lazy_import import lazy_import
@@ -78,7 +79,7 @@ from breezy import tsort
 from .. import errors, osutils
 from .. import transport as _mod_transport
 from ..errors import RevisionAlreadyPresent, RevisionNotPresent
-from ..osutils import dirname, sha, sha_strings, split_lines
+from ..osutils import dirname, sha_strings, split_lines
 from ..revision import NULL_REVISION
 from ..trace import mutter
 from .versionedfile import (AbsentContentFactory, ContentFactory,
@@ -847,7 +848,7 @@ class Weave(VersionedFile):
             # For creating the ancestry, IntSet is much faster (3.7s vs 0.17s)
             # The problem is that set membership is much more expensive
             name = self._idx_to_name(i)
-            sha1s[name] = sha()
+            sha1s[name] = hashlib.sha1()
             texts[name] = []
             new_inc = {name}
             for p in self._parents[i]:

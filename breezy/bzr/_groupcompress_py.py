@@ -318,22 +318,6 @@ def encode_base128_int(val):
     return bytes(data)
 
 
-def decode_base128_int(data):
-    """Decode an integer from a 7-bit lsb encoding."""
-    offset = 0
-    val = 0
-    shift = 0
-    bval = data[offset]
-    while bval >= 0x80:
-        val |= (bval & 0x7F) << shift
-        shift += 7
-        offset += 1
-        bval = data[offset]
-    val |= bval << shift
-    offset += 1
-    return val, offset
-
-
 def encode_copy_instruction(offset, length):
     """Convert this offset into a control code and bytes."""
     copy_command = 0x80
@@ -364,50 +348,6 @@ def encode_copy_instruction(offset, length):
     return b''.join(copy_bytes)
 
 
-def decode_copy_instruction(bytes, cmd, pos):
-    """Decode a copy instruction from the next few bytes.
-
-    A copy instruction is a variable number of bytes, so we will parse the
-    bytes we care about, and return the new position, as well as the offset and
-    length referred to in the bytes.
-
-    :param bytes: A string of bytes
-    :param cmd: The command code
-    :param pos: The position in bytes right after the copy command
-    :return: (offset, length, newpos)
-        The offset of the copy start, the number of bytes to copy, and the
-        position after the last byte of the copy
-    """
-    if cmd & 0x80 != 0x80:
-        raise ValueError('copy instructions must have bit 0x80 set')
-    offset = 0
-    length = 0
-    if (cmd & 0x01):
-        offset = bytes[pos]
-        pos += 1
-    if (cmd & 0x02):
-        offset = offset | (bytes[pos] << 8)
-        pos += 1
-    if (cmd & 0x04):
-        offset = offset | (bytes[pos] << 16)
-        pos += 1
-    if (cmd & 0x08):
-        offset = offset | (bytes[pos] << 24)
-        pos += 1
-    if (cmd & 0x10):
-        length = bytes[pos]
-        pos += 1
-    if (cmd & 0x20):
-        length = length | (bytes[pos] << 8)
-        pos += 1
-    if (cmd & 0x40):
-        length = length | (bytes[pos] << 16)
-        pos += 1
-    if length == 0:
-        length = 65536
-    return (offset, length, pos)
-
-
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
     if not isinstance(source_bytes, bytes):
@@ -418,47 +358,3 @@ def make_delta(source_bytes, target_bytes):
     delta, _ = line_locations.make_delta(osutils.split_lines(target_bytes),
                                          bytes_length=len(target_bytes))
     return b''.join(delta)
-
-
-def apply_delta(basis, delta):
-    """Apply delta to this object to become new_version_id."""
-    if not isinstance(basis, bytes):
-        raise TypeError('basis is not bytes')
-    if not isinstance(delta, bytes):
-        raise TypeError('delta is not bytes')
-    target_length, pos = decode_base128_int(delta)
-    lines = []
-    len_delta = len(delta)
-    while pos < len_delta:
-        cmd = delta[pos]
-        pos += 1
-        if cmd & 0x80:
-            offset, length, pos = decode_copy_instruction(delta, cmd, pos)
-            last = offset + length
-            if last > len(basis):
-                raise ValueError('data would copy bytes past the'
-                                 'end of source')
-            lines.append(basis[offset:last])
-        else:  # Insert of 'cmd' bytes
-            if cmd == 0:
-                raise ValueError('Command == 0 not supported yet')
-            lines.append(delta[pos:pos + cmd])
-            pos += cmd
-    data = b''.join(lines)
-    if len(data) != target_length:
-        raise ValueError('Delta claimed to be %d long, but ended up'
-                         ' %d long' % (target_length, len(bytes)))
-    return data
-
-
-def apply_delta_to_source(source, delta_start, delta_end):
-    """Extract a delta from source bytes, and apply it."""
-    source_size = len(source)
-    if delta_start >= source_size:
-        raise ValueError('delta starts after source')
-    if delta_end > source_size:
-        raise ValueError('delta ends after source')
-    if delta_start >= delta_end:
-        raise ValueError('delta starts after it ends')
-    delta_bytes = source[delta_start:delta_end]
-    return apply_delta(source, delta_bytes)

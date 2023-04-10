@@ -1183,7 +1183,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)
                     continue
-                refs[tag_name_to_ref(name)] = sha
+                refs[tag_name_to_ref(name.decode('utf-8'))] = sha
             return refs
         dw_result = self.target.repository.send_pack(
             get_changed_refs,

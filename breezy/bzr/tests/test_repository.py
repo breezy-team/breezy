@@ -22,6 +22,7 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
+import hashlib
 from stat import S_ISDIR
 
 import breezy
@@ -1411,7 +1412,7 @@ class TestNewPack(TestCaseWithTransport):
         self.addCleanup(pack.abort)  # Make sure the write stream gets closed
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
-        self.assertIsInstance(pack._hash, type(osutils.md5()))
+        self.assertIsInstance(pack._hash, type(hashlib.md5()))
         self.assertIs(pack.upload_transport, upload_transport)
         self.assertIs(pack.index_transport, index_transport)
         self.assertIs(pack.pack_transport, pack_transport)

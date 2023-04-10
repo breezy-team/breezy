@@ -117,7 +117,7 @@ def generate_roundtripping_metadata(metadata, encoding):
                      b" ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         for l in metadata.properties[key].split(b"\n"):
-            lines.append(b"property-%s: %s\n" % (key, osutils.safe_utf8(l)))
+            lines.append(b"property-%s: %s\n" % (key, l))
     if b"testament3-sha1" in metadata.verifiers:
         lines.append(b"testament3-sha1: %s\n" %
                      metadata.verifiers[b"testament3-sha1"])

@@ -484,7 +484,7 @@ class _LazyGroupCompressFactory:
         if storage_kind == 'chunked':
             return iter(self._chunks)
         elif storage_kind == 'lines':
-            return iter(osutils.chunks_to_lines(self._chunks))
+            return osutils.chunks_to_lines_iter(iter(self._chunks))
         raise UnavailableRepresentation(self.key, storage_kind,
                                         self.storage_kind)
 
@@ -2234,14 +2234,12 @@ class _GCGraphIndex:
 GroupCompressor: Type[_CommonGroupCompressor]
 
 
-from ._groupcompress_py import (LinesDeltaIndex, apply_delta,
-                                apply_delta_to_source, decode_base128_int,
-                                decode_copy_instruction, encode_base128_int)
+from ._groupcompress_rs import decode_base128_int, encode_base128_int, decode_copy_instruction, apply_delta, apply_delta_to_source
+
+from ._groupcompress_py import LinesDeltaIndex
 
 try:
-    from ._groupcompress_pyx import (DeltaIndex, apply_delta,  # type: ignore
-                                     apply_delta_to_source, decode_base128_int,
-                                     encode_base128_int)
+    from ._groupcompress_pyx import DeltaIndex
     GroupCompressor = PyrexGroupCompressor
 except ImportError as e:
     osutils.failed_to_load_extension(e)

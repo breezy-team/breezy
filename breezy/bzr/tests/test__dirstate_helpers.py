@@ -210,45 +210,25 @@ class TestBisectPathMixin:
 
 
 class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_left."""
+    """Run all Bisect Path tests against bisect_path_left."""
 
     def get_bisect_path(self):
-        from .._dirstate_helpers_py import _bisect_path_left
-        return _bisect_path_left
+        from .._dirstate_rs import bisect_path_left
+        return bisect_path_left
 
     def get_bisect(self):
         return bisect.bisect_left, 0
 
 
-class TestCompiledBisectPathLeft(TestBisectPathLeft):
-    """Run all Bisect Path tests against _bisect_path_lect"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_bisect_path(self):
-        from .._dirstate_helpers_pyx import _bisect_path_left
-        return _bisect_path_left
-
-
 class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_right"""
+    """Run all Bisect Path tests against bisect_path_right"""
 
     def get_bisect_path(self):
-        from .._dirstate_helpers_py import _bisect_path_right
-        return _bisect_path_right
+        from .._dirstate_rs import bisect_path_right
+        return bisect_path_right
 
     def get_bisect(self):
         return bisect.bisect_right, -1
-
-
-class TestCompiledBisectPathRight(TestBisectPathRight):
-    """Run all Bisect Path tests against _bisect_path_right"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_bisect_path(self):
-        from .._dirstate_helpers_pyx import _bisect_path_right
-        return _bisect_path_right
 
 
 class TestBisectDirblock(tests.TestCase):
@@ -368,15 +348,7 @@ class TestLtByDirs(tests.TestCase):
 
     lt_by_dirs() compares 2 paths by their directory sections, rather than as
     plain strings.
-
-    Child test cases can override ``get_lt_by_dirs`` to test a specific
-    implementation.
     """
-
-    def get_lt_by_dirs(self):
-        """Get a specific implementation of lt_by_dirs."""
-        from .._dirstate_helpers_py import lt_by_dirs
-        return lt_by_dirs
 
     def assertCmpByDirs(self, expected, str1, str2):
         """Compare the two strings, in both directions.
@@ -386,17 +358,16 @@ class TestLtByDirs(tests.TestCase):
         :param str1: string to compare
         :param str2: string to compare
         """
-        lt_by_dirs = self.get_lt_by_dirs()
         if expected == 0:
             self.assertEqual(str1, str2)
-            self.assertFalse(lt_by_dirs(str1, str2))
-            self.assertFalse(lt_by_dirs(str2, str1))
+            self.assertFalse(dirstate.lt_by_dirs(str1, str2))
+            self.assertFalse(dirstate.lt_by_dirs(str2, str1))
         elif expected > 0:
-            self.assertFalse(lt_by_dirs(str1, str2))
-            self.assertTrue(lt_by_dirs(str2, str1))
+            self.assertFalse(dirstate.lt_by_dirs(str1, str2))
+            self.assertTrue(dirstate.lt_by_dirs(str2, str1))
         else:
-            self.assertTrue(lt_by_dirs(str1, str2))
-            self.assertFalse(lt_by_dirs(str2, str1))
+            self.assertTrue(dirstate.lt_by_dirs(str1, str2))
+            self.assertFalse(dirstate.lt_by_dirs(str2, str1))
 
     def test_cmp_empty(self):
         """Compare against the empty string."""
@@ -462,12 +433,6 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, b'ab/cd', b'ab/cd-')
         self.assertCmpByDirs(-1, b'ab/cd', b'ab-cd')
 
-    def test_cmp_unicode_not_allowed(self):
-        lt_by_dirs = self.get_lt_by_dirs()
-        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', b'str')
-        self.assertRaises(TypeError, lt_by_dirs, b'str', 'Unicode')
-        self.assertRaises(TypeError, lt_by_dirs, 'Unicode', 'Unicode')
-
     def test_cmp_non_ascii(self):
         self.assertCmpByDirs(-1, b'\xc2\xb5', b'\xc3\xa5')  # u'\xb5', u'\xe5'
         self.assertCmpByDirs(-1, b'a', b'\xc3\xa5')  # u'a', u'\xe5'
@@ -476,20 +441,10 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(-1, b'b/a', b'b/\xc2\xb5')  # u'b/a', u'b/\xb5'
 
 
-class TestCompiledLtByDirs(TestLtByDirs):
-    """Test the pyrex implementation of lt_by_dirs"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_lt_by_dirs(self):
-        from .._dirstate_helpers_pyx import lt_by_dirs
-        return lt_by_dirs
-
-
 class TestLtPathByDirblock(tests.TestCase):
-    """Test an implementation of _lt_path_by_dirblock()
+    """Test an implementation of lt_path_by_dirblock()
 
-    _lt_path_by_dirblock() compares two paths using the sort order used by
+    lt_path_by_dirblock() compares two paths using the sort order used by
     DirState. All paths in the same directory are sorted together.
 
     Child test cases can override ``get_lt_path_by_dirblock`` to test a specific
@@ -497,9 +452,9 @@ class TestLtPathByDirblock(tests.TestCase):
     """
 
     def get_lt_path_by_dirblock(self):
-        """Get a specific implementation of _lt_path_by_dirblock."""
-        from .._dirstate_helpers_py import _lt_path_by_dirblock
-        return _lt_path_by_dirblock
+        """Get a specific implementation of lt_path_by_dirblock."""
+        from .._dirstate_rs import lt_path_by_dirblock
+        return lt_path_by_dirblock
 
     def assertLtPathByDirblock(self, paths):
         """Compare all paths and make sure they evaluate to the correct order.
@@ -589,15 +544,6 @@ class TestLtPathByDirblock(tests.TestCase):
                  b'a=z/z',
             ])
 
-    def test_unicode_not_allowed(self):
-        lt_path_by_dirblock = self.get_lt_path_by_dirblock()
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'Uni', 'str')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'str', 'Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'Uni', 'Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/Uni', 'x/str')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/str', 'x/Uni')
-        self.assertRaises(TypeError, lt_path_by_dirblock, 'x/Uni', 'x/Uni')
-
     def test_nonascii(self):
         self.assertLtPathByDirblock([
             # content of '/'
@@ -615,59 +561,6 @@ class TestLtPathByDirblock(tests.TestCase):
             # content of '\xc2\xe5'
             b'\xc3\xa5/a', b'\xc3\xa5/\xc2\xb5', b'\xc3\xa5/\xc3\xa5',
             ])
-
-
-class TestCompiledLtPathByDirblock(TestLtPathByDirblock):
-    """Test the pyrex implementation of _lt_path_by_dirblock"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_lt_path_by_dirblock(self):
-        from .._dirstate_helpers_pyx import _lt_path_by_dirblock
-        return _lt_path_by_dirblock
-
-
-class TestMemRChr(tests.TestCase):
-    """Test memrchr functionality"""
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def assertMemRChr(self, expected, s, c):
-        from .._dirstate_helpers_pyx import _py_memrchr
-        self.assertEqual(expected, _py_memrchr(s, c))
-
-    def test_missing(self):
-        self.assertMemRChr(None, b'', b'a')
-        self.assertMemRChr(None, b'', b'c')
-        self.assertMemRChr(None, b'abcdefghijklm', b'q')
-        self.assertMemRChr(None, b'aaaaaaaaaaaaaaaaaaaaaaa', b'b')
-
-    def test_single_entry(self):
-        self.assertMemRChr(0, b'abcdefghijklm', b'a')
-        self.assertMemRChr(1, b'abcdefghijklm', b'b')
-        self.assertMemRChr(2, b'abcdefghijklm', b'c')
-        self.assertMemRChr(10, b'abcdefghijklm', b'k')
-        self.assertMemRChr(11, b'abcdefghijklm', b'l')
-        self.assertMemRChr(12, b'abcdefghijklm', b'm')
-
-    def test_multiple(self):
-        self.assertMemRChr(10, b'abcdefjklmabcdefghijklm', b'a')
-        self.assertMemRChr(11, b'abcdefjklmabcdefghijklm', b'b')
-        self.assertMemRChr(12, b'abcdefjklmabcdefghijklm', b'c')
-        self.assertMemRChr(20, b'abcdefjklmabcdefghijklm', b'k')
-        self.assertMemRChr(21, b'abcdefjklmabcdefghijklm', b'l')
-        self.assertMemRChr(22, b'abcdefjklmabcdefghijklm', b'm')
-        self.assertMemRChr(22, b'aaaaaaaaaaaaaaaaaaaaaaa', b'a')
-
-    def test_with_nulls(self):
-        self.assertMemRChr(10, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'a')
-        self.assertMemRChr(11, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'b')
-        self.assertMemRChr(12, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'c')
-        self.assertMemRChr(20, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'k')
-        self.assertMemRChr(21, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'l')
-        self.assertMemRChr(22, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'm')
-        self.assertMemRChr(22, b'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', b'a')
-        self.assertMemRChr(9, b'\0\0\0\0\0\0\0\0\0\0', b'\0')
 
 
 class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
@@ -743,24 +636,15 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
         self.assertIs(bisect_dirblock, dirstate.bisect_dirblock)
 
     def test__bisect_path_left(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import _bisect_path_left
-        else:
-            from .._dirstate_helpers_py import _bisect_path_left
-        self.assertIs(_bisect_path_left, dirstate._bisect_path_left)
+        from .._dirstate_rs import bisect_path_left
+        self.assertIs(bisect_path_left, dirstate.bisect_path_left)
 
     def test__bisect_path_right(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import _bisect_path_right
-        else:
-            from .._dirstate_helpers_py import _bisect_path_right
-        self.assertIs(_bisect_path_right, dirstate._bisect_path_right)
+        from .._dirstate_rs import bisect_path_right
+        self.assertIs(bisect_path_right, dirstate.bisect_path_right)
 
     def test_lt_by_dirs(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import lt_by_dirs
-        else:
-            from .._dirstate_helpers_py import lt_by_dirs
+        from .._dirstate_rs import lt_by_dirs
         self.assertIs(lt_by_dirs, dirstate.lt_by_dirs)
 
     def test__read_dirblocks(self):
