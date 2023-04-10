@@ -1,7 +1,8 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
-use pyo3::types::{PyBytes, PyUnicode};
+use pyo3::types::{PyBytes, PyUnicode, PyDict, PyList, PyTuple, PyString};
+use pyo3::exceptions::PyTypeError;
 use std::os::unix::fs::PermissionsExt;
 
 use bazaar_dirstate;
@@ -117,6 +118,71 @@ fn lt_path_by_dirblock(path1: &PyAny, path2: &PyAny) -> PyResult<bool> {
     Ok(bazaar_dirstate::lt_path_by_dirblock(&path1, &path2))
 }
 
+#[pyfunction]
+fn bisect_dirblock(
+    py: Python,
+    dirblocks: &PyList,
+    dirname: PyObject,
+    lo: Option<usize>,
+    hi: Option<usize>,
+    cache: Option<&PyDict>,
+) -> PyResult<usize> {
+    fn split_object(py: Python, obj: Py<PyAny>) -> PyResult<Vec<PathBuf>> {
+        if let Ok(py_str) = obj.extract::<&PyString>(py) {
+            Ok(py_str
+                .to_str()?
+                .split('/')
+                .map(PathBuf::from)
+                .collect::<Vec<_>>())
+        } else if let Ok(py_bytes) = obj.extract::<&PyBytes>(py) {
+            Ok(py_bytes
+                .as_bytes()
+                .split(|&byte| byte == b'/')
+                .map(|s| PathBuf::from(String::from_utf8_lossy(s).to_string()))
+                .collect::<Vec<_>>())
+        } else {
+            Err(PyTypeError::new_err("Not a PyBytes or PyString"))
+        }
+    }
+
+    let hi = hi.unwrap_or(dirblocks.len());
+    let cache = cache.unwrap_or_else(|| PyDict::new(py));
+
+    let dirname_split = match cache.get_item(&dirname) {
+        Some(item) => item.extract::<Vec<PathBuf>>()?,
+        None => {
+            let split = split_object(py, dirname.to_object(py))?;
+            cache.set_item(dirname.clone(), split.clone())?;
+            split
+        }
+    };
+
+    let mut lo = lo.unwrap_or(0);
+    let mut hi = hi;
+
+    while lo < hi {
+        let mid = (lo + hi) / 2;
+        let dirblock = dirblocks.get_item(mid)?.downcast::<PyTuple>()?;
+        let cur = dirblock.get_item(0)?;
+
+        let cur_split = match cache.get_item(&cur) {
+            Some(item) => item.extract::<Vec<PathBuf>>()?,
+            None => {
+                let split = split_object(py, cur.into_py(py))?;
+                cache.set_item(cur.clone(), split.clone())?;
+                split
+            }
+        };
+
+        if cur_split < dirname_split {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    Ok(lo)
+}
+
 // TODO(jelmer): Move this into a more central place?
 #[pyclass]
 struct StatResult {
@@ -185,6 +251,7 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;
     m.add_wrapped(wrap_pyfunction!(lt_path_by_dirblock))?;
+    m.add_wrapped(wrap_pyfunction!(bisect_dirblock))?;
     m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
 
     Ok(())
