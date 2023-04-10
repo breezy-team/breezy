@@ -56,6 +56,7 @@ where
 }
 
 pub mod sha;
+pub mod path;
 
 #[cfg(test)]
 mod tests;

@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use std::path::PathBuf;
+use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
 use pyo3::exceptions::PyTypeError;
@@ -144,6 +144,11 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
     Ok((size, digest))
 }
 
+#[pyfunction]
+fn normalized_filename(filename: &str) -> PyResult<(String, bool)> {
+    Ok(breezy_osutils::path::normalized_filename(Path::new(filename)))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -153,5 +158,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(sha_strings))?;
     m.add_wrapped(wrap_pyfunction!(sha_file))?;
     m.add_wrapped(wrap_pyfunction!(size_sha_file))?;
+    m.add_wrapped(wrap_pyfunction!(normalized_filename))?;
     Ok(())
 }
