@@ -37,17 +37,6 @@ def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):
                       st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
 
 
-def _unpack_stat(packed_stat):
-    """Turn a packed_stat back into the stat fields.
-
-    This is meant as a debugging tool, should not be used in real code.
-    """
-    (st_size, st_mtime, st_ctime, st_dev, st_ino,
-     st_mode) = struct.unpack('>6L', binascii.a2b_base64(packed_stat))
-    return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
-                st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
-
-
 def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     """Return the index where to insert dirname into the dirblocks.
 

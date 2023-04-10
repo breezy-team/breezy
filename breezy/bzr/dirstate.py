@@ -2340,7 +2340,8 @@ class DirState:
         entry_keys.remove(entry_key)
         id_index[file_id] = static_tuple.StaticTuple.from_sequence(entry_keys)
 
-    def _get_output_lines(self, lines):
+    @classmethod
+    def _get_output_lines(cls, lines):
         """Format lines for final output.
 
         :param lines: A sequence of lines containing the parents list and the
@@ -2356,7 +2357,8 @@ class DirState:
         output_lines.append(inventory_text)
         return output_lines
 
-    def _make_deleted_row(self, fileid_utf8, parents):
+    @classmethod
+    def _make_deleted_row(cls, fileid_utf8, parents):
         """Return a deleted row for fileid_utf8."""
         return (b'/', b'RECYCLED.BIN', b'file', fileid_utf8, 0, DirState.NULLSTAT,
                 b''), parents
