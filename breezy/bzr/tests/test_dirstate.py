@@ -2446,7 +2446,6 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         expected_sha = osutils.sha_string(text)
         p = dirstate.DefaultSHA1Provider()
         statvalue, sha1 = p.stat_and_sha1('foo')
-        self.assertGreaterEqual(len(statvalue), 10)
         self.assertEqual(len(text), statvalue.st_size)
         self.assertEqual(expected_sha, sha1)
 

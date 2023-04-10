@@ -1024,28 +1024,95 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
 
 class TestChunksToLines(tests.TestCase):
 
-    def test_smoketest(self):
-        self.assertEqual([b'foo\n', b'bar\n', b'baz\n'],
-                         osutils.chunks_to_lines([b'foo\nbar', b'\nbaz\n']))
-        self.assertEqual([b'foo\n', b'bar\n', b'baz\n'],
-                         osutils.chunks_to_lines([b'foo\n', b'bar\n', b'baz\n']))
+    def assertChunksToLines(self, lines, chunks, already_lines=False):
+        result = osutils.chunks_to_lines(chunks)
+        self.assertEqual(list(lines), result)
+        if already_lines:
+            self.assertEqual(len(chunks), len(result))
+            for a, b in zip(chunks, result):
+                self.assertIs(a, b)
 
-    def test_osutils_binding(self):
-        from . import test__chunks_to_lines
-        if test__chunks_to_lines.compiled_chunkstolines_feature.available():
-            from .._chunks_to_lines_pyx import chunks_to_lines
-        else:
-            from .._chunks_to_lines_py import chunks_to_lines
-        self.assertIs(chunks_to_lines, osutils.chunks_to_lines)
+    def test_fulltext_chunk_to_lines(self):
+        self.assertChunksToLines(
+            [b'foo\n', b'bar\r\n', b'ba\rz\n'],
+            [b'foo\nbar\r\nba\rz\n'])
+        self.assertChunksToLines(
+            [b'foobarbaz\n'], [b'foobarbaz\n'], already_lines=True)
+        self.assertChunksToLines(
+            [b'foo\n', b'bar\n', b'\n', b'baz\n', b'\n', b'\n'],
+            [b'foo\nbar\n\nbaz\n\n\n'])
+        self.assertChunksToLines(
+            [b'foobarbaz'], [b'foobarbaz'])
+        self.assertChunksToLines([b'foobarbaz'], [b'foo', b'bar', b'baz'])
+
+    def test_newlines(self):
+        self.assertChunksToLines([b'\n'], [b'\n'], already_lines=True)
+        self.assertChunksToLines([b'\n'], [b'', b'\n', b''])
+        self.assertChunksToLines([b'\n'], [b'\n', b''])
+        self.assertChunksToLines([b'\n'], [b'', b'\n'])
+        self.assertChunksToLines([b'\n', b'\n', b'\n'], [b'\n\n\n'])
+        self.assertChunksToLines([b'\n', b'\n', b'\n'], [b'\n', b'\n', b'\n'],
+                                 already_lines=True)
+
+    def test_lines_to_lines(self):
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz\n'],
+                                 [b'foo\n', b'bar\r\n', b'ba\rz\n'],
+                                 already_lines=True)
+
+    def test_no_final_newline(self):
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
+                                 [b'foo\nbar\r\nba\rz'])
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
+                                 [b'foo\n', b'bar\r\n', b'ba\rz'])
+        self.assertChunksToLines((b'foo\n', b'bar\r\n', b'ba\rz'),
+                                 (b'foo\n', b'bar\r\n', b'ba\rz'))
+        self.assertChunksToLines([], [], already_lines=True)
+        self.assertChunksToLines([b'foobarbaz'], [b'foobarbaz'])
+        self.assertChunksToLines([], [b''])
+
+    def test_mixed(self):
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
+                                 [b'foo\n', b'bar\r\nba\r', b'z'])
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
+                                 [b'foo\nb', b'a', b'r\r\nba\r', b'z'])
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
+                                 [b'foo\nbar\r\nba', b'\r', b'z'])
+
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz'],
+                                 [b'foo\n', b'', b'bar\r\nba', b'\r', b'z'])
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz\n'],
+                                 [b'foo\n', b'bar\r\n', b'ba\rz\n', b''])
+        self.assertChunksToLines([b'foo\n', b'bar\r\n', b'ba\rz\n'],
+                                 [b'foo\n', b'bar', b'\r\n', b'ba\rz\n'])
+
+    def test_not_lines(self):
+        # We should raise a TypeError, not crash
+        self.assertRaises(TypeError, osutils.chunks_to_lines,
+                          object())
+        self.assertRaises(TypeError, osutils.chunks_to_lines,
+                          [object()])
+        self.assertRaises(TypeError, osutils.chunks_to_lines,
+                          [b'foo', object()])
+
+
+class TestChunksToLinesIter(tests.TestCase):
+
+    def assertChunksToLines(self, lines, chunks, already_lines=False):
+        result = list(osutils.chunks_to_lines_iter(chunks))
+        self.assertEqual(list(lines), result)
+        if already_lines:
+            self.assertEqual(len(chunks), len(result))
+            for a, b in zip(chunks, result):
+                self.assertIs(a, b)
 
 
 class TestSplitLines(tests.TestCase):
 
-    def test_split_unicode(self):
-        self.assertEqual(['foo\n', 'bar\xae'],
-                         osutils.split_lines('foo\nbar\xae'))
-        self.assertEqual(['foo\n', 'bar\xae\n'],
-                         osutils.split_lines('foo\nbar\xae\n'))
+    def test_split(self):
+        self.assertEqual([b'foo\n', b'bar\xae'],
+                         osutils.split_lines(b'foo\nbar\xae'))
+        self.assertEqual([b'foo\n', b'bar\xae\n'],
+                         osutils.split_lines(b'foo\nbar\xae\n'))
 
     def test_split_with_carriage_returns(self):
         self.assertEqual([b'foo\rbar\n'],

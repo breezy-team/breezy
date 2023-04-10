@@ -750,10 +750,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             abspath = self.abspath(path)
             try:
                 return osutils.sha_file_by_name(abspath)
-            except OSError as e:
-                if e.errno in (errno.EISDIR, errno.ENOENT):
-                    return None
-                raise
+            except (NotADirectoryError, FileNotFoundError):
+                return None
 
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)

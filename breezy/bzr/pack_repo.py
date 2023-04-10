@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import hashlib
 import re
 import sys
 from typing import Type
@@ -398,7 +399,7 @@ class NewPack(Pack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = osutils.md5()
+        self._hash = hashlib.md5()
         # a tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs, chk_if_in_use)
         self.index_sizes = None

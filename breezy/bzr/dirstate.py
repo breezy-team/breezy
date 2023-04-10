@@ -275,21 +275,6 @@ class SHA1Provider:
         raise NotImplementedError(self.stat_and_sha1)
 
 
-class DefaultSHA1Provider(SHA1Provider):
-    """A SHA1Provider that reads directly from the filesystem."""
-
-    def sha1(self, abspath):
-        """Return the sha1 of a file given its absolute path."""
-        return osutils.sha_file_by_name(abspath)
-
-    def stat_and_sha1(self, abspath):
-        """Return the stat and sha1 of a file given its absolute path."""
-        with open(abspath, 'rb') as file_obj:
-            statvalue = os.fstat(file_obj.fileno())
-            sha1 = osutils.sha_file(file_obj)
-        return statvalue, sha1
-
-
 class DirState:
     """Record directory and metadata state for fast access.
 
@@ -691,7 +676,7 @@ class DirState:
                     first_path = first_fields[1] + b'/' + first_fields[2]
                 else:
                     first_path = first_fields[2]
-                first_loc = _bisect_path_left(cur_files, first_path)
+                first_loc = bisect_path_left(cur_files, first_path)
 
                 # These exist before the current location
                 pre = cur_files[:first_loc]
@@ -718,7 +703,7 @@ class DirState:
                     last_path = last_fields[1] + b'/' + last_fields[2]
                 else:
                     last_path = last_fields[2]
-                last_loc = _bisect_path_right(post, last_path)
+                last_loc = bisect_path_right(post, last_path)
 
                 middle_files = post[:last_loc]
                 post = post[last_loc:]
@@ -4329,19 +4314,17 @@ class ProcessEntryPython:
         return dir_info
 
 
-from ._dirstate_rs import lt_by_dirs
+from ._dirstate_rs import lt_by_dirs, bisect_path_left, bisect_path_right, DefaultSHA1Provider
 
 # Try to load the compiled form if possible
 try:
     from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry
-    from ._dirstate_helpers_pyx import (_bisect_path_left, _bisect_path_right,
-                                        _read_dirblocks, bisect_dirblock,
+    from ._dirstate_helpers_pyx import (_read_dirblocks, bisect_dirblock,
                                         pack_stat)
     from ._dirstate_helpers_pyx import update_entry as update_entry
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._dirstate_helpers_py import (_bisect_path_left, _bisect_path_right,
-                                       _read_dirblocks, bisect_dirblock,
+    from ._dirstate_helpers_py import (_read_dirblocks, bisect_dirblock,
                                        pack_stat)
 
     # FIXME: It would be nice to be able to track moved lines so that the

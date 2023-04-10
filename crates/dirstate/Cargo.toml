@@ -3,12 +3,13 @@ name = "bazaar-dirstate"
 version = "3.3.3"
 edition = "2018"
 description = "The dirstate format used by Bazaar"
-license = "GPLv2+"
+license = "GPL-2.0+"
+repository = "https://code.launchpad.net/brz"
+homepage = "https://www.breezy-vcs.org/"
+documentation = "https://www.breezy-vcs.org/doc/"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 
 [lib]
 
-[dependencies.lazy_static]
-version = "1.4.0"
-
-[dependencies.regex]
-version = "1.5.4"
+[dependencies]
+breezy-osutils = { path = "../osutils" }
