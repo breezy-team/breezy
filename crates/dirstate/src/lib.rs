@@ -1,5 +1,33 @@
 use std::cmp::Ordering;
 use std::path::Path;
+use breezy_osutils::sha::{sha_file_by_name,sha_file};
+use std::fs::File;
+use std::fs::Metadata;
+
+pub trait SHA1Provider {
+
+    fn sha1(&self, path: &Path) -> std::io::Result<String>;
+
+    fn stat_and_sha1(&self, path: &Path) -> std::io::Result<(Metadata, String)>;
+}
+
+/// A SHA1Provider that reads directly from the filesystem."""
+pub struct DefaultSHA1Provider;
+
+impl SHA1Provider for DefaultSHA1Provider {
+    /// Return the sha1 of a file given its absolute path.
+    fn sha1(&self, path: &Path) -> std::io::Result<String> {
+        sha_file_by_name(path)
+    }
+
+    /// Return the stat and sha1 of a file given its absolute path.
+    fn stat_and_sha1(&self, path: &Path) -> std::io::Result<(Metadata, String)> {
+        let mut f = File::open(path)?;
+        let stat = f.metadata()?;
+        let sha1 = sha_file(&mut f)?;
+        Ok((stat, sha1))
+    }
+}
 
 pub fn lt_by_dirs(path1: &Path, path2: &Path) -> bool {
     let path1_parts = path1.components();

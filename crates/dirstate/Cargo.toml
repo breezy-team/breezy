@@ -10,3 +10,6 @@ documentation = "https://www.breezy-vcs.org/doc/"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
 
 [lib]
+
+[dependencies]
+breezy-osutils = { path = "../osutils" }
