@@ -3,15 +3,13 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
 use pyo3::types::{PyDict,PyType,PyBytes,PyList,PyIterator,PyString};
-use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::exceptions::{PyTypeError, PyValueError, PyNotImplementedError, PyIOError};
 
 use pyo3::class::basic::CompareOp;
 
 use std::io::BufReader;
 
-mod filelike;
-
-use crate::filelike::PyFileLikeObject;
+use pyo3_file::PyFileLikeObject;
 
 #[pyfunction]
 fn valid_tag(tag: &str) -> bool {
@@ -45,10 +43,17 @@ impl Stanza {
         Ok(obj)
     }
 
-    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyObject {
+    fn __richcmp__(&self, other: &PyAny, op: CompareOp) -> PyResult<PyObject> {
         match op {
-            CompareOp::Eq => self.stanza.eq(&other.extract::<Stanza>().unwrap().stanza).into_py(other.py()),
-            _ => other.py().NotImplemented()
+            CompareOp::Eq => {
+                let other_stanza = other.extract::<Stanza>();
+                if other_stanza.is_err() {
+                    Ok(false.into_py(other.py()))
+                } else {
+                    Ok(self.stanza.eq(&other_stanza.unwrap().stanza).into_py(other.py()))
+                }
+            },
+            _ => Err(PyErr::new::<PyNotImplementedError, _>("Not implemented")),
         }
     }
 
@@ -101,12 +106,19 @@ impl Stanza {
         // If the type of value is PyString, then extract it as a String and add it to the stanza.
         // Otherwise, if the type of value is Stanza, then extract it as a Stanza and add it to the stanza.
         // Otherwise, return an error.
-        if let Ok(val) = value.extract::<String>() {
-            self.stanza.add(tag.to_string(), bazaar_rio::rio::StanzaValue::String(val));
+        let ret = if let Ok(val) = value.extract::<String>() {
+            self.stanza.add(tag.to_string(), bazaar_rio::rio::StanzaValue::String(val))
         } else if let Ok(val) = value.extract::<Stanza>() {
-            self.stanza.add(tag.to_string(), bazaar_rio::rio::StanzaValue::Stanza(Box::new(val.stanza)));
+            self.stanza.add(tag.to_string(), bazaar_rio::rio::StanzaValue::Stanza(Box::new(val.stanza)))
         } else {
-            return Err(PyErr::new::<PyTypeError, _>("Invalid value"));
+            return Err(PyErr::new::<PyTypeError, _>(format!("Invalid value: {}", value.repr()?)));
+        };
+        if let Err(e) = ret {
+            if let bazaar_rio::rio::Error::Io(e) = e {
+                return Err(PyErr::new::<PyIOError, _>(format!("IO error: {}", e)));
+            } else {
+                return Err(PyErr::new::<PyValueError, _>(format!("Invalid value: {}", value.repr()?)));
+            }
         }
         Ok(())
     }
@@ -165,7 +177,7 @@ impl Stanza {
     }
 
     fn write(&self, file: PyObject) -> PyResult<()> {
-        let mut writer = PyFileLikeObject::new(file);
+        let mut writer = PyFileLikeObject::with_requirements(file, false, true, false)?;
         self.stanza.write(&mut writer)?;
         Ok(())
     }
@@ -173,17 +185,16 @@ impl Stanza {
 
 #[pyclass]
 struct RioWriter {
-    file: PyFileLikeObject,
-    writer: bazaar_rio::rio::RioWriter<'static, PyFileLikeObject>
+    writer: bazaar_rio::rio::RioWriter<PyFileLikeObject>
 }
 
 #[pymethods]
 impl RioWriter {
     #[new]
     fn new(file: PyObject) -> PyResult<RioWriter> {
-        let file = PyFileLikeObject::new(file);
-        let writer = bazaar_rio::rio::RioWriter::new(&mut file);
-        Ok(RioWriter { writer, file })
+        let fw = PyFileLikeObject::with_requirements(file, false, true, false)?;
+        let writer = bazaar_rio::rio::RioWriter::new(fw);
+        Ok(RioWriter { writer })
     }
 
     fn write_stanza(&mut self, stanza: &Stanza) -> PyResult<()> {
@@ -193,62 +204,82 @@ impl RioWriter {
 }
 
 #[pyfunction]
-fn to_patch_lines(stanza: &Stanza) -> PyResult<Py<PyList>> {
-    let py = Python::acquire_gil();
-    let py = py.python();
-    let ret = PyList::empty(py);
-    for line in bazaar_rio::rio::to_patch_lines(&stanza.stanza, bazaar_rio::rio::MAX_RIO_WIDTH)? {
-        ret.append(PyBytes::new(py, line.as_slice()))?;
-    }
-    Ok(ret.into())
-}
-
-#[pyfunction]
-fn read_stanza(file: PyObject) -> PyResult<Option<Stanza>> {
-    let reader = PyFileLikeObject::new(file);
+fn read_stanza_file(file: PyObject) -> PyResult<Option<Stanza>> {
+    let reader = PyFileLikeObject::with_requirements(file, true, false, false)?;
 
     let mut reader = BufReader::new(reader);
 
-    let stanza = bazaar_rio::rio::read_stanza(&mut reader)?;
+    let stanza = bazaar_rio::rio::read_stanza_file(&mut reader).map_err(|e| {
+        match e {
+            bazaar_rio::rio::Error::Io(e) => PyErr::new::<PyIOError, _>(format!("Error reading stanza file: {}", e)),
+            _ => PyErr::new::<PyValueError, _>(format!("Error reading stanza file", )),
+        }
+    })?;
 
-    if stanza.is_none() {
-        return Ok(None);
+    if let Some(stanza) = stanza {
+        Ok(Some(Stanza { stanza }))
     } else {
-        let stanza = stanza.unwrap();
-        return Ok(Some(Stanza { stanza }));
+        Ok(None)
+    }
+}
+
+#[pyfunction]
+fn read_stanza(file: &PyAny) -> PyResult<Option<Stanza>> {
+    let mut py_iter = file.iter()?;
+    let mut pyerr: Option<PyErr> = None;
+    let line_iter = std::iter::from_fn(|| -> Option<Result<Vec<u8>, bazaar_rio::rio::Error>> {
+        let line = py_iter.next()?;
+        if let Err(e) = line {
+            pyerr = Some(e);
+            return Some(Err(bazaar_rio::rio::Error::Other("Python error".to_string())));
+        } else {
+            let line = line.unwrap();
+            let line = line.extract::<Vec<u8>>();
+            if let Err(e) = line {
+                pyerr = Some(e);
+                return Some(Err(bazaar_rio::rio::Error::Other("invalid input".to_string())));
+            } else {
+                Some(Ok(line.unwrap()))
+            }
+        }
+    });
+
+    let stanza = bazaar_rio::rio::read_stanza(line_iter).map_err(|e| {
+        if let Some(e) = pyerr {
+            return e;
+        }
+        match e {
+            bazaar_rio::rio::Error::Io(e) => PyErr::new::<PyIOError, _>(format!("Error reading stanza: {}", e)),
+            _ => PyErr::new::<PyValueError, _>(format!("Error reading stanza", )),
+        }
+    })?;
+
+    if let Some(stanza) = stanza {
+        Ok(Some(Stanza { stanza }))
+    } else {
+        Ok(None)
     }
 }
 
 #[pyfunction]
 fn read_stanzas(file: PyObject) -> PyResult<Py<PyList>> {
-    let py = Python::acquire_gil();
-    let py = py.python();
-    let reader = PyFileLikeObject::new(file);
-    let ret = PyList::empty(py);
+    Python::with_gil(|py| {
+        let reader = PyFileLikeObject::new(file)?;
+        let ret = PyList::empty(py);
 
-    let mut reader = BufReader::new(reader);
+        let mut reader = BufReader::new(reader);
 
-    let stanzas = bazaar_rio::rio::read_stanzas(&mut reader)?;
-    for stanza in stanzas {
-        ret.append((Stanza { stanza }).into_py(py))?;
-    }
-    Ok(ret.into())
-}
-
-#[pyfunction]
-fn read_patch_stanza(file: PyObject) -> PyResult<Option<Stanza>> {
-    let reader = PyFileLikeObject::new(file);
-
-    let mut reader = BufReader::new(reader);
-
-    let stanza = bazaar_rio::rio::read_patch_stanza(&mut reader)?;
-
-    if stanza.is_none() {
-        return Ok(None);
-    } else {
-        let stanza = stanza.unwrap();
-        return Ok(Some(Stanza { stanza }));
-    }
+        let stanzas = bazaar_rio::rio::read_stanzas(&mut reader).map_err(|e| {
+            match e {
+                bazaar_rio::rio::Error::Io(e) => PyErr::new::<PyIOError, _>(format!("Error reading stanza file: {}", e)),
+                _ => PyErr::new::<PyValueError, _>(format!("Error reading stanza file: ", )),
+            }
+        })?;
+        for stanza in stanzas {
+            ret.append((Stanza { stanza }).into_py(py))?;
+        }
+        Ok(ret.into())
+    })
 }
 
 #[pyclass]
@@ -260,7 +291,7 @@ struct RioReader {
 impl RioReader {
     #[new]
     fn new(file: PyObject) -> PyResult<RioReader> {
-        let reader = PyFileLikeObject::new(file);
+        let reader = PyFileLikeObject::with_requirements(file, true, false, false)?;
         let reader = BufReader::new(reader);
         let reader = bazaar_rio::rio::RioReader::new(reader);
 
@@ -268,35 +299,46 @@ impl RioReader {
     }
 
     fn __iter__(&mut self) -> PyResult<Py<PyIterator>> {
-        let py = Python::acquire_gil();
-        let py = py.python();
-        let ret = PyList::empty(py);
-        for stanza in self.reader {
-            stanza?;
-            ret.append((Stanza { stanza: stanza.unwrap().unwrap() }).into_py(py))?;
-        }
-        Ok(PyIterator::from_object(py, ret)?.into())
+        Python::with_gil(|py| {
+            let ret = PyList::empty(py);
+            for stanza in self.reader.iter() {
+                let stanza = stanza.map_err(|e| {
+                    match e {
+                        bazaar_rio::rio::Error::Io(e) => PyErr::new::<PyIOError, _>(format!("Error reading stanza file: {}", e)),
+                        _ => PyErr::new::<PyValueError, _>(format!("Error reading stanza file: ", )),
+                    }
+                })?;
+                ret.append((Stanza { stanza: stanza.unwrap() }).into_py(py))?;
+            }
+            Ok(PyIterator::from_object(py, ret)?.into())
+        })
     }
 }
 
 #[pyfunction]
-fn rio_iter(stanzas: Vec<Stanza>, header: Option<Vec<u8>>) -> PyResult<Py<PyIterator>> {
-    let py = Python::acquire_gil();
-    let py = py.python();
-    let ret = PyList::empty(py);
-    for line in bazaar_rio::rio::rio_iter(stanzas.into_iter().map(|ps| ps.stanza), header) {
-        ret.append(line);
-    }
-    Ok(PyIterator::from_object(py, ret)?.into())
+fn rio_iter(stanzas: &PyAny, header: Option<Vec<u8>>) -> PyResult<Py<PyIterator>> {
+    Python::with_gil(|py| {
+        let ret = PyList::empty(py);
+        let pyiter = stanzas.iter()?;
+        let mut stanzas = Vec::new();
+        for stanza in pyiter {
+            let stanza = stanza?;
+            stanzas.push(stanza.extract::<Stanza>()?.stanza);
+        }
+        for line in bazaar_rio::rio::rio_iter(stanzas.into_iter(), header) {
+            let line = line.as_slice();
+            ret.append(PyBytes::new(py, line))?;
+        }
+        Ok(PyIterator::from_object(py, ret)?.into())
+    })
 }
 
 #[pymodule]
-fn _rio_rs(_: Python, m: &PyModule) -> PyResult<()> {
+fn rio(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(valid_tag))?;
-    m.add_wrapped(wrap_pyfunction!(to_patch_lines))?;
     m.add_wrapped(wrap_pyfunction!(read_stanza))?;
+    m.add_wrapped(wrap_pyfunction!(read_stanza_file))?;
     m.add_wrapped(wrap_pyfunction!(read_stanzas))?;
-    m.add_wrapped(wrap_pyfunction!(read_patch_stanza))?;
     m.add_wrapped(wrap_pyfunction!(rio_iter))?;
 
     m.add_class::<Stanza>()?;

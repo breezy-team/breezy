@@ -29,7 +29,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
         info = Stanza()
         revision_id = self._get_revision_id()
         if revision_id != NULL_REVISION:
-            info.add('revision-id', revision_id)
+            info.add('revision-id', revision_id.decode('utf-8'))
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
             try:
@@ -61,7 +61,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             log = Stanza()
             for (revision_id, message,
                  timestamp, timezone) in self._iter_revision_history():
-                log.add('id', revision_id)
+                log.add('id', revision_id.decode('utf-8'))
                 log.add('message', message)
                 log.add('date', create_date_str(timestamp, timezone))
             info.add('revisions', log)
@@ -70,7 +70,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             files = Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add('path', path)
-                files.add('revision', self._file_revisions[path])
+                files.add('revision', self._file_revisions[path].decode('utf-8'))
             info.add('file-revisions', files)
 
         to_file.write(info.to_string())

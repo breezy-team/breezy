@@ -33,6 +33,7 @@ from breezy import (
     )
 from breezy.bzr import (
     rio,
+    rio_patch,
     testament,
     )
 from breezy.bzr.bundle import (
@@ -146,16 +147,17 @@ class BaseMergeDirective:
         :return: a list of lines
         """
         time_str = timestamp.format_patch_date(self.time, self.timezone)
-        stanza = rio.Stanza(revision_id=self.revision_id, timestamp=time_str,
+        stanza = rio.Stanza(revision_id=self.revision_id.decode('utf-8'),
+                            timestamp=time_str,
                             target_branch=self.target_branch,
-                            testament_sha1=self.testament_sha1)
+                            testament_sha1=self.testament_sha1.decode('utf-8'))
         for key in ('source_branch', 'message'):
             if self.__dict__[key] is not None:
                 stanza.add(key, self.__dict__[key])
         if base_revision:
-            stanza.add('base_revision_id', self.base_revision_id)
+            stanza.add('base_revision_id', self.base_revision_id.decode('utf-8'))
         lines = [b'# ' + self._format_string + b'\n']
-        lines.extend(rio.to_patch_lines(stanza))
+        lines.extend(rio_patch.to_patch_lines(stanza))
         lines.append(b'# \n')
         return lines
 
@@ -441,7 +443,7 @@ class MergeDirective(BaseMergeDirective):
 
     @classmethod
     def _from_lines(klass, line_iter):
-        stanza = rio.read_patch_stanza(line_iter)
+        stanza = rio_patch.read_patch_stanza(line_iter)
         patch_lines = list(line_iter)
         if len(patch_lines) == 0:
             patch = None
@@ -526,7 +528,7 @@ class MergeDirective2(BaseMergeDirective):
 
     @classmethod
     def _from_lines(klass, line_iter):
-        stanza = rio.read_patch_stanza(line_iter)
+        stanza = rio_patch.read_patch_stanza(line_iter)
         patch = None
         bundle = None
         try:

@@ -80,3 +80,4 @@ __pycache__
 ./target
 ./Cargo.lock
 ./brz
+breezy/bzr/*.so

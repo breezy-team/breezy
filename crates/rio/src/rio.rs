@@ -22,12 +22,25 @@
 /// stream representation of an object and vice versa, and that this relation
 /// will continue to hold for future versions of bzr.
 use regex::Regex;
-use std::io::{BufRead,Write,BufReader};
+use std::io::{BufRead,Write};
 use std::iter::Iterator;
 use std::collections::HashMap;
 use std::result::Result;
 use std::str;
-use std::borrow::Cow;
+
+pub enum Error {
+    Io(std::io::Error),
+    InvalidTag(String),
+    ContinuationLineWithoutTag,
+    TagValueSeparatorNotFound(Vec<u8>),
+    Other(String),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
+    }
+}
 
 /// Verify whether a tag is validly formatted
 pub fn valid_tag(tag: &str) -> bool {
@@ -37,13 +50,13 @@ pub fn valid_tag(tag: &str) -> bool {
     RE.is_match(tag)
 }
 
-pub struct RioWriter<'a, W: Write> {
+pub struct RioWriter<W: Write> {
     soft_nl: bool,
-    to_file: &'a mut W,
+    to_file: W,
 }
 
-impl<'a, W: Write> RioWriter<'a, W> {
-    pub fn new(to_file: &'a mut W) -> Self {
+impl<W: Write> RioWriter<W> {
+    pub fn new(to_file: W) -> Self {
         RioWriter {
             soft_nl: false,
             to_file,
@@ -54,7 +67,7 @@ impl<'a, W: Write> RioWriter<'a, W> {
         if self.soft_nl {
             self.to_file.write_all(b"\n")?;
         }
-        stanza.write(self.to_file)?;
+        stanza.write(&mut self.to_file)?;
         self.soft_nl = true;
         Ok(())
     }
@@ -68,13 +81,27 @@ impl<R: BufRead> RioReader<R> {
     pub fn new(from_file: R) -> Self {
         RioReader { from_file }
     }
+
+    fn read_stanza(&mut self) -> Result<Option<Stanza>, Error> {
+        read_stanza_file(&mut self.from_file)
+    }
+
+    pub fn iter(&mut self) -> RioReaderIter<R> {
+        RioReaderIter {
+            reader: self
+        }
+    }
 }
 
-impl<R: BufRead> Iterator for RioReader<R> {
-    type Item = Result<Option<Stanza>, std::io::Error>;
+pub struct RioReaderIter<'a, R: BufRead> {
+    reader: &'a mut RioReader<R>,
+}
+
+impl<'a, R: BufRead> Iterator for RioReaderIter<'a, R> {
+    type Item = Result<Option<Stanza>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match read_stanza(&mut self.from_file) {
+        match self.reader.read_stanza() {
             Ok(stanza) => {
                 if let Some(s) = stanza {
                     Some(Ok(Some(s)))
@@ -126,11 +153,12 @@ impl Stanza {
         Stanza { items: pairs }
     }
 
-    pub fn add(&mut self, tag: String, value: StanzaValue) {
+    pub fn add(&mut self, tag: String, value: StanzaValue) -> Result<(), Error> {
         if !valid_tag(&tag) {
-            panic!("invalid tag {}", tag);
+            return Err(Error::InvalidTag(tag));
         }
         self.items.push((tag, value));
+        Ok(())
     }
 
     pub fn contains(&self, find_tag: &str) -> bool {
@@ -230,27 +258,42 @@ impl Stanza {
     }
 }
 
-pub fn read_stanza(line_iter: &mut dyn BufRead) -> Result<Option<Stanza>, std::io::Error> {
+pub fn read_stanza_file(line_iter: &mut dyn BufRead) -> Result<Option<Stanza>, Error> {
+    read_stanza(line_iter.split(b'\n').map(|l| {
+        let mut vec: Vec<u8> = l?;
+        vec.push(b'\n');
+        Ok(vec)
+    }))
+}
+
+fn trim_newline(vec: &mut Vec<u8>) {
+    if let Some(last_non_newline) = vec.iter().rposition(|&b| b != b'\n' && b != b'\r') {
+        vec.truncate(last_non_newline + 1);
+    } else {
+        vec.clear();
+    }
+}
+
+pub fn read_stanza<I>(lines: I) -> Result<Option<Stanza>, Error>
+where
+    I: Iterator<Item = Result<Vec<u8>, Error>> {
     let mut stanza = Stanza::new();
     let mut tag: Option<String> = None;
     let mut accum_value: Option<Vec<String>> = None;
 
-    for bline in line_iter.lines() {
-        let line = bline?;
+    for bline in lines {
+        let mut line = bline.map_err(Error::from)?;
+        trim_newline(&mut line);
         if line.is_empty() {
-            break; // end of file
-        } else if line == "\n" {
             break; // end of stanza
-        } else if line.starts_with("\t") {
+        } else if line.starts_with(b"\t") {
             // continues previous value
             if tag.is_none() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "continuation line without tag",
-                ));
+                return Err(Error::ContinuationLineWithoutTag);
             }
             if let Some(accum_value) = accum_value.as_mut() {
-                accum_value.push("\n".to_owned() + &line[1..line.len() - 1]);
+                let extra = String::from_utf8(line[1..line.len()].to_owned()).unwrap();
+                accum_value.push("\n".to_string() + &extra);
             }
         } else {
             // new tag:value line
@@ -258,24 +301,22 @@ pub fn read_stanza(line_iter: &mut dyn BufRead) -> Result<Option<Stanza>, std::i
                 let value = accum_value.take().map_or_else(String::new, |v| v.join(""));
                 stanza.add(tag, StanzaValue::String(value));
             }
-            let colon_index = match line.find(": ") {
+            let colon_index = match line.windows(2).position(|window| window.eq(b": ")) {
                 Some(index) => index,
-                None => panic!("tag/value separator not found in line {:?}", line),
+                None => return Err(Error::TagValueSeparatorNotFound(line)),
             };
-            let tag = line[0..colon_index].to_owned();
-            if !valid_tag(&tag) {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("invalid tag {}", tag),
-                ));
+            let tagname = String::from_utf8(line[0..colon_index].to_owned()).unwrap();
+            if !valid_tag(&tagname) {
+                return Err(Error::InvalidTag(tagname));
             }
-            let value = line[colon_index + 2..line.len() - 1].to_owned();
+            tag = Some(tagname);
+            let value = String::from_utf8(line[colon_index + 2..line.len()].to_owned()).unwrap();
             accum_value = Some(vec![value]);
         }
     }
     if let Some(tag) = tag {
         let value = accum_value.take().map_or_else(String::new, |v| v.join(""));
-        stanza.add(tag, StanzaValue::String(value));
+        stanza.add(tag, StanzaValue::String(value))?;
         Ok(Some(stanza))
     } else {
         // didn't see any content
@@ -283,143 +324,16 @@ pub fn read_stanza(line_iter: &mut dyn BufRead) -> Result<Option<Stanza>, std::i
     }
 }
 
-pub fn read_stanzas(line_iter: &mut dyn BufRead) -> Result<Vec<Stanza>, std::io::Error> {
+pub fn read_stanzas(line_iter: &mut dyn BufRead) -> Result<Vec<Stanza>, Error> {
     let mut stanzas = vec![];
     loop {
-        if let Some(s) = read_stanza(line_iter)? {
+        if let Some(s) = read_stanza_file(line_iter)? {
             stanzas.push(s);
         } else {
             break;
         }
     }
     Ok(stanzas)
-}
-
-pub const MAX_RIO_WIDTH: usize = 72;
-
-pub fn to_patch_lines(stanza: &Stanza, max_width: usize) -> Result<Vec<Vec<u8>>, std::io::Error> {
-    if max_width <= 6 {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "max_width must be greater than 6"));
-    }
-    let max_rio_width = max_width - 4;
-    let mut lines = Vec::new();
-    let re = regex::bytes::Regex::new(r"\\").unwrap();
-    for pline in stanza.to_bytes_lines() {
-        let pline = pline.as_slice();
-        for line in pline.split(|c| *c == b'\n').take_while(|c| !c.is_empty()) {
-            let line: Cow<[u8]> = re.replace_all(line, |_caps: &regex::bytes::Captures| b"\\\\r");
-            let partline = line;
-            while !partline.is_empty() {
-                let (chunk, rest) = partline.split_at(max_rio_width);
-                let (break_index, _break_char) = find_break_index(chunk);
-                let (partline_chunk, line_chunk) = chunk.split_at(break_index);
-                let partline = partline_chunk;
-                let line = if !line_chunk.is_empty() {
-                    let mut line_chunk = line_chunk.to_vec();
-                    line_chunk.insert(0, b' ');
-                    line_chunk
-                } else {
-                    Vec::new()
-                };
-                let partline = re.replace_all(partline, |_caps: &regex::bytes::Captures| b"\\\\r").to_vec();
-                let mut partline = if !line.is_empty() {
-                    [&b"  "[..], partline.as_slice(), &b"\\"[..]].concat()
-                } else if partline.ends_with(b" ") {
-                    [&partline[..partline.len() - 1], &b"\\ "[..]].concat()
-                } else {
-                    partline.to_vec()
-                };
-                partline.insert(0, b'#');
-                partline.push(b'\n');
-                lines.push(partline.to_vec());
-                if line.is_empty() && partline.ends_with(b"\n") && partline.len() < max_width {
-                    lines.push(b"#   \n".to_vec());
-                }
-                if !line.is_empty() {
-                    let line = [&line[..1], &partline[3..], &line.as_slice()[1..]].concat();
-                    let line = re.replace_all(&line, |_caps: &regex::bytes::Captures| b"\\\\r");
-                    let line = [&b"#  "[..], &line[..], &b"\n"[..]].concat();
-                    lines.push(line);
-                }
-                partline = rest.to_vec();
-            }
-        }
-    }
-    Ok(lines)
-}
-
-fn find_break_index(line: &[u8]) -> (usize, u8) {
-    let mut break_index = line.len();
-    let mut break_char = b' ';
-    if break_index >= 3 && break_char == b' ' {
-        break_index = line[..break_index-3].iter().rposition(|&c| c == b' ' || c == b'-')
-            .map(|i| i + 1)
-            .unwrap_or(break_index);
-        break_char = line[break_index-1];
-    }
-    if break_index >= 3 && break_char == b'-' {
-        break_index -= 1;
-        break_char = line[break_index-1];
-    }
-    if break_index >= 3 && break_char == b'/' {
-        break_char = line[break_index-1];
-    }
-    (break_index, break_char)
-}
-
-
-fn patch_stanza_iter(line_iter: &mut dyn BufRead) -> Vec<String> {
-    let map = vec![
-        (r"\\", r"\"),
-        (r"\r", "\r"),
-        (r"\\\n", ""),
-    ];
-    let re = regex::Regex::new(r"\\\S|\r").unwrap();
-
-    let mut last_line: Option<String> = None;
-    let mut result = vec![];
-
-    for bline in line_iter.lines() {
-        let line = match bline {
-            Ok(v) => v,
-            Err(_) => return result,
-        };
-        let mut line = if line.starts_with("# ") {
-            line[2..].to_string()
-        } else if line.starts_with('#') {
-            line[1..].to_string()
-        } else {
-            continue;
-        };
-        if let Some(ref mut last) = last_line {
-            if line.len() > 2 {
-                line = line[2..].to_string();
-            }
-            last.push_str(&line);
-            line = last.clone();
-            last_line = None;
-        }
-        if line.ends_with('\n') {
-            let replaced = re.replace_all(&line, |caps: &regex::Captures| {
-                for &(ref from, ref to) in &map {
-                    if caps[0].as_bytes() == from.as_bytes() {
-                        return to.to_string();
-                    }
-                }
-                caps[0].to_string()
-            });
-            result.push(replaced.to_string());
-        } else {
-            last_line = Some(line);
-        }
-    }
-    result
-}
-
-pub fn read_patch_stanza(line_iter: &mut dyn BufRead) -> Result<Option<Stanza>, std::io::Error> {
-    let lines = patch_stanza_iter(line_iter).join("\n").as_bytes().to_vec();
-    let mut buffer = BufReader::new(lines.as_slice());
-    read_stanza(&mut buffer)
 }
 
 pub fn rio_iter(

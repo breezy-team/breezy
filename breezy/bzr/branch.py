@@ -667,7 +667,7 @@ class BzrBranch8(BzrBranch):
         s = BytesIO()
         writer = rio.RioWriter(s)
         for file_id, (branch_location, tree_path) in info_dict.items():
-            stanza = rio.Stanza(file_id=file_id,
+            stanza = rio.Stanza(file_id=file_id.decode('utf-8'),
                                 branch_location=branch_location)
             if tree_path is not None:
                 stanza.add('tree_path', tree_path)
@@ -688,9 +688,9 @@ class BzrBranch8(BzrBranch):
                 with self._transport.get('references') as rio_file:
                     stanzas = rio.read_stanzas(rio_file)
                     info_dict = {
-                        s['file_id'].encode('utf-8'): (
-                            s['branch_location'],
-                            s['tree_path'] if 'tree_path' in s else None)
+                        s.get('file_id').encode('utf-8'): (
+                            s.get('branch_location'),
+                            s.get('tree_path') if 'tree_path' in s else None)
                         for s in stanzas}
             except _mod_transport.NoSuchFile:
                 info_dict = {}
