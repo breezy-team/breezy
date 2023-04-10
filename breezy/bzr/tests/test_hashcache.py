@@ -112,10 +112,10 @@ class TestHashCache(TestCaseInTempDir):
         # can't.  In that case we should skip at this point.  But in fact
         # such combinations don't usually occur for the filesystem where
         # people test bzr.
-        self.assertRaises(BzrError, hc.get_sha1, 'a')
+        self.assertRaises(OSError, hc.get_sha1, 'a')
 
 
-class FakeHashCache(HashCache):
+class FakeHashCache:
     """Hashcache that consults a fake clock rather than the real one.
 
     This lets us examine how old or new files would be handled, without
