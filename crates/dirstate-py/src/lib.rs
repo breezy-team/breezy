@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3::types::{PyBytes, PyUnicode};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{PermissionsExt, MetadataExt};
 
 use bazaar_dirstate;
 
@@ -147,6 +147,18 @@ impl StatResult {
     #[getter]
     fn st_mode(&self) -> PyResult<u32> {
         Ok(self.metadata.permissions().mode())
+    }
+
+    #[cfg(unix)]
+    #[getter]
+    fn st_dev(&self) -> PyResult<u64> {
+        Ok(self.metadata.dev())
+    }
+
+    #[cfg(unix)]
+    #[getter]
+    fn st_ino(&self) -> PyResult<u64> {
+        Ok(self.metadata.ino())
     }
 }
 
