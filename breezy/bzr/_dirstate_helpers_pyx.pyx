@@ -538,11 +538,6 @@ cdef _pack_stat(stat_value):
     return _encode(packed)[:-1]
 
 
-def pack_stat(stat_value):
-    """Convert stat value into a packed representation quickly with pyrex"""
-    return _pack_stat(stat_value)
-
-
 cpdef update_entry(self, entry, abspath, stat_value):
     """Update the entry based on what is actually on disk.
 

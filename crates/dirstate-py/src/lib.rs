@@ -244,15 +244,26 @@ fn DefaultSHA1Provider() -> PyResult<SHA1Provider> {
     })
 }
 
+fn extract_fs_time(obj: &PyAny) -> PyResult<u64> {
+    if let Ok(u) = obj.extract::<u64>() {
+        Ok(u)
+    } else if let Ok(u) = obj.extract::<f64>() {
+        Ok(u as u64)
+    } else {
+        Err(PyTypeError::new_err("Not a float or int"))
+    }
+}
+
 #[pyfunction]
-fn pack_stat(stat_result: &PyAny) -> PyBytes {
-    let size = stat_result.getattr("st_size")?.extract::<u64>().unwrap();
-    let mtime = stat_result.getattr("st_mtime")?.extract::<u64>().unwrap();
-    let ctime = stat_result.getattr("st_ctime")?.extract::<u64>().unwrap();
-    let dev = stat_result.getattr("st_dev")?.extract::<u64>().unwrap();
-    let ino = stat_result.getattr("st_ino")?.extract::<u64>().unwrap();
-    let mode = stat_result.getattr("st_mode")?.extract::<u32>().unwrap();
-    PyBytes::new(stat_result.py(), &bazaar_dirstate::pack_stat(size, mtime, ctime, dev, ino, mode))
+fn pack_stat(stat_result: &PyAny) -> PyResult<PyObject> {
+    let size = stat_result.getattr("st_size")?.extract::<u64>()?;
+    let mtime = extract_fs_time(stat_result.getattr("st_mtime")?)?;
+    let ctime = extract_fs_time(stat_result.getattr("st_ctime")?)?;
+    let dev = stat_result.getattr("st_dev")?.extract::<u64>()?;
+    let ino = stat_result.getattr("st_ino")?.extract::<u64>()?;
+    let mode = stat_result.getattr("st_mode")?.extract::<u32>()?;
+    let s = bazaar_dirstate::pack_stat(size, mtime, ctime, dev, ino, mode);
+    Ok(PyBytes::new(stat_result.py(), s.as_bytes()).to_object(stat_result.py()))
 }
 
 /// Helpers for the dirstate module.
@@ -264,6 +275,7 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(lt_path_by_dirblock))?;
     m.add_wrapped(wrap_pyfunction!(bisect_dirblock))?;
     m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
+    m.add_wrapped(wrap_pyfunction!(pack_stat))?;
 
     Ok(())
 }

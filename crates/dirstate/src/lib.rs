@@ -98,10 +98,17 @@ pub fn bisect_path_right(paths: &[&Path], path: &Path) -> usize {
 }
 
 pub fn pack_stat_metadata(metadata: &Metadata) -> String {
-    pack_stat(metadata.len(), metadata.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(), metadata.created().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(), metadata.dev(), metadata.ino(), metadata.mode())
+    pack_stat(
+        metadata.len(),
+        metadata.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        metadata.created().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        metadata.dev(),
+        metadata.ino(),
+        metadata.mode()
+    )
 }
 
-pub fn pack_stat(size: u64, mtime: u64, ctime: u64, dev: u64, ino: u64, mode: u64) -> String {
+pub fn pack_stat(size: u64, mtime: u64, ctime: u64, dev: u64, ino: u64, mode: u32) -> String {
     let size = size & 0xFFFFFFFF;
     let mtime = mtime & 0xFFFFFFFF;
     let ctime = ctime & 0xFFFFFFFF;
