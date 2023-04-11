@@ -57,3 +57,16 @@ pub fn parent_directories(path: &Path) -> impl Iterator<Item = &Path> {
         }
     })
 }
+
+pub fn available_backup_name<'a, E>(path: &Path, exists: &'a dyn Fn(&Path) -> Result<bool, E>) -> Result<PathBuf, E> {
+    let mut counter = 0;
+    let mut next = || {
+        counter += 1;
+        PathBuf::from(format!("{}.~{}~", path.to_str().unwrap(), counter))
+    };
+    let mut ret = next();
+    while exists(ret.as_path())? {
+        ret = next();
+    }
+    Ok(ret)
+}

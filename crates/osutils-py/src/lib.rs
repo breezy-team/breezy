@@ -210,6 +210,16 @@ fn parent_directories(py: Python, path: PathBuf) -> PyResult<PyObject> {
     Ok(parents.into_py(py))
 }
 
+#[pyfunction]
+fn available_backup_name(py: Python, path: PathBuf, exists: PyObject) -> PyResult<PathBuf> {
+    let exists = |p: &Path| -> PyResult<bool> {
+        let ret = exists.call1(py, (p, ))?;
+        ret.extract::<bool>(py)
+    };
+
+    breezy_osutils::path::available_backup_name(path.as_path(), &exists)
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -225,5 +235,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     m.add_wrapped(wrap_pyfunction!(parent_directories))?;
+    m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
     Ok(())
 }
