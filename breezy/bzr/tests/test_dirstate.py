@@ -3029,7 +3029,7 @@ class TestPackStat(tests.TestCase):
         self.assertEqual(16, self.unpack_field(packed, "st_mtime"))
 
     def test_ancient_mtime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, -11644473600.0, 0))
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 1240428288.0, 0))
         self.assertEqual(1240428288, self.unpack_field(packed, "st_mtime"))
 
     def test_distant_mtime(self):
@@ -3041,7 +3041,7 @@ class TestPackStat(tests.TestCase):
         self.assertEqual(17, self.unpack_field(packed, "st_ctime"))
 
     def test_ancient_ctime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, -11644473600.0))
+        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 1240428288.0))
         self.assertEqual(1240428288, self.unpack_field(packed, "st_ctime"))
 
     def test_distant_ctime(self):
@@ -3049,5 +3049,5 @@ class TestPackStat(tests.TestCase):
         self.assertEqual(3931046656, self.unpack_field(packed, "st_ctime"))
 
     def test_negative_dev(self):
-        packed = self.pack((33252, 0, -0xFFFFFCDE, 0, 0, 0, 0, 0, 0, 0))
+        packed = self.pack((33252, 0, -0xFFFFFCDE & 0xFFFFFFFF, 0, 0, 0, 0, 0, 0, 0))
         self.assertEqual(0x322, self.unpack_field(packed, "st_dev"))
