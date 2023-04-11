@@ -11,6 +11,4 @@ license = "GPL-2.0+"
 memchr = "2.3.3"
 walkdir = "2"
 sha1 = "0.10.1"
-
-[target.'cfg(macos)'.dependencies]
 unicode-normalization = "0.1.19"

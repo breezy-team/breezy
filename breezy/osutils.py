@@ -991,7 +991,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename
+from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames
 
 
 def split_lines(s):

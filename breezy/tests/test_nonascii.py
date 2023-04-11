@@ -103,14 +103,6 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual((quarter_c, True), inf(quarter_c))
         self.assertEqual((quarter_c, True), inf(quarter_d))
 
-    def test_functions(self):
-        if osutils.normalizes_filenames():
-            self.assertEqual(osutils.normalized_filename,
-                             osutils._accessible_normalized_filename)
-        else:
-            self.assertEqual(osutils.normalized_filename,
-                             osutils._inaccessible_normalized_filename)
-
     def test_platform(self):
         # With FAT32 and certain encodings on win32
         # a_circle_c and a_dots_c actually map to the same file

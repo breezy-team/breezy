@@ -3,7 +3,7 @@ use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyTypeError, PyUnicodeDecodeError};
 use std::iter::Iterator;
 use memchr;
 
@@ -145,8 +145,26 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 }
 
 #[pyfunction]
-fn normalized_filename(filename: &str) -> PyResult<(String, bool)> {
-    Ok(breezy_osutils::path::normalized_filename(Path::new(filename)))
+fn normalized_filename(filename: PathBuf) -> PyResult<(String, bool)> {
+   breezy_osutils::path::normalized_filename(filename.as_path())
+       .map_or(Err(PyErr::new::<PyUnicodeDecodeError, _>("Invalid filename")), Ok)
+}
+
+#[pyfunction]
+fn _inaccessible_normalized_filename(filename: PathBuf) -> PyResult<(String, bool)> {
+    breezy_osutils::path::inaccessible_normalized_filename(filename.as_path())
+        .map_or(Err(PyErr::new::<PyUnicodeDecodeError, _>("Invalid filename")), Ok)
+}
+
+#[pyfunction]
+fn _accessible_normalized_filename(filename: PathBuf) -> PyResult<(String, bool)> {
+    breezy_osutils::path::accessible_normalized_filename(filename.as_path())
+        .map_or(Err(PyErr::new::<PyUnicodeDecodeError, _>("Invalid filename")), Ok)
+}
+
+#[pyfunction]
+fn normalizes_filenames() -> bool {
+    breezy_osutils::path::normalizes_filenames()
 }
 
 #[pymodule]
@@ -159,5 +177,8 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(sha_file))?;
     m.add_wrapped(wrap_pyfunction!(size_sha_file))?;
     m.add_wrapped(wrap_pyfunction!(normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_inaccessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_accessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(normalizes_filenames))?;
     Ok(())
 }
