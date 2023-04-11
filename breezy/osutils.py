@@ -869,17 +869,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-def parent_directories(filename: str):
-    """Return the list of parent directories, deepest first.
-
-    For example, parent_directories("a/b/c") -> ["a/b", "a"].
-    """
-    parents = []
-    parts = splitpath(dirname(filename))
-    while parts:
-        parents.append(joinpath(parts))
-        parts.pop()
-    return parents
+parent_directories = _osutils_rs.parent_directories
 
 
 _extension_load_failures = []

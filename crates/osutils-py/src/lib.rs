@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{PathBuf,Path};
 use pyo3_file::PyFileLikeObject;
-use pyo3::types::{PyBytes, PyIterator, PyList, PyDict};
+use pyo3::types::{PyBytes, PyIterator, PyList};
 use pyo3::exceptions::PyTypeError;
 use std::collections::HashSet;
 use std::iter::Iterator;
@@ -204,6 +204,12 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
     })
 }
 
+#[pyfunction]
+fn parent_directories(py: Python, path: PathBuf) -> PyResult<PyObject> {
+    let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
+    Ok(parents.into_py(py))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -218,5 +224,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
+    m.add_wrapped(wrap_pyfunction!(parent_directories))?;
     Ok(())
 }

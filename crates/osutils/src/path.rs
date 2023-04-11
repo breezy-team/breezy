@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path,PathBuf};
 use std::collections::HashSet;
 
 pub fn is_inside(dir: &Path, fname: &Path) -> bool {
@@ -39,4 +39,21 @@ pub fn minimum_path_selection(paths: HashSet<&Path>) -> HashSet<&Path> {
     }
 
     search_paths.into_iter().collect()
+}
+
+pub fn parent_directories(path: &Path) -> impl Iterator<Item = &Path> {
+    let mut path = path;
+
+    std::iter::from_fn(move || {
+        if let Some(parent) = path.parent() {
+            path = parent;
+            if path.parent().is_none() {
+                None
+            } else {
+                Some(path)
+            }
+        } else {
+            None
+        }
+    })
 }
