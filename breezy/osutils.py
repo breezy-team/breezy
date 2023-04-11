@@ -105,30 +105,7 @@ def chmod_if_possible(filename, mode):
         raise
 
 
-def minimum_path_selection(paths):
-    """Return the smallset subset of paths which are outside paths.
-
-    :param paths: A container (and hence not None) of paths.
-    :return: A set of paths sufficient to include everything in paths via
-        is_inside, drawn from the paths parameter.
-    """
-    if len(paths) < 2:
-        return set(paths)
-
-    def sort_key(path):
-        if isinstance(path, bytes):
-            return path.split(b'/')
-        else:
-            return path.split('/')
-    sorted_paths = sorted(list(paths), key=sort_key)
-
-    search_paths = [sorted_paths[0]]
-    for path in sorted_paths[1:]:
-        if not is_inside(search_paths[-1], path):
-            # This path is unique, add it
-            search_paths.append(path)
-
-    return set(search_paths)
+minimum_path_selection = _osutils_rs.minimum_path_selection
 
 
 _QUOTE_RE = None
@@ -528,50 +505,9 @@ def islink(f):
     except OSError:
         return False
 
-
-def is_inside(dir, fname):
-    """True if fname is inside dir.
-
-    The parameters should typically be passed to osutils.normpath first, so
-    that . and .. and repeated slashes are eliminated, and the separators
-    are canonical for the platform.
-
-    The empty string as a dir name is taken as top-of-tree and matches
-    everything.
-    """
-    # XXX: Most callers of this can actually do something smarter by
-    # looking at the inventory
-    if dir == fname:
-        return True
-
-    if dir in ('', b''):
-        return True
-
-    if isinstance(dir, bytes):
-        if not dir.endswith(b'/'):
-            dir += b'/'
-    else:
-        if not dir.endswith('/'):
-            dir += '/'
-
-    return fname.startswith(dir)
-
-
-def is_inside_any(dir_list, fname):
-    """True if fname is inside any of given dirs."""
-    for dirname in dir_list:
-        if is_inside(dirname, fname):
-            return True
-    return False
-
-
-def is_inside_or_parent_of_any(dir_list, fname):
-    """True if fname is a child or a parent of any of the given files."""
-    for dirname in dir_list:
-        if is_inside(dirname, fname) or is_inside(fname, dirname):
-            return True
-    return False
-
+is_inside = _osutils_rs.is_inside
+is_inside_any = _osutils_rs.is_inside_any
+is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
 
 def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
              report_activity=None, direction='read'):
@@ -1522,21 +1458,7 @@ def supports_posix_readonly():
     return sys.platform != "win32"
 
 
-def set_or_unset_env(env_variable, value):
-    """Modify the environment, setting or removing the env_variable.
-
-    :param env_variable: The environment variable in question
-    :param value: The value to set the environment to. If None, then
-        the variable will be removed.
-    :return: The original value of the environment variable.
-    """
-    orig_val = os.environ.get(env_variable)
-    if value is None:
-        if orig_val is not None:
-            del os.environ[env_variable]
-    else:
-        os.environ[env_variable] = value
-    return orig_val
+set_or_unset_env = _osutils_rs.set_or_unset_env
 
 
 _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')

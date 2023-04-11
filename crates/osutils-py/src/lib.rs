@@ -1,9 +1,10 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use std::path::PathBuf;
+use std::path::{PathBuf,Path};
 use pyo3_file::PyFileLikeObject;
-use pyo3::types::{PyBytes, PyIterator, PyList};
+use pyo3::types::{PyBytes, PyIterator, PyList, PyDict};
 use pyo3::exceptions::PyTypeError;
+use std::collections::HashSet;
 use std::iter::Iterator;
 use memchr;
 
@@ -81,6 +82,16 @@ impl PyChunksToLinesIterator {
     }
 }
 
+fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
+    if let Ok(path) = object.extract::<Vec<u8>>() {
+        Ok(PathBuf::from(String::from_utf8(path).unwrap()))
+    } else if let Ok(path) = object.extract::<PathBuf>() {
+        Ok(path)
+    } else {
+        Err(PyTypeError::new_err("path must be a string or bytes"))
+    }
+}
+
 #[pyfunction]
 fn chunks_to_lines(chunks: PyObject) -> PyResult<PyObject> {
     Python::with_gil(|py| {
@@ -106,15 +117,7 @@ fn chunks_to_lines_iter(chunk_iter: PyObject) -> PyResult<PyObject> {
 
 #[pyfunction]
 fn sha_file_by_name(object: &PyAny) -> PyResult<String> {
-    let pathbuf: PathBuf;
-    // Convert object to PathBuf, allowing it to either be PyString or PyBytes
-    if let Ok(path) = object.extract::<Vec<u8>>() {
-        pathbuf = PathBuf::from(String::from_utf8(path).unwrap());
-    } else if let Ok(path) = object.extract::<PathBuf>() {
-        pathbuf = path;
-    } else {
-        return Err(PyTypeError::new_err("path must be a string or bytes"));
-    }
+    let pathbuf = extract_path(object)?;
     let digest = breezy_osutils::sha::sha_file_by_name(pathbuf.as_path()).map_err(PyErr::from)?;
     Ok(digest)
 }
@@ -144,6 +147,63 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
     Ok((size, digest))
 }
 
+#[pyfunction]
+fn is_inside(path: &PyAny, parent: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    let parent = extract_path(parent)?;
+    Ok(breezy_osutils::path::is_inside(path.as_path(), parent.as_path()))
+}
+
+#[pyfunction]
+fn is_inside_any(dir_list: &PyAny, path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    let mut c_dir_list: Vec<PathBuf> = Vec::new();
+    for dir in dir_list.iter()? {
+        c_dir_list.push(extract_path(dir?)?);
+    }
+    Ok(breezy_osutils::path::is_inside_any(&c_dir_list.iter().map(|p| p.as_path()).collect::<Vec<&Path>>(), path.as_path()))
+}
+
+#[pyfunction]
+fn is_inside_or_parent_of_any(dir_list: &PyAny, path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    let mut c_dir_list: Vec<PathBuf> = Vec::new();
+    for dir in dir_list.iter()? {
+        c_dir_list.push(extract_path(dir?)?);
+    }
+    Ok(breezy_osutils::path::is_inside_or_parent_of_any(&c_dir_list.iter().map(|p| p.as_path()).collect::<Vec<&Path>>(), path.as_path()))
+}
+
+#[pyfunction]
+pub fn minimum_path_selection(paths: &PyAny) -> PyResult<HashSet<String>> {
+    let mut path_set: HashSet<PathBuf> = HashSet::new();
+    for path in paths.iter()? {
+        path_set.insert(extract_path(path?)?);
+    }
+    let paths = breezy_osutils::path::minimum_path_selection(path_set.iter().map(|p| p.as_path()).collect::<HashSet<&Path>>());
+    Ok(paths.iter().map(|x| x.to_string_lossy().to_string()).collect())
+}
+
+#[pyfunction]
+fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
+    // Note that we're not calling out to breey_osutils::set_or_unset_env here, because it doesn't
+    // change the environment in Python.
+    Python::with_gil(|py| {
+        let os = py.import("os")?;
+        let environ = os.getattr("environ")?;
+        let old = environ.call_method1("get", (key, py.None()))?;
+        if let Some(value) = value {
+            environ.set_item(key, value)?;
+        } else {
+            if old.is_none() {
+                return Ok(py.None());
+            }
+            environ.del_item(key)?;
+        }
+        Ok(old.into_py(py))
+    })
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -153,5 +213,10 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(sha_strings))?;
     m.add_wrapped(wrap_pyfunction!(sha_file))?;
     m.add_wrapped(wrap_pyfunction!(size_sha_file))?;
+    m.add_wrapped(wrap_pyfunction!(is_inside))?;
+    m.add_wrapped(wrap_pyfunction!(is_inside_any))?;
+    m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
+    m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
+    m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     Ok(())
 }
