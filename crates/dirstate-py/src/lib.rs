@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3::types::{PyBytes, PyUnicode};
+use std::os::unix::fs::{PermissionsExt, MetadataExt};
 
 use bazaar_dirstate;
 
@@ -116,6 +117,79 @@ fn lt_path_by_dirblock(path1: &PyAny, path2: &PyAny) -> PyResult<bool> {
     Ok(bazaar_dirstate::lt_path_by_dirblock(&path1, &path2))
 }
 
+// TODO(jelmer): Move this into a more central place?
+#[pyclass]
+struct StatResult {
+    metadata: std::fs::Metadata,
+}
+
+#[pymethods]
+impl StatResult {
+    #[getter]
+    fn st_size(&self) -> PyResult<u64> {
+        Ok(self.metadata.len())
+    }
+
+    #[getter]
+    fn st_mtime(&self) -> PyResult<u64> {
+        let modified = self.metadata.modified().map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        let since_epoch = modified.duration_since(std::time::UNIX_EPOCH).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
+        Ok(since_epoch.as_secs())
+    }
+
+    #[getter]
+    fn st_ctime(&self) -> PyResult<u64> {
+        let created = self.metadata.created().map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        let since_epoch = created.duration_since(std::time::UNIX_EPOCH).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
+        Ok(since_epoch.as_secs())
+    }
+
+    #[getter]
+    fn st_mode(&self) -> PyResult<u32> {
+        Ok(self.metadata.permissions().mode())
+    }
+
+    #[cfg(unix)]
+    #[getter]
+    fn st_dev(&self) -> PyResult<u64> {
+        Ok(self.metadata.dev())
+    }
+
+    #[cfg(unix)]
+    #[getter]
+    fn st_ino(&self) -> PyResult<u64> {
+        Ok(self.metadata.ino())
+    }
+}
+
+#[pyclass]
+struct SHA1Provider {
+    provider: Box<dyn bazaar_dirstate::SHA1Provider>,
+}
+
+#[pymethods]
+impl SHA1Provider {
+    fn sha1(&mut self, py: Python, path: &PyAny) -> PyResult<PyObject> {
+        let path = extract_path(path)?;
+        let sha1 = self.provider.sha1(&path).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        Ok(PyBytes::new(py, sha1.as_bytes()).to_object(py))
+    }
+
+    fn stat_and_sha1(&mut self, py: Python, path: &PyAny) -> PyResult<(PyObject, PyObject)> {
+        let path = extract_path(path)?;
+        let (md, sha1) = self.provider.stat_and_sha1(&path)?;
+        let pmd = StatResult { metadata: md };
+        Ok((pmd.into_py(py), PyBytes::new(py, sha1.as_bytes()).to_object(py)))
+    }
+}
+
+#[pyfunction]
+fn DefaultSHA1Provider() -> PyResult<SHA1Provider> {
+    Ok(SHA1Provider {
+        provider: Box::new(bazaar_dirstate::DefaultSHA1Provider::new()),
+    })
+}
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
@@ -123,6 +197,7 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;
     m.add_wrapped(wrap_pyfunction!(lt_path_by_dirblock))?;
+    m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
 
     Ok(())
 }

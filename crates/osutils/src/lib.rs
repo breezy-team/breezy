@@ -55,7 +55,30 @@ where
     })
 }
 
+pub fn set_or_unset_env(env_variable: &str, value: Option<&str>) -> Result<Option<String>, std::env::VarError> {
+    let orig_val = std::env::var(env_variable);
+    let ret: Option<String>;
+    if let Err(std::env::VarError::NotPresent) = orig_val {
+        ret = None;
+        if value.is_some() {
+            std::env::set_var(env_variable, value.unwrap());
+        }
+    } else if let Err(e) = orig_val {
+        return Err(e);
+    } else {
+        assert!(orig_val.is_ok());
+        ret = Some(orig_val.unwrap());
+        match value {
+            None => std::env::remove_var(env_variable),
+            Some(val) => std::env::set_var(env_variable, val)
+        }
+    }
+    Ok(ret)
+}
+
 pub mod sha;
+pub mod path;
+
 pub mod path;
 
 #[cfg(test)]

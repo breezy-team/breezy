@@ -969,7 +969,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 raise errors.PathsNotVersionedError(
                     [p.decode('utf-8') for p in paths])
         # -- remove redundancy in supplied paths to prevent over-scanning --
-        search_paths = osutils.minimum_path_selection(paths)
+        search_paths = {
+            p.encode('utf-8')
+            for p in osutils.minimum_path_selection(paths)}
         # sketch:
         # for all search_indexs in each path at or under each element of
         # search_paths, if the detail is relocated: add the id, and add the
