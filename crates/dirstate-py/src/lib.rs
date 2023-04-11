@@ -244,6 +244,17 @@ fn DefaultSHA1Provider() -> PyResult<SHA1Provider> {
     })
 }
 
+#[pyfunction]
+fn pack_stat(stat_result: &PyAny) -> PyBytes {
+    let size = stat_result.getattr("st_size")?.extract::<u64>().unwrap();
+    let mtime = stat_result.getattr("st_mtime")?.extract::<u64>().unwrap();
+    let ctime = stat_result.getattr("st_ctime")?.extract::<u64>().unwrap();
+    let dev = stat_result.getattr("st_dev")?.extract::<u64>().unwrap();
+    let ino = stat_result.getattr("st_ino")?.extract::<u64>().unwrap();
+    let mode = stat_result.getattr("st_mode")?.extract::<u32>().unwrap();
+    PyBytes::new(stat_result.py(), &bazaar_dirstate::pack_stat(size, mtime, ctime, dev, ino, mode))
+}
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {

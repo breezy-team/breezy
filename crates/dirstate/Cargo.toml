@@ -13,3 +13,4 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 
 [dependencies]
 breezy-osutils = { path = "../osutils" }
+base64 = "0.13.0"
