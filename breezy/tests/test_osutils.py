@@ -1108,7 +1108,7 @@ class TestChunksToLinesIter(tests.TestCase):
 
 class TestSplitLines(tests.TestCase):
 
-    def test_split(self):
+    def test_split_bytes(self):
         self.assertEqual([b'foo\n', b'bar\xae'],
                          osutils.split_lines(b'foo\nbar\xae'))
         self.assertEqual([b'foo\n', b'bar\xae\n'],

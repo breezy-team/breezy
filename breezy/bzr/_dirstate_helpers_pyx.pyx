@@ -252,7 +252,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
         raise TypeError("you must pass a python list for 'dirblocks' not: %s %r"
                         % (type(dirblocks), dirblocks))
     if not PyBytes_CheckExact(dirname):
-        raise TypeError("you must pass a string for dirname not: %s %r"
+        raise TypeError("you must pass a bytestring for dirname not: %s %r"
                         % (type(dirname), dirname))
     if hi is None:
         _hi = len(dirblocks)
