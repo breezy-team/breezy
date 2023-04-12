@@ -209,6 +209,12 @@ fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
     Ok(breezy_osutils::path::find_executable_on_path(executable))
 }
 
+#[pyfunction]
+fn legal_path(path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    Ok(breezy_osutils::path::legal_path(path.as_path()))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -224,5 +230,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
+    m.add_wrapped(wrap_pyfunction!(legal_path))?;
     Ok(())
 }
