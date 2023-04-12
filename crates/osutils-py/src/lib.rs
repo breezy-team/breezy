@@ -151,25 +151,20 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 
 #[pyfunction]
 fn normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    let filename = extract_path(&filename)?;
-    if let Some(filename) = breezy_osutils::path::normalized_filename(filename.as_path()) {
-        Ok(filename)
+    if (breezy_osutils::path::normalizes_filenames()) {
+        _accessible_normalized_filename(py, filename)
     } else {
-        let raw = PyBytes::new(py, &filename.as_os_str().to_os_string().into_vec());
-        Err(PyUnicodeDecodeError::new_err(("utf-8", raw.to_object(py), 0, 0, "Invalid filename")))
+        _inaccessible_normalized_filename(py, filename)
     }
 }
 
 #[pyfunction]
 fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    eprintln!("filename: {:?}", filename);
     let filename = extract_path(&filename)?;
-    eprintln!("filename: {:?}", filename);
     if let Some(filename) = breezy_osutils::path::inaccessible_normalized_filename(filename.as_path()) {
         Ok(filename)
     } else {
-        let raw = PyBytes::new(py, &filename.as_os_str().to_os_string().into_vec());
-        Err(PyUnicodeDecodeError::new_err(("utf-8", raw.to_object(py), 0, 0, "Invalid filename")))
+        Ok((filename, true))
     }
 }
 
@@ -179,8 +174,7 @@ fn _accessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(Pa
     if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path()) {
         Ok(filename)
     } else {
-        let raw = PyBytes::new(py, &filename.as_os_str().to_os_string().into_vec());
-        Err(PyUnicodeDecodeError::new_err(("utf-8", raw.to_object(py), 0, 0, "Invalid filename")))
+        Ok((filename, false))
     }
 }
 
