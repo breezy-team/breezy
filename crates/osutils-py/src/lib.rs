@@ -6,6 +6,8 @@ use pyo3::types::{PyBytes, PyIterator, PyList};
 use pyo3::exceptions::PyTypeError;
 use std::collections::HashSet;
 use std::iter::Iterator;
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStringExt;
 use memchr;
 
 #[pyclass]
@@ -84,7 +86,7 @@ impl PyChunksToLinesIterator {
 
 fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
-        Ok(PathBuf::from(String::from_utf8(path).unwrap()))
+        Ok(PathBuf::from(OsString::from_vec(path)))
     } else if let Ok(path) = object.extract::<PathBuf>() {
         Ok(path)
     } else {
@@ -205,13 +207,15 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
 }
 
 #[pyfunction]
-fn parent_directories(py: Python, path: PathBuf) -> PyResult<PyObject> {
+fn parent_directories(py: Python, path: &PyAny) -> PyResult<PyObject> {
+    let path = extract_path(path)?;
     let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
     Ok(parents.into_py(py))
 }
 
 #[pyfunction]
-fn available_backup_name(py: Python, path: PathBuf, exists: PyObject) -> PyResult<PathBuf> {
+fn available_backup_name(py: Python, path: &PyAny, exists: PyObject) -> PyResult<PathBuf> {
+    let path = extract_path(path)?;
     let exists = |p: &Path| -> PyResult<bool> {
         let ret = exists.call1(py, (p, ))?;
         ret.extract::<bool>(py)
