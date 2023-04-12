@@ -84,6 +84,7 @@ dependencies = [
 name = "breezy-osutils"
 version = "3.3.3"
 dependencies = [
+ "lazy_static",
  "memchr",
  "sha1",
  "unicode-normalization",

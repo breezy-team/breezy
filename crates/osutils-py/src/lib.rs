@@ -2,10 +2,12 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
-use pyo3::types::{PyBytes, PyIterator, PyList, PyDict};
+use pyo3::types::{PyBytes, PyIterator, PyList};
 use pyo3::exceptions::{PyTypeError, PyUnicodeDecodeError};
 use std::collections::HashSet;
 use std::iter::Iterator;
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStringExt;
 use memchr;
 
 #[pyclass]
@@ -84,7 +86,7 @@ impl PyChunksToLinesIterator {
 
 fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
-        Ok(PathBuf::from(String::from_utf8(path).unwrap()))
+        Ok(PathBuf::from(OsString::from_vec(path)))
     } else if let Ok(path) = object.extract::<PathBuf>() {
         Ok(path)
     } else {
@@ -148,21 +150,38 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 }
 
 #[pyfunction]
-fn normalized_filename(filename: PathBuf) -> PyResult<(String, bool)> {
-   breezy_osutils::path::normalized_filename(filename.as_path())
-       .map_or(Err(PyErr::new::<PyUnicodeDecodeError, _>("Invalid filename")), Ok)
+fn normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename = extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        let raw = PyBytes::new(py, &filename.as_os_str().to_os_string().into_vec());
+        Err(PyUnicodeDecodeError::new_err(("utf-8", raw.to_object(py), 0, 0, "Invalid filename")))
+    }
 }
 
 #[pyfunction]
-fn _inaccessible_normalized_filename(filename: PathBuf) -> PyResult<(String, bool)> {
-    breezy_osutils::path::inaccessible_normalized_filename(filename.as_path())
-        .map_or(Err(PyErr::new::<PyUnicodeDecodeError, _>("Invalid filename")), Ok)
+fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    eprintln!("filename: {:?}", filename);
+    let filename = extract_path(&filename)?;
+    eprintln!("filename: {:?}", filename);
+    if let Some(filename) = breezy_osutils::path::inaccessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        let raw = PyBytes::new(py, &filename.as_os_str().to_os_string().into_vec());
+        Err(PyUnicodeDecodeError::new_err(("utf-8", raw.to_object(py), 0, 0, "Invalid filename")))
+    }
 }
 
 #[pyfunction]
-fn _accessible_normalized_filename(filename: PathBuf) -> PyResult<(String, bool)> {
-    breezy_osutils::path::accessible_normalized_filename(filename.as_path())
-        .map_or(Err(PyErr::new::<PyUnicodeDecodeError, _>("Invalid filename")), Ok)
+fn _accessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename= extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        let raw = PyBytes::new(py, &filename.as_os_str().to_os_string().into_vec());
+        Err(PyUnicodeDecodeError::new_err(("utf-8", raw.to_object(py), 0, 0, "Invalid filename")))
+    }
 }
 
 #[pyfunction]
@@ -227,6 +246,12 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
     })
 }
 
+#[pyfunction]
+fn legal_path(path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    Ok(breezy_osutils::path::legal_path(path.as_path()))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -245,5 +270,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
+    m.add_wrapped(wrap_pyfunction!(legal_path))?;
     Ok(())
 }

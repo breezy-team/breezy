@@ -97,13 +97,24 @@ pub fn bisect_path_right(paths: &[&Path], path: &Path) -> usize {
     lo
 }
 
-pub fn pack_stat(metadata: &Metadata) -> String {
-    let size = metadata.len() & 0xFFFFFFFF;
-    let mtime = metadata.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() & 0xFFFFFFFF;
-    let ctime = metadata.created().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() & 0xFFFFFFFF;
-    let dev = metadata.dev() & 0xFFFFFFFF;
-    let ino = metadata.ino() & 0xFFFFFFFF;
-    let mode = metadata.mode() & 0xFFFFFFFF;
+pub fn pack_stat_metadata(metadata: &Metadata) -> String {
+    pack_stat(
+        metadata.len(),
+        metadata.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        metadata.created().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        metadata.dev(),
+        metadata.ino(),
+        metadata.mode()
+    )
+}
+
+pub fn pack_stat(size: u64, mtime: u64, ctime: u64, dev: u64, ino: u64, mode: u32) -> String {
+    let size = size & 0xFFFFFFFF;
+    let mtime = mtime & 0xFFFFFFFF;
+    let ctime = ctime & 0xFFFFFFFF;
+    let dev = dev & 0xFFFFFFFF;
+    let ino = ino & 0xFFFFFFFF;
+    let mode = mode & 0xFFFFFFFF;
 
     let packed_data = [
         (size >> 24) as u8,

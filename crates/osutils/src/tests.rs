@@ -1,5 +1,6 @@
 use crate::chunks_to_lines;
-use std::path::Path;
+use crate::path::{accessible_normalized_filename, inaccessible_normalized_filename};
+use std::path::{Path, PathBuf};
 
 fn assert_chunks_to_lines(input: Vec<&str>, expected: Vec<&str>) {
     let iter = input.iter().map(|l| Ok::<&[u8], String>(l.as_bytes()));
@@ -78,4 +79,28 @@ fn test_is_inside_or_parent_of_any() {
     assert_eq!(is_inside_or_parent_of_any("a", &["b", "c"]), false);
     assert_eq!(is_inside_or_parent_of_any("a/b", &["a", "b"]), true);
     assert_eq!(is_inside_or_parent_of_any("a/b", &["b", "a"]), true);
+}
+
+#[test]
+fn test_inaccessible_normalized_filename() {
+    assert_eq!(
+        inaccessible_normalized_filename(Path::new("a/b")),
+        Some((PathBuf::from("a/b"), true))
+    );
+    assert_eq!(
+        inaccessible_normalized_filename(Path::new("a/µ")),
+        Some((PathBuf::from("a/µ"), true))
+    );
+}
+
+#[test]
+fn test_access_normalized_filename() {
+    assert_eq!(
+        accessible_normalized_filename(Path::new("a/b")),
+        Some((PathBuf::from("a/b"), true))
+    );
+    assert_eq!(
+        accessible_normalized_filename(Path::new("a/µ")),
+        Some((PathBuf::from("a/µ"), true))
+    );
 }

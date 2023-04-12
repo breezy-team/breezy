@@ -615,11 +615,6 @@ def sha_string(string):
     return _osutils_rs.sha_string(string).encode('utf-8')
 
 
-def fingerprint_file(f):
-    (size, sha) = size_sha_file(f)
-    return {'size': size, 'sha1': sha}
-
-
 def compare_files(a, b):
     """Returns true if equal in contents"""
     BUFSIZE = 4096
@@ -1413,18 +1408,14 @@ def supports_posix_readonly():
 set_or_unset_env = _osutils_rs.set_or_unset_env
 
 
-_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
-
-
 def check_legal_path(path):
     """Check whether the supplied path is legal.
     This is only required on Windows, so we don't test on other platforms
     right now.
     """
-    if sys.platform != "win32":
+    if _osutils_rs.legal_path(path):
         return
-    if _validWin32PathRE.match(path) is None:
-        raise errors.IllegalPath(path)
+    raise errors.IllegalPath(path)
 
 
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR

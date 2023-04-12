@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::collections::HashSet;
-use unicode_normalization::UnicodeNormalization;
+use unicode_normalization::{UnicodeNormalization,is_nfc};
 
 pub fn is_inside(dir: &Path, fname: &Path) -> bool {
     fname.starts_with(&dir)
@@ -42,17 +42,25 @@ pub fn minimum_path_selection(paths: HashSet<&Path>) -> HashSet<&Path> {
     search_paths.into_iter().collect()
 }
 
-pub fn inaccessible_normalized_filename(path: &Path) -> Option<(String, bool)> {
+pub fn accessible_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
     path.to_str().map(|path_str| {
-        (path_str.nfc().collect::<String>(), true)
+        if is_nfc(path_str) {
+            (path.to_path_buf(), true)
+        } else {
+            (PathBuf::from(path_str.nfc().collect::<String>()), true)
+        }
     })
 }
 
-pub fn accessible_normalized_filename(path: &Path) -> Option<(String, bool)> {
+pub fn inaccessible_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
     path.to_str().map(|path_str| {
-        let normalized_path = path_str.nfc().collect::<String>();
-        let accessible = normalized_path == path_str;
-        (normalized_path, accessible)
+        if is_nfc(path_str) {
+            (path.to_path_buf(), true)
+        } else {
+            let normalized_path = path_str.nfc().collect::<String>();
+            let accessible = normalized_path == path_str;
+            (PathBuf::from(normalized_path), accessible)
+        }
     })
 }
 
@@ -69,7 +77,7 @@ pub fn accessible_normalized_filename(path: &Path) -> Option<(String, bool)> {
 /// So return the normalized path, and a flag indicating if the file
 /// can be accessed by that path.
 #[cfg(target_os = "macos")]
-pub fn normalized_filename(path: &Path) -> (String, bool) {
+pub fn normalized_filename(path: &Path) -> (PathBuf, bool) {
     accessible_normalized_filename(path)
 }
 
@@ -87,7 +95,7 @@ pub fn normalized_filename(path: &Path) -> (String, bool) {
 /// can be accessed by that path.
 
 #[cfg(not(target_os = "macos"))]
-pub fn normalized_filename(path: &Path) -> Option<(String, bool)> {
+pub fn normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
     inaccessible_normalized_filename(path)
 }
 
@@ -97,4 +105,26 @@ pub fn normalizes_filenames() -> bool {
 
     #[cfg(not(target_os = "macos"))]
     return false;
+}
+
+// Check whether the supplied path is legal.
+// This is only required on Windows, so we don't test on other platforms
+// right now.
+//
+#[cfg(not(windows))]
+pub fn legal_path(_path: &Path) -> bool {
+    true
+}
+
+#[cfg(windows)]
+use lazy_static::lazy_static;
+#[cfg(windows)]
+lazy_static! {
+use regex::Regex;
+static ref VALID_WIN32_PATH_RE: Regex = Regex::new(r#"^([A-Za-z]:[/\\])?[^:<>*"?\|]*$"#).unwrap();
+}
+
+#[cfg(windows)]
+pub fn legal_path(path: &Path) -> bool {
+    VALID_WIN32_PATH_RE.is_match(path)
 }

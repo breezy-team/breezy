@@ -1,7 +1,8 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
-use pyo3::types::{PyBytes, PyUnicode};
+use pyo3::types::{PyBytes, PyUnicode, PyDict, PyList, PyTuple, PyString};
+use pyo3::exceptions::PyTypeError;
 use std::os::unix::fs::{PermissionsExt, MetadataExt};
 
 use bazaar_dirstate;
@@ -9,9 +10,9 @@ use bazaar_dirstate;
 fn extract_path(pyo: &PyAny) -> PyResult<PathBuf> {
     let stro: String;
     if pyo.is_instance_of::<PyBytes>()? {
-        stro = String::from_utf8(pyo.extract::<&[u8]>().unwrap().to_vec())?;
+        stro = String::from_utf8(pyo.extract::<&[u8]>()?.to_vec())?;
     } else if pyo.is_instance_of::<PyUnicode>()? {
-        stro = pyo.extract::<String>().unwrap();
+        stro = pyo.extract::<String>()?;
     } else {
         return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("path must be either bytes or str"));
     }
@@ -117,6 +118,71 @@ fn lt_path_by_dirblock(path1: &PyAny, path2: &PyAny) -> PyResult<bool> {
     Ok(bazaar_dirstate::lt_path_by_dirblock(&path1, &path2))
 }
 
+#[pyfunction]
+fn bisect_dirblock(
+    py: Python,
+    dirblocks: &PyList,
+    dirname: PyObject,
+    lo: Option<usize>,
+    hi: Option<usize>,
+    cache: Option<&PyDict>,
+) -> PyResult<usize> {
+    fn split_object(py: Python, obj: Py<PyAny>) -> PyResult<Vec<PathBuf>> {
+        if let Ok(py_str) = obj.extract::<&PyString>(py) {
+            Ok(py_str
+                .to_str()?
+                .split('/')
+                .map(PathBuf::from)
+                .collect::<Vec<_>>())
+        } else if let Ok(py_bytes) = obj.extract::<&PyBytes>(py) {
+            Ok(py_bytes
+                .as_bytes()
+                .split(|&byte| byte == b'/')
+                .map(|s| PathBuf::from(String::from_utf8_lossy(s).to_string()))
+                .collect::<Vec<_>>())
+        } else {
+            Err(PyTypeError::new_err("Not a PyBytes or PyString"))
+        }
+    }
+
+    let hi = hi.unwrap_or(dirblocks.len());
+    let cache = cache.unwrap_or_else(|| PyDict::new(py));
+
+    let dirname_split = match cache.get_item(&dirname) {
+        Some(item) => item.extract::<Vec<PathBuf>>()?,
+        None => {
+            let split = split_object(py, dirname.to_object(py))?;
+            cache.set_item(dirname.clone(), split.clone())?;
+            split
+        }
+    };
+
+    let mut lo = lo.unwrap_or(0);
+    let mut hi = hi;
+
+    while lo < hi {
+        let mid = (lo + hi) / 2;
+        let dirblock = dirblocks.get_item(mid)?.downcast::<PyTuple>()?;
+        let cur = dirblock.get_item(0)?;
+
+        let cur_split = match cache.get_item(&cur) {
+            Some(item) => item.extract::<Vec<PathBuf>>()?,
+            None => {
+                let split = split_object(py, cur.into_py(py))?;
+                cache.set_item(cur.clone(), split.clone())?;
+                split
+            }
+        };
+
+        if cur_split < dirname_split {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    Ok(lo)
+}
+
 // TODO(jelmer): Move this into a more central place?
 #[pyclass]
 struct StatResult {
@@ -190,6 +256,28 @@ fn DefaultSHA1Provider() -> PyResult<SHA1Provider> {
     })
 }
 
+fn extract_fs_time(obj: &PyAny) -> PyResult<u64> {
+    if let Ok(u) = obj.extract::<u64>() {
+        Ok(u)
+    } else if let Ok(u) = obj.extract::<f64>() {
+        Ok(u as u64)
+    } else {
+        Err(PyTypeError::new_err("Not a float or int"))
+    }
+}
+
+#[pyfunction]
+fn pack_stat(stat_result: &PyAny) -> PyResult<PyObject> {
+    let size = stat_result.getattr("st_size")?.extract::<u64>()?;
+    let mtime = extract_fs_time(stat_result.getattr("st_mtime")?)?;
+    let ctime = extract_fs_time(stat_result.getattr("st_ctime")?)?;
+    let dev = stat_result.getattr("st_dev")?.extract::<u64>()?;
+    let ino = stat_result.getattr("st_ino")?.extract::<u64>()?;
+    let mode = stat_result.getattr("st_mode")?.extract::<u32>()?;
+    let s = bazaar_dirstate::pack_stat(size, mtime, ctime, dev, ino, mode);
+    Ok(PyBytes::new(stat_result.py(), s.as_bytes()).to_object(stat_result.py()))
+}
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
@@ -197,7 +285,9 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;
     m.add_wrapped(wrap_pyfunction!(lt_path_by_dirblock))?;
+    m.add_wrapped(wrap_pyfunction!(bisect_dirblock))?;
     m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
+    m.add_wrapped(wrap_pyfunction!(pack_stat))?;
 
     Ok(())
 }
