@@ -165,6 +165,10 @@ impl HashCache {
         self.hashcache.cutoff_time()
     }
 
+    fn set_cutoff_offset(&mut self, offset: i64) {
+        self.hashcache.set_cutoff_offset(offset);
+    }
+
     #[getter]
     fn miss_count(&self) -> u32 {
         self.hashcache.miss_count()

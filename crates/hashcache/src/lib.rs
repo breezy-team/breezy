@@ -79,6 +79,8 @@ impl From <Metadata> for Fingerprint {
     }
 }
 
+const DEFAULT_CUTOFF_OFFSET: i64 = -3;
+
 pub struct HashCache {
     root: PathBuf,
     hit_count: u32,
@@ -92,6 +94,7 @@ pub struct HashCache {
     permissions: Option<Permissions>,
     cache_file_name: PathBuf,
     filter_provider: Option<Box<ContentFilterProvider>>,
+    cutoff_offset: i64,
 }
 
 impl HashCache {
@@ -122,6 +125,7 @@ impl HashCache {
             permissions,
             cache_file_name: cache_file_name.to_path_buf(),
             filter_provider: content_filter_provider,
+            cutoff_offset: DEFAULT_CUTOFF_OFFSET,
         }
     }
 
@@ -135,6 +139,10 @@ impl HashCache {
 
     pub fn miss_count(&self) -> u32 {
         self.miss_count
+    }
+
+    pub fn set_cutoff_offset(&mut self, offset: i64) {
+        self.cutoff_offset = offset;
     }
 
     /// Discard all cached information.
@@ -371,7 +379,7 @@ impl HashCache {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64
-            - 3
+            + self.cutoff_offset
     }
 
     pub fn fingerprint(&self, abspath: &Path, stat_value: Option<Metadata>) -> Option<Fingerprint> {
