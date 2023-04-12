@@ -615,11 +615,6 @@ def sha_string(string):
     return _osutils_rs.sha_string(string).encode('utf-8')
 
 
-def fingerprint_file(f):
-    (size, sha) = size_sha_file(f)
-    return {'size': size, 'sha1': sha}
-
-
 def compare_files(a, b):
     """Returns true if equal in contents"""
     BUFSIZE = 4096
