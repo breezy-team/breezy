@@ -1,14 +1,17 @@
+#![allow(non_snake_case)]
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
-use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::exceptions::{PyTypeError,PyValueError,PyIOError};
 use std::collections::HashSet;
 use std::iter::Iterator;
 use std::ffi::OsString;
+use std::io::{Read, BufRead};
 use std::os::unix::ffi::OsStringExt;
 use memchr;
+use pyo3::PyErr;
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -132,7 +135,7 @@ fn sha_string(string: &[u8]) -> PyResult<String> {
 #[pyfunction]
 fn sha_strings(strings: &PyAny) -> PyResult<String> {
     let iter = strings.iter()?;
-    Ok(breezy_osutils::sha::sha_strings(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
+    Ok(breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
 }
 
 #[pyfunction]
@@ -150,16 +153,16 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 }
 
 #[pyfunction]
-fn normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+fn normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
     if breezy_osutils::path::normalizes_filenames() {
-        _accessible_normalized_filename(py, filename)
+        _accessible_normalized_filename(filename)
     } else {
-        _inaccessible_normalized_filename(py, filename)
+        _inaccessible_normalized_filename(filename)
     }
 }
 
 #[pyfunction]
-fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+fn _inaccessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
     let filename = extract_path(&filename)?;
     if let Some(filename) = breezy_osutils::path::inaccessible_normalized_filename(filename.as_path()) {
         Ok(filename)
@@ -169,7 +172,7 @@ fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(
 }
 
 #[pyfunction]
-fn _accessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+fn _accessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
     let filename= extract_path(&filename)?;
     if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path()) {
         Ok(filename)
@@ -241,6 +244,11 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
 }
 
 #[pyfunction]
+fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
+    Ok(breezy_osutils::path::find_executable_on_path(executable))
+}
+
+#[pyfunction]
 fn legal_path(path: &PyAny) -> PyResult<bool> {
     let path = extract_path(path)?;
     Ok(breezy_osutils::path::legal_path(path.as_path()))
@@ -275,6 +283,141 @@ fn format_local_date(py: Python, t: PyObject, offset: Option<i32>, timezone: Opt
     Ok(breezy_osutils::time::format_local_date(t, offset, timezone, date_format, show_offset.unwrap_or(true)))
 }
 
+#[pyfunction]
+fn rand_chars(len: usize) -> PyResult<String> {
+    Ok(breezy_osutils::rand_chars(len))
+}
+
+#[pyclass]
+struct PyIterableFile {
+    inner: breezy_osutils::iterablefile::IterableFile<Box<dyn Iterator<Item=std::io::Result<Vec<u8>>> + Send>>,
+    closed: bool,
+}
+
+#[pymethods]
+impl PyIterableFile {
+
+    fn __enter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __exit__(&mut self, _py: Python, _exc_type: &PyAny, _exc_value: &PyAny, _traceback: &PyAny) -> PyResult<bool> {
+        self.check_closed(_py)?;
+        Ok(false)
+    }
+
+    fn check_closed(&self, _py: Python) -> PyResult<()> {
+        if self.closed {
+            Err(PyIOError::new_err("I/O operation on closed file"))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
+        self.check_closed(py)?;
+        let mut buf = Vec::new();
+        let read = if let Some(size) = size {
+            let inner = &mut self.inner;
+            let mut handle = inner.take(size as u64);
+            handle.read_to_end(&mut buf)
+        } else {
+            self.inner.read_to_end(&mut buf)
+        };
+        if PyErr::occurred(py) { return Err(PyErr::fetch(py)); }
+        buf.truncate(read?);
+        Ok(PyBytes::new(py, &buf).to_object(py))
+    }
+
+    fn close(&mut self, _py: Python) -> PyResult<()> {
+        self.closed = true;
+        Ok(())
+    }
+
+    fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
+        self.check_closed(py)?;
+        let lines = PyList::empty(py);
+        while let Some(line) = self.readline(py, None)? {
+            lines.append(line)?;
+        }
+        Ok(lines.to_object(py))
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+        slf
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        self.readline(py, None)
+    }
+
+    fn readline(&mut self, py: Python, _size_hint: Option<usize>) -> PyResult<Option<PyObject>> {
+        self.check_closed(py)?;
+        let mut buf = Vec::new();
+        let read = self.inner.read_until(b'\n', &mut buf);
+        if PyErr::occurred(py) { return Err(PyErr::fetch(py)); }
+        let read = read?;
+        if read == 0 {
+            return Ok(None);
+        }
+        buf.truncate(read);
+        Ok(Some(PyBytes::new(py, &buf).to_object(py)))
+    }
+}
+
+#[pyfunction]
+fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
+    Python::with_gil(|py| {
+        let py_iter = py_iterable.call_method0(py, "__iter__")?;
+        let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send> = Box::new(std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
+            Python::with_gil(|py| {
+                match py_iter.downcast::<PyIterator>(py).unwrap().next() {
+                    None => None,
+                    Some(Err(err)) => {
+                        PyErr::restore(err.clone_ref(py), py);
+                        Some(Err(std::io::Error::new(std::io::ErrorKind::Other, err.to_string())))
+                    },
+                    Some(Ok(obj)) => {
+                        match obj.downcast::<PyBytes>() {
+                            Err(err) => { PyErr::restore(PyTypeError::new_err("unable to convert to bytes"), py); Some(Err(std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))) },
+                            Ok(bytes) => Some(Ok(bytes.as_bytes().to_vec().into())),
+                        }
+                    }
+                }
+            })
+        }));
+
+        let f = breezy_osutils::iterablefile::IterableFile::new(line_iter);
+
+        Ok(PyIterableFile { inner: f, closed: false }.into_py(py))
+    })
+}
+
+#[pyfunction]
+fn check_text_path(path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    Ok(breezy_osutils::textfile::check_text_path(path.as_path())?)
+}
+
+#[pyfunction]
+fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
+    let mut py_iter = lines.iter()?;
+    let line_iter = std::iter::from_fn(|| {
+        let line = py_iter.next();
+        match line {
+            Some(Ok(line)) => Some(line.extract::<Vec<u8>>().unwrap()),
+            Some(Err(err)) => { PyErr::restore(err, py); None }
+            None => None,
+        }
+    });
+
+    let result = breezy_osutils::textfile::check_text_lines(line_iter);
+    if PyErr::occurred(py) {
+        return Err(PyErr::fetch(py));
+    }
+    Ok(result)
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -293,8 +436,13 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
+    m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
     m.add_wrapped(wrap_pyfunction!(local_time_offset))?;
     m.add_wrapped(wrap_pyfunction!(format_local_date))?;
+    m.add_wrapped(wrap_pyfunction!(rand_chars))?;
+    m.add_wrapped(wrap_pyfunction!(IterableFile))?;
+    m.add_wrapped(wrap_pyfunction!(check_text_path))?;
+    m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     Ok(())
 }

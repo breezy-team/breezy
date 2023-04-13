@@ -87,7 +87,7 @@ class TestReadonly(TestCaseWithWorkingTree):
         the_hashcache = getattr(tree, '_hashcache', None)
         if the_hashcache is not None:
             self.assertIsInstance(the_hashcache, hashcache.HashCache)
-            the_hashcache._cutoff_time = self._custom_cutoff_time
+            the_hashcache.set_cutoff_offset(10)
             hack_dirstate = False
         else:
             # DirState trees don't have a HashCache, but they do have the same
