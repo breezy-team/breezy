@@ -18,7 +18,7 @@ import random
 import time
 
 from breezy import tests, timestamp
-from breezy.osutils import local_time_offset
+from breezy.osutils import local_time_offset, format_date
 
 
 class TestPatchHeader(tests.TestCase):
@@ -100,6 +100,17 @@ class TestPatchHeader(tests.TestCase):
         # Minus sign in middle of offset
         self.assertRaises(ValueError, timestamp.parse_patch_date,
                           '2007-03-06 10:04:19 +05-5')
+
+
+class FormatHighresDateTests(tests.TestCase):
+
+    def test_format_highres_date(self):
+        self.assertEqual(format_date(1120153132.350850105, 0), 'Thu 2005-06-30 17:38:52 +0000')
+        self.assertEqual(timestamp.format_highres_date(1120153132.350850105, 0), 'Thu 2005-06-30 17:38:52.350850105 +0000')
+        self.assertEqual(format_date(1120153132.350850105, -5*3600), 'Thu 2005-06-30 12:38:52 -0500')
+        self.assertEqual(timestamp.format_highres_date(1120153132.350850105, -5*3600), 'Thu 2005-06-30 12:38:52.350850105 -0500')
+        self.assertEqual(timestamp.format_highres_date(1120153132.350850105, 7200), 'Thu 2005-06-30 19:38:52.350850105 +0200')
+        self.assertEqual(timestamp.format_highres_date(1152428738.867522, 19800), 'Sun 2006-07-09 12:35:38.867522001 +0530')
 
 
 class UnpackHighresDateTests(tests.TestCase):

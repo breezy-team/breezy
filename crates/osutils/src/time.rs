@@ -1,5 +1,7 @@
 use std::time::UNIX_EPOCH;
-use chrono::{DateTime, Local, TimeZone, Utc, FixedOffset, Datelike};
+use chrono::{DateTime, NaiveDateTime, Local, TimeZone, Utc, FixedOffset, Datelike, Timelike};
+
+const DEFAULT_DATE_FORMAT: &str = "%a %Y-%m-%d %H:%M:%S";
 
 pub fn local_time_offset(t: Option<i64>) -> i64 {
     let timestamp = t.unwrap_or_else(|| Utc::now().timestamp());
@@ -42,6 +44,17 @@ pub enum Timezone {
     Local,
     Utc,
     Original,
+}
+
+impl Timezone {
+    pub fn from(s: &str) -> Option<Self> {
+        match s {
+            "local" => Some(Timezone::Local),
+            "utc" => Some(Timezone::Utc),
+            "original" => Some(Timezone::Original),
+            _ => None,
+        }
+    }
 }
 
 pub fn format_delta(delta: i64) -> String {
@@ -103,8 +116,92 @@ pub fn format_date_with_offset_in_original_timezone(t: i64, offset: i64) -> Stri
     let offset_minutes = (offset % 3600) / 60;
 
     let dt = DateTime::<Utc>::from(UNIX_EPOCH + std::time::Duration::from_secs(t as u64) + std::time::Duration::from_secs(offset as u64));
-    let date_str = dt.format("%a %Y-%m-%d %H:%M:%S").to_string();
+    let date_str = dt.format(DEFAULT_DATE_FORMAT).to_string();
     let offset_str = format!(" {:+03}{:02}", offset_hours, offset_minutes);
 
     date_str + &offset_str
+}
+
+pub fn format_date(t: i64, offset: Option<i64>, timezone: Timezone, date_fmt: Option<&str>, show_offset: bool) -> String {
+    let (dt, offset_str) = match timezone {
+        Timezone::Utc => (
+            DateTime::from_utc(NaiveDateTime::from_timestamp(t, 0), Utc),
+            if show_offset { " +0000".to_owned() } else { "".to_owned() }),
+        Timezone::Original => {
+            let offset = offset.unwrap_or(0);
+            let offset_str = if show_offset {
+                let sign = if offset >= 0 { '+' } else { '-' };
+                let hours = offset.abs() / 3600;
+                let minutes = (offset.abs() / 60) % 60;
+                format!(" {}{:02}{:02}", sign, hours, minutes)
+            } else {
+                "".to_owned()
+            };
+            (DateTime::from_utc(NaiveDateTime::from_timestamp(t + offset, 0), Utc), offset_str)
+        },
+        Timezone::Local => {
+            let local = Local.timestamp(t, 0);
+            let offset = local.offset().local_minus_utc();
+            let offset_str = if show_offset {
+                let sign = if offset >= 0 { '+' } else { '-' };
+                let hours = offset.abs() / 3600;
+                let minutes = (offset.abs() / 60) % 60;
+                format!(" {}{:02}{:02}", sign, hours, minutes)
+            } else {
+                "".to_owned()
+            };
+            (local.with_timezone(&Utc), offset_str)
+        },
+    };
+    dt.format(date_fmt.unwrap_or(DEFAULT_DATE_FORMAT)).to_string() + &offset_str
+}
+
+pub fn format_highres_date(t: f64, offset: Option<i32>) -> String {
+    let offset = offset.unwrap_or(0);
+    let datetime = Utc.timestamp_opt(t as i64 + offset as i64, 0).unwrap();
+    let highres_seconds = format!("{:.9}", t - t.floor())[1..].to_string();
+    let offset_str = format!(" {:+03}{:02}", offset / 3600, (offset / 60) % 60);
+    format!("{}{}{}", datetime.format(DEFAULT_DATE_FORMAT), highres_seconds, offset_str)
+}
+
+const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+pub fn unpack_highres_date(date: &str) -> Result<(f64, i32), String> {
+    let space_loc = date.find(' ');
+    if space_loc.is_none() {
+        return Err(format!("date string does not contain a day of week: {}", date));
+    }
+    let weekday = &date[..space_loc.unwrap()];
+    if WEEKDAYS.iter().find(|&&d| d == weekday).is_none() {
+        return Err(format!("date string does not contain a valid day of week: {}", date));
+    }
+    let dot_loc = date.find('.');
+    if dot_loc.is_none() {
+        return Err(format!("Date string does not contain high-precision seconds: {}", date));
+    }
+    let base_time_str = &date[space_loc.unwrap() + 1..dot_loc.unwrap()];
+    let offset_loc = date[dot_loc.unwrap()..].find(' ');
+    if offset_loc.is_none() {
+        return Err(format!("Date string does not contain a timezone: {}", date));
+    }
+    let fract_seconds_str = &date[dot_loc.unwrap()..dot_loc.unwrap() + offset_loc.unwrap()];
+    let offset_str = &date[dot_loc.unwrap() + 1 + offset_loc.unwrap()..];
+
+    let base_time = Utc.datetime_from_str(base_time_str, "%Y-%m-%d %H:%M:%S")
+        .map_err(|e| format!("Failed to parse datetime string ({}): {}", base_time_str, e))?;
+
+    let fract_seconds = fract_seconds_str.parse::<f64>()
+        .map_err(|e| format!("Failed to parse high-precision seconds({}) : {}", fract_seconds_str, e))?;
+
+    let offset = offset_str.parse::<i32>()
+        .map_err(|e| format!("Failed to parse offset ({}): {}", offset_str, e))?;
+
+    let offset_hours = offset / 100;
+    let offset_minutes = offset % 100;
+    let seconds_offset = (offset_hours * 3600) + (offset_minutes * 60);
+
+    let timestamp = base_time.timestamp() - seconds_offset as i64;
+    let timestamp_with_fract_seconds = timestamp as f64 + fract_seconds;
+
+    Ok((timestamp_with_fract_seconds, seconds_offset))
 }

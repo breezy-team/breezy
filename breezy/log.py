@@ -76,8 +76,9 @@ from . import transport as _mod_transport
 from .osutils import (format_date,
                       format_date_with_offset_in_original_timezone,
                       get_diff_header_encoding, get_terminal_encoding,
-                      is_inside, terminal_width)
-from .tree import InterTree, find_previous_path
+                      is_inside, terminal_width,
+                      UnsupportedTimezoneFormat)
+from .tree import InterTree
 
 
 def find_touching_revisions(repository, last_revision, last_tree, last_path):
@@ -1617,8 +1618,11 @@ class LongLogFormatter(LogFormatter):
             self.date_string = self._date_string_with_timezone
 
     def _date_string_with_timezone(self, rev):
-        return format_date(rev.timestamp, rev.timezone or 0,
-                           self.show_timezone)
+        try:
+            return format_date(rev.timestamp, rev.timezone or 0,
+                               timezone=self.show_timezone)
+        except UnsupportedTimezoneFormat:
+            raise errors.CommandError(gettext(f'Unsupported timezone format "{self.show_timezone}", options are "utc", "original", "local".'))
 
     def _date_string_original_timezone(self, rev):
         return format_date_with_offset_in_original_timezone(rev.timestamp,
@@ -1651,7 +1655,10 @@ class LongLogFormatter(LogFormatter):
         if branch_nick is not None:
             lines.append('branch nick: {}'.format(branch_nick))
 
-        lines.append('timestamp: {}'.format(self.date_string(revision.rev)))
+        try:
+            lines.append('timestamp: {}'.format(self.date_string(revision.rev)))
+        except UnsupportedTimezoneFormat:
+            raise errors.CommandError(gettext(f'Unsupported timezone format "{self.show_timezone}", options are "utc", "original", "local".'))
 
         if revision.signature is not None:
             lines.append('signature: ' + revision.signature)

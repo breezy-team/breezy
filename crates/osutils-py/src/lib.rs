@@ -12,6 +12,9 @@ use std::io::{Read, BufRead};
 use std::os::unix::ffi::OsStringExt;
 use memchr;
 use pyo3::PyErr;
+use pyo3::create_exception;
+
+create_exception!(breezy_osutils, UnsupportedTimezoneFormat, pyo3::exceptions::PyException);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -273,13 +276,11 @@ fn format_local_date(py: Python, t: PyObject, offset: Option<i32>, timezone: Opt
     } else {
         return Err(PyValueError::new_err("t must be a float"));
     };
-    let timezone = match timezone {
-        Some("local") => Ok(breezy_osutils::time::Timezone::Local),
-        Some("utc") => Ok(breezy_osutils::time::Timezone::Utc),
-        Some("original") => Ok(breezy_osutils::time::Timezone::Original),
-        Some(n) => Err(PyValueError::new_err(format!("Unknown timezone: {}", n))),
-        None => Ok(breezy_osutils::time::Timezone::Original),
-    }?;
+    let timezone = breezy_osutils::time::Timezone::from(timezone.unwrap_or("original"));
+    if timezone.is_none() {
+        return Err(UnsupportedTimezoneFormat::new_err("Unsupported timezone"));
+    }
+    let timezone = timezone.unwrap();
     Ok(breezy_osutils::time::format_local_date(t, offset, timezone, date_format, show_offset.unwrap_or(true)))
 }
 
@@ -453,8 +454,64 @@ fn format_date_with_offset_in_original_timezone(py: Python, date: PyObject, offs
     Ok(breezy_osutils::time::format_date_with_offset_in_original_timezone(date, offset))
 }
 
+#[pyfunction]
+fn format_date(py: Python, t: PyObject, offset: Option<PyObject>, timezone: Option<&str>, date_fmt: Option<&str>, show_offset: Option<bool>) -> PyResult<String> {
+    let t = if let Ok(t) = t.extract::<f64>(py) {
+        t as i64
+    } else if let Ok(t) = t.extract::<i64>(py) {
+        t
+    } else {
+        return Err(PyValueError::new_err("t must be a float or int"));
+    };
+    let timezone = breezy_osutils::time::Timezone::from(timezone.unwrap_or("original"));
+    if timezone.is_none() {
+        return Err(UnsupportedTimezoneFormat::new_err("unsupported timezone"));
+    }
+    let offset = if let Some(offset) = offset {
+        if let Ok(offset) = offset.extract::<f64>(py) {
+            Some(offset as i64)
+        } else if let Ok(offset) = offset.extract::<i64>(py) {
+            Some(offset as i64)
+        } else {
+            return Err(PyValueError::new_err("offset must be a float or int"));
+        }
+    } else {
+        None
+    };
+    let timezone = timezone.unwrap();
+    Ok(breezy_osutils::time::format_date(t, offset, timezone, date_fmt, show_offset.unwrap_or(true)))
+}
+
+#[pyfunction]
+fn format_highres_date(py: Python, t: PyObject, offset: Option<PyObject>) -> PyResult<String> {
+    let t = if let Ok(t) = t.extract::<f64>(py) {
+        t
+    } else if let Ok(t) = t.extract::<i64>(py) {
+        t as f64
+    } else {
+        return Err(PyValueError::new_err("t must be a float or int"));
+    };
+    let offset = if let Some(offset) = offset {
+        if let Ok(offset) = offset.extract::<f64>(py) {
+            Some(offset as i32)
+        } else if let Ok(offset) = offset.extract::<i64>(py) {
+            Some(offset as i32)
+        } else {
+            return Err(PyValueError::new_err("offset must be a float or int"));
+        }
+    } else {
+        None
+    };
+    Ok(breezy_osutils::time::format_highres_date(t, offset))
+}
+
+#[pyfunction]
+fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
+    breezy_osutils::time::unpack_highres_date(date).map_err(|e| PyValueError::new_err(e.to_string()))
+}
+
 #[pymodule]
-fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines_iter))?;
     m.add_wrapped(wrap_pyfunction!(sha_file_by_name))?;
@@ -481,5 +538,9 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     m.add_wrapped(wrap_pyfunction!(format_delta))?;
     m.add_wrapped(wrap_pyfunction!(format_date_with_offset_in_original_timezone))?;
+    m.add_wrapped(wrap_pyfunction!(format_date))?;
+    m.add_wrapped(wrap_pyfunction!(format_highres_date))?;
+    m.add_wrapped(wrap_pyfunction!(unpack_highres_date))?;
+    m.add("UnsupportedTimezoneFormat", py.get_type::<UnsupportedTimezoneFormat>())?;
     Ok(())
 }
