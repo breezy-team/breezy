@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::collections::HashSet;
+use std::os::unix::fs::PermissionsExt;
 use unicode_normalization::{UnicodeNormalization,is_nfc};
 
 pub fn is_inside(dir: &Path, fname: &Path) -> bool {
@@ -40,6 +41,63 @@ pub fn minimum_path_selection(paths: HashSet<&Path>) -> HashSet<&Path> {
     }
 
     search_paths.into_iter().collect()
+}
+
+#[cfg(target_os = "windows")]
+pub fn find_executable_on_path(name: &str) -> Option<String> {
+    use std::env;
+    use std::path::PathBuf;
+    use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE};
+    use winreg::RegKey;
+
+    let exts = env::var("PATHEXT").unwrap_or_default();
+    let exts = exts.split(';').map(|ext| ext.to_lowercase()).collect::<Vec<_>>();
+    let (name, exts) = {
+        let mut path = PathBuf::from(name);
+        let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or_default().to_lowercase();
+        if !exts.is_empty() && !exts.contains(&ext) {
+            (path.file_stem().unwrap_or_default().to_str().unwrap_or_default(), vec![ext])
+        } else {
+            (path.file_stem().unwrap_or_default().to_str().unwrap_or_default(), exts)
+        }
+    };
+    let paths = env::var("PATH").unwrap_or_default();
+    let paths = paths.split(';').collect::<Vec<_>>();
+    for ext in &exts {
+        for path in &paths {
+            let exe_path = PathBuf::from(path).join(format!("{}{}", name, ext));
+            if exe_path.is_file() {
+                return Some(exe_path.to_str().unwrap_or_default().to_owned());
+            }
+        }
+    }
+    if let Ok(reg_key) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths") {
+        if let Ok(value) = reg_key.get_value(name) {
+            if let Some(value) = value.as_string() {
+                return Some(value);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn find_executable_on_path(name: &str) -> Option<String> {
+    use std::env;
+    use std::path::PathBuf;
+
+    let paths = env::var("PATH").unwrap_or_default();
+    let paths = paths.split(':').collect::<Vec<_>>();
+    for path in &paths {
+        let exe_path = PathBuf::from(path).join(name);
+        let md = exe_path.metadata();
+        if let Ok(md) = exe_path.metadata() {
+            if md.permissions().mode() & 0o111 != 0 {
+                return Some(exe_path.to_str().unwrap_or_default().to_owned());
+            }
+        }
+    }
+    None
 }
 
 pub fn accessible_normalized_filename(path: &Path) -> Option<(PathBuf, bool)> {
