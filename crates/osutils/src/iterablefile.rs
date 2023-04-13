@@ -24,9 +24,11 @@ impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> Read for IterableFile<I> {
 
 impl<I: Iterator<Item = io::Result<Vec<u8>>> + Send> BufRead for IterableFile<I> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        if self.buffer.is_empty() {
+        while self.buffer.is_empty() {
             if let Some(bytes) = self.iter.next() {
                 self.buffer = bytes?;
+            } else {
+                break;
             }
         }
         Ok(&self.buffer)
@@ -115,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_readline() {
-        let content: Vec<Vec<u8>> = vec![b"This\n".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.\n".to_vec()];
+        let content: Vec<Vec<u8>> = vec![b"".to_vec(), b"This\n".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.\n".to_vec()];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let mut buf = String::new();
         let read = file.read_line(&mut buf).unwrap();
@@ -125,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_readlines() {
-        let content: Vec<Vec<u8>> = vec![b"This\n".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.\n".to_vec()];
+        let content: Vec<Vec<u8>> = vec![b"This\n".to_vec(), b"is ".to_vec(), b"".to_vec(), b"a ".to_vec(), b"test.\n".to_vec()];
         let file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let lines: Vec<String> = file.lines().map(|line| line.unwrap()).collect();
         assert_eq!(lines, vec!["This", "is a test."]);
@@ -133,7 +135,7 @@ mod tests {
 
     #[test]
     fn test_fillbuf() {
-        let content: Vec<Vec<u8>> = vec![b"This ".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.".to_vec()];
+        let content: Vec<Vec<u8>> = vec![b"This ".to_vec(), b"".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.".to_vec()];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         assert_eq!(file.fill_buf().unwrap(), b"This ");
         file.consume(5);

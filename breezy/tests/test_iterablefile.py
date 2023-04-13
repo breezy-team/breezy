@@ -48,9 +48,13 @@ class TestIterableFile(tests.TestCase):
         self.assertEqual(f.readline(4), b'is is \n')
         f.close()
         self.assertRaises(IOError, f.readline)
+        f = IterableFile(iter([b'Th\nis ', b'', b'is \n', b'a ', b'te\nst.']))
+        self.assertEqual(f.readline(), b'Th\n')
+        self.assertEqual(f.readline(4), b'is is \n')
+        f.close()
 
     def test_read(self):
-        f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
+        f = IterableFile([b'This ', b'is ', b'', b'a ', b'test.'])
         self.assertEqual(b'This is a test.', f.read())
         f = IterableFile([b'This ', b'is ', b'a ', b'test.'])
         self.assertEqual(f.read(10), b'This is a ')
