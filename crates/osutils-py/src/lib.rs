@@ -246,6 +246,16 @@ fn legal_path(path: &PyAny) -> PyResult<bool> {
     Ok(breezy_osutils::path::legal_path(path.as_path()))
 }
 
+#[pyfunction]
+fn local_time_offset(t: Option<&PyAny>) -> PyResult<i64> {
+    if let Some(t) = t {
+        let t = t.extract::<f64>()?;
+        Ok(breezy_osutils::time::local_time_offset(Some(t as i64)))
+    } else {
+        Ok(breezy_osutils::time::local_time_offset(None))
+    }
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -265,5 +275,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
+    m.add_wrapped(wrap_pyfunction!(local_time_offset))?;
     Ok(())
 }

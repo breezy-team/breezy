@@ -627,13 +627,7 @@ def compare_files(a, b):
             return True
 
 
-def local_time_offset(t=None):
-    """Return offset of local zone from GMT, either at present or at time t."""
-    from datetime import datetime
-    if t is None:
-        t = time.time()
-    offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
-    return offset.days * 86400 + offset.seconds
+local_time_offset = _osutils_rs.local_time_offset
 
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
