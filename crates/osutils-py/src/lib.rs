@@ -256,6 +256,31 @@ fn rand_chars(len: usize) -> PyResult<String> {
     Ok(breezy_osutils::rand_chars(len))
 }
 
+#[pyfunction]
+fn check_text_path(path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    Ok(breezy_osutils::textfile::check_text_path(path.as_path())?)
+}
+
+#[pyfunction]
+fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
+    let mut py_iter = lines.iter()?;
+    let line_iter = std::iter::from_fn(|| {
+        let line = py_iter.next();
+        match line {
+            Some(Ok(line)) => Some(line.extract::<Vec<u8>>().unwrap()),
+            Some(Err(err)) => { PyErr::restore(err, py); None }
+            None => None,
+        }
+    });
+
+    let result = breezy_osutils::textfile::check_text_lines(line_iter);
+    if PyErr::occurred(py) {
+        return Err(PyErr::fetch(py));
+    }
+    Ok(result)
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -277,5 +302,7 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
     m.add_wrapped(wrap_pyfunction!(rand_chars))?;
+    m.add_wrapped(wrap_pyfunction!(check_text_path))?;
+    m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     Ok(())
 }
