@@ -244,6 +244,24 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
 }
 
 #[pyfunction]
+fn parent_directories(py: Python, path: &PyAny) -> PyResult<PyObject> {
+    let path = extract_path(path)?;
+    let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
+    Ok(parents.into_py(py))
+}
+
+#[pyfunction]
+fn available_backup_name(py: Python, path: &PyAny, exists: PyObject) -> PyResult<PathBuf> {
+    let path = extract_path(path)?;
+    let exists = |p: &Path| -> PyResult<bool> {
+        let ret = exists.call1(py, (p, ))?;
+        ret.extract::<bool>(py)
+    };
+
+    breezy_osutils::path::available_backup_name(path.as_path(), &exists)
+}
+
+#[pyfunction]
 fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
     Ok(breezy_osutils::path::find_executable_on_path(executable))
 }
@@ -436,6 +454,8 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
+    m.add_wrapped(wrap_pyfunction!(parent_directories))?;
+    m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
     m.add_wrapped(wrap_pyfunction!(local_time_offset))?;

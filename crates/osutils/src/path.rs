@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Path,PathBuf};
 use std::collections::HashSet;
 use std::os::unix::fs::PermissionsExt;
 use unicode_normalization::{UnicodeNormalization,is_nfc};
@@ -48,7 +48,6 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     use std::env;
     use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE};
     use winreg::RegKey;
-
     let exts = env::var("PATHEXT").unwrap_or_default();
     let exts = exts.split(';').map(|ext| ext.to_lowercase()).collect::<Vec<_>>();
     let (name, exts) = {
@@ -78,6 +77,35 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
         }
     }
     None
+}
+
+pub fn parent_directories(path: &Path) -> impl Iterator<Item = &Path> {
+    let mut path = path;
+    std::iter::from_fn(move || {
+        if let Some(parent) = path.parent() {
+            path = parent;
+            if path.parent().is_none() {
+                None
+            } else {
+                Some(path)
+            }
+        } else {
+            None
+        }
+    })
+}
+
+pub fn available_backup_name<'a, E>(path: &Path, exists: &'a dyn Fn(&Path) -> Result<bool, E>) -> Result<PathBuf, E> {
+    let mut counter = 0;
+    let mut next = || {
+        counter += 1;
+        PathBuf::from(format!("{}.~{}~", path.to_str().unwrap(), counter))
+    };
+    let mut ret = next();
+    while exists(ret.as_path())? {
+        ret = next();
+    }
+    Ok(ret)
 }
 
 #[cfg(not(target_os = "windows"))]
