@@ -679,6 +679,7 @@ def format_date_with_offset_in_original_timezone(t, offset=0,
 
 
 format_local_date = _osutils_rs.format_local_date
+format_delta = _osutils_rs.format_delta
 
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
@@ -705,56 +706,6 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
 
 def compact_date(when):
     return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
-
-
-def format_delta(delta):
-    """Get a nice looking string for a time delta.
-
-    :param delta: The time difference in seconds, can be positive or negative.
-        positive indicates time in the past, negative indicates time in the
-        future. (usually time.time() - stored_time)
-    :return: String formatted to show approximate resolution
-    """
-    delta = int(delta)
-    if delta >= 0:
-        direction = 'ago'
-    else:
-        direction = 'in the future'
-        delta = -delta
-
-    seconds = delta
-    if seconds < 90:  # print seconds up to 90 seconds
-        if seconds == 1:
-            return '%d second %s' % (seconds, direction,)
-        else:
-            return '%d seconds %s' % (seconds, direction)
-
-    minutes = int(seconds / 60)
-    seconds -= 60 * minutes
-    if seconds == 1:
-        plural_seconds = ''
-    else:
-        plural_seconds = 's'
-    if minutes < 90:  # print minutes, seconds up to 90 minutes
-        if minutes == 1:
-            return '%d minute, %d second%s %s' % (
-                minutes, seconds, plural_seconds, direction)
-        else:
-            return '%d minutes, %d second%s %s' % (
-                minutes, seconds, plural_seconds, direction)
-
-    hours = int(minutes / 60)
-    minutes -= 60 * hours
-    if minutes == 1:
-        plural_minutes = ''
-    else:
-        plural_minutes = 's'
-
-    if hours == 1:
-        return '%d hour, %d minute%s %s' % (hours, minutes,
-                                            plural_minutes, direction)
-    return '%d hours, %d minute%s %s' % (hours, minutes,
-                                         plural_minutes, direction)
 
 
 def filesize(f):

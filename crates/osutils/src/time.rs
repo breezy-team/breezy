@@ -43,3 +43,57 @@ pub enum Timezone {
     Utc,
     Original,
 }
+
+pub fn format_delta(delta: i64) -> String {
+    let mut delta = delta;
+    let direction: &str;
+    if delta >= 0 {
+        direction = "ago";
+    } else {
+        direction = "in the future";
+        delta = -delta;
+    }
+
+    let seconds = delta;
+    if seconds < 90 {
+        if seconds == 1 {
+            return format!("{} second {}", seconds, direction);
+        } else {
+            return format!("{} seconds {}", seconds, direction);
+        }
+    }
+
+    let mut minutes = seconds / 60;
+    let seconds = seconds % 60;
+    let plural_seconds = if seconds == 1 { "" } else { "s" };
+
+    if minutes < 90 {
+        if minutes == 1 {
+            return format!(
+                "{} minute, {} second{} {}",
+                minutes, seconds, plural_seconds, direction
+            );
+        } else {
+            return format!(
+                "{} minutes, {} second{} {}",
+                minutes, seconds, plural_seconds, direction
+            );
+        }
+    }
+
+    let hours = minutes / 60;
+    minutes = minutes % 60;
+    let plural_minutes = if minutes == 1 { "" } else { "s" };
+
+    if hours == 1 {
+        return format!(
+            "{} hour, {} minute{} {}",
+            hours, minutes, plural_minutes, direction
+        );
+    } else {
+        return format!(
+            "{} hours, {} minute{} {}",
+            hours, minutes, plural_minutes, direction
+        );
+    }
+}

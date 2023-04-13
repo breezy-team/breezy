@@ -418,6 +418,18 @@ fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
     Ok(result)
 }
 
+#[pyfunction]
+fn format_delta(py: Python, delta: PyObject) -> PyResult<String> {
+    let delta = if let Ok(delta) = delta.extract::<f64>(py) {
+        delta as i64
+    } else if let Ok(delta) = delta.extract::<i64>(py) {
+        delta
+    } else {
+        return Err(PyValueError::new_err("delta must be a float or int"));
+    };
+    Ok(breezy_osutils::time::format_delta(delta))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -444,5 +456,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(IterableFile))?;
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
+    m.add_wrapped(wrap_pyfunction!(format_delta))?;
     Ok(())
 }
