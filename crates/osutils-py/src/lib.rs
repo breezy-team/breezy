@@ -3,7 +3,7 @@ use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
-use pyo3::exceptions::{PyTypeError, PyUnicodeDecodeError};
+use pyo3::exceptions::PyTypeError;
 use std::collections::HashSet;
 use std::iter::Iterator;
 use std::ffi::OsString;
@@ -150,16 +150,16 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 }
 
 #[pyfunction]
-fn normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    if (breezy_osutils::path::normalizes_filenames()) {
-        _accessible_normalized_filename(py, filename)
+fn normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    if breezy_osutils::path::normalizes_filenames() {
+        _accessible_normalized_filename(filename)
     } else {
-        _inaccessible_normalized_filename(py, filename)
+        _inaccessible_normalized_filename(filename)
     }
 }
 
 #[pyfunction]
-fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+fn _inaccessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
     let filename = extract_path(&filename)?;
     if let Some(filename) = breezy_osutils::path::inaccessible_normalized_filename(filename.as_path()) {
         Ok(filename)
@@ -169,7 +169,7 @@ fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(
 }
 
 #[pyfunction]
-fn _accessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+fn _accessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
     let filename= extract_path(&filename)?;
     if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path()) {
         Ok(filename)
