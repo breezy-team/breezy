@@ -805,20 +805,7 @@ if rand_bytes.__module__ != "nt":
             return s
 
 
-ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
-
-
-def rand_chars(num):
-    """Return a random string of num alphanumeric characters
-
-    The result only contains lowercase chars because it may be used on
-    case-insensitive filesystems.
-    """
-    s = ''
-    for raw_byte in rand_bytes(num):
-        s += ALNUM[raw_byte % 36]
-    return s
-
+rand_chars = _osutils_rs.rand_chars
 
 # TODO: We could later have path objects that remember their list
 # decomposition (might be too tricksy though.)

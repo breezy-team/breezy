@@ -251,6 +251,11 @@ fn legal_path(path: &PyAny) -> PyResult<bool> {
     Ok(breezy_osutils::path::legal_path(path.as_path()))
 }
 
+#[pyfunction]
+fn rand_chars(len: usize) -> PyResult<String> {
+    Ok(breezy_osutils::rand_chars(len))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -271,5 +276,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
+    m.add_wrapped(wrap_pyfunction!(rand_chars))?;
     Ok(())
 }
