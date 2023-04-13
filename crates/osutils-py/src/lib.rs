@@ -132,7 +132,7 @@ fn sha_string(string: &[u8]) -> PyResult<String> {
 #[pyfunction]
 fn sha_strings(strings: &PyAny) -> PyResult<String> {
     let iter = strings.iter()?;
-    Ok(breezy_osutils::sha::sha_strings(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
+    Ok(breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
 }
 
 #[pyfunction]
@@ -269,6 +269,11 @@ fn legal_path(path: &PyAny) -> PyResult<bool> {
     Ok(breezy_osutils::path::legal_path(path.as_path()))
 }
 
+#[pyfunction]
+fn rand_chars(len: usize) -> PyResult<String> {
+    Ok(breezy_osutils::rand_chars(len))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -291,5 +296,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
+    m.add_wrapped(wrap_pyfunction!(rand_chars))?;
     Ok(())
 }
