@@ -3,7 +3,7 @@ use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
-use pyo3::exceptions::{PyTypeError, PyUnicodeDecodeError};
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use std::collections::HashSet;
 use std::iter::Iterator;
 use std::ffi::OsString;
@@ -151,7 +151,7 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 
 #[pyfunction]
 fn normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    if (breezy_osutils::path::normalizes_filenames()) {
+    if breezy_osutils::path::normalizes_filenames() {
         _accessible_normalized_filename(py, filename)
     } else {
         _inaccessible_normalized_filename(py, filename)
@@ -256,6 +256,25 @@ fn local_time_offset(t: Option<&PyAny>) -> PyResult<i64> {
     }
 }
 
+#[pyfunction]
+fn format_local_date(py: Python, t: PyObject, offset: Option<i32>, timezone: Option<&str>, date_format: Option<&str>, show_offset: Option<bool>) -> PyResult<String> {
+    let t = if let Ok(t) = t.extract::<f64>(py) {
+        t as i64
+    } else if let Ok(t) = t.extract::<i64>(py) {
+        t
+    } else {
+        return Err(PyValueError::new_err("t must be a float"));
+    };
+    let timezone = match timezone {
+        Some("local") => Ok(breezy_osutils::time::Timezone::Local),
+        Some("utc") => Ok(breezy_osutils::time::Timezone::Utc),
+        Some("original") => Ok(breezy_osutils::time::Timezone::Original),
+        Some(n) => Err(PyValueError::new_err(format!("Unknown timezone: {}", n))),
+        None => Ok(breezy_osutils::time::Timezone::Original),
+    }?;
+    Ok(breezy_osutils::time::format_local_date(t, offset, timezone, date_format, show_offset.unwrap_or(true)))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -276,5 +295,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
     m.add_wrapped(wrap_pyfunction!(local_time_offset))?;
+    m.add_wrapped(wrap_pyfunction!(format_local_date))?;
     Ok(())
 }

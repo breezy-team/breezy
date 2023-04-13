@@ -678,24 +678,7 @@ def format_date_with_offset_in_original_timezone(t, offset=0,
     return date_str + offset_str
 
 
-def format_local_date(t, offset=0, timezone='original', date_fmt=None,
-                      show_offset=True):
-    """Return an unicode date string formatted according to the current locale.
-
-    :param t: Seconds since the epoch.
-    :param offset: Timezone offset in seconds east of utc.
-    :param timezone: How to display the time: 'utc', 'original' for the
-         timezone specified by offset, or 'local' for the process's current
-         timezone.
-    :param date_fmt: strftime format.
-    :param show_offset: Whether to append the timezone.
-    """
-    (date_fmt, tt, offset_str) = \
-        _format_date(t, offset, timezone, date_fmt, show_offset)
-    date_str = time.strftime(date_fmt, tt)
-    if not isinstance(date_str, str):
-        date_str = date_str.decode(get_user_encoding(), 'replace')
-    return date_str + offset_str
+format_local_date = _osutils_rs.format_local_date
 
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
