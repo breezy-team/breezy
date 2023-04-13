@@ -92,6 +92,7 @@ pub fn rand_chars(num: usize) -> String {
 pub mod sha;
 pub mod path;
 pub mod iterablefile;
+pub mod textfile;
 
 #[cfg(test)]
 mod tests;
