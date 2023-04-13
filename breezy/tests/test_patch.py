@@ -18,7 +18,7 @@
 import os
 
 from breezy.errors import BinaryFile
-from breezy.iterablefile import IterableFile
+from breezy.osutils import IterableFile
 from breezy.patch import (PatchInvokeError, diff3, iter_patched_from_hunks,
                           run_patch)
 from breezy.patches import parse_patch

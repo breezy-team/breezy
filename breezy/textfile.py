@@ -19,8 +19,7 @@
 from itertools import chain
 
 from .errors import BinaryFile
-from .iterablefile import IterableFile
-from .osutils import file_iterator
+from .osutils import file_iterator, IterableFile
 from . import _osutils_rs
 
 
