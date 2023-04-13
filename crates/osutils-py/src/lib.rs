@@ -151,7 +151,7 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 
 #[pyfunction]
 fn normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
-    if (breezy_osutils::path::normalizes_filenames()) {
+    if breezy_osutils::path::normalizes_filenames() {
         _accessible_normalized_filename(filename)
     } else {
         _inaccessible_normalized_filename(filename)
@@ -259,6 +259,11 @@ fn available_backup_name(py: Python, path: &PyAny, exists: PyObject) -> PyResult
 }
 
 #[pyfunction]
+fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
+    Ok(breezy_osutils::path::find_executable_on_path(executable))
+}
+
+#[pyfunction]
 fn legal_path(path: &PyAny) -> PyResult<bool> {
     let path = extract_path(path)?;
     Ok(breezy_osutils::path::legal_path(path.as_path()))
@@ -284,6 +289,7 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     m.add_wrapped(wrap_pyfunction!(parent_directories))?;
     m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
+    m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
     Ok(())
 }
