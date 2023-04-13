@@ -283,6 +283,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         dirty_dirs.add(posixpath.dirname(path))
 
     for dir in list(dirty_dirs):
+        assert isinstance(dir, str)
         for parent in osutils.parent_directories(dir):
             if parent in dirty_dirs:
                 break
