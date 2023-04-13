@@ -107,8 +107,8 @@ class FormatHighresDateTests(tests.TestCase):
     def test_format_highres_date(self):
         self.assertEqual(format_date(1120153132.350850105, 0), 'Thu 2005-06-30 17:38:52 +0000')
         self.assertEqual(timestamp.format_highres_date(1120153132.350850105, 0), 'Thu 2005-06-30 17:38:52.350850105 +0000')
-        self.assertEqual(format_date(1120153132.350850105, -5*3600), 'Thu 2005-06-30 12:38:52 -0500')
-        self.assertEqual(timestamp.format_highres_date(1120153132.350850105, -5*3600), 'Thu 2005-06-30 12:38:52.350850105 -0500')
+        self.assertEqual(format_date(1120153132.350850105, -5 * 3600), 'Thu 2005-06-30 12:38:52 -0500')
+        self.assertEqual(timestamp.format_highres_date(1120153132.350850105, -5 * 3600), 'Thu 2005-06-30 12:38:52.350850105 -0500')
         self.assertEqual(timestamp.format_highres_date(1120153132.350850105, 7200), 'Thu 2005-06-30 19:38:52.350850105 +0200')
         self.assertEqual(timestamp.format_highres_date(1152428738.867522, 19800), 'Sun 2006-07-09 12:35:38.867522001 +0530')
 
