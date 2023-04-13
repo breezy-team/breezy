@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::collections::HashSet;
+use std::os::unix::fs::PermissionsExt;
 
 pub fn is_inside(dir: &Path, fname: &Path) -> bool {
     fname.starts_with(&dir)
@@ -64,7 +65,7 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     for ext in &exts {
         for path in &paths {
             let exe_path = PathBuf::from(path).join(format!("{}{}", name, ext));
-            if exe_path.exists() && exe_path.is_file() {
+            if exe_path.is_file() {
                 return Some(exe_path.to_str().unwrap_or_default().to_owned());
             }
         }
@@ -88,8 +89,11 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     let paths = paths.split(':').collect::<Vec<_>>();
     for path in &paths {
         let exe_path = PathBuf::from(path).join(name);
-        if exe_path.exists() && exe_path.is_file() {
-            return Some(exe_path.to_str().unwrap_or_default().to_owned());
+        let md = exe_path.metadata();
+        if let Ok(md) = exe_path.metadata() {
+            if md.permissions().mode() & 0o111 != 0 {
+                return Some(exe_path.to_str().unwrap_or_default().to_owned());
+            }
         }
     }
     None
