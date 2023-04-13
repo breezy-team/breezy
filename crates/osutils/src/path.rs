@@ -46,7 +46,6 @@ pub fn minimum_path_selection(paths: HashSet<&Path>) -> HashSet<&Path> {
 #[cfg(target_os = "windows")]
 pub fn find_executable_on_path(name: &str) -> Option<String> {
     use std::env;
-    use std::path::PathBuf;
     use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE};
     use winreg::RegKey;
 
@@ -84,13 +83,11 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
 #[cfg(not(target_os = "windows"))]
 pub fn find_executable_on_path(name: &str) -> Option<String> {
     use std::env;
-    use std::path::PathBuf;
 
     let paths = env::var("PATH").unwrap_or_default();
     let paths = paths.split(':').collect::<Vec<_>>();
     for path in &paths {
         let exe_path = PathBuf::from(path).join(name);
-        let md = exe_path.metadata();
         if let Ok(md) = exe_path.metadata() {
             if md.permissions().mode() & 0o111 != 0 {
                 return Some(exe_path.to_str().unwrap_or_default().to_owned());
