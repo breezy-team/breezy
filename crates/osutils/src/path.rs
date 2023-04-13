@@ -116,7 +116,6 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     let paths = paths.split(':').collect::<Vec<_>>();
     for path in &paths {
         let exe_path = PathBuf::from(path).join(name);
-        let md = exe_path.metadata();
         if let Ok(md) = exe_path.metadata() {
             if md.permissions().mode() & 0o111 != 0 {
                 return Some(exe_path.to_str().unwrap_or_default().to_owned());

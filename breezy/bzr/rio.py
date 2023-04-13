@@ -33,7 +33,6 @@
 import re
 
 from .. import osutils
-from ..iterablefile import IterableFile
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.
@@ -82,7 +81,7 @@ def rio_file(stanzas, header=None):
                 yield b'\n'
             yield from s.to_lines()
             first_stanza = False
-    return IterableFile(str_iter())
+    return osutils.IterableFile(str_iter())
 
 
 def read_stanzas(from_file):

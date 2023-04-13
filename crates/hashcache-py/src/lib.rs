@@ -3,8 +3,8 @@ use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt;
 use std::io::Error;
 use std::path::Path;
-use pyo3::types::{PyBytes, PyInt};
-use bazaar::filters::{ContentFilter, ContentFilterProvider};
+use pyo3::types::PyBytes;
+use bazaar::filters::ContentFilter;
 
 #[pyclass]
 struct HashCache {

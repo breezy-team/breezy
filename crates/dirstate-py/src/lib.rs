@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};

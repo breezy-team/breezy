@@ -19,8 +19,8 @@
 from itertools import chain
 
 from .errors import BinaryFile
-from .iterablefile import IterableFile
-from .osutils import file_iterator
+from .osutils import file_iterator, IterableFile
+from . import _osutils_rs
 
 
 def text_file(input):
@@ -37,8 +37,7 @@ def check_text_lines(lines):
     """Raise BinaryFile if the supplied lines contain NULs.
     Only the first 1024 characters are checked.
     """
-    f = IterableFile(lines)
-    if b'\x00' in f.read(1024):
+    if not _osutils_rs.check_text_lines(lines):
         raise BinaryFile()
 
 
@@ -46,5 +45,5 @@ def check_text_path(path):
     """Check whether the supplied path is a text, not binary file.
     Raise BinaryFile if a NUL occurs in the first 1024 bytes.
     """
-    with open(path, 'rb') as f:
-        text_file(f)
+    if not _osutils_rs.check_text_path(path):
+        raise BinaryFile()

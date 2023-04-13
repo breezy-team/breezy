@@ -1384,6 +1384,8 @@ def supports_posix_readonly():
 
 set_or_unset_env = _osutils_rs.set_or_unset_env
 
+IterableFile = _osutils_rs.IterableFile
+
 
 def check_legal_path(path):
     """Check whether the supplied path is legal.
