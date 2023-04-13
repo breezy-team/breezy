@@ -430,6 +430,29 @@ fn format_delta(py: Python, delta: PyObject) -> PyResult<String> {
     Ok(breezy_osutils::time::format_delta(delta))
 }
 
+#[pyfunction]
+fn format_date_with_offset_in_original_timezone(py: Python, date: PyObject, offset: Option<PyObject>) -> PyResult<String> {
+    let date = if let Ok(date) = date.extract::<f64>(py) {
+        date as i64
+    } else if let Ok(date) = date.extract::<i64>(py) {
+        date
+    } else {
+        return Err(PyValueError::new_err("date must be a float or int"));
+    };
+    let offset = if let Some(offset) = offset {
+        if let Ok(offset) = offset.extract::<f64>(py) {
+            offset as i64
+        } else if let Ok(offset) = offset.extract::<i64>(py) {
+            offset
+        } else {
+            return Err(PyValueError::new_err("offset must be a float or int"));
+        }
+    } else {
+        0
+    };
+    Ok(breezy_osutils::time::format_date_with_offset_in_original_timezone(date, offset))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -457,5 +480,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
     m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
     m.add_wrapped(wrap_pyfunction!(format_delta))?;
+    m.add_wrapped(wrap_pyfunction!(format_date_with_offset_in_original_timezone))?;
     Ok(())
 }

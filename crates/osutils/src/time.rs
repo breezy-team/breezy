@@ -1,5 +1,5 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-use chrono::{DateTime, Local, TimeZone, Utc, FixedOffset};
+use std::time::UNIX_EPOCH;
+use chrono::{DateTime, Local, TimeZone, Utc, FixedOffset, Datelike};
 
 pub fn local_time_offset(t: Option<i64>) -> i64 {
     let timestamp = t.unwrap_or_else(|| Utc::now().timestamp());
@@ -26,7 +26,7 @@ pub fn format_local_date(
         Timezone::Original => FixedOffset::east_opt(offset).unwrap(),
         Timezone::Local => *Local::now().offset(),
     };
-    let dt: DateTime<FixedOffset> = tz.timestamp(t, 0);
+    let dt: DateTime<FixedOffset> = tz.timestamp_opt(t, 0).unwrap();
     let date_fmt = date_fmt.unwrap_or("%c");
     let date_str = dt.format(date_fmt).to_string();
     let offset_str = if show_offset {
@@ -96,4 +96,15 @@ pub fn format_delta(delta: i64) -> String {
             hours, minutes, plural_minutes, direction
         );
     }
+}
+
+pub fn format_date_with_offset_in_original_timezone(t: i64, offset: i64) -> String {
+    let offset_hours = offset / 3600;
+    let offset_minutes = (offset % 3600) / 60;
+
+    let dt = DateTime::<Utc>::from(UNIX_EPOCH + std::time::Duration::from_secs(t as u64) + std::time::Duration::from_secs(offset as u64));
+    let date_str = dt.format("%a %Y-%m-%d %H:%M:%S").to_string();
+    let offset_str = format!(" {:+03}{:02}", offset_hours, offset_minutes);
+
+    date_str + &offset_str
 }

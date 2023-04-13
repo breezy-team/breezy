@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read};
+use std::io::{Read,Error};
 use std::path::Path;
 
 /// Return false if the supplied lines contain NULs.
@@ -12,7 +12,7 @@ where
     let mut buffer = [0u8; 1024];
     let mut offset = 0;
     for line in lines.into_iter() {
-        if let Some(i) = line.iter().position(|&c| c == 0) {
+        if line.iter().position(|&c| c == 0).is_some() {
             return false;
         }
         if offset + line.len() > 1024 {
@@ -30,7 +30,7 @@ where
 /// Check whether the supplied path is a text, not binary file.
 ///
 /// Raise BinaryFile if a NUL occurs in the first 1024 bytes.
-pub fn check_text_path<P: AsRef<Path>>(path: P) -> Result<bool, io::Error> {
+pub fn check_text_path<P: AsRef<Path>>(path: P) -> Result<bool, Error> {
     let file = File::open(path)?;
     let mut buffer = Vec::new();
     let mut handle = file.take(1024);
