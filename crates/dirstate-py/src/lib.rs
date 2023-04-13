@@ -10,9 +10,9 @@ use bazaar_dirstate;
 fn extract_path(pyo: &PyAny) -> PyResult<PathBuf> {
     let stro: String;
     if pyo.is_instance_of::<PyBytes>()? {
-        stro = String::from_utf8(pyo.extract::<&[u8]>().unwrap().to_vec())?;
+        stro = String::from_utf8(pyo.extract::<&[u8]>()?.to_vec())?;
     } else if pyo.is_instance_of::<PyUnicode>()? {
-        stro = pyo.extract::<String>().unwrap();
+        stro = pyo.extract::<String>()?;
     } else {
         return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("path must be either bytes or str"));
     }

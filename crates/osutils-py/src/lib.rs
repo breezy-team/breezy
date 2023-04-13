@@ -1,11 +1,13 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use std::path::{PathBuf,Path};
+use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
-use pyo3::types::{PyBytes, PyIterator, PyList, PyDict};
-use pyo3::exceptions::PyTypeError;
+use pyo3::types::{PyBytes, PyIterator, PyList};
+use pyo3::exceptions::{PyTypeError, PyUnicodeDecodeError};
 use std::collections::HashSet;
 use std::iter::Iterator;
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStringExt;
 use memchr;
 
 #[pyclass]
@@ -84,7 +86,7 @@ impl PyChunksToLinesIterator {
 
 fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
-        Ok(PathBuf::from(String::from_utf8(path).unwrap()))
+        Ok(PathBuf::from(OsString::from_vec(path)))
     } else if let Ok(path) = object.extract::<PathBuf>() {
         Ok(path)
     } else {
@@ -145,6 +147,40 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
     let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
     let (size, digest) = breezy_osutils::sha::size_sha_file(&mut file).map_err(PyErr::from)?;
     Ok((size, digest))
+}
+
+#[pyfunction]
+fn normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    if (breezy_osutils::path::normalizes_filenames()) {
+        _accessible_normalized_filename(py, filename)
+    } else {
+        _inaccessible_normalized_filename(py, filename)
+    }
+}
+
+#[pyfunction]
+fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename = extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::inaccessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        Ok((filename, true))
+    }
+}
+
+#[pyfunction]
+fn _accessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename= extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        Ok((filename, false))
+    }
+}
+
+#[pyfunction]
+fn normalizes_filenames() -> bool {
+    breezy_osutils::path::normalizes_filenames()
 }
 
 #[pyfunction]
@@ -219,6 +255,10 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(sha_strings))?;
     m.add_wrapped(wrap_pyfunction!(sha_file))?;
     m.add_wrapped(wrap_pyfunction!(size_sha_file))?;
+    m.add_wrapped(wrap_pyfunction!(normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_inaccessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_accessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(normalizes_filenames))?;
     m.add_wrapped(wrap_pyfunction!(is_inside))?;
     m.add_wrapped(wrap_pyfunction!(is_inside_any))?;
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
