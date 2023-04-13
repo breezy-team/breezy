@@ -1128,7 +1128,7 @@ cdef class ProcessEntryC:
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
-                osutils.parent_directories(new_path.encode('utf8')))
+                [p.encode('utf-8') for p in osutils.parent_directories(new_path)])
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add(b'')
