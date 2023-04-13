@@ -615,11 +615,6 @@ def sha_string(string):
     return _osutils_rs.sha_string(string).encode('utf-8')
 
 
-def fingerprint_file(f):
-    (size, sha) = size_sha_file(f)
-    return {'size': size, 'sha1': sha}
-
-
 def compare_files(a, b):
     """Returns true if equal in contents"""
     BUFSIZE = 4096
@@ -917,7 +912,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter
+from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames
 
 
 def split_lines(s):
@@ -1177,54 +1172,6 @@ def safe_utf8(unicode_or_utf8_string):
     return unicode_or_utf8_string.encode('utf-8')
 
 
-_platform_normalizes_filenames = False
-if sys.platform == 'darwin':
-    _platform_normalizes_filenames = True
-
-
-def normalizes_filenames():
-    """Return True if this platform normalizes unicode filenames.
-
-    Only Mac OSX.
-    """
-    return _platform_normalizes_filenames
-
-
-def _accessible_normalized_filename(path):
-    """Get the unicode normalized path, and if you can access the file.
-
-    On platforms where the system normalizes filenames (Mac OSX),
-    you can access a file by any path which will normalize correctly.
-    On platforms where the system does not normalize filenames
-    (everything else), you have to access a file by its exact path.
-
-    Internally, bzr only supports NFC normalization, since that is
-    the standard for XML documents.
-
-    So return the normalized path, and a flag indicating if the file
-    can be accessed by that path.
-    """
-
-    if isinstance(path, bytes):
-        path = path.decode(sys.getfilesystemencoding())
-    return unicodedata.normalize('NFC', path), True
-
-
-def _inaccessible_normalized_filename(path):
-    __doc__ = _accessible_normalized_filename.__doc__
-
-    if isinstance(path, bytes):
-        path = path.decode(sys.getfilesystemencoding())
-    normalized = unicodedata.normalize('NFC', path)
-    return normalized, normalized == path
-
-
-if _platform_normalizes_filenames:
-    normalized_filename = _accessible_normalized_filename
-else:
-    normalized_filename = _inaccessible_normalized_filename
-
-
 def set_signal_handler(signum, handler, restart_syscall=True):
     """A wrapper for signal.signal that also calls siginterrupt(signum, False)
     on platforms that support that.
@@ -1451,18 +1398,14 @@ def supports_posix_readonly():
 set_or_unset_env = _osutils_rs.set_or_unset_env
 
 
-_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
-
-
 def check_legal_path(path):
     """Check whether the supplied path is legal.
     This is only required on Windows, so we don't test on other platforms
     right now.
     """
-    if sys.platform != "win32":
+    if _osutils_rs.legal_path(path):
         return
-    if _validWin32PathRE.match(path) is None:
-        raise errors.IllegalPath(path)
+    raise errors.IllegalPath(path)
 
 
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR

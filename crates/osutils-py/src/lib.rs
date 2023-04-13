@@ -1,9 +1,9 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use std::path::{PathBuf,Path};
+use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyTypeError, PyUnicodeDecodeError};
 use std::collections::HashSet;
 use std::iter::Iterator;
 use std::ffi::OsString;
@@ -150,6 +150,40 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
 }
 
 #[pyfunction]
+fn normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    if (breezy_osutils::path::normalizes_filenames()) {
+        _accessible_normalized_filename(py, filename)
+    } else {
+        _inaccessible_normalized_filename(py, filename)
+    }
+}
+
+#[pyfunction]
+fn _inaccessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename = extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::inaccessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        Ok((filename, true))
+    }
+}
+
+#[pyfunction]
+fn _accessible_normalized_filename(py: Python, filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename= extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        Ok((filename, false))
+    }
+}
+
+#[pyfunction]
+fn normalizes_filenames() -> bool {
+    breezy_osutils::path::normalizes_filenames()
+}
+
+#[pyfunction]
 fn is_inside(path: &PyAny, parent: &PyAny) -> PyResult<bool> {
     let path = extract_path(path)?;
     let parent = extract_path(parent)?;
@@ -224,6 +258,12 @@ fn available_backup_name(py: Python, path: &PyAny, exists: PyObject) -> PyResult
     breezy_osutils::path::available_backup_name(path.as_path(), &exists)
 }
 
+#[pyfunction]
+fn legal_path(path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    Ok(breezy_osutils::path::legal_path(path.as_path()))
+}
+
 #[pymodule]
 fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -233,6 +273,10 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(sha_strings))?;
     m.add_wrapped(wrap_pyfunction!(sha_file))?;
     m.add_wrapped(wrap_pyfunction!(size_sha_file))?;
+    m.add_wrapped(wrap_pyfunction!(normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_inaccessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_accessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(normalizes_filenames))?;
     m.add_wrapped(wrap_pyfunction!(is_inside))?;
     m.add_wrapped(wrap_pyfunction!(is_inside_any))?;
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
@@ -240,5 +284,6 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
     m.add_wrapped(wrap_pyfunction!(parent_directories))?;
     m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
+    m.add_wrapped(wrap_pyfunction!(legal_path))?;
     Ok(())
 }

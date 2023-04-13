@@ -77,7 +77,6 @@ pub fn set_or_unset_env(env_variable: &str, value: Option<&str>) -> Result<Optio
 }
 
 pub mod sha;
-
 pub mod path;
 
 #[cfg(test)]
