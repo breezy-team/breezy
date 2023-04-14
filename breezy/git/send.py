@@ -166,7 +166,7 @@ def send_git(branch, revision_id, submit_branch, public_branch, no_patch,
         raise errors.CommandError(
             "no bundle not supported for git-am style patches")
     return GitMergeDirective.from_objects(
-        branch.repository, revision_id, time.time(),
-        osutils.local_time_offset(), submit_branch,
+        repository=branch.repository, revision_id=revision_id, time=time.time(),
+        timezone=osutils.local_time_offset(), target_branch=submit_branch,
         public_branch=public_branch, message=message,
         local_target_branch=local_target_branch)

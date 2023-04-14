@@ -824,7 +824,8 @@ class TestMerger(TestCaseWithTransport):
     def test_from_mergeable(self):
         this, other = self.prepare_for_merging()
         md = merge_directive.MergeDirective2.from_objects(
-            other.branch.repository, b'rev3', 0, 0, 'this')
+            repository=other.branch.repository, revision_id=b'rev3', time=0,
+            timezone=0, target_branch='this')
         other.lock_read()
         self.addCleanup(other.unlock)
         merger, verified = Merger.from_mergeable(this, md)
@@ -842,7 +843,8 @@ class TestMerger(TestCaseWithTransport):
         other.lock_write()
         self.addCleanup(other.unlock)
         md = merge_directive.MergeDirective.from_objects(
-            other.branch.repository, b'rev3', 0, 0, 'this')
+            repository=other.branch.repository, revision_id=b'rev3',
+            time=0, timezone=0, target_branch='this')
         merger, verified = Merger.from_mergeable(this, md)
         self.assertEqual(b'rev3', merger.other_rev_id)
         self.assertEqual(b'rev1', merger.base_rev_id)

@@ -794,6 +794,7 @@ version = "3.3.3"
 dependencies = [
  "bazaar-rio",
  "pyo3",
+ "pyo3-file",
 ]
 
 [[package]]

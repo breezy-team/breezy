@@ -183,7 +183,6 @@ add_cython_extension('breezy.bzr._groupcompress_pyx',
                      extra_source=['breezy/bzr/diff-delta.c'])
 add_cython_extension('breezy.bzr._knit_load_data_pyx')
 add_cython_extension('breezy._known_graph_pyx')
-add_cython_extension('breezy.bzr._rio_pyx')
 if sys.platform == 'win32':
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx',
                          libraries=['Ws2_32'])
@@ -222,7 +221,7 @@ import site
 site.ENABLE_USER_SITE = "--user" in sys.argv
 
 rust_extensions = [
-    RustExtension("breezy.bzr._rio_rs", "crates/rio-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy.bzr.rio", "crates/rio-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._dirstate_rs", "crates/dirstate-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr.hashcache", "crates/hashcache-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._chk_map_rs", "crates/chk-map-py/Cargo.toml", binding=Binding.PyO3),

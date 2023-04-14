@@ -920,7 +920,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
-        my_file = _mod_rio.rio_file(stanzas, header)
+        my_file = osutils.IterableFile(_mod_rio.rio_iter(stanzas, header))
         self._transport.put_file(filename, my_file,
                                  mode=self.controldir._get_file_mode())
 
@@ -931,7 +931,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if file_id is None:
                     continue
                 yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
-                                      hash=sha1)
+                                      hash=sha1.decode('ascii'))
         with self.lock_tree_write():
             self._put_rio('merge-hashes', iter_stanzas(),
                           MERGE_MODIFIED_HEADER_1)
