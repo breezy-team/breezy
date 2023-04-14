@@ -627,13 +627,7 @@ def compare_files(a, b):
             return True
 
 
-def local_time_offset(t=None):
-    """Return offset of local zone from GMT, either at present or at time t."""
-    from datetime import datetime
-    if t is None:
-        t = time.time()
-    offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
-    return offset.days * 86400 + offset.seconds
+local_time_offset = _osutils_rs.local_time_offset
 
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -684,24 +678,7 @@ def format_date_with_offset_in_original_timezone(t, offset=0,
     return date_str + offset_str
 
 
-def format_local_date(t, offset=0, timezone='original', date_fmt=None,
-                      show_offset=True):
-    """Return an unicode date string formatted according to the current locale.
-
-    :param t: Seconds since the epoch.
-    :param offset: Timezone offset in seconds east of utc.
-    :param timezone: How to display the time: 'utc', 'original' for the
-         timezone specified by offset, or 'local' for the process's current
-         timezone.
-    :param date_fmt: strftime format.
-    :param show_offset: Whether to append the timezone.
-    """
-    (date_fmt, tt, offset_str) = \
-        _format_date(t, offset, timezone, date_fmt, show_offset)
-    date_str = time.strftime(date_fmt, tt)
-    if not isinstance(date_str, str):
-        date_str = date_str.decode(get_user_encoding(), 'replace')
-    return date_str + offset_str
+format_local_date = _osutils_rs.format_local_date
 
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
@@ -851,17 +828,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-def parent_directories(filename: str):
-    """Return the list of parent directories, deepest first.
-
-    For example, parent_directories("a/b/c") -> ["a/b", "a"].
-    """
-    parents = []
-    parts = splitpath(dirname(filename))
-    while parts:
-        parents.append(joinpath(parts))
-        parts.pop()
-    return parents
+parent_directories = _osutils_rs.parent_directories
 
 
 _extension_load_failures = []
@@ -2059,24 +2026,8 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
 
-def available_backup_name(base, exists):
-    """Find a non-existing backup file name.
 
-    This will *not* create anything, this only return a 'free' entry.  This
-    should be used for checking names in a directory below a locked
-    tree/branch/repo to avoid race conditions. This is LBYL (Look Before You
-    Leap) and generally discouraged.
-
-    :param base: The base name.
-
-    :param exists: A callable returning True if the path parameter exists.
-    """
-    counter = 1
-    name = "%s.~%d~" % (base, counter)
-    while exists(name):
-        counter += 1
-        name = "%s.~%d~" % (base, counter)
-    return name
+available_backup_name = _osutils_rs.available_backup_name
 
 
 def set_fd_cloexec(fd):

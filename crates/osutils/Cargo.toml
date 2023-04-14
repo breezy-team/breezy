@@ -9,6 +9,7 @@ license = "GPL-2.0+"
 
 [dependencies]
 memchr = "2.3.3"
+chrono = "0.4"
 walkdir = "2"
 sha1 = "0.10.1"
 unicode-normalization = "0.1.19"

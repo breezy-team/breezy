@@ -4,7 +4,7 @@ use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
 use pyo3::types::{PyBytes, PyIterator, PyList};
-use pyo3::exceptions::{PyTypeError,PyIOError};
+use pyo3::exceptions::{PyTypeError,PyValueError,PyIOError};
 use std::collections::HashSet;
 use std::iter::Iterator;
 use std::ffi::OsString;
@@ -244,6 +244,24 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
 }
 
 #[pyfunction]
+fn parent_directories(py: Python, path: &PyAny) -> PyResult<PyObject> {
+    let path = extract_path(path)?;
+    let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
+    Ok(parents.into_py(py))
+}
+
+#[pyfunction]
+fn available_backup_name(py: Python, path: &PyAny, exists: PyObject) -> PyResult<PathBuf> {
+    let path = extract_path(path)?;
+    let exists = |p: &Path| -> PyResult<bool> {
+        let ret = exists.call1(py, (p, ))?;
+        ret.extract::<bool>(py)
+    };
+
+    breezy_osutils::path::available_backup_name(path.as_path(), &exists)
+}
+
+#[pyfunction]
 fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
     Ok(breezy_osutils::path::find_executable_on_path(executable))
 }
@@ -252,6 +270,35 @@ fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
 fn legal_path(path: &PyAny) -> PyResult<bool> {
     let path = extract_path(path)?;
     Ok(breezy_osutils::path::legal_path(path.as_path()))
+}
+
+#[pyfunction]
+fn local_time_offset(t: Option<&PyAny>) -> PyResult<i64> {
+    if let Some(t) = t {
+        let t = t.extract::<f64>()?;
+        Ok(breezy_osutils::time::local_time_offset(Some(t as i64)))
+    } else {
+        Ok(breezy_osutils::time::local_time_offset(None))
+    }
+}
+
+#[pyfunction]
+fn format_local_date(py: Python, t: PyObject, offset: Option<i32>, timezone: Option<&str>, date_format: Option<&str>, show_offset: Option<bool>) -> PyResult<String> {
+    let t = if let Ok(t) = t.extract::<f64>(py) {
+        t as i64
+    } else if let Ok(t) = t.extract::<i64>(py) {
+        t
+    } else {
+        return Err(PyValueError::new_err("t must be a float"));
+    };
+    let timezone = match timezone {
+        Some("local") => Ok(breezy_osutils::time::Timezone::Local),
+        Some("utc") => Ok(breezy_osutils::time::Timezone::Utc),
+        Some("original") => Ok(breezy_osutils::time::Timezone::Original),
+        Some(n) => Err(PyValueError::new_err(format!("Unknown timezone: {}", n))),
+        None => Ok(breezy_osutils::time::Timezone::Original),
+    }?;
+    Ok(breezy_osutils::time::format_local_date(t, offset, timezone, date_format, show_offset.unwrap_or(true)))
 }
 
 #[pyfunction]
@@ -407,8 +454,12 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
+    m.add_wrapped(wrap_pyfunction!(parent_directories))?;
+    m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
+    m.add_wrapped(wrap_pyfunction!(local_time_offset))?;
+    m.add_wrapped(wrap_pyfunction!(format_local_date))?;
     m.add_wrapped(wrap_pyfunction!(rand_chars))?;
     m.add_wrapped(wrap_pyfunction!(IterableFile))?;
     m.add_wrapped(wrap_pyfunction!(check_text_path))?;
