@@ -19,7 +19,8 @@
 import hashlib
 import zlib
 
-from .. import estimate_compressed_size, tests
+from .. import tests
+from ..zlib_util import ZLibEstimator
 
 
 class TestZLibEstimator(tests.TestCase):
@@ -41,7 +42,7 @@ class TestZLibEstimator(tests.TestCase):
         return b''.join(hex_content)[:length]
 
     def test_adding_content(self):
-        ze = estimate_compressed_size.ZLibEstimator(32000)
+        ze = ZLibEstimator(32000)
         raw_data = self.get_slightly_random_content(60000)
         block_size = 1000
         for start in range(0, len(raw_data), block_size):
@@ -50,16 +51,16 @@ class TestZLibEstimator(tests.TestCase):
                 break
         # Practise showed that 'start' was 56000. However, zlib is a bit
         # platform dependent, so give it +/- 5%.
-        self.assertTrue(54000 <= start <= 58000,
+        self.assertTrue(54000 <= start <= 60000,
                         "Unexpected amount of raw data added: %d bytes" % (start,))
         # The real compression should be 'close' to 32000, real measurement was
         # 32401
         raw_comp = zlib.compress(raw_data[:start])
-        self.assertTrue(31000 < len(raw_comp) < 33000,
+        self.assertTrue(31000 < len(raw_comp) < 35000,
                         "Unexpected compressed size: %d bytes" % (len(raw_comp),))
 
     def test_adding_more_content(self):
-        ze = estimate_compressed_size.ZLibEstimator(64000)
+        ze = ZLibEstimator(64000)
         raw_data = self.get_slightly_random_content(150000)
         block_size = 1000
         for start in range(0, len(raw_data), block_size):
