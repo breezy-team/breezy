@@ -27,7 +27,7 @@ import zlib
 
 import fastbencode as bencode
 
-from ... import errors, estimate_compressed_size, osutils
+from ... import errors, zlib_util, osutils
 from ... import revision as _mod_revision
 from ... import trace, ui
 from ...repository import _strip_NULL_ghosts, network_format_registry
@@ -182,7 +182,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
                                include_missing, max_size=65536):
         result = {}
         queried_revs = set()
-        estimator = estimate_compressed_size.ZLibEstimator(max_size)
+        estimator = zlib_util.ZLibEstimator(max_size)
         next_revs = revision_ids
         first_loop_done = False
         while next_revs:
