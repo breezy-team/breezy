@@ -14,3 +14,6 @@ authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@j
 [dependencies]
 breezy-osutils = { path = "../osutils" }
 base64 = "0.13.0"
+lazy_static = "1.4.0"
+maplit = "1.0.2"
+libc = "0.2.80"

@@ -1,10 +1,13 @@
 use base64;
 use std::cmp::Ordering;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use breezy_osutils::sha::{sha_file_by_name,sha_file};
 use std::fs::File;
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
+use maplit::hashmap;
+use std::collections::HashMap;
+use lazy_static::lazy_static;
 
 pub trait SHA1Provider : Send + Sync {
     fn sha1(&self, path: &Path) -> std::io::Result<String>;
@@ -157,4 +160,93 @@ pub fn stat_to_minikind(metadata: &Metadata) -> char {
     } else {
         panic!("Unsupported file type");
     }
+}
+
+pub const HEADER_FORMAT_2: &[u8] = b"#bazaar dirstate flat format 2\n";
+pub const HEADER_FORMAT_3: &[u8] = b"#bazaar dirstate flat format 3\n";
+
+#[derive(PartialEq, Eq, Debug)]
+enum Kind {
+    Absent,
+    File,
+    Directory,
+    Relocated,
+    Symlink,
+    TreeReference,
+}
+
+impl Kind {
+    fn to_char(&self) -> char {
+        match self {
+            Kind::Absent => 'a',
+            Kind::File => 'f',
+            Kind::Directory => 'd',
+            Kind::Relocated => 'r',
+            Kind::Symlink => 'l',
+            Kind::TreeReference => 't',
+        }
+    }
+
+    fn to_string(&self) -> &str {
+        match self {
+            Kind::Absent => "absent",
+            Kind::File => "file",
+            Kind::Directory => "directory",
+            Kind::Relocated => "relocated",
+            Kind::Symlink => "symlink",
+            Kind::TreeReference => "tree-reference",
+        }
+    }
+}
+
+impl From<String> for Kind {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "absent" => Kind::Absent,
+            "file" => Kind::File,
+            "directory" => Kind::Directory,
+            "relocated" => Kind::Relocated,
+            "symlink" => Kind::Symlink,
+            "tree-reference" => Kind::TreeReference,
+            _ => panic!("Unknown kind: {}", s),
+        }
+    }
+}
+
+impl From<char> for Kind {
+    fn from(c: char) -> Self {
+        match c {
+            'a' => Kind::Absent,
+            'f' => Kind::File,
+            'd' => Kind::Directory,
+            'r' => Kind::Relocated,
+            'l' => Kind::Symlink,
+            't' => Kind::TreeReference,
+            _ => panic!("Unknown kind: {}", c),
+        }
+    }
+}
+
+enum YesNo {
+    Yes,
+    No,
+}
+
+/// _header_state and _dirblock_state represent the current state
+/// of the dirstate metadata and the per-row data respectiely.
+/// NOT_IN_MEMORY indicates that no data is in memory
+/// IN_MEMORY_UNMODIFIED indicates that what we have in memory
+///   is the same as is on disk
+/// IN_MEMORY_MODIFIED indicates that we have a modified version
+///   of what is on disk.
+/// In future we will add more granularity, for instance _dirblock_state
+/// will probably support partially-in-memory as a separate variable,
+/// allowing for partially-in-memory unmodified and partially-in-memory
+/// modified states.
+#[derive(PartialEq, Eq, Debug)]
+enum MemoryState {
+    NotInMemory,
+    InMemoryUnmodified,
+    InMemoryModified,
+    InMemoryHashModified,
 }
