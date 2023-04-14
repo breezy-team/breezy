@@ -238,7 +238,10 @@ class cmd_git_apply(Command):
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree
-        patch_tree(wt, [diff], strip=1, out=self.outf)
+        from io import BytesIO
+        b = BytesIO()
+        patch_tree(wt, [diff], strip=1, out=b)
+        self.outf.write(b.getvalue().decode('utf-8', 'replace'))
         message = c.message.decode('utf-8')
         if signoff:
             signed_off_by = wt.branch.get_config().username()

@@ -2358,6 +2358,7 @@ class TestCase(testtools.TestCase):
                 stderr = self._log_file
             else:
                 stderr = StringIO()
+        return a_callable(*args, **kwargs)
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
