@@ -4144,7 +4144,6 @@ def _test_suite_modules_to_doctest():
         'breezy.symbol_versioning',
         'breezy.tests',
         'breezy.tests.fixtures',
-        'breezy.timestamp',
         'breezy.version_info_formats.format_custom',
         ]
 
