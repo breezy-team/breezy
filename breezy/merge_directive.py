@@ -18,12 +18,12 @@ import base64
 import contextlib
 import re
 from io import BytesIO
+from typing import Optional
 
 from . import lazy_import
 
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    branch as _mod_branch,
     diff,
     email_message,
     gpg,
@@ -33,13 +33,13 @@ from breezy import (
 from breezy.bzr import (
     rio,
     rio_patch,
-    testament,
     )
 from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )
 """)
 from . import (
+    branch as _mod_branch,
     errors,
     hooks,
     registry,
@@ -202,10 +202,11 @@ class BaseMergeDirective:
         If the message is not supplied, the message from revision_id will be
         used for the commit.
         """
-        t_revision_id = revision_id
+        t_revision_id: Optional[_mod_revision.RevisionID] = revision_id
         if revision_id == _mod_revision.NULL_REVISION:
             t_revision_id = None
-        t = testament.StrictTestament3.from_revision(repository, t_revision_id)
+        from breezy.bzr.testament import StrictTestament3
+        t = StrictTestament3.from_revision(repository, t_revision_id)
         if local_target_branch is None:
             submit_branch = _mod_branch.Branch.open(target_branch)
         else:
@@ -491,8 +492,7 @@ class MergeDirective(BaseMergeDirective):
     @classmethod
     def _generate_bundle(cls, repository, revision_id: _mod_revision.RevisionID, ancestor_id):
         s = BytesIO()
-        bundle_serializer.write_bundle(repository, revision_id,
-                                       ancestor_id, s, '0.9')
+        bundle_serializer.write_bundle(repository, revision_id, ancestor_id, s, '0.9')  # type: ignore
         return s.getvalue()
 
     def get_merge_request(self, repository):

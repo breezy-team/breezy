@@ -28,8 +28,8 @@ from tempfile import TemporaryFile
 from breezy.tests import TestCase
 
 from .. import rio
-from ...iterablefile import IterableFile
-from ..rio import RioReader, Stanza, read_stanza, read_stanzas, rio_iter
+from ...osutils import IterableFile
+from ..rio import RioReader, Stanza, read_stanza, read_stanzas, rio_iter  # type: ignore
 from ..rio_patch import to_patch_lines, read_patch_stanza
 
 
