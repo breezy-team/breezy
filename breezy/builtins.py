@@ -7063,7 +7063,11 @@ class cmd_patch(Command):
         else:
             my_file = open(filename, 'rb')
         patches = [my_file.read()]
-        return patch_tree(wt, patches, strip, quiet=is_quiet(), out=self.outf)
+        from io import BytesIO
+        b = BytesIO()
+        patch_tree(wt, patches, strip, quiet=is_quiet(), out=b)
+        self.outf.write(b.getvalue().decode('utf-8', 'replace'))
+
 
 
 class cmd_resolve_location(Command):
