@@ -120,6 +120,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "breezy-patch"
+version = "3.3.3"
+dependencies = [
+ "breezy-osutils",
+ "tempfile",
+]
+
+[[package]]
 name = "breezy-zlib-util"
 version = "3.3.3"
 dependencies = [
@@ -600,6 +608,15 @@ dependencies = [
  "redox_syscall 0.2.16",
  "smallvec",
  "windows-sys 0.45.0",
+]
+
+[[package]]
+name = "patch-py"
+version = "3.3.3"
+dependencies = [
+ "breezy-patch",
+ "pyo3",
+ "pyo3-file",
 ]
 
 [[package]]

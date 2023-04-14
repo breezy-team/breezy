@@ -67,7 +67,7 @@ class TestUnavailableFeature(tests.TestCase):
 
 # Although this was deprecated a long time ago, please keep it here because
 # it's really just a test fixture for test-feature deprecation.
-simple_thunk_feature = features._CompatabilityThunkFeature(
+simple_thunk_feature = features._CompatibilityThunkFeature(
     symbol_versioning.deprecated_in((2, 1, 0)),
     'breezy.tests.test_features',
     'simple_thunk_feature',
@@ -86,7 +86,7 @@ class Test_CompatibilityFeature(tests.TestCase):
         self.assertEqual(features.UnicodeFilenameFeature.available(), res)
 
     def test_reports_correct_location(self):
-        a_feature = features._CompatabilityThunkFeature(
+        a_feature = features._CompatibilityThunkFeature(
             symbol_versioning.deprecated_in((2, 1, 0)),
             'breezy.tests.test_features',
             'a_feature',
