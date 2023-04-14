@@ -1,20 +1,25 @@
+#![allow(non_snake_case)]
+
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
-use pyo3::types::{PyBytes, PyUnicode};
+use pyo3::types::{PyBytes, PyDict, PyList, PyTuple, PyString};
+use pyo3::exceptions::PyTypeError;
+use std::os::unix::fs::{PermissionsExt, MetadataExt};
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStringExt;
 
 use bazaar_dirstate;
 
-fn extract_path(pyo: &PyAny) -> PyResult<PathBuf> {
-    let stro: String;
-    if pyo.is_instance_of::<PyBytes>()? {
-        stro = String::from_utf8(pyo.extract::<&[u8]>().unwrap().to_vec())?;
-    } else if pyo.is_instance_of::<PyUnicode>()? {
-        stro = pyo.extract::<String>().unwrap();
+// TODO(jelmer): Shared pyo3 utils?
+fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
+    if let Ok(path) = object.extract::<Vec<u8>>() {
+        Ok(PathBuf::from(OsString::from_vec(path)))
+    } else if let Ok(path) = object.extract::<PathBuf>() {
+        Ok(path)
     } else {
-        return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("path must be either bytes or str"));
+        Err(PyTypeError::new_err("path must be a string or bytes"))
     }
-    Ok(PathBuf::from(stro))
 }
 
 /// Compare two paths directory by directory.
@@ -116,6 +121,166 @@ fn lt_path_by_dirblock(path1: &PyAny, path2: &PyAny) -> PyResult<bool> {
     Ok(bazaar_dirstate::lt_path_by_dirblock(&path1, &path2))
 }
 
+#[pyfunction]
+fn bisect_dirblock(
+    py: Python,
+    dirblocks: &PyList,
+    dirname: PyObject,
+    lo: Option<usize>,
+    hi: Option<usize>,
+    cache: Option<&PyDict>,
+) -> PyResult<usize> {
+    fn split_object(py: Python, obj: Py<PyAny>) -> PyResult<Vec<PathBuf>> {
+        if let Ok(py_str) = obj.extract::<&PyString>(py) {
+            Ok(py_str
+                .to_str()?
+                .split('/')
+                .map(PathBuf::from)
+                .collect::<Vec<_>>())
+        } else if let Ok(py_bytes) = obj.extract::<&PyBytes>(py) {
+            Ok(py_bytes
+                .as_bytes()
+                .split(|&byte| byte == b'/')
+                .map(|s| PathBuf::from(String::from_utf8_lossy(s).to_string()))
+                .collect::<Vec<_>>())
+        } else {
+            Err(PyTypeError::new_err("Not a PyBytes or PyString"))
+        }
+    }
+
+    let hi = hi.unwrap_or(dirblocks.len());
+    let cache = cache.unwrap_or_else(|| PyDict::new(py));
+
+    let dirname_split = match cache.get_item(&dirname) {
+        Some(item) => item.extract::<Vec<PathBuf>>()?,
+        None => {
+            let split = split_object(py, dirname.to_object(py))?;
+            cache.set_item(dirname.clone(), split.clone())?;
+            split
+        }
+    };
+
+    let mut lo = lo.unwrap_or(0);
+    let mut hi = hi;
+
+    while lo < hi {
+        let mid = (lo + hi) / 2;
+        let dirblock = dirblocks.get_item(mid)?.downcast::<PyTuple>()?;
+        let cur = dirblock.get_item(0)?;
+
+        let cur_split = match cache.get_item(&cur) {
+            Some(item) => item.extract::<Vec<PathBuf>>()?,
+            None => {
+                let split = split_object(py, cur.into_py(py))?;
+                cache.set_item(cur.clone(), split.clone())?;
+                split
+            }
+        };
+
+        if cur_split < dirname_split {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    Ok(lo)
+}
+
+// TODO(jelmer): Move this into a more central place?
+#[pyclass]
+struct StatResult {
+    metadata: std::fs::Metadata,
+}
+
+#[pymethods]
+impl StatResult {
+    #[getter]
+    fn st_size(&self) -> PyResult<u64> {
+        Ok(self.metadata.len())
+    }
+
+    #[getter]
+    fn st_mtime(&self) -> PyResult<u64> {
+        let modified = self.metadata.modified().map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        let since_epoch = modified.duration_since(std::time::UNIX_EPOCH).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
+        Ok(since_epoch.as_secs())
+    }
+
+    #[getter]
+    fn st_ctime(&self) -> PyResult<u64> {
+        let created = self.metadata.created().map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        let since_epoch = created.duration_since(std::time::UNIX_EPOCH).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
+        Ok(since_epoch.as_secs())
+    }
+
+    #[getter]
+    fn st_mode(&self) -> PyResult<u32> {
+        Ok(self.metadata.permissions().mode())
+    }
+
+    #[cfg(unix)]
+    #[getter]
+    fn st_dev(&self) -> PyResult<u64> {
+        Ok(self.metadata.dev())
+    }
+
+    #[cfg(unix)]
+    #[getter]
+    fn st_ino(&self) -> PyResult<u64> {
+        Ok(self.metadata.ino())
+    }
+}
+
+#[pyclass]
+struct SHA1Provider {
+    provider: Box<dyn bazaar_dirstate::SHA1Provider>,
+}
+
+#[pymethods]
+impl SHA1Provider {
+    fn sha1(&mut self, py: Python, path: &PyAny) -> PyResult<PyObject> {
+        let path = extract_path(path)?;
+        let sha1 = self.provider.sha1(&path).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        Ok(PyBytes::new(py, sha1.as_bytes()).to_object(py))
+    }
+
+    fn stat_and_sha1(&mut self, py: Python, path: &PyAny) -> PyResult<(PyObject, PyObject)> {
+        let path = extract_path(path)?;
+        let (md, sha1) = self.provider.stat_and_sha1(&path)?;
+        let pmd = StatResult { metadata: md };
+        Ok((pmd.into_py(py), PyBytes::new(py, sha1.as_bytes()).to_object(py)))
+    }
+}
+
+#[pyfunction]
+fn DefaultSHA1Provider() -> PyResult<SHA1Provider> {
+    Ok(SHA1Provider {
+        provider: Box::new(bazaar_dirstate::DefaultSHA1Provider::new()),
+    })
+}
+
+fn extract_fs_time(obj: &PyAny) -> PyResult<u64> {
+    if let Ok(u) = obj.extract::<u64>() {
+        Ok(u)
+    } else if let Ok(u) = obj.extract::<f64>() {
+        Ok(u as u64)
+    } else {
+        Err(PyTypeError::new_err("Not a float or int"))
+    }
+}
+
+#[pyfunction]
+fn pack_stat(stat_result: &PyAny) -> PyResult<PyObject> {
+    let size = stat_result.getattr("st_size")?.extract::<u64>()?;
+    let mtime = extract_fs_time(stat_result.getattr("st_mtime")?)?;
+    let ctime = extract_fs_time(stat_result.getattr("st_ctime")?)?;
+    let dev = stat_result.getattr("st_dev")?.extract::<u64>()?;
+    let ino = stat_result.getattr("st_ino")?.extract::<u64>()?;
+    let mode = stat_result.getattr("st_mode")?.extract::<u32>()?;
+    let s = bazaar_dirstate::pack_stat(size, mtime, ctime, dev, ino, mode);
+    Ok(PyBytes::new(stat_result.py(), s.as_bytes()).to_object(stat_result.py()))
+}
+
 /// Helpers for the dirstate module.
 #[pymodule]
 fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
@@ -123,6 +288,9 @@ fn _dirstate_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(bisect_path_left))?;
     m.add_wrapped(wrap_pyfunction!(bisect_path_right))?;
     m.add_wrapped(wrap_pyfunction!(lt_path_by_dirblock))?;
+    m.add_wrapped(wrap_pyfunction!(bisect_dirblock))?;
+    m.add_wrapped(wrap_pyfunction!(DefaultSHA1Provider))?;
+    m.add_wrapped(wrap_pyfunction!(pack_stat))?;
 
     Ok(())
 }

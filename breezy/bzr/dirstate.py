@@ -275,21 +275,6 @@ class SHA1Provider:
         raise NotImplementedError(self.stat_and_sha1)
 
 
-class DefaultSHA1Provider(SHA1Provider):
-    """A SHA1Provider that reads directly from the filesystem."""
-
-    def sha1(self, abspath):
-        """Return the sha1 of a file given its absolute path."""
-        return osutils.sha_file_by_name(abspath)
-
-    def stat_and_sha1(self, abspath):
-        """Return the stat and sha1 of a file given its absolute path."""
-        with open(abspath, 'rb') as file_obj:
-            statvalue = os.fstat(file_obj.fileno())
-            sha1 = osutils.sha_file(file_obj)
-        return statvalue, sha1
-
-
 class DirState:
     """Record directory and metadata state for fast access.
 
@@ -2355,7 +2340,8 @@ class DirState:
         entry_keys.remove(entry_key)
         id_index[file_id] = static_tuple.StaticTuple.from_sequence(entry_keys)
 
-    def _get_output_lines(self, lines):
+    @classmethod
+    def _get_output_lines(cls, lines):
         """Format lines for final output.
 
         :param lines: A sequence of lines containing the parents list and the
@@ -2371,7 +2357,8 @@ class DirState:
         output_lines.append(inventory_text)
         return output_lines
 
-    def _make_deleted_row(self, fileid_utf8, parents):
+    @classmethod
+    def _make_deleted_row(cls, fileid_utf8, parents):
         """Return a deleted row for fileid_utf8."""
         return (b'/', b'RECYCLED.BIN', b'file', fileid_utf8, 0, DirState.NULLSTAT,
                 b''), parents
@@ -4329,18 +4316,23 @@ class ProcessEntryPython:
         return dir_info
 
 
-from ._dirstate_rs import lt_by_dirs, bisect_path_left, bisect_path_right
+from ._dirstate_rs import (
+    lt_by_dirs,
+    bisect_path_left,
+    bisect_path_right,
+    bisect_dirblock,
+    DefaultSHA1Provider,
+    pack_stat,
+    )
 
 # Try to load the compiled form if possible
 try:
     from ._dirstate_helpers_pyx import ProcessEntryC as _process_entry
-    from ._dirstate_helpers_pyx import (_read_dirblocks, bisect_dirblock,
-                                        pack_stat)
+    from ._dirstate_helpers_pyx import _read_dirblocks
     from ._dirstate_helpers_pyx import update_entry as update_entry
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from ._dirstate_helpers_py import (_read_dirblocks, bisect_dirblock,
-                                       pack_stat)
+    from ._dirstate_helpers_py import _read_dirblocks
 
     # FIXME: It would be nice to be able to track moved lines so that the
     # corresponding python code can be moved to the _dirstate_helpers_py

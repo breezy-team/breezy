@@ -9,8 +9,5 @@ homepage = "https://www.breezy-vcs.org/"
 
 [lib]
 
-[dependencies.lazy_static]
-version = "1.4.0"
-
-[dependencies.regex]
-version = "1.5.4"
+[dependencies]
+breezy-osutils = { path = "../osutils" }

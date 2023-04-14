@@ -25,12 +25,22 @@ pub fn size_sha_file(f: &mut dyn Read) -> Result<(usize, String), std::io::Error
     Ok((size, format!("{:x}", s.finalize())))
 }
 
+pub fn size_sha_chunks(chunks: impl Iterator<Item = Vec<u8>>) -> (usize, String) {
+    let mut s = Sha1::new();
+    let mut size: usize = 0;
+    for chunk in chunks {
+        s.update(&chunk);
+        size += chunk.len();
+    }
+    (size, format!("{:x}", s.finalize()))
+}
+
 pub fn sha_file_by_name<P: AsRef<Path>>(path: P) -> Result<String, std::io::Error> {
     let mut f = File::open(path)?;
     sha_file(&mut f)
 }
 
-pub fn sha_strings<I, S>(strings: I) -> String
+pub fn sha_chunks<I, S>(strings: I) -> String
 where
     I: IntoIterator<Item = S>,
     S: AsRef<[u8]>,

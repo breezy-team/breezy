@@ -17,7 +17,7 @@
 
 import os.path
 
-from breezy.iterablefile import IterableFile
+from breezy.osutils import IterableFile
 from breezy.patches import (NO_NL, AppliedPatches, BinaryFiles, BinaryPatch,
                             ContextLine, InsertLine, MalformedHunkHeader,
                             MalformedLine, MalformedPatchHeader, Patch,

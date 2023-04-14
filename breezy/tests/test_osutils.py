@@ -1003,6 +1003,7 @@ class TestParentDirectories(tests.TestCaseInTempDir):
         self.assertEqual([], osutils.parent_directories('a'))
         self.assertEqual(['a'], osutils.parent_directories('a/b'))
         self.assertEqual(['a/b', 'a'], osutils.parent_directories('a/b/c'))
+        self.assertEqual(['a1/b2/c3', 'a1/b2', 'a1'], osutils.parent_directories('a1/b2/c3/d4'))
 
 
 class TestMacFuncsDirs(tests.TestCaseInTempDir):
@@ -1108,7 +1109,7 @@ class TestChunksToLinesIter(tests.TestCase):
 
 class TestSplitLines(tests.TestCase):
 
-    def test_split(self):
+    def test_split_bytes(self):
         self.assertEqual([b'foo\n', b'bar\xae'],
                          osutils.split_lines(b'foo\nbar\xae'))
         self.assertEqual([b'foo\n', b'bar\xae\n'],

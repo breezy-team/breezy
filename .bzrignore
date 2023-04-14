@@ -78,6 +78,5 @@ __pycache__
 .mypy_cache
 # rust bits
 ./target
-./Cargo.lock
 ./brz
-breezy/bzr/*.so
+*.so

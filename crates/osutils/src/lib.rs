@@ -1,4 +1,5 @@
 use memchr::memchr;
+use rand::Rng;
 
 pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>
 where
@@ -55,7 +56,44 @@ where
     })
 }
 
+pub fn set_or_unset_env(env_variable: &str, value: Option<&str>) -> Result<Option<String>, std::env::VarError> {
+    let orig_val = std::env::var(env_variable);
+    let ret: Option<String>;
+    if let Err(std::env::VarError::NotPresent) = orig_val {
+        ret = None;
+        if value.is_some() {
+            std::env::set_var(env_variable, value.unwrap());
+        }
+    } else if let Err(e) = orig_val {
+        return Err(e);
+    } else {
+        assert!(orig_val.is_ok());
+        ret = Some(orig_val.unwrap());
+        match value {
+            None => std::env::remove_var(env_variable),
+            Some(val) => std::env::set_var(env_variable, val)
+        }
+    }
+    Ok(ret)
+}
+
+const ALNUM: &str = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+pub fn rand_chars(num: usize) -> String {
+    let mut rng = rand::thread_rng();
+    let mut s = String::new();
+    for _ in 0..num {
+        let raw_byte = rng.gen_range(0..256);
+        s.push(ALNUM.chars().nth(raw_byte % 36).unwrap());
+    }
+    s
+}
+
 pub mod sha;
+pub mod path;
+pub mod time;
+pub mod iterablefile;
+pub mod textfile;
 
 #[cfg(test)]
 mod tests;

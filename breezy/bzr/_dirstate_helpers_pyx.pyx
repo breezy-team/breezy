@@ -229,55 +229,6 @@ def lt_by_dirs(path1, path2):
                               PyBytes_Size(path2))
 
 
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
-    """Return the index where to insert dirname into the dirblocks.
-
-    The return value idx is such that all directories blocks in dirblock[:idx]
-    have names < dirname, and all blocks in dirblock[idx:] have names >=
-    dirname.
-
-    Optional args lo (default 0) and hi (default len(dirblocks)) bound the
-    slice of a to be searched.
-    """
-    cdef int _lo
-    cdef int _hi
-    cdef int _mid
-    cdef char *dirname_cstr
-    cdef int dirname_size
-    cdef char *cur_cstr
-    cdef int cur_size
-    cdef void *cur
-
-    if not PyList_CheckExact(dirblocks):
-        raise TypeError("you must pass a python list for 'dirblocks' not: %s %r"
-                        % (type(dirblocks), dirblocks))
-    if not PyBytes_CheckExact(dirname):
-        raise TypeError("you must pass a string for dirname not: %s %r"
-                        % (type(dirname), dirname))
-    if hi is None:
-        _hi = len(dirblocks)
-    else:
-        _hi = hi
-
-    _lo = lo
-    dirname_cstr = PyBytes_AsString(dirname)
-    dirname_size = PyBytes_Size(dirname)
-
-    while _lo < _hi:
-        _mid = (_lo + _hi) // 2
-        # Grab the dirname for the current dirblock
-        # cur = dirblocks[_mid][0]
-        cur = PyTuple_GetItem_void_void(
-                PyList_GetItem_object_void(dirblocks, _mid), 0)
-        cur_cstr = PyBytes_AS_STRING_void(cur)
-        cur_size = PyBytes_GET_SIZE_void(cur)
-        if _cmp_by_dirs(cur_cstr, cur_size, dirname_cstr, dirname_size) < 0:
-            _lo = _mid + 1
-        else:
-            _hi = _mid
-    return _lo
-
-
 cdef class Reader:
     """Maintain the current location, and return fields as you parse them."""
 
@@ -585,11 +536,6 @@ cdef _pack_stat(stat_value):
     aliased[5] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mode))
     packed = PyBytes_FromStringAndSize(result, 6*4)
     return _encode(packed)[:-1]
-
-
-def pack_stat(stat_value):
-    """Convert stat value into a packed representation quickly with pyrex"""
-    return _pack_stat(stat_value)
 
 
 cpdef update_entry(self, entry, abspath, stat_value):
@@ -1182,7 +1128,7 @@ cdef class ProcessEntryC:
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
-                osutils.parent_directories(new_path.encode('utf8')))
+                [p.encode('utf-8') for p in osutils.parent_directories(new_path)])
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add(b'')

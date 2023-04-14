@@ -24,63 +24,6 @@ import struct
 from .dirstate import DirState, DirstateCorrupt
 
 
-def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):
-    """Convert stat values into a packed representation
-
-    Not all of the fields from the stat included are strictly needed, and by
-    just encoding the mtime and mode a slight speed increase could be gained.
-    However, using the pyrex version instead is a bigger win.
-    """
-    # base64 encoding always adds a final newline, so strip it off
-    return _b64(_pack(st.st_size & 0xFFFFFFFF, int(st.st_mtime) & 0xFFFFFFFF,
-                      int(st.st_ctime) & 0xFFFFFFFF, st.st_dev & 0xFFFFFFFF,
-                      st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
-
-
-def _unpack_stat(packed_stat):
-    """Turn a packed_stat back into the stat fields.
-
-    This is meant as a debugging tool, should not be used in real code.
-    """
-    (st_size, st_mtime, st_ctime, st_dev, st_ino,
-     st_mode) = struct.unpack('>6L', binascii.a2b_base64(packed_stat))
-    return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
-                st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
-
-
-def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
-    """Return the index where to insert dirname into the dirblocks.
-
-    The return value idx is such that all directories blocks in dirblock[:idx]
-    have names < dirname, and all blocks in dirblock[idx:] have names >=
-    dirname.
-
-    Optional args lo (default 0) and hi (default len(dirblocks)) bound the
-    slice of a to be searched.
-    """
-    if hi is None:
-        hi = len(dirblocks)
-    try:
-        dirname_split = cache[dirname]
-    except KeyError:
-        dirname_split = dirname.split(b'/')
-        cache[dirname] = dirname_split
-    while lo < hi:
-        mid = (lo + hi) // 2
-        # Grab the dirname for the current dirblock
-        cur = dirblocks[mid][0]
-        try:
-            cur_split = cache[cur]
-        except KeyError:
-            cur_split = cur.split(b'/')
-            cache[cur] = cur_split
-        if cur_split < dirname_split:
-            lo = mid + 1
-        else:
-            hi = mid
-    return lo
-
-
 def _read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 

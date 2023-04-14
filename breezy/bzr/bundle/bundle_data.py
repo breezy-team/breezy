@@ -765,7 +765,7 @@ class BundleTree(InventoryTree):
 
 def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
-    from breezy.iterablefile import IterableFile
+    from breezy.osutils import IterableFile
     from breezy.patches import iter_patched
     if file_patch == b"":
         return IterableFile(())

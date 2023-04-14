@@ -62,15 +62,12 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         if self._hashcache.needs_write:
             try:
                 self._hashcache.write()
-            except OSError as e:
-                if e.errno not in (errno.EPERM, errno.EACCES):
-                    raise
+            except (PermissionError, ) as e:
                 # TODO: jam 20061219 Should this be a warning? A single line
                 #       warning might be sufficient to let the user know what
                 #       is going on.
                 trace.mutter('Could not write hashcache for %s\nError: %s',
-                             self._hashcache.cache_file_name(),
-                             osutils.safe_unicode(e.args[1]))
+                             self._hashcache.cache_file_name(), e.filename)
 
     def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():

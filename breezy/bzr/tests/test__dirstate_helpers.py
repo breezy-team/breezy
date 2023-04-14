@@ -16,6 +16,7 @@
 
 """Tests for the compiled dirstate helpers."""
 
+import binascii
 import bisect
 import os
 import time
@@ -229,118 +230,6 @@ class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
 
     def get_bisect(self):
         return bisect.bisect_right, -1
-
-
-class TestBisectDirblock(tests.TestCase):
-    """Test that bisect_dirblock() returns the expected values.
-
-    bisect_dirblock is intended to work like bisect.bisect_left() except it
-    knows it is working on dirblocks and that dirblocks are sorted by ('path',
-    'to', 'foo') chunks rather than by raw 'path/to/foo'.
-
-    This test is parameterized by calling get_bisect_dirblock(). Child test
-    cases can override this function to test against a different
-    implementation.
-    """
-
-    def get_bisect_dirblock(self):
-        """Return an implementation of bisect_dirblock"""
-        from .._dirstate_helpers_py import bisect_dirblock
-        return bisect_dirblock
-
-    def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
-        """Assert that bisect_split works like bisect_left on the split paths.
-
-        :param dirblocks: A list of (path, [info]) pairs.
-        :param split_dirblocks: A list of ((split, path), [info]) pairs.
-        :param path: The path we are indexing.
-
-        All other arguments will be passed along.
-        """
-        bisect_dirblock = self.get_bisect_dirblock()
-        self.assertIsInstance(dirblocks, list)
-        bisect_split_idx = bisect_dirblock(dirblocks, path, *args, **kwargs)
-        split_dirblock = (path.split(b'/'), [])
-        bisect_left_idx = bisect.bisect_left(split_dirblocks, split_dirblock,
-                                             *args)
-        self.assertEqual(bisect_left_idx, bisect_split_idx,
-                         'bisect_split disagreed. %s != %s'
-                         ' for key %r'
-                         % (bisect_left_idx, bisect_split_idx, path)
-                         )
-
-    def paths_to_dirblocks(self, paths):
-        """Convert a list of paths into dirblock form.
-
-        Also, ensure that the paths are in proper sorted order.
-        """
-        dirblocks = [(path, []) for path in paths]
-        split_dirblocks = [(path.split(b'/'), []) for path in paths]
-        self.assertEqual(sorted(split_dirblocks), split_dirblocks)
-        return dirblocks, split_dirblocks
-
-    def test_simple(self):
-        """In the simple case it works just like bisect_left"""
-        paths = [b'', b'a', b'b', b'c', b'd']
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path)
-        self.assertBisect(dirblocks, split_dirblocks, b'_')
-        self.assertBisect(dirblocks, split_dirblocks, b'aa')
-        self.assertBisect(dirblocks, split_dirblocks, b'bb')
-        self.assertBisect(dirblocks, split_dirblocks, b'cc')
-        self.assertBisect(dirblocks, split_dirblocks, b'dd')
-        self.assertBisect(dirblocks, split_dirblocks, b'a/a')
-        self.assertBisect(dirblocks, split_dirblocks, b'b/b')
-        self.assertBisect(dirblocks, split_dirblocks, b'c/c')
-        self.assertBisect(dirblocks, split_dirblocks, b'd/d')
-
-    def test_involved(self):
-        """This is where bisect_left diverges slightly."""
-        paths = [b'', b'a',
-                 b'a/a', b'a/a/a', b'a/a/z', b'a/a-a', b'a/a-z',
-                 b'a/z', b'a/z/a', b'a/z/z', b'a/z-a', b'a/z-z',
-                 b'a-a', b'a-z',
-                 b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
-                 b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
-                 b'z-a', b'z-z',
-                 ]
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path)
-
-    def test_involved_cached(self):
-        """This is where bisect_left diverges slightly."""
-        paths = [b'', b'a',
-                 b'a/a', b'a/a/a', b'a/a/z', b'a/a-a', b'a/a-z',
-                 b'a/z', b'a/z/a', b'a/z/z', b'a/z-a', b'a/z-z',
-                 b'a-a', b'a-z',
-                 b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
-                 b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
-                 b'z-a', b'z-z',
-                 ]
-        cache = {}
-        dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
-        for path in paths:
-            self.assertBisect(dirblocks, split_dirblocks, path, cache=cache)
-
-
-class TestCompiledBisectDirblock(TestBisectDirblock):
-    """Test that bisect_dirblock() returns the expected values.
-
-    bisect_dirblock is intended to work like bisect.bisect_left() except it
-    knows it is working on dirblocks and that dirblocks are sorted by ('path',
-    'to', 'foo') chunks rather than by raw 'path/to/foo'.
-
-    This runs all the normal tests that TestBisectDirblock did, but uses the
-    compiled version.
-    """
-
-    _test_needs_features = [compiled_dirstate_helpers_feature]
-
-    def get_bisect_dirblock(self):
-        from .._dirstate_helpers_pyx import bisect_dirblock
-        return bisect_dirblock
 
 
 class TestLtByDirs(tests.TestCase):
@@ -627,13 +516,6 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
     _dirstate_helpers_pyx is actually available, but the compiled functions are
     not being used.
     """
-
-    def test_bisect_dirblock(self):
-        if compiled_dirstate_helpers_feature.available():
-            from .._dirstate_helpers_pyx import bisect_dirblock
-        else:
-            from .._dirstate_helpers_py import bisect_dirblock
-        self.assertIs(bisect_dirblock, dirstate.bisect_dirblock)
 
     def test__bisect_path_left(self):
         from .._dirstate_rs import bisect_path_left
@@ -1210,56 +1092,3 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         state = tree._current_dirstate()
         state._sha1_provider = UppercaseSHA1Provider()
         self.assertChangedFileIds([b'file-id'], tree)
-
-
-class TestPackStat(tests.TestCase):
-    """Check packed representaton of stat values is robust on all inputs"""
-
-    scenarios = helper_scenarios
-
-    def pack(self, statlike_tuple):
-        return self.helpers.pack_stat(os.stat_result(statlike_tuple))
-
-    @staticmethod
-    def unpack_field(packed_string, stat_field):
-        return _dirstate_helpers_py._unpack_stat(packed_string)[stat_field]
-
-    def test_result(self):
-        self.assertEqual(b"AAAQAAAAABAAAAARAAAAAgAAAAEAAIHk",
-                         self.pack((33252, 1, 2, 0, 0, 0, 4096, 15.5, 16.5, 17.5)))
-
-    def test_giant_inode(self):
-        packed = self.pack((33252, 0xF80000ABC, 0, 0, 0, 0, 0, 0, 0, 0))
-        self.assertEqual(0x80000ABC, self.unpack_field(packed, "st_ino"))
-
-    def test_giant_size(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, (1 << 33) + 4096, 0, 0, 0))
-        self.assertEqual(4096, self.unpack_field(packed, "st_size"))
-
-    def test_fractional_mtime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 16.9375, 0))
-        self.assertEqual(16, self.unpack_field(packed, "st_mtime"))
-
-    def test_ancient_mtime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, -11644473600.0, 0))
-        self.assertEqual(1240428288, self.unpack_field(packed, "st_mtime"))
-
-    def test_distant_mtime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 64060588800.0, 0))
-        self.assertEqual(3931046656, self.unpack_field(packed, "st_mtime"))
-
-    def test_fractional_ctime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 17.5625))
-        self.assertEqual(17, self.unpack_field(packed, "st_ctime"))
-
-    def test_ancient_ctime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, -11644473600.0))
-        self.assertEqual(1240428288, self.unpack_field(packed, "st_ctime"))
-
-    def test_distant_ctime(self):
-        packed = self.pack((33252, 0, 0, 0, 0, 0, 0, 0, 0, 64060588800.0))
-        self.assertEqual(3931046656, self.unpack_field(packed, "st_ctime"))
-
-    def test_negative_dev(self):
-        packed = self.pack((33252, 0, -0xFFFFFCDE, 0, 0, 0, 0, 0, 0, 0))
-        self.assertEqual(0x322, self.unpack_field(packed, "st_dev"))
