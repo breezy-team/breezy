@@ -1,4 +1,3 @@
-use flate2::Compression;
 use flate2::write::DeflateEncoder;
 use std::io::Write;
 use crate::python_default_deflate_encoder;
@@ -22,6 +21,14 @@ impl ZLibEstimator {
             unflushed_size_added: 0,
             estimated_compression: 2.0,
         }
+    }
+
+    pub fn compressed_size_added(&self) -> usize {
+        self.compressed_size_added
+    }
+
+    pub fn uncompressed_size_added(&self) -> usize {
+        self.uncompressed_size_added
     }
 
     pub fn add_content(&mut self, content: &[u8]) -> std::io::Result<()> {

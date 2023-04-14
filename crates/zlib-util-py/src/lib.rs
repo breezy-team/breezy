@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 
@@ -13,6 +14,16 @@ impl ZLibEstimator {
         ZLibEstimator {
             estimator: breezy_zlib_util::estimator::ZLibEstimator::new(target_size),
         }
+    }
+
+    #[getter]
+    fn _compressed_size_added(&self) -> PyResult<usize> {
+        Ok(self.estimator.compressed_size_added())
+    }
+
+    #[getter]
+    fn _uncompressed_size_added(&self) -> PyResult<usize> {
+        Ok(self.estimator.uncompressed_size_added())
     }
 
     fn add_content(&mut self, content: &[u8]) -> PyResult<()> {
