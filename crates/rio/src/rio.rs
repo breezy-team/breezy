@@ -346,12 +346,13 @@ pub fn rio_iter(
         header.push(b'\n');
         lines.push(header);
     }
-    let first_stanza = true;
+    let mut first_stanza = true;
     for stanza in stanzas {
         if !first_stanza {
             lines.push(b"\n".to_vec());
         }
         lines.push(stanza.to_bytes());
+        first_stanza = false;
     }
     lines.into_iter()
 }
