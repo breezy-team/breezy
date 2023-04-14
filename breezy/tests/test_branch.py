@@ -433,7 +433,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def create_branch_with_reference(self):
         branch = self.make_branch('branch')
-        branch._set_all_reference_info({'path': ('location', b'file-id')})
+        branch._set_all_reference_info({b'file-id': ('location', 'path')})
         return branch
 
     @staticmethod
@@ -451,8 +451,8 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_read()
         self.addCleanup(branch.unlock)
         self.instrument_branch(branch, gets)
-        branch.get_reference_info('path')
-        branch.get_reference_info('path')
+        branch.get_reference_info(b'file-id')
+        branch.get_reference_info(b'file-id')
         self.assertEqual(1, len(gets))
 
     def test_reference_info_caching_read_unlocked(self):
@@ -469,10 +469,10 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_write()
         self.instrument_branch(branch, gets)
         self.addCleanup(branch.unlock)
-        branch._set_all_reference_info({'path2': ('location2', b'file-id')})
-        location, file_id = branch.get_reference_info('path2')
+        branch._set_all_reference_info({b'file-id': ('location2', 'path2')})
+        location, path = branch.get_reference_info(b'file-id')
         self.assertEqual(0, len(gets))
-        self.assertEqual(b'file-id', file_id)
+        self.assertEqual('path2', path)
         self.assertEqual('location2', location)
 
     def test_reference_info_caches_cleared(self):

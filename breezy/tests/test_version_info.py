@@ -462,8 +462,8 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         self.assertFalse(tvi['version_info']['clean'])
         self.assertEqual(['', 'a', 'b', 'c'],
                          sorted(tvi['file_revisions'].keys()))
-        self.assertEqual(b'r3', tvi['file_revisions']['a'])
-        self.assertEqual(b'r2', tvi['file_revisions']['b'])
+        self.assertEqual('r3', tvi['file_revisions']['a'])
+        self.assertEqual('r2', tvi['file_revisions']['b'])
         self.assertEqual('unversioned', tvi['file_revisions']['c'])
         os.remove('branch/c')
 
@@ -471,8 +471,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
 
         rev_info = [(rev, message) for rev, message, timestamp, timezone
                     in tvi['revisions']]
-        self.assertEqual([(b'r1', 'a'), (b'r2', 'b'),
-                          (b'r3', '\xe52')], rev_info)
+        self.assertEqual([(b'r1', 'a'), (b'r2', 'b'), (b'r3', '\xe52')], rev_info)
 
         # a was modified, so it should show up modified again
         self.build_tree(['branch/a', 'branch/c'])
@@ -492,7 +491,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['', 'a', 'c', 'd'],
                          sorted(tvi['file_revisions'].keys()))
-        self.assertEqual(b'r4', tvi['file_revisions']['a'])
+        self.assertEqual('r4', tvi['file_revisions']['a'])
         self.assertEqual('unversioned', tvi['file_revisions']['c'])
         self.assertEqual('removed', tvi['file_revisions']['d'])
 

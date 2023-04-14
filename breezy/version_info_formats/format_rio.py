@@ -70,7 +70,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             files = Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add('path', path)
-                files.add('revision', self._file_revisions[path].decode('utf-8'))
+                files.add('revision', self._file_revisions[path])
             info.add('file-revisions', files)
 
         to_file.write(info.to_string())
