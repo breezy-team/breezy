@@ -4,20 +4,12 @@ use pyo3::types::{PyDict, PyList};
 use std::collections::HashMap;
 use std::hash::Hash;
 
-struct PyNode {
-    obj: PyObject
-}
-
-impl PyNode {
-    fn new(obj: PyObject) -> PyNode {
-        PyNode { obj }
-    }
-}
+struct PyNode(PyObject);
 
 impl std::fmt::Debug for PyNode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Python::with_gil(|py| {
-            let repr = self.obj.as_ref(py).repr();
+            let repr = self.0.as_ref(py).repr();
             if PyErr::occurred(py) {
                 return Err(std::fmt::Error);
             }
@@ -33,7 +25,7 @@ impl std::fmt::Debug for PyNode {
 impl std::fmt::Display for PyNode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Python::with_gil(|py| {
-            let repr = self.obj.as_ref(py).repr();
+            let repr = self.0.as_ref(py).repr();
             if PyErr::occurred(py) {
                 return Err(std::fmt::Error);
             }
@@ -46,28 +38,28 @@ impl std::fmt::Display for PyNode {
     }
 }
 
-impl From<PyObject> for PyNode {
-    fn from(obj: PyObject) -> PyNode {
-        PyNode::new(obj)
-    }
-}
-
-impl From<PyNode> for PyObject {
-    fn from(node: PyNode) -> PyObject {
-        node.obj
-    }
-}
-
 impl From<&PyAny> for PyNode {
     fn from(obj: &PyAny) -> PyNode {
-        PyNode::new(obj.to_object(obj.py()))
+        PyNode(obj.to_object(obj.py()))
+    }
+}
+
+impl IntoPy<PyObject> for PyNode {
+    fn into_py(self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
+}
+
+impl IntoPy<PyObject> for &PyNode {
+    fn into_py(self, py: Python) -> PyObject {
+        self.0.to_object(py)
     }
 }
 
 impl Hash for PyNode {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         Python::with_gil(|py| {
-            match self.obj.as_ref(py).hash() {
+            match self.0.as_ref(py).hash() {
                 Err(err) => err.restore(py),
                 Ok(hash) => state.write_isize(hash)
             }
@@ -78,7 +70,7 @@ impl Hash for PyNode {
 impl PartialEq for PyNode {
     fn eq(&self, other: &PyNode) -> bool {
         Python::with_gil(|py| {
-            match self.obj.as_ref(py).eq(other.obj.as_ref(py)) {
+            match self.0.as_ref(py).eq(other.0.as_ref(py)) {
                 Err(err) => {
                     err.restore(py);
                     false
@@ -113,8 +105,8 @@ fn invert_parent_map(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
 
     for (k, vs) in result {
         ret.set_item::<PyObject, &PyList>(
-            k.obj.to_object(py),
-            PyList::new(py, vs.into_iter().map(|v| v.obj.to_object(py))))?;
+            k.into_py(py),
+            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
     }
 
     Ok(ret.to_object(py))
@@ -143,10 +135,9 @@ fn collapse_linear_regions(py: Python, parent_map: &PyDict) -> PyResult<PyObject
 
     let ret = PyDict::new(py);
     for (k, vs) in result {
-        eprintln!("{}: {:?}", k, vs);
         ret.set_item::<PyObject, &PyList>(
-            k.obj.to_object(py),
-            PyList::new(py, vs.into_iter().map(|v| v.obj.to_object(py))))?;
+            k.into_py(py),
+            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
     }
 
     Ok(ret.to_object(py))

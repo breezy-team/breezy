@@ -89,7 +89,7 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq + std::fmt::Debug>(
     let mut result: HashMap<&K, Vec<&K>> = parent_map.iter().map(|(k, v)| (k.borrow(), v.iter().map(|x| x.borrow()).collect())).collect();
     for node in parent_map.keys() {
         let node = node.borrow();
-        let parents = result.entry(node);
+        let parents = result.get(node).unwrap();
         if parents.len() == 1 {
             let parent_children = children.get(parents[0]).unwrap();
             if parent_children.len() != 1 {
@@ -107,6 +107,7 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq + std::fmt::Debug>(
                 }
                 // The child of this node only points at it, and the parent only has
                 // this as a child. remove this node, and join the others together
+                let parents = parents.clone();
                 result.remove(node);
                 result.insert(node_children[0], parents.clone());
                 children.insert(parents[0], node_children.clone());
