@@ -120,5 +120,7 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq>(
     result
 }
 
+pub mod tsort;
+
 #[cfg(test)]
-mod tests;
+mod test;

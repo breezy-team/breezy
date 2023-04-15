@@ -1,8 +1,11 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyDict, PyList, PyIterator};
 use std::collections::HashMap;
 use std::hash::Hash;
+use pyo3::import_exception;
+
+import_exception!(breezy.errors, GraphCycleError);
 
 struct PyNode(PyObject);
 
@@ -38,9 +41,21 @@ impl std::fmt::Display for PyNode {
     }
 }
 
+impl Clone for PyNode {
+    fn clone(&self) -> PyNode {
+        PyNode(self.0.clone())
+    }
+}
+
 impl From<&PyAny> for PyNode {
     fn from(obj: &PyAny) -> PyNode {
         PyNode(obj.to_object(obj.py()))
+    }
+}
+
+impl From<PyObject> for PyNode {
+    fn from(obj: PyObject) -> PyNode {
+        PyNode(obj)
     }
 }
 
@@ -143,9 +158,58 @@ fn collapse_linear_regions(py: Python, parent_map: &PyDict) -> PyResult<PyObject
     Ok(ret.to_object(py))
 }
 
+#[pyclass]
+struct TopoSorter {
+    sorter: breezy_graph::tsort::TopoSorter<PyNode>
+}
+
+#[pymethods]
+impl TopoSorter {
+    #[new]
+    fn new(py: Python, graph: PyObject) -> PyResult<TopoSorter> {
+        let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
+            graph.downcast::<PyDict>(py)?.call_method0("items")?.iter()?
+        } else {
+            graph.as_ref(py).iter()?
+        };
+        let graph = iter
+            .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
+            .map(|k| k.map(|(k, vs)| (PyNode::from(k), vs.into_iter().map(|v| PyNode::from(v)).collect())))
+            .collect::<PyResult<Vec<(PyNode, Vec<PyNode>)>>>()?;
+
+        let sorter = breezy_graph::tsort::TopoSorter::<PyNode>::new(graph.into_iter());
+        Ok(TopoSorter { sorter })
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        match self.sorter.next() {
+            None => Ok(None),
+            Some(Ok(node)) => Ok(Some(node.into_py(py))),
+            Some(Err(breezy_graph::tsort::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
+        }
+    }
+
+    fn __iter__(slf: PyRefMut<Self>) -> PyRefMut<Self> {
+        slf
+    }
+
+    fn iter_topo_order(slf: PyRefMut<Self>) -> PyRefMut<Self> {
+        slf
+    }
+
+    fn sorted(&mut self, py: Python) -> PyResult<Vec<PyObject>> {
+        let mut ret = Vec::new();
+        while let Some(node) = self.__next__(py)? {
+            ret.push(node);
+        }
+        Ok(ret)
+    }
+}
+
 #[pymodule]
-fn _graph_rs(_: Python, m: &PyModule) -> PyResult<()> {
+fn _graph_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(invert_parent_map))?;
     m.add_wrapped(wrap_pyfunction!(collapse_linear_regions))?;
+    m.add_class::<TopoSorter>()?;
     Ok(())
 }
