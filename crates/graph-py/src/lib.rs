@@ -1,17 +1,103 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use pyo3::types::{PyDict, PyList, PyBytes};
+use pyo3::types::{PyDict, PyList};
 use std::collections::HashMap;
+use std::hash::Hash;
 
-type Key = Vec<u8>;
+struct PyNode {
+    obj: PyObject
+}
 
-fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<Key, Vec<Key>>> {
+impl PyNode {
+    fn new(obj: PyObject) -> PyNode {
+        PyNode { obj }
+    }
+}
+
+impl std::fmt::Debug for PyNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Python::with_gil(|py| {
+            let repr = self.obj.as_ref(py).repr();
+            if PyErr::occurred(py) {
+                return Err(std::fmt::Error);
+            }
+            if let Ok(repr) = repr {
+                return write!(f, "{}", repr.to_string());
+            } else {
+                return write!(f, "???");
+            }
+        })
+    }
+}
+
+impl std::fmt::Display for PyNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Python::with_gil(|py| {
+            let repr = self.obj.as_ref(py).repr();
+            if PyErr::occurred(py) {
+                return Err(std::fmt::Error);
+            }
+            if let Ok(repr) = repr {
+                return write!(f, "{}", repr.to_string());
+            } else {
+                return write!(f, "???");
+            }
+        })
+    }
+}
+
+impl From<PyObject> for PyNode {
+    fn from(obj: PyObject) -> PyNode {
+        PyNode::new(obj)
+    }
+}
+
+impl From<PyNode> for PyObject {
+    fn from(node: PyNode) -> PyObject {
+        node.obj
+    }
+}
+
+impl From<&PyAny> for PyNode {
+    fn from(obj: &PyAny) -> PyNode {
+        PyNode::new(obj.to_object(obj.py()))
+    }
+}
+
+impl Hash for PyNode {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        Python::with_gil(|py| {
+            match self.obj.as_ref(py).hash() {
+                Err(err) => err.restore(py),
+                Ok(hash) => state.write_isize(hash)
+            }
+        });
+    }
+}
+
+impl PartialEq for PyNode {
+    fn eq(&self, other: &PyNode) -> bool {
+        Python::with_gil(|py| {
+            match self.obj.as_ref(py).eq(other.obj.as_ref(py)) {
+                Err(err) => {
+                    err.restore(py);
+                    false
+                }
+                Ok(b) => b
+            }
+        })
+    }
+}
+
+impl std::cmp::Eq for PyNode {}
+
+fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<PyNode, Vec<PyNode>>> {
     parent_map.iter().map(|(k, v)| {
         let vs = v
             .iter()?
-            .map(|v| v?.extract::<Key>())
+            .map(|v| Ok::<_, PyErr>(v?.into()))
             .into_iter().collect::<Result<Vec<_>, _>>()?;
-        Ok((k.extract()?, vs))
+        Ok((k.into(), vs))
     }).into_iter().collect::<Result<HashMap<_, _>, _>>()
 }
 
@@ -20,11 +106,17 @@ fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<Key, Vec<Key>>> {
 fn invert_parent_map(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
     let parent_map = extract_parent_map(parent_map)?;
     let ret = PyDict::new(py);
-    for (k, vs) in breezy_graph::invert_parent_map::<Key>(&parent_map).into_iter() {
-        ret.set_item(
-            PyBytes::new(py, k),
-            PyList::new(py, vs.into_iter().map(|v| PyBytes::new(py, v).to_object(py))))?;
+    let result = breezy_graph::invert_parent_map::<PyNode>(&parent_map);
+    if PyErr::occurred(py) {
+        return Err(PyErr::fetch(py));
     }
+
+    for (k, vs) in result {
+        ret.set_item::<PyObject, &PyList>(
+            k.obj.to_object(py),
+            PyList::new(py, vs.into_iter().map(|v| v.obj.to_object(py))))?;
+    }
+
     Ok(ret.to_object(py))
 }
 
@@ -44,12 +136,19 @@ fn invert_parent_map(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
 fn collapse_linear_regions(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
     let parent_map = extract_parent_map(parent_map)?;
 
-    let ret = PyDict::new(py);
-    for (k, vs) in breezy_graph::collapse_linear_regions::<Key>(&parent_map).into_iter() {
-        ret.set_item(
-            PyBytes::new(py, k),
-            PyList::new(py, vs.into_iter().map(|v| PyBytes::new(py, v).to_object(py))))?;
+    let result = breezy_graph::collapse_linear_regions::<PyNode>(&parent_map);
+    if PyErr::occurred(py) {
+        return Err(PyErr::fetch(py));
     }
+
+    let ret = PyDict::new(py);
+    for (k, vs) in result {
+        eprintln!("{}: {:?}", k, vs);
+        ret.set_item::<PyObject, &PyList>(
+            k.obj.to_object(py),
+            PyList::new(py, vs.into_iter().map(|v| v.obj.to_object(py))))?;
+    }
+
     Ok(ret.to_object(py))
 }
 

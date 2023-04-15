@@ -36,7 +36,20 @@ pub fn invert_parent_map<'a, K: Hash + Eq>(parent_map: &'a HashMap<impl Borrow<K
     child_map
 }
 
-pub fn collapse_linear_regions<'a, K: Hash + Eq>(
+/// Collapse regions of the graph that are 'linear'.
+///
+/// For example::
+///
+///   A:[B], B:[C]
+///
+/// can be collapsed by removing B and getting::
+///
+///   A:[C]
+///
+/// Args:
+///   parent_map: A dictionary mapping children to their parents
+/// REturns: Another dictionary with 'linear' chains collapsed
+pub fn collapse_linear_regions<'a, K: Hash + Eq + std::fmt::Debug>(
     parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
 ) -> HashMap<&'a K, Vec<&'a K>> {
     // Note: this isn't a strictly minimal collapse. For example:
@@ -64,7 +77,7 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq>(
     //   F
     // Will not have any nodes removed, even though you do have an
     // 'uninteresting' linear D->B and E->C
-    let mut children: HashMap<&'a K, Vec<&'a K>> = HashMap::new();
+    let mut children: HashMap<&K, Vec<&K>> = HashMap::new();
     for (child, parents) in parent_map.iter() {
         children.entry(child.borrow()).or_insert(Vec::new());
         for p in parents.iter() {
@@ -73,11 +86,12 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq>(
     }
 
     let mut removed = HashSet::new();
-    let mut result: HashMap<&'a K, Vec<&'a K>> = HashMap::new();
-    for (node, parents) in parent_map.iter() {
+    let mut result: HashMap<&K, Vec<&K>> = parent_map.iter().map(|(k, v)| (k.borrow(), v.iter().map(|x| x.borrow()).collect())).collect();
+    for node in parent_map.keys() {
         let node = node.borrow();
+        let parents = result.entry(node);
         if parents.len() == 1 {
-            let parent_children = children.get(parents[0].borrow()).unwrap();
+            let parent_children = children.get(parents[0]).unwrap();
             if parent_children.len() != 1 {
                 // This is not the only child
                 continue;
@@ -93,9 +107,9 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq>(
                 }
                 // The child of this node only points at it, and the parent only has
                 // this as a child. remove this node, and join the others together
-                result.insert(node_children[0], parents.iter().map(|x| x.borrow()).collect());
-                children.insert(parents[0].borrow(), node_children.clone());
                 result.remove(node);
+                result.insert(node_children[0], parents.clone());
+                children.insert(parents[0], node_children.clone());
                 children.remove(node);
                 removed.insert(node);
             }
