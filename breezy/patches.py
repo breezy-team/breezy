@@ -28,24 +28,6 @@ class PatchSyntax(BzrError):
     """Base class for patch syntax errors."""
 
 
-class BinaryFiles(BzrError):
-
-    _fmt = 'Binary files section encountered.'
-
-    def __init__(self, orig_name, mod_name):
-        self.orig_name = orig_name
-        self.mod_name = mod_name
-
-
-class MalformedPatchHeader(PatchSyntax):
-
-    _fmt = "Malformed patch header.  %(desc)s\n%(line)r"
-
-    def __init__(self, desc, line):
-        self.desc = desc
-        self.line = line
-
-
 class MalformedLine(PatchSyntax):
 
     _fmt = "Malformed line.  %(desc)s\n%(line)r"
@@ -75,35 +57,7 @@ class MalformedHunkHeader(PatchSyntax):
         self.line = line
 
 
-def get_patch_names(iter_lines):
-    line = next(iter_lines)
-    try:
-        match = re.match(binary_files_re, line)
-        if match is not None:
-            raise BinaryFiles(match.group(1), match.group(2))
-        if not line.startswith(b"--- "):
-            raise MalformedPatchHeader("No orig name", line)
-        else:
-            orig_name = line[4:].rstrip(b"\n")
-            try:
-                (orig_name, orig_ts) = orig_name.split(b'\t')
-            except ValueError:
-                orig_ts = None
-    except StopIteration:
-        raise MalformedPatchHeader("No orig line", "")
-    try:
-        line = next(iter_lines)
-        if not line.startswith(b"+++ "):
-            raise PatchSyntax("No mod name")
-        else:
-            mod_name = line[4:].rstrip(b"\n")
-            try:
-                (mod_name, mod_ts) = mod_name.split(b'\t')
-            except ValueError:
-                mod_ts = None
-    except StopIteration:
-        raise MalformedPatchHeader("No mod line", "")
-    return ((orig_name, orig_ts), (mod_name, mod_ts))
+from ._patch_rs import get_patch_names, BinaryFiles, MalformedPatchHeader, iter_lines_handle_nl
 
 
 def parse_range(textrange):
@@ -407,7 +361,7 @@ def parse_patch(iter_lines, allow_dirty=False):
         ((orig_name, orig_ts), (mod_name, mod_ts)) = get_patch_names(
             iter_lines)
     except BinaryFiles as e:
-        return BinaryPatch(e.orig_name, e.mod_name)
+        return BinaryPatch(e.args[0].encode('utf-8'), e.args[1].encode('utf-8'))
     else:
         patch = Patch(orig_name, mod_name, orig_ts, mod_ts)
         for hunk in iter_hunks(iter_lines, allow_dirty):
@@ -485,26 +439,7 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
             yield saved_lines
 
 
-def iter_lines_handle_nl(iter_lines: Iterator[bytes]) -> Iterator[bytes]:
-    """
-    Iterates through lines, ensuring that lines that originally had no
-    terminating \n are produced without one.  This transformation may be
-    applied at any point up until hunk line parsing, and is safe to apply
-    repeatedly.
-    """
-    last_line: Optional[bytes] = None
-    line: Optional[bytes]
-    for line in iter_lines:
-        if line == NO_NL:
-            if last_line is None or not last_line.endswith(b'\n'):
-                raise AssertionError()
-            last_line = last_line[:-1]
-            line = None
-        if last_line is not None:
-            yield last_line
-        last_line = line
-    if last_line is not None:
-        yield last_line
+from ._patch_rs import iter_lines_handle_nl
 
 
 def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
