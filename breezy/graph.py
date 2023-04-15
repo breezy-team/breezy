@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import time
-
 from . import debug, errors, osutils, revision, trace
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
@@ -1583,91 +1581,7 @@ class _BreadthFirstSearcher:
             return revs, ghosts
 
 
-def invert_parent_map(parent_map):
-    """Given a map from child => parents, create a map of parent=>children"""
-    child_map = {}
-    for child, parents in parent_map.items():
-        for p in parents:
-            # Any given parent is likely to have only a small handful
-            # of children, many will have only one. So we avoid mem overhead of
-            # a list, in exchange for extra copying of tuples
-            if p not in child_map:
-                child_map[p] = (child,)
-            else:
-                child_map[p] = child_map[p] + (child,)
-    return child_map
-
-
-def collapse_linear_regions(parent_map):
-    """Collapse regions of the graph that are 'linear'.
-
-    For example::
-
-      A:[B], B:[C]
-
-    can be collapsed by removing B and getting::
-
-      A:[C]
-
-    :param parent_map: A dictionary mapping children to their parents
-    :return: Another dictionary with 'linear' chains collapsed
-    """
-    # Note: this isn't a strictly minimal collapse. For example:
-    #   A
-    #  / \
-    # B   C
-    #  \ /
-    #   D
-    #   |
-    #   E
-    # Will not have 'D' removed, even though 'E' could fit. Also:
-    #   A
-    #   |    A
-    #   B => |
-    #   |    C
-    #   C
-    # A and C are both kept because they are edges of the graph. We *could* get
-    # rid of A if we wanted.
-    #   A
-    #  / \
-    # B   C
-    # |   |
-    # D   E
-    #  \ /
-    #   F
-    # Will not have any nodes removed, even though you do have an
-    # 'uninteresting' linear D->B and E->C
-    children = {}
-    for child, parents in parent_map.items():
-        children.setdefault(child, [])
-        for p in parents:
-            children.setdefault(p, []).append(child)
-
-    removed = set()
-    result = dict(parent_map)
-    for node in parent_map:
-        parents = result[node]
-        if len(parents) == 1:
-            parent_children = children[parents[0]]
-            if len(parent_children) != 1:
-                # This is not the only child
-                continue
-            node_children = children[node]
-            if len(node_children) != 1:
-                continue
-            child_parents = result.get(node_children[0], None)
-            if len(child_parents) != 1:
-                # This is not its only parent
-                continue
-            # The child of this node only points at it, and the parent only has
-            # this as a child. remove this node, and join the others together
-            result[node_children[0]] = parents
-            children[parents[0]] = node_children
-            del result[node]
-            del children[node]
-            removed.add(node)
-
-    return result
+from ._graph_rs import invert_parent_map, collapse_linear_regions
 
 
 class GraphThunkIdsToKeys:

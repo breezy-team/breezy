@@ -1,0 +1,11 @@
+[package]
+name = "graph-py"
+version = "3.3.3"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.14", features = ["extension-module"]}
+breezy-graph = { path = "../graph" }
