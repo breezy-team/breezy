@@ -443,7 +443,8 @@ class TestMerge(tests.TestCaseWithTransport):
     def write_directive(self, filename, source, target, revision_id,
                         base_revision_id=None, mangle_patch=False):
         md = merge_directive.MergeDirective2.from_objects(
-            source.repository, revision_id, 0, 0, target,
+            repository=source.repository, revision_id=revision_id, time=0, timezone=0,
+            target_branch=target,
             base_revision_id=base_revision_id)
         if mangle_patch:
             md.patch = b'asdf\n'

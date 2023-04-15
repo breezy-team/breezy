@@ -869,16 +869,16 @@ def tree_delta_from_git_changes(changes, mappings,
         else:
             ret.unchanged.append(change)
 
-    implicit_dirs = {b''}
-    for path, kind, sha in added:
+    implicit_dirs = {''}
+    for path, kind, _sha in added:
         if kind == 'directory' or path in target_extras:
             continue
         implicit_dirs.update(osutils.parent_directories(path))
 
-    for path, kind, sha in added:
-        if kind == 'directory' and path not in implicit_dirs:
-            continue
+    for path, kind, _sha in added:
         path_decoded = decode_git_path(path)
+        if kind == 'directory' and path_decoded not in implicit_dirs:
+            continue
         parent_path, basename = osutils.split(path_decoded)
         parent_id = new_mapping.generate_file_id(parent_path)
         file_id = new_mapping.generate_file_id(path_decoded)

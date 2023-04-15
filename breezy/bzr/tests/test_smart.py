@@ -2828,11 +2828,11 @@ class TestSmartServerBranchRequestGetAllReferenceInfo(TestLockedBranch):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestGetAllReferenceInfo(backing)
         branch = self.make_branch('.')
-        branch.set_reference_info('some/path', 'http://www.example.com/')
+        branch.set_reference_info(b'file-id', 'http://www.example.com/', 'some/path')
         response = request.execute(b'')
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(
-            [[b'some/path', b'http://www.example.com/', b'']],
+            [[b'file-id', b'http://www.example.com/', b'some/path']],
             bencode.bdecode(response.body))
 

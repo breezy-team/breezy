@@ -19,4 +19,4 @@ name = "brz"
 path = "breezy/main.rs"
 
 [dependencies]
-pyo3 = ">=0.14"
+pyo3 = ">=0.18"

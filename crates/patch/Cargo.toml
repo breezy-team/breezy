@@ -1,0 +1,12 @@
+[package]
+name = "breezy-patch"
+version = "3.3.3"
+edition = "2018"
+description = "Patch invocation"
+license = "GPLv2+"
+
+[lib]
+
+[dependencies]
+breezy-osutils = { path = "../osutils" }
+tempfile = "3.1.0"

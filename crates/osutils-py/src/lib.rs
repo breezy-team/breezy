@@ -1,12 +1,20 @@
+#![allow(non_snake_case)]
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use std::path::{PathBuf,Path};
+use std::path::{Path,PathBuf};
 use pyo3_file::PyFileLikeObject;
-use pyo3::types::{PyBytes, PyIterator, PyList, PyDict};
-use pyo3::exceptions::PyTypeError;
+use pyo3::types::{PyBytes, PyIterator, PyList};
+use pyo3::exceptions::{PyTypeError,PyValueError,PyIOError};
 use std::collections::HashSet;
 use std::iter::Iterator;
+use std::ffi::OsString;
+use std::io::{Read, BufRead};
+use std::os::unix::ffi::OsStringExt;
 use memchr;
+use pyo3::PyErr;
+use pyo3::create_exception;
+
+create_exception!(breezy_osutils, UnsupportedTimezoneFormat, pyo3::exceptions::PyException);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -84,7 +92,7 @@ impl PyChunksToLinesIterator {
 
 fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
-        Ok(PathBuf::from(String::from_utf8(path).unwrap()))
+        Ok(PathBuf::from(OsString::from_vec(path)))
     } else if let Ok(path) = object.extract::<PathBuf>() {
         Ok(path)
     } else {
@@ -130,7 +138,7 @@ fn sha_string(string: &[u8]) -> PyResult<String> {
 #[pyfunction]
 fn sha_strings(strings: &PyAny) -> PyResult<String> {
     let iter = strings.iter()?;
-    Ok(breezy_osutils::sha::sha_strings(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
+    Ok(breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
 }
 
 #[pyfunction]
@@ -145,6 +153,40 @@ fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
     let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
     let (size, digest) = breezy_osutils::sha::size_sha_file(&mut file).map_err(PyErr::from)?;
     Ok((size, digest))
+}
+
+#[pyfunction]
+fn normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    if breezy_osutils::path::normalizes_filenames() {
+        _accessible_normalized_filename(filename)
+    } else {
+        _inaccessible_normalized_filename(filename)
+    }
+}
+
+#[pyfunction]
+fn _inaccessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename = extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::inaccessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        Ok((filename, true))
+    }
+}
+
+#[pyfunction]
+fn _accessible_normalized_filename(filename: &PyAny) -> PyResult<(PathBuf, bool)> {
+    let filename= extract_path(&filename)?;
+    if let Some(filename) = breezy_osutils::path::accessible_normalized_filename(filename.as_path()) {
+        Ok(filename)
+    } else {
+        Ok((filename, false))
+    }
+}
+
+#[pyfunction]
+fn normalizes_filenames() -> bool {
+    breezy_osutils::path::normalizes_filenames()
 }
 
 #[pyfunction]
@@ -204,8 +246,290 @@ fn set_or_unset_env(key: &str, value: Option<&str>) -> PyResult<Py<PyAny>> {
     })
 }
 
+#[pyfunction]
+fn parent_directories(py: Python, path: &PyAny) -> PyResult<PyObject> {
+    let path = extract_path(path)?;
+    let parents: Vec<&Path> = breezy_osutils::path::parent_directories(&path).collect();
+    Ok(parents.into_py(py))
+}
+
+#[pyfunction]
+fn available_backup_name(py: Python, path: &PyAny, exists: PyObject) -> PyResult<PathBuf> {
+    let path = extract_path(path)?;
+    let exists = |p: &Path| -> PyResult<bool> {
+        let ret = exists.call1(py, (p, ))?;
+        ret.extract::<bool>(py)
+    };
+
+    breezy_osutils::path::available_backup_name(path.as_path(), &exists)
+}
+
+#[pyfunction]
+fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
+    Ok(breezy_osutils::path::find_executable_on_path(executable))
+}
+
+#[pyfunction]
+fn legal_path(path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    Ok(breezy_osutils::path::legal_path(path.as_path()))
+}
+
+#[pyfunction]
+fn local_time_offset(t: Option<&PyAny>) -> PyResult<i64> {
+    if let Some(t) = t {
+        let t = t.extract::<f64>()?;
+        Ok(breezy_osutils::time::local_time_offset(Some(t as i64)))
+    } else {
+        Ok(breezy_osutils::time::local_time_offset(None))
+    }
+}
+
+#[pyfunction]
+fn format_local_date(py: Python, t: PyObject, offset: Option<i32>, timezone: Option<&str>, date_format: Option<&str>, show_offset: Option<bool>) -> PyResult<String> {
+    let t = if let Ok(t) = t.extract::<f64>(py) {
+        t as i64
+    } else if let Ok(t) = t.extract::<i64>(py) {
+        t
+    } else {
+        return Err(PyValueError::new_err("t must be a float"));
+    };
+    let timezone = breezy_osutils::time::Timezone::from(timezone.unwrap_or("original"));
+    if timezone.is_none() {
+        return Err(UnsupportedTimezoneFormat::new_err("Unsupported timezone"));
+    }
+    let timezone = timezone.unwrap();
+    Ok(breezy_osutils::time::format_local_date(t, offset, timezone, date_format, show_offset.unwrap_or(true)))
+}
+
+#[pyfunction]
+fn rand_chars(len: usize) -> PyResult<String> {
+    Ok(breezy_osutils::rand_chars(len))
+}
+
+#[pyclass]
+struct PyIterableFile {
+    inner: breezy_osutils::iterablefile::IterableFile<Box<dyn Iterator<Item=std::io::Result<Vec<u8>>> + Send>>,
+    closed: bool,
+}
+
+#[pymethods]
+impl PyIterableFile {
+
+    fn __enter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __exit__(&mut self, _py: Python, _exc_type: &PyAny, _exc_value: &PyAny, _traceback: &PyAny) -> PyResult<bool> {
+        self.check_closed(_py)?;
+        Ok(false)
+    }
+
+    fn check_closed(&self, _py: Python) -> PyResult<()> {
+        if self.closed {
+            Err(PyIOError::new_err("I/O operation on closed file"))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
+        self.check_closed(py)?;
+        let mut buf = Vec::new();
+        let read = if let Some(size) = size {
+            let inner = &mut self.inner;
+            let mut handle = inner.take(size as u64);
+            handle.read_to_end(&mut buf)
+        } else {
+            self.inner.read_to_end(&mut buf)
+        };
+        if PyErr::occurred(py) { return Err(PyErr::fetch(py)); }
+        buf.truncate(read?);
+        Ok(PyBytes::new(py, &buf).to_object(py))
+    }
+
+    fn close(&mut self, _py: Python) -> PyResult<()> {
+        self.closed = true;
+        Ok(())
+    }
+
+    fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
+        self.check_closed(py)?;
+        let lines = PyList::empty(py);
+        while let Some(line) = self.readline(py, None)? {
+            lines.append(line)?;
+        }
+        Ok(lines.to_object(py))
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+        slf
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        self.readline(py, None)
+    }
+
+    fn readline(&mut self, py: Python, _size_hint: Option<usize>) -> PyResult<Option<PyObject>> {
+        self.check_closed(py)?;
+        let mut buf = Vec::new();
+        let read = self.inner.read_until(b'\n', &mut buf);
+        if PyErr::occurred(py) { return Err(PyErr::fetch(py)); }
+        let read = read?;
+        if read == 0 {
+            return Ok(None);
+        }
+        buf.truncate(read);
+        Ok(Some(PyBytes::new(py, &buf).to_object(py)))
+    }
+}
+
+#[pyfunction]
+fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
+    Python::with_gil(|py| {
+        let py_iter = py_iterable.call_method0(py, "__iter__")?;
+        let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send> = Box::new(std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
+            Python::with_gil(|py| {
+                match py_iter.downcast::<PyIterator>(py).unwrap().next() {
+                    None => None,
+                    Some(Err(err)) => {
+                        PyErr::restore(err.clone_ref(py), py);
+                        Some(Err(std::io::Error::new(std::io::ErrorKind::Other, err.to_string())))
+                    },
+                    Some(Ok(obj)) => {
+                        match obj.downcast::<PyBytes>() {
+                            Err(err) => { PyErr::restore(PyTypeError::new_err("unable to convert to bytes"), py); Some(Err(std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))) },
+                            Ok(bytes) => Some(Ok(bytes.as_bytes().to_vec().into())),
+                        }
+                    }
+                }
+            })
+        }));
+
+        let f = breezy_osutils::iterablefile::IterableFile::new(line_iter);
+
+        Ok(PyIterableFile { inner: f, closed: false }.into_py(py))
+    })
+}
+
+#[pyfunction]
+fn check_text_path(path: &PyAny) -> PyResult<bool> {
+    let path = extract_path(path)?;
+    Ok(breezy_osutils::textfile::check_text_path(path.as_path())?)
+}
+
+#[pyfunction]
+fn check_text_lines(py: Python, lines: &PyAny) -> PyResult<bool> {
+    let mut py_iter = lines.iter()?;
+    let line_iter = std::iter::from_fn(|| {
+        let line = py_iter.next();
+        match line {
+            Some(Ok(line)) => Some(line.extract::<Vec<u8>>().unwrap()),
+            Some(Err(err)) => { PyErr::restore(err, py); None }
+            None => None,
+        }
+    });
+
+    let result = breezy_osutils::textfile::check_text_lines(line_iter);
+    if PyErr::occurred(py) {
+        return Err(PyErr::fetch(py));
+    }
+    Ok(result)
+}
+
+#[pyfunction]
+fn format_delta(py: Python, delta: PyObject) -> PyResult<String> {
+    let delta = if let Ok(delta) = delta.extract::<f64>(py) {
+        delta as i64
+    } else if let Ok(delta) = delta.extract::<i64>(py) {
+        delta
+    } else {
+        return Err(PyValueError::new_err("delta must be a float or int"));
+    };
+    Ok(breezy_osutils::time::format_delta(delta))
+}
+
+#[pyfunction]
+fn format_date_with_offset_in_original_timezone(py: Python, date: PyObject, offset: Option<PyObject>) -> PyResult<String> {
+    let date = if let Ok(date) = date.extract::<f64>(py) {
+        date as i64
+    } else if let Ok(date) = date.extract::<i64>(py) {
+        date
+    } else {
+        return Err(PyValueError::new_err("date must be a float or int"));
+    };
+    let offset = if let Some(offset) = offset {
+        if let Ok(offset) = offset.extract::<f64>(py) {
+            offset as i64
+        } else if let Ok(offset) = offset.extract::<i64>(py) {
+            offset
+        } else {
+            return Err(PyValueError::new_err("offset must be a float or int"));
+        }
+    } else {
+        0
+    };
+    Ok(breezy_osutils::time::format_date_with_offset_in_original_timezone(date, offset))
+}
+
+#[pyfunction]
+fn format_date(py: Python, t: PyObject, offset: Option<PyObject>, timezone: Option<&str>, date_fmt: Option<&str>, show_offset: Option<bool>) -> PyResult<String> {
+    let t = if let Ok(t) = t.extract::<f64>(py) {
+        t as i64
+    } else if let Ok(t) = t.extract::<i64>(py) {
+        t
+    } else {
+        return Err(PyValueError::new_err("t must be a float or int"));
+    };
+    let timezone = breezy_osutils::time::Timezone::from(timezone.unwrap_or("original"));
+    if timezone.is_none() {
+        return Err(UnsupportedTimezoneFormat::new_err("unsupported timezone"));
+    }
+    let offset = if let Some(offset) = offset {
+        if let Ok(offset) = offset.extract::<f64>(py) {
+            Some(offset as i64)
+        } else if let Ok(offset) = offset.extract::<i64>(py) {
+            Some(offset as i64)
+        } else {
+            return Err(PyValueError::new_err("offset must be a float or int"));
+        }
+    } else {
+        None
+    };
+    let timezone = timezone.unwrap();
+    Ok(breezy_osutils::time::format_date(t, offset, timezone, date_fmt, show_offset.unwrap_or(true)))
+}
+
+#[pyfunction]
+fn format_highres_date(py: Python, t: PyObject, offset: Option<PyObject>) -> PyResult<String> {
+    let t = if let Ok(t) = t.extract::<f64>(py) {
+        t
+    } else if let Ok(t) = t.extract::<i64>(py) {
+        t as f64
+    } else {
+        return Err(PyValueError::new_err("t must be a float or int"));
+    };
+    let offset = if let Some(offset) = offset {
+        if let Ok(offset) = offset.extract::<f64>(py) {
+            Some(offset as i32)
+        } else if let Ok(offset) = offset.extract::<i64>(py) {
+            Some(offset as i32)
+        } else {
+            return Err(PyValueError::new_err("offset must be a float or int"));
+        }
+    } else {
+        None
+    };
+    Ok(breezy_osutils::time::format_highres_date(t, offset))
+}
+
+#[pyfunction]
+fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
+    breezy_osutils::time::unpack_highres_date(date).map_err(|e| PyValueError::new_err(e.to_string()))
+}
+
 #[pymodule]
-fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines_iter))?;
     m.add_wrapped(wrap_pyfunction!(sha_file_by_name))?;
@@ -213,10 +537,30 @@ fn _osutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(sha_strings))?;
     m.add_wrapped(wrap_pyfunction!(sha_file))?;
     m.add_wrapped(wrap_pyfunction!(size_sha_file))?;
+    m.add_wrapped(wrap_pyfunction!(normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_inaccessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(_accessible_normalized_filename))?;
+    m.add_wrapped(wrap_pyfunction!(normalizes_filenames))?;
     m.add_wrapped(wrap_pyfunction!(is_inside))?;
     m.add_wrapped(wrap_pyfunction!(is_inside_any))?;
     m.add_wrapped(wrap_pyfunction!(is_inside_or_parent_of_any))?;
     m.add_wrapped(wrap_pyfunction!(minimum_path_selection))?;
     m.add_wrapped(wrap_pyfunction!(set_or_unset_env))?;
+    m.add_wrapped(wrap_pyfunction!(parent_directories))?;
+    m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
+    m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
+    m.add_wrapped(wrap_pyfunction!(legal_path))?;
+    m.add_wrapped(wrap_pyfunction!(local_time_offset))?;
+    m.add_wrapped(wrap_pyfunction!(format_local_date))?;
+    m.add_wrapped(wrap_pyfunction!(rand_chars))?;
+    m.add_wrapped(wrap_pyfunction!(IterableFile))?;
+    m.add_wrapped(wrap_pyfunction!(check_text_path))?;
+    m.add_wrapped(wrap_pyfunction!(check_text_lines))?;
+    m.add_wrapped(wrap_pyfunction!(format_delta))?;
+    m.add_wrapped(wrap_pyfunction!(format_date_with_offset_in_original_timezone))?;
+    m.add_wrapped(wrap_pyfunction!(format_date))?;
+    m.add_wrapped(wrap_pyfunction!(format_highres_date))?;
+    m.add_wrapped(wrap_pyfunction!(unpack_highres_date))?;
+    m.add("UnsupportedTimezoneFormat", py.get_type::<UnsupportedTimezoneFormat>())?;
     Ok(())
 }

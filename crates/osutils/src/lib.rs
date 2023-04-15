@@ -1,4 +1,5 @@
 use memchr::memchr;
+use rand::Rng;
 
 pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>
 where
@@ -76,9 +77,23 @@ pub fn set_or_unset_env(env_variable: &str, value: Option<&str>) -> Result<Optio
     Ok(ret)
 }
 
-pub mod sha;
+const ALNUM: &str = "0123456789abcdefghijklmnopqrstuvwxyz";
 
+pub fn rand_chars(num: usize) -> String {
+    let mut rng = rand::thread_rng();
+    let mut s = String::new();
+    for _ in 0..num {
+        let raw_byte = rng.gen_range(0..256);
+        s.push(ALNUM.chars().nth(raw_byte % 36).unwrap());
+    }
+    s
+}
+
+pub mod sha;
 pub mod path;
+pub mod time;
+pub mod iterablefile;
+pub mod textfile;
 
 #[cfg(test)]
 mod tests;

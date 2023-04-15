@@ -108,7 +108,7 @@ class VersionInfoBuilder:
             es.enter_context(basis_tree.lock_read())
             # Build up the list from the basis inventory
             for info in basis_tree.list_files(include_root=True):
-                self._file_revisions[info[0]] = info[-1].revision
+                self._file_revisions[info[0]] = info[-1].revision.decode('utf-8')
 
             if not self._check or self._working_tree is not self._tree:
                 return

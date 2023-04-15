@@ -4033,6 +4033,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_ignores',
         'breezy.tests.test_import_tariff',
         'breezy.tests.test_info',
+        'breezy.tests.test_iterablefile',
         'breezy.tests.test_lazy_import',
         'breezy.tests.test_lazy_regex',
         'breezy.tests.test_library_state',
@@ -4137,14 +4138,12 @@ def _test_suite_modules_to_doctest():
         'breezy.branchbuilder',
         'breezy.bzr.inventory',
         'breezy.decorators',
-        'breezy.iterablefile',
         'breezy.lockdir',
         'breezy.option',
         'breezy.pyutils',
         'breezy.symbol_versioning',
         'breezy.tests',
         'breezy.tests.fixtures',
-        'breezy.timestamp',
         'breezy.version_info_formats.format_custom',
         ]
 

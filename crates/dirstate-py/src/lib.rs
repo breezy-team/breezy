@@ -1,22 +1,25 @@
+#![allow(non_snake_case)]
+
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::path::{Path,PathBuf};
-use pyo3::types::{PyBytes, PyUnicode, PyDict, PyList, PyTuple, PyString};
+use pyo3::types::{PyBytes, PyDict, PyList, PyTuple, PyString};
 use pyo3::exceptions::PyTypeError;
 use std::os::unix::fs::{PermissionsExt, MetadataExt};
+use std::ffi::OsString;
+use std::os::unix::ffi::OsStringExt;
 
 use bazaar_dirstate;
 
-fn extract_path(pyo: &PyAny) -> PyResult<PathBuf> {
-    let stro: String;
-    if pyo.is_instance_of::<PyBytes>()? {
-        stro = String::from_utf8(pyo.extract::<&[u8]>().unwrap().to_vec())?;
-    } else if pyo.is_instance_of::<PyUnicode>()? {
-        stro = pyo.extract::<String>().unwrap();
+// TODO(jelmer): Shared pyo3 utils?
+fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
+    if let Ok(path) = object.extract::<Vec<u8>>() {
+        Ok(PathBuf::from(OsString::from_vec(path)))
+    } else if let Ok(path) = object.extract::<PathBuf>() {
+        Ok(path)
     } else {
-        return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>("path must be either bytes or str"));
+        Err(PyTypeError::new_err("path must be a string or bytes"))
     }
-    Ok(PathBuf::from(stro))
 }
 
 /// Compare two paths directory by directory.

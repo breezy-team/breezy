@@ -38,8 +38,8 @@ class TestBundleInfo(tests.TestCaseWithTransport):
                            'bundle-info -v bundle')
         target = self.make_branch('target')
         md = merge_directive.MergeDirective2.from_objects(
-            source.branch.repository, b'rev1', 0, 0, 'target',
-            base_revision_id=b'null:')
+            repository=source.branch.repository, revision_id=b'rev1', time=0,
+            timezone=0, target_branch='target', base_revision_id=b'null:')
         with open('directive', 'wb') as directive:
             directive.writelines(md.to_lines())
         info = self.run_bzr('bundle-info -v directive')[0]

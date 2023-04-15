@@ -62,13 +62,7 @@ O_TEXT = getattr(os, 'O_TEXT', 0)
 O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
-class UnsupportedTimezoneFormat(errors.BzrError):
-
-    _fmt = ('Unsupported timezone format "%(timezone)s", '
-            'options are "utc", "original", "local".')
-
-    def __init__(self, timezone):
-        self.timezone = timezone
+UnsupportedTimezoneFormat = _osutils_rs.UnsupportedTimezoneFormat
 
 
 def make_readonly(filename):
@@ -615,11 +609,6 @@ def sha_string(string):
     return _osutils_rs.sha_string(string).encode('utf-8')
 
 
-def fingerprint_file(f):
-    (size, sha) = size_sha_file(f)
-    return {'size': size, 'sha1': sha}
-
-
 def compare_files(a, b):
     """Returns true if equal in contents"""
     BUFSIZE = 4096
@@ -632,157 +621,15 @@ def compare_files(a, b):
             return True
 
 
-def local_time_offset(t=None):
-    """Return offset of local zone from GMT, either at present or at time t."""
-    from datetime import datetime
-    if t is None:
-        t = time.time()
-    offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
-    return offset.days * 86400 + offset.seconds
-
-
-weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-_default_format_by_weekday_num = [wd + " %Y-%m-%d %H:%M:%S" for wd in weekdays]
-
-
-def format_date(t, offset=0, timezone='original', date_fmt=None,
-                show_offset=True):
-    """Return a formatted date string.
-
-    :param t: Seconds since the epoch.
-    :param offset: Timezone offset in seconds east of utc.
-    :param timezone: How to display the time: 'utc', 'original' for the
-         timezone specified by offset, or 'local' for the process's current
-         timezone.
-    :param date_fmt: strftime format.
-    :param show_offset: Whether to append the timezone.
-    """
-    (date_fmt, tt, offset_str) = \
-        _format_date(t, offset, timezone, date_fmt, show_offset)
-    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
-    date_str = time.strftime(date_fmt, tt)
-    return date_str + offset_str
-
-
-# Cache of formatted offset strings
-_offset_cache: Dict[int, str] = {}
-
-
-def format_date_with_offset_in_original_timezone(t, offset=0,
-                                                 _cache=_offset_cache):
-    """Return a formatted date string in the original timezone.
-
-    This routine may be faster then format_date.
-
-    :param t: Seconds since the epoch.
-    :param offset: Timezone offset in seconds east of utc.
-    """
-    if offset is None:
-        offset = 0
-    tt = time.gmtime(t + offset)
-    date_fmt = _default_format_by_weekday_num[tt[6]]
-    date_str = time.strftime(date_fmt, tt)
-    offset_str = _cache.get(offset, None)
-    if offset_str is None:
-        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
-        _cache[offset] = offset_str
-    return date_str + offset_str
-
-
-def format_local_date(t, offset=0, timezone='original', date_fmt=None,
-                      show_offset=True):
-    """Return an unicode date string formatted according to the current locale.
-
-    :param t: Seconds since the epoch.
-    :param offset: Timezone offset in seconds east of utc.
-    :param timezone: How to display the time: 'utc', 'original' for the
-         timezone specified by offset, or 'local' for the process's current
-         timezone.
-    :param date_fmt: strftime format.
-    :param show_offset: Whether to append the timezone.
-    """
-    (date_fmt, tt, offset_str) = \
-        _format_date(t, offset, timezone, date_fmt, show_offset)
-    date_str = time.strftime(date_fmt, tt)
-    if not isinstance(date_str, str):
-        date_str = date_str.decode(get_user_encoding(), 'replace')
-    return date_str + offset_str
-
-
-def _format_date(t, offset, timezone, date_fmt, show_offset):
-    if timezone == 'utc':
-        tt = time.gmtime(t)
-        offset = 0
-    elif timezone == 'original':
-        if offset is None:
-            offset = 0
-        tt = time.gmtime(t + offset)
-    elif timezone == 'local':
-        tt = time.localtime(t)
-        offset = local_time_offset(t)
-    else:
-        raise UnsupportedTimezoneFormat(timezone)
-    if date_fmt is None:
-        date_fmt = "%a %Y-%m-%d %H:%M:%S"
-    if show_offset:
-        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
-    else:
-        offset_str = ''
-    return (date_fmt, tt, offset_str)
+local_time_offset = _osutils_rs.local_time_offset
+format_date = _osutils_rs.format_date
+format_date_with_offset_in_original_timezone = _osutils_rs.format_date_with_offset_in_original_timezone
+format_local_date = _osutils_rs.format_local_date
+format_delta = _osutils_rs.format_delta
 
 
 def compact_date(when):
     return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
-
-
-def format_delta(delta):
-    """Get a nice looking string for a time delta.
-
-    :param delta: The time difference in seconds, can be positive or negative.
-        positive indicates time in the past, negative indicates time in the
-        future. (usually time.time() - stored_time)
-    :return: String formatted to show approximate resolution
-    """
-    delta = int(delta)
-    if delta >= 0:
-        direction = 'ago'
-    else:
-        direction = 'in the future'
-        delta = -delta
-
-    seconds = delta
-    if seconds < 90:  # print seconds up to 90 seconds
-        if seconds == 1:
-            return '%d second %s' % (seconds, direction,)
-        else:
-            return '%d seconds %s' % (seconds, direction)
-
-    minutes = int(seconds / 60)
-    seconds -= 60 * minutes
-    if seconds == 1:
-        plural_seconds = ''
-    else:
-        plural_seconds = 's'
-    if minutes < 90:  # print minutes, seconds up to 90 minutes
-        if minutes == 1:
-            return '%d minute, %d second%s %s' % (
-                minutes, seconds, plural_seconds, direction)
-        else:
-            return '%d minutes, %d second%s %s' % (
-                minutes, seconds, plural_seconds, direction)
-
-    hours = int(minutes / 60)
-    minutes -= 60 * hours
-    if minutes == 1:
-        plural_minutes = ''
-    else:
-        plural_minutes = 's'
-
-    if hours == 1:
-        return '%d hour, %d minute%s %s' % (hours, minutes,
-                                            plural_minutes, direction)
-    return '%d hours, %d minute%s %s' % (hours, minutes,
-                                         plural_minutes, direction)
 
 
 def filesize(f):
@@ -810,20 +657,7 @@ if rand_bytes.__module__ != "nt":
             return s
 
 
-ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
-
-
-def rand_chars(num):
-    """Return a random string of num alphanumeric characters
-
-    The result only contains lowercase chars because it may be used on
-    case-insensitive filesystems.
-    """
-    s = ''
-    for raw_byte in rand_bytes(num):
-        s += ALNUM[raw_byte % 36]
-    return s
-
+rand_chars = _osutils_rs.rand_chars
 
 # TODO: We could later have path objects that remember their list
 # decomposition (might be too tricksy though.)
@@ -869,17 +703,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-def parent_directories(filename: str):
-    """Return the list of parent directories, deepest first.
-
-    For example, parent_directories("a/b/c") -> ["a/b", "a"].
-    """
-    parents = []
-    parts = splitpath(dirname(filename))
-    while parts:
-        parents.append(joinpath(parts))
-        parts.pop()
-    return parents
+parent_directories = _osutils_rs.parent_directories
 
 
 _extension_load_failures = []
@@ -927,7 +751,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter
+from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames
 
 
 def split_lines(s):
@@ -1187,54 +1011,6 @@ def safe_utf8(unicode_or_utf8_string):
     return unicode_or_utf8_string.encode('utf-8')
 
 
-_platform_normalizes_filenames = False
-if sys.platform == 'darwin':
-    _platform_normalizes_filenames = True
-
-
-def normalizes_filenames():
-    """Return True if this platform normalizes unicode filenames.
-
-    Only Mac OSX.
-    """
-    return _platform_normalizes_filenames
-
-
-def _accessible_normalized_filename(path):
-    """Get the unicode normalized path, and if you can access the file.
-
-    On platforms where the system normalizes filenames (Mac OSX),
-    you can access a file by any path which will normalize correctly.
-    On platforms where the system does not normalize filenames
-    (everything else), you have to access a file by its exact path.
-
-    Internally, bzr only supports NFC normalization, since that is
-    the standard for XML documents.
-
-    So return the normalized path, and a flag indicating if the file
-    can be accessed by that path.
-    """
-
-    if isinstance(path, bytes):
-        path = path.decode(sys.getfilesystemencoding())
-    return unicodedata.normalize('NFC', path), True
-
-
-def _inaccessible_normalized_filename(path):
-    __doc__ = _accessible_normalized_filename.__doc__
-
-    if isinstance(path, bytes):
-        path = path.decode(sys.getfilesystemencoding())
-    normalized = unicodedata.normalize('NFC', path)
-    return normalized, normalized == path
-
-
-if _platform_normalizes_filenames:
-    normalized_filename = _accessible_normalized_filename
-else:
-    normalized_filename = _inaccessible_normalized_filename
-
-
 def set_signal_handler(signum, handler, restart_syscall=True):
     """A wrapper for signal.signal that also calls siginterrupt(signum, False)
     on platforms that support that.
@@ -1460,8 +1236,7 @@ def supports_posix_readonly():
 
 set_or_unset_env = _osutils_rs.set_or_unset_env
 
-
-_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
+IterableFile = _osutils_rs.IterableFile
 
 
 def check_legal_path(path):
@@ -1469,10 +1244,9 @@ def check_legal_path(path):
     This is only required on Windows, so we don't test on other platforms
     right now.
     """
-    if sys.platform != "win32":
+    if _osutils_rs.legal_path(path):
         return
-    if _validWin32PathRE.match(path) is None:
-        raise errors.IllegalPath(path)
+    raise errors.IllegalPath(path)
 
 
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
@@ -2127,24 +1901,8 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
 
-def available_backup_name(base, exists):
-    """Find a non-existing backup file name.
 
-    This will *not* create anything, this only return a 'free' entry.  This
-    should be used for checking names in a directory below a locked
-    tree/branch/repo to avoid race conditions. This is LBYL (Look Before You
-    Leap) and generally discouraged.
-
-    :param base: The base name.
-
-    :param exists: A callable returning True if the path parameter exists.
-    """
-    counter = 1
-    name = "%s.~%d~" % (base, counter)
-    while exists(name):
-        counter += 1
-        name = "%s.~%d~" % (base, counter)
-    return name
+available_backup_name = _osutils_rs.available_backup_name
 
 
 def set_fd_cloexec(fd):
@@ -2160,40 +1918,7 @@ def set_fd_cloexec(fd):
         pass
 
 
-def find_executable_on_path(name):
-    """Finds an executable on the PATH.
-
-    On Windows, this will try to append each extension in the PATHEXT
-    environment variable to the name, if it cannot be found with the name
-    as given.
-
-    :param name: The base name of the executable.
-    :return: The path to the executable found or None.
-    """
-    if sys.platform == 'win32':
-        exts = os.environ.get('PATHEXT', '').split(os.pathsep)
-        exts = [ext.lower() for ext in exts]
-        base, ext = os.path.splitext(name)
-        if ext != '':
-            if ext.lower() not in exts:
-                return None
-            name = base
-            exts = [ext]
-    else:
-        exts = ['']
-    path = os.environ.get('PATH')
-    if path is not None:
-        path = path.split(os.pathsep)
-        for ext in exts:
-            for d in path:
-                f = os.path.join(d, name) + ext
-                if os.access(f, os.X_OK):
-                    return f
-    if sys.platform == 'win32':
-        app_path = win32utils.get_app_path(name)
-        if app_path != name:
-            return app_path
-    return None
+find_executable_on_path = _osutils_rs.find_executable_on_path
 
 
 def _posix_is_local_pid_dead(pid):

@@ -120,7 +120,7 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
-class _CompatabilityThunkFeature(Feature):
+class _CompatibilityThunkFeature(Feature):
     """This feature is just a thunk to another feature.
 
     It issues a deprecation warning if it is accessed, to let you know that you
@@ -455,6 +455,7 @@ class ExecutableFeature(Feature):
 
 bash_feature = ExecutableFeature('bash')
 diff_feature = ExecutableFeature('diff')
+patch_feature = ExecutableFeature('patch')
 sed_feature = ExecutableFeature('sed')
 msgmerge_feature = ExecutableFeature('msgmerge')
 

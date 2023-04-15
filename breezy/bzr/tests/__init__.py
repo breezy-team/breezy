@@ -50,7 +50,6 @@ def load_tests(loader, basic_tests, pattern):
         'test__chk_map',
         'test__dirstate_helpers',
         'test__groupcompress',
-        'test__rio',
         'test__simple_set',
         'test__static_tuple',
         'test_btree_index',

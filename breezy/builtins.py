@@ -5783,8 +5783,9 @@ class cmd_merge_directive(Command):
         if revision_id == NULL_REVISION:
             raise errors.CommandError(gettext('No revisions to bundle.'))
         directive = merge_directive.MergeDirective2.from_objects(
-            branch.repository, revision_id, time.time(),
-            osutils.local_time_offset(), submit_branch,
+            repository=branch.repository, revision_id=revision_id,
+            time=time.time(), timezone=osutils.local_time_offset(),
+            target_branch=submit_branch,
             public_branch=public_branch, include_patch=include_patch,
             include_bundle=include_bundle, message=message,
             base_revision_id=base_revision_id)
@@ -7063,7 +7064,11 @@ class cmd_patch(Command):
         else:
             my_file = open(filename, 'rb')
         patches = [my_file.read()]
-        return patch_tree(wt, patches, strip, quiet=is_quiet(), out=self.outf)
+        from io import BytesIO
+        b = BytesIO()
+        patch_tree(wt, patches, strip, quiet=is_quiet(), out=b)
+        self.outf.write(b.getvalue().decode('utf-8', 'replace'))
+
 
 
 class cmd_resolve_location(Command):

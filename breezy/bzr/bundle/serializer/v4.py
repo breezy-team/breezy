@@ -20,7 +20,7 @@ from io import BytesIO
 
 import fastbencode as bencode
 
-from .... import errors, iterablefile, lru_cache, multiparent, osutils
+from .... import errors, lru_cache, multiparent, osutils
 from .... import repository as _mod_repository
 from .... import revision as _mod_revision
 from .... import trace, ui
@@ -194,7 +194,7 @@ class BundleReader:
             fileobj.readline()
         self.patch_lines = []
         if stream_input:
-            source_file = iterablefile.IterableFile(self.iter_decode(fileobj))
+            source_file = osutils.IterableFile(self.iter_decode(fileobj))
         else:
             source_file = BytesIO(bz2.decompress(fileobj.read()))
         self._container_file = source_file
