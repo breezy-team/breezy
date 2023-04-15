@@ -439,9 +439,6 @@ def iter_file_patch(iter_lines: Iterator[bytes], allow_dirty: bool = False, keep
             yield saved_lines
 
 
-from ._patch_rs import iter_lines_handle_nl
-
-
 def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
     '''
     :arg iter_lines: iterable of lines to parse for patches
