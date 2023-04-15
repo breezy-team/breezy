@@ -470,7 +470,7 @@ class MergeSorter:
                         # have hit the continue 4 lines up.
                         # this indicates a cycle.
                         if next_node_name in self._original_graph:
-                            raise GraphCycleError(node_name_stack)
+                            raise errors.GraphCycleError(node_name_stack)
                         else:
                             # This is just a ghost parent, ignore it
                             continue

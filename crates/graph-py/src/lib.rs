@@ -167,8 +167,12 @@ struct TopoSorter {
 impl TopoSorter {
     #[new]
     fn new(py: Python, graph: PyObject) -> PyResult<TopoSorter> {
-        let graph = graph
-            .as_ref(py).iter()?
+        let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
+            graph.downcast::<PyDict>(py)?.call_method0("items")?.iter()?
+        } else {
+            graph.as_ref(py).iter()?
+        };
+        let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
             .map(|k| k.map(|(k, vs)| (PyNode::from(k), vs.into_iter().map(|v| PyNode::from(v)).collect())))
             .collect::<PyResult<Vec<(PyNode, Vec<PyNode>)>>>()?;
