@@ -49,7 +49,7 @@ pub fn invert_parent_map<'a, K: Hash + Eq>(parent_map: &'a HashMap<impl Borrow<K
 /// Args:
 ///   parent_map: A dictionary mapping children to their parents
 /// REturns: Another dictionary with 'linear' chains collapsed
-pub fn collapse_linear_regions<'a, K: Hash + Eq + std::fmt::Debug>(
+pub fn collapse_linear_regions<'a, K: Hash + Eq>(
     parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
 ) -> HashMap<&'a K, Vec<&'a K>> {
     // Note: this isn't a strictly minimal collapse. For example:
