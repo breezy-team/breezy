@@ -89,10 +89,10 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
     def test_parent_ancestry1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual([NULL_REVISION], graph.get_parent_keys(b'rev1'))
-        self.assertEqual([b'rev1'], graph.get_parent_keys(b'rev2a'))
-        self.assertEqual([b'rev1'], graph.get_parent_keys(b'rev2b'))
-        self.assertEqual([b'rev2a'], graph.get_parent_keys(b'rev3'))
+        self.assertEqual((NULL_REVISION, ), tuple(graph.get_parent_keys(b'rev1')))
+        self.assertEqual((b'rev1', ), tuple(graph.get_parent_keys(b'rev2a')))
+        self.assertEqual((b'rev1', ), tuple(graph.get_parent_keys(b'rev2b')))
+        self.assertEqual((b'rev2a', ), tuple(graph.get_parent_keys(b'rev3')))
         self.assertEqual([b'rev2b', b'rev3'],
                          sorted(graph.get_parent_keys(b'rev4')))
         self.assertRaises(KeyError, graph.get_child_keys, b'not_in_graph')
