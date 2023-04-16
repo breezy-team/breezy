@@ -24,6 +24,9 @@ use std::collections::{HashMap,HashSet};
 use std::hash::Hash;
 use std::borrow::Borrow;
 
+mod parents_provider;
+pub use parents_provider::{ParentsProvider, StackedParentsProvider};
+
 pub type ParentMap<'a, K> = HashMap<&'a K, &'a Vec<K>>;
 
 pub fn invert_parent_map<'a, K: Hash + Eq>(parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>) -> HashMap<&'a K, Vec<&'a K>> {
