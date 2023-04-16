@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use pyo3::types::{PyBytes, PyList, PyIterator};
+use pyo3::exceptions::PyValueError;
 use pyo3::create_exception;
 use pyo3::import_exception;
 use pyo3_file::PyFileLikeObject;
@@ -98,6 +99,13 @@ fn iter_lines_handle_nl(py: Python, iter_lines: PyObject) -> PyResult<PyObject> 
     Ok(PyList::new(py, &pl).as_ref().iter()?.to_object(py))
 }
 
+#[pyfunction]
+fn parse_range(textrange: &str) -> PyResult<(i32, i32)> {
+    breezy_patch::parse::parse_range(textrange).map_err(
+        |err| PyValueError::new_err(format!("Invalid range: {}", err)))
+
+}
+
 #[pymodule]
 fn _patch_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(patch))?;
@@ -106,6 +114,7 @@ fn _patch_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(iter_patched_from_hunks))?;
     m.add_wrapped(wrap_pyfunction!(get_patch_names))?;
     m.add_wrapped(wrap_pyfunction!(iter_lines_handle_nl))?;
+    m.add_wrapped(wrap_pyfunction!(parse_range))?;
     m.add("PatchInvokeError", py.get_type::<PatchInvokeError>())?;
     m.add("PatchFailed", py.get_type::<PatchFailed>())?;
     m.add("PatchSyntax", py.get_type::<PatchSyntax>())?;

@@ -1,5 +1,6 @@
 use regex::bytes::Regex;
 use lazy_static::lazy_static;
+use std::num::ParseIntError;
 
 pub enum Error {
     BinaryFiles(Vec<u8>, Vec<u8>),
@@ -79,4 +80,17 @@ where
         }
         last_line.take()
     })
+}
+
+/// Parse a patch range, handling the "1" special-case
+pub fn parse_range(textrange: &str) -> Result<(i32, i32), ParseIntError> {
+    let tmp: Vec<&str> = textrange.split(',').collect();
+    let (pos, brange) = if tmp.len() == 1 {
+        (tmp[0], "1")
+    } else {
+        (tmp[0], tmp[1])
+    };
+    let pos = pos.parse::<i32>()?;
+    let range = brange.parse::<i32>()?;
+    Ok((pos, range))
 }
