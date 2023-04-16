@@ -25,7 +25,7 @@ use std::hash::Hash;
 use std::borrow::Borrow;
 
 mod parents_provider;
-pub use parents_provider::{ParentsProvider, StackedParentsProvider};
+pub use parents_provider::{ParentsProvider, StackedParentsProvider, DictParentsProvider};
 
 pub type ParentMap<'a, K> = HashMap<&'a K, &'a Vec<K>>;
 

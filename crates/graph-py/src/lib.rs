@@ -1,7 +1,9 @@
+#![allow(non_snake_case)]
+
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use pyo3::types::{PyDict, PyList};
-use std::collections::HashMap;
+use pyo3::types::{PyDict, PyList, PyTuple};
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 struct PyNode(PyObject);
@@ -143,9 +145,42 @@ fn collapse_linear_regions(py: Python, parent_map: &PyDict) -> PyResult<PyObject
     Ok(ret.to_object(py))
 }
 
+#[pyclass]
+struct PyParentsProvider {
+    provider: Box<dyn breezy_graph::ParentsProvider<PyNode> + Send>,
+}
+
+#[pymethods]
+impl PyParentsProvider {
+    fn get_parent_map(&mut self, py: Python, keys: PyObject) -> PyResult<PyObject> {
+        let mut hash_key: HashSet<PyNode> = HashSet::new();
+        for key in keys.as_ref(py).iter()? {
+            hash_key.insert(key?.into());
+        }
+        let result = self.provider.get_parent_map(&hash_key.iter().collect());
+        let ret = PyDict::new(py);
+        for (k, vs) in result {
+            ret.set_item::<PyObject, &PyTuple>(
+                k.into_py(py),
+                PyTuple::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
+        }
+        Ok(ret.to_object(py))
+    }
+}
+
+#[pyfunction]
+fn DictParentsProvider(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
+    let parent_map = extract_parent_map(parent_map)?;
+    let provider = PyParentsProvider {
+        provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map))
+    };
+    Ok(provider.into_py(py))
+}
+
 #[pymodule]
 fn _graph_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(invert_parent_map))?;
     m.add_wrapped(wrap_pyfunction!(collapse_linear_regions))?;
+    m.add_wrapped(wrap_pyfunction!(DictParentsProvider))?;
     Ok(())
 }
