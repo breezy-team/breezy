@@ -64,91 +64,14 @@ O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 UnsupportedTimezoneFormat = _osutils_rs.UnsupportedTimezoneFormat
 
-
-def make_readonly(filename):
-    """Make a filename read-only."""
-    mod = os.lstat(filename).st_mode
-    if not stat.S_ISLNK(mod):
-        mod = mod & 0o777555
-        chmod_if_possible(filename, mod)
-
-
-def make_writable(filename):
-    mod = os.lstat(filename).st_mode
-    if not stat.S_ISLNK(mod):
-        mod = mod | 0o200
-        chmod_if_possible(filename, mod)
-
-
-def chmod_if_possible(filename, mode):
-    # Set file mode if that can be safely done.
-    # Sometimes even on unix the filesystem won't allow it - see
-    # https://bugs.launchpad.net/bzr/+bug/606537
-    try:
-        # It is probably faster to just do the chmod, rather than
-        # doing a stat, and then trying to compare
-        os.chmod(filename, mode)
-    except OSError as e:
-        # Permission/access denied seems to commonly happen on smbfs; there's
-        # probably no point warning about it.
-        # <https://bugs.launchpad.net/bzr/+bug/606537>
-        if getattr(e, 'errno') in (errno.EPERM, errno.EACCES):
-            trace.mutter("ignore error on chmod of {!r}: {!r}".format(
-                filename, e))
-            return
-        raise
-
+make_readonly = _osutils_rs.make_readonly
+chmod_if_possible = _osutils_rs.chmod_if_possible
+make_writable = _osutils_rs.make_writable
 
 minimum_path_selection = _osutils_rs.minimum_path_selection
 
 
-_QUOTE_RE = None
-
-
-def quotefn(f):
-    """Return a quoted filename filename
-
-    This previously used backslash quoting, but that works poorly on
-    Windows."""
-    # TODO: I'm not really sure this is the best format either.x
-    global _QUOTE_RE
-    if _QUOTE_RE is None:
-        _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/\\_~-])')
-
-    if _QUOTE_RE.search(f):
-        return '"' + f + '"'
-    else:
-        return f
-
-
-_directory_kind = 'directory'
-
-
-def get_umask():
-    """Return the current umask"""
-    # Assume that people aren't messing with the umask while running
-    # XXX: This is not thread safe, but there is no way to get the
-    #      umask without setting it
-    umask = os.umask(0)
-    os.umask(umask)
-    return umask
-
-
-_kind_marker_map = {
-    "file": "",
-    _directory_kind: "/",
-    "symlink": "@",
-    'tree-reference': '+',
-}
-
-
-def kind_marker(kind):
-    try:
-        return _kind_marker_map[kind]
-    except KeyError:
-        # Slightly faster than using .get(, '') when the common case is that
-        # kind will be found
-        return ''
+from ._osutils_rs import get_umask, kind_marker, quotefn
 
 
 lexists = getattr(os.path, 'lexists', None)
@@ -577,36 +500,11 @@ def file_iterator(input_file, readsize=32768):
         yield b
 
 
-def sha_file(f):
-    """Calculate the hexdigest of an open file.
-
-    The file cursor should be already at the start.
-    """
-    return _osutils_rs.sha_file(f).encode('ascii')
-
-
-def size_sha_file(f):
-    """Calculate the size and hexdigest of an open file.
-
-    The file cursor should be already at the start and
-    the caller is responsible for closing the file afterwards.
-    """
-    (size, sha) = _osutils_rs.size_sha_file(f)
-    return (size, sha.encode('utf-8'))
-
-
-def sha_file_by_name(fname):
-    """Calculate the SHA1 of a file by reading the full text"""
-    return _osutils_rs.sha_file_by_name(fname).encode('utf-8')
-
-
-def sha_strings(strings):
-    """Return the sha-1 of concatenation of strings"""
-    return _osutils_rs.sha_strings(strings).encode('utf-8')
-
-
-def sha_string(string):
-    return _osutils_rs.sha_string(string).encode('utf-8')
+sha_file = _osutils_rs.sha_file
+size_sha_file = _osutils_rs.size_sha_file
+sha_file_by_name = _osutils_rs.sha_file_by_name
+sha_strings = _osutils_rs.sha_strings
+sha_string = _osutils_rs.sha_string
 
 
 def compare_files(a, b):
@@ -626,10 +524,7 @@ format_date = _osutils_rs.format_date
 format_date_with_offset_in_original_timezone = _osutils_rs.format_date_with_offset_in_original_timezone
 format_local_date = _osutils_rs.format_local_date
 format_delta = _osutils_rs.format_delta
-
-
-def compact_date(when):
-    return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
+compact_date = _osutils_rs.compact_date
 
 
 def filesize(f):
@@ -751,18 +646,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames
-
-
-def split_lines(s):
-    """Split s into lines, but without removing the newline characters."""
-    # Trivially convert a fulltext into a 'chunked' representation, and let
-    # chunks_to_lines do the heavy lifting.
-    if isinstance(s, bytes):
-        # chunks_to_lines only supports 8-bit strings
-        return chunks_to_lines([s])
-    else:
-        return chunks_to_lines(s)
+from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames, split_lines
 
 
 def hardlinks_good():
@@ -1285,7 +1169,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
-    _directory = _directory_kind
+    _directory = 'directory'
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1380,7 +1264,7 @@ def _walkdirs_utf8(top, prefix="", fs_enc=None):
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
     read_dir = _selected_dir_reader.read_dir
-    _directory = _directory_kind
+    _directory = 'directory'
     while pending:
         relroot, _, _, _, top = pending[-1].pop()
         if not pending[-1]:

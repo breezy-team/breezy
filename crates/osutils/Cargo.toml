@@ -14,6 +14,9 @@ walkdir = "2"
 sha1 = "0.10.1"
 unicode-normalization = "0.1.19"
 rand = "0.8"
-
-[target.'cfg(target_os = "windows")'.dependencies]
+log = "0.4"
 lazy_static = "1.4.0"
+regex = "1.5.4"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.101"

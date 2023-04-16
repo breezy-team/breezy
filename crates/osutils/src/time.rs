@@ -205,3 +205,9 @@ pub fn unpack_highres_date(date: &str) -> Result<(f64, i32), String> {
 
     Ok((timestamp_with_fract_seconds, seconds_offset))
 }
+
+pub fn compact_date(when: u64) -> String {
+    let system_time = UNIX_EPOCH + std::time::Duration::from_secs(when);
+    let date_time: DateTime<Utc> = DateTime::from(system_time);
+    date_time.format("%Y%m%d%H%M%S").to_string()
+}

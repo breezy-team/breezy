@@ -13,6 +13,7 @@ use std::os::unix::ffi::OsStringExt;
 use memchr;
 use pyo3::PyErr;
 use pyo3::create_exception;
+use std::fs::Permissions;
 
 create_exception!(breezy_osutils, UnsupportedTimezoneFormat, pyo3::exceptions::PyException);
 
@@ -101,58 +102,82 @@ fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
 }
 
 #[pyfunction]
-fn chunks_to_lines(chunks: PyObject) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let ret = PyList::empty(py);
-        let chunk_iter = chunks.call_method0(py, "__iter__");
-        if chunk_iter.is_err() {
-            return Err(PyTypeError::new_err("chunks must be iterable"));
-        }
-        let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
-        let iter = iter.into_py(py);
-        ret.call_method1("extend", (iter,))?;
-        Ok(ret.into_py(py))
-    })
+fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
+    let ret = PyList::empty(py);
+    let chunk_iter = chunks.call_method0(py, "__iter__");
+    if chunk_iter.is_err() {
+        return Err(PyTypeError::new_err("chunks must be iterable"));
+    }
+    let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
+    let iter = iter.into_py(py);
+    ret.call_method1("extend", (iter,))?;
+    Ok(ret.into_py(py))
 }
 
 #[pyfunction]
-fn chunks_to_lines_iter(chunk_iter: PyObject) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let iter = PyChunksToLinesIterator::new(chunk_iter)?;
-        Ok(iter.into_py(py))
-    })
+fn split_lines(py: Python, mut chunks: PyObject) -> PyResult<PyObject> {
+    let ret = PyList::empty(py);
+    if let Ok(chunk) = chunks.extract::<&PyBytes>(py) {
+        chunks = PyList::new(py, &[chunk]).into_py(py);
+    }
+
+    let chunk_iter = chunks.call_method0(py, "__iter__");
+    if chunk_iter.is_err() {
+        return Err(PyTypeError::new_err("chunks must be iterable"));
+    }
+    let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
+    let iter = iter.into_py(py);
+    ret.call_method1("extend", (iter,))?;
+    Ok(ret.into_py(py))
 }
 
 #[pyfunction]
-fn sha_file_by_name(object: &PyAny) -> PyResult<String> {
+fn chunks_to_lines_iter(py: Python, chunk_iter: PyObject) -> PyResult<PyObject> {
+    let iter = PyChunksToLinesIterator::new(chunk_iter)?;
+    Ok(iter.into_py(py))
+}
+
+/// Calculate the SHA1 of a file by reading the full text
+#[pyfunction]
+fn sha_file_by_name(py: Python, object: &PyAny) -> PyResult<PyObject> {
     let pathbuf = extract_path(object)?;
     let digest = breezy_osutils::sha::sha_file_by_name(pathbuf.as_path()).map_err(PyErr::from)?;
-    Ok(digest)
+    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
 }
 
 #[pyfunction]
-fn sha_string(string: &[u8]) -> PyResult<String> {
-    Ok(breezy_osutils::sha::sha_string(string))
+fn sha_string(py: Python, string: &[u8]) -> PyResult<PyObject> {
+    let digest = breezy_osutils::sha::sha_string(string);
+    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
 }
 
+/// Return the sha-1 of concatenation of strings
 #[pyfunction]
-fn sha_strings(strings: &PyAny) -> PyResult<String> {
+fn sha_strings(py: Python, strings: &PyAny) -> PyResult<PyObject> {
     let iter = strings.iter()?;
-    Ok(breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap())))
+    let digest = breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()));
+    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
 }
 
+/// Calculate the hexdigest of an open file.
+///
+/// The file cursor should be already at the start.
 #[pyfunction]
-fn sha_file(file: PyObject) -> PyResult<String> {
+fn sha_file(py: Python, file: PyObject) -> PyResult<PyObject> {
     let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
     let digest = breezy_osutils::sha::sha_file(&mut file).map_err(PyErr::from)?;
-    Ok(digest)
+    Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
 }
 
+/// Calculate the size and hexdigest of an open file.
+///
+/// The file cursor should be already at the start and
+/// the caller is responsible for closing the file afterwards.
 #[pyfunction]
-fn size_sha_file(file: PyObject) -> PyResult<(usize, String)> {
+fn size_sha_file(py: Python, file: PyObject) -> PyResult<(usize, PyObject)> {
     let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
     let (size, digest) = breezy_osutils::sha::size_sha_file(&mut file).map_err(PyErr::from)?;
-    Ok((size, digest))
+    Ok((size, PyBytes::new(py, digest.as_bytes()).into_py(py)))
 }
 
 #[pyfunction]
@@ -528,6 +553,50 @@ fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
     breezy_osutils::time::unpack_highres_date(date).map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
+#[pyfunction]
+#[cfg(unix)]
+fn get_umask() -> PyResult<u32> {
+    Ok(breezy_osutils::get_umask())
+}
+
+#[pyfunction]
+fn kind_marker(kind: &str) -> &str {
+    breezy_osutils::kind_marker(kind)
+}
+
+#[pyfunction]
+fn make_writable(path: PathBuf) -> PyResult<()> {
+    Ok(breezy_osutils::file::make_writable(path)?)
+}
+
+#[pyfunction]
+fn make_readonly(path: PathBuf) -> PyResult<()> {
+    Ok(breezy_osutils::file::make_readonly(path)?)
+}
+
+#[pyfunction]
+fn compact_date(py: Python, when: PyObject) -> PyResult<String> {
+    let when = if let Ok(when) = when.extract::<f64>(py) {
+        when as u64
+    } else if let Ok(when) = when.extract::<i64>(py) {
+        when as u64
+    } else {
+        return Err(PyValueError::new_err("when must be a float or int"));
+    };
+    Ok(breezy_osutils::time::compact_date(when))
+}
+
+#[pyfunction]
+fn chmod_if_possible(path: PathBuf, mode: u32) -> PyResult<()> {
+    use std::os::unix::fs::PermissionsExt;
+    Ok(breezy_osutils::file::chmod_if_possible(path, Permissions::from_mode(mode))?)
+}
+
+#[pyfunction]
+fn quotefn(filename: &str) -> String {
+    breezy_osutils::path::quotefn(filename)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -561,6 +630,15 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(format_date))?;
     m.add_wrapped(wrap_pyfunction!(format_highres_date))?;
     m.add_wrapped(wrap_pyfunction!(unpack_highres_date))?;
+    m.add_wrapped(wrap_pyfunction!(kind_marker))?;
+    m.add_wrapped(wrap_pyfunction!(split_lines))?;
+    m.add_wrapped(wrap_pyfunction!(make_writable))?;
+    m.add_wrapped(wrap_pyfunction!(make_readonly))?;
+    m.add_wrapped(wrap_pyfunction!(compact_date))?;
+    m.add_wrapped(wrap_pyfunction!(chmod_if_possible))?;
+    m.add_wrapped(wrap_pyfunction!(quotefn))?;
+    #[cfg(unix)]
+    m.add_wrapped(wrap_pyfunction!(get_umask))?;
     m.add("UnsupportedTimezoneFormat", py.get_type::<UnsupportedTimezoneFormat>())?;
     Ok(())
 }
