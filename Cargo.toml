@@ -2,7 +2,7 @@
 name = "breezy"
 version = "3.3.3"
 authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
-edition = "2018"
+edition = "2021"
 publish = false
 default-run = "brz"
 license = "GPL-2.0+"

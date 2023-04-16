@@ -55,7 +55,7 @@ fn ensure_sane_fs_enc() -> () {
 fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
     let sys = PyModule::import(py, "sys")?;
 
-    let current_path: &pyo3::types::PyList = sys.getattr("path")?.try_into()?;
+    let current_path = sys.getattr("path")?.downcast::<PyList>()?;
 
     current_path.insert(0, el.to_str().expect("invalid local path"))?;
 
