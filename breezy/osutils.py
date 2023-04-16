@@ -121,34 +121,7 @@ def quotefn(f):
         return f
 
 
-_directory_kind = 'directory'
-
-
-def get_umask():
-    """Return the current umask"""
-    # Assume that people aren't messing with the umask while running
-    # XXX: This is not thread safe, but there is no way to get the
-    #      umask without setting it
-    umask = os.umask(0)
-    os.umask(umask)
-    return umask
-
-
-_kind_marker_map = {
-    "file": "",
-    _directory_kind: "/",
-    "symlink": "@",
-    'tree-reference': '+',
-}
-
-
-def kind_marker(kind):
-    try:
-        return _kind_marker_map[kind]
-    except KeyError:
-        # Slightly faster than using .get(, '') when the common case is that
-        # kind will be found
-        return ''
+from ._osutils_rs import get_umask, kind_marker
 
 
 lexists = getattr(os.path, 'lexists', None)
@@ -751,18 +724,7 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames
-
-
-def split_lines(s):
-    """Split s into lines, but without removing the newline characters."""
-    # Trivially convert a fulltext into a 'chunked' representation, and let
-    # chunks_to_lines do the heavy lifting.
-    if isinstance(s, bytes):
-        # chunks_to_lines only supports 8-bit strings
-        return chunks_to_lines([s])
-    else:
-        return chunks_to_lines(s)
+from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames, split_lines
 
 
 def hardlinks_good():
@@ -1285,7 +1247,7 @@ def walkdirs(top, prefix="", fsdecode=os.fsdecode):
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
-    _directory = _directory_kind
+    _directory = 'directory'
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1380,7 +1342,7 @@ def _walkdirs_utf8(top, prefix="", fs_enc=None):
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
     read_dir = _selected_dir_reader.read_dir
-    _directory = _directory_kind
+    _directory = 'directory'
     while pending:
         relroot, _, _, _, top = pending[-1].pop()
         if not pending[-1]:

@@ -101,26 +101,39 @@ fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
 }
 
 #[pyfunction]
-fn chunks_to_lines(chunks: PyObject) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let ret = PyList::empty(py);
-        let chunk_iter = chunks.call_method0(py, "__iter__");
-        if chunk_iter.is_err() {
-            return Err(PyTypeError::new_err("chunks must be iterable"));
-        }
-        let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
-        let iter = iter.into_py(py);
-        ret.call_method1("extend", (iter,))?;
-        Ok(ret.into_py(py))
-    })
+fn chunks_to_lines(py: Python, chunks: PyObject) -> PyResult<PyObject> {
+    let ret = PyList::empty(py);
+    let chunk_iter = chunks.call_method0(py, "__iter__");
+    if chunk_iter.is_err() {
+        return Err(PyTypeError::new_err("chunks must be iterable"));
+    }
+    let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
+    let iter = iter.into_py(py);
+    ret.call_method1("extend", (iter,))?;
+    Ok(ret.into_py(py))
 }
 
 #[pyfunction]
-fn chunks_to_lines_iter(chunk_iter: PyObject) -> PyResult<PyObject> {
-    Python::with_gil(|py| {
-        let iter = PyChunksToLinesIterator::new(chunk_iter)?;
-        Ok(iter.into_py(py))
-    })
+fn split_lines(py: Python, mut chunks: PyObject) -> PyResult<PyObject> {
+    let ret = PyList::empty(py);
+    if let Ok(chunk) = chunks.extract::<&PyBytes>(py) {
+        chunks = PyList::new(py, &[chunk]).into_py(py);
+    }
+
+    let chunk_iter = chunks.call_method0(py, "__iter__");
+    if chunk_iter.is_err() {
+        return Err(PyTypeError::new_err("chunks must be iterable"));
+    }
+    let iter = PyChunksToLinesIterator::new(chunk_iter?)?;
+    let iter = iter.into_py(py);
+    ret.call_method1("extend", (iter,))?;
+    Ok(ret.into_py(py))
+}
+
+#[pyfunction]
+fn chunks_to_lines_iter(py: Python, chunk_iter: PyObject) -> PyResult<PyObject> {
+    let iter = PyChunksToLinesIterator::new(chunk_iter)?;
+    Ok(iter.into_py(py))
 }
 
 #[pyfunction]
@@ -528,6 +541,17 @@ fn unpack_highres_date(date: &str) -> PyResult<(f64, i32)> {
     breezy_osutils::time::unpack_highres_date(date).map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
+#[pyfunction]
+#[cfg(unix)]
+fn get_umask() -> PyResult<u32> {
+    Ok(breezy_osutils::get_umask())
+}
+
+#[pyfunction]
+fn kind_marker(kind: &str) -> &str {
+    breezy_osutils::kind_marker(kind)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -561,6 +585,10 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(format_date))?;
     m.add_wrapped(wrap_pyfunction!(format_highres_date))?;
     m.add_wrapped(wrap_pyfunction!(unpack_highres_date))?;
+    m.add_wrapped(wrap_pyfunction!(kind_marker))?;
+    m.add_wrapped(wrap_pyfunction!(split_lines))?;
+    #[cfg(unix)]
+    m.add_wrapped(wrap_pyfunction!(get_umask))?;
     m.add("UnsupportedTimezoneFormat", py.get_type::<UnsupportedTimezoneFormat>())?;
     Ok(())
 }

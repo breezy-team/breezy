@@ -1,5 +1,7 @@
 use memchr::memchr;
 use rand::Rng;
+#[cfg(unix)]
+use libc;
 
 pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>
 where
@@ -87,6 +89,28 @@ pub fn rand_chars(num: usize) -> String {
         s.push(ALNUM.chars().nth(raw_byte % 36).unwrap());
     }
     s
+}
+
+#[cfg(unix)]
+pub fn get_umask() -> u32 {
+    // Assume that people aren't messing with the umask while running
+    // XXX: This is not thread safe, but there is no way to get the
+    //      umask without setting it
+    let umask = unsafe { libc::umask(0) };
+    unsafe {
+        libc::umask(umask);
+    }
+    umask
+}
+
+pub fn kind_marker(kind: &str) -> &str {
+    match kind {
+        "file" => "",
+        "directory" => "/",
+        "symlink" => "@",
+        "tree-reference" => "+",
+        _ => "",
+    }
 }
 
 pub mod sha;

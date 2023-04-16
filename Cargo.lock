@@ -119,6 +119,7 @@ version = "3.3.3"
 dependencies = [
  "chrono",
  "lazy_static",
+ "libc",
  "memchr",
  "rand",
  "sha1 0.10.5",
