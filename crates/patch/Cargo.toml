@@ -10,3 +10,5 @@ license = "GPLv2+"
 [dependencies]
 breezy-osutils = { path = "../osutils" }
 tempfile = "3.1.0"
+regex = "1.3.9"
+lazy_static = "1.4.0"

@@ -23,6 +23,8 @@ from . import revision as _mod_revision
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
 
+from ._graph_rs import TopoSorter
+
 
 def topo_sort(graph):
     """Topological sort a graph.
@@ -44,114 +46,6 @@ def topo_sort(graph):
     """
     kg = _mod_graph.KnownGraph(dict(graph))
     return kg.topo_sort()
-
-
-class TopoSorter:
-
-    def __init__(self, graph):
-        """Topological sorting of a graph.
-
-        :param graph: sequence of pairs of node_name->parent_names_list.
-                      i.e. [('C', ['B']), ('B', ['A']), ('A', [])]
-                      For this input the output from the sort or
-                      iter_topo_order routines will be:
-                      'A', 'B', 'C'
-
-        node identifiers can be any hashable object, and are typically strings.
-
-        If you have a graph like [('a', ['b']), ('a', ['c'])] this will only use
-        one of the two values for 'a'.
-
-        The graph is sorted lazily: until you iterate or sort the input is
-        not processed other than to create an internal representation.
-
-        iteration or sorting may raise GraphCycleError if a cycle is present
-        in the graph.
-        """
-        # store a dict of the graph.
-        self._graph = dict(graph)
-
-    def sorted(self):
-        """Sort the graph and return as a list.
-
-        After calling this the sorter is empty and you must create a new one.
-        """
-        return list(self.iter_topo_order())
-
-# Useful if fiddling with this code.
-# cross check
-###        sorted_names = list(self.iter_topo_order())
-# for index in range(len(sorted_names)):
-###            rev = sorted_names[index]
-# for left_index in range(index):
-# if rev in self.original_graph[sorted_names[left_index]]:
-# print "revision in parent list of earlier revision"
-###                    import pdb;pdb.set_trace()
-
-    def iter_topo_order(self):
-        """Yield the nodes of the graph in a topological order.
-
-        After finishing iteration the sorter is empty and you cannot continue
-        iteration.
-        """
-        graph = self._graph
-        visitable = set(graph)
-
-        # this is a stack storing the depth first search into the graph.
-        pending_node_stack = []
-        # at each level of 'recursion' we have to check each parent. This
-        # stack stores the parents we have not yet checked for the node at the
-        # matching depth in pending_node_stack
-        pending_parents_stack = []
-
-        # this is a set of the completed nodes for fast checking whether a
-        # parent in a node we are processing on the stack has already been
-        # emitted and thus can be skipped.
-        completed_node_names = set()
-
-        while graph:
-            # now pick a random node in the source graph, and transfer it to the
-            # top of the depth first search stack of pending nodes.
-            node_name, parents = graph.popitem()
-            pending_node_stack.append(node_name)
-            pending_parents_stack.append(list(parents))
-
-            # loop until pending_node_stack is empty
-            while pending_node_stack:
-                parents_to_visit = pending_parents_stack[-1]
-                # if there are no parents left, the revision is done
-                if not parents_to_visit:
-                    # append the revision to the topo sorted list
-                    # all the nodes parents have been added to the output,
-                    # now we can add it to the output.
-                    popped_node = pending_node_stack.pop()
-                    pending_parents_stack.pop()
-                    completed_node_names.add(popped_node)
-                    yield popped_node
-                else:
-                    # recurse depth first into a single parent
-                    next_node_name = parents_to_visit.pop()
-
-                    if next_node_name in completed_node_names:
-                        # parent was already completed by a child, skip it.
-                        continue
-                    if next_node_name not in visitable:
-                        # parent is not a node in the original graph, skip it.
-                        continue
-
-                    # transfer it along with its parents from the source graph
-                    # into the top of the current depth first search stack.
-                    try:
-                        parents = graph.pop(next_node_name)
-                    except KeyError:
-                        # if the next node is not in the source graph it has
-                        # already been popped from it and placed into the
-                        # current search stack (but not completed or we would
-                        # have hit the continue 6 lines up).  this indicates a
-                        # cycle.
-                        raise errors.GraphCycleError(pending_node_stack)
-                    pending_node_stack.append(next_node_name)
-                    pending_parents_stack.append(list(parents))
 
 
 def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False):

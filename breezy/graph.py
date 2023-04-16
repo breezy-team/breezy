@@ -1043,7 +1043,8 @@ class Graph:
         visible in the supplied list of revisions.
         """
         from breezy import tsort
-        sorter = tsort.TopoSorter(self.get_parent_map(revisions))
+        pm = self.get_parent_map(revisions)
+        sorter = tsort.TopoSorter(pm)
         return sorter.iter_topo_order()
 
     def is_ancestor(self, candidate_ancestor, candidate_descendant):

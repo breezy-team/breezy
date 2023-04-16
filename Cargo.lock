@@ -131,6 +131,8 @@ name = "breezy-patch"
 version = "3.3.3"
 dependencies = [
  "breezy-osutils",
+ "lazy_static",
+ "regex",
  "tempfile",
 ]
 
