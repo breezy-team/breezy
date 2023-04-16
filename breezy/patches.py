@@ -57,26 +57,7 @@ class MalformedHunkHeader(PatchSyntax):
         self.line = line
 
 
-from ._patch_rs import get_patch_names, BinaryFiles, MalformedPatchHeader, iter_lines_handle_nl
-
-
-def parse_range(textrange):
-    """Parse a patch range, handling the "1" special-case
-
-    :param textrange: The text to parse
-    :type textrange: str
-    :return: the position and range, as a tuple
-    :rtype: (int, int)
-    """
-    tmp = textrange.split(b',')
-    if len(tmp) == 1:
-        pos = tmp[0]
-        brange = b"1"
-    else:
-        (pos, brange) = tmp
-    pos = int(pos)
-    range = int(brange)
-    return (pos, range)
+from ._patch_rs import get_patch_names, BinaryFiles, MalformedPatchHeader, iter_lines_handle_nl, parse_range
 
 
 def hunk_from_header(line):
@@ -91,8 +72,8 @@ def hunk_from_header(line):
     if not orig.startswith(b'-') or not mod.startswith(b'+'):
         raise MalformedHunkHeader("Positions don't start with + or -.", line)
     try:
-        (orig_pos, orig_range) = parse_range(orig[1:])
-        (mod_pos, mod_range) = parse_range(mod[1:])
+        (orig_pos, orig_range) = parse_range(orig[1:].decode('utf-8'))
+        (mod_pos, mod_range) = parse_range(mod[1:].decode('utf-8'))
     except (ValueError, IndexError) as e:
         raise MalformedHunkHeader(str(e), line)
     if mod_range < 0 or orig_range < 0:
