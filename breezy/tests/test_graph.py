@@ -31,8 +31,8 @@ from . import TestCaseWithMemoryTransport
 #   rev3  /
 #     |  /
 #   rev4
-ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1'],
-              b'rev3': [b'rev2a'], b'rev4': [b'rev3', b'rev2b']}
+ancestry_1 = {b'rev1': (NULL_REVISION, ), b'rev2a': (b'rev1', ), b'rev2b': (b'rev1', ),
+              b'rev3': (b'rev2a', ), b'rev4': (b'rev3', b'rev2b')}
 
 
 # Ancestry 2:
@@ -46,8 +46,8 @@ ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1']
 # rev3a
 #   |
 # rev4a
-ancestry_2 = {b'rev1a': [NULL_REVISION], b'rev2a': [b'rev1a'],
-              b'rev1b': [NULL_REVISION], b'rev3a': [b'rev2a'], b'rev4a': [b'rev3a']}
+ancestry_2 = {b'rev1a': (NULL_REVISION, ), b'rev2a': (b'rev1a', ),
+              b'rev1b': (NULL_REVISION, ), b'rev3a': (b'rev2a', ), b'rev4a': (b'rev3a', )}
 
 
 # Criss cross ancestry
@@ -61,8 +61,8 @@ ancestry_2 = {b'rev1a': [NULL_REVISION], b'rev2a': [b'rev1a'],
 #       |  X |
 #       |/  \|
 #    rev3a  rev3b
-criss_cross = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1'],
-               b'rev3a': [b'rev2a', b'rev2b'], b'rev3b': [b'rev2b', b'rev2a']}
+criss_cross = {b'rev1': (NULL_REVISION, ), b'rev2a': (b'rev1', ), b'rev2b': (b'rev1', ),
+               b'rev3a': (b'rev2a', b'rev2b'), b'rev3b': (b'rev2b', b'rev2a')}
 
 
 # Criss-cross 2
@@ -333,7 +333,7 @@ racing_shortcuts = {b'a': [NULL_REVISION], b'b': [b'a'], b'c': [b'b'], b'd': [b'
 #     y   z
 #
 
-multiple_interesting_unique = {b'a': [NULL_REVISION], b'b': [b'a'], b'c': [b'b'],
+multiple_interesting_unique = {b'a': (NULL_REVISION, ), b'b': [b'a'], b'c': [b'b'],
                                b'd': [b'c'], b'e': [b'd'], b'f': [b'd'], b'g': [b'e'], b'h': [b'e'], b'i': [b'f'],
                                b'j': [b'g'], b'k': [b'g'], b'l': [b'h'], b'm': [b'i'], b'n': [b'k', b'l'],
                                b'o': [b'm'], b'p': [b'm', b'l'], b'q': [b'n', b'o'], b'r': [b'q'], b's': [b'r'],
@@ -355,13 +355,13 @@ multiple_interesting_unique = {b'a': [NULL_REVISION], b'b': [b'a'], b'c': [b'b']
 #       d | g
 #       |\|/
 #       e f
-shortcut_extra_root = {b'a': [NULL_REVISION],
-                       b'b': [b'a'],
-                       b'c': [b'b'],
-                       b'd': [b'c'],
-                       b'e': [b'd'],
-                       b'f': [b'a', b'd', b'g'],
-                       b'g': [NULL_REVISION],
+shortcut_extra_root = {b'a': (NULL_REVISION, ),
+                       b'b': (b'a', ),
+                       b'c': (b'b', ),
+                       b'd': (b'c', ),
+                       b'e': (b'd', ),
+                       b'f': (b'a', b'd', b'g'),
+                       b'g': (NULL_REVISION, ),
                        }
 
 #  NULL_REVISION
@@ -374,8 +374,8 @@ shortcut_extra_root = {b'a': [NULL_REVISION],
 #     | \ |
 #     a   c
 
-boundary = {b'a': [b'b'], b'c': [b'b', b'd'], b'b': [b'e'], b'd': [b'e'], b'e': [b'f'],
-            b'f': [NULL_REVISION]}
+boundary = {b'a': (b'b', ), b'c': (b'b', b'd'), b'b': (b'e', ), b'd': (b'e', ), b'e': (b'f', ),
+            b'f': (NULL_REVISION, )}
 
 
 # A graph that contains a ghost
@@ -389,8 +389,8 @@ boundary = {b'a': [b'b'], b'c': [b'b', b'd'], b'b': [b'e'], b'd': [b'e'], b'e': 
 #     | \ |
 #     a   c
 
-with_ghost = {b'a': [b'b'], b'c': [b'b', b'd'], b'b': [b'e'], b'd': [b'e', b'g'],
-              b'e': [b'f'], b'f': [NULL_REVISION], NULL_REVISION: ()}
+with_ghost = {b'a': (b'b', ), b'c': (b'b', b'd'), b'b': (b'e', ), b'd': (b'e', b'g'),
+              b'e': (b'f', ), b'f': (NULL_REVISION, ), NULL_REVISION: ()}
 
 # A graph that shows we can shortcut finding revnos when reaching them from the
 # side.
@@ -1697,27 +1697,27 @@ class TestStackedParentsProvider(tests.TestCase):
         return SharedInstrumentedParentsProvider(pp, self.calls, info)
 
     def test_stacked_parents_provider(self):
-        parents1 = _mod_graph.DictParentsProvider({b'rev2': [b'rev3']})
-        parents2 = _mod_graph.DictParentsProvider({b'rev1': [b'rev4']})
+        parents1 = _mod_graph.DictParentsProvider({b'rev2': (b'rev3', )})
+        parents2 = _mod_graph.DictParentsProvider({b'rev1': (b'rev4', )})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({b'rev1': [b'rev4'], b'rev2': [b'rev3']},
-                         stacked.get_parent_map([b'rev1', b'rev2']))
-        self.assertEqual({b'rev2': [b'rev3'], b'rev1': [b'rev4']},
-                         stacked.get_parent_map([b'rev2', b'rev1']))
-        self.assertEqual({b'rev2': [b'rev3']},
-                         stacked.get_parent_map([b'rev2', b'rev2']))
-        self.assertEqual({b'rev1': [b'rev4']},
-                         stacked.get_parent_map([b'rev1', b'rev1']))
+        self.assertEqual({b'rev1': (b'rev4', ), b'rev2': (b'rev3', )},
+                         stacked.get_parent_map((b'rev1', b'rev2', )))
+        self.assertEqual({b'rev2': (b'rev3', ), b'rev1': (b'rev4', )},
+                         stacked.get_parent_map((b'rev2', b'rev1')))
+        self.assertEqual({b'rev2': (b'rev3', )},
+                         stacked.get_parent_map((b'rev2', b'rev2')))
+        self.assertEqual({b'rev1': (b'rev4', )},
+                         stacked.get_parent_map((b'rev1', b'rev1')))
 
     def test_stacked_parents_provider_overlapping(self):
         # rev2 is availible in both providers.
         # 1
         # |
         # 2
-        parents1 = _mod_graph.DictParentsProvider({b'rev2': [b'rev1']})
-        parents2 = _mod_graph.DictParentsProvider({b'rev2': [b'rev1']})
+        parents1 = _mod_graph.DictParentsProvider({b'rev2': (b'rev1', )})
+        parents2 = _mod_graph.DictParentsProvider({b'rev2': (b'rev1', )})
         stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
-        self.assertEqual({b'rev2': [b'rev1']},
+        self.assertEqual({b'rev2': (b'rev1', )},
                          stacked.get_parent_map([b'rev2']))
 
     def test_handles_no_get_cached_parent_map(self):

@@ -58,7 +58,7 @@ class DictParentsProvider:
     def get_parent_map(self, keys):
         """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
-        return {k: ancestry[k] for k in keys if k in ancestry}
+        return {k: tuple(ancestry[k]) for k in keys if k in ancestry}
 
 
 class StackedParentsProvider:
