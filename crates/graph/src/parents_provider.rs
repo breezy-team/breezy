@@ -1,22 +1,22 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
-pub trait ParentsProvider<'a, K> {
-    fn get_parent_map(&mut self, keys: &HashSet<&K>) -> HashMap<&'a K, &'a [K]>;
+pub trait ParentsProvider<K> {
+    fn get_parent_map<'a>(&'a mut self, keys: &HashSet<&K>) -> HashMap<&'a K, &'a [K]>;
 }
 
-pub struct StackedParentsProvider<'a, K> {
-    parent_providers: Vec<Box<dyn ParentsProvider<'a, K>>>,
+pub struct StackedParentsProvider<K> {
+    parent_providers: Vec<Box<dyn ParentsProvider<K>>>,
 }
 
-impl<'a, K> StackedParentsProvider<'a, K> {
-    pub fn new(parent_providers: Vec<Box<dyn ParentsProvider<'a, K>>>) -> Self {
+impl<K> StackedParentsProvider<K> {
+    pub fn new(parent_providers: Vec<Box<dyn ParentsProvider<K>>>) -> Self {
         StackedParentsProvider { parent_providers }
     }
 }
 
-impl<'a, K: Hash + Eq> ParentsProvider<'a, K> for StackedParentsProvider<'a, K> {
-    fn get_parent_map(&mut self, keys: &HashSet<&K>) -> HashMap<&'a K, &'a [K]> {
+impl<K: Hash + Eq> ParentsProvider<K> for StackedParentsProvider<K> {
+    fn get_parent_map<'a>(&'a mut self, keys: &HashSet<&K>) -> HashMap<&'a K, &'a [K]> {
         let mut found = HashMap::new();
         let mut remaining = keys.clone();
 
@@ -34,5 +34,23 @@ impl<'a, K: Hash + Eq> ParentsProvider<'a, K> for StackedParentsProvider<'a, K> 
         }
 
         found
+    }
+}
+
+pub struct DictParentsProvider<K> {
+    parent_map: HashMap<K, Vec<K>>,
+}
+
+impl<K> DictParentsProvider<K> {
+    pub fn new(parent_map: HashMap<K, Vec<K>>) -> Self {
+        DictParentsProvider { parent_map }
+    }
+}
+
+impl<K: Hash + Eq> ParentsProvider<K> for DictParentsProvider<K> {
+    fn get_parent_map<'a>(&'a mut self, keys: &HashSet<&K>) -> HashMap<&'a K, &'a [K]> {
+        keys.iter()
+            .filter_map(|k| self.parent_map.get_key_value(k).map(|(k, v)| (k, v.as_slice())))
+           .collect()
     }
 }
