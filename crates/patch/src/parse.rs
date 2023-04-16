@@ -94,3 +94,14 @@ pub fn parse_range(textrange: &str) -> Result<(i32, i32), ParseIntError> {
     let range = brange.parse::<i32>()?;
     Ok((pos, range))
 }
+
+/// Find the index of the first character that differs between two texts
+pub fn difference_index(atext: &[u8], btext: &[u8]) -> Option<usize> {
+    let length = atext.len().min(btext.len());
+    for i in 0..length {
+        if atext[i] != btext[i] {
+            return Some(i);
+        }
+    }
+    None
+}

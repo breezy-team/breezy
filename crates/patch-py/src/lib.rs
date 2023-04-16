@@ -103,7 +103,11 @@ fn iter_lines_handle_nl(py: Python, iter_lines: PyObject) -> PyResult<PyObject> 
 fn parse_range(textrange: &str) -> PyResult<(i32, i32)> {
     breezy_patch::parse::parse_range(textrange).map_err(
         |err| PyValueError::new_err(format!("Invalid range: {}", err)))
+}
 
+#[pyfunction]
+fn difference_index(atext: &[u8], btext: &[u8]) -> PyResult<Option<usize>> {
+    Ok(breezy_patch::parse::difference_index(atext, btext))
 }
 
 #[pymodule]
@@ -115,6 +119,7 @@ fn _patch_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(get_patch_names))?;
     m.add_wrapped(wrap_pyfunction!(iter_lines_handle_nl))?;
     m.add_wrapped(wrap_pyfunction!(parse_range))?;
+    m.add_wrapped(wrap_pyfunction!(difference_index))?;
     m.add("PatchInvokeError", py.get_type::<PatchInvokeError>())?;
     m.add("PatchFailed", py.get_type::<PatchFailed>())?;
     m.add("PatchSyntax", py.get_type::<PatchSyntax>())?;

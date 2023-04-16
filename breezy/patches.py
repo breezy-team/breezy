@@ -57,7 +57,7 @@ class MalformedHunkHeader(PatchSyntax):
         self.line = line
 
 
-from ._patch_rs import get_patch_names, BinaryFiles, MalformedPatchHeader, iter_lines_handle_nl, parse_range
+from ._patch_rs import get_patch_names, BinaryFiles, MalformedPatchHeader, iter_lines_handle_nl, parse_range, difference_index
 
 
 def hunk_from_header(line):
@@ -435,25 +435,6 @@ def parse_patches(iter_lines, allow_dirty=False, keep_dirty=False):
                     'dirty_head': patch_lines['dirty_head']})
         else:
             yield parse_patch(patch_lines, allow_dirty)
-
-
-def difference_index(atext, btext):
-    """Find the indext of the first character that differs between two texts
-
-    :param atext: The first text
-    :type atext: str
-    :param btext: The second text
-    :type str: str
-    :return: The index, or None if there are no differences within the range
-    :rtype: int or NoneType
-    """
-    length = len(atext)
-    if len(btext) < length:
-        length = len(btext)
-    for i in range(length):
-        if atext[i] != btext[i]:
-            return i
-    return None
 
 
 def iter_patched(orig_lines, patch_lines):
