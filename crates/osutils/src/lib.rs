@@ -118,6 +118,7 @@ pub mod path;
 pub mod time;
 pub mod iterablefile;
 pub mod textfile;
+pub mod file;
 
 #[cfg(test)]
 mod tests;

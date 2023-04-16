@@ -2,6 +2,8 @@ use std::path::{Path,PathBuf};
 use std::collections::HashSet;
 use std::os::unix::fs::PermissionsExt;
 use unicode_normalization::{UnicodeNormalization,is_nfc};
+use regex::Regex;
+use lazy_static::lazy_static;
 
 pub fn is_inside(dir: &Path, fname: &Path) -> bool {
     fname.starts_with(&dir)
@@ -210,4 +212,20 @@ static ref VALID_WIN32_PATH_RE: Regex = Regex::new(r#"^([A-Za-z]:[/\\])?[^:<>*"?
 #[cfg(windows)]
 pub fn legal_path(path: &Path) -> bool {
     VALID_WIN32_PATH_RE.is_match(path)
+}
+
+/// Return a quoted filename filename
+///
+/// This previously used backslash quoting, but that works poorly on
+/// Windows.
+pub fn quotefn(f: &str) -> String {
+    lazy_static! {
+        static ref QUOTE_RE: Regex = Regex::new(r#"([^a-zA-Z0-9.,:/\\_~-])"#).unwrap();
+    }
+
+    if QUOTE_RE.is_match(f) {
+        format!(r#""{}""#, f)
+    } else {
+        f.to_string()
+    }
 }
