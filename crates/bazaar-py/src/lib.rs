@@ -8,8 +8,8 @@ use pyo3::types::PyBytes;
 /// give a highly probably globally unique number. Then each call in the same
 /// process adds 1 to a serial number we append to that unique value.
 #[pyfunction]
-fn _next_id_suffix(py: Python) -> PyObject {
-    PyBytes::new(py, &bazaar::gen_ids::next_id_suffix()).into_py(py)
+fn _next_id_suffix(py: Python, suffix: Option<&str>) -> PyObject {
+    PyBytes::new(py, &bazaar::gen_ids::next_id_suffix(suffix)).into_py(py)
 }
 
 /// Return new file id for the basename 'name'.
