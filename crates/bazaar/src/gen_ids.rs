@@ -18,7 +18,11 @@ fn gen_file_id_suffix() -> String {
         .unwrap()
         .as_secs();
     let random_chars = rand_chars(16);
-    format!("-{}-{}-", breezy_osutils::time::compact_date(current_time), random_chars)
+    format!(
+        "-{}-{}-",
+        breezy_osutils::time::compact_date(current_time),
+        random_chars
+    )
 }
 
 pub fn next_id_suffix(suffix: Option<&str>) -> Vec<u8> {
@@ -36,7 +40,12 @@ pub fn next_id_suffix(suffix: Option<&str>) -> Vec<u8> {
     // TODO(jelmer): Avoid unsafe code here..
     unsafe {
         GEN_FILE_ID_SERIAL += 1;
-        format!("{}{}", suffix.unwrap_or(GEN_FILE_ID_SUFFIX.as_str()), GEN_FILE_ID_SERIAL).into_bytes()
+        format!(
+            "{}{}",
+            suffix.unwrap_or(GEN_FILE_ID_SUFFIX.as_str()),
+            GEN_FILE_ID_SERIAL
+        )
+        .into_bytes()
     }
 }
 
@@ -60,9 +69,13 @@ pub fn gen_file_id(name: &str) -> Vec<u8> {
         .to_ascii_lowercase()
         .as_bytes()
         .to_vec();
-    let ascii_word_only =
-        FILE_ID_CHARS_RE.replace_all(&name_bytes, |_: &regex::bytes::Captures| b"").to_vec();
-    let without_dots = ascii_word_only.into_iter().skip_while(|c| *c == b'.').collect::<Vec<u8>>();
+    let ascii_word_only = FILE_ID_CHARS_RE
+        .replace_all(&name_bytes, |_: &regex::bytes::Captures| b"")
+        .to_vec();
+    let without_dots = ascii_word_only
+        .into_iter()
+        .skip_while(|c| *c == b'.')
+        .collect::<Vec<u8>>();
     let short = without_dots.iter().take(20).cloned().collect::<Vec<u8>>();
     let suffix = next_id_suffix(None);
     [short, suffix].concat()
@@ -76,7 +89,11 @@ fn get_identifier(s: &str) -> Vec<u8> {
     let mut identifier = s.to_string();
     if let Some(start) = s.find('<') {
         let end = s.rfind('>');
-        if !end.is_none() && start < end.unwrap() && end.unwrap() == s.len() - 1 && s[start..].find('@').is_some() {
+        if !end.is_none()
+            && start < end.unwrap()
+            && end.unwrap() == s.len() - 1
+            && s[start..].find('@').is_some()
+        {
             identifier = s[start + 1..end.unwrap()].to_string();
         }
     }
