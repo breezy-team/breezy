@@ -74,6 +74,11 @@ brz:
 flake8:
 	flake8 breezy
 
+fmt-check:
+	find . -name '*.rs' | xargs rustfmt --check
+	flake8 breezy
+	isort --check-only
+
 mypy:
 	mypy breezy
 
@@ -317,3 +322,4 @@ check-dist-tarball:
 
 reformat:
 	isort .
+	find . -name '*.rs' | xargs rustfmt
