@@ -50,7 +50,11 @@ impl<K> DictParentsProvider<K> {
 impl<K: Hash + Eq> ParentsProvider<K> for DictParentsProvider<K> {
     fn get_parent_map<'a>(&'a mut self, keys: &HashSet<&K>) -> HashMap<&'a K, &'a [K]> {
         keys.iter()
-            .filter_map(|k| self.parent_map.get_key_value(k).map(|(k, v)| (k, v.as_slice())))
-           .collect()
+            .filter_map(|k| {
+                self.parent_map
+                    .get_key_value(k)
+                    .map(|(k, v)| (k, v.as_slice()))
+            })
+            .collect()
     }
 }

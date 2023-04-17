@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
+use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
 use pyo3::types::{PyDict, PyList, PyTuple};
+use pyo3::wrap_pyfunction;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use pyo3::import_exception;
 
 import_exception!(breezy.errors, GraphCycleError);
 
@@ -75,25 +75,21 @@ impl IntoPy<PyObject> for &PyNode {
 
 impl Hash for PyNode {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        Python::with_gil(|py| {
-            match self.0.as_ref(py).hash() {
-                Err(err) => err.restore(py),
-                Ok(hash) => state.write_isize(hash)
-            }
+        Python::with_gil(|py| match self.0.as_ref(py).hash() {
+            Err(err) => err.restore(py),
+            Ok(hash) => state.write_isize(hash),
         });
     }
 }
 
 impl PartialEq for PyNode {
     fn eq(&self, other: &PyNode) -> bool {
-        Python::with_gil(|py| {
-            match self.0.as_ref(py).eq(other.0.as_ref(py)) {
-                Err(err) => {
-                    err.restore(py);
-                    false
-                }
-                Ok(b) => b
+        Python::with_gil(|py| match self.0.as_ref(py).eq(other.0.as_ref(py)) {
+            Err(err) => {
+                err.restore(py);
+                false
             }
+            Ok(b) => b,
         })
     }
 }
@@ -101,13 +97,18 @@ impl PartialEq for PyNode {
 impl std::cmp::Eq for PyNode {}
 
 fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<PyNode, Vec<PyNode>>> {
-    parent_map.iter().map(|(k, v)| {
-        let vs = v
-            .iter()?
-            .map(|v| Ok::<_, PyErr>(v?.into()))
-            .into_iter().collect::<Result<Vec<_>, _>>()?;
-        Ok((k.into(), vs))
-    }).into_iter().collect::<Result<HashMap<_, _>, _>>()
+    parent_map
+        .iter()
+        .map(|(k, v)| {
+            let vs = v
+                .iter()?
+                .map(|v| Ok::<_, PyErr>(v?.into()))
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok((k.into(), vs))
+        })
+        .into_iter()
+        .collect::<Result<HashMap<_, _>, _>>()
 }
 
 /// Given a map from child => parents, create a map of parent => children
@@ -123,7 +124,8 @@ fn invert_parent_map(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
     for (k, vs) in result {
         ret.set_item::<PyObject, &PyList>(
             k.into_py(py),
-            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
+            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))),
+        )?;
     }
 
     Ok(ret.to_object(py))
@@ -154,7 +156,8 @@ fn collapse_linear_regions(py: Python, parent_map: &PyDict) -> PyResult<PyObject
     for (k, vs) in result {
         ret.set_item::<PyObject, &PyList>(
             k.into_py(py),
-            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
+            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))),
+        )?;
     }
 
     Ok(ret.to_object(py))
@@ -177,7 +180,8 @@ impl PyParentsProvider {
         for (k, vs) in result {
             ret.set_item::<PyObject, &PyTuple>(
                 k.into_py(py),
-                PyTuple::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
+                PyTuple::new(py, vs.into_iter().map(|v| v.into_py(py))),
+            )?;
         }
         Ok(ret.to_object(py))
     }
@@ -187,14 +191,14 @@ impl PyParentsProvider {
 fn DictParentsProvider(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
     let parent_map = extract_parent_map(parent_map)?;
     let provider = PyParentsProvider {
-        provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map))
+        provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map)),
     };
     Ok(provider.into_py(py))
 }
 
 #[pyclass]
 struct TopoSorter {
-    sorter: breezy_graph::tsort::TopoSorter<PyNode>
+    sorter: breezy_graph::tsort::TopoSorter<PyNode>,
 }
 
 #[pymethods]
@@ -202,13 +206,23 @@ impl TopoSorter {
     #[new]
     fn new(py: Python, graph: PyObject) -> PyResult<TopoSorter> {
         let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
-            graph.downcast::<PyDict>(py)?.call_method0("items")?.iter()?
+            graph
+                .downcast::<PyDict>(py)?
+                .call_method0("items")?
+                .iter()?
         } else {
             graph.as_ref(py).iter()?
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
-            .map(|k| k.map(|(k, vs)| (PyNode::from(k), vs.into_iter().map(|v| PyNode::from(v)).collect())))
+            .map(|k| {
+                k.map(|(k, vs)| {
+                    (
+                        PyNode::from(k),
+                        vs.into_iter().map(|v| PyNode::from(v)).collect(),
+                    )
+                })
+            })
             .collect::<PyResult<Vec<(PyNode, Vec<PyNode>)>>>()?;
 
         let sorter = breezy_graph::tsort::TopoSorter::<PyNode>::new(graph.into_iter());
@@ -242,7 +256,7 @@ impl TopoSorter {
 
 #[pyclass]
 struct PyRevnoVec {
-    revno_vec: breezy_graph::RevnoVec
+    revno_vec: breezy_graph::RevnoVec,
 }
 
 impl From<breezy_graph::RevnoVec> for PyRevnoVec {
@@ -259,37 +273,61 @@ impl From<PyRevnoVec> for breezy_graph::RevnoVec {
 
 #[pyclass]
 struct MergeSorter {
-    sorter: breezy_graph::tsort::MergeSorter<PyNode>
+    sorter: breezy_graph::tsort::MergeSorter<PyNode>,
 }
 
 fn branch_tip_is_null(py: Python, branch_tip: PyObject) -> bool {
     if let Ok(branch_tip) = branch_tip.extract::<&[u8]>(py) {
         branch_tip == b"null:"
-    } else if let Ok((branch_tip, )) = branch_tip.extract::<(&[u8], )>(py) {
+    } else if let Ok((branch_tip,)) = branch_tip.extract::<(&[u8],)>(py) {
         branch_tip == b"null:"
     } else {
         false
     }
 }
 
-
 #[pymethods]
 impl MergeSorter {
     #[new]
-    fn new(py: Python, graph: PyObject, mut branch_tip: Option<PyObject>, mainline_revisions: Option<PyObject>, generate_revno: Option<bool>) -> PyResult<MergeSorter> {
+    fn new(
+        py: Python,
+        graph: PyObject,
+        mut branch_tip: Option<PyObject>,
+        mainline_revisions: Option<PyObject>,
+        generate_revno: Option<bool>,
+    ) -> PyResult<MergeSorter> {
         let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
-            graph.downcast::<PyDict>(py)?.call_method0("items")?.iter()?
+            graph
+                .downcast::<PyDict>(py)?
+                .call_method0("items")?
+                .iter()?
         } else {
             graph.as_ref(py).iter()?
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
-            .map(|k| k.map(|(k, vs)| (PyNode::from(k), vs.into_iter().map(|v| PyNode::from(v)).collect())))
+            .map(|k| {
+                k.map(|(k, vs)| {
+                    (
+                        PyNode::from(k),
+                        vs.into_iter().map(|v| PyNode::from(v)).collect(),
+                    )
+                })
+            })
             .collect::<PyResult<HashMap<PyNode, Vec<PyNode>>>>()?;
 
         let mainline_revisions = if let Some(mainline_revisions) = mainline_revisions {
-            let mainline_revisions = mainline_revisions.as_ref(py).iter()?.map(|k| k?.extract::<PyObject>()).collect::<PyResult<Vec<PyObject>>>()?;
-            Some(mainline_revisions.into_iter().map(|k| PyNode::from(k)).collect())
+            let mainline_revisions = mainline_revisions
+                .as_ref(py)
+                .iter()?
+                .map(|k| k?.extract::<PyObject>())
+                .collect::<PyResult<Vec<PyObject>>>()?;
+            Some(
+                mainline_revisions
+                    .into_iter()
+                    .map(|k| PyNode::from(k))
+                    .collect(),
+            )
         } else {
             None
         };
@@ -300,18 +338,29 @@ impl MergeSorter {
                 if branch_tip_is_null(py, tip_obj.clone_ref(py)) {
                     branch_tip = None;
                 }
-            },
+            }
             None => (),
         }
 
-        let sorter = breezy_graph::tsort::MergeSorter::<PyNode>::new(graph, branch_tip.map(|k| PyNode::from(k)), mainline_revisions, generate_revno.unwrap_or(true));
+        let sorter = breezy_graph::tsort::MergeSorter::<PyNode>::new(
+            graph,
+            branch_tip.map(|k| PyNode::from(k)),
+            mainline_revisions,
+            generate_revno.unwrap_or(true),
+        );
         Ok(MergeSorter { sorter })
     }
 
     fn __next__(&mut self, py: Python) -> Option<(usize, PyObject, usize, Option<PyObject>, bool)> {
         match self.sorter.next() {
             None => None,
-            Some((sequence_number, node, merge_depth, revno, end_of_merge)) => Some((sequence_number, node.into_py(py), merge_depth, revno.map(|r| PyRevnoVec::from(r).into_py(py)), end_of_merge)),
+            Some((sequence_number, node, merge_depth, revno, end_of_merge)) => Some((
+                sequence_number,
+                node.into_py(py),
+                merge_depth,
+                revno.map(|r| PyRevnoVec::from(r).into_py(py)),
+                end_of_merge,
+            )),
         }
     }
 
@@ -325,7 +374,9 @@ impl MergeSorter {
 
     fn sorted(&mut self, py: Python) -> PyResult<PyObject> {
         let ret = PyList::empty(py);
-        while let Some((sequence_number, node, merge_depth, revno, end_of_merge)) = self.__next__(py) {
+        while let Some((sequence_number, node, merge_depth, revno, end_of_merge)) =
+            self.__next__(py)
+        {
             ret.append((sequence_number, node, merge_depth, revno, end_of_merge))?;
         }
         Ok(ret.to_object(py))
@@ -353,8 +404,15 @@ impl MergeSorter {
 ///
 /// Node identifiers can be any hashable object, and are typically strings.
 #[pyfunction]
-fn merge_sort(py: Python, graph: PyObject, branch_tip: Option<PyObject>, mainline_revisions: Option<PyObject>, generate_revno: Option<bool>) -> PyResult<MergeSorter> {
-    MergeSorter::new(py, graph, branch_tip, mainline_revisions, generate_revno)
+fn merge_sort(
+    py: Python,
+    graph: PyObject,
+    branch_tip: Option<PyObject>,
+    mainline_revisions: Option<PyObject>,
+    generate_revno: Option<bool>,
+) -> PyResult<PyObject> {
+    let mut sorter = MergeSorter::new(py, graph, branch_tip, mainline_revisions, generate_revno)?;
+    Ok(sorter.sorted(py)?)
 }
 
 #[pymodule]

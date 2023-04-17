@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 /// DIAGRAM of terminology
 ///       A
 ///       /\
@@ -19,21 +20,24 @@
 /// The find_unique_lca algorithm will pick A in two steps:
 /// 1. find_lca('G', 'H') => ['D', 'E']
 /// 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
-
-use std::collections::{HashMap,HashSet};
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use std::borrow::Borrow;
 
 mod parents_provider;
-pub use parents_provider::{ParentsProvider, StackedParentsProvider, DictParentsProvider};
+pub use parents_provider::{DictParentsProvider, ParentsProvider, StackedParentsProvider};
 
 pub type ParentMap<'a, K> = HashMap<&'a K, &'a Vec<K>>;
 
-pub fn invert_parent_map<'a, K: Hash + Eq>(parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>) -> HashMap<&'a K, Vec<&'a K>> {
+pub fn invert_parent_map<'a, K: Hash + Eq>(
+    parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
+) -> HashMap<&'a K, Vec<&'a K>> {
     let mut child_map: HashMap<&'a K, Vec<&'a K>> = HashMap::new();
     for (child, parents) in parent_map.iter() {
         for p in parents.iter() {
-            child_map.entry(p.borrow()).or_insert_with(Vec::new).push(child.borrow());
+            child_map
+                .entry(p.borrow())
+                .or_insert_with(Vec::new)
+                .push(child.borrow());
         }
     }
     child_map
@@ -84,12 +88,18 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq>(
     for (child, parents) in parent_map.iter() {
         children.entry(child.borrow()).or_insert(Vec::new());
         for p in parents.iter() {
-            children.entry(p.borrow()).or_insert(Vec::new()).push(child.borrow());
+            children
+                .entry(p.borrow())
+                .or_insert(Vec::new())
+                .push(child.borrow());
         }
     }
 
     let mut removed = HashSet::new();
-    let mut result: HashMap<&K, Vec<&K>> = parent_map.iter().map(|(k, v)| (k.borrow(), v.iter().map(|x| x.borrow()).collect())).collect();
+    let mut result: HashMap<&K, Vec<&K>> = parent_map
+        .iter()
+        .map(|(k, v)| (k.borrow(), v.iter().map(|x| x.borrow()).collect()))
+        .collect();
     for node in parent_map.keys() {
         let node = node.borrow();
         let parents = result.get(node).unwrap();
@@ -147,6 +157,18 @@ impl std::ops::Index<usize> for RevnoVec {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for RevnoVec {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
+impl std::fmt::Debug for RevnoVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "RevnoVec({:?})", self.0)
     }
 }
 

@@ -1,6 +1,6 @@
+use crate::RevnoVec;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use crate::RevnoVec;
 
 #[derive(Debug)]
 pub enum Error<K> {
@@ -32,8 +32,7 @@ pub struct TopoSorter<K: Eq + Hash> {
 impl<K: Eq + Hash + std::fmt::Debug + Clone> TopoSorter<K> {
     /// Create a new `TopoSorter` from a graph represented as a sequence of pairs
     /// of node_name->parent_names_list.
-    pub fn new(graph: impl Iterator<Item = (K, Vec<K>)>) -> TopoSorter<K>
-    {
+    pub fn new(graph: impl Iterator<Item = (K, Vec<K>)>) -> TopoSorter<K> {
         let mut g = HashMap::new();
         for (node, parents) in graph {
             g.insert(node, parents.into_iter().collect());
@@ -52,7 +51,8 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> TopoSorter<K> {
     ///
     /// After calling this the sorter is empty and you must create a new one.
     pub fn sorted(&mut self) -> std::result::Result<Vec<K>, Error<K>> {
-        self.iter_topo_order().collect::<std::result::Result<Vec<K>, Error<K>>>()
+        self.iter_topo_order()
+            .collect::<std::result::Result<Vec<K>, Error<K>>>()
     }
 
     /// Yield the nodes of the graph in a topological order.
@@ -289,7 +289,12 @@ pub struct MergeSorter<K> {
 }
 
 impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
-    pub fn new(mut graph: HashMap<K, Vec<K>>, branch_tip: Option<K>, mainline_revisions: Option<Vec<K>>, generate_revno: bool) -> Self {
+    pub fn new(
+        mut graph: HashMap<K, Vec<K>>,
+        branch_tip: Option<K>,
+        mainline_revisions: Option<Vec<K>>,
+        generate_revno: bool,
+    ) -> Self {
         let stop_revision;
 
         // if there is an explicit mainline, alter the graph to match. This is
@@ -309,7 +314,8 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
                     if graph_parent_ids[0] == *parent {
                         continue;
                     }
-                    let current_position = graph_parent_ids.iter().position(|x| x == parent).unwrap();
+                    let current_position =
+                        graph_parent_ids.iter().position(|x| x == parent).unwrap();
                     graph_parent_ids.swap(0, current_position);
                 } else {
                     // We ran into a ghost, skip over it, this is a workaround for
@@ -334,7 +340,10 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
         // and revno_tuple is the tuple that was assigned to the node.
         // we dont know revnos to start with, so we start it seeded with
         // [None, True]
-        let revnos = graph.keys().map(|revision| (revision.clone(), (None, true))).collect::<HashMap<K, (Option<RevnoVec>, bool)>>();
+        let revnos = graph
+            .keys()
+            .map(|revision| (revision.clone(), (None, true)))
+            .collect::<HashMap<K, (Option<RevnoVec>, bool)>>();
 
         let mut sorter = MergeSorter {
             generate_revno,
@@ -371,7 +380,9 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
     ///
     /// After finishing iteration the sorter is empty and you cannot continue
     /// iteration.
-    pub fn iter_topo_order(&mut self) -> impl Iterator<Item = (usize, K, usize, Option<RevnoVec>, bool)> + '_ {
+    pub fn iter_topo_order(
+        &mut self,
+    ) -> impl Iterator<Item = (usize, K, usize, Option<RevnoVec>, bool)> + '_ {
         self
     }
 
@@ -449,21 +460,22 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
         }
 
         // store the revno for this node for future reference
-        self.revnos.entry(node_name.clone()).and_modify(|e| e.0 = Some(revno.clone()));
+        self.revnos
+            .entry(node_name.clone())
+            .and_modify(|e| e.0 = Some(revno.clone()));
         self.completed_node_names.insert(node_name.clone());
-        self.scheduled_nodes.push((node_name.clone(), merge_depth, revno));
+        self.scheduled_nodes
+            .push((node_name.clone(), merge_depth, revno));
         node_name
     }
-
 }
 
 impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
     type Item = (usize, K, usize, Option<RevnoVec>, bool);
     fn next(&mut self) -> Option<(usize, K, usize, Option<RevnoVec>, bool)> {
-
         while let Some((node_name, merge_depth, revno)) = self.scheduled_nodes.pop() {
             if self.stop_revision.is_some() && &node_name == self.stop_revision.as_ref().unwrap() {
-                return None;
+                break;
             }
             let end_of_merge: bool;
             if self.scheduled_nodes.is_empty() {
@@ -473,7 +485,11 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
                 // the next node is to our left
                 end_of_merge = true;
             } else if self.scheduled_nodes.last().unwrap().1 == merge_depth
-                && !self.original_graph.get(&node_name).unwrap().contains(&self.scheduled_nodes.last().unwrap().0)
+                && !self
+                    .original_graph
+                    .get(&node_name)
+                    .unwrap()
+                    .contains(&self.scheduled_nodes.last().unwrap().0)
             {
                 // the next node was part of a multiple-merge.
                 end_of_merge = true;
@@ -489,12 +505,27 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
                     end_of_merge,
                 )
             } else {
-                (self.sequence_number, node_name.to_owned(), merge_depth, None, end_of_merge)
+                (
+                    self.sequence_number,
+                    node_name.to_owned(),
+                    merge_depth,
+                    None,
+                    end_of_merge,
+                )
             };
             self.sequence_number += 1;
+            eprintln!("next: {:?}", result);
             return Some(result);
         }
         None
     }
+}
 
+pub fn merge_sort<K: Eq + Hash + std::fmt::Debug + Clone>(
+    graph: HashMap<K, Vec<K>>,
+    branch_tip: Option<K>,
+    mainline_revisions: Option<Vec<K>>,
+    generate_revno: bool,
+) -> Vec<(usize, K, usize, Option<RevnoVec>, bool)> {
+    MergeSorter::new(graph, branch_tip, mainline_revisions, generate_revno).sorted()
 }
