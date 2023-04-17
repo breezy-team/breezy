@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 /// DIAGRAM of terminology
 ///       A
 ///       /\
@@ -19,21 +20,24 @@
 /// The find_unique_lca algorithm will pick A in two steps:
 /// 1. find_lca('G', 'H') => ['D', 'E']
 /// 2. Since len(['D', 'E']) > 1, find_lca('D', 'E') => ['A']
-
-use std::collections::{HashMap,HashSet};
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use std::borrow::Borrow;
 
 mod parents_provider;
-pub use parents_provider::{ParentsProvider, StackedParentsProvider, DictParentsProvider};
+pub use parents_provider::{DictParentsProvider, ParentsProvider, StackedParentsProvider};
 
 pub type ParentMap<'a, K> = HashMap<&'a K, &'a Vec<K>>;
 
-pub fn invert_parent_map<'a, K: Hash + Eq>(parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>) -> HashMap<&'a K, Vec<&'a K>> {
+pub fn invert_parent_map<'a, K: Hash + Eq>(
+    parent_map: &'a HashMap<impl Borrow<K>, Vec<impl Borrow<K>>>,
+) -> HashMap<&'a K, Vec<&'a K>> {
     let mut child_map: HashMap<&'a K, Vec<&'a K>> = HashMap::new();
     for (child, parents) in parent_map.iter() {
         for p in parents.iter() {
-            child_map.entry(p.borrow()).or_insert_with(Vec::new).push(child.borrow());
+            child_map
+                .entry(p.borrow())
+                .or_insert_with(Vec::new)
+                .push(child.borrow());
         }
     }
     child_map
@@ -84,12 +88,18 @@ pub fn collapse_linear_regions<'a, K: Hash + Eq>(
     for (child, parents) in parent_map.iter() {
         children.entry(child.borrow()).or_insert(Vec::new());
         for p in parents.iter() {
-            children.entry(p.borrow()).or_insert(Vec::new()).push(child.borrow());
+            children
+                .entry(p.borrow())
+                .or_insert(Vec::new())
+                .push(child.borrow());
         }
     }
 
     let mut removed = HashSet::new();
-    let mut result: HashMap<&K, Vec<&K>> = parent_map.iter().map(|(k, v)| (k.borrow(), v.iter().map(|x| x.borrow()).collect())).collect();
+    let mut result: HashMap<&K, Vec<&K>> = parent_map
+        .iter()
+        .map(|(k, v)| (k.borrow(), v.iter().map(|x| x.borrow()).collect()))
+        .collect();
     for node in parent_map.keys() {
         let node = node.borrow();
         let parents = result.get(node).unwrap();
@@ -127,3 +137,79 @@ pub mod tsort;
 
 #[cfg(test)]
 mod test;
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct RevnoVec(Vec<usize>);
+
+impl RevnoVec {
+    pub fn new() -> Self {
+        RevnoVec(vec![])
+    }
+
+    pub fn bump_last(&self) -> Self {
+        let mut ret = self.clone();
+        let last_index = ret.0.len() - 1;
+        ret.0[last_index] += 1;
+        return ret;
+    }
+
+    pub fn new_branch(&self, branch_count: usize) -> Self {
+        RevnoVec::from(vec![self[0], branch_count, 1])
+    }
+}
+
+impl IntoIterator for RevnoVec {
+    type Item = usize;
+    type IntoIter = std::vec::IntoIter<usize>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl std::ops::Index<usize> for RevnoVec {
+    type Output = usize;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for RevnoVec {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
+impl std::fmt::Debug for RevnoVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "RevnoVec({:?})", self.0)
+    }
+}
+
+impl std::fmt::Display for RevnoVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut first = true;
+        for r in self.0.iter() {
+            if first {
+                first = false;
+            } else {
+                write!(f, ".")?;
+            }
+            write!(f, "{}", r)?;
+        }
+        Ok(())
+    }
+}
+
+impl From<Vec<usize>> for RevnoVec {
+    fn from(v: Vec<usize>) -> Self {
+        RevnoVec(v)
+    }
+}
+
+impl From<usize> for RevnoVec {
+    fn from(v: usize) -> Self {
+        RevnoVec(vec![v])
+    }
+}
