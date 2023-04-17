@@ -128,3 +128,38 @@ pub fn apply_delta_to_source(
     let delta_bytes = &source[delta_start..delta_end];
     apply_delta(source, delta_bytes)
 }
+
+pub fn encode_copy_instruction(mut offset: usize, mut length: usize) -> Result<Vec<u8>, String> {
+    // Convert this offset into a control code and bytes.
+    let mut copy_command: u8 = 0x80;
+    let mut copy_bytes: Vec<u8> = vec![];
+
+    for copy_bit in [0x01, 0x02, 0x04, 0x08].iter() {
+        let base_byte = (offset & 0xff) as u8;
+        if base_byte != 0 {
+            copy_command |= *copy_bit;
+            copy_bytes.push(base_byte);
+        }
+        offset >>= 8;
+    }
+    if length > 0x10000 {
+        return Err("we don't emit copy records for lengths > 64KiB".to_string());
+    }
+    if length == 0 {
+        return Err("We cannot emit a copy of length 0".to_string());
+    }
+    if length != 0x10000 {
+        // A copy of length exactly 64*1024 == 0x10000 is sent as a length of 0,
+        // since that saves bytes for large chained copies
+        for copy_bit in [0x10, 0x20].iter() {
+            let base_byte = (length & 0xff) as u8;
+            if base_byte != 0 {
+                copy_command |= *copy_bit;
+                copy_bytes.push(base_byte);
+            }
+            length >>= 8;
+        }
+    }
+    copy_bytes.insert(0, copy_command);
+    Ok(copy_bytes)
+}

@@ -21,6 +21,7 @@ useless stuff.
 """
 
 from .. import osutils
+from ._groupcompress_rs import encode_base128_int, encode_copy_instruction
 
 
 class _OutputHandler:
@@ -305,47 +306,6 @@ class LinesDeltaIndex:
                 last_byte = self.line_offsets[old_start + range_len - 1]
                 output_handler.add_copy(first_byte, last_byte)
         return out_lines, index_lines
-
-
-def encode_base128_int(val):
-    """Convert an integer into a 7-bit lsb encoding."""
-    data = bytearray()
-    count = 0
-    while val >= 0x80:
-        data.append((val | 0x80) & 0xFF)
-        val >>= 7
-    data.append(val)
-    return bytes(data)
-
-
-def encode_copy_instruction(offset, length):
-    """Convert this offset into a control code and bytes."""
-    copy_command = 0x80
-    copy_bytes = [None]
-
-    for copy_bit in (0x01, 0x02, 0x04, 0x08):
-        base_byte = offset & 0xff
-        if base_byte:
-            copy_command |= copy_bit
-            copy_bytes.append(bytes([base_byte]))
-        offset >>= 8
-    if length is None:
-        raise ValueError("cannot supply a length of None")
-    if length > 0x10000:
-        raise ValueError("we don't emit copy records for lengths > 64KiB")
-    if length == 0:
-        raise ValueError("We cannot emit a copy of length 0")
-    if length != 0x10000:
-        # A copy of length exactly 64*1024 == 0x10000 is sent as a length of 0,
-        # since that saves bytes for large chained copies
-        for copy_bit in (0x10, 0x20):
-            base_byte = length & 0xff
-            if base_byte:
-                copy_command |= copy_bit
-                copy_bytes.append(bytes([base_byte]))
-            length >>= 8
-    copy_bytes[0] = bytes([copy_command])
-    return b''.join(copy_bytes)
 
 
 def make_delta(source_bytes, target_bytes):
