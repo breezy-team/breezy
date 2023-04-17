@@ -18,8 +18,7 @@
 import os
 from io import BytesIO
 
-from .. import (conflicts, errors, symbol_versioning, trace, transport,
-                workingtree)
+from .. import conflicts, errors, osutils, trace, workingtree
 from ..bzr import bzrdir
 from ..bzr import conflicts as _mod_bzr_conflicts
 from ..bzr import workingtree as bzrworkingtree
@@ -459,6 +458,7 @@ class TestAutoResolve(TestCaseWithTransport):
         trace.push_log_file(log)
         os_symlink = getattr(os, 'symlink', None)
         os.symlink = None
+        self.overrideAttr(osutils, "supports_symlinks", lambda x: False)
         try:
             this.merge_from_branch(other.branch)
         finally:

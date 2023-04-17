@@ -524,13 +524,12 @@ class LocalTransport(transport.Transport):
         except OSError as e:
             self._translate_error(e, relpath)
 
-    if osutils.hardlinks_good():
-        def hardlink(self, source, link_name):
-            """See Transport.link."""
-            try:
-                os.link(self._abspath(source), self._abspath(link_name))
-            except OSError as e:
-                self._translate_error(e, source)
+    def hardlink(self, source, link_name):
+        """See Transport.link."""
+        try:
+            os.link(self._abspath(source), self._abspath(link_name))
+        except OSError as e:
+            self._translate_error(e, source)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':

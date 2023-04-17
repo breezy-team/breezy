@@ -124,5 +124,13 @@ pub mod sha;
 pub mod textfile;
 pub mod time;
 
+#[cfg(unix)]
+#[path = "mounts-unix.rs"]
+pub mod mounts;
+
+#[cfg(windows)]
+#[path = "mounts-win32.rs"]
+pub mod mounts;
+
 #[cfg(test)]
 mod tests;

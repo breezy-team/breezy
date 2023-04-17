@@ -20,7 +20,7 @@ from io import BytesIO
 
 import breezy
 
-from .. import config, controldir, errors, trace
+from .. import config, controldir, errors, osutils, trace
 from .. import transport as _mod_transport
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
@@ -693,19 +693,15 @@ create_signatures=when-possible
         tree.commit('added foo', rev_id=b'foo_id')
         log = BytesIO()
         trace.push_log_file(log)
-        os_symlink = getattr(os, 'symlink', None)
-        os.symlink = None
-        try:
-            # At this point as bzr thinks symlinks are not supported
-            # we should get a warning about symlink foo and bzr should
-            # not think its removed.
-            os.unlink('foo')
-            self.build_tree(['world'])
-            tree.add('world')
-            tree.commit('added world', rev_id=b'world_id')
-        finally:
-            if os_symlink:
-                os.symlink = os_symlink
+        self.overrideAttr(os, 'symlink', None)
+        self.overrideAttr(osutils, 'supports_symlinks', lambda x: False)
+        # At this point as bzr thinks symlinks are not supported
+        # we should get a warning about symlink foo and bzr should
+        # not think its removed.
+        os.unlink('foo')
+        self.build_tree(['world'])
+        tree.add('world')
+        tree.commit('added world', rev_id=b'world_id')
         self.assertContainsRe(
             log.getvalue(),
             b'Ignoring "foo" as symlinks are not '
