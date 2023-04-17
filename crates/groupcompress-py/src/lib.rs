@@ -56,12 +56,25 @@ fn apply_delta_to_source(
     Ok(PyBytes::new(py, &ret).to_object(py))
 }
 
+#[pyfunction]
+fn encode_copy_instruction(py: Python, offset: usize, length: usize) -> PyResult<PyObject> {
+    let ret = bazaar_groupcompress::encode_copy_instruction(offset, length);
+    if ret.is_err() {
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "Invalid copy instruction",
+        ));
+    }
+    let ret = ret.unwrap();
+    Ok(PyBytes::new(py, &ret).to_object(py))
+}
+
 #[pymodule]
 fn _groupcompress_rs(_: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(encode_base128_int))?;
     m.add_wrapped(wrap_pyfunction!(decode_base128_int))?;
     m.add_wrapped(wrap_pyfunction!(apply_delta))?;
     m.add_wrapped(wrap_pyfunction!(decode_copy_instruction))?;
+    m.add_wrapped(wrap_pyfunction!(encode_copy_instruction))?;
     m.add_wrapped(wrap_pyfunction!(apply_delta_to_source))?;
     Ok(())
 }
