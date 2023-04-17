@@ -7,8 +7,6 @@ pub enum Error<K> {
     Cycle(Vec<K>),
 }
 
-type Result<K> = std::result::Result<K, Error<K>>;
-
 #[derive(Debug)]
 pub struct TopoSorter<K: Eq + Hash> {
     graph: HashMap<K, Vec<K>>,
@@ -59,14 +57,14 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> TopoSorter<K> {
     ///
     /// After finishing iteration the sorter is empty and you cannot continue
     /// iteration.
-    pub fn iter_topo_order(&mut self) -> impl Iterator<Item = Result<K>> + '_ {
+    pub fn iter_topo_order(&mut self) -> impl Iterator<Item = std::result::Result<K, Error<K>>> + '_ {
         self
     }
 }
 
 impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for TopoSorter<K> {
-    type Item = Result<K>;
-    fn next(&mut self) -> Option<Result<K>> {
+    type Item = std::result::Result<K, Error<K>>;
+    fn next(&mut self) -> Option<std::result::Result<K, Error<K>>> {
         loop {
             // loop until pending_node_stack is empty
             while !self.pending_node_stack.is_empty() {
@@ -373,7 +371,7 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
     /// Sort the graph and return as a list.
     ///
     /// After calling this the sorter is empty and you must create a new one.
-    pub fn sorted(&mut self) -> Vec<(usize, K, usize, Option<RevnoVec>, bool)> {
+    pub fn sorted(&mut self) -> std::result::Result<Vec<(usize, K, usize, Option<RevnoVec>, bool)>, Error<K>> {
         self.iter_topo_order().collect()
     }
 
@@ -382,7 +380,7 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
     /// iteration.
     pub fn iter_topo_order(
         &mut self,
-    ) -> impl Iterator<Item = (usize, K, usize, Option<RevnoVec>, bool)> + '_ {
+    ) -> impl Iterator<Item = std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>> + '_ {
         self
     }
 
@@ -396,7 +394,7 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
         self.left_subtree_pushed_stack.push(false);
 
         // As we push it, figure out if this is the first child
-        let mut first_child: Option<bool> = None;
+        let first_child: Option<bool>;
         if !parents.is_empty() {
             // Node has parents, assign from the left most parent.
             if let Some(entry) = self.revnos.get_mut(&parents[0]) {
@@ -404,7 +402,10 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
                 entry.1 = false;
             } else {
                 // Left-hand parent is a ghost, consider it not to exist
+                first_child = Some(false);
             }
+        } else {
+            first_child = None;
         }
         self.pending_parents_stack.push(parents);
         self.first_child_stack.push(first_child);
@@ -430,34 +431,30 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
                 None => (), // left-hand parent is a ghost, treat it as not existing
             }
         }
-        let revno: RevnoVec;
-        if let Some(parent_revno) = parent_revno {
+        let revno: RevnoVec = if let Some(parent_revno) = parent_revno {
             if first_child.is_none() || !first_child.unwrap() {
                 // not the first child, make a new branch
                 let base_revno = parent_revno[0];
                 let mut branch_count = *self.revno_to_branch_count.get(&base_revno).unwrap_or(&0);
                 branch_count += 1;
                 self.revno_to_branch_count.insert(base_revno, branch_count);
-                revno = RevnoVec::from(vec![parent_revno[0], branch_count, 1]);
-                // revno = (parent_revno[0], branch_count, parent_revno[-1]+1);
+                parent_revno.new_branch(branch_count)
             } else {
                 // as the first child, we just increase the final revision
                 // number
-                let mut revno_vec = parent_revno.clone();
-                revno_vec.bump_last();
-                revno = revno_vec;
+                parent_revno.bump_last()
             }
         } else {
             // no parents, use the root sequence
             let mut root_count = *self.revno_to_branch_count.get(&0).unwrap_or(&0);
             root_count += 1;
-            if root_count > 0 {
-                revno = RevnoVec::from(vec![0, root_count, 1]);
-            } else {
-                revno = RevnoVec::from(1);
-            }
             self.revno_to_branch_count.insert(0, root_count);
-        }
+            if root_count > 0 {
+                RevnoVec::from(vec![0, root_count, 1])
+            } else {
+                RevnoVec::from(1)
+            }
+        };
 
         // store the revno for this node for future reference
         self.revnos
@@ -468,11 +465,90 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
             .push((node_name.clone(), merge_depth, revno));
         node_name
     }
+
+    fn build(&mut self) -> std::result::Result<(), Error<K>> {
+        while !self.node_name_stack.is_empty() {
+            let parents_to_visit = self.pending_parents_stack.last().unwrap();
+            if parents_to_visit.is_empty() {
+                self.pop_node();
+            } else {
+                while !self.pending_parents_stack.last().unwrap().is_empty() {
+                    let is_left_subtree;
+                    let next_node_name;
+                    if !self.left_subtree_pushed_stack.last().unwrap() {
+                        next_node_name = self.pending_parents_stack.last_mut().unwrap().remove(0);
+                        is_left_subtree = true;
+                        *self.left_subtree_pushed_stack.last_mut().unwrap() = true;
+                        // recurse depth first into the primary parent
+                    } else {
+                        next_node_name = self.pending_parents_stack.last_mut().unwrap().pop().unwrap();
+                        is_left_subtree = false;
+                        // place any merges in right-to-left order for scheduling
+                        // which gives us left-to-right order after we reverse
+                        // the scheduled queue. XXX: This has the effect of
+                        // allocating common-new revisions to the right-most
+                        // subtree rather than the left most, which will
+                        // display nicely (you get smaller trees at the top
+                        // of the combined merge).
+                    }
+                    if self.completed_node_names.contains(&next_node_name) {
+                        // this parent was completed by a child on the
+                        // call stack. skip it.
+                        continue;
+                    }
+                    // otherwise transfer it from the source graph into the
+                    // top of the current depth first search stack.
+                    let parents = match self.graph.remove(&next_node_name) {
+                        Some(parents) => parents,
+                        None => {
+                            // if the next node is not in the source graph it has
+                            // already been popped from it and placed into the
+                            // current search stack (but not completed or we would
+                            // have hit the continue 4 lines up.
+                            // this indicates a cycle.
+                            if self.original_graph.contains_key(&next_node_name) {
+                                return Err(Error::Cycle(self.node_name_stack.clone()));
+                            } else {
+                                // This is just a ghost parent, ignore it
+                                continue;
+                            }
+                        }
+                    };
+                    let next_merge_depth = if is_left_subtree {
+                        // a new child branch from name_stack[-1]
+                        0
+                    } else {
+                        1
+                    } + self.node_merge_depth_stack.last().unwrap();
+                    self.push_node(next_node_name, next_merge_depth, parents);
+                    // and do not continue processing parents until this 'call'
+                    // has recursed.
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
-    type Item = (usize, K, usize, Option<RevnoVec>, bool);
-    fn next(&mut self) -> Option<(usize, K, usize, Option<RevnoVec>, bool)> {
+    type Item = std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>;
+    fn next(&mut self) -> Option<std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>> {
+        eprintln!("scheduled_nodes: {:?}", self.scheduled_nodes);
+        eprintln!("node_name_stack: {:?}", self.node_name_stack);
+        eprintln!("pending_parents_stack: {:?}", self.pending_parents_stack);
+        eprintln!("left_subtree_pushed_stack: {:?}", self.left_subtree_pushed_stack);
+        eprintln!("node_merge_depth_stack: {:?}", self.node_merge_depth_stack);
+        eprintln!("first_child_stack: {:?}", self.first_child_stack);
+        eprintln!("revnos: {:?}", self.revnos);
+        eprintln!("revno_to_branch_count: {:?}", self.revno_to_branch_count);
+        eprintln!("completed_node_names: {:?}", self.completed_node_names);
+        eprintln!("original_graph: {:?}", self.original_graph);
+        eprintln!("stop_revision: {:?}", self.stop_revision);
+        eprintln!("");
+        if let Err(err) = self.build() {
+            return Some(Err(err));
+        }
         while let Some((node_name, merge_depth, revno)) = self.scheduled_nodes.pop() {
             if self.stop_revision.is_some() && &node_name == self.stop_revision.as_ref().unwrap() {
                 break;
@@ -514,8 +590,7 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
                 )
             };
             self.sequence_number += 1;
-            eprintln!("next: {:?}", result);
-            return Some(result);
+            return Some(Ok(result));
         }
         None
     }
@@ -526,6 +601,6 @@ pub fn merge_sort<K: Eq + Hash + std::fmt::Debug + Clone>(
     branch_tip: Option<K>,
     mainline_revisions: Option<Vec<K>>,
     generate_revno: bool,
-) -> Vec<(usize, K, usize, Option<RevnoVec>, bool)> {
+) -> std::result::Result<Vec<(usize, K, usize, Option<RevnoVec>, bool)>, Error<K>> {
     MergeSorter::new(graph, branch_tip, mainline_revisions, generate_revno).sorted()
 }

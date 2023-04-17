@@ -146,9 +146,24 @@ impl RevnoVec {
         RevnoVec(vec![])
     }
 
-    pub fn bump_last(&mut self) {
-        let last_index = self.0.len() - 1;
-        self.0[last_index] += 1;
+    pub fn bump_last(&self) -> Self {
+        let mut ret = self.clone();
+        let last_index = ret.0.len() - 1;
+        ret.0[last_index] += 1;
+        return ret;
+    }
+
+    pub fn new_branch(&self, branch_count: usize) -> Self {
+        RevnoVec::from(vec![self[0], branch_count, 1])
+    }
+}
+
+impl IntoIterator for RevnoVec {
+    type Item = usize;
+    type IntoIter = std::vec::IntoIter<usize>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

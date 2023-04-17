@@ -6,6 +6,7 @@ use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use breezy_graph::RevnoVec;
 
 import_exception!(breezy.errors, GraphCycleError);
 
@@ -254,21 +255,8 @@ impl TopoSorter {
     }
 }
 
-#[pyclass]
-struct PyRevnoVec {
-    revno_vec: breezy_graph::RevnoVec,
-}
-
-impl From<breezy_graph::RevnoVec> for PyRevnoVec {
-    fn from(revno_vec: breezy_graph::RevnoVec) -> Self {
-        PyRevnoVec { revno_vec }
-    }
-}
-
-impl From<PyRevnoVec> for breezy_graph::RevnoVec {
-    fn from(revno_vec: PyRevnoVec) -> Self {
-        revno_vec.revno_vec
-    }
+fn revno_vec_to_py(py: Python, revno: RevnoVec) -> PyObject {
+    PyTuple::new(py, revno.into_iter().map(|v| v.into_py(py))).to_object(py)
 }
 
 #[pyclass]
@@ -346,21 +334,29 @@ impl MergeSorter {
             graph,
             branch_tip.map(|k| PyNode::from(k)),
             mainline_revisions,
-            generate_revno.unwrap_or(true),
+            generate_revno.unwrap_or(false),
         );
         Ok(MergeSorter { sorter })
     }
 
-    fn __next__(&mut self, py: Python) -> Option<(usize, PyObject, usize, Option<PyObject>, bool)> {
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         match self.sorter.next() {
-            None => None,
-            Some((sequence_number, node, merge_depth, revno, end_of_merge)) => Some((
+            None => Ok(None),
+            Some(Ok((sequence_number, node, merge_depth, None, end_of_merge))) => Ok(Some((
                 sequence_number,
                 node.into_py(py),
                 merge_depth,
-                revno.map(|r| PyRevnoVec::from(r).into_py(py)),
                 end_of_merge,
-            )),
+            ).into_py(py))),
+
+            Some(Ok((sequence_number, node, merge_depth, Some(revno), end_of_merge))) => Ok(Some((
+                sequence_number,
+                node.into_py(py),
+                merge_depth,
+                revno_vec_to_py(py, revno),
+                end_of_merge,
+            ).into_py(py))),
+            Some(Err(breezy_graph::tsort::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
         }
     }
 
@@ -374,10 +370,13 @@ impl MergeSorter {
 
     fn sorted(&mut self, py: Python) -> PyResult<PyObject> {
         let ret = PyList::empty(py);
-        while let Some((sequence_number, node, merge_depth, revno, end_of_merge)) =
-            self.__next__(py)
-        {
-            ret.append((sequence_number, node, merge_depth, revno, end_of_merge))?;
+        loop {
+            let item = self.__next__(py)?;
+            if let Some(item) = item {
+                ret.append(item)?;
+            } else {
+                break;
+            }
         }
         Ok(ret.to_object(py))
     }
