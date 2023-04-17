@@ -127,3 +127,52 @@ pub mod tsort;
 
 #[cfg(test)]
 mod test;
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct RevnoVec(Vec<usize>);
+
+impl RevnoVec {
+    pub fn new() -> Self {
+        RevnoVec(vec![])
+    }
+
+    pub fn bump_last(&mut self) {
+        let last_index = self.0.len() - 1;
+        self.0[last_index] += 1;
+    }
+}
+
+impl std::ops::Index<usize> for RevnoVec {
+    type Output = usize;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl std::fmt::Display for RevnoVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut first = true;
+        for r in self.0.iter() {
+            if first {
+                first = false;
+            } else {
+                write!(f, ".")?;
+            }
+            write!(f, "{}", r)?;
+        }
+        Ok(())
+    }
+}
+
+impl From<Vec<usize>> for RevnoVec {
+    fn from(v: Vec<usize>) -> Self {
+        RevnoVec(v)
+    }
+}
+
+impl From<usize> for RevnoVec {
+    fn from(v: usize) -> Self {
+        RevnoVec(vec![v])
+    }
+}
