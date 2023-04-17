@@ -31,7 +31,7 @@ import subprocess
 from breezy import (
     controldir,
     textfile,
-    timestamp,
+    patch,
     views,
     )
 
@@ -534,7 +534,7 @@ def _patch_header_date(tree, path):
         mtime = tree.get_file_mtime(path)
     except FileTimestampUnavailable:
         mtime = 0
-    return timestamp.format_patch_date(mtime)
+    return patch.format_patch_date(mtime)
 
 
 def get_executable_change(old_is_x, new_is_x):

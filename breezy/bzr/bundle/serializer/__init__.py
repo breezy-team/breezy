@@ -23,9 +23,9 @@ from io import BytesIO
 
 from .... import errors, registry
 from ....diff import internal_diff
-from ....revision import NULL_REVISION
 # For backwards-compatibility
-from ....timestamp import format_highres_date, unpack_highres_date
+from ....osutils import format_highres_date, unpack_highres_date
+from ....revision import NULL_REVISION
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = b'# Bazaar revision bundle v'

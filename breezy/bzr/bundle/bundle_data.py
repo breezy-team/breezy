@@ -21,12 +21,12 @@ import os
 import pprint
 from io import BytesIO
 
-from ... import cache_utf8, osutils, timestamp
+from ... import cache_utf8, osutils
 from ...errors import BzrError, NoSuchId, TestamentMismatch
 from ...osutils import pathjoin, sha_string, sha_strings
 from ...revision import NULL_REVISION, Revision
 from ...trace import mutter, warning
-from ...tree import InterTree, Tree
+from ...tree import InterTree
 from ..inventory import (Inventory, InventoryDirectory, InventoryFile,
                          InventoryLink)
 from ..inventorytree import InventoryTree
@@ -86,7 +86,7 @@ class RevisionInfo:
     @staticmethod
     def from_revision(revision):
         revision_info = RevisionInfo(revision.revision_id)
-        date = timestamp.format_highres_date(revision.timestamp,
+        date = osutils.format_highres_date(revision.timestamp,
                                              revision.timezone)
         revision_info.date = date
         revision_info.timezone = revision.timezone
@@ -131,18 +131,16 @@ class BundleInfo:
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from breezy.timestamp import unpack_highres_date
-
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
-            self.timestamp, self.timezone = unpack_highres_date(self.date)
+            self.timestamp, self.timezone = osutils.unpack_highres_date(self.date)
 
         self.real_revisions = []
         for rev in self.revisions:
             if rev.timestamp is None:
                 if rev.date is not None:
                     rev.timestamp, rev.timezone = \
-                        unpack_highres_date(rev.date)
+                        osutils.unpack_highres_date(rev.date)
                 else:
                     rev.timestamp = self.timestamp
                     rev.timezone = self.timezone
