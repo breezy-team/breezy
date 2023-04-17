@@ -542,19 +542,15 @@ class TestIniConfigBuilding(TestIniConfig):
         parser = my_config._get_parser()
         self.assertIs(my_config._get_parser(), parser)
 
-    def _dummy_chown(self, path, uid, gid):
-        self.path, self.uid, self.gid = path, uid, gid
-
     def test_ini_config_ownership(self):
         """Ensure that chown is happening during _write_config_file"""
         self.requireFeature(features.chown_feature)
-        self.overrideAttr(os, 'chown', self._dummy_chown)
-        self.path = self.uid = self.gid = None
         conf = config.IniBasedConfig(file_name='./foo.conf')
         conf._write_config_file()
-        self.assertEqual(self.path, './foo.conf')
-        self.assertIsInstance(self.uid, int)
-        self.assertIsInstance(self.gid, int)
+        got = os.stat('foo.conf')
+        expected = os.stat('.')
+        self.assertEqual(expected.st_uid, got.st_uid)
+        self.assertEqual(expected.st_gid, got.st_uid)
 
 
 class TestIniConfigSaving(tests.TestCaseInTempDir):

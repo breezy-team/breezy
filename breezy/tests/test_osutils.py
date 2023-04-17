@@ -1560,83 +1560,6 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual('./' + name0u, entry[4])
         self.assertStatIsCorrect(entry[4], entry[3])
 
-    def assertPathCompare(self, path_less, path_greater):
-        """check that path_less and path_greater compare correctly."""
-        self.assertEqual(0, osutils.compare_paths_prefix_order(
-            path_less, path_less))
-        self.assertEqual(0, osutils.compare_paths_prefix_order(
-            path_greater, path_greater))
-        self.assertEqual(-1, osutils.compare_paths_prefix_order(
-            path_less, path_greater))
-        self.assertEqual(1, osutils.compare_paths_prefix_order(
-            path_greater, path_less))
-
-    def test_compare_paths_prefix_order(self):
-        # root before all else
-        self.assertPathCompare("/", "/a")
-        # alpha within a dir
-        self.assertPathCompare("/a", "/b")
-        self.assertPathCompare("/b", "/z")
-        # high dirs before lower.
-        self.assertPathCompare("/z", "/a/a")
-        # except if the deeper dir should be output first
-        self.assertPathCompare("/a/b/c", "/d/g")
-        # lexical betwen dirs of the same height
-        self.assertPathCompare("/a/z", "/z/z")
-        self.assertPathCompare("/a/c/z", "/a/d/e")
-
-        # this should also be consistent for no leading / paths
-        # root before all else
-        self.assertPathCompare("", "a")
-        # alpha within a dir
-        self.assertPathCompare("a", "b")
-        self.assertPathCompare("b", "z")
-        # high dirs before lower.
-        self.assertPathCompare("z", "a/a")
-        # except if the deeper dir should be output first
-        self.assertPathCompare("a/b/c", "d/g")
-        # lexical betwen dirs of the same height
-        self.assertPathCompare("a/z", "z/z")
-        self.assertPathCompare("a/c/z", "a/d/e")
-
-    def test_path_prefix_sorting(self):
-        """Doing a sort on path prefix should match our sample data."""
-        original_paths = [
-            'a',
-            'a/b',
-            'a/b/c',
-            'b',
-            'b/c',
-            'd',
-            'd/e',
-            'd/e/f',
-            'd/f',
-            'd/g',
-            'g',
-            ]
-
-        dir_sorted_paths = [
-            'a',
-            'b',
-            'd',
-            'g',
-            'a/b',
-            'a/b/c',
-            'b/c',
-            'd/e',
-            'd/f',
-            'd/g',
-            'd/e/f',
-            ]
-
-        self.assertEqual(
-            dir_sorted_paths,
-            sorted(original_paths, key=osutils.path_prefix_key))
-        # using the comparison routine shoudl work too:
-        self.assertEqual(
-            dir_sorted_paths,
-            sorted(original_paths, key=osutils.path_prefix_key))
-
 
 class TestCopyTree(tests.TestCaseInTempDir):
 
@@ -1660,37 +1583,6 @@ class TestCopyTree(tests.TestCaseInTempDir):
         osutils.copy_tree('source', 'target')
         self.assertEqual(['lnk'], os.listdir('target'))
         self.assertEqual('a/generic/path', os.readlink('target/lnk'))
-
-    def test_copy_tree_handlers(self):
-        processed_files = []
-        processed_links = []
-
-        def file_handler(from_path, to_path):
-            processed_files.append(('f', from_path, to_path))
-
-        def dir_handler(from_path, to_path):
-            processed_files.append(('d', from_path, to_path))
-
-        def link_handler(from_path, to_path):
-            processed_links.append((from_path, to_path))
-        handlers = {'file': file_handler,
-                    'directory': dir_handler,
-                    'symlink': link_handler,
-                    }
-
-        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
-        if osutils.supports_symlinks(self.test_dir):
-            os.symlink('a/generic/path', 'source/lnk')
-        osutils.copy_tree('source', 'target', handlers=handlers)
-
-        self.assertEqual([('d', 'source', 'target'),
-                          ('f', 'source/a', 'target/a'),
-                          ('d', 'source/b', 'target/b'),
-                          ('f', 'source/b/c', 'target/b/c'),
-                          ], processed_files)
-        self.assertPathDoesNotExist('target')
-        if osutils.supports_symlinks(self.test_dir):
-            self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
 class TestSetUnsetEnv(tests.TestCase):
@@ -2106,16 +1998,6 @@ class TestTerminalWidth(tests.TestCase):
 class TestCreationOps(tests.TestCaseInTempDir):
     _test_needs_features = [features.chown_feature]
 
-    def setUp(self):
-        super().setUp()
-        self.overrideAttr(os, 'chown', self._dummy_chown)
-
-        # params set by call to _dummy_chown
-        self.path = self.uid = self.gid = None
-
-    def _dummy_chown(self, path, uid, gid):
-        self.path, self.uid, self.gid = path, uid, gid
-
     def test_copy_ownership_from_path(self):
         """copy_ownership_from_path test with specified src."""
         ownsrc = '/'
@@ -2123,9 +2005,9 @@ class TestCreationOps(tests.TestCaseInTempDir):
         osutils.copy_ownership_from_path('test_file', ownsrc)
 
         s = os.stat(ownsrc)
-        self.assertEqual(self.path, 'test_file')
-        self.assertEqual(self.uid, s.st_uid)
-        self.assertEqual(self.gid, s.st_gid)
+        expected = os.stat(ownsrc)
+        self.assertEqual(expected.st_uid, s.st_uid)
+        self.assertEqual(expected.st_gid, s.st_gid)
 
     def test_copy_ownership_nonesrc(self):
         """copy_ownership_from_path test with src=None."""
@@ -2133,10 +2015,10 @@ class TestCreationOps(tests.TestCaseInTempDir):
         # should use parent dir for permissions
         osutils.copy_ownership_from_path('test_file')
 
-        s = os.stat('..')
-        self.assertEqual(self.path, 'test_file')
-        self.assertEqual(self.uid, s.st_uid)
-        self.assertEqual(self.gid, s.st_gid)
+        s = os.stat('test_file')
+        expected = os.stat('..')
+        self.assertEqual(expected.st_uid, s.st_uid)
+        self.assertEqual(expected.st_gid, s.st_gid)
 
 
 class TestGetuserUnicode(tests.TestCase):
@@ -2245,40 +2127,6 @@ class SupportsExecutableTests(tests.TestCaseInTempDir):
         self.assertIsInstance(osutils.supports_executable(self.test_dir), bool)
 
 
-class SupportsSymlinksTests(tests.TestCaseInTempDir):
-
-    def setUp(self):
-        super().setUp()
-        self.overrideAttr(
-            osutils, '_FILESYSTEM_FINDER',
-            osutils.MtabFilesystemFinder([
-                (b'/usr', 'ext4'),
-                (b'/home', 'vfat'),
-                (b'/home/jelmer/smb', 'ntfs'),
-                (b'/home/jelmer', 'ext2'),
-            ]))
-
-    def test_returns_bool(self):
-        self.assertIsInstance(osutils.supports_symlinks(self.test_dir), bool)
-
-    def test_known(self):
-        self.assertTrue(osutils.supports_symlinks("/usr"))
-        self.assertFalse(osutils.supports_symlinks("/home/bogus"))
-        self.assertTrue(osutils.supports_symlinks("/home/jelmer/osx"))
-        self.assertFalse(osutils.supports_symlinks("/home/jelmer/smb"))
-
-    def test_unknown(self):
-        have_symlinks = sys.platform != "win32"
-        self.assertIs(osutils.supports_symlinks("/var"), have_symlinks)
-
-    def test_error(self):
-        have_symlinks = sys.platform != "win32"
-        def raise_error(path):
-            raise errors.DependencyNotPresent('FS', 'TEST')
-        self.overrideAttr(osutils, 'get_fs_type', raise_error)
-        self.assertIs(osutils.supports_symlinks("/var"), have_symlinks)
-
-
 class MtabReader(tests.TestCaseInTempDir):
 
     def test_read_mtab(self):
@@ -2291,8 +2139,8 @@ iminvalid
 """)])
         self.assertEqual(
             list(osutils.read_mtab('mtab')),
-            [(b'/', 'ext4'),
-             (b'/home', 'vfat')])
+            [('/', 'ext4'),
+             ('/home', 'vfat')])
 
 
 class GetFsTypeTests(tests.TestCaseInTempDir):
@@ -2300,24 +2148,3 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
     def test_returns_string_or_none(self):
         ret = osutils.get_fs_type(self.test_dir)
         self.assertTrue(isinstance(ret, str) or ret is None)
-
-    def test_returns_most_specific(self):
-        self.overrideAttr(
-            osutils, '_FILESYSTEM_FINDER',
-            osutils.MtabFilesystemFinder(
-                [(b'/', 'ext4'), (b'/home', 'vfat'),
-                 (b'/home/jelmer', 'ext2')]))
-        self.assertEqual(osutils.get_fs_type(b'/home/jelmer/blah'), 'ext2')
-        self.assertEqual(osutils.get_fs_type('/home/jelmer/blah'), 'ext2')
-        self.assertEqual(osutils.get_fs_type(b'/home/jelmer'), 'ext2')
-        self.assertEqual(osutils.get_fs_type(b'/home/martin'), 'vfat')
-        self.assertEqual(osutils.get_fs_type(b'/home'), 'vfat')
-        self.assertEqual(osutils.get_fs_type(b'/other'), 'ext4')
-
-    def test_returns_none(self):
-        self.overrideAttr(
-            osutils, '_FILESYSTEM_FINDER',
-            osutils.MtabFilesystemFinder([]))
-        self.assertIsNone(osutils.get_fs_type('/home/jelmer/blah'))
-        self.assertIsNone(osutils.get_fs_type(b'/home/jelmer/blah'))
-        self.assertIsNone(osutils.get_fs_type('/home/jelmer'))

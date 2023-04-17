@@ -830,20 +830,14 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                             'b\N{Euro Sign}hind_curtain')
 
     def test_unsupported_symlink_no_conflict(self):
-        def tt_helper():
-            wt = self.make_branch_and_tree('.')
-            tt = wt.transform()
-            self.addCleanup(tt.finalize)
-            tt.new_symlink('foo', tt.root, 'bar')
-            result = tt.find_raw_conflicts()
-            self.assertEqual([], result)
-        os_symlink = getattr(os, 'symlink', None)
-        os.symlink = None
-        try:
-            tt_helper()
-        finally:
-            if os_symlink:
-                os.symlink = os_symlink
+        self.overrideAttr(os, "symlink", None)
+        self.overrideAttr(osutils, "supports_symlinks", lambda x: False)
+        wt = self.make_branch_and_tree('.')
+        tt = wt.transform()
+        self.addCleanup(tt.finalize)
+        tt.new_symlink('foo', tt.root, 'bar')
+        result = tt.find_raw_conflicts()
+        self.assertEqual([], result)
 
     def get_conflicted(self):
         create, root = self.transform()

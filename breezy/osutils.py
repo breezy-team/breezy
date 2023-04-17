@@ -647,25 +647,13 @@ def report_extension_load_failures():
 
 from ._osutils_rs import (_accessible_normalized_filename,
                           _inaccessible_normalized_filename, chunks_to_lines,
-                          chunks_to_lines_iter, normalized_filename,
-                          normalizes_filenames, split_lines)
+                          chunks_to_lines_iter, link_or_copy,
+                          normalized_filename, normalizes_filenames,
+                          split_lines)
 
 
 def hardlinks_good():
     return sys.platform not in ('win32', 'cygwin', 'darwin')
-
-
-def link_or_copy(src, dest):
-    """Hardlink a file, or copy it if it can't be hardlinked."""
-    if not hardlinks_good():
-        shutil.copyfile(src, dest)
-        return
-    try:
-        os.link(src, dest)
-    except OSError as e:
-        if e.errno != errno.EXDEV:
-            raise
-        shutil.copyfile(src, dest)
 
 
 def delete_any(path):
@@ -695,23 +683,6 @@ def delete_any(path):
             _delete_file_or_dir(path)
         else:
             raise
-
-
-def supports_hardlinks(path):
-    if getattr(os, 'link', None) is None:
-        return False
-    try:
-        fs_type = get_fs_type(path)
-    except errors.DependencyNotPresent as e:
-        trace.mutter('Unable to get fs type for %r: %s', path, e)
-        return True
-    else:
-        if fs_type is None:
-            return sys.platform != 'win32'
-        if fs_type in ('vfat', 'ntfs'):
-            # filesystems known to not support hardlinks
-            return False
-        return True
 
 
 def readlink(abspath):
@@ -1067,61 +1038,11 @@ else:
     _terminal_size = _ioctl_terminal_size
 
 
-def supports_executable(path):
-    """Return if filesystem at path supports executable bit.
-
-    :param path: Path for which to check the file system
-    :return: boolean indicating whether executable bit can be stored/relied upon
-    """
-    if sys.platform == 'win32':
-        return False
-    try:
-        fs_type = get_fs_type(path)
-    except errors.DependencyNotPresent as e:
-        trace.mutter('Unable to get fs type for %r: %s', path, e)
-    else:
-        if fs_type is None:
-            return sys.platform != 'win32'
-        if fs_type in ('vfat', 'ntfs'):
-            # filesystems known to not support executable bit
-            return False
-    return True
-
-
-def supports_symlinks(path):
-    """Return if the filesystem at path supports the creation of symbolic links.
-
-    """
-    if getattr(os, 'symlink', None) is None:
-        return False
-    try:
-        fs_type = get_fs_type(path)
-    except errors.DependencyNotPresent as e:
-        trace.mutter('Unable to get fs type for %r: %s', path, e)
-    else:
-        if fs_type is None:
-            return sys.platform != 'win32'
-        if fs_type in ('vfat', 'ntfs'):
-            # filesystems known to not support symlinks
-            return False
-    return True
-
-
-def supports_posix_readonly():
-    """Return True if 'readonly' has POSIX semantics, False otherwise.
-
-    Notably, a win32 readonly file cannot be deleted, unlike POSIX where the
-    directory controls creation/deletion, etc.
-
-    And under win32, readonly means that the directory itself cannot be
-    deleted.  The contents of a readonly directory can be changed, unlike POSIX
-    where files in readonly directories cannot be added, deleted or renamed.
-    """
-    return sys.platform != "win32"
-
-
+supports_executable = _osutils_rs.supports_executable
+supports_hardlinks = _osutils_rs.supports_hardlinks
+supports_symlinks = _osutils_rs.supports_symlinks
+supports_posix_readonly = _osutils_rs.supports_posix_readonly
 set_or_unset_env = _osutils_rs.set_or_unset_env
-
 IterableFile = _osutils_rs.IterableFile
 
 
@@ -1324,87 +1245,8 @@ class UnicodeDirReader(DirReader):
         return sorted(dirblock)
 
 
-def copy_tree(from_path, to_path, handlers={}):
-    """Copy all of the entries in from_path into to_path.
-
-    :param from_path: The base directory to copy.
-    :param to_path: The target directory. If it does not exist, it will
-        be created.
-    :param handlers: A dictionary of functions, which takes a source and
-        destinations for files, directories, etc.
-        It is keyed on the file kind, such as 'directory', 'symlink', or 'file'
-        'file', 'directory', and 'symlink' should always exist.
-        If they are missing, they will be replaced with 'os.mkdir()',
-        'os.readlink() + os.symlink()', and 'shutil.copy2()', respectively.
-    """
-    # Now, just copy the existing cached tree to the new location
-    # We use a cheap trick here.
-    # Absolute paths are prefixed with the first parameter
-    # relative paths are prefixed with the second.
-    # So we can get both the source and target returned
-    # without any extra work.
-
-    def copy_dir(source, dest):
-        os.mkdir(dest)
-
-    def copy_link(source, dest):
-        """Copy the contents of a symlink"""
-        link_to = os.readlink(source)
-        os.symlink(link_to, dest)
-
-    real_handlers = {'file': shutil.copy2,
-                     'symlink': copy_link,
-                     'directory': copy_dir,
-                     }
-    real_handlers.update(handlers)
-
-    if not os.path.exists(to_path):
-        real_handlers['directory'](from_path, to_path)
-
-    for dir_info, entries in walkdirs(from_path, prefix=to_path):
-        for relpath, name, kind, st, abspath in entries:
-            real_handlers[kind](abspath, relpath)
-
-
-def copy_ownership_from_path(dst, src=None):
-    """Copy usr/grp ownership from src file/dir to dst file/dir.
-
-    If src is None, the containing directory is used as source. If chown
-    fails, the error is ignored and a warning is printed.
-    """
-    chown = getattr(os, 'chown', None)
-    if chown is None:
-        return
-
-    if src is None:
-        src = os.path.dirname(dst)
-        if src == '':
-            src = '.'
-
-    try:
-        s = os.stat(src)
-        chown(dst, s.st_uid, s.st_gid)
-    except OSError:
-        trace.warning(
-            'Unable to copy ownership from "%s" to "%s". '
-            'You may want to set it manually.', src, dst)
-        trace.log_exception_quietly()
-
-
-def path_prefix_key(path):
-    """Generate a prefix-order path key for path.
-
-    This can be used to sort paths in the same way that walkdirs does.
-    """
-    return (dirname(path), path)
-
-
-def compare_paths_prefix_order(path_a, path_b):
-    """Compare path_a and path_b to generate the same order walkdirs uses."""
-    key_a = path_prefix_key(path_a)
-    key_b = path_prefix_key(path_b)
-    return (key_a > key_b) - (key_a < key_b)
-
+copy_ownership_from_path = _osutils_rs.copy_ownership_from_path
+copy_tree = _osutils_rs.copy_tree
 
 _cached_user_encoding = None
 
@@ -1874,101 +1716,6 @@ def ensure_empty_directory_exists(path, exception_class):
             raise exception_class(path)
 
 
-def read_mtab(path):
-    """Read an fstab-style file and extract mountpoint+filesystem information.
-
-    :param path: Path to read from
-    :yield: Tuples with mountpoints (as bytestrings) and filesystem names
-    """
-    with open(path, 'rb') as f:
-        for line in f:
-            if line.startswith(b'#'):
-                continue
-            cols = line.split()
-            if len(cols) < 3:
-                continue
-            yield cols[1], cols[2].decode('ascii', 'replace')
-
-
-class FilesystemFinder:
-    """Find the filesystem for a particular path."""
-
-    def find(self, path):
-        raise NotImplementedError
-
-
-class MtabFilesystemFinder(FilesystemFinder):
-    """Find the filesystem for a particular path."""
-
-    MTAB_PATH = '/etc/mtab'
-
-    def __init__(self, mountpoints):
-        def key(x):
-            return len(x[0])
-        self._mountpoints = sorted(mountpoints, key=key, reverse=True)
-
-    @classmethod
-    def from_mtab(cls):
-        """Create a FilesystemFinder from an mtab-style file.
-
-        Note that this will silenty ignore mtab if it doesn't exist or can not
-        be opened.
-        """
-        # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
-        # we need to re-read it.
-        try:
-            return cls(read_mtab(cls.MTAB_PATH))
-        except OSError as e:
-            trace.mutter('Unable to read mtab: %s', e)
-            return cls([])
-
-    def find(self, path):
-        """Find the filesystem used by a particular path.
-
-        :param path: Path to find (bytestring or text type)
-        :return: Filesystem name (as text type) or None, if the filesystem is
-            unknown.
-        """
-        if not isinstance(path, bytes):
-            path = os.fsencode(path)
-        for mountpoint, filesystem in self._mountpoints:
-            if is_inside(mountpoint, path):
-                return filesystem
-        return None
-
-
-class Win32FilesystemFinder(FilesystemFinder):
-
-    def find(self, path):
-        drive = os.path.splitdrive(os.path.abspath(path))[0]
-        if isinstance(drive, bytes):
-            drive = os.fsdecode(drive)
-        fs_type = win32utils.get_fs_type(drive + "\\")
-        if fs_type is None:
-            return None
-        return {
-            'FAT32': 'vfat',
-            'NTFS': 'ntfs',
-            }.get(fs_type, fs_type)
-
-
-_FILESYSTEM_FINDER = None
-
-
-def get_fs_type(path):
-    """Return the filesystem type for the partition a path is in.
-
-    :param path: Path to search filesystem type for
-    :return: A FS type, as string. E.g. "ext2"
-    """
-    global _FILESYSTEM_FINDER
-    if _FILESYSTEM_FINDER is None:
-        if sys.platform == 'win32':
-            _FILESYSTEM_FINDER = Win32FilesystemFinder()
-        else:
-            _FILESYSTEM_FINDER = MtabFilesystemFinder.from_mtab()
-
-    return _FILESYSTEM_FINDER.find(path)
-
-
+read_mtab = _osutils_rs.read_mtab
+get_fs_type = _osutils_rs.get_fs_type
 perf_counter = time.perf_counter

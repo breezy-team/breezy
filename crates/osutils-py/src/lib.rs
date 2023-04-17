@@ -1,9 +1,12 @@
 #![allow(non_snake_case)]
 use memchr;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
+use pyo3::exceptions::{
+    PyFileExistsError, PyFileNotFoundError, PyIOError, PyPermissionError, PyRuntimeError,
+    PyTypeError, PyValueError,
+};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyIterator, PyList};
+use pyo3::types::{PyBytes, PyIterator, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
 use pyo3::PyErr;
 use pyo3_file::PyFileLikeObject;
@@ -692,6 +695,77 @@ fn quotefn(filename: &str) -> String {
     breezy_osutils::path::quotefn(filename)
 }
 
+/// Copy usr/grp ownership from src file/dir to dst file/dir.
+///
+/// If src is None, the containing directory is used as source. If chown
+/// fails, the error is ignored and a warning is printed.
+#[pyfunction]
+fn copy_ownership_from_path(dst: PathBuf, src: Option<PathBuf>) -> PyResult<()> {
+    Ok(breezy_osutils::file::copy_ownership_from_path(
+        dst,
+        src.as_ref().map(|p| p.as_path()),
+    )?)
+}
+
+#[pyfunction]
+fn link_or_copy(src: PathBuf, dst: PathBuf) -> PyResult<()> {
+    Ok(breezy_osutils::file::link_or_copy(src, dst)?)
+}
+
+/// Return if the filesystem at path supports the creation of hardlinks.
+#[pyfunction]
+fn supports_hardlinks(path: PathBuf) -> Option<bool> {
+    breezy_osutils::mounts::supports_hardlinks(path)
+}
+
+/// Return if the filesystem at path supports the creation of symbolic links.
+#[pyfunction]
+fn supports_symlinks(path: PathBuf) -> Option<bool> {
+    breezy_osutils::mounts::supports_symlinks(path)
+}
+
+#[pyfunction]
+fn supports_posix_readonly() -> bool {
+    breezy_osutils::mounts::supports_posix_readonly()
+}
+
+/// Return if filesystem at path supports executable bit.
+///
+/// Args:
+///   path: Path for which to check the file system
+/// Returns: boolean indicating whether executable bit can be stored/relied upon
+#[pyfunction]
+fn supports_executable(path: PathBuf) -> Option<bool> {
+    breezy_osutils::mounts::supports_executable(path)
+}
+
+/// Read an fstab-style file and extract mountpoint+filesystem information.
+///
+/// Args:
+///   path: Path to read from
+/// Returns:
+///   Tuples with mountpoints (as bytestrings) and filesystem names
+#[pyfunction]
+fn read_mtab(py: Python, path: PathBuf) -> PyResult<PyObject> {
+    let it: Vec<(PathBuf, String)> = breezy_osutils::mounts::read_mtab(path).collect();
+    let list = PyList::empty(py);
+    for (path, fs_type) in it {
+        let tuple = PyTuple::new(py, &[path.into_py(py), fs_type.into_py(py)]);
+        list.append(tuple)?;
+    }
+    Ok(list.as_ref().iter()?.to_object(py))
+}
+
+#[pyfunction]
+fn get_fs_type(path: PathBuf) -> PyResult<Option<String>> {
+    Ok(breezy_osutils::mounts::get_fs_type(path))
+}
+
+#[pyfunction]
+fn copy_tree(from_path: PathBuf, to_path: PathBuf) -> PyResult<()> {
+    Ok(breezy_osutils::file::copy_tree(from_path, to_path)?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -734,6 +808,15 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(compact_date))?;
     m.add_wrapped(wrap_pyfunction!(chmod_if_possible))?;
     m.add_wrapped(wrap_pyfunction!(quotefn))?;
+    m.add_wrapped(wrap_pyfunction!(copy_ownership_from_path))?;
+    m.add_wrapped(wrap_pyfunction!(link_or_copy))?;
+    m.add_wrapped(wrap_pyfunction!(supports_hardlinks))?;
+    m.add_wrapped(wrap_pyfunction!(supports_symlinks))?;
+    m.add_wrapped(wrap_pyfunction!(supports_executable))?;
+    m.add_wrapped(wrap_pyfunction!(supports_posix_readonly))?;
+    m.add_wrapped(wrap_pyfunction!(read_mtab))?;
+    m.add_wrapped(wrap_pyfunction!(get_fs_type))?;
+    m.add_wrapped(wrap_pyfunction!(copy_tree))?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
     m.add(
