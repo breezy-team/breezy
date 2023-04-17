@@ -44,11 +44,11 @@ from breezy import (
     mergeable as _mod_mergeable,
     merge_directive,
     osutils,
+    patch,
     reconfigure,
     rename_map,
     revision as _mod_revision,
     symbol_versioning,
-    timestamp,
     tree as _mod_tree,
     ui,
     urlutils,
@@ -3642,7 +3642,7 @@ class cmd_commit(Command):
         commit_stamp = offset = None
         if commit_time is not None:
             try:
-                commit_stamp, offset = timestamp.parse_patch_date(commit_time)
+                commit_stamp, offset = patch.parse_patch_date(commit_time)
             except ValueError as exc:
                 raise errors.CommandError(gettext(
                     "Could not parse --commit-time: " + str(exc))) from exc

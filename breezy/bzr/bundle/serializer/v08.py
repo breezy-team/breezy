@@ -21,9 +21,9 @@ from .... import errors
 from .... import transport as _mod_transport
 from .... import ui
 from ....diff import internal_diff
+from ....osutils import format_highres_date
 from ....revision import NULL_REVISION
 from ....textfile import text_file
-from ....timestamp import format_highres_date
 from ....trace import mutter
 from ...testament import StrictTestament
 from ..bundle_data import BundleInfo, RevisionInfo

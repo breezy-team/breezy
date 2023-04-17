@@ -176,6 +176,45 @@ fn difference_index(atext: &[u8], btext: &[u8]) -> PyResult<Option<usize>> {
     Ok(breezy_patch::parse::difference_index(atext, btext))
 }
 
+#[pyfunction]
+fn parse_patch_date(date: &str) -> PyResult<(i64, i64)> {
+    breezy_patch::timestamp::parse_patch_date(date).map_err(|err| match err {
+        breezy_patch::timestamp::ParsePatchDateError::InvalidDate(d) => {
+            PyValueError::new_err(format!("Invalid date: {}", d))
+        }
+        breezy_patch::timestamp::ParsePatchDateError::InvalidTimezoneOffset(offset) => {
+            PyValueError::new_err(format!("Invalid timezone offset: {}", offset))
+        }
+        breezy_patch::timestamp::ParsePatchDateError::MissingTimezoneOffset(date) => {
+            PyValueError::new_err(format!("missing a timezone offset: {}", date))
+        }
+    })
+}
+
+#[pyfunction]
+fn format_patch_date(py: Python, secs: PyObject, offset: Option<PyObject>) -> PyResult<String> {
+    let secs = if let Ok(secs) = secs.extract::<i64>(py) {
+        secs as i64
+    } else if let Ok(secs) = secs.extract::<f64>(py) {
+        secs as i64
+    } else {
+        return Err(PyValueError::new_err("Invalid secs"));
+    };
+    let offset = if let Some(offset) = offset {
+        if let Ok(offset) = offset.extract::<i64>(py) {
+            Some(offset as i64)
+        } else if let Ok(offset) = offset.extract::<f64>(py) {
+            Some(offset as i64)
+        } else {
+            return Err(PyValueError::new_err("Invalid offset"));
+        }
+    } else {
+        None
+    };
+    breezy_patch::timestamp::format_patch_date(secs, offset.unwrap_or(0))
+        .map_err(|err| PyValueError::new_err(format!("Invalid date: {:?}", err)))
+}
+
 #[pymodule]
 fn _patch_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(patch))?;
@@ -186,6 +225,8 @@ fn _patch_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(iter_lines_handle_nl))?;
     m.add_wrapped(wrap_pyfunction!(parse_range))?;
     m.add_wrapped(wrap_pyfunction!(difference_index))?;
+    m.add_wrapped(wrap_pyfunction!(parse_patch_date))?;
+    m.add_wrapped(wrap_pyfunction!(format_patch_date))?;
     m.add("PatchInvokeError", py.get_type::<PatchInvokeError>())?;
     m.add("PatchFailed", py.get_type::<PatchFailed>())?;
     m.add("PatchSyntax", py.get_type::<PatchSyntax>())?;
