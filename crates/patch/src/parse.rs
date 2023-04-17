@@ -1,5 +1,5 @@
-use regex::bytes::Regex;
 use lazy_static::lazy_static;
+use regex::bytes::Regex;
 use std::num::ParseIntError;
 
 pub enum Error {
@@ -12,10 +12,13 @@ pub fn get_patch_names<'a, T: Iterator<Item = Vec<u8>>>(
     mut iter_lines: T,
 ) -> Result<((Vec<u8>, Option<Vec<u8>>), (Vec<u8>, Option<Vec<u8>>)), Error> {
     lazy_static! {
-        static ref BINARY_FILES_RE: Regex = Regex::new(r"^Binary files (.+) and (.+) differ").unwrap();
+        static ref BINARY_FILES_RE: Regex =
+            Regex::new(r"^Binary files (.+) and (.+) differ").unwrap();
     }
 
-    let line = iter_lines.next().ok_or_else(||Error::PatchSyntax("No input", vec![]))?;
+    let line = iter_lines
+        .next()
+        .ok_or_else(|| Error::PatchSyntax("No input", vec![]))?;
 
     let (orig_name, orig_ts) = match BINARY_FILES_RE.captures(&line) {
         Some(captures) => {
@@ -25,9 +28,12 @@ pub fn get_patch_names<'a, T: Iterator<Item = Vec<u8>>>(
         }
         None => {
             let orig_name = line
-                .strip_prefix(b"--- ").ok_or_else(||Error::MalformedPatchHeader("No orig name", line.to_vec()))?
-                .strip_suffix(b"\n").ok_or_else(|| Error::PatchSyntax("missing newline", line.to_vec()))?;
-            let (orig_name, orig_ts) = match orig_name.split(|&c| c == b'\t').collect::<Vec<_>>()[..] {
+                .strip_prefix(b"--- ")
+                .ok_or_else(|| Error::MalformedPatchHeader("No orig name", line.to_vec()))?
+                .strip_suffix(b"\n")
+                .ok_or_else(|| Error::PatchSyntax("missing newline", line.to_vec()))?;
+            let (orig_name, orig_ts) = match orig_name.split(|&c| c == b'\t').collect::<Vec<_>>()[..]
+            {
                 [name, ts] => (name.to_vec(), Some(ts.to_vec())),
                 [name] => (name.to_vec(), None),
                 _ => return Err(Error::MalformedPatchHeader("No orig line", line.to_vec())),
@@ -36,11 +42,15 @@ pub fn get_patch_names<'a, T: Iterator<Item = Vec<u8>>>(
         }
     };
 
-    let line = iter_lines.next().ok_or_else(||Error::PatchSyntax("No input", vec![]))?;
+    let line = iter_lines
+        .next()
+        .ok_or_else(|| Error::PatchSyntax("No input", vec![]))?;
 
     let (mod_name, mod_ts) = match line.strip_prefix(b"+++ ") {
         Some(line) => {
-            let mod_name = line.strip_suffix(b"\n").ok_or_else(|| Error::PatchSyntax("missing newline", line.to_vec()))?;
+            let mod_name = line
+                .strip_suffix(b"\n")
+                .ok_or_else(|| Error::PatchSyntax("missing newline", line.to_vec()))?;
             let (mod_name, mod_ts) = match mod_name.split(|&c| c == b'\t').collect::<Vec<_>>()[..] {
                 [name, ts] => (name.to_vec(), Some(ts.to_vec())),
                 [name] => (name.to_vec(), None),

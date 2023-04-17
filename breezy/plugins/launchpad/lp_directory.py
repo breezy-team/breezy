@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 
 from ... import debug, errors, trace, transport
 from ...i18n import gettext
-from ...urlutils import InvalidURL, split, join
+from ...urlutils import InvalidURL, join, split
 from .account import get_lp_login
 from .uris import DEFAULT_INSTANCE, LAUNCHPAD_DOMAINS, LPNET_SERVICE_ROOT
 

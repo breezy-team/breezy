@@ -24,8 +24,8 @@ DEBUG = 0
 import base64
 import cgi
 import errno
-import http.client
 import hashlib
+import http.client
 import os
 import re
 import socket

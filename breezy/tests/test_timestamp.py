@@ -18,7 +18,7 @@ import random
 import time
 
 from breezy import tests, timestamp
-from breezy.osutils import local_time_offset, format_date
+from breezy.osutils import format_date, local_time_offset
 
 
 class TestPatchHeader(tests.TestCase):

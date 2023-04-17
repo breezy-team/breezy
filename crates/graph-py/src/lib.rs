@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
+use pyo3::import_exception;
 use pyo3::prelude::*;
+use pyo3::types::{PyDict, PyIterator, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
-use pyo3::types::{PyDict, PyList, PyTuple, PyIterator};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use pyo3::import_exception;
 
 import_exception!(breezy.errors, GraphCycleError);
 
@@ -75,25 +75,21 @@ impl IntoPy<PyObject> for &PyNode {
 
 impl Hash for PyNode {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        Python::with_gil(|py| {
-            match self.0.as_ref(py).hash() {
-                Err(err) => err.restore(py),
-                Ok(hash) => state.write_isize(hash)
-            }
+        Python::with_gil(|py| match self.0.as_ref(py).hash() {
+            Err(err) => err.restore(py),
+            Ok(hash) => state.write_isize(hash),
         });
     }
 }
 
 impl PartialEq for PyNode {
     fn eq(&self, other: &PyNode) -> bool {
-        Python::with_gil(|py| {
-            match self.0.as_ref(py).eq(other.0.as_ref(py)) {
-                Err(err) => {
-                    err.restore(py);
-                    false
-                }
-                Ok(b) => b
+        Python::with_gil(|py| match self.0.as_ref(py).eq(other.0.as_ref(py)) {
+            Err(err) => {
+                err.restore(py);
+                false
             }
+            Ok(b) => b,
         })
     }
 }
@@ -101,13 +97,18 @@ impl PartialEq for PyNode {
 impl std::cmp::Eq for PyNode {}
 
 fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<PyNode, Vec<PyNode>>> {
-    parent_map.iter().map(|(k, v)| {
-        let vs = v
-            .iter()?
-            .map(|v| Ok::<_, PyErr>(v?.into()))
-            .into_iter().collect::<Result<Vec<_>, _>>()?;
-        Ok((k.into(), vs))
-    }).into_iter().collect::<Result<HashMap<_, _>, _>>()
+    parent_map
+        .iter()
+        .map(|(k, v)| {
+            let vs = v
+                .iter()?
+                .map(|v| Ok::<_, PyErr>(v?.into()))
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok((k.into(), vs))
+        })
+        .into_iter()
+        .collect::<Result<HashMap<_, _>, _>>()
 }
 
 /// Given a map from child => parents, create a map of parent => children
@@ -123,7 +124,8 @@ fn invert_parent_map(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
     for (k, vs) in result {
         ret.set_item::<PyObject, &PyList>(
             k.into_py(py),
-            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
+            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))),
+        )?;
     }
 
     Ok(ret.to_object(py))
@@ -154,7 +156,8 @@ fn collapse_linear_regions(py: Python, parent_map: &PyDict) -> PyResult<PyObject
     for (k, vs) in result {
         ret.set_item::<PyObject, &PyList>(
             k.into_py(py),
-            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
+            PyList::new(py, vs.into_iter().map(|v| v.into_py(py))),
+        )?;
     }
 
     Ok(ret.to_object(py))
@@ -167,7 +170,7 @@ struct PyParentsProvider {
 
 #[pyclass]
 struct TopoSorter {
-    sorter: breezy_graph::tsort::TopoSorter<PyNode>
+    sorter: breezy_graph::tsort::TopoSorter<PyNode>,
 }
 
 #[pymethods]
@@ -182,7 +185,8 @@ impl PyParentsProvider {
         for (k, vs) in result {
             ret.set_item::<PyObject, &PyTuple>(
                 k.into_py(py),
-                PyTuple::new(py, vs.into_iter().map(|v| v.into_py(py))))?;
+                PyTuple::new(py, vs.into_iter().map(|v| v.into_py(py))),
+            )?;
         }
         Ok(ret.to_object(py))
     }
@@ -192,7 +196,7 @@ impl PyParentsProvider {
 fn DictParentsProvider(py: Python, parent_map: &PyDict) -> PyResult<PyObject> {
     let parent_map = extract_parent_map(parent_map)?;
     let provider = PyParentsProvider {
-        provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map))
+        provider: Box::new(breezy_graph::DictParentsProvider::<PyNode>::new(parent_map)),
     };
     Ok(provider.into_py(py))
 }
@@ -202,13 +206,23 @@ impl TopoSorter {
     #[new]
     fn new(py: Python, graph: PyObject) -> PyResult<TopoSorter> {
         let iter = if graph.as_ref(py).is_instance_of::<PyDict>()? {
-            graph.downcast::<PyDict>(py)?.call_method0("items")?.iter()?
+            graph
+                .downcast::<PyDict>(py)?
+                .call_method0("items")?
+                .iter()?
         } else {
             graph.as_ref(py).iter()?
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
-            .map(|k| k.map(|(k, vs)| (PyNode::from(k), vs.into_iter().map(|v| PyNode::from(v)).collect())))
+            .map(|k| {
+                k.map(|(k, vs)| {
+                    (
+                        PyNode::from(k),
+                        vs.into_iter().map(|v| PyNode::from(v)).collect(),
+                    )
+                })
+            })
             .collect::<PyResult<Vec<(PyNode, Vec<PyNode>)>>>()?;
 
         let sorter = breezy_graph::tsort::TopoSorter::<PyNode>::new(graph.into_iter());

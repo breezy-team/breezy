@@ -30,8 +30,7 @@ pub struct TopoSorter<K: Eq + std::hash::Hash> {
 impl<K: Eq + std::hash::Hash + std::fmt::Debug + Clone> TopoSorter<K> {
     /// Create a new `TopoSorter` from a graph represented as a sequence of pairs
     /// of node_name->parent_names_list.
-    pub fn new(graph: impl Iterator<Item = (K, Vec<K>)>) -> TopoSorter<K>
-    {
+    pub fn new(graph: impl Iterator<Item = (K, Vec<K>)>) -> TopoSorter<K> {
         let mut g = HashMap::new();
         for (node, parents) in graph {
             g.insert(node, parents.into_iter().collect());
@@ -50,7 +49,8 @@ impl<K: Eq + std::hash::Hash + std::fmt::Debug + Clone> TopoSorter<K> {
     ///
     /// After calling this the sorter is empty and you must create a new one.
     pub fn sorted(&mut self) -> std::result::Result<Vec<K>, Error<K>> {
-        self.iter_topo_order().collect::<std::result::Result<Vec<K>, Error<K>>>()
+        self.iter_topo_order()
+            .collect::<std::result::Result<Vec<K>, Error<K>>>()
     }
 
     /// Yield the nodes of the graph in a topological order.

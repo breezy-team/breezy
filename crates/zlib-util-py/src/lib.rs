@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 
 #[pyclass]
 struct ZLibEstimator {
@@ -27,15 +27,15 @@ impl ZLibEstimator {
     }
 
     fn add_content(&mut self, content: &[u8]) -> PyResult<()> {
-        self.estimator.add_content(content).map_err(|e| {
-            PyValueError::new_err(format!("Failed to add content: {}", e))
-        })
+        self.estimator
+            .add_content(content)
+            .map_err(|e| PyValueError::new_err(format!("Failed to add content: {}", e)))
     }
 
     fn full(&mut self) -> PyResult<bool> {
-        self.estimator.full().map_err(|e| {
-            PyValueError::new_err(format!("Failed to check if full: {}", e))
-        })
+        self.estimator
+            .full()
+            .map_err(|e| PyValueError::new_err(format!("Failed to check if full: {}", e)))
     }
 }
 

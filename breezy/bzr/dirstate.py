@@ -4316,14 +4316,9 @@ class ProcessEntryPython:
         return dir_info
 
 
-from ._dirstate_rs import (
-    lt_by_dirs,
-    bisect_path_left,
-    bisect_path_right,
-    bisect_dirblock,
-    DefaultSHA1Provider,
-    pack_stat,
-    )
+from ._dirstate_rs import (DefaultSHA1Provider, bisect_dirblock,
+                           bisect_path_left, bisect_path_right, lt_by_dirs,
+                           pack_stat)
 
 # Try to load the compiled form if possible
 try:

@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::io::Result;
-use std::fs::{Permissions, set_permissions};
-use std::os::unix::fs::PermissionsExt;
 use log::debug;
+use std::fs::{set_permissions, Permissions};
+use std::io::Result;
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 
 pub fn make_writable<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
@@ -39,7 +39,7 @@ pub fn chmod_if_possible<P: AsRef<Path>>(path: P, permissions: Permissions) -> R
                 debug!("ignore error on chmod of {:?}: {:?}", path.as_ref(), e);
                 Ok(())
             }
-            _ => Err(e)
+            _ => Err(e),
         }
     } else {
         Ok(())

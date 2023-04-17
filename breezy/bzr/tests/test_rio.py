@@ -27,10 +27,11 @@ from tempfile import TemporaryFile
 
 from breezy.tests import TestCase
 
-from .. import rio
 from ...osutils import IterableFile
-from ..rio import RioReader, Stanza, read_stanza, read_stanzas, rio_iter  # type: ignore
-from ..rio_patch import to_patch_lines, read_patch_stanza
+from .. import rio
+from ..rio import (RioReader, Stanza, read_stanza,  # type: ignore
+                   read_stanzas, rio_iter)
+from ..rio_patch import read_patch_stanza, to_patch_lines
 
 
 def rio_file(stanzas):

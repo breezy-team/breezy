@@ -1,4 +1,4 @@
-use crate::tsort::{TopoSorter, Error};
+use crate::tsort::{Error, TopoSorter};
 use std::collections::HashMap;
 
 #[test]
@@ -21,19 +21,40 @@ fn test_tsort_cycle() {
 
 #[test]
 fn test_tsort_cycle_2() {
-    let graph = [(0, vec![1]), (1, vec![2]), (2, vec![0])].iter().cloned().collect();
+    let graph = [(0, vec![1]), (1, vec![2]), (2, vec![0])]
+        .iter()
+        .cloned()
+        .collect();
     assert_sort_and_iterate_cycle(&graph);
 }
 
 #[test]
 fn test_topo_sort_cycle_with_tail() {
-    let graph = [(0, vec![1]), (1, vec![2]), (2, vec![3, 4]), (3, vec![0]), (4, vec![])].iter().cloned().collect();
+    let graph = [
+        (0, vec![1]),
+        (1, vec![2]),
+        (2, vec![3, 4]),
+        (3, vec![0]),
+        (4, vec![]),
+    ]
+    .iter()
+    .cloned()
+    .collect();
     assert_sort_and_iterate_cycle(&graph);
 }
 
 #[test]
 fn test_tsort_1() {
-    let graph = [(0, vec![3]), (1, vec![4]), (2, vec![1, 4]), (3, vec![]), (4, vec![0, 3])].iter().cloned().collect();
+    let graph = [
+        (0, vec![3]),
+        (1, vec![4]),
+        (2, vec![1, 4]),
+        (3, vec![]),
+        (4, vec![0, 3]),
+    ]
+    .iter()
+    .cloned()
+    .collect();
     assert_sort_and_iterate_order(&graph);
 }
 
@@ -58,10 +79,7 @@ fn test_tsort_partial() {
 
 #[test]
 fn test_tsort_unincluded_parent() {
-    let graph = vec![(0, vec![1]), (1, vec![2])]
-        .iter()
-        .cloned()
-        .collect();
+    let graph = vec![(0, vec![1]), (1, vec![2])].iter().cloned().collect();
     assert_sort_and_iterate(&graph, &[1, 0]);
 }
 

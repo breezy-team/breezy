@@ -73,11 +73,10 @@ from . import errors, registry
 from . import revision as _mod_revision
 from . import revisionspec, trace
 from . import transport as _mod_transport
-from .osutils import (format_date,
+from .osutils import (UnsupportedTimezoneFormat, format_date,
                       format_date_with_offset_in_original_timezone,
                       get_diff_header_encoding, get_terminal_encoding,
-                      is_inside, terminal_width,
-                      UnsupportedTimezoneFormat)
+                      is_inside, terminal_width)
 from .tree import InterTree
 
 

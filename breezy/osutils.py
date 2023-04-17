@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from functools import partial
-from typing import Dict, List, Iterable
+from typing import Dict, Iterable, List
 
 from .lazy_import import lazy_import
 
@@ -49,7 +49,7 @@ from breezy.i18n import gettext
 
 import breezy
 
-from . import errors, _osutils_rs
+from . import _osutils_rs, errors
 
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
@@ -72,7 +72,6 @@ minimum_path_selection = _osutils_rs.minimum_path_selection
 
 
 from ._osutils_rs import get_umask, kind_marker, quotefn
-
 
 lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
@@ -646,7 +645,10 @@ def report_extension_load_failures():
     # https://bugs.launchpad.net/bzr/+bug/430529
 
 
-from ._osutils_rs import chunks_to_lines, chunks_to_lines_iter, normalized_filename, _inaccessible_normalized_filename, _accessible_normalized_filename, normalizes_filenames, split_lines
+from ._osutils_rs import (_accessible_normalized_filename,
+                          _inaccessible_normalized_filename, chunks_to_lines,
+                          chunks_to_lines_iter, normalized_filename,
+                          normalizes_filenames, split_lines)
 
 
 def hardlinks_good():

@@ -1,4 +1,3 @@
-
 /// The RIO file format
 ///
 /// Copyright (C) 2023 Jelmer Vernooij <jelmer@jelmer.uk>
@@ -22,9 +21,9 @@
 /// stream representation of an object and vice versa, and that this relation
 /// will continue to hold for future versions of bzr.
 use regex::Regex;
-use std::io::{BufRead,Write};
-use std::iter::Iterator;
 use std::collections::HashMap;
+use std::io::{BufRead, Write};
+use std::iter::Iterator;
 use std::result::Result;
 use std::str;
 
@@ -87,9 +86,7 @@ impl<R: BufRead> RioReader<R> {
     }
 
     pub fn iter(&mut self) -> RioReaderIter<R> {
-        RioReaderIter {
-            reader: self
-        }
+        RioReaderIter { reader: self }
     }
 }
 
@@ -175,13 +172,14 @@ impl Stanza {
     }
 
     pub fn iter_pairs(&self) -> impl Iterator<Item = (&str, &StanzaValue)> {
-        self.items
-            .iter()
-            .map(|(tag, value)| (tag.as_str(), value))
+        self.items.iter().map(|(tag, value)| (tag.as_str(), value))
     }
 
     pub fn to_bytes_lines(&self) -> Vec<Vec<u8>> {
-        self.to_lines().iter().map(|s| s.as_bytes().to_vec()).collect()
+        self.to_lines()
+            .iter()
+            .map(|s| s.as_bytes().to_vec())
+            .collect()
     }
 
     pub fn to_lines(&self) -> Vec<String> {
@@ -207,11 +205,7 @@ impl Stanza {
                     result.push(format!("\t{}\n", line));
                 }
             } else {
-                result.push(format!(
-                    "{}: {}\n",
-                    String::from_utf8_lossy(tag),
-                    value
-                ));
+                result.push(format!("{}: {}\n", String::from_utf8_lossy(tag), value));
             }
         }
         result
@@ -243,7 +237,8 @@ impl Stanza {
     }
 
     pub fn get_all(&self, tag: &str) -> Vec<&StanzaValue> {
-        self.items.iter()
+        self.items
+            .iter()
             .filter(|(t, _)| t == tag)
             .map(|(_, v)| v)
             .collect()
@@ -276,7 +271,8 @@ fn trim_newline(vec: &mut Vec<u8>) {
 
 pub fn read_stanza<I>(lines: I) -> Result<Option<Stanza>, Error>
 where
-    I: Iterator<Item = Result<Vec<u8>, Error>> {
+    I: Iterator<Item = Result<Vec<u8>, Error>>,
+{
     let mut stanza = Stanza::new();
     let mut tag: Option<String> = None;
     let mut accum_value: Option<Vec<String>> = None;

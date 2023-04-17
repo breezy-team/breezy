@@ -2,7 +2,6 @@ use pyo3::prelude::*;
 use pyo3::types::*;
 use std::path::*;
 
-
 fn check_version(py: Python<'_>) -> PyResult<()> {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse::<u32>().unwrap();
     let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse::<u32>().unwrap();
@@ -66,7 +65,7 @@ fn prepend_path(py: Python<'_>, el: &Path) -> PyResult<()> {
 fn update_path(py: Python<'_>) -> PyResult<()> {
     let mut path = std::env::current_exe()?;
 
-    path.pop();  // Drop executable name
+    path.pop(); // Drop executable name
 
     let mut package_path = path.clone();
     package_path.push("breezy");

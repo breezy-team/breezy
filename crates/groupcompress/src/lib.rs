@@ -26,7 +26,11 @@ pub fn decode_base128_int(data: &[u8]) -> (u128, usize) {
 
 pub type CopyInstruction = (usize, usize, usize);
 
-pub fn decode_copy_instruction(data: &[u8], cmd: u8, pos: usize) -> Result<CopyInstruction, String> {
+pub fn decode_copy_instruction(
+    data: &[u8],
+    cmd: u8,
+    pos: usize,
+) -> Result<CopyInstruction, String> {
     if cmd & 0x80 != 0x80 {
         return Err("copy instructions must have bit 0x80 set".to_string());
     }
@@ -106,7 +110,11 @@ pub fn apply_delta(basis: &[u8], delta: &[u8]) -> Result<Vec<u8>, String> {
     Ok(lines)
 }
 
-pub fn apply_delta_to_source(source: &[u8], delta_start: usize, delta_end: usize) -> Result<Vec<u8>, String> {
+pub fn apply_delta_to_source(
+    source: &[u8],
+    delta_start: usize,
+    delta_end: usize,
+) -> Result<Vec<u8>, String> {
     let source_size = source.len();
     if delta_start >= source_size {
         return Err("delta starts after source".to_string());

@@ -1,11 +1,12 @@
-use memchr::memchr;
-use rand::Rng;
 #[cfg(unix)]
 use libc;
+use memchr::memchr;
+use rand::Rng;
 
 pub fn chunks_to_lines<'a, I, E>(mut chunks: I) -> impl Iterator<Item = Result<Vec<u8>, E>>
 where
-    I: Iterator<Item = Result<&'a [u8], E>> + 'a, E: std::fmt::Debug
+    I: Iterator<Item = Result<&'a [u8], E>> + 'a,
+    E: std::fmt::Debug,
 {
     let mut tail: Option<Vec<u8>> = None;
 
@@ -58,7 +59,10 @@ where
     })
 }
 
-pub fn set_or_unset_env(env_variable: &str, value: Option<&str>) -> Result<Option<String>, std::env::VarError> {
+pub fn set_or_unset_env(
+    env_variable: &str,
+    value: Option<&str>,
+) -> Result<Option<String>, std::env::VarError> {
     let orig_val = std::env::var(env_variable);
     let ret: Option<String>;
     if let Err(std::env::VarError::NotPresent) = orig_val {
@@ -73,7 +77,7 @@ pub fn set_or_unset_env(env_variable: &str, value: Option<&str>) -> Result<Optio
         ret = Some(orig_val.unwrap());
         match value {
             None => std::env::remove_var(env_variable),
-            Some(val) => std::env::set_var(env_variable, val)
+            Some(val) => std::env::set_var(env_variable, val),
         }
     }
     Ok(ret)
@@ -113,12 +117,12 @@ pub fn kind_marker(kind: &str) -> &str {
     }
 }
 
-pub mod sha;
-pub mod path;
-pub mod time;
-pub mod iterablefile;
-pub mod textfile;
 pub mod file;
+pub mod iterablefile;
+pub mod path;
+pub mod sha;
+pub mod textfile;
+pub mod time;
 
 #[cfg(test)]
 mod tests;

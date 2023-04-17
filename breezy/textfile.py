@@ -18,9 +18,9 @@
 
 from itertools import chain
 
-from .errors import BinaryFile
-from .osutils import file_iterator, IterableFile
 from . import _osutils_rs
+from .errors import BinaryFile
+from .osutils import IterableFile, file_iterator
 
 
 def text_file(input):
