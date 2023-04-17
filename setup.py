@@ -230,6 +230,7 @@ rust_extensions = [
     RustExtension("breezy._graph_rs", "crates/graph-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy.bzr._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3),
 ]
 entry_points = {}
 

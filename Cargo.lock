@@ -43,6 +43,8 @@ name = "bazaar"
 version = "3.3.3"
 dependencies = [
  "breezy-osutils",
+ "lazy_static",
+ "regex",
 ]
 
 [[package]]
@@ -77,6 +79,14 @@ dependencies = [
  "log",
  "sha1 0.6.1",
  "tempfile",
+]
+
+[[package]]
+name = "bazaar-py"
+version = "3.3.3"
+dependencies = [
+ "bazaar",
+ "pyo3",
 ]
 
 [[package]]

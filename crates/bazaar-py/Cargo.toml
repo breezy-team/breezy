@@ -1,0 +1,11 @@
+[package]
+name = "bazaar-py"
+version = "3.3.3"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.18", features = ["extension-module"]}
+bazaar = { path = "../bazaar" }
