@@ -384,11 +384,11 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
         self
     }
 
+    /// Add node_name to the pending node stack.
+    ///
+    /// Names in this stack will get emitted into the output as they are popped
+    /// off the stack.
     pub fn push_node(&mut self, node_name: K, merge_depth: usize, parents: Vec<K>) {
-        // Add node_name to the pending node stack.
-        //
-        // Names in this stack will get emitted into the output as they are popped
-        // off the stack.
         self.node_name_stack.push(node_name);
         self.node_merge_depth_stack.push(merge_depth);
         self.left_subtree_pushed_stack.push(false);
@@ -402,7 +402,7 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
                 entry.1 = false;
             } else {
                 // Left-hand parent is a ghost, consider it not to exist
-                first_child = Some(false);
+                first_child = None;
             }
         } else {
             first_child = None;
@@ -446,8 +446,11 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
             }
         } else {
             // no parents, use the root sequence
-            let mut root_count = *self.revno_to_branch_count.get(&0).unwrap_or(&0);
-            root_count += 1;
+            let root_count = if let Some(root_count) = self.revno_to_branch_count.get(&0) {
+                root_count + 1
+            } else {
+                0
+            };
             self.revno_to_branch_count.insert(0, root_count);
             if root_count > 0 {
                 RevnoVec::from(vec![0, root_count, 1])
@@ -496,6 +499,7 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
                         // call stack. skip it.
                         continue;
                     }
+
                     // otherwise transfer it from the source graph into the
                     // top of the current depth first search stack.
                     let parents = match self.graph.remove(&next_node_name) {
@@ -534,18 +538,6 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
 impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
     type Item = std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>;
     fn next(&mut self) -> Option<std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>> {
-        eprintln!("scheduled_nodes: {:?}", self.scheduled_nodes);
-        eprintln!("node_name_stack: {:?}", self.node_name_stack);
-        eprintln!("pending_parents_stack: {:?}", self.pending_parents_stack);
-        eprintln!("left_subtree_pushed_stack: {:?}", self.left_subtree_pushed_stack);
-        eprintln!("node_merge_depth_stack: {:?}", self.node_merge_depth_stack);
-        eprintln!("first_child_stack: {:?}", self.first_child_stack);
-        eprintln!("revnos: {:?}", self.revnos);
-        eprintln!("revno_to_branch_count: {:?}", self.revno_to_branch_count);
-        eprintln!("completed_node_names: {:?}", self.completed_node_names);
-        eprintln!("original_graph: {:?}", self.original_graph);
-        eprintln!("stop_revision: {:?}", self.stop_revision);
-        eprintln!("");
         if let Err(err) = self.build() {
             return Some(Err(err));
         }
