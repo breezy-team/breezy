@@ -75,9 +75,9 @@ flake8:
 	flake8 breezy
 
 fmt-check:
-	find . -name '*.rs' | xargs rustfmt --check
+	find crates breezy -name '*.rs' | xargs rustfmt --check
 	flake8 breezy
-	isort --check-only
+	isort --check-only breezy
 
 mypy:
 	mypy breezy
@@ -321,5 +321,5 @@ check-dist-tarball:
 	rm -rf $$tmpdir
 
 reformat:
-	isort .
-	find . -name '*.rs' | xargs rustfmt
+	isort breezy
+	find breezy crates  -name '*.rs' | xargs rustfmt
