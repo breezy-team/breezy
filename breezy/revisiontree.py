@@ -16,7 +16,7 @@
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
-from . import lock, revision, tree, osutils
+from . import lock, osutils, revision, tree
 
 
 class RevisionTree(tree.Tree):

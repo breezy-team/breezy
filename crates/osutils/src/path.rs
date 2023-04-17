@@ -1,9 +1,9 @@
-use std::path::{Path,PathBuf};
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::collections::HashSet;
 use std::os::unix::fs::PermissionsExt;
-use unicode_normalization::{UnicodeNormalization,is_nfc};
-use regex::Regex;
-use lazy_static::lazy_static;
+use std::path::{Path, PathBuf};
+use unicode_normalization::{is_nfc, UnicodeNormalization};
 
 pub fn is_inside(dir: &Path, fname: &Path) -> bool {
     fname.starts_with(&dir)
@@ -51,14 +51,33 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
     use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE};
     use winreg::RegKey;
     let exts = env::var("PATHEXT").unwrap_or_default();
-    let exts = exts.split(';').map(|ext| ext.to_lowercase()).collect::<Vec<_>>();
+    let exts = exts
+        .split(';')
+        .map(|ext| ext.to_lowercase())
+        .collect::<Vec<_>>();
     let (name, exts) = {
         let mut path = PathBuf::from(name);
-        let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or_default().to_lowercase();
+        let ext = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or_default()
+            .to_lowercase();
         if !exts.is_empty() && !exts.contains(&ext) {
-            (path.file_stem().unwrap_or_default().to_str().unwrap_or_default(), vec![ext])
+            (
+                path.file_stem()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+                vec![ext],
+            )
         } else {
-            (path.file_stem().unwrap_or_default().to_str().unwrap_or_default(), exts)
+            (
+                path.file_stem()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+                exts,
+            )
         }
     };
     let paths = env::var("PATH").unwrap_or_default();
@@ -71,7 +90,9 @@ pub fn find_executable_on_path(name: &str) -> Option<String> {
             }
         }
     }
-    if let Ok(reg_key) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths") {
+    if let Ok(reg_key) = RegKey::predef(HKEY_LOCAL_MACHINE)
+        .open_subkey(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths")
+    {
         if let Ok(value) = reg_key.get_value(name) {
             if let Some(value) = value.as_string() {
                 return Some(value);
@@ -97,7 +118,10 @@ pub fn parent_directories(path: &Path) -> impl Iterator<Item = &Path> {
     })
 }
 
-pub fn available_backup_name<'a, E>(path: &Path, exists: &'a dyn Fn(&Path) -> Result<bool, E>) -> Result<PathBuf, E> {
+pub fn available_backup_name<'a, E>(
+    path: &Path,
+    exists: &'a dyn Fn(&Path) -> Result<bool, E>,
+) -> Result<PathBuf, E> {
     let mut counter = 0;
     let mut next = || {
         counter += 1;

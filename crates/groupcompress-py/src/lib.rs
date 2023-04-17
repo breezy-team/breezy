@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
 use pyo3::types::PyBytes;
+use pyo3::wrap_pyfunction;
 
 use bazaar_groupcompress;
 
@@ -19,7 +19,9 @@ fn decode_base128_int(value: Vec<u8>) -> PyResult<(u128, usize)> {
 fn apply_delta(py: Python, basis: Vec<u8>, delta: Vec<u8>) -> PyResult<&PyBytes> {
     let ret = bazaar_groupcompress::apply_delta(&basis, &delta);
     if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Invalid delta"));
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "Invalid delta",
+        ));
     }
     Ok(PyBytes::new(py, &ret.unwrap()))
 }
@@ -28,7 +30,9 @@ fn apply_delta(py: Python, basis: Vec<u8>, delta: Vec<u8>) -> PyResult<&PyBytes>
 fn decode_copy_instruction(data: Vec<u8>, cmd: u8, pos: usize) -> PyResult<(usize, usize, usize)> {
     let ret = bazaar_groupcompress::decode_copy_instruction(&data, cmd, pos);
     if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Invalid copy instruction"));
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "Invalid copy instruction",
+        ));
     }
     let ret = ret.unwrap();
 
@@ -36,10 +40,17 @@ fn decode_copy_instruction(data: Vec<u8>, cmd: u8, pos: usize) -> PyResult<(usiz
 }
 
 #[pyfunction]
-fn apply_delta_to_source(py: Python, source: &[u8], delta_start: usize, delta_end: usize) -> PyResult<PyObject> {
+fn apply_delta_to_source(
+    py: Python,
+    source: &[u8],
+    delta_start: usize,
+    delta_end: usize,
+) -> PyResult<PyObject> {
     let ret = bazaar_groupcompress::apply_delta_to_source(source, delta_start, delta_end);
     if ret.is_err() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>("Invalid delta"));
+        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "Invalid delta",
+        ));
     }
     let ret = ret.unwrap();
     Ok(PyBytes::new(py, &ret).to_object(py))

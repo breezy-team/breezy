@@ -57,7 +57,9 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> TopoSorter<K> {
     ///
     /// After finishing iteration the sorter is empty and you cannot continue
     /// iteration.
-    pub fn iter_topo_order(&mut self) -> impl Iterator<Item = std::result::Result<K, Error<K>>> + '_ {
+    pub fn iter_topo_order(
+        &mut self,
+    ) -> impl Iterator<Item = std::result::Result<K, Error<K>>> + '_ {
         self
     }
 }
@@ -371,7 +373,9 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
     /// Sort the graph and return as a list.
     ///
     /// After calling this the sorter is empty and you must create a new one.
-    pub fn sorted(&mut self) -> std::result::Result<Vec<(usize, K, usize, Option<RevnoVec>, bool)>, Error<K>> {
+    pub fn sorted(
+        &mut self,
+    ) -> std::result::Result<Vec<(usize, K, usize, Option<RevnoVec>, bool)>, Error<K>> {
         self.iter_topo_order().collect()
     }
 
@@ -380,7 +384,8 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
     /// iteration.
     pub fn iter_topo_order(
         &mut self,
-    ) -> impl Iterator<Item = std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>> + '_ {
+    ) -> impl Iterator<Item = std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>>
+           + '_ {
         self
     }
 
@@ -484,7 +489,12 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
                         *self.left_subtree_pushed_stack.last_mut().unwrap() = true;
                         // recurse depth first into the primary parent
                     } else {
-                        next_node_name = self.pending_parents_stack.last_mut().unwrap().pop().unwrap();
+                        next_node_name = self
+                            .pending_parents_stack
+                            .last_mut()
+                            .unwrap()
+                            .pop()
+                            .unwrap();
                         is_left_subtree = false;
                         // place any merges in right-to-left order for scheduling
                         // which gives us left-to-right order after we reverse
@@ -537,7 +547,9 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
 
 impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
     type Item = std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>;
-    fn next(&mut self) -> Option<std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>> {
+    fn next(
+        &mut self,
+    ) -> Option<std::result::Result<(usize, K, usize, Option<RevnoVec>, bool), Error<K>>> {
         if let Err(err) = self.build() {
             return Some(Err(err));
         }

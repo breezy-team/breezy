@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::fs::File;
-use std::io::Read;
-use std::io::Error;
 use breezy_osutils::sha::sha_chunks;
+use std::fs::File;
+use std::io::Error;
+use std::io::Read;
+use std::path::Path;
 
 pub type ContentFilterProvider = dyn Fn(&Path, u64) -> Box<dyn ContentFilter> + Send;
 
@@ -20,7 +20,7 @@ pub trait ContentFilter {
     fn sha1_file(&self, path: &Path) -> Result<String, std::io::Error> {
         let mut file = File::open(path)?;
         let chunk_iter = std::iter::from_fn(move || {
-            let mut buf= vec![0; 128 << 10];
+            let mut buf = vec![0; 128 << 10];
             let bytes_read = file.read(&mut buf);
             if let Err(e) = bytes_read {
                 return Some(Err(e));
@@ -55,7 +55,7 @@ pub struct ContentFilterStack {
     filters: Vec<Box<dyn ContentFilter>>,
 }
 
-impl From <Vec<Box<dyn ContentFilter>>> for ContentFilterStack {
+impl From<Vec<Box<dyn ContentFilter>>> for ContentFilterStack {
     fn from(filters: Vec<Box<dyn ContentFilter>>) -> Self {
         Self { filters }
     }
@@ -63,7 +63,9 @@ impl From <Vec<Box<dyn ContentFilter>>> for ContentFilterStack {
 
 impl ContentFilterStack {
     pub fn new() -> Self {
-        Self { filters: Vec::new() }
+        Self {
+            filters: Vec::new(),
+        }
     }
 
     pub fn add_filter(&mut self, filter: Box<dyn ContentFilter>) {
@@ -75,17 +77,18 @@ impl ContentFilter for ContentFilterStack {
     fn reader(
         &self,
         input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>
-    {
-        self.filters.iter().fold(input, |input, filter| filter.reader(input))
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+        self.filters
+            .iter()
+            .fold(input, |input, filter| filter.reader(input))
     }
 
     fn writer(
         &self,
         input: Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>,
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send>
-    {
-        self.filters.iter().fold(input, |input, filter| filter.writer(input))
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>, Error>> + Send> {
+        self.filters
+            .iter()
+            .fold(input, |input, filter| filter.writer(input))
     }
-
 }

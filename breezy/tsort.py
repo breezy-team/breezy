@@ -23,7 +23,7 @@ from . import revision as _mod_revision
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
 
-from ._graph_rs import TopoSorter, MergeSorter, merge_sort
+from ._graph_rs import MergeSorter, TopoSorter, merge_sort
 
 
 def topo_sort(graph):

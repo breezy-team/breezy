@@ -1,12 +1,12 @@
 #![allow(non_snake_case)]
 
+use breezy_graph::RevnoVec;
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyTuple};
+use pyo3::types::{PyDict, PyIterator, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use breezy_graph::RevnoVec;
 
 import_exception!(breezy.errors, GraphCycleError);
 
@@ -342,20 +342,20 @@ impl MergeSorter {
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
         match self.sorter.next() {
             None => Ok(None),
-            Some(Ok((sequence_number, node, merge_depth, None, end_of_merge))) => Ok(Some((
-                sequence_number,
-                node.into_py(py),
-                merge_depth,
-                end_of_merge,
-            ).into_py(py))),
+            Some(Ok((sequence_number, node, merge_depth, None, end_of_merge))) => Ok(Some(
+                (sequence_number, node.into_py(py), merge_depth, end_of_merge).into_py(py),
+            )),
 
-            Some(Ok((sequence_number, node, merge_depth, Some(revno), end_of_merge))) => Ok(Some((
-                sequence_number,
-                node.into_py(py),
-                merge_depth,
-                revno_vec_to_py(py, revno),
-                end_of_merge,
-            ).into_py(py))),
+            Some(Ok((sequence_number, node, merge_depth, Some(revno), end_of_merge))) => Ok(Some(
+                (
+                    sequence_number,
+                    node.into_py(py),
+                    merge_depth,
+                    revno_vec_to_py(py, revno),
+                    end_of_merge,
+                )
+                    .into_py(py),
+            )),
             Some(Err(breezy_graph::tsort::Error::Cycle(e))) => Err(GraphCycleError::new_err(e)),
         }
     }

@@ -1,6 +1,6 @@
+use crate::python_default_deflate_encoder;
 use flate2::write::DeflateEncoder;
 use std::io::Write;
-use crate::python_default_deflate_encoder;
 
 pub struct ZLibEstimator {
     target_size: usize,
@@ -50,8 +50,8 @@ impl ZLibEstimator {
         self.unflushed_size_added = 0;
         // So far we've read X uncompressed bytes, and written Y compressed
         // bytes. We should have a decent estimate of the final compression.
-        self.estimated_compression = (self.uncompressed_size_added as f32)
-            / (self.compressed_size_added as f32);
+        self.estimated_compression =
+            (self.uncompressed_size_added as f32) / (self.compressed_size_added as f32);
     }
 
     pub fn full(&mut self) -> std::io::Result<bool> {
@@ -60,8 +60,7 @@ impl ZLibEstimator {
             let remaining_size = self.target_size - self.compressed_size_added;
             // Estimate how much compressed content the unflushed data will
             // consume
-            let est_z_size = (self.unflushed_size_added as f32)
-                / self.estimated_compression;
+            let est_z_size = (self.unflushed_size_added as f32) / self.estimated_compression;
             if est_z_size >= remaining_size as f32 {
                 // We estimate we are close to remaining
                 self.compressor.flush()?;
@@ -74,4 +73,3 @@ impl ZLibEstimator {
         Ok(self.compressed_size_added >= self.target_size)
     }
 }
-

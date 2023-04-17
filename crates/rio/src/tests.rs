@@ -1,5 +1,5 @@
 use crate::rio::valid_tag;
-use crate::rio::{Stanza,StanzaValue,read_stanza};
+use crate::rio::{read_stanza, Stanza, StanzaValue};
 
 #[test]
 fn test_valid_tag() {
@@ -18,8 +18,14 @@ fn test_stanza() {
     assert!(!s.contains("42"));
 
     // Verify that the s.get() function works
-    assert_eq!(s.get("number"), Some(&StanzaValue::String("42".to_string())));
-    assert_eq!(s.get("name"), Some(&StanzaValue::String("fred".to_string())));
+    assert_eq!(
+        s.get("number"),
+        Some(&StanzaValue::String("42".to_string()))
+    );
+    assert_eq!(
+        s.get("name"),
+        Some(&StanzaValue::String("fred".to_string()))
+    );
     assert_eq!(s.get("color"), None);
 
     // Verify that iter_pairs() works
@@ -45,7 +51,10 @@ fn test_eq() {
 
 #[test]
 fn test_empty_value() {
-    let s = Stanza::from_pairs(vec![("empty".to_string(), StanzaValue::String("".to_string()))]);
+    let s = Stanza::from_pairs(vec![(
+        "empty".to_string(),
+        StanzaValue::String("".to_string()),
+    )]);
     assert_eq!(s.to_string(), "empty: \n");
 }
 
@@ -54,12 +63,26 @@ fn test_to_lines() {
     let s = Stanza::from_pairs(vec![
         ("number".to_string(), StanzaValue::String("42".to_string())),
         ("name".to_string(), StanzaValue::String("fred".to_string())),
-        ("field-with-newlines".to_string(), StanzaValue::String("foo\nbar\nblah".to_string())),
-        ("special-characters".to_string(), StanzaValue::String(" \t\r\\\n ".to_string())),
+        (
+            "field-with-newlines".to_string(),
+            StanzaValue::String("foo\nbar\nblah".to_string()),
+        ),
+        (
+            "special-characters".to_string(),
+            StanzaValue::String(" \t\r\\\n ".to_string()),
+        ),
     ]);
     assert_eq!(
         s.to_lines(),
-        vec!["number: 42\n".to_string(), "name: fred\n".to_string(), "field-with-newlines: foo\n".to_string(), "\tbar\n".to_string(), "\tblah\n".to_string(), "special-characters:  \t\r\\\n".to_string(), "\t \n".to_string()],
+        vec![
+            "number: 42\n".to_string(),
+            "name: fred\n".to_string(),
+            "field-with-newlines: foo\n".to_string(),
+            "\tbar\n".to_string(),
+            "\tblah\n".to_string(),
+            "special-characters:  \t\r\\\n".to_string(),
+            "\t \n".to_string()
+        ],
     );
 }
 
@@ -71,11 +94,17 @@ field-with-newlines: foo
 \tbar
 \tblah
 
-".split(|c| *c == b'\n').map(|s| s.to_vec());
-    let s = read_stanza(lines.map(|l|Ok(l))).unwrap().unwrap();
+"
+    .split(|c| *c == b'\n')
+    .map(|s| s.to_vec());
+    let s = read_stanza(lines.map(|l| Ok(l))).unwrap().unwrap();
     let expected = Stanza::from_pairs(vec![
         ("number".to_string(), StanzaValue::String("42".to_string())),
         ("name".to_string(), StanzaValue::String("fred".to_string())),
-        ("field-with-newlines".to_string(), StanzaValue::String("foo\nbar\nblah".to_string()))]);
+        (
+            "field-with-newlines".to_string(),
+            StanzaValue::String("foo\nbar\nblah".to_string()),
+        ),
+    ]);
     assert_eq!(s, expected);
 }

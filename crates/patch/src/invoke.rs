@@ -1,27 +1,35 @@
-use std::ffi::OsString;
-use std::path::Path;
-use std::io::{Write,BufWriter};
-use std::process::{Command, Stdio};
 use breezy_osutils::textfile::check_text_path;
+use std::ffi::OsString;
+use std::io::{BufWriter, Write};
+use std::path::Path;
+use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
 
 pub enum Error {
-    PatchInvokeError(String, String, Option<Box<dyn std::error::Error + Send + Sync>>),
+    PatchInvokeError(
+        String,
+        String,
+        Option<Box<dyn std::error::Error + Send + Sync>>,
+    ),
     PatchFailed(i32, String),
     BinaryFile(std::path::PathBuf),
     Io(std::io::Error),
 }
 
-impl From <std::io::Error> for Error {
+impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error::Io(e)
     }
 }
 
 /// Invoke a command with the given arguments, passing `input` to its stdin.
-fn write_to_cmd<'a, I>(command: &str, args: &[OsString], input: I) -> std::io::Result<(Vec<u8>, Vec<u8>, i32)>
+fn write_to_cmd<'a, I>(
+    command: &str,
+    args: &[OsString],
+    input: I,
+) -> std::io::Result<(Vec<u8>, Vec<u8>, i32)>
 where
-    I: IntoIterator<Item = &'a [u8]>
+    I: IntoIterator<Item = &'a [u8]>,
 {
     let mut cmd = Command::new(command);
     cmd.args(args)
@@ -29,7 +37,7 @@ where
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let mut child = cmd.spawn()?;
-    if let Some(mut stdin) = child.stdin.take()  {
+    if let Some(mut stdin) = child.stdin.take() {
         for chunk in input {
             stdin.write_all(chunk)?;
         }
@@ -42,9 +50,14 @@ where
 }
 
 /// Apply a patch to a file, producing another output file.
-pub fn patch<'a, I>(patch_contents: I, filename: &Path, output_filename: Option<&Path>, reverse: bool) -> Result<i32, Error>
+pub fn patch<'a, I>(
+    patch_contents: I,
+    filename: &Path,
+    output_filename: Option<&Path>,
+    reverse: bool,
+) -> Result<i32, Error>
 where
-    I: Iterator<Item = &'a [u8]>
+    I: Iterator<Item = &'a [u8]>,
 {
     let mut args: Vec<OsString> = vec![
         "-f".into(),
@@ -60,20 +73,29 @@ where
     }
     args.push(filename.into());
     let (stdout, stderr, status) = write_to_cmd("patch", &args, patch_contents)
-        .map_err(|e| Error::PatchInvokeError(
-            e.to_string(),
-            String::new(),
-            Some(Box::new(e)),
-        ))?;
+        .map_err(|e| Error::PatchInvokeError(e.to_string(), String::new(), Some(Box::new(e))))?;
     if status < 0 {
-        let err = if output_filename.is_some() { assert!(stderr.is_empty()); &stdout } else { &stderr };
-        return Err(Error::PatchFailed(status, String::from_utf8_lossy(err).to_string()));
+        let err = if output_filename.is_some() {
+            assert!(stderr.is_empty());
+            &stdout
+        } else {
+            &stderr
+        };
+        return Err(Error::PatchFailed(
+            status,
+            String::from_utf8_lossy(err).to_string(),
+        ));
     }
     Ok(status)
 }
 
 /// Apply a three-way merge using `diff3`.
-pub fn diff3(out_file: &Path, mine_path: &Path, older_path: &Path, yours_path: &Path) -> Result<i32, Error> {
+pub fn diff3(
+    out_file: &Path,
+    mine_path: &Path,
+    older_path: &Path,
+    yours_path: &Path,
+) -> Result<i32, Error> {
     fn add_label(args: &mut Vec<OsString>, label: &str) {
         args.extend(vec!["-L".into(), label.into()]);
     }
@@ -82,24 +104,17 @@ pub fn diff3(out_file: &Path, mine_path: &Path, older_path: &Path, yours_path: &
             return Err(Error::BinaryFile(path.to_path_buf()));
         }
     }
-    let mut args = vec![
-        "-E".into(),
-        "--merge".into(),
-    ];
+    let mut args = vec!["-E".into(), "--merge".into()];
     add_label(&mut args, "TREE");
     add_label(&mut args, "ANCESTOR");
     add_label(&mut args, "MERGE-SOURCE");
-    args.extend(vec![
-        mine_path.into(),
-        older_path.into(),
-        yours_path.into(),
-    ]);
+    args.extend(vec![mine_path.into(), older_path.into(), yours_path.into()]);
     let (output, stderr, status) = write_to_cmd("diff3", &args, std::iter::once::<&[u8]>(&[]))?;
     if status != 0 && status != 1 {
         return Err(Error::PatchInvokeError(
             format!("diff3 exited with status {}", status),
             String::from_utf8_lossy(&stderr).to_string(),
-            None
+            None,
         ));
     }
     std::fs::write(out_file, &output)?;
@@ -118,7 +133,7 @@ pub fn run_patch<'a, I>(
     patch_cmd: Option<&str>,
 ) -> Result<(), Error>
 where
-    I: Iterator<Item = &'a [u8]>
+    I: Iterator<Item = &'a [u8]>,
 {
     let mut args: Vec<OsString> = vec![
         "-d".into(),
@@ -147,15 +162,14 @@ where
         args.push(target_file.into());
     }
     let mut process = Command::new(patch_cmd.unwrap_or("patch"));
-    process.args(&args)
+    process
+        .args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = process.spawn().map_err(|e| Error::PatchInvokeError(
-        e.to_string(),
-        String::new(),
-        Some(Box::new(e)),
-    ))?;
+    let mut child = process
+        .spawn()
+        .map_err(|e| Error::PatchInvokeError(e.to_string(), String::new(), Some(Box::new(e))))?;
     if let Some(mut stdin) = child.stdin.take() {
         for patch in patches {
             stdin.write_all(patch)?;
@@ -172,7 +186,10 @@ where
     let status = output.status.code().unwrap_or(-1);
     assert!(output.stderr.is_empty());
     if status != 0 {
-        return Err(Error::PatchFailed(status, String::from_utf8_lossy(&output.stdout).to_string()));
+        return Err(Error::PatchFailed(
+            status,
+            String::from_utf8_lossy(&output.stdout).to_string(),
+        ));
     }
     out.write_all(&output.stdout)?;
     Ok(())
@@ -184,7 +201,7 @@ where
 pub fn iter_patched_from_hunks<'a, I, H>(orig_lines: I, hunks: H) -> Result<Vec<u8>, Error>
 where
     I: IntoIterator<Item = &'a [u8]>,
-    H: Iterator<Item = &'a [u8]>
+    H: Iterator<Item = &'a [u8]>,
 {
     let temp_file = NamedTempFile::new()?;
     let mut f = BufWriter::new(temp_file);
@@ -204,12 +221,12 @@ where
         temp_file_path.as_os_str().into(),
     ];
     let (stdout, stderr, status) = write_to_cmd("patch", &args, hunks)
-        .map_err(|e| Error::PatchInvokeError(
-            e.to_string(),
-            String::new(),
-            Some(Box::new(e))))?;
+        .map_err(|e| Error::PatchInvokeError(e.to_string(), String::new(), Some(Box::new(e))))?;
     if status != 0 {
-        return Err(Error::PatchFailed(status, String::from_utf8_lossy(&stderr).to_string()));
+        return Err(Error::PatchFailed(
+            status,
+            String::from_utf8_lossy(&stderr).to_string(),
+        ));
     }
     assert!(stderr.is_empty());
     Ok(stdout)

@@ -1,7 +1,7 @@
+use sha1::{Digest, Sha1};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use sha1::{Digest, Sha1};
 
 pub fn sha_file(f: &mut dyn Read) -> Result<String, std::io::Error> {
     let mut s = Sha1::new();

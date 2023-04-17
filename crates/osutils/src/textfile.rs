@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Read,Error};
+use std::io::{Error, Read};
 use std::path::Path;
 
 /// Return false if the supplied lines contain NULs.

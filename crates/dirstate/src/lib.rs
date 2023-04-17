@@ -1,12 +1,12 @@
 use base64;
+use breezy_osutils::sha::{sha_file, sha_file_by_name};
 use std::cmp::Ordering;
-use std::path::Path;
-use breezy_osutils::sha::{sha_file_by_name,sha_file};
 use std::fs::File;
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
+use std::path::Path;
 
-pub trait SHA1Provider : Send + Sync {
+pub trait SHA1Provider: Send + Sync {
     fn sha1(&self, path: &Path) -> std::io::Result<String>;
 
     fn stat_and_sha1(&self, path: &Path) -> std::io::Result<(Metadata, String)>;
@@ -47,13 +47,11 @@ pub fn lt_by_dirs(path1: &Path, path2: &Path) -> bool {
             (None, None) => return false,
             (None, Some(_)) => return true,
             (Some(_), None) => return false,
-            (Some(part1), Some(part2)) => {
-                match part1.cmp(&part2) {
-                    Ordering::Equal => continue,
-                    Ordering::Less => return true,
-                    Ordering::Greater => return false,
-                }
-            }
+            (Some(part1), Some(part2)) => match part1.cmp(&part2) {
+                Ordering::Equal => continue,
+                Ordering::Less => return true,
+                Ordering::Greater => return false,
+            },
         }
     }
 }
@@ -100,11 +98,21 @@ pub fn bisect_path_right(paths: &[&Path], path: &Path) -> usize {
 pub fn pack_stat_metadata(metadata: &Metadata) -> String {
     pack_stat(
         metadata.len(),
-        metadata.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
-        metadata.created().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        metadata
+            .modified()
+            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+        metadata
+            .created()
+            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
         metadata.dev(),
         metadata.ino(),
-        metadata.mode()
+        metadata.mode(),
     )
 }
 

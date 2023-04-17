@@ -64,11 +64,11 @@
 
 # FIXME: the conflict markers should be *7* characters
 
+import hashlib
 import os
 from copy import copy
 from io import BytesIO
 
-import hashlib
 import patiencediff
 
 from ..lazy_import import lazy_import

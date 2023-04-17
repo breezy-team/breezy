@@ -80,3 +80,4 @@ __pycache__
 ./target
 ./brz
 *.so
+.pytest_cache

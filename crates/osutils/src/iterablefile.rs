@@ -1,4 +1,4 @@
-use std::io::{self, Read, Seek, SeekFrom, BufRead};
+use std::io::{self, BufRead, Read, Seek, SeekFrom};
 
 pub struct IterableFile<I: Iterator<Item = io::Result<Vec<u8>>> + Send> {
     iter: I,
@@ -85,7 +85,12 @@ mod tests {
 
     #[test]
     fn test_read_all() {
-        let content: Vec<Vec<u8>> = vec![b"This ".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.".to_vec()];
+        let content: Vec<Vec<u8>> = vec![
+            b"This ".to_vec(),
+            b"is ".to_vec(),
+            b"a ".to_vec(),
+            b"test.".to_vec(),
+        ];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let mut buf = Vec::new();
         let read = file.read_to_end(&mut buf).unwrap();
@@ -95,7 +100,12 @@ mod tests {
 
     #[test]
     fn test_read_n() {
-        let content: Vec<Vec<u8>> = vec![b"This ".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.".to_vec()];
+        let content: Vec<Vec<u8>> = vec![
+            b"This ".to_vec(),
+            b"is ".to_vec(),
+            b"a ".to_vec(),
+            b"test.".to_vec(),
+        ];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let mut buf = [0u8; 8];
         file.read_exact(&mut buf).unwrap();
@@ -104,7 +114,12 @@ mod tests {
 
     #[test]
     fn test_read_to() {
-        let content: Vec<Vec<u8>> = vec![b"This\n".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.\n".to_vec()];
+        let content: Vec<Vec<u8>> = vec![
+            b"This\n".to_vec(),
+            b"is ".to_vec(),
+            b"a ".to_vec(),
+            b"test.\n".to_vec(),
+        ];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let mut buf = Vec::new();
         file.read_until(b'\n', &mut buf).unwrap();
@@ -117,7 +132,13 @@ mod tests {
 
     #[test]
     fn test_readline() {
-        let content: Vec<Vec<u8>> = vec![b"".to_vec(), b"This\n".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.\n".to_vec()];
+        let content: Vec<Vec<u8>> = vec![
+            b"".to_vec(),
+            b"This\n".to_vec(),
+            b"is ".to_vec(),
+            b"a ".to_vec(),
+            b"test.\n".to_vec(),
+        ];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let mut buf = String::new();
         let read = file.read_line(&mut buf).unwrap();
@@ -127,7 +148,13 @@ mod tests {
 
     #[test]
     fn test_readlines() {
-        let content: Vec<Vec<u8>> = vec![b"This\n".to_vec(), b"is ".to_vec(), b"".to_vec(), b"a ".to_vec(), b"test.\n".to_vec()];
+        let content: Vec<Vec<u8>> = vec![
+            b"This\n".to_vec(),
+            b"is ".to_vec(),
+            b"".to_vec(),
+            b"a ".to_vec(),
+            b"test.\n".to_vec(),
+        ];
         let file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let lines: Vec<String> = file.lines().map(|line| line.unwrap()).collect();
         assert_eq!(lines, vec!["This", "is a test."]);
@@ -135,7 +162,13 @@ mod tests {
 
     #[test]
     fn test_fillbuf() {
-        let content: Vec<Vec<u8>> = vec![b"This ".to_vec(), b"".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.".to_vec()];
+        let content: Vec<Vec<u8>> = vec![
+            b"This ".to_vec(),
+            b"".to_vec(),
+            b"is ".to_vec(),
+            b"a ".to_vec(),
+            b"test.".to_vec(),
+        ];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         assert_eq!(file.fill_buf().unwrap(), b"This ");
         file.consume(5);
@@ -150,7 +183,12 @@ mod tests {
 
     #[test]
     fn test_drain() {
-        let content: Vec<Vec<u8>> = vec![b"This ".to_vec(), b"is ".to_vec(), b"a ".to_vec(), b"test.".to_vec()];
+        let content: Vec<Vec<u8>> = vec![
+            b"This ".to_vec(),
+            b"is ".to_vec(),
+            b"a ".to_vec(),
+            b"test.".to_vec(),
+        ];
         let mut file = IterableFile::new(content.iter().map(|x| Ok(x.to_vec())));
         let buf = file.fill_buf().unwrap();
         assert_eq!(buf, b"This ");

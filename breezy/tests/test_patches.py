@@ -22,9 +22,9 @@ from breezy.patches import (NO_NL, AppliedPatches, BinaryFiles, BinaryPatch,
                             ContextLine, InsertLine, MalformedHunkHeader,
                             MalformedLine, MalformedPatchHeader, Patch,
                             RemoveLine, difference_index, get_patch_names,
-                            hunk_from_header, iter_patched,
-                            iter_patched_from_hunks, parse_line, parse_patch,
-                            parse_patches, iter_lines_handle_nl)
+                            hunk_from_header, iter_lines_handle_nl,
+                            iter_patched, iter_patched_from_hunks, parse_line,
+                            parse_patch, parse_patches)
 from breezy.tests import TestCase, TestCaseWithTransport
 
 

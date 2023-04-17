@@ -1,15 +1,15 @@
-use std::io::prelude::*;
-use std::os::unix::fs::MetadataExt;
-use std::path::{Path,PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::io;
-use std::io::{BufReader};
-use std::fs;
-use std::fs::{File,Metadata,Permissions};
-use std::collections::HashMap;
-use log::{debug, info};
+use bazaar::filters::{ContentFilter, ContentFilterProvider, ContentFilterStack};
 use breezy_osutils::sha::sha_string;
-use bazaar::filters::{ContentFilterStack, ContentFilter, ContentFilterProvider};
+use log::{debug, info};
+use std::collections::HashMap;
+use std::fs;
+use std::fs::{File, Metadata, Permissions};
+use std::io;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tempfile::NamedTempFile;
 
 /// TODO: Up-front, stat all files in order and remove those which are deleted or
@@ -56,7 +56,7 @@ const CACHE_HEADER: &[u8] = b"### bzr hashcache v5\n";
 /// miss_count
 ///     number of misses (times files have been completely re-read)
 
-#[derive(Debug,PartialEq,Default,Clone)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub struct Fingerprint {
     pub size: u64,
     pub mtime: i64,
@@ -66,15 +66,15 @@ pub struct Fingerprint {
     pub mode: u32,
 }
 
-impl From <Metadata> for Fingerprint {
-    fn from (meta: Metadata) -> Fingerprint {
+impl From<Metadata> for Fingerprint {
+    fn from(meta: Metadata) -> Fingerprint {
         Fingerprint {
             size: meta.size(),
             mtime: meta.mtime(),
             ctime: meta.ctime(),
             ino: meta.ino(),
             dev: meta.dev(),
-            mode: meta.mode()
+            mode: meta.mode(),
         }
     }
 }
@@ -109,8 +109,7 @@ impl HashCache {
         root: &Path,
         cache_file_name: &Path,
         permissions: Option<Permissions>,
-        content_filter_provider: Option<Box<ContentFilterProvider>,
-        >,
+        content_filter_provider: Option<Box<ContentFilterProvider>>,
     ) -> Self {
         HashCache {
             root: root.to_path_buf(),
@@ -161,7 +160,11 @@ impl HashCache {
     /// since the entry was inserted.
     pub fn scan(&mut self) {
         let mut keys_to_remove = Vec::new();
-        let mut by_inode = self.cache.iter().map(|(k, v)| (v.1.ino, k, v)).collect::<Vec<_>>();
+        let mut by_inode = self
+            .cache
+            .iter()
+            .map(|(k, v)| (v.1.ino, k, v))
+            .collect::<Vec<_>>();
         by_inode.sort_by_key(|x| x.0);
         for (_inode, path, cache_val) in by_inode {
             let abspath = self.root.join(path);
@@ -183,10 +186,15 @@ impl HashCache {
     pub fn get_sha1_by_fingerprint(
         &mut self,
         path: &Path,
-        file_fp: &Fingerprint) -> io::Result<String> {
+        file_fp: &Fingerprint,
+    ) -> io::Result<String> {
         let abspath = self.root.join(path);
 
-        let (cache_sha1, cache_fp) = self.cache.get(path).cloned().unwrap_or((Default::default(), Default::default()));
+        let (cache_sha1, cache_fp) = self
+            .cache
+            .get(path)
+            .cloned()
+            .unwrap_or((Default::default(), Default::default()));
 
         if cache_fp == *file_fp {
             self.hit_count += 1;
@@ -196,11 +204,12 @@ impl HashCache {
 
             match file_fp.mode & libc::S_IFMT {
                 libc::S_IFREG => {
-                    let filters: Box<dyn ContentFilter> = if let Some(filter_provider) = self.filter_provider.as_ref() {
-                        filter_provider(path, file_fp.ctime as u64)
-                    } else {
-                        Box::new(ContentFilterStack::new())
-                    };
+                    let filters: Box<dyn ContentFilter> =
+                        if let Some(filter_provider) = self.filter_provider.as_ref() {
+                            filter_provider(path, file_fp.ctime as u64)
+                        } else {
+                            Box::new(ContentFilterStack::new())
+                        };
                     let digest = filters.sha1_file(&abspath)?;
 
                     // window of 3 seconds to allow for 2s resolution on windows,
@@ -226,7 +235,8 @@ impl HashCache {
                     } else {
                         self.update_count += 1;
                         self.needs_write = true;
-                        self.cache.insert(path.to_owned(), (digest.clone(), file_fp.clone()));
+                        self.cache
+                            .insert(path.to_owned(), (digest.clone(), file_fp.clone()));
                     }
 
                     Ok(digest)
@@ -234,17 +244,16 @@ impl HashCache {
                 libc::S_IFLNK => {
                     let target = fs::read_link(&abspath)?;
                     let digest = sha_string(target.to_string_lossy().as_bytes());
-                    self.cache.insert(path.to_owned(), (digest.clone(), file_fp.clone()));
+                    self.cache
+                        .insert(path.to_owned(), (digest.clone(), file_fp.clone()));
                     self.update_count += 1;
                     self.needs_write = true;
                     Ok(digest)
                 }
-                _ => {
-                    Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("unknown file stat mode: {:o}", file_fp.mode),
-                    ))
-                }
+                _ => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("unknown file stat mode: {:o}", file_fp.mode),
+                )),
             }
         }
     }
@@ -296,9 +305,15 @@ impl HashCache {
         }
         outf.persist(self.cache_file_name())?;
         self.needs_write = false;
-        debug!("write hash cache: {} hits={} misses={} stat={} recent={} updates={}",
-               self.cache_file_name().display(), self.hit_count, self.miss_count,
-               self.stat_count, self.danger_count, self.update_count);
+        debug!(
+            "write hash cache: {} hits={} misses={} stat={} recent={} updates={}",
+            self.cache_file_name().display(),
+            self.hit_count,
+            self.miss_count,
+            self.stat_count,
+            self.danger_count,
+            self.update_count
+        );
         Ok(())
     }
 
@@ -312,7 +327,11 @@ impl HashCache {
         self.cache = HashMap::new();
         let file = File::open(self.cache_file_name());
         if file.is_err() {
-            debug!("failed to open {}: {}", self.cache_file_name().display(), file.err().unwrap());
+            debug!(
+                "failed to open {}: {}",
+                self.cache_file_name().display(),
+                file.err().unwrap()
+            );
             self.needs_write = true;
             return Ok(());
         }
@@ -324,14 +343,18 @@ impl HashCache {
                 self.needs_write = true;
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
-                    format!("cache header marker not found at top of {}; discarding cache", self.cache_file_name().display()),
+                    format!(
+                        "cache header marker not found at top of {}; discarding cache",
+                        self.cache_file_name().display()
+                    ),
                 ));
             }
         } else {
             self.needs_write = true;
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("error reading cache file header", )));
+                format!("error reading cache file header",),
+            ));
         }
         for line in lines {
             let line = line?;

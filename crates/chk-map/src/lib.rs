@@ -25,15 +25,16 @@ pub fn search_key_255(key: &[&[u8]]) -> Vec<u8> {
         result.push(0x00);
     }
     result.pop();
-    result.iter().map(|b| if *b == 0x0A { b'_'} else { *b }).collect()
+    result
+        .iter()
+        .map(|b| if *b == 0x0A { b'_' } else { *b })
+        .collect()
 }
 
 pub fn bytes_to_text_key(data: &[u8]) -> Result<(&[u8], &[u8]), String> {
     let sections: Vec<&[u8]> = data.split(|&byte| byte == b'\n').collect();
 
-    let delimiter_position = sections[0]
-        .windows(2)
-        .position(|window| window == b": ");
+    let delimiter_position = sections[0].windows(2).position(|window| window == b": ");
 
     if delimiter_position.is_none() {
         return Err("Invalid key file".to_string());

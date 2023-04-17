@@ -1,13 +1,13 @@
 #![allow(non_snake_case)]
 
-use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
-use std::path::{Path,PathBuf};
-use pyo3::types::{PyBytes, PyDict, PyList, PyTuple, PyString};
 use pyo3::exceptions::PyTypeError;
-use std::os::unix::fs::{PermissionsExt, MetadataExt};
+use pyo3::prelude::*;
+use pyo3::types::{PyBytes, PyDict, PyList, PyString, PyTuple};
+use pyo3::wrap_pyfunction;
 use std::ffi::OsString;
 use std::os::unix::ffi::OsStringExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
+use std::path::{Path, PathBuf};
 
 use bazaar_dirstate;
 
@@ -79,10 +79,18 @@ fn lt_by_dirs(path1: &PyAny, path2: &PyAny) -> PyResult<bool> {
 #[pyfunction]
 fn bisect_path_left(paths: Vec<&PyAny>, path: &PyAny) -> PyResult<usize> {
     let path = extract_path(path)?;
-    let paths = paths.iter().map(|x| extract_path(x).unwrap()).collect::<Vec<PathBuf>>();
+    let paths = paths
+        .iter()
+        .map(|x| extract_path(x).unwrap())
+        .collect::<Vec<PathBuf>>();
     let offset = bazaar_dirstate::bisect_path_left(
-        paths.iter().map(|x| x.as_path()).collect::<Vec<&Path>>().as_slice(),
-        &path);
+        paths
+            .iter()
+            .map(|x| x.as_path())
+            .collect::<Vec<&Path>>()
+            .as_slice(),
+        &path,
+    );
     Ok(offset)
 }
 
@@ -107,10 +115,18 @@ fn bisect_path_left(paths: Vec<&PyAny>, path: &PyAny) -> PyResult<usize> {
 #[pyfunction]
 fn bisect_path_right(paths: Vec<&PyAny>, path: &PyAny) -> PyResult<usize> {
     let path = extract_path(path)?;
-    let paths = paths.iter().map(|x| extract_path(x).unwrap()).collect::<Vec<PathBuf>>();
+    let paths = paths
+        .iter()
+        .map(|x| extract_path(x).unwrap())
+        .collect::<Vec<PathBuf>>();
     let offset = bazaar_dirstate::bisect_path_right(
-        paths.iter().map(|x| x.as_path()).collect::<Vec<&Path>>().as_slice(),
-        &path);
+        paths
+            .iter()
+            .map(|x| x.as_path())
+            .collect::<Vec<&Path>>()
+            .as_slice(),
+        &path,
+    );
     Ok(offset)
 }
 
@@ -201,15 +217,25 @@ impl StatResult {
 
     #[getter]
     fn st_mtime(&self) -> PyResult<u64> {
-        let modified = self.metadata.modified().map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
-        let since_epoch = modified.duration_since(std::time::UNIX_EPOCH).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
+        let modified = self
+            .metadata
+            .modified()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        let since_epoch = modified
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
         Ok(since_epoch.as_secs())
     }
 
     #[getter]
     fn st_ctime(&self) -> PyResult<u64> {
-        let created = self.metadata.created().map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
-        let since_epoch = created.duration_since(std::time::UNIX_EPOCH).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
+        let created = self
+            .metadata
+            .created()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        let since_epoch = created
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
         Ok(since_epoch.as_secs())
     }
 
@@ -240,7 +266,10 @@ struct SHA1Provider {
 impl SHA1Provider {
     fn sha1(&mut self, py: Python, path: &PyAny) -> PyResult<PyObject> {
         let path = extract_path(path)?;
-        let sha1 = self.provider.sha1(&path).map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+        let sha1 = self
+            .provider
+            .sha1(&path)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
         Ok(PyBytes::new(py, sha1.as_bytes()).to_object(py))
     }
 
@@ -248,7 +277,10 @@ impl SHA1Provider {
         let path = extract_path(path)?;
         let (md, sha1) = self.provider.stat_and_sha1(&path)?;
         let pmd = StatResult { metadata: md };
-        Ok((pmd.into_py(py), PyBytes::new(py, sha1.as_bytes()).to_object(py)))
+        Ok((
+            pmd.into_py(py),
+            PyBytes::new(py, sha1.as_bytes()).to_object(py),
+        ))
     }
 }
 
