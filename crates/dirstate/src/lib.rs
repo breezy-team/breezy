@@ -1,13 +1,10 @@
 use base64;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
-use lazy_static::lazy_static;
-use maplit::hashmap;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::fs::File;
 use std::fs::Metadata;
 use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub trait SHA1Provider: Send + Sync {
     fn sha1(&self, path: &Path) -> std::io::Result<String>;
@@ -174,7 +171,7 @@ pub const HEADER_FORMAT_2: &[u8] = b"#bazaar dirstate flat format 2\n";
 pub const HEADER_FORMAT_3: &[u8] = b"#bazaar dirstate flat format 3\n";
 
 #[derive(PartialEq, Eq, Debug)]
-enum Kind {
+pub enum Kind {
     Absent,
     File,
     Directory,
@@ -184,7 +181,7 @@ enum Kind {
 }
 
 impl Kind {
-    fn to_char(&self) -> char {
+    pub fn to_char(&self) -> char {
         match self {
             Kind::Absent => 'a',
             Kind::File => 'f',
@@ -195,7 +192,7 @@ impl Kind {
         }
     }
 
-    fn to_string(&self) -> &str {
+    pub fn to_str(&self) -> &str {
         match self {
             Kind::Absent => "absent",
             Kind::File => "file",
@@ -204,6 +201,12 @@ impl Kind {
             Kind::Symlink => "symlink",
             Kind::TreeReference => "tree-reference",
         }
+    }
+}
+
+impl ToString for Kind {
+    fn to_string(&self) -> String {
+        self.to_str().to_string()
     }
 }
 
@@ -235,26 +238,26 @@ impl From<char> for Kind {
     }
 }
 
-enum YesNo {
+pub enum YesNo {
     Yes,
     No,
 }
 
 /// _header_state and _dirblock_state represent the current state
 /// of the dirstate metadata and the per-row data respectiely.
-/// NOT_IN_MEMORY indicates that no data is in memory
-/// IN_MEMORY_UNMODIFIED indicates that what we have in memory
-///   is the same as is on disk
-/// IN_MEMORY_MODIFIED indicates that we have a modified version
-///   of what is on disk.
 /// In future we will add more granularity, for instance _dirblock_state
 /// will probably support partially-in-memory as a separate variable,
 /// allowing for partially-in-memory unmodified and partially-in-memory
 /// modified states.
 #[derive(PartialEq, Eq, Debug)]
-enum MemoryState {
+pub enum MemoryState {
+    /// indicates that no data is in memory
     NotInMemory,
+
+    /// indicates that what we have in memory is the same as is on disk
     InMemoryUnmodified,
+
+    /// indicates that we have a modified version of what is on disk.
     InMemoryModified,
     InMemoryHashModified,
 }

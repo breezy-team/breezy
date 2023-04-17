@@ -137,3 +137,79 @@ pub mod tsort;
 
 #[cfg(test)]
 mod test;
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct RevnoVec(Vec<usize>);
+
+impl RevnoVec {
+    pub fn new() -> Self {
+        RevnoVec(vec![])
+    }
+
+    pub fn bump_last(&self) -> Self {
+        let mut ret = self.clone();
+        let last_index = ret.0.len() - 1;
+        ret.0[last_index] += 1;
+        return ret;
+    }
+
+    pub fn new_branch(&self, branch_count: usize) -> Self {
+        RevnoVec::from(vec![self[0], branch_count, 1])
+    }
+}
+
+impl IntoIterator for RevnoVec {
+    type Item = usize;
+    type IntoIter = std::vec::IntoIter<usize>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl std::ops::Index<usize> for RevnoVec {
+    type Output = usize;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for RevnoVec {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
+impl std::fmt::Debug for RevnoVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "RevnoVec({:?})", self.0)
+    }
+}
+
+impl std::fmt::Display for RevnoVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut first = true;
+        for r in self.0.iter() {
+            if first {
+                first = false;
+            } else {
+                write!(f, ".")?;
+            }
+            write!(f, "{}", r)?;
+        }
+        Ok(())
+    }
+}
+
+impl From<Vec<usize>> for RevnoVec {
+    fn from(v: Vec<usize>) -> Self {
+        RevnoVec(v)
+    }
+}
+
+impl From<usize> for RevnoVec {
+    fn from(v: usize) -> Self {
+        RevnoVec(vec![v])
+    }
+}

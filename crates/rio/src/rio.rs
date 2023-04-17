@@ -295,7 +295,7 @@ where
             // new tag:value line
             if let Some(tag) = tag.take() {
                 let value = accum_value.take().map_or_else(String::new, |v| v.join(""));
-                stanza.add(tag, StanzaValue::String(value));
+                stanza.add(tag, StanzaValue::String(value))?;
             }
             let colon_index = match line.windows(2).position(|window| window.eq(b": ")) {
                 Some(index) => index,

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDateTime, TimeZone, Timelike, Utc};
+use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, TimeZone, Utc};
 use std::time::UNIX_EPOCH;
 
 const DEFAULT_DATE_FORMAT: &str = "%a %Y-%m-%d %H:%M:%S";
