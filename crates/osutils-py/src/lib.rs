@@ -2,10 +2,10 @@
 use memchr;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
-use pyo3::import_exception;
 use pyo3::PyErr;
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashSet;
@@ -338,7 +338,7 @@ fn legal_path(path: &PyAny) -> PyResult<bool> {
 fn check_legal_path(path: &PyAny) -> PyResult<()> {
     let path = extract_path(path)?;
     if !breezy_osutils::path::legal_path(path.as_path()) {
-        Err(IllegalPath::new_err((path, )))
+        Err(IllegalPath::new_err((path,)))
     } else {
         Ok(())
     }

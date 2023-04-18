@@ -648,11 +648,11 @@ def report_extension_load_failures():
 
 
 from ._osutils_rs import (_accessible_normalized_filename,
-                          _inaccessible_normalized_filename, chunks_to_lines,
-                          chunks_to_lines_iter, link_or_copy,
+                          _inaccessible_normalized_filename, check_legal_path,
+                          chunks_to_lines, chunks_to_lines_iter, delete_any,
+                          get_host_name, link_or_copy, local_concurrency,
                           normalized_filename, normalizes_filenames,
-                          split_lines, get_host_name, check_legal_path,
-                          local_concurrency, delete_any)
+                          split_lines)
 
 
 def delete_any(path):
