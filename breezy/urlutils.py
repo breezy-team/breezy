@@ -53,36 +53,6 @@ class InvalidRebaseURLs(errors.PathError):
             self, from_, 'URLs differ by more than path.')
 
 
-def basename(url, exclude_trailing_slash=True):
-    """Return the last component of a URL.
-
-    Args:
-      url: The URL in question
-      exclude_trailing_slash: If the url looks like "path/to/foo/"
-        ignore the final slash and return 'foo' rather than ''
-    Returns:
-      Just the final component of the URL. This can return ''
-      if you don't exclude_trailing_slash, or if you are at the
-      root of the URL.
-    """
-    return split(url, exclude_trailing_slash=exclude_trailing_slash)[1]
-
-
-def dirname(url: str, exclude_trailing_slash: bool = True) -> str:
-    """Return the parent directory of the given path.
-
-    Args:
-      url: Relative or absolute URL
-      exclude_trailing_slash: Remove a final slash
-        (treat http://host/foo/ as http://host/foo, but
-        http://host/ stays http://host/)
-    Returns: Everything in the URL except the last path chunk
-    """
-    # TODO: jam 20060502 This was named dirname to be consistent
-    #       with the os functions, but maybe "parent" would be better
-    return split(url, exclude_trailing_slash=exclude_trailing_slash)[0]
-
-
 quote_from_bytes = urlparse.quote_from_bytes
 quote = urlparse.quote
 unquote_to_bytes = urlparse.unquote_to_bytes
@@ -108,99 +78,11 @@ def file_relpath(base: str, path: str) -> str:
     return escape(osutils.relpath(base, path))
 
 
-def _find_scheme_and_separator(url):
-    """Find the scheme separator (://) and the first path separator
-
-    This is just a helper functions for other path utilities.
-    It could probably be replaced by urlparse
-    """
-    m = _url_scheme_re.match(url)
-    if not m:
-        return None, None
-
-    scheme = m.group('scheme')
-    path = m.group('path')
-
-    # Find the path separating slash
-    # (first slash after the ://)
-    first_path_slash = path.find('/')
-    if first_path_slash == -1:
-        return len(scheme), None
-    return len(scheme), first_path_slash + m.start('path')
-
-
-def is_url(url):
-    """Tests whether a URL is in actual fact a URL."""
-    return _url_scheme_re.match(url) is not None
-
-
-def join(base: str, *args) -> str:
-    """Create a URL by joining sections.
-
-    This will normalize '..', assuming that paths are absolute
-    (it assumes no symlinks in either path)
-
-    If any of *args is an absolute URL, it will be treated correctly.
-    Example:
-        join('http://foo', 'http://bar') => 'http://bar'
-        join('http://foo', 'bar') => 'http://foo/bar'
-        join('http://foo', 'bar', '../baz') => 'http://foo/baz'
-    """
-    if not args:
-        return base
-    scheme_end, path_start = _find_scheme_and_separator(base)
-    if scheme_end is None and path_start is None:
-        path_start = 0
-    elif path_start is None:
-        path_start = len(base)
-    path = base[path_start:]
-    for arg in args:
-        arg_scheme_end, arg_path_start = _find_scheme_and_separator(arg)
-        if arg_scheme_end is None and arg_path_start is None:
-            arg_path_start = 0
-        elif arg_path_start is None:
-            arg_path_start = len(arg)
-        if arg_scheme_end is not None:
-            base = arg
-            path = arg[arg_path_start:]
-            scheme_end = arg_scheme_end
-            path_start = arg_path_start
-        else:
-            path = joinpath(path, arg)
-    return base[:path_start] + path
-
-
-def joinpath(base, *args):
-    """Join URL path segments to a URL path segment.
-
-    This is somewhat like osutils.joinpath, but intended for URLs.
-
-    XXX: this duplicates some normalisation logic, and also duplicates a lot of
-    path handling logic that already exists in some Transport implementations.
-    We really should try to have exactly one place in the code base responsible
-    for combining paths of URLs.
-    """
-    path = base.split('/')
-    if len(path) > 1 and path[-1] == '':
-        # If the path ends in a trailing /, remove it.
-        path.pop()
-    for arg in args:
-        if arg.startswith('/'):
-            path = []
-        for chunk in arg.split('/'):
-            if chunk == '.':
-                continue
-            elif chunk == '..':
-                if path == ['']:
-                    raise InvalidURLJoin('Cannot go above root',
-                                         base, args)
-                path.pop()
-            else:
-                path.append(chunk)
-    if path == ['']:
-        return '/'
-    else:
-        return '/'.join(path)
+from ._urlutils_rs import (_find_scheme_and_separator, basename, dirname,
+                           is_url, join, joinpath, split,
+                           split_segment_parameters,
+                           split_segment_parameters_raw,
+                           strip_segment_parameters, strip_trailing_slash)
 
 
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
@@ -420,99 +302,6 @@ def _win32_extract_drive_letter(url_base, path):
     return url_base, path
 
 
-def split(url: str, exclude_trailing_slash: bool = True) -> Tuple[str, str]:
-    """Split a URL into its parent directory and a child directory.
-
-    Args:
-      url: A relative or absolute URL
-      exclude_trailing_slash: Strip off a final '/' if it is part
-        of the path (but not if it is part of the protocol specification)
-
-    Returns: (parent_url, child_dir).  child_dir may be the empty string if
-        we're at the root.
-    """
-    scheme_loc, first_path_slash = _find_scheme_and_separator(url)
-
-    if first_path_slash is None:
-        # We have either a relative path, or no separating slash
-        if scheme_loc is None:
-            # Relative path
-            if exclude_trailing_slash and url.endswith('/'):
-                url = url[:-1]
-            return posixpath.split(url)
-        else:
-            # Scheme with no path
-            return url, ''
-
-    # We have a fully defined path
-    url_base = url[:first_path_slash]  # http://host, file://
-    path = url[first_path_slash:]  # /file/foo
-
-    if sys.platform == 'win32' and url.startswith('file:///'):
-        # Strip off the drive letter
-        # url_base is currently file://
-        # path is currently /C:/foo
-        url_base, path = _win32_extract_drive_letter(url_base, path)
-        # now it should be file:///C: and /foo
-
-    if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
-        path = path[:-1]
-    head, tail = posixpath.split(path)
-    return url_base + head, tail
-
-
-def split_segment_parameters_raw(url):
-    """Split the subsegment of the last segment of a URL.
-
-    Args:
-      url: A relative or absolute URL
-    Returns: (url, subsegments)
-    """
-    # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
-    #                operates on urls not url+segments, and Transport classes
-    #                should not be blindly adding slashes in the first place.
-    lurl = strip_trailing_slash(url)
-    # Segments begin at first comma after last forward slash, if one exists
-    segment_start = lurl.find(",", lurl.rfind("/") + 1)
-    if segment_start == -1:
-        return (url, [])
-    return (lurl[:segment_start],
-            [str(s) for s in lurl[segment_start + 1:].split(",")])
-
-
-def split_segment_parameters(url):
-    """Split the segment parameters of the last segment of a URL.
-
-    Args:
-      url: A relative or absolute URL
-    Returns: (url, segment_parameters)
-    """
-    (base_url, subsegments) = split_segment_parameters_raw(url)
-    parameters = {}
-    for subsegment in subsegments:
-        try:
-            (key, value) = subsegment.split("=", 1)
-        except ValueError:
-            raise InvalidURL(url, "missing = in subsegment")
-        if not isinstance(key, str):
-            raise TypeError(key)
-        if not isinstance(value, str):
-            raise TypeError(value)
-        parameters[key] = value
-    return (base_url, parameters)
-
-
-def strip_segment_parameters(url):
-    """Strip the segment parameters from a URL.
-
-    Args:
-      url: A relative or absolute URL
-    Returns: url
-    """
-    base_url, subsegments = split_segment_parameters_raw(url)
-    return base_url
-
-
 def join_segment_parameters_raw(base, *subsegments):
     """Create a new URL by adding subsegments to an existing one.
 
@@ -565,47 +354,6 @@ def _win32_strip_local_trailing_slash(url):
         return url[:-1]
     else:
         return url
-
-
-def strip_trailing_slash(url):
-    """Strip trailing slash, except for root paths.
-
-    The definition of 'root path' is platform-dependent.
-    This assumes that all URLs are valid netloc urls, such that they
-    form:
-    scheme://host/path
-    It searches for ://, and then refuses to remove the next '/'.
-    It can also handle relative paths
-    Examples:
-        path/to/foo       => path/to/foo
-        path/to/foo/      => path/to/foo
-        http://host/path/ => http://host/path
-        http://host/path  => http://host/path
-        http://host/      => http://host/
-        file:///          => file:///
-        file:///foo/      => file:///foo
-        # This is unique on win32 platforms, and is the only URL
-        # format which does it differently.
-        file:///c|/       => file:///c:/
-    """
-    if not url.endswith('/'):
-        # Nothing to do
-        return url
-    if sys.platform == 'win32' and url.startswith('file://'):
-        return _win32_strip_local_trailing_slash(url)
-
-    scheme_loc, first_path_slash = _find_scheme_and_separator(url)
-    if scheme_loc is None:
-        # This is a relative path, as it has no scheme
-        # so just chop off the last character
-        return url[:-1]
-
-    if first_path_slash is None or first_path_slash == len(url) - 1:
-        # Don't chop off anything if the only slash is the path
-        # separating slash
-        return url
-
-    return url[:-1]
 
 
 def unescape(url):
