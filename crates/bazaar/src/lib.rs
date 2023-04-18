@@ -2,6 +2,7 @@ pub mod filters;
 use std::fmt::{Debug, Error, Formatter};
 
 pub mod gen_ids;
+pub mod globbing;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FileId(Vec<u8>);
