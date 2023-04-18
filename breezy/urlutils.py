@@ -78,9 +78,11 @@ def file_relpath(base: str, path: str) -> str:
     return escape(osutils.relpath(base, path))
 
 
-from ._urlutils_rs import (
-    split, is_url, _find_scheme_and_separator, strip_trailing_slash,
-    join, dirname, basename, join, joinpath)
+from ._urlutils_rs import (_find_scheme_and_separator, basename, dirname,
+                           is_url, join, joinpath, split,
+                           split_segment_parameters,
+                           split_segment_parameters_raw,
+                           strip_segment_parameters, strip_trailing_slash)
 
 
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
@@ -298,58 +300,6 @@ def _win32_extract_drive_letter(url_base, path):
     url_base += path[0:3]  # file:// + /C:
     path = path[3:]  # /foo
     return url_base, path
-
-
-def split_segment_parameters_raw(url):
-    """Split the subsegment of the last segment of a URL.
-
-    Args:
-      url: A relative or absolute URL
-    Returns: (url, subsegments)
-    """
-    # GZ 2011-11-18: Dodgy removing the terminal slash like this, function
-    #                operates on urls not url+segments, and Transport classes
-    #                should not be blindly adding slashes in the first place.
-    lurl = strip_trailing_slash(url)
-    # Segments begin at first comma after last forward slash, if one exists
-    segment_start = lurl.find(",", lurl.rfind("/") + 1)
-    if segment_start == -1:
-        return (url, [])
-    return (lurl[:segment_start],
-            [str(s) for s in lurl[segment_start + 1:].split(",")])
-
-
-def split_segment_parameters(url):
-    """Split the segment parameters of the last segment of a URL.
-
-    Args:
-      url: A relative or absolute URL
-    Returns: (url, segment_parameters)
-    """
-    (base_url, subsegments) = split_segment_parameters_raw(url)
-    parameters = {}
-    for subsegment in subsegments:
-        try:
-            (key, value) = subsegment.split("=", 1)
-        except ValueError:
-            raise InvalidURL(url, "missing = in subsegment")
-        if not isinstance(key, str):
-            raise TypeError(key)
-        if not isinstance(value, str):
-            raise TypeError(value)
-        parameters[key] = value
-    return (base_url, parameters)
-
-
-def strip_segment_parameters(url):
-    """Strip the segment parameters from a URL.
-
-    Args:
-      url: A relative or absolute URL
-    Returns: url
-    """
-    base_url, subsegments = split_segment_parameters_raw(url)
-    return base_url
 
 
 def join_segment_parameters_raw(base, *subsegments):

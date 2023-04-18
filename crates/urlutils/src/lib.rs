@@ -1,12 +1,15 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::HashMap;
 
 lazy_static! {
-    static ref URL_SCHEME_RE: Regex = Regex::new(r"^(?P<scheme>[^:/]{2,}):(//)?(?P<path>.*)$").unwrap();
+    static ref URL_SCHEME_RE: Regex =
+        Regex::new(r"^(?P<scheme>[^:/]{2,}):(//)?(?P<path>.*)$").unwrap();
 }
 
 pub enum Error {
     AboveRoot(String, String),
+    SubsegmentMissesEquals(String),
 }
 
 type Result<K> = std::result::Result<K, Error>;
@@ -31,8 +34,13 @@ pub fn split(url: &str, exclude_trailing_slash: bool) -> (String, String) {
             if exclude_trailing_slash && url.ends_with('/') {
                 url = &url[..url.len() - 1];
             }
-            let split = url.rsplit_once('/')
-                .map(|(head, tail)| if head.is_empty() { ("/", tail) } else { (head, tail) });
+            let split = url.rsplit_once('/').map(|(head, tail)| {
+                if head.is_empty() {
+                    ("/", tail)
+                } else {
+                    (head, tail)
+                }
+            });
             if split.is_none() {
                 return (String::new(), url.to_string());
             } else {
@@ -61,8 +69,13 @@ pub fn split(url: &str, exclude_trailing_slash: bool) -> (String, String) {
     if exclude_trailing_slash && path.len() > 1 && path.ends_with('/') {
         path = &path[..path.len() - 1];
     }
-    let split = path.rsplit_once('/')
-        .map(|(head, tail)| if head.is_empty() { ("/", tail) } else { (head, tail) });
+    let split = path.rsplit_once('/').map(|(head, tail)| {
+        if head.is_empty() {
+            ("/", tail)
+        } else {
+            (head, tail)
+        }
+    });
     if split.is_none() {
         (url_base.to_string(), path.to_string())
     } else {
@@ -83,7 +96,10 @@ pub fn find_scheme_and_separator(url: &str) -> (Option<usize>, Option<usize>) {
         // Find the path separating slash
         // (first slash after the ://)
         if let Some(first_path_slash) = path.find('/') {
-            (Some(scheme.len()), Some(first_path_slash + m.name("path").unwrap().start()))
+            (
+                Some(scheme.len()),
+                Some(first_path_slash + m.name("path").unwrap().start()),
+            )
         } else {
             (Some(scheme.len()), None)
         }
@@ -172,8 +188,7 @@ pub fn joinpath(base: &str, args: &[&str]) -> Result<String> {
             }
         }
     }
-    Ok(
-    if path == [""] {
+    Ok(if path == [""] {
         "/".to_string()
     } else {
         path.join("/")
@@ -254,4 +269,56 @@ pub fn join<'a>(mut base: &'a str, args: &[&'a str]) -> Result<String> {
     }
 
     Ok(base[..path_start].to_string() + &path)
+}
+
+/// Split the subsegment of the last segment of a URL.
+///
+///Args:
+///  url: A relative or absolute URL
+///Returns: (url, subsegments)
+pub fn split_segment_parameters_raw(url: &str) -> (&str, Vec<&str>) {
+    // GZ 2011-11-18: Dodgy removing the terminal slash like this, function
+    // operates on urls not url+segments, and Transport classes
+    // should not be blindly adding slashes in the first place.
+    let lurl = strip_trailing_slash(url);
+    let segment_start = lurl.rfind('/').map_or_else(|| 0, |i| i + 1);
+    if !lurl[segment_start..].contains(',') {
+        return (url, vec![]);
+    }
+    let mut iter = lurl[segment_start..].split(',');
+    let first = iter.next().unwrap();
+    (
+        &lurl[..segment_start + first.len()],
+        iter.map(|s| s.trim()).collect(),
+    )
+}
+
+/// Split the segment parameters of the last segment of a URL.
+///
+/// Args:
+///   url: A relative or absolute URL
+/// Returns: (url, segment_parameters)
+pub fn split_segment_parameters(
+    url: &str,
+) -> Result<(&str, std::collections::HashMap<&str, &str>)> {
+    let (base_url, subsegments) = split_segment_parameters_raw(url);
+    let parameters = subsegments
+        .iter()
+        .map(|subsegment| {
+            subsegment
+                .split_once('=')
+                .ok_or_else(|| Error::SubsegmentMissesEquals(subsegment.to_string()))
+                .map(|(key, value)| (key.trim(), value.trim()))
+        })
+        .collect::<Result<HashMap<&str, &str>>>()?;
+    Ok((base_url, parameters))
+}
+
+/// Strip the segment parameters from a URL.
+///
+/// Args:
+///   url: A relative or absolute URL
+/// Returns: url
+pub fn strip_segment_parameters(url: &str) -> &str {
+    split_segment_parameters_raw(url).0
 }
