@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 lazy_static! {
     static ref URL_SCHEME_RE: Regex =
@@ -16,6 +16,10 @@ pub enum Error {
     IoError(std::io::Error),
     SegmentParameterKeyContainsEquals(String, String),
     SegmentParameterContainsComma(String, Vec<String>),
+    NotLocalUrl(String),
+    InvalidUNCUrl(String),
+    UrlNotAscii(String),
+    InvalidWin32LocalUrl(String),
 }
 
 type Result<K> = std::result::Result<K, Error>;
@@ -572,8 +576,20 @@ pub fn escape(relpath: &[u8], safe: Option<&str>) -> String {
     result
 }
 
+pub fn unescape(url: &str) -> Result<String> {
+    use percent_encoding::percent_decode_str;
+
+    if !url.is_ascii() {
+        return Err(Error::UrlNotAscii(url.to_string()));
+    }
+    Ok(percent_decode_str(url)
+        .decode_utf8()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|_| url.to_string()))
+}
+
 pub mod win32 {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     /// Convert a local path like ./foo into a URL like file:///C:/path/to/foo
     ///
@@ -591,10 +607,49 @@ pub mod win32 {
             Ok(format!("file:///{}:{}", drive, super::escape(win32_path[2..].as_bytes(), Some("/~"))))
         }
     }
+
+    /// Convert a url like file:///C:/path/to/foo into C:/path/to/foo
+    pub fn local_path_from_url(url: &str) -> super::Result<PathBuf> {
+        if !url.starts_with("file://") {
+            return Err(super::Error::NotLocalUrl(url.to_string()));
+        }
+        let url = super::strip_segment_parameters(url);
+        let win32_url = &url[5..];
+
+        if !win32_url.starts_with("///") {
+            if win32_url.len() < 3
+                || win32_url.chars().nth(2).unwrap() == '/'
+                || "|:".contains(win32_url.chars().nth(3).unwrap())
+            {
+                return Err(super::Error::InvalidUNCUrl(url.to_string()));
+            }
+            return Ok(super::unescape(win32_url)?.into());
+        }
+
+        // Allow empty paths so we can serve all roots
+        if win32_url == "///" {
+            return Ok(PathBuf::from("/"));
+        }
+
+        // Usual local path with drive letter
+        if win32_url.len() < 6
+            || !("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(&win32_url[3..=3]))
+            || !("|:".contains(win32_url.chars().nth(4).unwrap()))
+            || win32_url.chars().nth(5) != Some('/')
+        {
+            return Err(super::Error::InvalidWin32LocalUrl(url.to_string()));
+        }
+        Ok(PathBuf::from(format!(
+            "{}:{}",
+            win32_url[3..=3].to_uppercase(),
+            super::unescape(&win32_url[5..])?
+        )))
+    }
+
 }
 
 pub mod posix {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::os::unix::ffi::OsStrExt;
 
     /// Convert a local path like ./foo into a URL like file:///path/to/foo
@@ -605,6 +660,21 @@ pub mod posix {
         let escaped_path = super::escape(abs_path.as_path().as_os_str().as_bytes(), Some("/~"));
         Ok(format!("file://{}", escaped_path))
     }
+
+    const FILE_LOCALHOST_PREFIX: &str = "file://localhost";
+    const PLAIN_FILE_PREFIX: &str = "file:///";
+
+    pub fn local_path_from_url(url: &str) -> std::result::Result<PathBuf, super::Error> {
+        let url = super::strip_segment_parameters(url);
+        let path = if url.starts_with(FILE_LOCALHOST_PREFIX) {
+            &url[FILE_LOCALHOST_PREFIX.len()..]
+        } else if url.starts_with(PLAIN_FILE_PREFIX) {
+            &url[7..]
+        } else {
+            return Err(super::Error::NotLocalUrl(url.to_string()));
+        };
+        Ok(PathBuf::from(super::unescape(path)?))
+    }
 }
 
 pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
@@ -612,4 +682,32 @@ pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
     return Ok(win32::local_path_to_url(path)?);
     #[cfg(unix)]
     return Ok(posix::local_path_to_url(path)?);
+}
+
+pub fn local_path_from_url(url: &str) -> Result<PathBuf> {
+    #[cfg(target_os = "win32")]
+    return Ok(win32::local_path_from_url(url)?);
+    #[cfg(unix)]
+    return Ok(posix::local_path_from_url(url)?);
+}
+
+/// Derive a TO_LOCATION given a FROM_LOCATION.
+///
+/// The normal case is a FROM_LOCATION of http://foo/bar => bar.
+/// The Right Thing for some logical destinations may differ though
+/// because no / may be present at all. In that case, the result is
+/// the full name without the scheme indicator, e.g. lp:foo-bar => foo-bar.
+/// This latter case also applies when a Windows drive
+/// is used without a path, e.g. c:foo-bar => foo-bar.
+/// If no /, path separator or : is found, the from_location is returned.
+pub fn derive_to_location(from_location: &str) -> String {
+    let from_location = strip_segment_parameters(from_location);
+    if let Some(separator_index) = from_location.rfind('/') {
+        let basename = &from_location[separator_index + 1..];
+        return basename.trim_end_matches("/\\").to_string();
+    } else if let Some(separator_index) = from_location.find(':') {
+        return from_location[separator_index + 1..].to_string();
+    } else {
+        return from_location.to_string();
+    }
 }

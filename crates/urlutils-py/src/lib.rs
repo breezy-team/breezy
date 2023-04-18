@@ -3,6 +3,7 @@ use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 import_exception!(breezy.urlutils, InvalidURLJoin);
 import_exception!(breezy.urlutils, InvalidURL);
@@ -53,6 +54,12 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
             InvalidURLJoin::new_err(("Segment parameter contains equals (=)", url, segment)),
         breezy_urlutils::Error::SegmentParameterContainsComma(url, segments) =>
             InvalidURLJoin::new_err(("Segment parameter contains comma (,)", url, segments)),
+        breezy_urlutils::Error::NotLocalUrl(url) =>
+            InvalidURL::new_err(("Not a local url", url)),
+        breezy_urlutils::Error::UrlNotAscii(url) => InvalidURL::new_err(("URL not ascii", url)),
+        breezy_urlutils::Error::InvalidUNCUrl(url) => InvalidURL::new_err(("Invalid UNC URL", url)),
+        breezy_urlutils::Error::InvalidWin32LocalUrl(url) =>
+            InvalidURL::new_err(("Invalid Win32 local URL", url)),
     }
 }
 
@@ -171,6 +178,34 @@ fn join_segment_parameters(url: &str, parameters: HashMap<&str, &str>) -> PyResu
         .map_err(map_urlutils_error_to_pyerr)
 }
 
+#[pyfunction]
+fn local_path_from_url(url: &str) -> PyResult<PathBuf> {
+    breezy_urlutils::local_path_from_url(url)
+        .map_err(map_urlutils_error_to_pyerr)
+}
+
+#[pyfunction(name="local_path_from_url")]
+fn win32_local_path_from_url(url: &str) -> PyResult<PathBuf> {
+    breezy_urlutils::win32::local_path_from_url(url)
+        .map_err(map_urlutils_error_to_pyerr)
+}
+
+#[pyfunction(name="local_path_from_url")]
+fn posix_local_path_from_url(url: &str) -> PyResult<PathBuf> {
+    breezy_urlutils::posix::local_path_from_url(url)
+        .map_err(map_urlutils_error_to_pyerr)
+}
+
+#[pyfunction]
+fn unescape(text: &str) -> PyResult<String> {
+    breezy_urlutils::unescape(text).map_err(map_urlutils_error_to_pyerr)
+}
+
+#[pyfunction]
+fn derive_to_location(base: &str) -> String {
+    breezy_urlutils::derive_to_location(base)
+}
+
 #[pymodule]
 fn _urlutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_url, m)?)?;
@@ -191,11 +226,16 @@ fn _urlutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(escape, m)?)?;
     m.add_function(wrap_pyfunction!(normalize_url, m)?)?;
     m.add_function(wrap_pyfunction!(local_path_to_url, m)?)?;
+    m.add_function(wrap_pyfunction!(local_path_from_url, m)?)?;
+    m.add_function(wrap_pyfunction!(unescape, m)?)?;
+    m.add_function(wrap_pyfunction!(derive_to_location, m)?)?;
     let win32m = PyModule::new(py, "win32")?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, win32m)?)?;
+    win32m.add_function(wrap_pyfunction!(win32_local_path_from_url, win32m)?)?;
     m.add_submodule(win32m)?;
     let posixm = PyModule::new(py, "posix")?;
     posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, posixm)?)?;
+    posixm.add_function(wrap_pyfunction!(posix_local_path_from_url, posixm)?)?;
     m.add_submodule(posixm)?;
     Ok(())
 }

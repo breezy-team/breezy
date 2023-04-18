@@ -13,3 +13,4 @@ regex = "1.5.4"
 lazy_static = "1.4.0"
 breezy-osutils = { path = "../osutils" }
 encoding_rs = "0.8"
+percent-encoding = "2.1.0"
