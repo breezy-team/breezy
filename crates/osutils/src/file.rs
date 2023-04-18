@@ -1,10 +1,13 @@
+use libc::{S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFREG, S_IFSOCK};
 use log::debug;
 use std::fs::{set_permissions, Permissions};
 use std::io::Result;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use walkdir::WalkDir;
 
+#[cfg(unix)]
 pub fn make_writable<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
     let metadata = std::fs::symlink_metadata(path)?;
@@ -16,6 +19,7 @@ pub fn make_writable<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(())
 }
 
+#[cfg(unix)]
 pub fn make_readonly<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
     let metadata = std::fs::symlink_metadata(path)?;
@@ -165,4 +169,32 @@ pub fn copy_tree<P: AsRef<Path>, Q: AsRef<Path>>(from_path: P, to_path: Q) -> st
         }
     }
     Ok(())
+}
+
+const DIRECTORY: &str = "directory";
+const CHARDEV: &str = "chardev";
+const BLOCK: &str = "block";
+const FILE: &str = "file";
+const FIFO: &str = "fifo";
+const SYMLINK: &str = "symlink";
+const SOCKET: &str = "socket";
+const UNKNOWN: &str = "unknown";
+
+const FORMATS: [(u32, &str); 7] = [
+    (S_IFDIR, DIRECTORY),
+    (S_IFCHR, CHARDEV),
+    (S_IFBLK, BLOCK),
+    (S_IFREG, FILE),
+    (S_IFIFO, FIFO),
+    (S_IFLNK, SYMLINK),
+    (S_IFSOCK, SOCKET),
+];
+
+pub fn kind_from_mode(mode: u32) -> &'static str {
+    for (format_mode, format_kind) in FORMATS.iter() {
+        if mode & 0o170000 == *format_mode {
+            return format_kind;
+        }
+    }
+    UNKNOWN
 }
