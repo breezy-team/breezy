@@ -1479,21 +1479,7 @@ def resource_string(package, resource_name):
         return f.read()
 
 
-def file_kind_from_stat_mode_thunk(mode):
-    global file_kind_from_stat_mode
-    if file_kind_from_stat_mode is file_kind_from_stat_mode_thunk:
-        try:
-            from ._readdir_pyx import UTF8DirReader
-            file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError:
-            # This is one time where we won't warn that an extension failed to
-            # load. The extension is never available on Windows anyway.
-            from ._readdir_py import \
-                _kind_from_mode as file_kind_from_stat_mode
-    return file_kind_from_stat_mode(mode)
-
-
-file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
+file_kind_from_stat_mode = _osutils_rs.kind_from_mode
 
 
 def file_stat(f, _lstat=os.lstat):

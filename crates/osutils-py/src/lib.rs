@@ -787,6 +787,11 @@ fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
         .map(|p| p.into())
 }
 
+#[pyfunction]
+fn kind_from_mode(mode: u32) -> &'static str {
+    breezy_osutils::file::kind_from_mode(mode)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -847,6 +852,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_submodule(posixm)?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
+    m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
     m.add(
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
