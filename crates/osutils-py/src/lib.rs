@@ -773,14 +773,14 @@ fn abspath(path: PathBuf) -> PyResult<PathBuf> {
         .map(|p| p.into())
 }
 
-#[pyfunction(name="abspath")]
+#[pyfunction(name = "abspath")]
 fn posix_abspath(path: PathBuf) -> PyResult<PathBuf> {
     breezy_osutils::path::posix::abspath(path.as_path())
-       .map_err(|e| e.into())
-       .map(|p| p.into())
+        .map_err(|e| e.into())
+        .map(|p| p.into())
 }
 
-#[pyfunction(name="abspath")]
+#[pyfunction(name = "abspath")]
 fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
     breezy_osutils::path::win32::abspath(path.as_path())
         .map_err(|e| e.into())

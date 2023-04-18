@@ -255,9 +255,9 @@ pub fn quotefn(f: &str) -> String {
 }
 
 pub mod win32 {
-    use std::path::{Path,PathBuf};
     use lazy_static::lazy_static;
     use regex::Regex;
+    use std::path::{Path, PathBuf};
 
     /// Force drive letters to be consistent.
 
@@ -280,7 +280,11 @@ pub mod win32 {
     /// Return path with directory separators changed to forward slashes
     fn fix_separators(path: &Path) -> PathBuf {
         if path.to_path_buf().to_str().unwrap().contains('\\') {
-            path.to_path_buf().to_str().unwrap().replace('\\', "/").into()
+            path.to_path_buf()
+                .to_str()
+                .unwrap()
+                .replace('\\', "/")
+                .into()
         } else {
             path.into()
         }
@@ -314,7 +318,7 @@ pub mod win32 {
 }
 
 pub mod posix {
-    use std::path::{Path,PathBuf};
+    use std::path::{Path, PathBuf};
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
         use path_clean::{clean, PathClean};

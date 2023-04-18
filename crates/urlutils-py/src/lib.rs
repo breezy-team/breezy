@@ -50,16 +50,18 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
             InvalidURL::new_err(("Unsafe characters", c))
         }
         breezy_urlutils::Error::IoError(err) => err.into(),
-        breezy_urlutils::Error::SegmentParameterKeyContainsEquals(url, segment) =>
-            InvalidURLJoin::new_err(("Segment parameter contains equals (=)", url, segment)),
-        breezy_urlutils::Error::SegmentParameterContainsComma(url, segments) =>
-            InvalidURLJoin::new_err(("Segment parameter contains comma (,)", url, segments)),
-        breezy_urlutils::Error::NotLocalUrl(url) =>
-            InvalidURL::new_err(("Not a local url", url)),
+        breezy_urlutils::Error::SegmentParameterKeyContainsEquals(url, segment) => {
+            InvalidURLJoin::new_err(("Segment parameter contains equals (=)", url, segment))
+        }
+        breezy_urlutils::Error::SegmentParameterContainsComma(url, segments) => {
+            InvalidURLJoin::new_err(("Segment parameter contains comma (,)", url, segments))
+        }
+        breezy_urlutils::Error::NotLocalUrl(url) => InvalidURL::new_err(("Not a local url", url)),
         breezy_urlutils::Error::UrlNotAscii(url) => InvalidURL::new_err(("URL not ascii", url)),
         breezy_urlutils::Error::InvalidUNCUrl(url) => InvalidURL::new_err(("Invalid UNC URL", url)),
-        breezy_urlutils::Error::InvalidWin32LocalUrl(url) =>
-            InvalidURL::new_err(("Invalid Win32 local URL", url)),
+        breezy_urlutils::Error::InvalidWin32LocalUrl(url) => {
+            InvalidURL::new_err(("Invalid Win32 local URL", url))
+        }
     }
 }
 
@@ -134,26 +136,22 @@ fn escape(py: Python, text: PyObject, safe: Option<&str>) -> PyResult<String> {
 
 #[pyfunction]
 fn normalize_url(url: &str) -> PyResult<String> {
-    breezy_urlutils::normalize_url(url)
-        .map_err(map_urlutils_error_to_pyerr)
+    breezy_urlutils::normalize_url(url).map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pyfunction]
 fn local_path_to_url(path: &str) -> PyResult<String> {
-    breezy_urlutils::local_path_to_url(path)
-        .map_err(|e| e.into())
+    breezy_urlutils::local_path_to_url(path).map_err(|e| e.into())
 }
 
 #[pyfunction(name = "local_path_to_url")]
 fn win32_local_path_to_url(path: &str) -> PyResult<String> {
-    breezy_urlutils::win32::local_path_to_url(path)
-        .map_err(|e| e.into())
+    breezy_urlutils::win32::local_path_to_url(path).map_err(|e| e.into())
 }
 
 #[pyfunction(name = "local_path_to_url")]
 fn posix_local_path_to_url(path: &str) -> PyResult<String> {
-    breezy_urlutils::posix::local_path_to_url(path)
-        .map_err(|e| e.into())
+    breezy_urlutils::posix::local_path_to_url(path).map_err(|e| e.into())
 }
 
 #[pyfunction]
@@ -169,31 +167,28 @@ fn join_segment_parameters_raw(url: &str, args: &PyTuple) -> PyResult<String> {
             ));
         }
     }
-    breezy_urlutils::join_segment_parameters_raw(url, path.as_slice()).map_err(map_urlutils_error_to_pyerr)
+    breezy_urlutils::join_segment_parameters_raw(url, path.as_slice())
+        .map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pyfunction]
 fn join_segment_parameters(url: &str, parameters: HashMap<&str, &str>) -> PyResult<String> {
-    breezy_urlutils::join_segment_parameters(url, &parameters)
-        .map_err(map_urlutils_error_to_pyerr)
+    breezy_urlutils::join_segment_parameters(url, &parameters).map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pyfunction]
 fn local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::local_path_from_url(url)
-        .map_err(map_urlutils_error_to_pyerr)
+    breezy_urlutils::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
 }
 
-#[pyfunction(name="local_path_from_url")]
+#[pyfunction(name = "local_path_from_url")]
 fn win32_local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::win32::local_path_from_url(url)
-        .map_err(map_urlutils_error_to_pyerr)
+    breezy_urlutils::win32::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
 }
 
-#[pyfunction(name="local_path_from_url")]
+#[pyfunction(name = "local_path_from_url")]
 fn posix_local_path_from_url(url: &str) -> PyResult<PathBuf> {
-    breezy_urlutils::posix::local_path_from_url(url)
-        .map_err(map_urlutils_error_to_pyerr)
+    breezy_urlutils::posix::local_path_from_url(url).map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pyfunction]

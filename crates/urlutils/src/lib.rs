@@ -346,7 +346,10 @@ pub fn join_segment_parameters_raw(base: &str, subsegments: &[&str]) -> Result<S
 
     for subsegment in subsegments {
         if subsegment.contains(',') {
-            return Err(Error::SegmentParameterContainsComma(base.to_string(), subsegments.iter().map(|s| s.to_string()).collect()));
+            return Err(Error::SegmentParameterContainsComma(
+                base.to_string(),
+                subsegments.iter().map(|s| s.to_string()).collect(),
+            ));
         }
     }
 
@@ -367,7 +370,10 @@ pub fn join_segment_parameters(url: &str, parameters: &HashMap<&str, &str>) -> R
 
     for (key, value) in parameters {
         if key.contains('=') {
-            return Err(Error::SegmentParameterKeyContainsEquals(url.to_string(), key.to_string()));
+            return Err(Error::SegmentParameterKeyContainsEquals(
+                url.to_string(),
+                key.to_string(),
+            ));
         }
 
         new_parameters.insert(key, value);
@@ -381,7 +387,13 @@ pub fn join_segment_parameters(url: &str, parameters: &HashMap<&str, &str>) -> R
         .map(|(key, value)| format!("{}={}", key, value))
         .collect();
 
-    join_segment_parameters_raw(base, &sorted_parameters.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+    join_segment_parameters_raw(
+        base,
+        &sorted_parameters
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// Return a path to other from base.
@@ -486,7 +498,9 @@ fn unescape_safe_chars(captures: &regex::Captures) -> String {
 ///   relpath: relative url string for relative part of remote path.
 /// Returns: urlencoded string for final path.
 pub fn combine_paths(base_path: &str, relpath: &str) -> String {
-    let relpath = URL_HEX_ESCAPES_RE.replace_all(relpath, unescape_safe_chars).to_string();
+    let relpath = URL_HEX_ESCAPES_RE
+        .replace_all(relpath, unescape_safe_chars)
+        .to_string();
 
     let mut base_parts: Vec<&str> = if relpath.starts_with('/') {
         vec![]
@@ -519,7 +533,6 @@ pub fn combine_paths(base_path: &str, relpath: &str) -> String {
     path
 }
 
-
 /// Make sure that a path string is in fully normalized URL form.
 ///
 /// This handles URLs which have unicode characters, spaces,
@@ -542,22 +555,25 @@ pub fn normalize_url(url: &str) -> Result<String> {
     let (scheme_end, path_start) = find_scheme_and_separator(url);
 
     if scheme_end.is_none() {
-        local_path_to_url(url)
-            .map_err(|e| Error::IoError(e))
+        local_path_to_url(url).map_err(|e| Error::IoError(e))
     } else {
         let prefix = &url[..path_start.unwrap()];
         let path = &url[path_start.unwrap()..];
 
         // These characters should not be escaped
-        const URL_SAFE_CHARACTERS: &[u8]= b"_.-!~*'()/;?:@&=+$,%#";
+        const URL_SAFE_CHARACTERS: &[u8] = b"_.-!~*'()/;?:@&=+$,%#";
 
-        let path = path.as_bytes().iter().map(|c| {
-            if !c.is_ascii_alphanumeric() && !URL_SAFE_CHARACTERS.contains(c) {
-                format!("%{:02X}", c)
-            } else {
-                (*c as char).to_string()
-            }
-        }).collect::<String>();
+        let path = path
+            .as_bytes()
+            .iter()
+            .map(|c| {
+                if !c.is_ascii_alphanumeric() && !URL_SAFE_CHARACTERS.contains(c) {
+                    format!("%{:02X}", c)
+                } else {
+                    (*c as char).to_string()
+                }
+            })
+            .collect::<String>();
         let path = URL_HEX_ESCAPES_RE.replace_all(path.as_str(), unescape_safe_chars);
         Ok(prefix.to_string() + path.as_ref())
     }
@@ -601,10 +617,17 @@ pub mod win32 {
         let win32_path = breezy_osutils::path::win32::abspath(path.as_ref())?;
         let win32_path = win32_path.as_path().to_str().unwrap();
         if win32_path.starts_with("//") {
-            Ok(format!("file:{}", super::escape(win32_path.as_bytes(), Some("/~"))))
+            Ok(format!(
+                "file:{}",
+                super::escape(win32_path.as_bytes(), Some("/~"))
+            ))
         } else {
             let drive = win32_path.chars().next().unwrap().to_ascii_uppercase();
-            Ok(format!("file:///{}:{}", drive, super::escape(win32_path[2..].as_bytes(), Some("/~"))))
+            Ok(format!(
+                "file:///{}:{}",
+                drive,
+                super::escape(win32_path[2..].as_bytes(), Some("/~"))
+            ))
         }
     }
 
@@ -645,12 +668,11 @@ pub mod win32 {
             super::unescape(&win32_url[5..])?
         )))
     }
-
 }
 
 pub mod posix {
-    use std::path::{Path, PathBuf};
     use std::os::unix::ffi::OsStrExt;
+    use std::path::{Path, PathBuf};
 
     /// Convert a local path like ./foo into a URL like file:///path/to/foo
     ///

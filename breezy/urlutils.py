@@ -73,20 +73,18 @@ def file_relpath(base: str, path: str) -> str:
     return escape(osutils.relpath(base, path))
 
 
-from ._urlutils_rs import (_find_scheme_and_separator, basename, dirname,
-                           is_url, join, joinpath, split,
-                           split_segment_parameters,
+from ._urlutils_rs import (_find_scheme_and_separator, basename, combine_paths,
+                           derive_to_location, dirname, escape, is_url, join,
+                           join_segment_parameters,
+                           join_segment_parameters_raw, joinpath,
+                           local_path_from_url, local_path_to_url,
+                           normalize_url)
+from ._urlutils_rs import posix as posix_rs
+from ._urlutils_rs import (relative_url, split, split_segment_parameters,
                            split_segment_parameters_raw,
                            strip_segment_parameters, strip_trailing_slash,
-                           relative_url, combine_paths,
-                           normalize_url, escape, local_path_to_url, win32 as
-                           win32_rs, posix as posix_rs,
-                           join_segment_parameters,
-                           join_segment_parameters_raw,
-                           unescape,
-                           local_path_from_url,
-                           derive_to_location)
-
+                           unescape)
+from ._urlutils_rs import win32 as win32_rs
 
 _posix_local_path_to_url = posix_rs.local_path_to_url
 _win32_local_path_to_url = win32_rs.local_path_to_url
