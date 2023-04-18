@@ -5,6 +5,7 @@ use std::collections::HashMap;
 lazy_static! {
     static ref URL_SCHEME_RE: Regex =
         Regex::new(r"^(?P<scheme>[^:/]{2,}):(//)?(?P<path>.*)$").unwrap();
+    static ref URL_HEX_ESCAPES_RE: Regex = Regex::new(r"(%[0-9a-fA-F]{2})").unwrap();
 }
 
 pub enum Error {
@@ -389,4 +390,67 @@ pub fn relative_url(base: &str, other: &str) -> String {
     } else {
         ret
     }
+}
+
+fn unescape_safe_chars(captures: &regex::Captures) -> String {
+    let hex_digits = &captures[0][1..];
+    let char_code = u8::from_str_radix(hex_digits, 16).unwrap();
+    let character = char::from(char_code);
+    if character.is_ascii_alphanumeric() || character == '-' || character == '_' || character == '.' || character == '~' {
+        character.to_string()
+    } else {
+        captures[0].to_uppercase()
+    }
+}
+
+/// Transform a Transport-relative path to a remote absolute path.
+///
+/// This does not handle substitution of ~ but does handle '..' and '.'
+/// components.
+///
+/// Examples::
+///
+///     t._combine_paths('/home/sarah', 'project/foo')
+///         => '/home/sarah/project/foo'
+///     t._combine_paths('/home/sarah', '../../etc')
+///         => '/etc'
+///     t._combine_paths('/home/sarah', '/etc')
+///         => '/etc'
+///
+/// Args:
+///   base_path: base path
+///   relpath: relative url string for relative part of remote path.
+/// Returns: urlencoded string for final path.
+pub fn combine_paths(base_path: &str, relpath: &str) -> String {
+    let relpath = URL_HEX_ESCAPES_RE.replace_all(relpath, unescape_safe_chars).to_string();
+
+    let mut base_parts: Vec<&str> = if relpath.starts_with('/') {
+        vec![]
+    } else {
+        base_path.split('/').collect()
+    };
+
+    if base_parts.last() == Some(&"") {
+        base_parts.pop();
+    }
+
+    for p in relpath.split('/') {
+        match p {
+            ".." => {
+                if let Some(last) = base_parts.last() {
+                    if *last != "" {
+                        base_parts.pop();
+                    }
+                }
+            }
+            "." | "" => (),
+            _ => base_parts.push(p),
+        }
+    }
+
+    let mut path = base_parts.join("/");
+    if !path.starts_with('/') {
+        path.insert(0, '/');
+    }
+    path
 }

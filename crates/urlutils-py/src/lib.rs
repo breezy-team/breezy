@@ -100,6 +100,11 @@ fn relative_url(base: &str, url: &str) -> String {
     breezy_urlutils::relative_url(base, url)
 }
 
+#[pyfunction]
+fn combine_paths(base_path: &str, relpath: &str) -> String {
+    breezy_urlutils::combine_paths(base_path, relpath)
+}
+
 #[pymodule]
 fn _urlutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_url, m)?)?;
@@ -114,5 +119,6 @@ fn _urlutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(split_segment_parameters_raw, m)?)?;
     m.add_function(wrap_pyfunction!(strip_segment_parameters, m)?)?;
     m.add_function(wrap_pyfunction!(relative_url, m)?)?;
+    m.add_function(wrap_pyfunction!(combine_paths, m)?)?;
     Ok(())
 }
