@@ -95,6 +95,11 @@ fn strip_segment_parameters(url: &str) -> &str {
     breezy_urlutils::strip_segment_parameters(url)
 }
 
+#[pyfunction]
+fn relative_url(base: &str, url: &str) -> String {
+    breezy_urlutils::relative_url(base, url)
+}
+
 #[pymodule]
 fn _urlutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_url, m)?)?;
@@ -108,5 +113,6 @@ fn _urlutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(split_segment_parameters, m)?)?;
     m.add_function(wrap_pyfunction!(split_segment_parameters_raw, m)?)?;
     m.add_function(wrap_pyfunction!(strip_segment_parameters, m)?)?;
+    m.add_function(wrap_pyfunction!(relative_url, m)?)?;
     Ok(())
 }

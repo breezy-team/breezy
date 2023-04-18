@@ -322,3 +322,71 @@ pub fn split_segment_parameters(
 pub fn strip_segment_parameters(url: &str) -> &str {
     split_segment_parameters_raw(url).0
 }
+
+/// Return a path to other from base.
+///
+/// If other is unrelated to base, return other. Else return a relative path.
+/// This assumes no symlinks as part of the url.
+pub fn relative_url(base: &str, other: &str) -> String {
+    let (_, base_first_slash) = find_scheme_and_separator(base);
+    if base_first_slash.is_none() {
+        return other.to_string();
+    }
+
+    let (_, other_first_slash) = find_scheme_and_separator(other);
+    if other_first_slash.is_none() {
+        return other.to_string();
+    }
+
+    // this takes care of differing schemes or hosts
+    let base_scheme = &base[..base_first_slash.unwrap()];
+    let other_scheme = &other[..other_first_slash.unwrap()];
+    if base_scheme != other_scheme {
+        return other.to_string();
+    }
+
+    #[cfg(target_os = "windows")]
+    if base_scheme == "file://" {
+        let base_drive = &base[base_first_slash.unwrap() + 1..base_first_slash.unwrap() + 3];
+        let other_drive = &other[other_first_slash.unwrap() + 1..other_first_slash.unwrap() + 3];
+        if base_drive != other_drive {
+            return other.to_string();
+        }
+    }
+
+    let mut base_path = &base[base_first_slash.unwrap() + 1..];
+    let other_path = &other[other_first_slash.unwrap() + 1..];
+
+    if base_path.ends_with('/') {
+        base_path = &base_path[..base_path.len() - 1];
+    }
+
+    let mut base_sections: Vec<_> = base_path.split('/').collect();
+    let mut other_sections: Vec<_> = other_path.split('/').collect();
+
+    if base_sections == [""] {
+        base_sections = Vec::new();
+    }
+    if other_sections == [""] {
+        other_sections = Vec::new();
+    }
+
+    let mut output_sections = Vec::new();
+    for (b, o) in base_sections.iter().zip(other_sections.iter()) {
+        if b != o {
+            break;
+        }
+        output_sections.push(b);
+    }
+
+    let match_len = output_sections.len();
+    let mut output_sections: Vec<_> = base_sections[match_len..].iter().map(|_x| "..").collect();
+    output_sections.extend_from_slice(&other_sections[match_len..]);
+
+    let ret = output_sections.join("/");
+    if ret.is_empty() {
+        ".".to_string()
+    } else {
+        ret
+    }
+}
