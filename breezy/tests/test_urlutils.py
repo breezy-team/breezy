@@ -131,12 +131,13 @@ class TestUrlToPath(TestCase):
             :param scheme_and_path: The (scheme, path) that should be matched
                 can be None, to indicate it should not match
             """
-            m = urlutils._url_scheme_re.match(url)
+            (scheme_pos, separator_pos) = urlutils._find_scheme_and_separator(url)
             if scheme_and_path is None:
-                self.assertEqual(None, m)
+                self.assertIs(None, scheme_pos)
+                self.assertIs(None, separator_pos)
             else:
-                self.assertEqual(scheme_and_path[0], m.group('scheme'))
-                self.assertEqual(scheme_and_path[1], m.group('path'))
+                self.assertEqual(scheme_and_path[0], url[:scheme_pos])
+                self.assertEqual(scheme_and_path[1], url[separator_pos:])
 
         # Local paths
         test_one('/path', None)
@@ -145,21 +146,21 @@ class TestUrlToPath(TestCase):
         test_one('../path/to/fo\xe5', None)
 
         # Real URLS
-        test_one('http://host/path/', ('http', 'host/path/'))
-        test_one('sftp://host/path/to/foo', ('sftp', 'host/path/to/foo'))
+        test_one('http://host/path/', ('http', '/path/'))
+        test_one('sftp://host/path/to/foo', ('sftp', '/path/to/foo'))
         test_one('file:///usr/bin', ('file', '/usr/bin'))
         test_one('file:///C:/Windows', ('file', '/C:/Windows'))
         test_one('file:///C|/Windows', ('file', '/C|/Windows'))
         test_one('readonly+sftp://host/path/\xe5',
-                 ('readonly+sftp', 'host/path/\xe5'))
+                 ('readonly+sftp', '/path/\xe5'))
 
         # Weird stuff
         # Can't have slashes or colons in the scheme
         test_one('/path/to/://foo', None)
-        test_one('scheme:stuff://foo', ('scheme', 'stuff://foo'))
+        test_one('scheme:stuff://foo', ('scheme', '//foo'))
         # Must have more than one character for scheme
         test_one('C://foo', None)
-        test_one('ab://foo', ('ab', 'foo'))
+        test_one('ab://foo', ('ab', 'ab://foo'))
 
     def test_dirname(self):
         # Test breezy.urlutils.dirname()
@@ -346,18 +347,6 @@ class TestUrlToPath(TestCase):
             join_segment_parameters("/,key1=val1", {"key2": "val2"}))
         self.assertRaises(TypeError,
                           join_segment_parameters, "/,key1=val1", {"foo": 42})
-
-    def test_function_type(self):
-        if sys.platform == 'win32':
-            self.assertEqual(urlutils._win32_local_path_to_url,
-                             urlutils.local_path_to_url)
-            self.assertEqual(urlutils._win32_local_path_from_url,
-                             urlutils.local_path_from_url)
-        else:
-            self.assertEqual(urlutils._posix_local_path_to_url,
-                             urlutils.local_path_to_url)
-            self.assertEqual(urlutils._posix_local_path_from_url,
-                             urlutils.local_path_from_url)
 
     def test_posix_local_path_to_url(self):
         to_url = urlutils._posix_local_path_to_url
@@ -703,7 +692,11 @@ class TestUrlToPath(TestCase):
 
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))
+        self.assertEqual('/~', urlutils.escape('/~'))
+        self.assertEqual('/~', urlutils.escape('/~', safe='/'))
+        self.assertEqual('%20', urlutils.escape(' '))
         self.assertEqual('%C3%A5', urlutils.escape('\xe5'))
+        self.assertEqual('%E5', urlutils.escape(b'\xe5'))
         self.assertIsInstance(urlutils.escape('\xe5'), str)
 
     def test_escape_tildes(self):

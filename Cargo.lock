@@ -132,6 +132,7 @@ dependencies = [
  "libc",
  "log",
  "memchr",
+ "path-clean",
  "rand",
  "regex",
  "sha1 0.10.5",
@@ -154,7 +155,10 @@ dependencies = [
 name = "breezy-urlutils"
 version = "3.3.3"
 dependencies = [
+ "breezy-osutils",
+ "encoding_rs",
  "lazy_static",
+ "percent-encoding",
  "regex",
  "url",
 ]
@@ -348,6 +352,15 @@ version = "3.3.3"
 dependencies = [
  "bazaar-dirstate",
  "pyo3",
+]
+
+[[package]]
+name = "encoding_rs"
+version = "0.8.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
+dependencies = [
+ "cfg-if",
 ]
 
 [[package]]
@@ -690,6 +703,12 @@ dependencies = [
  "pyo3",
  "pyo3-file",
 ]
+
+[[package]]
+name = "path-clean"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
 
 [[package]]
 name = "percent-encoding"
