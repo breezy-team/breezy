@@ -650,10 +650,6 @@ from ._osutils_rs import (_accessible_normalized_filename,
                           split_lines)
 
 
-def hardlinks_good():
-    return sys.platform not in ('win32', 'cygwin', 'darwin')
-
-
 def delete_any(path):
     """Delete a file, symlink or directory.
 
