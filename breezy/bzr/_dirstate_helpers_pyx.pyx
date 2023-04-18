@@ -202,33 +202,6 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_
     return 0
 
 
-def lt_by_dirs(path1, path2):
-    """Compare two paths directory by directory.
-
-    This is equivalent to doing::
-
-       operator.lt(path1.split('/'), path2.split('/'))
-
-    The idea is that you should compare path components separately. This
-    differs from plain ``path1 < path2`` for paths like ``'a-b'`` and ``a/b``.
-    "a-b" comes after "a" but would come before "a/b" lexically.
-
-    :param path1: first path
-    :param path2: second path
-    :return: True if path1 comes first, otherwise False
-    """
-    if not PyBytes_CheckExact(path1):
-        raise TypeError("'path1' must be a bytes string, not %s: %r"
-                        % (type(path1), path1))
-    if not PyBytes_CheckExact(path2):
-        raise TypeError("'path2' must be a bytes string, not %s: %r"
-                        % (type(path2), path2))
-    return -1 == _cmp_by_dirs(PyBytes_AsString(path1),
-                              PyBytes_Size(path1),
-                              PyBytes_AsString(path2),
-                              PyBytes_Size(path2))
-
-
 cdef class Reader:
     """Maintain the current location, and return fields as you parse them."""
 
