@@ -253,3 +253,60 @@ pub fn quotefn(f: &str) -> String {
         f.to_string()
     }
 }
+
+pub mod win32 {
+    use std::path::{Path,PathBuf};
+
+    /// Force drive letters to be consistent.
+
+    /// win32 is inconsistent whether it returns lower or upper case
+    /// and even if it was consistent the user might type the other
+    /// so we force it to uppercase
+    /// running python.exe under cmd.exe return capital C:\\
+    /// running win32 python inside a cygwin shell returns lowercase c:\\
+    fn fixdrive(path: &Path) -> PathBuf {
+        let mut path_buf = PathBuf::from(path);
+        if let Some(drive) = path_buf.as_os_str().to_str().unwrap().get(..2) {
+            let drive = drive.to_uppercase();
+            path_buf.set_file_name("");
+            path_buf.push(drive);
+            path_buf.push(path.to_str().unwrap().get(2..).unwrap());
+            path_buf
+        } else {
+            path.to_path_buf()
+        }
+    }
+
+    /// Return path with directory separators changed to forward slashes
+    fn fix_separators(path: &Path) -> PathBuf {
+        if path.to_path_buf().to_str().unwrap().contains('\\') {
+            path.to_path_buf().to_str().unwrap().replace('\\', "/").into()
+        } else {
+            path.to_path_buf()
+        }
+    }
+
+    pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
+        use path_abs::PathAbs;
+        let ap = PathAbs::new(path)?;
+        Ok(fixdrive(&fix_separators(ap.as_path())))
+    }
+}
+
+pub mod posix {
+    use std::path::{Path,PathBuf};
+
+    pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
+        use path_abs::PathAbs;
+        let ap = PathAbs::new(path)?;
+        Ok(ap.as_path().to_path_buf())
+    }
+}
+
+pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
+    #[cfg(windows)]
+    return win32::abspath(path);
+
+    #[cfg(not(windows))]
+    return posix::abspath(path);
+}

@@ -193,10 +193,7 @@ def _win32_fix_separators(path):
     else:
         return path.replace('\\', '/')
 
-def _win32_abspath(path):
-    # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_win32_fix_separators(ntpath.abspath(path)))
-
+_win32_abspath = _osutils_rs.win32.abspath
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
@@ -263,7 +260,7 @@ rename = _rename_wrap_exception(os.rename)
 
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
-abspath = os.path.abspath
+abspath = _osutils_rs.abspath
 realpath = os.path.realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
@@ -292,7 +289,6 @@ MIN_ABS_PATHLENGTH = 1
 
 
 if sys.platform == 'win32':
-    abspath = _win32_abspath
     realpath = _win32_realpath
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath

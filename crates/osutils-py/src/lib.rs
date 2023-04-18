@@ -766,6 +766,27 @@ fn copy_tree(from_path: PathBuf, to_path: PathBuf) -> PyResult<()> {
     Ok(breezy_osutils::file::copy_tree(from_path, to_path)?)
 }
 
+#[pyfunction]
+fn abspath(path: PathBuf) -> PyResult<PathBuf> {
+    breezy_osutils::path::abspath(path.as_path())
+        .map_err(|e| e.into())
+        .map(|p| p.into())
+}
+
+#[pyfunction(name="abspath")]
+fn posix_abspath(path: PathBuf) -> PyResult<PathBuf> {
+    breezy_osutils::path::posix::abspath(path.as_path())
+       .map_err(|e| e.into())
+       .map(|p| p.into())
+}
+
+#[pyfunction(name="abspath")]
+fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
+    breezy_osutils::path::win32::abspath(path.as_path())
+        .map_err(|e| e.into())
+        .map(|p| p.into())
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -817,6 +838,13 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(read_mtab))?;
     m.add_wrapped(wrap_pyfunction!(get_fs_type))?;
     m.add_wrapped(wrap_pyfunction!(copy_tree))?;
+    m.add_wrapped(wrap_pyfunction!(abspath))?;
+    let win32m = PyModule::new(py, "win32")?;
+    win32m.add_wrapped(wrap_pyfunction!(win32_abspath))?;
+    m.add_submodule(win32m)?;
+    let posixm = PyModule::new(py, "posix")?;
+    posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;
+    m.add_submodule(posixm)?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
     m.add(
