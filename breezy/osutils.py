@@ -645,7 +645,7 @@ def report_extension_load_failures():
 
 from ._osutils_rs import (_accessible_normalized_filename,
                           _inaccessible_normalized_filename, check_legal_path,
-                          chunks_to_lines, chunks_to_lines_iter, delete_any,
+                          chunks_to_lines, chunks_to_lines_iter,
                           get_host_name, link_or_copy, local_concurrency,
                           normalized_filename, normalizes_filenames,
                           split_lines)
