@@ -347,18 +347,6 @@ class TestUrlToPath(TestCase):
         self.assertRaises(TypeError,
                           join_segment_parameters, "/,key1=val1", {"foo": 42})
 
-    def test_function_type(self):
-        if sys.platform == 'win32':
-            self.assertEqual(urlutils._win32_local_path_to_url,
-                             urlutils.local_path_to_url)
-            self.assertEqual(urlutils._win32_local_path_from_url,
-                             urlutils.local_path_from_url)
-        else:
-            self.assertEqual(urlutils._posix_local_path_to_url,
-                             urlutils.local_path_to_url)
-            self.assertEqual(urlutils._posix_local_path_from_url,
-                             urlutils.local_path_from_url)
-
     def test_posix_local_path_to_url(self):
         to_url = urlutils._posix_local_path_to_url
         self.assertEqual('file:///path/to/foo',
@@ -703,7 +691,11 @@ class TestUrlToPath(TestCase):
 
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))
+        self.assertEqual('/~', urlutils.escape('/~'))
+        self.assertEqual('/~', urlutils.escape('/~', safe='/'))
+        self.assertEqual('%20', urlutils.escape(' '))
         self.assertEqual('%C3%A5', urlutils.escape('\xe5'))
+        self.assertEqual('%E5', urlutils.escape(b'\xe5'))
         self.assertIsInstance(urlutils.escape('\xe5'), str)
 
     def test_escape_tildes(self):

@@ -45,6 +45,14 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
         breezy_urlutils::Error::SubsegmentMissesEquals(segment) => {
             InvalidURL::new_err(("Subsegment misses equals", segment))
         }
+        breezy_urlutils::Error::UnsafeCharacters(c) => {
+            InvalidURL::new_err(("Unsafe characters", c))
+        }
+        breezy_urlutils::Error::IoError(err) => err.into(),
+        breezy_urlutils::Error::SegmentParameterKeyContainsEquals(url, segment) =>
+            InvalidURLJoin::new_err(("Segment parameter contains equals (=)", url, segment)),
+        breezy_urlutils::Error::SegmentParameterContainsComma(url, segments) =>
+            InvalidURLJoin::new_err(("Segment parameter contains comma (,)", url, segments)),
     }
 }
 
@@ -105,8 +113,66 @@ fn combine_paths(base_path: &str, relpath: &str) -> String {
     breezy_urlutils::combine_paths(base_path, relpath)
 }
 
+#[pyfunction]
+fn escape(py: Python, text: PyObject, safe: Option<&str>) -> PyResult<String> {
+    let text = if let Ok(text) = text.extract::<&str>(py) {
+        text.as_bytes()
+    } else if let Ok(text) = text.extract::<&[u8]>(py) {
+        text
+    } else {
+        return Err(PyTypeError::new_err("text must be a string or bytes"));
+    };
+    Ok(breezy_urlutils::escape(text, safe))
+}
+
+#[pyfunction]
+fn normalize_url(url: &str) -> PyResult<String> {
+    breezy_urlutils::normalize_url(url)
+        .map_err(map_urlutils_error_to_pyerr)
+}
+
+#[pyfunction]
+fn local_path_to_url(path: &str) -> PyResult<String> {
+    breezy_urlutils::local_path_to_url(path)
+        .map_err(|e| e.into())
+}
+
+#[pyfunction(name = "local_path_to_url")]
+fn win32_local_path_to_url(path: &str) -> PyResult<String> {
+    breezy_urlutils::win32::local_path_to_url(path)
+        .map_err(|e| e.into())
+}
+
+#[pyfunction(name = "local_path_to_url")]
+fn posix_local_path_to_url(path: &str) -> PyResult<String> {
+    breezy_urlutils::posix::local_path_to_url(path)
+        .map_err(|e| e.into())
+}
+
+#[pyfunction]
+#[pyo3(signature = (url, *args))]
+fn join_segment_parameters_raw(url: &str, args: &PyTuple) -> PyResult<String> {
+    let mut path = Vec::new();
+    for arg in args.iter() {
+        if let Ok(arg) = arg.extract::<&str>() {
+            path.push(arg);
+        } else {
+            return Err(PyTypeError::new_err(
+                "path must be a string or a list of strings",
+            ));
+        }
+    }
+    breezy_urlutils::join_segment_parameters_raw(url, path.as_slice()).map_err(map_urlutils_error_to_pyerr)
+}
+
+#[pyfunction]
+fn join_segment_parameters(url: &str, parameters: HashMap<&str, &str>) -> PyResult<String> {
+    breezy_urlutils::join_segment_parameters(url, &parameters)
+        .map_err(map_urlutils_error_to_pyerr)
+}
+
 #[pymodule]
-fn _urlutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _urlutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_url, m)?)?;
     m.add_function(wrap_pyfunction!(split, m)?)?;
     m.add_function(wrap_pyfunction!(_find_scheme_and_separator, m)?)?;
@@ -118,7 +184,18 @@ fn _urlutils_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(split_segment_parameters, m)?)?;
     m.add_function(wrap_pyfunction!(split_segment_parameters_raw, m)?)?;
     m.add_function(wrap_pyfunction!(strip_segment_parameters, m)?)?;
+    m.add_function(wrap_pyfunction!(join_segment_parameters_raw, m)?)?;
+    m.add_function(wrap_pyfunction!(join_segment_parameters, m)?)?;
     m.add_function(wrap_pyfunction!(relative_url, m)?)?;
     m.add_function(wrap_pyfunction!(combine_paths, m)?)?;
+    m.add_function(wrap_pyfunction!(escape, m)?)?;
+    m.add_function(wrap_pyfunction!(normalize_url, m)?)?;
+    m.add_function(wrap_pyfunction!(local_path_to_url, m)?)?;
+    let win32m = PyModule::new(py, "win32")?;
+    win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, win32m)?)?;
+    m.add_submodule(win32m)?;
+    let posixm = PyModule::new(py, "posix")?;
+    posixm.add_function(wrap_pyfunction!(posix_local_path_to_url, posixm)?)?;
+    m.add_submodule(posixm)?;
     Ok(())
 }

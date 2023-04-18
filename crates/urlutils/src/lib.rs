@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
+use std::path::Path;
 
 lazy_static! {
     static ref URL_SCHEME_RE: Regex =
@@ -11,6 +12,10 @@ lazy_static! {
 pub enum Error {
     AboveRoot(String, String),
     SubsegmentMissesEquals(String),
+    UnsafeCharacters(char),
+    IoError(std::io::Error),
+    SegmentParameterKeyContainsEquals(String, String),
+    SegmentParameterContainsComma(String, Vec<String>),
 }
 
 type Result<K> = std::result::Result<K, Error>;
@@ -324,6 +329,57 @@ pub fn strip_segment_parameters(url: &str) -> &str {
     split_segment_parameters_raw(url).0
 }
 
+/// Create a new URL by adding subsegments to an existing one.
+///
+/// This adds the specified subsegments to the last path in the specified
+/// base URL. The subsegments should be bytestrings.
+///
+/// Note: You probably want to use join_segment_parameters instead.
+pub fn join_segment_parameters_raw(base: &str, subsegments: &[&str]) -> Result<String> {
+    if subsegments.is_empty() {
+        return Ok(base.to_string());
+    }
+
+    for subsegment in subsegments {
+        if subsegment.contains(',') {
+            return Err(Error::SegmentParameterContainsComma(base.to_string(), subsegments.iter().map(|s| s.to_string()).collect()));
+        }
+    }
+
+    Ok(format!("{},{}", base, subsegments.join(",")))
+}
+
+/// Create a new URL by adding segment parameters to an existing one.
+///
+/// The parameters of the last segment in the URL will be updated; if a
+/// parameter with the same key already exists it will be overwritten.
+///
+/// Args:
+///   url: A URL, as string
+///    parameters: Dictionary of parameters, keys and values as bytestrings
+pub fn join_segment_parameters(url: &str, parameters: &HashMap<&str, &str>) -> Result<String> {
+    let (base, existing_parameters) = split_segment_parameters(url)?;
+    let mut new_parameters = existing_parameters.clone();
+
+    for (key, value) in parameters {
+        if key.contains('=') {
+            return Err(Error::SegmentParameterKeyContainsEquals(url.to_string(), key.to_string()));
+        }
+
+        new_parameters.insert(key, value);
+    }
+
+    let mut items: Vec<_> = new_parameters.iter().collect();
+    items.sort_by(|a, b| a.0.cmp(b.0));
+
+    let sorted_parameters: Vec<_> = items
+        .iter()
+        .map(|(key, value)| format!("{}={}", key, value))
+        .collect();
+
+    join_segment_parameters_raw(base, &sorted_parameters.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+}
+
 /// Return a path to other from base.
 ///
 /// If other is unrelated to base, return other. Else return a relative path.
@@ -392,11 +448,15 @@ pub fn relative_url(base: &str, other: &str) -> String {
     }
 }
 
+fn char_is_safe(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '~'
+}
+
 fn unescape_safe_chars(captures: &regex::Captures) -> String {
     let hex_digits = &captures[0][1..];
     let char_code = u8::from_str_radix(hex_digits, 16).unwrap();
     let character = char::from(char_code);
-    if character.is_ascii_alphanumeric() || character == '-' || character == '_' || character == '.' || character == '~' {
+    if char_is_safe(character) {
         character.to_string()
     } else {
         captures[0].to_uppercase()
@@ -453,4 +513,103 @@ pub fn combine_paths(base_path: &str, relpath: &str) -> String {
         path.insert(0, '/');
     }
     path
+}
+
+
+/// Make sure that a path string is in fully normalized URL form.
+///
+/// This handles URLs which have unicode characters, spaces,
+/// special characters, etc.
+///
+/// It has two basic modes of operation, depending on whether the
+/// supplied string starts with a url specifier (scheme://) or not.
+/// If it does not have a specifier it is considered a local path,
+/// and will be converted into a file:/// url. Non-ascii characters
+/// will be encoded using utf-8.
+/// If it does have a url specifier, it will be treated as a "hybrid"
+/// URL. Basically, a URL that should have URL special characters already
+/// escaped (like +?&# etc), but may have unicode characters, etc
+/// which would not be valid in a real URL.
+///
+/// Args:
+///   url: Either a hybrid URL or a local path
+/// Returns: A normalized URL which only includes 7-bit ASCII characters.
+pub fn normalize_url(url: &str) -> Result<String> {
+    let (scheme_end, path_start) = find_scheme_and_separator(url);
+
+    if scheme_end.is_none() {
+        local_path_to_url(url)
+            .map_err(|e| Error::IoError(e))
+    } else {
+        let prefix = &url[..path_start.unwrap()];
+        let path = &url[path_start.unwrap()..];
+
+        // These characters should not be escaped
+        const URL_SAFE_CHARACTERS: &[u8]= b"_.-!~*'()/;?:@&=+$,%#";
+
+        let path = path.as_bytes().iter().map(|c| {
+            if !c.is_ascii_alphanumeric() && !URL_SAFE_CHARACTERS.contains(c) {
+                format!("%{:02X}", c)
+            } else {
+                (*c as char).to_string()
+            }
+        }).collect::<String>();
+        let path = URL_HEX_ESCAPES_RE.replace_all(path.as_str(), unescape_safe_chars);
+        Ok(prefix.to_string() + path.as_ref())
+    }
+}
+
+pub fn escape(relpath: &[u8], safe: Option<&str>) -> String {
+    let mut result = String::new();
+    let safe = safe.unwrap_or("/~").as_bytes();
+    for b in relpath {
+        if char_is_safe(char::from(*b)) || safe.contains(b) {
+            result.push(char::from(*b));
+        } else {
+            result.push_str(&format!("%{:02X}", *b));
+        }
+    }
+    result
+}
+
+pub mod win32 {
+    use std::path::Path;
+
+    /// Convert a local path like ./foo into a URL like file:///C:/path/to/foo
+    ///
+    /// This also handles transforming escaping unicode characters, etc.
+    pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
+        if path.as_ref().as_os_str() == "/" {
+            return Ok("file:///".to_string());
+        }
+        let win32_path = breezy_osutils::path::win32::abspath(path.as_ref())?;
+        let win32_path = win32_path.as_path().to_str().unwrap();
+        if win32_path.starts_with("//") {
+            Ok(format!("file:{}", super::escape(win32_path.as_bytes(), Some("/~"))))
+        } else {
+            let drive = win32_path.chars().next().unwrap().to_ascii_uppercase();
+            Ok(format!("file:///{}:{}", drive, super::escape(win32_path[2..].as_bytes(), Some("/~"))))
+        }
+    }
+}
+
+pub mod posix {
+    use std::path::Path;
+    use std::os::unix::ffi::OsStrExt;
+
+    /// Convert a local path like ./foo into a URL like file:///path/to/foo
+    ///
+    /// This also handles transforming escaping unicode characters, etc.
+    pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
+        let abs_path = breezy_osutils::path::posix::abspath(path.as_ref())?;
+        let escaped_path = super::escape(abs_path.as_path().as_os_str().as_bytes(), Some("/~"));
+        Ok(format!("file://{}", escaped_path))
+    }
+}
+
+pub fn local_path_to_url<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
+    #[cfg(target_os = "win32")]
+    return Ok(win32::local_path_to_url(path)?);
+    #[cfg(unix)]
+    return Ok(posix::local_path_to_url(path)?);
 }
