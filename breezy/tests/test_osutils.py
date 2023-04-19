@@ -1797,10 +1797,6 @@ class TestReadLink(tests.TestCaseInTempDir):
 
 class TestConcurrency(tests.TestCase):
 
-    def setUp(self):
-        super().setUp()
-        self.overrideAttr(osutils, '_cached_local_concurrency')
-
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)

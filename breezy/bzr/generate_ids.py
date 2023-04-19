@@ -16,4 +16,5 @@
 
 """Common code for generating file or revision ids."""
 
-from ._bzr_rs import _next_id_suffix, gen_file_id, gen_revision_id, gen_root_id
+from .._bzr_rs import (_next_id_suffix, gen_file_id, gen_revision_id,
+                       gen_root_id)
