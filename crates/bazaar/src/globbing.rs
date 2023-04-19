@@ -4,7 +4,7 @@
 //! expressions.
 
 use lazy_static::lazy_static;
-use fancy_regex::{Regex, Captures, Error as RegexError, Match};
+pub use fancy_regex::{Regex, Error, Match, Captures};
 use std::sync::Arc;
 
 lazy_static! {
@@ -71,7 +71,7 @@ impl Replacer {
         self.pats.push((pat.to_string(), Arc::new(fun)));
     }
 
-    pub fn add_validate(&mut self, pat: &str, fun: Replacement) -> Result<(), RegexError> {
+    pub fn add_validate(&mut self, pat: &str, fun: Replacement) -> Result<(), Error> {
         Regex::new(pat)?;
         self.add(pat, fun);
         Ok(())
@@ -86,7 +86,7 @@ impl Replacer {
         self.pats.extend(replacer.pats.clone());
     }
 
-    pub fn replace(&mut self, text: &str) -> std::result::Result<String, RegexError> {
+    pub fn replace(&mut self, text: &str) -> std::result::Result<String, Error> {
         if self.pats.is_empty() {
             return Ok(text.to_string());
         }
