@@ -7,6 +7,6 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = ">=0.14", features = ["extension-module"]}
+pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
 bazaar = { path = "../bazaar" }
 bazaar-hashcache = { path = "../hashcache" }

@@ -25,7 +25,7 @@ struct Stanza {
 #[pymethods]
 impl Stanza {
     #[new]
-    #[pyo3(signature = (**kwargs))]
+    #[args(kwargs = "**")]
     fn new(kwargs: Option<&PyDict>) -> PyResult<Self> {
         let mut obj = Stanza {
             stanza: bazaar_rio::rio::Stanza::new(),

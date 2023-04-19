@@ -65,8 +65,7 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
     }
 }
 
-#[pyfunction]
-#[pyo3(signature = (url, *args))]
+#[pyfunction(args = "*")]
 fn joinpath(url: &str, args: &PyTuple) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
@@ -81,8 +80,7 @@ fn joinpath(url: &str, args: &PyTuple) -> PyResult<String> {
     breezy_urlutils::joinpath(url, path.as_slice()).map_err(map_urlutils_error_to_pyerr)
 }
 
-#[pyfunction]
-#[pyo3(signature = (url, *args))]
+#[pyfunction(args = "*")]
 fn join(url: &str, args: &PyTuple) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
@@ -154,8 +152,7 @@ fn posix_local_path_to_url(path: &str) -> PyResult<String> {
     breezy_urlutils::posix::local_path_to_url(path).map_err(|e| e.into())
 }
 
-#[pyfunction]
-#[pyo3(signature = (url, *args))]
+#[pyfunction(args = "*")]
 fn join_segment_parameters_raw(url: &str, args: &PyTuple) -> PyResult<String> {
     let mut path = Vec::new();
     for arg in args.iter() {
