@@ -211,14 +211,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
         trace.mutter("do_MKCOL rel: [{}], abs: [{}]".format(self.path, path))
         try:
             os.mkdir(path)
-        except OSError as e:
-            if e.errno in (errno.ENOENT, ):
-                self.send_error(409, "Conflict")
-            elif e.errno in (errno.EEXIST, errno.ENOTDIR):
-                self.send_error(405, "Not allowed")
-            else:
-                # Ok we fail for an unnkown reason :-/
-                raise
+        except FileNotFoundError:
+            self.send_error(409, "Conflict")
+        except (FileExistsError, NotADirectoryError):
+            self.send_error(405, "Not allowed")
         else:
             self.send_response(201)
             self.end_headers()
@@ -242,11 +238,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             # not.  In the  mean  time, just  go  along and  trap
             # exceptions
             shutil.copyfile(abs_from, abs_to)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                self.send_error(404, "File not found")
-            else:
-                self.send_error(409, "Conflict")
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
+        except OSError:
+            self.send_error(409, "Conflict")
         else:
             # TODO: We may be able  to return 204 "No content" if
             # rel_to was existing (even  if the "No content" part
@@ -271,12 +266,8 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
                 os.rmdir(path)
             else:
                 os.remove(path)
-        except OSError as e:
-            if e.errno in (errno.ENOENT, ):
-                self.send_error(404, "File not found")
-            else:
-                # Ok we fail for an unnkown reason :-/
-                raise
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
         else:
             self.send_response(self.delete_success_code)
             self.end_headers()
@@ -306,11 +297,10 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             return
         try:
             os.rename(abs_from, abs_to)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                self.send_error(404, "File not found")
-            else:
-                self.send_error(409, "Conflict")
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
+        except OSError:
+            self.send_error(409, "Conflict")
         else:
             # TODO: We may be able  to return 204 "No content" if
             # rel_to was existing (even  if the "No content" part
@@ -397,12 +387,9 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
 
         try:
             response, st = self._generate_response(self.path)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                self.send_error(404)
-                return
-            else:
-                raise
+        except FileNotFoundError:
+            self.send_error(404)
+            return
 
         if depth in ('1', 'Infinity') and stat.S_ISDIR(st.st_mode):
             dir_responses = self._generate_dir_responses(self.path, depth)

@@ -105,16 +105,13 @@ class SMTPConnection:
         """Create an SMTP connection."""
         try:
             self._connection = self._smtp_factory(host=self._smtp_server)
-        except OSError as e:
-            if e.args[0] == errno.ECONNREFUSED:
-                if self._config_smtp_server is None:
-                    raise DefaultSMTPConnectionRefused(socket.error,
-                                                       self._smtp_server)
-                else:
-                    raise SMTPConnectionRefused(socket.error,
-                                                self._smtp_server)
+        except ConnectionRefusedError:
+            if self._config_smtp_server is None:
+                raise DefaultSMTPConnectionRefused(socket.error,
+                                                   self._smtp_server)
             else:
-                raise
+                raise SMTPConnectionRefused(socket.error,
+                                            self._smtp_server)
 
         # Say EHLO (falling back to HELO) to query the server's features.
         code, resp = self._connection.ehlo()

@@ -18,7 +18,6 @@
 
 import errno
 import os
-import select
 import socket
 import sys
 import tempfile
@@ -291,9 +290,8 @@ class TestKind(tests.TestCaseInTempDir):
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
-        except OSError as e:
-            if e.errno not in (errno.ENOENT,):
-                raise
+        except FileNotFoundError:
+            pass
         else:
             self.assertEqual(
                 'chardev',
@@ -957,16 +955,16 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
         try:
             osutils._win32_rename('b', 'a')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
         self.assertFileEqual(b'foo\n', 'a')
 
     def test_rename_missing_dir(self):
         os.mkdir('a')
         try:
             osutils._win32_rename('b', 'a')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
 
     def test_rename_current_dir(self):
         os.mkdir('a')
@@ -977,8 +975,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
 
     def test_splitpath(self):
         def check(expected, path):

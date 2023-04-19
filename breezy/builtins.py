@@ -799,9 +799,8 @@ class cmd_mkdir(Command):
             if parents:
                 try:
                     os.makedirs(dir)
-                except OSError as e:
-                    if e.errno != errno.EEXIST:
-                        raise
+                except FileExistsError:
+                    pass
             else:
                 os.mkdir(dir)
             add_file(wt, relpath)

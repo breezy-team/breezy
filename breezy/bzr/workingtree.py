@@ -746,10 +746,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """See Tree.get_file_mtime."""
         try:
             return os.lstat(self.abspath(path)).st_mtime
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                raise _mod_transport.NoSuchFile(path)
-            raise
+        except FileNotFoundError:
+            raise _mod_transport.NoSuchFile(path)
 
     def path_content_summary(self, path, _lstat=os.lstat,
                              _mapper=osutils.file_kind_from_stat_mode):
@@ -757,12 +755,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         abspath = self.abspath(path)
         try:
             stat_result = _lstat(abspath)
-        except OSError as e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                # no file.
-                return ('missing', None, None, None)
-            # propagate other errors
-            raise
+        except FileNotFoundError:
+            return ('missing', None, None, None)
         kind = _mapper(stat_result.st_mode)
         if kind == 'file':
             return self._file_content_summary(path, stat_result)
@@ -1609,10 +1603,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         try:
             current_disk = next(disk_iterator)
             disk_finished = False
-        except OSError as e:
-            if not (e.errno == errno.ENOENT
-                    or (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
-                raise
+        except FileNotFoundError:
             current_disk = None
             disk_finished = True
         try:

@@ -449,9 +449,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             with open(local_inventory, 'rb') as inventory_f:
                 self.assertContainsRe(inventory_f.read(),
                                       b'<inventory format="5">\n</inventory>\n')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
 
     def test_sprout_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')

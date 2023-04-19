@@ -202,10 +202,8 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
                                 stdout=subprocess.PIPE,
                                 stderr=stderr,
                                 env=env)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            raise errors.NoDiff(str(e))
-        raise
+    except FileNotFoundError as e:
+        raise errors.NoDiff(str(e))
 
     return pipe
 
@@ -351,9 +349,10 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
             # deleted)
             try:
                 os.remove(path)
+            except FileNotFoundError:
+                pass
             except OSError as e:
-                if e.errno not in (errno.ENOENT,):
-                    warning('Failed to delete temporary file: %s %s', path, e)
+                warning('Failed to delete temporary file: %s %s', path, e)
 
         cleanup(old_abspath)
         cleanup(new_abspath)
@@ -817,11 +816,8 @@ class DiffFromTool(DiffPath):
         try:
             proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                                     cwd=self._root)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                raise errors.ExecutableMissing(command[0])
-            else:
-                raise
+        except FileNotFoundError:
+            raise errors.ExecutableMissing(command[0])
         self.to_file.write(proc.stdout.read())
         proc.stdout.close()
         return proc.wait()
@@ -832,9 +828,8 @@ class DiffFromTool(DiffPath):
             return False
         try:
             os.symlink(tree.abspath(''), osutils.pathjoin(self._root, prefix))
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+        except FileExistsError:
+            pass
         return True
 
     @staticmethod
@@ -878,9 +873,8 @@ class DiffFromTool(DiffPath):
         parent_dir = osutils.dirname(full_path)
         try:
             os.makedirs(parent_dir)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+        except FileExistsError:
+            pass
         with tree.get_file(relpath) as source, \
                 open(full_path, 'wb') as target:
             osutils.pumpfile(source, target)
@@ -906,10 +900,11 @@ class DiffFromTool(DiffPath):
     def finish(self):
         try:
             osutils.rmtree(self._root)
+        except FileNotFoundError:
+            pass
         except OSError as e:
-            if e.errno != errno.ENOENT:
-                mutter("The temporary directory \"%s\" was not "
-                       "cleanly removed: %s." % (self._root, e))
+            mutter("The temporary directory \"%s\" was not "
+                   "cleanly removed: %s." % (self._root, e))
 
     def diff(self, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):

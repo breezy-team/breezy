@@ -140,9 +140,9 @@ class LocalTransport(transport.Transport):
         try:
             path = self._abspath(relpath)
             return open(path, 'rb')
+        except IsADirectoryError:
+            return transport.LateReadError(relpath)
         except OSError as e:
-            if e.errno == errno.EISDIR:
-                return transport.LateReadError(relpath)
             self._translate_error(e, path)
 
     def put_file(self, relpath, f, mode=None):

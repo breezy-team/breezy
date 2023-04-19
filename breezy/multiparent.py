@@ -579,14 +579,12 @@ class MultiVersionedFile(BaseVersionedFile):
     def destroy(self):
         try:
             os.unlink(self._filename + '.mpknit')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
         try:
             os.unlink(self._filename + '.mpidx')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
 
     def save(self):
         import fastbencode as bencode

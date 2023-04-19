@@ -199,9 +199,8 @@ class BodyExternalMailClient(MailClient):
                                                          **kwargs))
             try:
                 subprocess.call(cmdline)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
+            except FileNotFoundError:
+                pass
             else:
                 break
         else:

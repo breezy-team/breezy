@@ -1190,10 +1190,8 @@ class PreviewTree:
         except KeyError:
             try:
                 return self._transform._tree.is_executable(path)
-            except OSError as e:
-                if e.errno == errno.ENOENT:
-                    return False
-                raise
+            except FileNotFoundError:
+                return False
             except NoSuchFile:
                 return False
 

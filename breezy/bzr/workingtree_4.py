@@ -399,11 +399,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if stat_value is None:
             try:
                 stat_value = osutils.lstat(file_abspath)
-            except OSError as e:
-                if e.errno == errno.ENOENT:
-                    return None
-                else:
-                    raise
+            except FileNotFoundError:
+                return None
         link_or_sha1 = dirstate.update_entry(state, entry, file_abspath,
                                              stat_value=stat_value)
         if entry[1][0][0] == b'f':

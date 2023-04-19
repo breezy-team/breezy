@@ -494,13 +494,9 @@ class _StraceFeature(Feature):
                                     stdout=subprocess.PIPE)
             proc.communicate()
             return True
-        except OSError as e:
-            import errno
-            if e.errno == errno.ENOENT:
-                # strace is not installed
-                return False
-            else:
-                raise
+        except FileNotFoundError:
+            # strace is not installed
+            return False
 
     def feature_name(self):
         return 'strace'

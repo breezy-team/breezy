@@ -345,24 +345,20 @@ class ScriptRunner:
         for in_name in input_names:
             try:
                 inputs.append(self._read_input(None, in_name))
-            except OSError as e:
+            except (FileNotFoundError, ValueError):
                 # Some filenames are illegal on Windows and generate EINVAL
                 # rather than just saying the filename doesn't exist
-                if e.errno in (errno.ENOENT, errno.EINVAL):
-                    return (1, None,
-                            '{}: No such file or directory\n'.format(in_name))
-                raise
+                return (1, None,
+                        '{}: No such file or directory\n'.format(in_name))
         # Basically cat copy input to output
         output = ''.join(inputs)
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except OSError as e:
+        except (FileNotFoundError, ValueError):
             # If out_name cannot be created, we may get 'ENOENT', however if
             # out_name is something like '', we can get EINVAL
-            if e.errno in (errno.ENOENT, errno.EINVAL):
-                return 1, None, '{}: No such file or directory\n'.format(out_name)
-            raise
+            return 1, None, '{}: No such file or directory\n'.format(out_name)
         return 0, output, None
 
     def do_echo(self, test_case, input, args):
@@ -378,10 +374,8 @@ class ScriptRunner:
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.EINVAL):
-                return 1, None, '{}: No such file or directory\n'.format(out_name)
-            raise
+        except (FileNotFoundError, ValueError):
+            return 1, None, '{}: No such file or directory\n'.format(out_name)
         return 0, output, None
 
     def _get_jail_root(self, test_case):
@@ -435,21 +429,16 @@ class ScriptRunner:
             # FIXME: Should we put that in osutils ?
             try:
                 os.remove(p)
-            except OSError as e:
-                # Various OSes raises different exceptions (linux: EISDIR,
-                #   win32: EACCES, OSX: EPERM) when invoked on a directory
-                if e.errno in (errno.EISDIR, errno.EPERM, errno.EACCES):
-                    if recursive:
-                        osutils.rmtree(p)
-                    else:
-                        err = error('Is a directory', p)
-                        break
-                elif e.errno == errno.ENOENT:
-                    if not force:
-                        err = error('No such file or directory', p)
-                        break
+            except (PermissionError, IsADirectoryError):
+                if recursive:
+                    osutils.rmtree(p)
                 else:
-                    raise
+                    err = error('Is a directory', p)
+                    break
+            except FileNotFoundError:
+                if not force:
+                    err = error('No such file or directory', p)
+                    break
         if err:
             retcode = 1
         else:
@@ -470,11 +459,8 @@ class ScriptRunner:
             if os.path.isdir(dst):
                 real_dst = os.path.join(dst, os.path.basename(src))
             os.rename(src, real_dst)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                err = error('No such file or directory', src, dst)
-            else:
-                raise
+        except FileNotFoundError:
+            err = error('No such file or directory', src, dst)
         if err:
             retcode = 1
         else:

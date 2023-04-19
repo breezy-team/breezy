@@ -93,10 +93,7 @@ def delete_items(deletables, dry_run: bool = False):
         else:
             try:
                 os.unlink(path)
-            except OSError as e:
-                # We handle only permission error here
-                if e.errno != errno.EACCES:
-                    raise e
+            except PermissionError as e:
                 warning('unable to remove "%s": %s.', path, e.strerror)
 
 

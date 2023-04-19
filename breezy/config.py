@@ -1516,9 +1516,10 @@ class AuthenticationConfig:
         import stat
         try:
             st = os.stat(self._filename)
+        except FileNotFoundError:
+            return
         except OSError as e:
-            if e.errno != errno.ENOENT:
-                trace.mutter('Unable to stat %r: %r', self._filename, e)
+            trace.mutter('Unable to stat %r: %r', self._filename, e)
             return
         mode = stat.S_IMODE(st.st_mode)
         if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP
