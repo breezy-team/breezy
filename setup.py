@@ -83,8 +83,14 @@ class build_man(Command):
         pass
 
     def run(self):
+        build_ext_cmd = self.get_finalized_command('build_ext')
+        build_lib_dir = build_ext_cmd.build_lib
+        sys.path.insert(0, os.path.abspath(build_lib_dir))
+        import importlib
+        importlib.invalidate_caches()
+        del sys.modules['breezy']
         from tools import generate_docs
-        generate_docs.main(argv=["brz", "man"])
+        generate_docs.main(['generate-docs', 'man'])
 
 
 ########################
