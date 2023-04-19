@@ -58,7 +58,7 @@ impl PyChunksToLinesIterator {
                         return Ok(Some(bytes.to_object(py)));
                     }
                 } else {
-                    if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
+                    if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
                         if let Err(e) = next_chunk {
                             return Err(e);
                         }
@@ -74,7 +74,7 @@ impl PyChunksToLinesIterator {
                     }
                 }
             } else {
-                if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
+                if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
                     if let Err(e) = next_chunk {
                         return Err(e);
                     }
@@ -82,7 +82,7 @@ impl PyChunksToLinesIterator {
                     let next_chunk = next_chunk_py.extract::<&[u8]>()?;
                     if let Some(newline) = memchr::memchr(b'\n', &next_chunk) {
                         if newline == next_chunk.len() - 1 {
-                            let line = next_chunk_py.downcast::<PyBytes>()?;
+                            let line = next_chunk_py.cast_as::<PyBytes>()?;
                             return Ok(Some(line.to_object(py)));
                         }
                     }
@@ -484,7 +484,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
         let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send> = Box::new(
             std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
                 Python::with_gil(
-                    |py| match py_iter.downcast::<PyIterator>(py).unwrap().next() {
+                    |py| match py_iter.cast_as::<PyIterator>(py).unwrap().next() {
                         None => None,
                         Some(Err(err)) => {
                             PyErr::restore(err.clone_ref(py), py);
@@ -493,7 +493,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
                                 err.to_string(),
                             )))
                         }
-                        Some(Ok(obj)) => match obj.downcast::<PyBytes>() {
+                        Some(Ok(obj)) => match obj.cast_as::<PyBytes>() {
                             Err(err) => {
                                 PyErr::restore(
                                     PyTypeError::new_err("unable to convert to bytes"),
