@@ -70,18 +70,20 @@ class Replacer:
         self._funs.extend(replacer._funs)
 
     def __call__(self, text):
+        if not self._pats:
+            return text
+        def _do_sub(m):
+            fun = self._funs[m.lastindex - 1]
+            assert m.group(0) == m.group(m.lastindex)
+            if hasattr(fun, '__call__'):
+                return fun(m.group(0))
+            else:
+                return self._expand.sub(m.group(0), fun)
         if not self._pat:
             self._pat = lazy_regex.lazy_compile(
                 '|'.join(['(%s)' % p for p in self._pats]),
                 re.UNICODE)
-        return self._pat.sub(self._do_sub, text)
-
-    def _do_sub(self, m):
-        fun = self._funs[m.lastindex - 1]
-        if hasattr(fun, '__call__'):
-            return fun(m.group(0))
-        else:
-            return self._expand.sub(m.group(0), fun)
+        return self._pat.sub(_do_sub, text)
 
 
 _sub_named = Replacer()
