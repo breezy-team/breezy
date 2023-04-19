@@ -36,12 +36,13 @@ from ..errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
                       ImmortalPendingDeletion, LockError, StrictCommitFailed)
 from ..merge import Merge3Merger, Merger
 from ..mutabletree import MutableTree
-from ..osutils import file_kind, pathjoin
+from ..osutils import pathjoin
 from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
                          MalformedTransform, NoFinalPath, ReusingTransform,
                          TransformRenameFailed, _FileMover, create_from_tree,
                          resolve_conflicts)
 from ..transport import FileExists
+from ..transport.local import file_kind
 from . import TestCaseInTempDir, TestSkipped, features
 from .features import HardlinkFeature, SymlinkFeature
 

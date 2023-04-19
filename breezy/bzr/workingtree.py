@@ -73,6 +73,7 @@ from .. import transport as _mod_transport
 from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from ..trace import mutter, note
+from ..transport.local import file_kind
 from ..tree import (MissingNestedTree, TreeDirectory, TreeEntry, TreeFile,
                     TreeLink, TreeReference, get_canonical_path)
 from ..workingtree import WorkingTree, WorkingTreeFormat, format_registry
@@ -1165,7 +1166,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             else:
                                 c = '?'
 
-                    fk = osutils.file_kind(fap)
+                    fk = file_kind(fap)
                     if fk == 'directory' and self._directory_is_tree_reference(f):
                         if not recurse_nested:
                             fk = 'tree-reference'

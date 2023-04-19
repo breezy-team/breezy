@@ -42,6 +42,7 @@ from .. import urlutils, workingtree
 from ..bzr.inventorytree import InventoryTreeChange
 from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
+from ..transport.local import file_kind
 from ..tree import MissingNestedTree
 from .mapping import (decode_git_path, default_mapping, encode_git_path,
                       mode_is_executable, mode_kind)
@@ -1650,7 +1651,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             return mode_kind(mode)
 
     def kind(self, relpath):
-        kind = osutils.file_kind(self.abspath(relpath))
+        kind = file_kind(self.abspath(relpath))
         if kind == 'directory':
             if self._directory_is_tree_reference(relpath):
                 return 'tree-reference'

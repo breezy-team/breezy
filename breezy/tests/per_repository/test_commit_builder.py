@@ -24,6 +24,7 @@ from breezy import tests
 from breezy.bzr import inventorytree
 from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests import features, per_repository
+from breezy.transport.local import file_kind
 
 from ..test_bedding import override_whoami
 
@@ -757,7 +758,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         make_before(path)
 
         def change_kind():
-            if osutils.file_kind(path) == "directory":
+            if file_kind(path) == "directory":
                 osutils.rmtree(path)
             else:
                 osutils.delete_any(path)

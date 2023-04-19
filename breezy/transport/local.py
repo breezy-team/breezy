@@ -30,6 +30,20 @@ _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osut
 _put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 
 
+def file_stat(f, _lstat=os.lstat):
+    try:
+        return _lstat(f)
+    except OSError as e:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
+            raise transport.NoSuchFile(f)
+        raise
+
+
+def file_kind(f, _lstat=os.lstat):
+    stat_value = file_stat(f, _lstat)
+    return osutils.file_kind_from_stat_mode(stat_value.st_mode)
+
+
 class LocalTransport(transport.Transport):
     """This is the transport agent for local filesystem access."""
 

@@ -46,6 +46,7 @@ from .. import transport as _mod_transport
 from .. import tree, urlutils, workingtree
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
+from ..transport.local import file_kind
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
 from .mapping import decode_git_path, encode_git_path, mode_kind
 from .tree import MutableGitIndexTree
@@ -524,7 +525,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     raise errors.InvalidNormalization(filepath)
 
                 abspath = self.abspath(filepath)
-                kind = osutils.file_kind(abspath)
+                kind = file_kind(abspath)
                 if kind in ("file", "symlink"):
                     (index, subpath) = self._lookup_index(
                         encode_git_path(filepath))
@@ -572,7 +573,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         ignored.setdefault(ignore_glob, []).append(subp)
                         continue
                     abspath = self.abspath(subp)
-                    kind = osutils.file_kind(abspath)
+                    kind = file_kind(abspath)
                     if kind == "directory":
                         user_dirs.append(subp)
                     else:
@@ -641,7 +642,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if kinds[pos] is None:
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
-                        kind = osutils.file_kind(fullpath)
+                        kind = file_kind(fullpath)
                     except OSError as e:
                         if e.errno == errno.ENOENT:
                             raise _mod_transport.NoSuchFile(fullpath)

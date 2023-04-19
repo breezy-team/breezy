@@ -36,6 +36,7 @@ from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
                          MalformedTransform, PreviewTree, ReusingTransform,
                          TransformRenameFailed, TreeTransform, _FileMover,
                          _TransformResults, joinpath, unique_add)
+from ..transport.local import file_kind
 from ..tree import InterTree, TreeChange
 from .mapping import (decode_git_path, encode_git_path, mode_is_executable,
                       mode_kind, object_mode)
@@ -1210,7 +1211,7 @@ class GitTreeTransform(DiskTreeTransform):
         if path is None:
             return None
         try:
-            return osutils.file_kind(self._tree.abspath(path))
+            return file_kind(self._tree.abspath(path))
         except _mod_transport.NoSuchFile:
             return None
 

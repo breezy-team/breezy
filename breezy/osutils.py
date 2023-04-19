@@ -1454,21 +1454,6 @@ def resource_string(package, resource_name):
 file_kind_from_stat_mode = _osutils_rs.kind_from_mode
 
 
-def file_stat(f, _lstat=os.lstat):
-    try:
-        return _lstat(f)
-    except OSError as e:
-        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
-            from .transport import NoSuchFile
-            raise NoSuchFile(f)
-        raise
-
-
-def file_kind(f, _lstat=os.lstat):
-    stat_value = file_stat(f, _lstat)
-    return file_kind_from_stat_mode(stat_value.st_mode)
-
-
 if sys.platform == "win32":
     def getchar():
         import msvcrt
