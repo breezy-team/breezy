@@ -18,8 +18,26 @@ import re
 
 from .. import errors, lazy_regex
 from ..globbing import (ExceptionGlobster, Globster, _OrderedGlobster,
-                        normalize_pattern)
+                        normalize_pattern, Replacer)
 from . import TestCase
+
+
+class TestReplacer(TestCase):
+
+    def test_simple(self):
+        r = Replacer()
+        r.add('a', 'b')
+        self.assertEqual('b', r('a'))
+
+    def test_multiple(self):
+        r = Replacer()
+        r.add('a', 'b')
+        r.add('c', 'd')
+        self.assertEqual('b', r('a'))
+
+    def test_none(self):
+        r = Replacer()
+        self.assertEqual('a', r('a'))
 
 
 class TestGlobster(TestCase):
