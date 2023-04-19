@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = ">=0.18", features = ["extension-module"]}
 bazaar-rio = { path = "../rio" }
-pyo3-file = "0.5.0"
+pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
