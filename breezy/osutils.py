@@ -644,10 +644,10 @@ def report_extension_load_failures():
 
 
 from ._osutils_rs import (_accessible_normalized_filename,
-                          _inaccessible_normalized_filename, chunks_to_lines,
-                          chunks_to_lines_iter, link_or_copy,
-                          normalized_filename, normalizes_filenames,
-                          split_lines)
+                          _inaccessible_normalized_filename, check_legal_path,
+                          chunks_to_lines, chunks_to_lines_iter, get_host_name,
+                          link_or_copy, local_concurrency, normalized_filename,
+                          normalizes_filenames, split_lines)
 
 
 def delete_any(path):
@@ -1040,16 +1040,6 @@ set_or_unset_env = _osutils_rs.set_or_unset_env
 IterableFile = _osutils_rs.IterableFile
 
 
-def check_legal_path(path):
-    """Check whether the supplied path is legal.
-    This is only required on Windows, so we don't test on other platforms
-    right now.
-    """
-    if _osutils_rs.legal_path(path):
-        return
-    raise errors.IllegalPath(path)
-
-
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
 
 
@@ -1295,20 +1285,6 @@ def get_user_encoding():
 def get_diff_header_encoding():
     return get_terminal_encoding()
 
-
-def get_host_name():
-    """Return the current unicode host name.
-
-    This is meant to be used in place of socket.gethostname() because that
-    behaves inconsistently on different platforms.
-    """
-    if sys.platform == "win32":
-        return win32utils.get_host_name()
-    else:
-        import socket
-        return socket.gethostname()
-
-
 # We must not read/write any more than 64k at a time from/to a socket so we
 # don't risk "no buffer space available" errors on some platforms.  Windows in
 # particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
@@ -1493,29 +1469,6 @@ def file_kind(f, _lstat=os.lstat):
     return file_kind_from_stat_mode(stat_value.st_mode)
 
 
-def until_no_eintr(f, *a, **kw):
-    """Run f(*a, **kw), retrying if an EINTR error occurs.
-
-    WARNING: you must be certain that it is safe to retry the call repeatedly
-    if EINTR does occur.  This is typically only true for low-level operations
-    like os.read.  If in any doubt, don't use this.
-
-    Keep in mind that this is not a complete solution to EINTR.  There is
-    probably code in the Python standard library and other dependencies that
-    may encounter EINTR if a signal arrives (and there is signal handler for
-    that signal).  So this function can reduce the impact for IO that breezy
-    directly controls, but it is not a complete solution.
-    """
-    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
-    while True:
-        try:
-            return f(*a, **kw)
-        except OSError as e:
-            if e.errno == errno.EINTR:
-                continue
-            raise
-
-
 if sys.platform == "win32":
     def getchar():
         import msvcrt
@@ -1532,67 +1485,6 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
-
-if sys.platform.startswith('linux'):
-    def _local_concurrency():
-        try:
-            return os.sysconf('SC_NPROCESSORS_ONLN')
-        except (ValueError, OSError, AttributeError):
-            return None
-elif sys.platform == 'darwin':
-    def _local_concurrency():
-        return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
-                                stdout=subprocess.PIPE).communicate()[0]
-elif "bsd" in sys.platform:
-    def _local_concurrency():
-        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
-                                stdout=subprocess.PIPE).communicate()[0]
-elif sys.platform == 'sunos5':
-    def _local_concurrency():
-        return subprocess.Popen(['psrinfo', '-p', ],
-                                stdout=subprocess.PIPE).communicate()[0]
-elif sys.platform == "win32":
-    def _local_concurrency():
-        # This appears to return the number of cores.
-        return os.environ.get('NUMBER_OF_PROCESSORS')
-else:
-    def _local_concurrency():
-        # Who knows ?
-        return None
-
-
-_cached_local_concurrency = None
-
-
-def local_concurrency(use_cache=True):
-    """Return how many processes can be run concurrently.
-
-    Rely on platform specific implementations and default to 1 (one) if
-    anything goes wrong.
-    """
-    global _cached_local_concurrency
-
-    if _cached_local_concurrency is not None and use_cache:
-        return _cached_local_concurrency
-
-    concurrency = os.environ.get('BRZ_CONCURRENCY', None)
-    if concurrency is None:
-        import multiprocessing
-        try:
-            concurrency = multiprocessing.cpu_count()
-        except NotImplementedError:
-            # multiprocessing.cpu_count() isn't implemented on all platforms
-            try:
-                concurrency = _local_concurrency()
-            except OSError:
-                pass
-    try:
-        concurrency = int(concurrency)
-    except (TypeError, ValueError):
-        concurrency = 1
-    if use_cache:
-        _cached_local_concurrency = concurrency
-    return concurrency
 
 
 class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):

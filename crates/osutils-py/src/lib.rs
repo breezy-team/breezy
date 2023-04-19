@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 use memchr;
 use pyo3::create_exception;
-use pyo3::exceptions::{
-    PyFileExistsError, PyFileNotFoundError, PyIOError, PyPermissionError, PyRuntimeError,
-    PyTypeError, PyValueError,
-};
+use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
@@ -23,6 +21,8 @@ create_exception!(
     UnsupportedTimezoneFormat,
     pyo3::exceptions::PyException
 );
+
+import_exception!(breezy.errors, IllegalPath);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -332,6 +332,16 @@ fn find_executable_on_path(executable: &str) -> PyResult<Option<String>> {
 fn legal_path(path: &PyAny) -> PyResult<bool> {
     let path = extract_path(path)?;
     Ok(breezy_osutils::path::legal_path(path.as_path()))
+}
+
+#[pyfunction]
+fn check_legal_path(path: &PyAny) -> PyResult<()> {
+    let path = extract_path(path)?;
+    if !breezy_osutils::path::legal_path(path.as_path()) {
+        Err(IllegalPath::new_err((path,)))
+    } else {
+        Ok(())
+    }
 }
 
 #[pyfunction]
@@ -792,6 +802,21 @@ fn kind_from_mode(mode: u32) -> &'static str {
     breezy_osutils::file::kind_from_mode(mode)
 }
 
+#[pyfunction]
+fn delete_any(path: PathBuf) -> PyResult<()> {
+    Ok(breezy_osutils::file::delete_any(path)?)
+}
+
+#[pyfunction]
+fn get_host_name() -> PyResult<String> {
+    Ok(breezy_osutils::get_host_name()?)
+}
+
+#[pyfunction]
+fn local_concurrency(use_cache: Option<bool>) -> usize {
+    breezy_osutils::local_concurrency(use_cache.unwrap_or(true))
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -814,6 +839,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
+    m.add_wrapped(wrap_pyfunction!(check_legal_path))?;
     m.add_wrapped(wrap_pyfunction!(local_time_offset))?;
     m.add_wrapped(wrap_pyfunction!(format_local_date))?;
     m.add_wrapped(wrap_pyfunction!(rand_chars))?;
@@ -853,6 +879,9 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
     m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
+    m.add_wrapped(wrap_pyfunction!(delete_any))?;
+    m.add_wrapped(wrap_pyfunction!(get_host_name))?;
+    m.add_wrapped(wrap_pyfunction!(local_concurrency))?;
     m.add(
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
