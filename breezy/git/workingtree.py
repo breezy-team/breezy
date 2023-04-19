@@ -43,10 +43,10 @@ from .. import errors, globbing, lock, osutils
 from .. import revision as _mod_revision
 from .. import trace
 from .. import transport as _mod_transport
-from ..transport.local import file_kind
 from .. import tree, urlutils, workingtree
 from ..decorators import only_raises
 from ..mutabletree import BadReferenceTarget, MutableTree
+from ..transport.local import file_kind
 from .dir import BareLocalGitControlDirFormat, LocalGitDir
 from .mapping import decode_git_path, encode_git_path, mode_kind
 from .tree import MutableGitIndexTree

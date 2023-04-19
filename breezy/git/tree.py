@@ -37,12 +37,12 @@ from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree
 from .. import controldir as _mod_controldir
 from .. import delta, errors, mutabletree, osutils, revisiontree, trace
 from .. import transport as _mod_transport
-from ..transport.local import file_kind
 from .. import tree as _mod_tree
 from .. import urlutils, workingtree
 from ..bzr.inventorytree import InventoryTreeChange
 from ..revision import CURRENT_REVISION, NULL_REVISION
 from ..transport import get_transport
+from ..transport.local import file_kind
 from ..tree import MissingNestedTree
 from .mapping import (decode_git_path, default_mapping, encode_git_path,
                       mode_is_executable, mode_kind)

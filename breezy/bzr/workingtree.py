@@ -70,10 +70,10 @@ from breezy.bzr import (
 from .. import errors, osutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
-from ..transport.local import file_kind
 from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from ..trace import mutter, note
+from ..transport.local import file_kind
 from ..tree import (MissingNestedTree, TreeDirectory, TreeEntry, TreeFile,
                     TreeLink, TreeReference, get_canonical_path)
 from ..workingtree import WorkingTree, WorkingTreeFormat, format_registry

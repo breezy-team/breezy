@@ -24,10 +24,10 @@ from collections import deque
 from .. import branch as _mod_branch
 from .. import controldir, debug, errors, lazy_import, osutils, revision, trace
 from .. import transport as _mod_transport
-from ..transport.local import file_kind, file_stat
 from ..controldir import ControlDir
 from ..mutabletree import MutableTree
 from ..revisiontree import RevisionTree
+from ..transport.local import file_kind, file_stat
 
 lazy_import.lazy_import(globals(), """
 from breezy import (

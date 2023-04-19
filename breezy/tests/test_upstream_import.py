@@ -26,13 +26,13 @@ from .. import revision as _mod_revision
 from .. import transform
 from ..controldir import ControlDir
 from ..export import export
+from ..transport.local import file_kind
 from ..upstream_import import (NotArchiveType, ZipFileWrapper,
                                common_directory, get_archive_type,
                                import_archive, import_dir, import_tar,
                                import_zip, top_path)
 from . import TestCaseInTempDir, TestCaseWithTransport
 from .features import UnicodeFilenameFeature
-from ..transport.local import file_kind
 
 
 def import_tar_broken(tree, tar_input):
