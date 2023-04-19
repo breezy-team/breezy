@@ -9,6 +9,5 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = ">=0.18", features = ["extension-module"]}
 breezy-osutils = { path = "../osutils" }
-pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
+pyo3-file = "0.5.0"
 memchr = "2.3.4"
-fs_extra = "1.2.0"
