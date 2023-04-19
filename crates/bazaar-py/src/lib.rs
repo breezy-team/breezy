@@ -53,11 +53,19 @@ fn gen_revision_id(py: Python, username: &str, timestamp: Option<PyObject>) -> P
     Ok(PyBytes::new(py, &bazaar::gen_ids::gen_revision_id(username, timestamp)).into_py(py))
 }
 
+#[pyfunction]
+fn normalize_pattern(pattern: &str) -> String {
+    bazaar::globbing::normalize_pattern(pattern)
+}
+
 #[pymodule]
-fn _bzr_rs(_py: Python, m: &PyModule) -> PyResult<()> {
+fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_next_id_suffix))?;
     m.add_wrapped(wrap_pyfunction!(gen_file_id))?;
     m.add_wrapped(wrap_pyfunction!(gen_root_id))?;
     m.add_wrapped(wrap_pyfunction!(gen_revision_id))?;
+    let m_globbing = PyModule::new(py, "globbing")?;
+    m_globbing.add_wrapped(wrap_pyfunction!(normalize_pattern))?;
+    m.add_submodule(m_globbing)?;
     Ok(())
 }

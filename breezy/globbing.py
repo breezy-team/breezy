@@ -341,16 +341,6 @@ class _OrderedGlobster(Globster):
                                Globster.pattern_info[t]["prefix"])
 
 
-_slashes = lazy_regex.lazy_compile(r'[\\/]+')
+from ._bzr_rs import globbing as _globbing_rs
 
-
-def normalize_pattern(pattern):
-    """Converts backslashes in path patterns to forward slashes.
-
-    Doesn't normalize regular expressions - they may contain escapes.
-    """
-    if not (pattern.startswith('RE:') or pattern.startswith('!RE:')):
-        pattern = _slashes.sub('/', pattern)
-    if len(pattern) > 1:
-        pattern = pattern.rstrip('/')
-    return pattern
+normalize_pattern = _globbing_rs.normalize_pattern
