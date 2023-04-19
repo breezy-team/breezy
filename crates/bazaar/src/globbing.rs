@@ -96,17 +96,21 @@ impl Replacer {
         }
         let pats = &mut self.pats;
 
+        fn expand(text: &str, rep: &str) -> String {
+            rep.replace("\\&", text)
+        }
+
         fn sub(m: &Match, rep: &mut Arc<Replacement>) -> String {
             let replacement = Arc::get_mut(rep).unwrap();
             match replacement {
-                Replacement::String(s) => EXPAND_RE.replace_all(m.as_str(), |caps: &Captures| { s.to_string() }).to_string(),
+                Replacement::String(s) => expand(m.as_str(), s.as_str()),
                 Replacement::Function(f) => f(m.as_str()),
                 Replacement::Closure(f) => f(m.as_str().to_string()),
             }
         }
 
         Ok(self.compiled.as_ref().unwrap().replace_all(text, |caps: &Captures| {
-                for (index, m) in caps.iter().enumerate() {
+                for (index, m) in caps.iter().skip(1).enumerate() {
                     if let Some(m) = m {
                         return sub(&m, &mut pats[index].1);
                     }
