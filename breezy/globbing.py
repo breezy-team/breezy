@@ -130,7 +130,7 @@ _sub_re.add(r'\\+$', _trailing_backslashes_regex)
 
 _sub_fullpath = Replacer()
 _sub_fullpath.add(r'^RE:.*', _sub_re)  # RE:<anything> is a regex
-_sub_fullpath.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]',
+_sub_fullpath.add(r'\[\^?\]?(?:[^\]\[]|\[:[^\]]+:\])+\]',
                   _sub_group)  # char group
 _sub_fullpath.add(r'(?:(?<=/)|^)(?:\.?/)+', '')  # canonicalize path
 _sub_fullpath.add(r'\\.', r'\&')  # keep anything backslashed
@@ -141,7 +141,7 @@ _sub_fullpath.add(r'\?', r'[^/]')  # ? everywhere
 
 
 _sub_basename = Replacer()
-_sub_basename.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]',
+_sub_basename.add(r'\[\^?\]?(?:[^\]\[]|\[:[^\]]+:\])+\]',
                   _sub_group)  # char group
 _sub_basename.add(r'\\.', r'\&')  # keep anything backslashed
 _sub_basename.add(r'[(){}|^$+.]', r'\\&')  # escape specials

@@ -1,4 +1,4 @@
-use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::{PyTypeError,PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
@@ -58,6 +58,65 @@ fn normalize_pattern(pattern: &str) -> String {
     bazaar::globbing::normalize_pattern(pattern)
 }
 
+#[pyclass]
+struct Replacer {
+    replacer: bazaar::globbing::Replacer,
+}
+
+#[pymethods]
+impl Replacer {
+    #[new]
+    fn new(source: Option<&Self>) -> Self {
+        Self {
+            replacer: bazaar::globbing::Replacer::new(source.map(|p| &p.replacer),),
+        }
+    }
+
+    /// Add a pattern and replacement.
+    ///
+    /// The pattern must not contain capturing groups.
+    /// The replacement might be either a string template in which \& will be
+    /// replaced with the match, or a function that will get the matching text
+    /// as argument. It does not get match object, because capturing is
+    /// forbidden anyway.
+    fn add(&mut self, py: Python, pattern: &str, func: PyObject) -> PyResult<()> {
+        if let Ok(func) = func.extract::<String>(py) {
+            Ok(self.replacer.add(pattern, bazaar::globbing::Replacement::String(func)))
+        } else {
+            let callable = Box::new(move |t: String | -> String {
+                Python::with_gil(|py| {
+                    match func.call1(py, (t,)) {
+                        Ok(result) => result.extract::<String>(py).unwrap(),
+                        Err(e) => {
+                            PyErr::from(e).restore(py);
+                            String::new()
+                        }
+                    }
+                })
+            });
+            Ok(self.replacer.add(pattern, bazaar::globbing::Replacement::Closure(callable)))
+        }
+    }
+
+    /// Add all patterns from another replacer.
+    ///
+    /// All patterns and replacements from replacer are appended to the ones
+    /// already defined.
+    fn add_replacer(&mut self, replacer: &Self) {
+        self.replacer.add_replacer(&replacer.replacer)
+    }
+
+    fn __call__(&mut self, py: Python, text: &str) -> PyResult<String> {
+        let ret = self.replacer.replace(text)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        if PyErr::occurred(py) {
+            Err(PyErr::fetch(py))
+        } else {
+            Ok(ret)
+        }
+    }
+}
+
 #[pymodule]
 fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(_next_id_suffix))?;
@@ -66,6 +125,7 @@ fn _bzr_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(gen_revision_id))?;
     let m_globbing = PyModule::new(py, "globbing")?;
     m_globbing.add_wrapped(wrap_pyfunction!(normalize_pattern))?;
+    m_globbing.add_class::<Replacer>()?;
     m.add_submodule(m_globbing)?;
     Ok(())
 }
