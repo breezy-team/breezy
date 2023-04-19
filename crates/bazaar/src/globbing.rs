@@ -87,6 +87,9 @@ impl Replacer {
     }
 
     pub fn replace(&mut self, text: &str) -> std::result::Result<String, RegexError> {
+        if self.pats.is_empty() {
+            return Ok(text.to_string());
+        }
         if self.compiled.is_none() {
             let pat_str = self.pats.iter().map(|(pat, _)| format!("({})", pat)).collect::<Vec<_>>().join("|");
             self.compiled = Some(Regex::new(&pat_str)?);
