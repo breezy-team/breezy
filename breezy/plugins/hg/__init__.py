@@ -136,7 +136,7 @@ class SmartHgProber(controldir.Prober):
         :param externa_url: External URL for transport
         :return: Boolean indicating whether transport is backed onto hg
         """
-        from breezy.urlutils import urlparse
+        from ...urlutils import urlparse
         parsed_url = urlparse.urlparse(external_url)
         parsed_url = parsed_url._replace(query='cmd=capabilities')
         url = urlparse.urlunparse(parsed_url)

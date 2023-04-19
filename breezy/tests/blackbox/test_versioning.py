@@ -22,11 +22,12 @@
 
 import os
 
-from breezy.branch import Branch
-from breezy.osutils import pathjoin
 from breezy.tests import TestCaseInTempDir, TestCaseWithTransport
-from breezy.trace import mutter
-from breezy.workingtree import WorkingTree
+
+from ...branch import Branch
+from ...osutils import pathjoin
+from ...trace import mutter
+from ...workingtree import WorkingTree
 
 
 class TestMkdir(TestCaseWithTransport):

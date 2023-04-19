@@ -1944,7 +1944,7 @@ class BranchPushResult(_Result):
     local_branch: Optional[Branch]
 
     def report(self, to_file: TextIO) -> None:
-        from breezy.i18n import gettext, ngettext
+        from .i18n import gettext, ngettext
 
         # TODO: This function gets passed a to_file, but then
         # ignores it and calls note() instead. This is also
@@ -1988,7 +1988,7 @@ class BranchCheckResult:
           verbose: Requests more detailed display of what was checked,
             if any.
         """
-        from breezy.i18n import gettext, ngettext
+        from .i18n import gettext, ngettext
         note(gettext('checked branch {0} format {1}').format(
             self.branch.user_url, self.branch._format))
         for error in self.errors:

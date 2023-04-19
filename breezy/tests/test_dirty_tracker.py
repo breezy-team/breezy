@@ -28,7 +28,7 @@ class DirtyTrackerTests(TestCaseWithTransport):
         super().setUp()
         self.tree = self.make_branch_and_tree('tree')
         try:
-            from breezy.dirty_tracker import DirtyTracker
+            from ..dirty_tracker import DirtyTracker
         except ModuleNotFoundError as e:
             if e.name == 'pyinotify':
                 self.skipTest('pyinotify not available')

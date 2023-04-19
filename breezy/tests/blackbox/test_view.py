@@ -17,7 +17,8 @@
 """Tests for the view command"""
 
 from breezy.tests import TestCaseWithTransport
-from breezy.workingtree import WorkingTree
+
+from ...workingtree import WorkingTree
 
 
 class TestViewUI(TestCaseWithTransport):

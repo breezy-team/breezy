@@ -18,9 +18,10 @@
 import warnings
 
 from breezy import bugtracker, revision
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestCase, TestCaseWithTransport
-from breezy.tests.matchers import MatchesAncestry
+
+from ..revision import NULL_REVISION
+from .matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
 warnings.filterwarnings('ignore',

@@ -480,7 +480,7 @@ class LocalTransport(transport.Transport):
         """Lock the given file for shared (read) access.
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        from breezy.lock import ReadLock
+        from ..lock import ReadLock
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -494,7 +494,7 @@ class LocalTransport(transport.Transport):
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        from breezy.lock import WriteLock
+        from ..lock import WriteLock
         return WriteLock(self._abspath(relpath))
 
     def rmdir(self, relpath):

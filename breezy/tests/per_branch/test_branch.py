@@ -27,8 +27,9 @@ from breezy import tree as _mod_tree
 from breezy import urlutils
 from breezy.bzr import remote
 from breezy.tests import per_branch
-from breezy.tests.http_server import HttpServer
 from breezy.transport import memory
+
+from ..http_server import HttpServer
 
 
 class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):

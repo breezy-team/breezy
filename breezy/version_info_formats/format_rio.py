@@ -18,8 +18,9 @@
 
 from breezy import errors, hooks
 from breezy.bzr.rio import RioWriter, Stanza
-from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+
+from ..revision import NULL_REVISION
 
 
 class RioVersionInfoBuilder(VersionInfoBuilder):

@@ -136,7 +136,7 @@ class LaunchpadMergeProposal(MergeProposal):
             else:
                 return None
         else:
-            from breezy.git.mapping import default_mapping
+            from ...git.mapping import default_mapping
             git_repo = self._mp.source_git_repository
             git_ref = git_repo.getRefByPath(path=self._mp.source_git_path)
             sha = git_ref.commit_sha1

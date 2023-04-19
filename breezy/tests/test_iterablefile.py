@@ -20,7 +20,8 @@
 
 
 from breezy import tests
-from breezy.osutils import IterableFile
+
+from ..osutils import IterableFile
 
 
 class TestIterableFile(tests.TestCase):

@@ -17,10 +17,11 @@
 """Tests for bzr directories that support colocated branches."""
 
 from breezy import branchbuilder, errors, tests, urlutils
-from breezy.branch import Branch
-from breezy.controldir import BranchReferenceLoop
 from breezy.tests import per_controldir
-from breezy.tests.features import UnicodeFilenameFeature
+
+from ...branch import Branch
+from ...controldir import BranchReferenceLoop
+from ..features import UnicodeFilenameFeature
 
 
 class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):

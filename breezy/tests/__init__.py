@@ -240,7 +240,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         """
         testtools.TextTestResult.__init__(self, stream)
         if bench_history is not None:
-            from breezy.version import _get_bzr_source_tree
+            from ..version import _get_bzr_source_tree
             src_tree = _get_bzr_source_tree()
             if src_tree:
                 try:
@@ -2643,7 +2643,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # http://pad.lv/825027).
             self.assertIs(None, os.environ.get('BRZ_HOME', None))
             os.environ['BRZ_HOME'] = root
-            from breezy.bzr.bzrdir import BzrDirMetaFormat1
+            from ..bzr.bzrdir import BzrDirMetaFormat1
             wt = controldir.ControlDir.create_standalone_workingtree(
                 root, format=BzrDirMetaFormat1())
             del os.environ['BRZ_HOME']

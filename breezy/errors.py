@@ -117,7 +117,7 @@ class BzrError(Exception):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
-            from breezy.i18n import gettext
+            from .i18n import gettext
             return gettext(fmt)  # _fmt strings should be ascii
 
     def __eq__(self, other):
@@ -656,7 +656,7 @@ class PathsNotVersionedError(BzrError):
     _fmt = "Path(s) are not versioned: %(paths_as_string)s"
 
     def __init__(self, paths):
-        from breezy.osutils import quotefn
+        from .osutils import quotefn
         BzrError.__init__(self)
         self.paths = paths
         self.paths_as_string = ' '.join([quotefn(p) for p in paths])
@@ -671,7 +671,7 @@ class PathsDoNotExist(BzrError):
 
     def __init__(self, paths, extra=None):
         # circular import
-        from breezy.osutils import quotefn
+        from .osutils import quotefn
         BzrError.__init__(self)
         self.paths = paths
         self.paths_as_string = ' '.join([quotefn(p) for p in paths])
@@ -1411,7 +1411,7 @@ class BzrMoveFailedError(BzrError):
             "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path='', to_path='', extra=None):
-        from breezy.osutils import splitpath
+        from .osutils import splitpath
         BzrError.__init__(self)
         if extra:
             self.extra, self._has_extra = extra, ': '
@@ -1992,7 +1992,7 @@ class UnableEncodePath(BzrError):
             'user encoding %(user_encoding)s')
 
     def __init__(self, path, kind):
-        from breezy.osutils import get_user_encoding
+        from .osutils import get_user_encoding
         self.path = path
         self.kind = kind
         self.user_encoding = get_user_encoding()

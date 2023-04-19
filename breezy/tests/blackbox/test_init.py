@@ -23,10 +23,11 @@ import re
 from breezy import branch as _mod_branch
 from breezy import config as _mod_config
 from breezy import osutils, urlutils
-from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.tests import TestCaseWithTransport, TestSkipped
-from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
-from breezy.workingtree import WorkingTree
+
+from ...bzr.bzrdir import BzrDirMetaFormat1
+from ...workingtree import WorkingTree
+from ..test_sftp_transport import TestCaseWithSFTPServer
 
 
 class TestInit(TestCaseWithTransport):

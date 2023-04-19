@@ -19,9 +19,10 @@
 import os
 
 from breezy import tests
-from breezy.mutabletree import MutableTree
-from breezy.osutils import supports_symlinks
 from breezy.tests.per_tree import TestCaseWithTree
+
+from ...mutabletree import MutableTree
+from ...osutils import supports_symlinks
 
 
 class TestWalkdirs(TestCaseWithTree):

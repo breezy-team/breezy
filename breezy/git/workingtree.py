@@ -1154,14 +1154,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
             # Now we have the parents of this content
-            from breezy.annotate import Annotator
-
+            from ..annotate import Annotator
             from .annotate import AnnotateProvider
             annotate_provider = AnnotateProvider(
                 self.branch.repository._file_change_scanner)
             annotator = Annotator(annotate_provider)
 
-            from breezy.graph import Graph
+            from ..graph import Graph
             graph = Graph(annotate_provider)
             heads = graph.heads(maybe_file_parent_keys)
             file_parent_keys = []

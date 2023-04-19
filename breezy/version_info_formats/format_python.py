@@ -19,8 +19,9 @@
 import pprint
 
 from breezy import errors
-from breezy.revision import NULL_REVISION
 from breezy.version_info_formats import VersionInfoBuilder, create_date_str
+
+from ..revision import NULL_REVISION
 
 # Header and footer for the python format
 _py_version_header = '''#!/usr/bin/env python3

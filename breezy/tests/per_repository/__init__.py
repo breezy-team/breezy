@@ -25,10 +25,11 @@ rather than in tests/per_branch/*.py.
 """
 
 from breezy import repository
-from breezy.bzr.remote import RemoteRepositoryFormat
 from breezy.tests import default_transport, multiply_tests, test_server
-from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.transport import memory
+
+from ...bzr.remote import RemoteRepositoryFormat
+from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def formats_to_scenarios(formats, transport_server, transport_readonly_server,

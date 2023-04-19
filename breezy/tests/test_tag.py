@@ -18,8 +18,9 @@
 
 
 from breezy import controldir, errors
-from breezy.tag import DisabledTags, MemoryTags
 from breezy.tests import TestCase, TestCaseWithTransport
+
+from ..tag import DisabledTags, MemoryTags
 
 
 class TestTagRevisionRenames(TestCaseWithTransport):

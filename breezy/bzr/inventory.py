@@ -470,7 +470,7 @@ class InventoryFile(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
               output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from breezy.diff import DiffText
+        from ..diff import DiffText
         from_file_id = self.file_id
         if to_entry:
             to_file_id = to_entry.file_id
@@ -573,7 +573,7 @@ class InventoryLink(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
               output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from breezy.diff import DiffSymlink
+        from ..diff import DiffSymlink
         old_target = self.symlink_target
         if to_entry is not None:
             new_target = to_entry.symlink_target

@@ -19,8 +19,9 @@
 import threading
 
 from breezy import strace, tests
-from breezy.strace import StraceResult, strace_detailed
-from breezy.tests.features import strace_feature
+
+from ..strace import StraceResult, strace_detailed
+from .features import strace_feature
 
 
 class TestStrace(tests.TestCaseWithTransport):

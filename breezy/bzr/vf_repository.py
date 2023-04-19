@@ -2268,7 +2268,7 @@ class InterVersionedFileRepository(InterRepository):
                 'experimental_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
-        from breezy.bzr.fetch import RepoFetcher
+        from .fetch import RepoFetcher
 
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():

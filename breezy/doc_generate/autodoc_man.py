@@ -30,7 +30,8 @@ import breezy.commands
 import breezy.help
 import breezy.help_topics
 from breezy.doc_generate import get_autodoc_datetime
-from breezy.plugin import load_plugins
+
+from ..plugin import load_plugins
 
 load_plugins()
 

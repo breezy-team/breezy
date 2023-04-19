@@ -28,8 +28,8 @@ from breezy import errors, lock, osutils
 from breezy import revision as _mod_revision
 from breezy import tree as _mod_tree
 from breezy import urlutils
-from breezy.transport.memory import MemoryTransport
 
+from ..transport.memory import MemoryTransport
 from .mapping import decode_git_path, encode_git_path
 from .tree import MutableGitIndexTree
 

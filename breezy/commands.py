@@ -396,7 +396,7 @@ def _get_external_command(cmd_or_None, cmd_name):
     # Only do external command lookups when no command is found so far.
     if cmd_or_None is not None:
         return cmd_or_None
-    from breezy.externalcommand import ExternalCommand
+    from .externalcommand import ExternalCommand
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
@@ -1043,7 +1043,7 @@ def exception_to_return_code(the_callable, *args, **kwargs):
 
 
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
-    from breezy.lsprof import profile
+    from .lsprof import profile
     ret, stats = profile(exception_to_return_code, the_callable,
                          *args, **kwargs)
     stats.sort()

@@ -32,7 +32,7 @@ class cmd_github_login(Command):
     def run(self, username=None):
         from github import Github, GithubException
 
-        from breezy.config import AuthenticationConfig
+        from ...config import AuthenticationConfig
         authconfig = AuthenticationConfig()
         if username is None:
             username = authconfig.get_user(

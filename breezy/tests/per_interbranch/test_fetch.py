@@ -16,10 +16,11 @@
 
 """Tests for InterBranch.fetch."""
 
-from breezy.errors import FetchLimitUnsupported, NoRoundtrippingSupport
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import TestCaseWithInterBranch
+
+from ...errors import FetchLimitUnsupported, NoRoundtrippingSupport
+from ...revision import NULL_REVISION
 
 
 class TestInterBranchFetch(TestCaseWithInterBranch):

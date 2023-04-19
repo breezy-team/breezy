@@ -18,8 +18,9 @@ import random
 import time
 
 from breezy import patch, tests
-from breezy.osutils import (format_date, format_highres_date,
-                            local_time_offset, unpack_highres_date)
+
+from ..osutils import (format_date, format_highres_date, local_time_offset,
+                       unpack_highres_date)
 
 
 class TestPatchHeader(tests.TestCase):

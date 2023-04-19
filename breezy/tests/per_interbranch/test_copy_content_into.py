@@ -17,10 +17,11 @@
 """Tests for breezy.branch.InterBranch.copy_content_into."""
 
 from breezy import branch
-from breezy.errors import NoRoundtrippingSupport
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import (StubMatchingInter, StubWithFormat,
                                           TestCaseWithInterBranch)
+
+from ...errors import NoRoundtrippingSupport
 
 
 class TestCopyContentInto(TestCaseWithInterBranch):

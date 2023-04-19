@@ -314,7 +314,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         "bzr add" adds the parent as necessary, but simple working tree add
         doesn't do that.
         """
-        from breezy.errors import NotVersionedError
+        from ...errors import NotVersionedError
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo/',
                          'foo/hello'])
@@ -596,7 +596,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual([a], old_tree.get_parent_ids())
 
     def test_merge_revert(self):
-        from breezy.merge import merge_inner
+        from ...merge import merge_inner
         this = self.make_branch_and_tree('b1')
         self.build_tree_contents(
             [('b1/a', b'a test\n'), ('b1/b', b'b test\n')])
@@ -727,7 +727,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertEqual(mm, {})
 
     def test_conflicts(self):
-        from breezy.tests.test_conflicts import example_conflicts
+        from ..test_conflicts import example_conflicts
         tree = self.make_branch_and_tree('master')
         try:
             tree.set_conflicts(example_conflicts)
@@ -744,7 +744,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                           tree2.conflicts)
 
     def make_merge_conflicts(self):
-        from breezy.merge import merge_inner
+        from ...merge import merge_inner
         tree = self.make_branch_and_tree('mine')
         with open('mine/bloo', 'wb') as f:
             f.write(b'one')

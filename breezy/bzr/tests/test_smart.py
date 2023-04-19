@@ -41,9 +41,10 @@ from breezy.bzr.smart import packrepository as smart_packrepo
 from breezy.bzr.smart import repository as smart_repo
 from breezy.bzr.smart import request as smart_req
 from breezy.bzr.smart import server, vfs
-from breezy.bzr.testament import Testament
 from breezy.tests import test_server
 from breezy.transport import chroot, memory
+
+from ..testament import Testament
 
 
 def load_tests(loader, standard_tests, pattern):

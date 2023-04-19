@@ -26,8 +26,9 @@ itself rather than in tests/per_interbranch/*.py.
 from typing import Any, List
 
 from breezy import branchbuilder
-from breezy.branch import GenericInterBranch, InterBranch
 from breezy.tests import TestCaseWithTransport, multiply_tests
+
+from ...branch import GenericInterBranch, InterBranch
 
 
 def make_scenarios(test_list):

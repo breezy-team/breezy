@@ -17,7 +17,6 @@
 import os
 from io import BytesIO
 
-from breezy.tests.matchers import MatchesTreeChanges
 from breezy.tests.per_tree import TestCaseWithTree
 
 from ... import osutils
@@ -28,6 +27,7 @@ from ...merge import Merge3Merger, Merger
 from ...transform import ROOT_PARENT, resolve_conflicts
 from ...tree import TreeChange, find_previous_path
 from ..features import SymlinkFeature, UnicodeFilenameFeature
+from ..matchers import MatchesTreeChanges
 
 
 class TestTransformPreview(TestCaseWithTree):

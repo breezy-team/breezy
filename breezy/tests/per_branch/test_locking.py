@@ -18,7 +18,8 @@
 
 from breezy import errors, tests
 from breezy.tests import lock_helpers, per_branch
-from breezy.tests.matchers import *
+
+from ..matchers import *
 
 
 class TestBranchLocking(per_branch.TestCaseWithBranch):

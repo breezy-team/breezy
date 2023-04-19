@@ -16,8 +16,9 @@
 
 """Tests for commands related to hooks"""
 
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
+
+from ...branch import Branch
 
 
 def _foo_hook():

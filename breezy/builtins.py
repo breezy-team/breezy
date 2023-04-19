@@ -3389,7 +3389,7 @@ class cmd_export(Command):
             force_mtime = None
 
         if filters:
-            from breezy.filter_tree import ContentFilterTree
+            from .filter_tree import ContentFilterTree
             export_tree = ContentFilterTree(
                 export_tree, export_tree._content_filter_stack)
 
@@ -5016,7 +5016,7 @@ class cmd_missing(Command):
             show_ids=False, verbose=False, this=False, other=False,
             include_merged=None, revision=None, my_revision=None,
             directory='.'):
-        from breezy.missing import find_unmerged, iter_log_revisions
+        from .missing import find_unmerged, iter_log_revisions
 
         def message(s):
             if not is_quiet():
@@ -5643,7 +5643,7 @@ class cmd_join(Command):
         ]
 
     def run(self, tree, reference=False):
-        from breezy.mutabletree import BadReferenceTarget
+        from .mutabletree import BadReferenceTarget
         sub_tree = WorkingTree.open(tree)
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]

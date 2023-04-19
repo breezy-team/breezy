@@ -200,7 +200,7 @@ class TestRegisterLazy(tests.TestCase):
         commands.plugin_cmds.remove('fake')
 
     def assertIsFakeCommand(self, cmd_obj):
-        from breezy.tests.fake_command import cmd_fake
+        from .fake_command import cmd_fake
         self.assertIsInstance(cmd_obj, cmd_fake)
 
     def test_register_lazy(self):

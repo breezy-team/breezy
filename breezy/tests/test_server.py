@@ -672,7 +672,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         if not client_path_extra.startswith('/'):
             raise ValueError(client_path_extra)
         self.root_client_path = self.client_path_extra = client_path_extra
-        from breezy.transport.chroot import ChrootServer
+        from ..transport.chroot import ChrootServer
         if backing_transport_server is None:
             backing_transport_server = LocalURLServer()
         self.chroot_server = ChrootServer(

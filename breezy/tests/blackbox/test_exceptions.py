@@ -21,7 +21,8 @@ import re
 import unittest
 
 from breezy import bzr, config, controldir, errors, osutils, repository, tests
-from breezy.bzr.groupcompress_repo import RepositoryFormat2a
+
+from ...bzr.groupcompress_repo import RepositoryFormat2a
 
 
 class TestExceptionReporting(tests.TestCaseInTempDir):

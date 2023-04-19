@@ -18,7 +18,8 @@
 
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_tree import TestCaseWithTree
-from breezy.workingtree import SettingFileIdUnsupported
+
+from ...workingtree import SettingFileIdUnsupported
 
 
 class TestGetRootID(TestCaseWithTree):

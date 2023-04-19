@@ -16,9 +16,10 @@
 
 import os
 
-from breezy.errors import CommandError, NoSuchRevision
 from breezy.tests import TestCaseWithTransport
-from breezy.workingtree import WorkingTree
+
+from ...errors import CommandError, NoSuchRevision
+from ...workingtree import WorkingTree
 
 
 class TestRevisionInfo(TestCaseWithTransport):

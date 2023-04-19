@@ -433,4 +433,4 @@ try:
     from breezy._annotator_pyx import Annotator
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from breezy._annotator_py import Annotator  # noqa: F401
+    from ._annotator_py import Annotator  # noqa: F401

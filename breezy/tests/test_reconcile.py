@@ -19,8 +19,9 @@
 
 from breezy import errors, tests
 from breezy.bzr import bzrdir
-from breezy.reconcile import Reconciler, reconcile
 from breezy.tests import per_repository
+
+from ..reconcile import Reconciler, reconcile
 
 
 class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):

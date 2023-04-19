@@ -20,7 +20,8 @@
 import os
 
 from breezy import branch, controldir, tests
-from breezy.urlutils import local_path_to_url
+
+from ...urlutils import local_path_to_url
 
 
 class TestClone(tests.TestCaseWithTransport):

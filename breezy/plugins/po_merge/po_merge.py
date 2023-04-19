@@ -16,9 +16,8 @@
 
 """Merge logic for po_merge plugin."""
 
-from breezy.lazy_import import lazy_import
-
 from ... import config, merge
+from ...lazy_import import lazy_import
 
 lazy_import(globals(), """
 import fnmatch
