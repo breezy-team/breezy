@@ -23,10 +23,8 @@ expressions.
 import re
 
 from . import lazy_regex
-from .trace import mutter, warning
-
 from ._bzr_rs import globbing as _globbing_rs
-
+from .trace import mutter, warning
 
 Replacer = _globbing_rs.Replacer
 _sub_named = Replacer()

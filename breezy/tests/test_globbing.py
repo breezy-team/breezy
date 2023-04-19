@@ -17,8 +17,8 @@
 import re
 
 from .. import errors, lazy_regex
-from ..globbing import (ExceptionGlobster, Globster, _OrderedGlobster,
-                        normalize_pattern, Replacer)
+from ..globbing import (ExceptionGlobster, Globster, Replacer,
+                        _OrderedGlobster, normalize_pattern)
 from . import TestCase
 
 

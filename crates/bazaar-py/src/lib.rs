@@ -1,4 +1,4 @@
-use pyo3::exceptions::{PyTypeError,PyValueError};
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
@@ -68,7 +68,7 @@ impl Replacer {
     #[new]
     fn new(source: Option<&Self>) -> Self {
         Self {
-            replacer: bazaar::globbing::Replacer::new(source.map(|p| &p.replacer),),
+            replacer: bazaar::globbing::Replacer::new(source.map(|p| &p.replacer)),
         }
     }
 
@@ -81,20 +81,22 @@ impl Replacer {
     /// forbidden anyway.
     fn add(&mut self, py: Python, pattern: &str, func: PyObject) -> PyResult<()> {
         if let Ok(func) = func.extract::<String>(py) {
-            Ok(self.replacer.add(pattern, bazaar::globbing::Replacement::String(func)))
+            Ok(self
+                .replacer
+                .add(pattern, bazaar::globbing::Replacement::String(func)))
         } else {
-            let callable = Box::new(move |t: String | -> String {
-                Python::with_gil(|py| {
-                    match func.call1(py, (t,)) {
-                        Ok(result) => result.extract::<String>(py).unwrap(),
-                        Err(e) => {
-                            PyErr::from(e).restore(py);
-                            String::new()
-                        }
+            let callable = Box::new(move |t: String| -> String {
+                Python::with_gil(|py| match func.call1(py, (t,)) {
+                    Ok(result) => result.extract::<String>(py).unwrap(),
+                    Err(e) => {
+                        PyErr::from(e).restore(py);
+                        String::new()
                     }
                 })
             });
-            Ok(self.replacer.add(pattern, bazaar::globbing::Replacement::Closure(callable)))
+            Ok(self
+                .replacer
+                .add(pattern, bazaar::globbing::Replacement::Closure(callable)))
         }
     }
 
@@ -107,7 +109,9 @@ impl Replacer {
     }
 
     fn __call__(&mut self, py: Python, text: &str) -> PyResult<String> {
-        let ret = self.replacer.replace(text)
+        let ret = self
+            .replacer
+            .replace(text)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
         if PyErr::occurred(py) {
             Err(PyErr::fetch(py))

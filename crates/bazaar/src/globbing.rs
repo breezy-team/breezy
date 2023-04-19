@@ -3,8 +3,8 @@
 //! This module provides functions for converting shell-like globs to regular
 //! expressions.
 
+pub use fancy_regex::{Captures, Error, Match, Regex};
 use lazy_static::lazy_static;
-pub use fancy_regex::{Regex, Error, Match, Captures};
 use std::sync::Arc;
 
 lazy_static! {
@@ -54,7 +54,7 @@ impl Replacer {
     pub fn empty() -> Self {
         Self {
             compiled: None,
-            pats: Vec::new()
+            pats: Vec::new(),
         }
     }
 
@@ -91,7 +91,12 @@ impl Replacer {
             return Ok(text.to_string());
         }
         if self.compiled.is_none() {
-            let pat_str = self.pats.iter().map(|(pat, _)| format!("({})", pat)).collect::<Vec<_>>().join("|");
+            let pat_str = self
+                .pats
+                .iter()
+                .map(|(pat, _)| format!("({})", pat))
+                .collect::<Vec<_>>()
+                .join("|");
             self.compiled = Some(Regex::new(&pat_str)?);
         }
         let pats = &mut self.pats;
@@ -109,14 +114,18 @@ impl Replacer {
             }
         }
 
-        Ok(self.compiled.as_ref().unwrap().replace_all(text, |caps: &Captures| {
+        Ok(self
+            .compiled
+            .as_ref()
+            .unwrap()
+            .replace_all(text, |caps: &Captures| {
                 for (index, m) in caps.iter().skip(1).enumerate() {
                     if let Some(m) = m {
                         return sub(&m, &mut pats[index].1);
                     }
                 }
                 unreachable!();
-            }
-        ).to_string())
+            })
+            .to_string())
     }
 }
