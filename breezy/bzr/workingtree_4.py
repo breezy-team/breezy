@@ -55,9 +55,9 @@ from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from ..mutabletree import BadReferenceTarget, MutableTree
-from ..osutils import file_kind, isdir, pathjoin, realpath, safe_unicode
+from ..osutils import isdir, pathjoin, realpath, safe_unicode
 from ..transport import NoSuchFile, get_transport_from_path
-from ..transport.local import LocalTransport
+from ..transport.local import LocalTransport, file_kind
 from ..tree import FileTimestampUnavailable, InterTree, MissingNestedTree
 from ..workingtree import WorkingTree
 from . import dirstate

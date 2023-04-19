@@ -27,6 +27,7 @@ import breezy.transport.trace
 from .. import errors, osutils, tests, transport, urlutils
 from ..transport import (FileExists, NoSuchFile, UnsupportedProtocol, chroot,
                          fakenfs, http, local, memory, pathfilter, readonly)
+from ..transport.local import file_kind
 from . import features, test_server
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -1085,3 +1086,45 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
+
+
+class TestKind(tests.TestCaseInTempDir):
+
+    def test_file_kind(self):
+        import socket
+        self.build_tree(['file', 'dir/'])
+        self.assertEqual('file', file_kind('file'))
+        self.assertEqual('directory', file_kind('dir/'))
+        if osutils.supports_symlinks(self.test_dir):
+            os.symlink('symlink', 'symlink')
+            self.assertEqual('symlink', file_kind('symlink'))
+
+        # TODO: jam 20060529 Test a block device
+        try:
+            os.lstat('/dev/null')
+        except OSError as e:
+            if e.errno not in (errno.ENOENT,):
+                raise
+        else:
+            self.assertEqual(
+                'chardev',
+                file_kind(os.path.realpath('/dev/null')))
+
+        mkfifo = getattr(os, 'mkfifo', None)
+        if mkfifo:
+            mkfifo('fifo')
+            try:
+                self.assertEqual('fifo', file_kind('fifo'))
+            finally:
+                os.remove('fifo')
+
+        AF_UNIX = getattr(socket, 'AF_UNIX', None)
+        if AF_UNIX:
+            s = socket.socket(AF_UNIX)
+            s.bind('socket')
+            try:
+                self.assertEqual('socket', file_kind('socket'))
+            finally:
+                os.remove('socket')
+
+

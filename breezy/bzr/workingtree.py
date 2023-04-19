@@ -70,6 +70,7 @@ from breezy.bzr import (
 from .. import errors, osutils
 from .. import revision as _mod_revision
 from .. import transport as _mod_transport
+from ..transport.local import file_kind
 from ..controldir import ControlDir
 from ..lock import LogicalLockResult
 from ..trace import mutter, note
@@ -1165,7 +1166,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             else:
                                 c = '?'
 
-                    fk = osutils.file_kind(fap)
+                    fk = file_kind(fap)
                     if fk == 'directory' and self._directory_is_tree_reference(f):
                         if not recurse_nested:
                             fk = 'tree-reference'

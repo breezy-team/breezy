@@ -37,6 +37,7 @@ from dulwich.objects import S_IFGITLINK, S_ISGITLINK, ZERO_SHA, Blob, Tree
 from .. import controldir as _mod_controldir
 from .. import delta, errors, mutabletree, osutils, revisiontree, trace
 from .. import transport as _mod_transport
+from ..transport.local import file_kind
 from .. import tree as _mod_tree
 from .. import urlutils, workingtree
 from ..bzr.inventorytree import InventoryTreeChange
@@ -1650,7 +1651,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             return mode_kind(mode)
 
     def kind(self, relpath):
-        kind = osutils.file_kind(self.abspath(relpath))
+        kind = file_kind(self.abspath(relpath))
         if kind == 'directory':
             if self._directory_is_tree_reference(relpath):
                 return 'tree-reference'

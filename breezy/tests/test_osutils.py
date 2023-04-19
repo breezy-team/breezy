@@ -278,55 +278,6 @@ class TestDeleteAny(tests.TestCaseInTempDir):
         osutils.delete_any('d')
 
 
-class TestKind(tests.TestCaseInTempDir):
-
-    def test_file_kind(self):
-        self.build_tree(['file', 'dir/'])
-        self.assertEqual('file', osutils.file_kind('file'))
-        self.assertEqual('directory', osutils.file_kind('dir/'))
-        if osutils.supports_symlinks(self.test_dir):
-            os.symlink('symlink', 'symlink')
-            self.assertEqual('symlink', osutils.file_kind('symlink'))
-
-        # TODO: jam 20060529 Test a block device
-        try:
-            os.lstat('/dev/null')
-        except OSError as e:
-            if e.errno not in (errno.ENOENT,):
-                raise
-        else:
-            self.assertEqual(
-                'chardev',
-                osutils.file_kind(os.path.realpath('/dev/null')))
-
-        mkfifo = getattr(os, 'mkfifo', None)
-        if mkfifo:
-            mkfifo('fifo')
-            try:
-                self.assertEqual('fifo', osutils.file_kind('fifo'))
-            finally:
-                os.remove('fifo')
-
-        AF_UNIX = getattr(socket, 'AF_UNIX', None)
-        if AF_UNIX:
-            s = socket.socket(AF_UNIX)
-            s.bind('socket')
-            try:
-                self.assertEqual('socket', osutils.file_kind('socket'))
-            finally:
-                os.remove('socket')
-
-    def test_kind_marker(self):
-        self.assertEqual("", osutils.kind_marker("file"))
-        self.assertEqual("/", osutils.kind_marker('directory'))
-        self.assertEqual("/", osutils.kind_marker('directory'))
-        self.assertEqual("@", osutils.kind_marker("symlink"))
-        self.assertEqual("+", osutils.kind_marker("tree-reference"))
-        self.assertEqual("", osutils.kind_marker("fifo"))
-        self.assertEqual("", osutils.kind_marker("socket"))
-        self.assertEqual("", osutils.kind_marker("unknown"))
-
-
 class TestUmask(tests.TestCaseInTempDir):
 
     def test_get_umask(self):
@@ -2148,3 +2099,19 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
     def test_returns_string_or_none(self):
         ret = osutils.get_fs_type(self.test_dir)
         self.assertTrue(isinstance(ret, str) or ret is None)
+
+
+class KindMarkerTests(tests.TestCase):
+
+    def test_kind_marker(self):
+        self.assertEqual("", osutils.kind_marker("file"))
+        self.assertEqual("/", osutils.kind_marker('directory'))
+        self.assertEqual("/", osutils.kind_marker('directory'))
+        self.assertEqual("@", osutils.kind_marker("symlink"))
+        self.assertEqual("+", osutils.kind_marker("tree-reference"))
+        self.assertEqual("", osutils.kind_marker("fifo"))
+        self.assertEqual("", osutils.kind_marker("socket"))
+        self.assertEqual("", osutils.kind_marker("unknown"))
+
+
+

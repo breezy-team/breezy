@@ -32,6 +32,7 @@ from ..upstream_import import (NotArchiveType, ZipFileWrapper,
                                import_zip, top_path)
 from . import TestCaseInTempDir, TestCaseWithTransport
 from .features import UnicodeFilenameFeature
+from ..transport.local import file_kind
 
 
 def import_tar_broken(tree, tar_input):
@@ -66,7 +67,7 @@ class DirFileWriter:
         parent = osutils.dirname(target_path)
         if not os.path.exists(parent):
             os.makedirs(parent)
-        kind = osutils.file_kind(path)
+        kind = file_kind(path)
         if kind == 'file':
             copy2(path, target_path)
         if kind == 'directory':

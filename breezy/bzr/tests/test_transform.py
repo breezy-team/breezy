@@ -23,6 +23,7 @@ from ...controldir import ControlDir
 from ...tests import UnavailableFeature, features
 from ..conflicts import DuplicateEntry
 from ..transform import build_tree
+from ...transport.local import file_kind
 from . import TestCaseWithTransport
 
 
@@ -166,7 +167,7 @@ class TestBuildTree(TestCaseWithTransport):
         self.make_branch('target4/dir1/file')
         build_tree(source.basis_tree(), target)
         self.assertPathExists('target4/dir1/file')
-        self.assertEqual('directory', osutils.file_kind('target4/dir1/file'))
+        self.assertEqual('directory', file_kind('target4/dir1/file'))
         self.assertPathExists('target4/dir1/file.diverted')
         self.assertEqual(
             [DuplicateEntry('Diverted to', 'dir1/file.diverted',

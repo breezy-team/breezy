@@ -30,12 +30,13 @@ from ...bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
                               UnversionedParent)
 from ...errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
                        ImmortalPendingDeletion, LockError)
-from ...osutils import file_kind, pathjoin
+from ...osutils import pathjoin
 from ...transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
                           MalformedTransform, NoFinalPath, ReusingTransform,
                           TransformRenameFailed, create_from_tree,
                           resolve_conflicts)
 from ...transport import FileExists
+from ...transport.local import file_kind
 from ...tree import TreeChange
 from .. import TestSkipped, features
 from ..features import HardlinkFeature, SymlinkFeature
@@ -1752,7 +1753,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         bar_trans_id = tt.create_path('bar', tt.root)
         create_from_tree(tt, bar_trans_id, tree1, 'bar')
         tt.apply()
-        self.assertEqual('directory', osutils.file_kind('tree2/foo'))
+        self.assertEqual('directory', file_kind('tree2/foo'))
         self.assertFileEqual(b'baz', 'tree2/bar')
 
     def test_create_from_tree_bytes(self):
