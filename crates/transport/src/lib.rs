@@ -1,5 +1,6 @@
 use url::Url;
 use std::fs::{Metadata, Permissions};
+use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 
 pub enum Error {
@@ -49,6 +50,15 @@ impl From<url::ParseError> for Error {
     }
 }
 
+impl From<atomicwrites::Error<std::io::Error>> for Error {
+    fn from(err: atomicwrites::Error<std::io::Error>) -> Self {
+        match err {
+            atomicwrites::Error::Internal(err) => err.into(),
+            atomicwrites::Error::User(err) => err.into(),
+        }
+    }
+}
+
 pub struct Stat {
     pub size: usize,
     pub mode: u32
@@ -88,7 +98,7 @@ pub trait Transport: 'static + Send {
         Ok(result)
     }
 
-    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn std::io::Read>>;
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read>>;
 
     fn base(&self) -> Url;
 
@@ -124,6 +134,37 @@ pub trait Transport: 'static + Send {
     fn clone(&self, offset: Option<&UrlFragment>) -> Result<Box<dyn Transport>>;
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url>;
+
+    fn put_file(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>) -> Result<()>;
+
+    fn put_bytes(&self, relpath: &UrlFragment, data: &[u8], permissions: Option<Permissions>) -> Result<()> {
+        let mut f = std::io::Cursor::new(data);
+        self.put_file(relpath, &mut f, permissions)
+    }
+
+    fn put_file_non_atomic(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>, create_parent_dir: Option<bool>, dir_permissions: Option<Permissions>) -> Result<()> {
+        match self.put_file(relpath, f, permissions.clone()) {
+            Ok(_) => Ok(()),
+            Err(Error::NoSuchFile) => {
+                if create_parent_dir.unwrap_or(false) {
+                    if let Some(parent) = relpath.rsplitn(2, '/').nth(1) {
+                        self.mkdir(parent, dir_permissions)?;
+                        self.put_file(relpath, f, permissions.clone())
+                    } else {
+                        Err(Error::NoSuchFile)
+                    }
+                } else {
+                    Err(Error::NoSuchFile)
+                }
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    fn put_bytes_non_atomic(&self, relpath: &UrlFragment, data: &[u8], permissions: Option<Permissions>, create_parent_dir: Option<bool>, dir_permissions: Option<Permissions>) -> Result<()> {
+        let mut f = std::io::Cursor::new(data);
+        self.put_file_non_atomic(relpath, &mut f, permissions, create_parent_dir, dir_permissions)
+    }
 }
 
 pub trait LocalTransport : Transport {
@@ -137,3 +178,6 @@ pub trait SmartTransport : Transport {
 }
 
 pub mod local;
+
+#[cfg(feature = "pyo3")]
+pub mod pyo3;

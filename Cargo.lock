@@ -27,6 +27,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomicwrites"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1163d9d7c51de51a2b79d6df5e8888d11e9df17c752ce4a285fb6ca1580734e"
+dependencies = [
+ "rustix",
+ "tempfile",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -173,7 +184,10 @@ dependencies = [
 name = "breezy-transport"
 version = "3.3.3"
 dependencies = [
+ "atomicwrites",
  "breezy-osutils",
+ "pyo3",
+ "pyo3-file",
  "url",
 ]
 

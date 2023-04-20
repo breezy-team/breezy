@@ -1,7 +1,10 @@
 use std::path::{PathBuf,Path};
-use std::fs::{Metadata, Permissions};
+use std::fs::Permissions;
 use url::Url;
+use std::io::Read;
 use crate::{LocalTransport,Transport,Stat,UrlFragment,Error,Result};
+use atomicwrites::{AtomicFile, AllowOverwrite};
+use std::os::unix::fs::PermissionsExt;
 
 pub struct FileSystemTransport {
     base: Url,
@@ -51,7 +54,7 @@ impl Transport for FileSystemTransport {
         self.base.clone()
     }
 
-    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn std::io::Read>> {
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read>> {
         let path = self.path.join(relpath);
         let f = std::fs::File::open(path).map_err(Error::from)?;
         Ok(Box::new(f))
@@ -87,5 +90,17 @@ impl Transport for FileSystemTransport {
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url> {
         self.base.join(relpath).map_err(Error::from)
+    }
+
+    fn put_file(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>) -> Result<()> {
+        let path = self.path.join(relpath);
+        let af = AtomicFile::new(path, AllowOverwrite);
+        af.write(|outf| {
+            if let Some(permissions) = permissions {
+                outf.set_permissions(permissions)?;
+            }
+            std::io::copy(f, outf)
+        }).map_err(Error::from)?;
+        Ok(())
     }
 }
