@@ -1145,6 +1145,7 @@ version = "3.3.3"
 dependencies = [
  "breezy-transport",
  "pyo3",
+ "pyo3-file",
  "url",
 ]
 

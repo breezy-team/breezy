@@ -1,3 +1,5 @@
+use url::Url;
+
 pub enum Error {
     InProcessTransport,
 
@@ -45,6 +47,36 @@ impl From<url::ParseError> for Error {
 }
 
 pub trait Transport: 'static + Send {
+    /// Return a URL for self that can be given to an external process.
+    ///
+    /// There is no guarantee that the URL can be accessed from a different
+    /// machine - e.g. file:/// urls are only usable on the local machine,
+    /// sftp:/// urls when the server is only bound to localhost are only
+    /// usable from localhost etc.
+    ///
+    /// NOTE: This method may remove security wrappers (e.g. on chroot
+    /// transports) and thus should *only* be used when the result will not
+    /// be used to obtain a new transport within breezy. Ideally chroot
+    /// transports would know enough to cause the external url to be the exact
+    /// one used that caused the chrooting in the first place, but that is not
+    /// currently the case.
+    ///
+    /// Returns: A URL that can be given to another process.
+    /// Raises:InProcessTransport: If the transport is one that cannot be
+    ///     accessed out of the current process (e.g. a MemoryTransport)
+    ///     then InProcessTransport is raised.
+    fn external_url(&self) -> Result<Url>;
+
+    fn get_bytes(&self, relpath: &UrlFragment) -> Result<Vec<u8>> {
+        let mut file = self.get(relpath)?;
+        let mut result = Vec::new();
+        file.read_to_end(&mut result).map_err(Error::from)?;
+        Ok(result)
+    }
+
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn std::io::Read>>;
+
+    fn base(&self) -> Url;
 }
 
 pub mod local;

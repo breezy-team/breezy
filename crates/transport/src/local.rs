@@ -42,5 +42,17 @@ impl Clone for LocalTransport {
 }
 
 impl Transport for LocalTransport {
+    fn external_url(&self) -> Result<Url> {
+        Ok(self.base.clone())
+    }
 
+    fn base(&self) -> Url {
+        self.base.clone()
+    }
+
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn std::io::Read>> {
+        let path = self.path.join(relpath);
+        let f = std::fs::File::open(path).map_err(Error::from)?;
+        Ok(Box::new(f))
+    }
 }
