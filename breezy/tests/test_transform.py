@@ -27,7 +27,8 @@ from ..errors import StrictCommitFailed
 from ..merge import Merge3Merger
 from ..mutabletree import MutableTree
 from ..osutils import pathjoin
-from ..transform import (ROOT_PARENT, MalformedTransform, TransformRenameFailed, _FileMover, resolve_conflicts)
+from ..transform import (ROOT_PARENT, MalformedTransform,
+                         TransformRenameFailed, _FileMover, resolve_conflicts)
 from ..transport import FileExists
 from ..transport.local import file_kind
 from . import TestCaseInTempDir, features
