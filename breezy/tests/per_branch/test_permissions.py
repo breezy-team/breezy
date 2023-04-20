@@ -31,10 +31,11 @@ import stat
 import sys
 
 from breezy import tests
-from breezy.bzr.branch import BzrBranch
-from breezy.bzr.remote import RemoteBranchFormat
-from breezy.controldir import ControlDir
-from breezy.tests.test_permissions import check_mode_r
+
+from ...bzr.branch import BzrBranch
+from ...bzr.remote import RemoteBranchFormat
+from ...controldir import ControlDir
+from ..test_permissions import check_mode_r
 
 
 class _NullPermsStat:

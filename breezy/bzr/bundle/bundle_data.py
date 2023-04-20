@@ -763,8 +763,8 @@ class BundleTree(InventoryTree):
 
 def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
-    from breezy.osutils import IterableFile
-    from breezy.patches import iter_patched
+    from ...osutils import IterableFile
+    from ...patches import iter_patched
     if file_patch == b"":
         return IterableFile(())
     # string.splitlines(True) also splits on '\r', but the iter_patched code

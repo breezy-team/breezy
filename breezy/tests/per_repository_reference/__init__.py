@@ -24,10 +24,11 @@ this.
 
 from breezy import errors, urlutils
 from breezy.bzr import remote
-from breezy.controldir import ControlDir
 from breezy.tests import multiply_tests
 from breezy.tests.per_repository import (TestCaseWithRepository,
                                          all_repository_format_scenarios)
+
+from ...controldir import ControlDir
 
 
 class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):

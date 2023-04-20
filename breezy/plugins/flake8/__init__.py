@@ -20,7 +20,7 @@ to enable this.
 """
 
 
-from breezy.errors import BzrError, DependencyNotPresent
+from ...errors import BzrError, DependencyNotPresent
 
 
 class Flake8Errors(BzrError):
@@ -129,6 +129,6 @@ def _check_flake8(local, master, old_revno, old_revid, future_revno,
         hook(config, tree_delta, future_tree)
 
 
-from breezy.branch import Branch
+from ...branch import Branch
 
 Branch.hooks.install_named_hook("pre_commit", _check_flake8, "Check flake8")  # type: ignore

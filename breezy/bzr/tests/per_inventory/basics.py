@@ -21,9 +21,10 @@
 
 from breezy import errors, osutils
 from breezy.bzr import inventory
-from breezy.bzr.inventory import (InventoryDirectory, InventoryEntry,
-                                  InventoryFile, InventoryLink, TreeReference)
 from breezy.bzr.tests.per_inventory import TestCaseWithInventory
+
+from ...inventory import (InventoryDirectory, InventoryEntry, InventoryFile,
+                          InventoryLink, TreeReference)
 
 
 class TestInventory(TestCaseWithInventory):

@@ -156,7 +156,7 @@ class ProjectCreationTimeout(errors.BzrError):
 
 def store_gitlab_token(name, url, private_token):
     """Store a GitLab token in a configuration file."""
-    from breezy.config import AuthenticationConfig
+    from ...config import AuthenticationConfig
     auth_config = AuthenticationConfig()
     auth_config._set_option(name, 'url', url)
     auth_config._set_option(name, 'private_token', private_token)
@@ -171,7 +171,7 @@ def iter_tokens():
         [os.path.join(bedding.config_dir(), 'gitlab.conf')])
     yield from config.items()
 
-    from breezy.config import AuthenticationConfig
+    from ...config import AuthenticationConfig
     auth_config = AuthenticationConfig()
     yield from auth_config._get_config().iteritems()
 
@@ -303,7 +303,7 @@ class GitLabMergeProposal(MergeProposal):
             preferred_schemes=preferred_schemes)
 
     def get_source_revision(self):
-        from breezy.git.mapping import default_mapping
+        from ...git.mapping import default_mapping
         sha = self._mr['sha']
         if sha is None:
             return None
@@ -957,7 +957,7 @@ def register_gitlab_instance(shortname, url):
     :param shortname: Short name (e.g. "gitlab")
     :param url: URL to the gitlab instance
     """
-    from breezy.bugtracker import ProjectIntegerBugTracker, tracker_registry
+    from ...bugtracker import ProjectIntegerBugTracker, tracker_registry
     tracker_registry.register(
         shortname, ProjectIntegerBugTracker(
             shortname, url + '/{project}/issues/{id}'))

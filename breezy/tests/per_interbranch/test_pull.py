@@ -17,11 +17,12 @@
 """Tests for InterBranch.pull behaviour."""
 
 from breezy import errors
-from breezy.branch import BindingUnsupported, Branch
-from breezy.controldir import ControlDir
-from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import TestCaseWithInterBranch
+
+from ...branch import BindingUnsupported, Branch
+from ...controldir import ControlDir
+from ...revision import NULL_REVISION
 
 # The tests here are based on the tests in
 # breezy.tests.per_branch.test_pull

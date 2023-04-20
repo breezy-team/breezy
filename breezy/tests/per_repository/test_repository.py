@@ -665,7 +665,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.get_vfs_only_url('remote')).open_repository()
         # Make a branch in that repo in an old format that isn't the default
         # branch format for the repo.
-        from breezy.bzr.fullhistory import BzrBranchFormat5
+        from ...bzr.fullhistory import BzrBranchFormat5
         format = remote_backing_repo.controldir.cloning_metadir()
         format._branch_format = BzrBranchFormat5()
         remote_transport = remote_repo.controldir.root_transport.clone(

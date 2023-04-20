@@ -18,11 +18,12 @@
 
 import os
 
-from breezy.controldir import ControlDir
 from breezy.filters import ContentFilter
-from breezy.switch import switch
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.workingtree import WorkingTree
+
+from ...controldir import ControlDir
+from ...switch import switch
+from ...workingtree import WorkingTree
 
 
 def _converter_helper(chunks, fn):

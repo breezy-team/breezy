@@ -712,8 +712,7 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
         """
         with self.lock_read():
             # Now we have the parents of this content
-            from breezy.annotate import Annotator
-
+            from ..annotate import Annotator
             from .annotate import AnnotateProvider
             annotator = Annotator(AnnotateProvider(
                 self._repository._file_change_scanner))

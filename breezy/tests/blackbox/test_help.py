@@ -20,7 +20,8 @@
 
 
 from breezy import config, i18n, tests
-from breezy.tests.test_i18n import ZzzTranslations
+
+from ..test_i18n import ZzzTranslations
 
 
 class TestHelp(tests.TestCaseWithTransport):

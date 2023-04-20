@@ -201,7 +201,7 @@ class BaseMergeDirective:
         t_revision_id: Optional[_mod_revision.RevisionID] = revision_id
         if revision_id == _mod_revision.NULL_REVISION:
             t_revision_id = None
-        from breezy.bzr.testament import StrictTestament3
+        from .bzr.testament import StrictTestament3
         t = StrictTestament3.from_revision(repository, t_revision_id)
         if local_target_branch is None:
             submit_branch = _mod_branch.Branch.open(target_branch)
@@ -617,7 +617,7 @@ class MergeDirective2(BaseMergeDirective):
             t_revision_id = revision_id
             if revision_id == b'null:':
                 t_revision_id = None
-            from breezy.bzr.testament import StrictTestament3
+            from .bzr.testament import StrictTestament3
             t = StrictTestament3.from_revision(repository,
                                                          t_revision_id)
             if local_target_branch is None:

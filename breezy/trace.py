@@ -544,7 +544,7 @@ def report_user_error(exc_info, err_file, advice=None):
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in brz"""
-    from breezy.crash import report_bug
+    from .crash import report_bug
     report_bug(exc_info, err_file)
 
 

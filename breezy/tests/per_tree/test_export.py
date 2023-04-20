@@ -19,10 +19,11 @@ import tarfile
 import zipfile
 
 from breezy import osutils, tests
-from breezy.errors import UnsupportedOperation
-from breezy.export import export
 from breezy.tests import TestNotApplicable, features
 from breezy.tests.per_tree import TestCaseWithTree
+
+from ...errors import UnsupportedOperation
+from ...export import export
 
 
 class ExportTest:

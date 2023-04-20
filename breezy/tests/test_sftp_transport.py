@@ -23,9 +23,10 @@ import time
 from breezy import config, controldir, errors, tests
 from breezy import transport as _mod_transport
 from breezy import ui
-from breezy.osutils import lexists
 from breezy.tests import TestCase, TestCaseWithTransport, TestSkipped, features
-from breezy.tests.http_server import HttpServer
+
+from ..osutils import lexists
+from .http_server import HttpServer
 
 if features.paramiko.available():
     from breezy.tests import stub_sftp
@@ -55,7 +56,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
 class SFTPLockTests(TestCaseWithSFTPServer):
 
     def test_sftp_locks(self):
-        from breezy.errors import LockError
+        from ..errors import LockError
         t = self.get_transport()
 
         l = t.lock_write('bogus')

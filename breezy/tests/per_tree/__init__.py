@@ -28,16 +28,17 @@ Specific tests for individual variations are in other places such as:
 import contextlib
 
 from breezy import errors, tests, transform, transport
-from breezy.bzr.workingtree_4 import (DirStateRevisionTree, WorkingTreeFormat4,
-                                      WorkingTreeFormat5)
-from breezy.git.tree import GitRevisionTree
-from breezy.git.workingtree import GitWorkingTreeFormat
-from breezy.revisiontree import RevisionTree
 from breezy.tests import features
-from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.tests.per_workingtree import make_scenario as wt_make_scenario
 from breezy.tests.per_workingtree import make_scenarios as wt_make_scenarios
-from breezy.workingtree import format_registry
+
+from ...bzr.workingtree_4 import (DirStateRevisionTree, WorkingTreeFormat4,
+                                  WorkingTreeFormat5)
+from ...git.tree import GitRevisionTree
+from ...git.workingtree import GitWorkingTreeFormat
+from ...revisiontree import RevisionTree
+from ...workingtree import format_registry
+from ..per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def return_parameter(testcase, something):

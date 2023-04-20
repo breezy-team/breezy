@@ -67,7 +67,7 @@ class RemoteFossilProber(controldir.Prober):
 
     @classmethod
     def probe_transport(klass, transport):
-        from breezy.transport.http.urllib import HttpTransport
+        from ...transport.http.urllib import HttpTransport
         if not isinstance(transport, HttpTransport):
             raise errors.NotBranchError(path=transport.base)
         response = transport.request(

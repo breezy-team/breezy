@@ -557,7 +557,7 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
         self.assertEqual(True, t.is_readonly())
 
     def test_http_parameters(self):
-        from breezy.tests.http_server import HttpServer
+        from .http_server import HttpServer
 
         # connect to '.' via http which is not listable
         server = HttpServer()
@@ -585,7 +585,7 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
     def test_http_parameters(self):
         # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
-        from breezy.tests.http_server import HttpServer
+        from .http_server import HttpServer
 
         # connect to '.' via http which is not listable
         server = HttpServer()
@@ -620,11 +620,11 @@ class FakeVFATDecoratorTests(tests.TestCaseInTempDir):
 
     def get_vfat_transport(self, url):
         """Return vfat-backed transport for test directory"""
-        from breezy.transport.fakevfat import FakeVFATTransportDecorator
+        from ..transport.fakevfat import FakeVFATTransportDecorator
         return FakeVFATTransportDecorator('vfat+' + url)
 
     def test_transport_creation(self):
-        from breezy.transport.fakevfat import FakeVFATTransportDecorator
+        from ..transport.fakevfat import FakeVFATTransportDecorator
         t = self.get_vfat_transport('.')
         self.assertIsInstance(t, FakeVFATTransportDecorator)
 

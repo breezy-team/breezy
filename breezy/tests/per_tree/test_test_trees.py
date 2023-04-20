@@ -20,7 +20,8 @@ import shutil
 
 from breezy import errors
 from breezy.tests import TestNotApplicable, TestSkipped, features, per_tree
-from breezy.tree import MissingNestedTree
+
+from ...tree import MissingNestedTree
 
 
 class TestTreeShapes(per_tree.TestCaseWithTree):

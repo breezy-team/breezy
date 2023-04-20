@@ -21,8 +21,9 @@ import os
 import breezy.branch
 from breezy import osutils, workingtree
 from breezy.tests import TestCaseWithTransport, script
-from breezy.tests.features import (CaseInsensitiveFilesystemFeature,
-                                   SymlinkFeature, UnicodeFilenameFeature)
+
+from ..features import (CaseInsensitiveFilesystemFeature, SymlinkFeature,
+                        UnicodeFilenameFeature)
 
 
 class TestMove(TestCaseWithTransport):

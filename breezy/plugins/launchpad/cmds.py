@@ -37,7 +37,7 @@ class cmd_launchpad_open(Command):
 
     def run(self, location=None, dry_run=False):
         trace.warning('lp-open is deprecated. Please use web-open instead')
-        from breezy.plugins.propose.cmds import cmd_web_open
+        from ..propose.cmds import cmd_web_open
         return cmd_web_open().run(location=location, dry_run=dry_run)
 
 

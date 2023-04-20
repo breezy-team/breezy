@@ -22,8 +22,9 @@ import time
 
 from breezy import tests
 from breezy.bzr import hashcache
-from breezy.bzr.workingtree import InventoryWorkingTree
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ...bzr.workingtree import InventoryWorkingTree
 
 
 class TestReadonly(TestCaseWithWorkingTree):

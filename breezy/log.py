@@ -1675,7 +1675,7 @@ class LongLogFormatter(LogFormatter):
         to_file.write("{}{}\n".format(indent, ('\n' + indent).join(lines)))
         if revision.delta is not None:
             # Use the standard status output to display changes
-            from breezy.delta import report_delta
+            from .delta import report_delta
             report_delta(to_file, revision.delta, short_status=False,
                          show_ids=self.show_ids, indent=indent)
         if revision.diff is not None:
@@ -1748,7 +1748,7 @@ class ShortLogFormatter(LogFormatter):
 
         if revision.delta is not None:
             # Use the standard status output to display changes
-            from breezy.delta import report_delta
+            from .delta import report_delta
             report_delta(to_file, revision.delta,
                          short_status=self.delta_format == 1,
                          show_ids=self.show_ids, indent=indent + offset)
@@ -2105,7 +2105,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
       branch will be read-locked.
     """
-    from breezy.builtins import _get_revision_range
+    from .builtins import _get_revision_range
     tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
         file_list[0])
     exit_stack.enter_context(b.lock_read())

@@ -23,8 +23,9 @@ from breezy import tests
 from breezy.bzr import inventory, versionedfile, vf_repository
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.tests.matchers import MatchesAncestry
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....tests.matchers import MatchesAncestry
+from ....tests.scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
 

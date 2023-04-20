@@ -20,8 +20,9 @@ import os
 
 from breezy import errors, osutils, tests
 from breezy.tests import features
-from breezy.tests.matchers import HasLayout, HasPathRelations
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..matchers import HasLayout, HasPathRelations
 
 
 class TestMove(TestCaseWithWorkingTree):

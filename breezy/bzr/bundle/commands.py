@@ -51,7 +51,8 @@ class cmd_bundle_info(Command):
     def run(self, location, verbose=False):
         from breezy import osutils
         from breezy.bzr.bundle.serializer import read_bundle
-        from breezy.mergeable import read_mergeable_from_url
+
+        from ...mergeable import read_mergeable_from_url
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
         if isinstance(bundle_info, merge_directive.BaseMergeDirective):

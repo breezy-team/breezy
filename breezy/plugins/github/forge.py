@@ -136,7 +136,7 @@ class GitHubMergeProposal(MergeProposal):
 
     def get_source_revision(self):
         """Return the latest revision for the source branch."""
-        from breezy.git.mapping import default_mapping
+        from ...git.mapping import default_mapping
         return default_mapping.revision_id_foreign_to_bzr(
             self._pr['head']['sha'].encode('ascii'))
 

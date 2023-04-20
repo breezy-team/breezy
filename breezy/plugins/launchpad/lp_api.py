@@ -95,7 +95,7 @@ class BreezyCredentialStore(CredentialStore):
 
     def __init__(self, credential_save_failed=None):
         super().__init__(credential_save_failed)
-        from breezy.config import AuthenticationConfig
+        from ...config import AuthenticationConfig
         self.auth_config = AuthenticationConfig()
 
     def do_save(self, credentials, unique_key):

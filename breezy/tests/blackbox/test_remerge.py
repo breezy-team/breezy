@@ -18,7 +18,8 @@
 import os
 
 from breezy.tests import TestCaseWithTransport
-from breezy.workingtree import WorkingTree
+
+from ...workingtree import WorkingTree
 
 
 class TestRemerge(TestCaseWithTransport):

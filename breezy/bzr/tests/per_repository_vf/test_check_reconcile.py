@@ -20,13 +20,14 @@ That is, tests for reconcile and check.
 """
 
 from breezy import osutils
-from breezy.bzr.inventory import Inventory, InventoryFile
 from breezy.bzr.tests.per_repository_vf import (
     TestCaseWithRepository, all_repository_vf_format_scenarios)
-from breezy.repository import WriteGroup
-from breezy.revision import NULL_REVISION, Revision
 from breezy.tests import TestNotApplicable, multiply_scenarios
-from breezy.tests.scenarios import load_tests_apply_scenarios
+
+from ....repository import WriteGroup
+from ....revision import NULL_REVISION, Revision
+from ....tests.scenarios import load_tests_apply_scenarios
+from ...inventory import Inventory, InventoryFile
 
 load_tests = load_tests_apply_scenarios
 

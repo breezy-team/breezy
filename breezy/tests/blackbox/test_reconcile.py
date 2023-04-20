@@ -19,7 +19,8 @@
 
 from breezy import controldir, tests
 from breezy.bzr import inventory
-from breezy.repository import WriteGroup
+
+from ...repository import WriteGroup
 
 
 class TrivialTest(tests.TestCaseWithTransport):

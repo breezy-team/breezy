@@ -19,9 +19,10 @@
 import os
 
 from breezy import config
-from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
-from breezy.trace import mutter
+
+from ...branch import Branch
+from ...trace import mutter
 
 
 class TestAliases(TestCaseWithTransport):

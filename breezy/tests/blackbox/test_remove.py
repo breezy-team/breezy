@@ -21,7 +21,8 @@ import sys
 from breezy import osutils
 from breezy.tests import (TestCaseWithTransport, TestNotApplicable,
                           TestSkipped, features, script)
-from breezy.workingtree import WorkingTree
+
+from ...workingtree import WorkingTree
 
 _id = b'-id'
 a = 'a'

@@ -20,8 +20,9 @@ import os
 
 import breezy.osutils
 from breezy.tests import TestCaseWithTransport
-from breezy.trace import mutter
-from breezy.workingtree import WorkingTree
+
+from ...trace import mutter
+from ...workingtree import WorkingTree
 
 
 class TestRevert(TestCaseWithTransport):

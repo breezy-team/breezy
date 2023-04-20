@@ -19,7 +19,8 @@ from breezy import transport as _mod_transport
 from breezy.bzr import workingtree_4
 from breezy.tests import TestSkipped
 from breezy.tests.per_tree import TestCaseWithTree
-from breezy.tree import MissingNestedTree
+
+from ...tree import MissingNestedTree
 
 
 class TestAnnotate(TestCaseWithTree):

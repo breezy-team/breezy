@@ -18,10 +18,11 @@
 
 from breezy import errors, osutils, repository
 from breezy.bzr import btree_index
-from breezy.bzr.remote import RemoteRepository
 from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
-from breezy.bzr.versionedfile import VersionedFiles
 from breezy.tests import TestNotApplicable
+
+from ...remote import RemoteRepository
+from ...versionedfile import VersionedFiles
 
 
 class TestCHKSupport(TestCaseWithRepositoryCHK):

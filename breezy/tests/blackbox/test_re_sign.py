@@ -19,8 +19,9 @@
 """
 
 from breezy import gpg, tests
-from breezy.bzr.testament import Testament
-from breezy.controldir import ControlDir
+
+from ...bzr.testament import Testament
+from ...controldir import ControlDir
 
 
 class ReSign(tests.TestCaseInTempDir):

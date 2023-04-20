@@ -18,7 +18,8 @@
 """Tests for interface conformance of 'workingtree.put_mkdir'"""
 
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.workingtree import SettingFileIdUnsupported
+
+from ...workingtree import SettingFileIdUnsupported
 
 
 class TestMkdir(TestCaseWithWorkingTree):

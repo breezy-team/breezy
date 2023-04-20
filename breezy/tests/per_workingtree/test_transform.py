@@ -20,14 +20,13 @@ import sys
 import time
 from io import BytesIO
 
-from breezy.bzr.transform import resolve_checkout
-from breezy.tests.matchers import MatchesTreeChanges
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 from ... import osutils, tests, trace, transform, urlutils
 from ...bzr.conflicts import (DeletingParent, DuplicateEntry, DuplicateID,
                               MissingParent, NonDirectoryParent, ParentLoop,
                               UnversionedParent)
+from ...bzr.transform import resolve_checkout
 from ...errors import (DuplicateKey, ExistingLimbo, ExistingPendingDeletion,
                        ImmortalPendingDeletion, LockError)
 from ...osutils import pathjoin
@@ -40,6 +39,7 @@ from ...transport.local import file_kind
 from ...tree import TreeChange
 from .. import TestSkipped, features
 from ..features import HardlinkFeature, SymlinkFeature
+from ..matchers import MatchesTreeChanges
 
 
 class TestTreeTransform(TestCaseWithWorkingTree):

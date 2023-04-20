@@ -111,7 +111,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     def __init__(self):
         super().__init__()
-        from breezy.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        from .bzrdir import BzrDirFormat6
         self._matchingcontroldir = BzrDirFormat6()
 
     def open(self, a_controldir, _found=False):

@@ -18,8 +18,9 @@
 
 import os
 
-from breezy.tests.features import SymlinkFeature
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
+
+from ..features import SymlinkFeature
 
 # tests to write:
 # type mismatches - file to link, dir, dir to file, link, link to file, dir

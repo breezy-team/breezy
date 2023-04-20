@@ -15,7 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from breezy import controldir, errors, tests, workingtree
-from breezy.tests.script import TestCaseWithTransportAndScript
+
+from ..script import TestCaseWithTransportAndScript
 
 
 class TestReconfigure(TestCaseWithTransportAndScript):

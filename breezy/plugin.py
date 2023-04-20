@@ -387,7 +387,7 @@ def _get_site_plugin_paths(sys_paths):
 
 
 def get_user_plugin_path():
-    from breezy.bedding import config_dir
+    from .bedding import config_dir
     return osutils.pathjoin(config_dir(), 'plugins')
 
 

@@ -2899,7 +2899,7 @@ class TestProtocolThree(TestSmartProtocol):
 class TestConventionalResponseHandlerBodyStream(tests.TestCase):
 
     def make_response_handler(self, response_bytes):
-        from breezy.bzr.smart.message import ConventionalResponseHandler
+        from ..smart.message import ConventionalResponseHandler
         response_handler = ConventionalResponseHandler()
         protocol_decoder = protocol.ProtocolThreeDecoder(response_handler)
         # put decoder in desired state (waiting for message parts)
@@ -2974,7 +2974,7 @@ class TestConventionalRequestHandlerBodyStream(tests.TestCase):
         """Make a ConventionalRequestHandler for the given bytes using test
         doubles for the request_handler and the responder.
         """
-        from breezy.bzr.smart.message import ConventionalRequestHandler
+        from ..smart.message import ConventionalRequestHandler
         request_handler = InstrumentedRequestHandler()
         request_handler.response = _mod_request.SuccessfulSmartServerResponse(
             (b'arg', b'arg'))
