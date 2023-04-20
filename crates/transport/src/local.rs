@@ -1,21 +1,21 @@
 use std::path::{PathBuf,Path};
 use std::fs::Permissions;
 use url::Url;
-use crate::{Transport,UrlFragment,Error,Result};
+use crate::{LocalTransport,Transport,UrlFragment,Error,Result};
 
-pub struct LocalTransport {
+pub struct FileSystemTransport {
     base: Url,
     path: PathBuf,
 }
 
-impl LocalTransport {
+impl LocalTransport for FileSystemTransport {
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
         let path = self.path.join(relpath);
         Ok(path)
     }
 }
 
-impl From<&Path> for LocalTransport {
+impl From<&Path> for FileSystemTransport {
     fn from(path: &Path) -> Self {
         Self {
             base: Url::from_file_path(path).unwrap(),
@@ -24,7 +24,7 @@ impl From<&Path> for LocalTransport {
     }
 }
 
-impl From<Url> for LocalTransport {
+impl From<Url> for FileSystemTransport {
     fn from(url: Url) -> Self {
         Self {
             base: url.clone(),
@@ -33,16 +33,16 @@ impl From<Url> for LocalTransport {
     }
 }
 
-impl Clone for LocalTransport {
+impl Clone for FileSystemTransport {
     fn clone(&self) -> Self {
-        LocalTransport {
+        FileSystemTransport {
             path: self.path.clone(),
             base: self.base.clone(),
         }
     }
 }
 
-impl Transport for LocalTransport {
+impl Transport for FileSystemTransport {
     fn external_url(&self) -> Result<Url> {
         Ok(self.base.clone())
     }

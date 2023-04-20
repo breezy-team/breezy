@@ -1,9 +1,11 @@
 use pyo3::prelude::*;
+use std::any::Any;
 use pyo3::exceptions::{PyValueError, PyException};
 use pyo3::types::{PyBytes, PyList};
 use url::Url;
 use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 use breezy_transport::{Result, UrlFragment};
 use pyo3_file::PyFileLikeObject;
 use pyo3::create_exception;
@@ -11,6 +13,7 @@ use pyo3::create_exception;
 create_exception!(_transport_rs, TransportError, PyException);
 create_exception!(_transport_rs, InProcessTransport, TransportError);
 create_exception!(_transport_rs, NotLocalUrl, TransportError);
+create_exception!(_transport_rs, NotLocalTransport, TransportError);
 create_exception!(_transport_rs, NoSmartMedium, TransportError);
 create_exception!(_transport_rs, NoSuchFile, TransportError);
 create_exception!(_transport_rs, FileExists, TransportError);
@@ -21,7 +24,7 @@ create_exception!(_transport_rs, UrlError, TransportError);
 create_exception!(_transport_rs, PermissionDenied, TransportError);
 create_exception!(_transport_rs, PathNotChild, TransportError);
 
-#[pyclass]
+#[pyclass(subclass)]
 struct Transport {
     transport: Box<dyn breezy_transport::Transport>
 }
@@ -79,15 +82,28 @@ impl Transport {
     fn ensure_base(&self, perms: Option<PyObject>) -> PyResult<bool> {
         Ok(self.transport.ensure_base(perms.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?)
     }
+
+    fn local_abspath(&self, path: &str) -> PyResult<PathBuf> {
+        let transport = &self.transport as &dyn Any;
+        let local_transport = transport.downcast_ref::<&dyn breezy_transport::LocalTransport>()
+            .ok_or_else(|| NotLocalTransport::new_err(()))?;
+        local_transport.local_abspath(path).map_err(map_transport_err_to_py_err)
+    }
 }
 
-#[pyfunction(name = "LocalTransport")]
-fn local_transport(url: &str) -> PyResult<Transport> {
-    let url = Url::parse(url)
-        .map_err(|e| PyValueError::new_err(e.to_string()))?;
-    Ok(Transport {
-        transport: Box::new(breezy_transport::local::LocalTransport::from(url))
-    })
+#[pyclass(extends=Transport)]
+struct LocalTransport {}
+
+#[pymethods]
+impl LocalTransport {
+    #[new]
+    fn new(url: &str) -> PyResult<(Self, Transport)> {
+        let url = Url::parse(url)
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        Ok((LocalTransport {}, Transport {
+            transport: Box::new(breezy_transport::local::FileSystemTransport::from(url))
+        }))
+    }
 }
 
 struct PyTransport {
@@ -160,7 +176,8 @@ fn get_test_permutations(py: Python) -> PyResult<PyObject> {
 
 #[pymodule]
 fn _transport_rs(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(local_transport, m)?)?;
+    m.add_class::<Transport>()?;
+    m.add_class::<LocalTransport>()?;
     m.add_function(wrap_pyfunction!(get_test_permutations, m)?)?;
     Ok(())
 }

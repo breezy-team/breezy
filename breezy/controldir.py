@@ -765,8 +765,8 @@ class ControlDir(ControlComponent):
         Returns: The WorkingTree object.
         """
         t = _mod_transport.get_transport(base)
-        from breezy.transport import local
-        if not isinstance(t, local.LocalTransport):
+        from breezy._transport_rs import LocalTransport
+        if not isinstance(t, LocalTransport):
             raise errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(base,
                                                   force_new_repo=True,

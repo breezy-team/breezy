@@ -107,4 +107,8 @@ pub trait Transport: 'static + Send {
     fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()>;
 }
 
+pub trait LocalTransport : Transport {
+    fn local_abspath(&self, relpath: &UrlFragment) -> Result<std::path::PathBuf>;
+}
+
 pub mod local;
