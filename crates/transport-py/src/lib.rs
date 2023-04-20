@@ -178,6 +178,46 @@ impl Transport {
     fn create_prefix(&self, mode: Option<PyObject>) -> PyResult<()> {
         self.0.create_prefix(mode.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)
     }
+
+    fn lock_write(&self, path: &str) -> PyResult<Lock> {
+        let transport = &self.0 as &dyn Any;
+        let lockable_transport = transport.downcast_ref::<&dyn breezy_transport::LockableTransport>()
+            .ok_or_else(|| TransportNotPossible::new_err(()))?;
+
+        lockable_transport.lock_write(path).map_err(map_transport_err_to_py_err).map(Lock::from)
+    }
+
+    fn lock_read(&self, path: &str) -> PyResult<Lock> {
+        let transport = &self.0 as &dyn Any;
+        let lockable_transport = transport.downcast_ref::<&dyn breezy_transport::LockableTransport>()
+            .ok_or_else(|| TransportNotPossible::new_err(()))?;
+
+        lockable_transport.lock_read(path).map_err(map_transport_err_to_py_err).map(Lock::from)
+    }
+
+    fn is_read_locked(&self, path: &str) -> PyResult<bool> {
+        let transport = &self.0 as &dyn Any;
+        let lockable_transport = transport.downcast_ref::<&dyn breezy_transport::LockableTransport>()
+            .ok_or_else(|| TransportNotPossible::new_err(()))?;
+
+        Ok(lockable_transport.is_read_locked(path).map_err(map_transport_err_to_py_err)?)
+    }
+}
+
+#[pyclass]
+struct Lock(Box<dyn breezy_transport::Lock + Send + Sync>);
+
+impl From<Box<dyn breezy_transport::Lock + Send + Sync>> for Lock {
+    fn from(lock: Box<dyn breezy_transport::Lock + Send + Sync>) -> Self {
+        Lock(lock)
+    }
+}
+
+#[pymethods]
+impl Lock {
+    fn unlock(&mut self) -> PyResult<()> {
+        self.0.unlock().map_err(map_transport_err_to_py_err)
+    }
 }
 
 #[pyclass(extends=Transport)]

@@ -1,7 +1,8 @@
 use pyo3::prelude::*;
 use std::fs::Permissions;
+use std::path::PathBuf;
 use std::os::unix::fs::PermissionsExt;
-use crate::{Transport, Error, Result, Url, UrlFragment, Stat};
+use crate::{LocalTransport, Transport, Error, Result, Url, UrlFragment, Stat, Lock, LockableTransport};
 use std::io::Read;
 use pyo3::types::PyBytes;
 use pyo3_file::PyFileLikeObject;
@@ -23,6 +24,17 @@ import_exception!(breezy.errors, PermissionDenied);
 import_exception!(breezy.errors, PathNotChild);
 
 struct PyTransport(PyObject);
+
+struct PyLock(PyObject);
+
+impl Lock for PyLock {
+    fn unlock(&mut self) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method0(py, "unlock")?;
+            Ok(())
+        })
+    }
+}
 
 impl IntoPy<PyObject> for PyTransport {
     fn into_py(self, py: Python) -> PyObject {
@@ -218,6 +230,40 @@ impl Transport for PyTransport {
         Python::with_gil(|py| {
             self.0.call_method1(py, "create_prefix", (permissions.map(|p| p.mode()),))?;
             Ok(())
+        })
+    }
+}
+
+impl LocalTransport for PyTransport {
+    fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "local_abspath", (relpath,))?;
+            Ok(obj.extract::<PathBuf>(py)?)
+        })
+    }
+}
+
+impl LockableTransport for PyTransport {
+    fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "lock_write", (relpath,))?;
+            let file: Box<dyn Lock + Send + Sync> = Box::new(PyLock(obj));
+            Ok(file)
+        })
+    }
+
+    fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "lock_read", (relpath,))?;
+            let file: Box<dyn Lock + Send + Sync> = Box::new(PyLock(obj));
+            Ok(file)
+        })
+    }
+
+    fn is_read_locked(&self, relpath: &UrlFragment) -> Result<bool> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "is_read_locked", (relpath,))?;
+            Ok(obj.extract::<bool>(py)?)
         })
     }
 }

@@ -217,6 +217,19 @@ pub trait Transport: 'static + Send + Sync {
     fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()>;
 
     fn get_segment_parameters(&self) -> Result<HashMap<String, String>>;
+
+}
+
+pub trait Lock {
+    fn unlock(&mut self) -> Result<()>;
+}
+
+pub trait LockableTransport : Transport {
+    fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
+
+    fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
+
+    fn is_read_locked(&self, relpath: &UrlFragment) -> Result<bool>;
 }
 
 pub trait LocalTransport : Transport {
