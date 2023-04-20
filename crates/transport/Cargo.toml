@@ -1,0 +1,16 @@
+[package]
+name = "breezy-transport"
+version = "3.3.3"
+edition = "2018"
+description = "Transport layer for Breezy"
+license = "GPL-2.0+"
+repository = "https://code.launchpad.net/brz"
+homepage = "https://www.breezy-vcs.org/"
+documentation = "https://www.breezy-vcs.org/doc/"
+authors = [ "Martin Packman <gzlist@googlemail.com>", "Jelmer Vernooij <jelmer@jelmer.uk>"]
+
+[lib]
+
+[dependencies]
+breezy-osutils = { path = "../osutils" }
+url = "2.2.2"
