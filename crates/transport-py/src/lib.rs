@@ -9,12 +9,14 @@ use std::path::PathBuf;
 use breezy_transport::{Result, UrlFragment};
 use pyo3_file::PyFileLikeObject;
 use pyo3::create_exception;
+use pyo3::import_exception;
 
-create_exception!(_transport_rs, TransportError, PyException);
+import_exception!(breezy.transport, TransportError);
+import_exception!(breezy.errors, NoSmartMedium);
+
 create_exception!(_transport_rs, InProcessTransport, TransportError);
 create_exception!(_transport_rs, NotLocalUrl, TransportError);
 create_exception!(_transport_rs, NotLocalTransport, TransportError);
-create_exception!(_transport_rs, NoSmartMedium, TransportError);
 create_exception!(_transport_rs, NoSuchFile, TransportError);
 create_exception!(_transport_rs, FileExists, TransportError);
 create_exception!(_transport_rs, TransportNotPossible, TransportError);
@@ -83,11 +85,20 @@ impl Transport {
         Ok(self.transport.ensure_base(perms.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?)
     }
 
-    fn local_abspath(&self, path: &str) -> PyResult<PathBuf> {
+    fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
         let transport = &self.transport as &dyn Any;
         let local_transport = transport.downcast_ref::<&dyn breezy_transport::LocalTransport>()
             .ok_or_else(|| NotLocalTransport::new_err(()))?;
         local_transport.local_abspath(path).map_err(map_transport_err_to_py_err)
+    }
+
+    fn get_smart_medium(slf: PyRef<Self>, py: Python) -> PyResult<PyObject> {
+        let transport = &slf.transport as &dyn Any;
+        if let Some(smart_transport) = transport.downcast_ref::<&dyn breezy_transport::SmartTransport>() {
+            Ok(().to_object(py))
+        } else {
+            Err(NoSmartMedium::new_err((slf.into_py(py), )))
+        }
     }
 }
 
@@ -106,14 +117,18 @@ impl LocalTransport {
     }
 }
 
-struct PyTransport {
-    obj: PyObject
+struct PyTransport(PyObject);
+
+impl IntoPy<PyObject> for PyTransport {
+    fn into_py(self, py: Python) -> PyObject {
+        self.0.to_object(py)
+    }
 }
 
 impl breezy_transport::Transport for PyTransport {
     fn external_url(&self) -> Result<Url> {
         Python::with_gil(|py| {
-            let obj = self.obj.call_method0(py, "external_url").unwrap();
+            let obj = self.0.call_method0(py, "external_url").unwrap();
             let s = obj.extract::<String>(py).unwrap();
             Ok(Url::parse(&s).unwrap())
         })
@@ -121,7 +136,7 @@ impl breezy_transport::Transport for PyTransport {
 
     fn get_bytes(&self, path: &str) -> Result<Vec<u8>> {
         Python::with_gil(|py| {
-            let obj = self.obj.call_method1(py, "get_bytes", (path,)).unwrap();
+            let obj = self.0.call_method1(py, "get_bytes", (path,)).unwrap();
             let bytes = obj.extract::<&PyBytes>(py).unwrap();
             Ok(bytes.as_bytes().to_vec())
         })
@@ -129,14 +144,14 @@ impl breezy_transport::Transport for PyTransport {
 
     fn get(&self, path: &str) -> Result<Box<dyn std::io::Read>> {
         Python::with_gil(|py| {
-            let obj = self.obj.call_method1(py, "get", (path,)).unwrap();
+            let obj = self.0.call_method1(py, "get", (path,)).unwrap();
             Ok(PyFileLikeObject::with_requirements(obj, true, false, false).map(|f| Box::new(f) as Box<dyn std::io::Read>).unwrap())
         })
     }
 
     fn base(&self) -> Url {
         Python::with_gil(|py| {
-            let obj = self.obj.getattr(py, "base").unwrap();
+            let obj = self.0.getattr(py, "base").unwrap();
             let s = obj.extract::<String>(py).unwrap();
             Url::parse(&s).unwrap()
         })
@@ -144,21 +159,21 @@ impl breezy_transport::Transport for PyTransport {
 
     fn has(&self, path: &UrlFragment) -> Result<bool> {
         Python::with_gil(|py| {
-            let obj = self.obj.call_method1(py, "has", (path,)).unwrap();
+            let obj = self.0.call_method1(py, "has", (path,)).unwrap();
             Ok(obj.extract::<bool>(py).unwrap())
         })
     }
 
     fn mkdir(&self, relpath: &UrlFragment, perms: Option<Permissions>) -> Result<()> {
         Python::with_gil(|py| {
-            let obj = self.obj.call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode()))).unwrap();
+            let obj = self.0.call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode()))).unwrap();
             Ok(())
         })
     }
 
     fn ensure_base(&self, perms: Option<Permissions>) -> Result<bool> {
         Python::with_gil(|py| {
-            let obj = self.obj.call_method1(py, "ensure_base", (perms.map(|p| p.mode()), )).unwrap();
+            let obj = self.0.call_method1(py, "ensure_base", (perms.map(|p| p.mode()), )).unwrap();
             Ok(obj.extract::<bool>(py).unwrap())
         })
     }

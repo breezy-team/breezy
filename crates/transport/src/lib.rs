@@ -111,4 +111,10 @@ pub trait LocalTransport : Transport {
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<std::path::PathBuf>;
 }
 
+pub trait SmartMedium {}
+
+pub trait SmartTransport : Transport {
+    fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>>;
+}
+
 pub mod local;
