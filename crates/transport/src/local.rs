@@ -103,4 +103,9 @@ impl Transport for FileSystemTransport {
         }).map_err(Error::from)?;
         Ok(())
     }
+
+    fn delete(&self, relpath: &UrlFragment) -> Result<()> {
+        let path = self.path.join(relpath);
+        std::fs::remove_file(path).map_err(Error::from)
+    }
 }

@@ -150,6 +150,11 @@ impl Transport {
         self.transport.put_file_non_atomic(path, &mut file, mode.map(perms_from_py_object), create_parent_dir, dir_permissions.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?;
         Ok(())
     }
+
+    fn delete(&self, path: &str) -> PyResult<()> {
+        self.transport.delete(path).map_err(map_transport_err_to_py_err)?;
+        Ok(())
+    }
 }
 
 #[pyclass(extends=Transport)]

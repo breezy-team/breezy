@@ -178,4 +178,11 @@ impl Transport for PyTransport {
             Ok(())
         })
     }
+
+    fn delete(&self, relpath: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "delete", (relpath,))?;
+            Ok(())
+        })
+    }
 }

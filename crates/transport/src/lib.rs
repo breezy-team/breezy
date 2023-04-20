@@ -165,6 +165,8 @@ pub trait Transport: 'static + Send {
         let mut f = std::io::Cursor::new(data);
         self.put_file_non_atomic(relpath, &mut f, permissions, create_parent_dir, dir_permissions)
     }
+
+    fn delete(&self, relpath: &UrlFragment) -> Result<()>;
 }
 
 pub trait LocalTransport : Transport {
