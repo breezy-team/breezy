@@ -186,6 +186,7 @@ version = "3.3.3"
 dependencies = [
  "atomicwrites",
  "breezy-osutils",
+ "breezy-urlutils",
  "pyo3",
  "pyo3-file",
  "url",

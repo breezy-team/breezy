@@ -44,6 +44,7 @@ fn map_transport_err_to_py_err(e: Error) -> PyErr {
         Error::UrlError(e) => UrlError::new_err(e.to_string()),
         Error::PermissionDenied => PermissionDenied::new_err(()),
         Error::PathNotChild => PathNotChild::new_err(()),
+        Error::UrlutilsError(e) => UrlError::new_err(format!("{:?}", e)),
         Error::Io(e) => e.into(),
     }
 }
@@ -163,6 +164,11 @@ impl Transport {
 
     fn rename(&self, from: &str, to: &str) -> PyResult<()> {
         self.transport.rename(from, to).map_err(map_transport_err_to_py_err)?;
+        Ok(())
+    }
+
+    fn set_segment_parameter(&mut self, name: &str, value: Option<&str>) -> PyResult<()> {
+        self.transport.set_segment_parameter(name, value).map_err(map_transport_err_to_py_err)?;
         Ok(())
     }
 }

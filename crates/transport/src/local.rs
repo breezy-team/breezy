@@ -120,4 +120,15 @@ impl Transport for FileSystemTransport {
 
         std::fs::rename(abs_from, abs_to).map_err(Error::from)
     }
+
+    fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()> {
+        let (raw, mut params) = breezy_urlutils::split_segment_parameters(self.base.as_str())?;
+        if let Some(value) = value {
+            params.insert(key, value);
+        } else {
+            params.remove(key);
+        }
+        self.base = Url::parse(&breezy_urlutils::join_segment_parameters(raw, &params)?)?;
+        Ok(())
+    }
 }

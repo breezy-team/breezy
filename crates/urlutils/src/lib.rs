@@ -9,6 +9,7 @@ lazy_static! {
     static ref URL_HEX_ESCAPES_RE: Regex = Regex::new(r"(%[0-9a-fA-F]{2})").unwrap();
 }
 
+#[derive(Debug)]
 pub enum Error {
     AboveRoot(String, String),
     SubsegmentMissesEquals(String),

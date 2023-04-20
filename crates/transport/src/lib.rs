@@ -22,6 +22,8 @@ pub enum Error {
 
     UrlError(url::ParseError),
 
+    UrlutilsError(breezy_urlutils::Error),
+
     PermissionDenied,
 
     Io(std::io::Error),
@@ -47,6 +49,12 @@ impl From<std::io::Error> for Error {
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::UrlError(err)
+    }
+}
+
+impl From<breezy_urlutils::Error> for Error {
+    fn from(err: breezy_urlutils::Error) -> Self {
+        Error::UrlutilsError(err)
     }
 }
 
@@ -171,6 +179,8 @@ pub trait Transport: 'static + Send {
     fn rmdir(&self, relpath: &UrlFragment) -> Result<()>;
 
     fn rename(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
+
+    fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()>;
 }
 
 pub trait LocalTransport : Transport {

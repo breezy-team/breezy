@@ -199,4 +199,11 @@ impl Transport for PyTransport {
             Ok(())
         })
     }
+
+    fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "set_segment_parameter", (key, value))?;
+            Ok(())
+        })
+    }
 }
