@@ -26,7 +26,6 @@ import shutil
 from contextlib import ExitStack
 from typing import List, Optional
 
-from .clean_tree import iter_deletables
 from .errors import BzrError, DependencyNotPresent
 from .osutils import is_inside
 from .trace import warning
@@ -93,10 +92,7 @@ def delete_items(deletables, dry_run: bool = False):
         else:
             try:
                 os.unlink(path)
-            except OSError as e:
-                # We handle only permission error here
-                if e.errno != errno.EACCES:
-                    raise e
+            except PermissionError as e:
                 warning('unable to remove "%s": %s.', path, e.strerror)
 
 

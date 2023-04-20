@@ -27,7 +27,6 @@ import contextlib
 import copy
 import difflib
 import doctest
-import errno
 import functools
 import itertools
 import logging
@@ -3801,11 +3800,8 @@ def load_test_id_list(file_name):
     test_list = []
     try:
         ftest = open(file_name)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
-        else:
-            raise _mod_transport.NoSuchFile(file_name)
+    except FileNotFoundError:
+        raise _mod_transport.NoSuchFile(file_name)
 
     for test_name in ftest.readlines():
         test_list.append(test_name.strip())

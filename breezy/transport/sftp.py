@@ -31,7 +31,6 @@ import random
 import stat
 import sys
 import time
-import warnings
 
 from .. import config, debug, errors, urlutils
 from ..errors import LockError, ParamikoNotPresent, PathError, TransportError

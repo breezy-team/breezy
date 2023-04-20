@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import errno
 import os
 from io import BytesIO
 
@@ -579,14 +578,12 @@ class MultiVersionedFile(BaseVersionedFile):
     def destroy(self):
         try:
             os.unlink(self._filename + '.mpknit')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
         try:
             os.unlink(self._filename + '.mpidx')
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+        except FileNotFoundError:
+            pass
 
     def save(self):
         import fastbencode as bencode

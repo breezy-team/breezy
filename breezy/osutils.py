@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from functools import partial
-from typing import Dict, Iterable, List
+from typing import List
 
 from .lazy_import import lazy_import
 
@@ -80,12 +80,11 @@ if lexists is None:
             stat = getattr(os, 'lstat', os.stat)
             stat(f)
             return True
+        except FileNotFoundError:
+            return False
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                return False
-            else:
-                raise errors.BzrError(
-                    gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
+            raise errors.BzrError(
+                gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -119,12 +118,13 @@ def fancy_rename(old, new, rename_func, unlink_func):
         rename_func(new, tmp_name)
     except NoSuchFile:
         pass
-    except OSError as e:
+    except (FileNotFoundError, NotADirectoryError):
+        pass
+    except OSError:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
         # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
-        if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
-            raise
+        raise
     except Exception as e:
         if (getattr(e, 'errno', None) is None
                 or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
@@ -138,12 +138,11 @@ def fancy_rename(old, new, rename_func, unlink_func):
         # not be set.
         rename_func(old, new)
         success = True
-    except OSError as e:
+    except FileNotFoundError as e:
         # source and target may be aliases of each other (e.g. on a
         # case-insensitive filesystem), so we may have accidentally renamed
         # source by when we tried to rename target
-        if (file_existed and e.errno in (None, errno.ENOENT)
-                and old.lower() == new.lower()):
+        if file_existed and old.lower() == new.lower():
             # source and target are the same file on a case-insensitive
             # filesystem, so we don't generate an exception
             pass
@@ -667,16 +666,13 @@ def delete_any(path):
             os.unlink(path)
     try:
         _delete_file_or_dir(path)
-    except OSError as e:
-        if e.errno in (errno.EPERM, errno.EACCES):
-            # make writable and try again
-            try:
-                make_writable(path)
-            except OSError:
-                pass
-            _delete_file_or_dir(path)
-        else:
-            raise
+    except PermissionError:
+        # make writable and try again
+        try:
+            make_writable(path)
+        except PermissionError:
+            pass
+        _delete_file_or_dir(path)
 
 
 def readlink(abspath):

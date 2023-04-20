@@ -16,7 +16,6 @@
 
 """Lists of ignore files, etc."""
 
-import errno
 import os
 from io import BytesIO
 from typing import Set
@@ -92,19 +91,14 @@ def get_user_ignores():
     patterns = set(USER_DEFAULTS)
     try:
         f = open(path, 'rb')
-    except OSError as e:
-        # open() shouldn't return an IOError without errno, but just in case
-        err = getattr(e, 'errno', None)
-        if err not in (errno.ENOENT,):
-            raise
+    except FileNotFoundError:
         # Create the ignore file, and just return the default
         # We want to ignore if we can't write to the file
         # since get_* should be a safe operation
         try:
             _set_user_ignores(USER_DEFAULTS)
-        except OSError as e:
-            if e.errno not in (errno.EPERM, errno.ENOENT):
-                raise
+        except (PermissionError, FileNotFoundError):
+            pass
         return patterns
 
     try:

@@ -26,15 +26,11 @@ class NetrcCredentialStore(config.CredentialStore):
 
     def __init__(self):
         super().__init__()
-        import errno
         import netrc
         try:
             self._netrc = netrc.netrc()
-        except OSError as e:
-            if e.args[0] == errno.ENOENT:
-                raise _mod_transport.NoSuchFile(e.filename)
-            else:
-                raise
+        except FileNotFoundError as e:
+            raise _mod_transport.NoSuchFile(e.filename)
 
     def decode_password(self, credentials):
         auth = self._netrc.authenticators(credentials['host'])
