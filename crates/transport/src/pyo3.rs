@@ -192,4 +192,11 @@ impl Transport for PyTransport {
             Ok(())
         })
     }
+
+    fn rename(&self, relpath: &UrlFragment, new_relpath: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "rename", (relpath, new_relpath))?;
+            Ok(())
+        })
+    }
 }

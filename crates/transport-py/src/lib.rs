@@ -160,6 +160,11 @@ impl Transport {
         self.transport.rmdir(path).map_err(map_transport_err_to_py_err)?;
         Ok(())
     }
+
+    fn rename(&self, from: &str, to: &str) -> PyResult<()> {
+        self.transport.rename(from, to).map_err(map_transport_err_to_py_err)?;
+        Ok(())
+    }
 }
 
 #[pyclass(extends=Transport)]

@@ -113,4 +113,11 @@ impl Transport for FileSystemTransport {
         let path = self.local_abspath(relpath)?;
         std::fs::remove_dir(path).map_err(Error::from)
     }
+
+    fn rename(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
+        let abs_from = self.path.join(rel_from);
+        let abs_to = self.path.join(rel_to);
+
+        std::fs::rename(abs_from, abs_to).map_err(Error::from)
+    }
 }
