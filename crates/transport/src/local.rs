@@ -4,6 +4,7 @@ use url::Url;
 use std::io::Read;
 use crate::{LocalTransport,Transport,Stat,UrlFragment,Error,Result};
 use atomicwrites::{AtomicFile, AllowOverwrite};
+use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 
 pub struct FileSystemTransport {
@@ -130,5 +131,10 @@ impl Transport for FileSystemTransport {
         }
         self.base = Url::parse(&breezy_urlutils::join_segment_parameters(raw, &params)?)?;
         Ok(())
+    }
+
+    fn get_segment_parameters(&self) -> Result<HashMap<String, String>> {
+        let (_, params) = breezy_urlutils::split_segment_parameters(self.base.as_str())?;
+        Ok(params.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect())
     }
 }

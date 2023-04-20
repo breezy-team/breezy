@@ -2,6 +2,7 @@ use url::Url;
 use std::fs::{Metadata, Permissions};
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
+use std::collections::HashMap;
 
 pub enum Error {
     InProcessTransport,
@@ -181,6 +182,8 @@ pub trait Transport: 'static + Send {
     fn rename(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
 
     fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()>;
+
+    fn get_segment_parameters(&self) -> Result<HashMap<String, String>>;
 }
 
 pub trait LocalTransport : Transport {

@@ -6,6 +6,7 @@ use url::Url;
 use std::fs::{Metadata, Permissions};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::collections::HashMap;
 use breezy_transport::{Result, Stat, Error, UrlFragment};
 use pyo3_file::PyFileLikeObject;
 use pyo3::create_exception;
@@ -170,6 +171,10 @@ impl Transport {
     fn set_segment_parameter(&mut self, name: &str, value: Option<&str>) -> PyResult<()> {
         self.transport.set_segment_parameter(name, value).map_err(map_transport_err_to_py_err)?;
         Ok(())
+    }
+
+    fn get_segment_parameters(&self) -> PyResult<HashMap<String, String>> {
+        Ok(self.transport.get_segment_parameters().map_err(map_transport_err_to_py_err)?)
     }
 }
 

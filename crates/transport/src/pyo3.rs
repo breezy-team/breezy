@@ -6,6 +6,7 @@ use std::io::Read;
 use pyo3::types::PyBytes;
 use pyo3_file::PyFileLikeObject;
 use pyo3::import_exception;
+use std::collections::HashMap;
 
 import_exception!(breezy.errors, TransportError);
 import_exception!(breezy.errors, NoSmartMedium);
@@ -204,6 +205,12 @@ impl Transport for PyTransport {
         Python::with_gil(|py| {
             self.0.call_method1(py, "set_segment_parameter", (key, value))?;
             Ok(())
+        })
+    }
+
+    fn get_segment_parameters(&self) -> Result<HashMap<String, String>> {
+        Python::with_gil(|py| {
+            Ok(self.0.call_method0(py, "get_segment_parameters")?.extract::<HashMap<String, String>>(py)?)
         })
     }
 }
