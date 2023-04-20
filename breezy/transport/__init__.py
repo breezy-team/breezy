@@ -1699,7 +1699,8 @@ def open_file_via_transport(filename, transport):
 # None is the default transport, for things with no url scheme
 register_transport_proto('file://',
                          help="Access using the standard filesystem (default)")
-register_lazy_transport('file://', 'breezy.transport.local', 'LocalTransport')
+#register_lazy_transport('file://', 'breezy.transport.local', 'LocalTransport')
+register_lazy_transport('file://', 'breezy._transport_rs', 'LocalTransport')
 
 register_transport_proto('sftp://',
                          help="Access using SFTP (most SSH servers provide SFTP).",
