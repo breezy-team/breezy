@@ -1,13 +1,15 @@
+use crate::{
+    Error, LocalTransport, Lock, LockableTransport, Result, Stat, Transport, Url, UrlFragment,
+};
+use pyo3::import_exception;
 use pyo3::prelude::*;
-use std::fs::Permissions;
-use std::path::PathBuf;
-use std::os::unix::fs::PermissionsExt;
-use crate::{LocalTransport, Transport, Error, Result, Url, UrlFragment, Stat, Lock, LockableTransport};
-use std::io::Read;
 use pyo3::types::PyBytes;
 use pyo3_file::PyFileLikeObject;
-use pyo3::import_exception;
 use std::collections::HashMap;
+use std::fs::Permissions;
+use std::io::Read;
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 
 import_exception!(breezy.errors, TransportError);
 import_exception!(breezy.errors, NoSmartMedium);
@@ -57,7 +59,9 @@ impl From<PyErr> for Error {
                 Error::TransportNotPossible
             } else if e.is_instance_of::<PermissionDenied>(py) {
                 let args = e.value(py).getattr("args").unwrap();
-                Error::PermissionDenied(Some(args.get_item(0).unwrap().extract::<String>().unwrap()))
+                Error::PermissionDenied(Some(
+                    args.get_item(0).unwrap().extract::<String>().unwrap(),
+                ))
             } else if e.is_instance_of::<PathNotChild>(py) {
                 Error::PathNotChild
             } else {
@@ -66,7 +70,6 @@ impl From<PyErr> for Error {
         })
     }
 }
-
 
 // Bit of a hack - this reads the entire buffer, and then streams it
 fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
@@ -99,7 +102,8 @@ impl Transport for PyTransport {
     fn get(&self, path: &str) -> Result<Box<dyn Read + Send + Sync>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "get", (path,))?;
-            Ok(PyFileLikeObject::with_requirements(obj, true, false, false).map(|f| Box::new(f) as Box<dyn Read + Send + Sync>)?)
+            Ok(PyFileLikeObject::with_requirements(obj, true, false, false)
+                .map(|f| Box::new(f) as Box<dyn Read + Send + Sync>)?)
         })
     }
 
@@ -118,16 +122,26 @@ impl Transport for PyTransport {
         })
     }
 
+    fn has_any(&self, paths: &[&UrlFragment]) -> Result<bool> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "has_any", (paths.to_vec(),))?;
+            Ok(obj.extract::<bool>(py)?)
+        })
+    }
+
     fn mkdir(&self, relpath: &UrlFragment, perms: Option<Permissions>) -> Result<()> {
         Python::with_gil(|py| {
-            self.0.call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode())))?;
+            self.0
+                .call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode())))?;
             Ok(())
         })
     }
 
     fn ensure_base(&self, perms: Option<Permissions>) -> Result<bool> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method1(py, "ensure_base", (perms.map(|p| p.mode()), ))?;
+            let obj = self
+                .0
+                .call_method1(py, "ensure_base", (perms.map(|p| p.mode()),))?;
             Ok(obj.extract::<bool>(py)?)
         })
     }
@@ -159,32 +173,78 @@ impl Transport for PyTransport {
         Ok(Url::parse(&s).map_err(Error::from)?)
     }
 
-    fn put_file(&self, relpath: &UrlFragment, f: &mut dyn Read, mode: Option<Permissions>) -> Result<()> {
+    fn put_file(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn Read,
+        mode: Option<Permissions>,
+    ) -> Result<()> {
         let f = py_read(f)?;
         Python::with_gil(|py| {
-            self.0.call_method1(py, "put_file", (relpath, f, mode.map(|p| p.mode())))?;
+            self.0
+                .call_method1(py, "put_file", (relpath, f, mode.map(|p| p.mode())))?;
             Ok(())
         })
     }
 
-    fn put_bytes(&self, relpath: &UrlFragment, bytes: &[u8], mode: Option<Permissions>) -> Result<()> {
+    fn put_bytes(
+        &self,
+        relpath: &UrlFragment,
+        bytes: &[u8],
+        mode: Option<Permissions>,
+    ) -> Result<()> {
         Python::with_gil(|py| {
-            self.0.call_method1(py, "put_bytes", (relpath, bytes, mode.map(|p| p.mode())))?;
+            self.0
+                .call_method1(py, "put_bytes", (relpath, bytes, mode.map(|p| p.mode())))?;
             Ok(())
         })
     }
 
-    fn put_file_non_atomic(&self, relpath: &UrlFragment, f: &mut dyn Read, mode: Option<Permissions>, create_parent: Option<bool>, parent_mode: Option<Permissions>) -> Result<()> {
+    fn put_file_non_atomic(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn Read,
+        mode: Option<Permissions>,
+        create_parent: Option<bool>,
+        parent_mode: Option<Permissions>,
+    ) -> Result<()> {
         let f = py_read(f)?;
         Python::with_gil(|py| {
-            self.0.call_method1(py, "put_file_non_atomic", (relpath, f, mode.map(|p| p.mode()), create_parent, parent_mode.map(|p| p.mode())))?;
+            self.0.call_method1(
+                py,
+                "put_file_non_atomic",
+                (
+                    relpath,
+                    f,
+                    mode.map(|p| p.mode()),
+                    create_parent,
+                    parent_mode.map(|p| p.mode()),
+                ),
+            )?;
             Ok(())
         })
     }
 
-    fn put_bytes_non_atomic(&self, relpath: &UrlFragment, bytes: &[u8], mode: Option<Permissions>, create_parent: Option<bool>, parent_mode: Option<Permissions>) -> Result<()> {
+    fn put_bytes_non_atomic(
+        &self,
+        relpath: &UrlFragment,
+        bytes: &[u8],
+        mode: Option<Permissions>,
+        create_parent: Option<bool>,
+        parent_mode: Option<Permissions>,
+    ) -> Result<()> {
         Python::with_gil(|py| {
-            self.0.call_method1(py, "put_bytes_non_atomic", (relpath, bytes, mode.map(|p| p.mode()), create_parent, parent_mode.map(|p| p.mode())))?;
+            self.0.call_method1(
+                py,
+                "put_bytes_non_atomic",
+                (
+                    relpath,
+                    bytes,
+                    mode.map(|p| p.mode()),
+                    create_parent,
+                    parent_mode.map(|p| p.mode()),
+                ),
+            )?;
             Ok(())
         })
     }
@@ -212,22 +272,81 @@ impl Transport for PyTransport {
 
     fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()> {
         Python::with_gil(|py| {
-            self.0.call_method1(py, "set_segment_parameter", (key, value))?;
+            self.0
+                .call_method1(py, "set_segment_parameter", (key, value))?;
             Ok(())
         })
     }
 
     fn get_segment_parameters(&self) -> Result<HashMap<String, String>> {
         Python::with_gil(|py| {
-            Ok(self.0.call_method0(py, "get_segment_parameters")?.extract::<HashMap<String, String>>(py)?)
+            Ok(self
+                .0
+                .call_method0(py, "get_segment_parameters")?
+                .extract::<HashMap<String, String>>(py)?)
         })
     }
 
     fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
         Python::with_gil(|py| {
-            self.0.call_method1(py, "create_prefix", (permissions.map(|p| p.mode()),))?;
+            self.0
+                .call_method1(py, "create_prefix", (permissions.map(|p| p.mode()),))?;
             Ok(())
         })
+    }
+
+    fn recommended_page_size(&self) -> usize {
+        Python::with_gil(|py| {
+            self.0
+                .getattr(py, "recommended_page_size")
+                .unwrap()
+                .extract::<usize>(py)
+                .unwrap()
+        })
+    }
+
+    fn is_readonly(&self) -> bool {
+        Python::with_gil(|py| {
+            self.0
+                .getattr(py, "is_readonly")
+                .unwrap()
+                .extract::<bool>(py)
+                .unwrap()
+        })
+    }
+
+    fn readv(
+        &self,
+        relpath: &UrlFragment,
+        offsets: &[(u64, usize)],
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>>>> {
+        let iter = Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "readv", (relpath, offsets.to_vec()))?
+                .extract::<PyObject>(py)
+        });
+
+        if let Err(e) = iter {
+            return Box::new(std::iter::once(Err(Error::from(e))));
+        }
+
+        Box::new(std::iter::from_fn(move || {
+            Python::with_gil(|py| -> Option<Result<Vec<u8>>> {
+                let iter = iter.as_ref().unwrap();
+                match iter.call_method0(py, "__next__") {
+                    Ok(obj) => {
+                        if obj.is_none(py) {
+                            return None;
+                        } else {
+                            let bytes = obj.extract::<Vec<u8>>(py).unwrap();
+                            Some(Ok(bytes))
+                        }
+                    }
+                    Err(e) => Some(Err(Error::from(e))),
+                }
+            })
+            .into()
+        }))
     }
 }
 

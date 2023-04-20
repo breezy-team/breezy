@@ -1,12 +1,12 @@
-use std::path::{PathBuf,Path};
-use std::fs::Permissions;
-use url::Url;
-use std::io::Read;
-use crate::{LocalTransport,Transport,Stat,UrlFragment,Error,Result};
-use atomicwrites::{AtomicFile, AllowOverwrite};
-use std::collections::HashMap;
-use std::os::unix::fs::PermissionsExt;
+use crate::{Error, LocalTransport, Result, Stat, Transport, UrlFragment};
+use atomicwrites::{AllowOverwrite, AtomicFile};
 use path_clean::{clean, PathClean};
+use std::collections::HashMap;
+use std::fs::Permissions;
+use std::io::Read;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use url::Url;
 
 pub struct FileSystemTransport {
     base: Url,
@@ -58,7 +58,7 @@ impl Transport for FileSystemTransport {
 
     fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
-        let f = std::fs::File::open(path).map_err(Error::from)?;
+        let mut f = std::fs::File::open(path).map_err(Error::from)?;
         Ok(Box::new(f))
     }
 
@@ -66,7 +66,9 @@ impl Transport for FileSystemTransport {
         let path = self.local_abspath(relpath)?;
         std::fs::create_dir(&path).map_err(Error::from)?;
         if let Some(permissions) = permissions {
-            std::fs::set_permissions(&path, permissions).map_err(Error::from).map_err(Error::from)?;
+            std::fs::set_permissions(&path, permissions)
+                .map_err(Error::from)
+                .map_err(Error::from)?;
         }
         Ok(())
     }
@@ -79,7 +81,9 @@ impl Transport for FileSystemTransport {
 
     fn stat(&self, relpath: &UrlFragment) -> Result<Stat> {
         let path = self.local_abspath(relpath)?;
-        Ok(Stat::from(std::fs::symlink_metadata(path).map_err(Error::from)?))
+        Ok(Stat::from(
+            std::fs::symlink_metadata(path).map_err(Error::from)?,
+        ))
     }
 
     fn clone(&self, offset: Option<&UrlFragment>) -> Result<Box<dyn Transport>> {
@@ -94,7 +98,12 @@ impl Transport for FileSystemTransport {
         self.base.join(relpath).map_err(Error::from)
     }
 
-    fn put_file(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>) -> Result<()> {
+    fn put_file(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn Read,
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
         let path = self.local_abspath(relpath)?;
         let af = AtomicFile::new(path, AllowOverwrite);
         af.write(|outf| {
@@ -102,7 +111,8 @@ impl Transport for FileSystemTransport {
                 outf.set_permissions(permissions)?;
             }
             std::io::copy(f, outf)
-        }).map_err(Error::from)?;
+        })
+        .map_err(Error::from)?;
         Ok(())
     }
 
@@ -136,6 +146,9 @@ impl Transport for FileSystemTransport {
 
     fn get_segment_parameters(&self) -> Result<HashMap<String, String>> {
         let (_, params) = breezy_urlutils::split_segment_parameters(self.base.as_str())?;
-        Ok(params.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect())
+        Ok(params
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect())
     }
 }

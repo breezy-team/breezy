@@ -1,8 +1,8 @@
-use url::Url;
-use std::fs::{Metadata, Permissions};
-use std::io::Read;
-use std::os::unix::fs::PermissionsExt;
 use std::collections::HashMap;
+use std::fs::{Metadata, Permissions};
+use std::io::{BufRead, Read, Seek};
+use std::os::unix::fs::PermissionsExt;
+use url::Url;
 
 pub enum Error {
     InProcessTransport,
@@ -66,12 +66,15 @@ impl From<atomicwrites::Error<std::io::Error>> for Error {
 
 pub struct Stat {
     pub size: usize,
-    pub mode: u32
+    pub mode: u32,
 }
 
 impl From<Metadata> for Stat {
     fn from(metadata: Metadata) -> Self {
-        Stat { size: metadata.len() as usize, mode: metadata.permissions().mode() }
+        Stat {
+            size: metadata.len() as usize,
+            mode: metadata.permissions().mode(),
+        }
     }
 }
 
@@ -165,6 +168,15 @@ pub trait Transport: 'static + Send + Sync {
 
     fn has(&self, relpath: &UrlFragment) -> Result<bool>;
 
+    fn has_any(&self, relpaths: &[&UrlFragment]) -> Result<bool> {
+        for relpath in relpaths {
+            if self.has(relpath)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()>;
 
     fn stat(&self, relpath: &UrlFragment) -> Result<Stat>;
@@ -173,14 +185,31 @@ pub trait Transport: 'static + Send + Sync {
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url>;
 
-    fn put_file(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>) -> Result<()>;
+    fn put_file(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn Read,
+        permissions: Option<Permissions>,
+    ) -> Result<()>;
 
-    fn put_bytes(&self, relpath: &UrlFragment, data: &[u8], permissions: Option<Permissions>) -> Result<()> {
+    fn put_bytes(
+        &self,
+        relpath: &UrlFragment,
+        data: &[u8],
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
         let mut f = std::io::Cursor::new(data);
         self.put_file(relpath, &mut f, permissions)
     }
 
-    fn put_file_non_atomic(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>, create_parent_dir: Option<bool>, dir_permissions: Option<Permissions>) -> Result<()> {
+    fn put_file_non_atomic(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn Read,
+        permissions: Option<Permissions>,
+        create_parent_dir: Option<bool>,
+        dir_permissions: Option<Permissions>,
+    ) -> Result<()> {
         match self.put_file(relpath, f, permissions.clone()) {
             Ok(_) => Ok(()),
             Err(Error::NoSuchFile(filename)) => {
@@ -199,9 +228,22 @@ pub trait Transport: 'static + Send + Sync {
         }
     }
 
-    fn put_bytes_non_atomic(&self, relpath: &UrlFragment, data: &[u8], permissions: Option<Permissions>, create_parent_dir: Option<bool>, dir_permissions: Option<Permissions>) -> Result<()> {
+    fn put_bytes_non_atomic(
+        &self,
+        relpath: &UrlFragment,
+        data: &[u8],
+        permissions: Option<Permissions>,
+        create_parent_dir: Option<bool>,
+        dir_permissions: Option<Permissions>,
+    ) -> Result<()> {
         let mut f = std::io::Cursor::new(data);
-        self.put_file_non_atomic(relpath, &mut f, permissions, create_parent_dir, dir_permissions)
+        self.put_file_non_atomic(
+            relpath,
+            &mut f,
+            permissions,
+            create_parent_dir,
+            dir_permissions,
+        )
     }
 
     fn delete(&self, relpath: &UrlFragment) -> Result<()>;
@@ -225,13 +267,39 @@ pub trait Transport: 'static + Send + Sync {
     fn recommended_page_size(&self) -> usize {
         4 * 1024
     }
+
+    fn is_readonly(&self) -> bool {
+        false
+    }
+
+    fn readv<'a>(
+        &'a self,
+        relpath: &UrlFragment,
+        offsets: &'a [(u64, usize)],
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>>> + '_> {
+        let buf = match self.get_bytes(relpath) {
+            Err(err) => return Box::new(std::iter::once(Err(err.into()))),
+            Ok(file) => file,
+        };
+        let mut file = std::io::Cursor::new(buf);
+        Box::new(
+            offsets
+                .iter()
+                .map(move |(offset, length)| -> Result<Vec<u8>> {
+                    let mut buf = vec![0; *length];
+                    file.seek(std::io::SeekFrom::Start(*offset))?;
+                    file.read_exact(&mut buf)?;
+                    Ok(buf)
+                }),
+        )
+    }
 }
 
 pub trait Lock {
     fn unlock(&mut self) -> Result<()>;
 }
 
-pub trait LockableTransport : Transport {
+pub trait LockableTransport: Transport {
     fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
 
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
@@ -239,13 +307,13 @@ pub trait LockableTransport : Transport {
     fn is_read_locked(&self, relpath: &UrlFragment) -> Result<bool>;
 }
 
-pub trait LocalTransport : Transport {
+pub trait LocalTransport: Transport {
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<std::path::PathBuf>;
 }
 
 pub trait SmartMedium {}
 
-pub trait SmartTransport : Transport {
+pub trait SmartTransport: Transport {
     fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>>;
 }
 
