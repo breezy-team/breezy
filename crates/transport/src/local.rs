@@ -56,7 +56,7 @@ impl Transport for FileSystemTransport {
         self.base.clone()
     }
 
-    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read>> {
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
         let f = std::fs::File::open(path).map_err(Error::from)?;
         Ok(Box::new(f))

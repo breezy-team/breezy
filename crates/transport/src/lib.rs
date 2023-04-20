@@ -9,23 +9,19 @@ pub enum Error {
 
     NoSmartMedium,
 
-    NotLocalUrl,
+    NotLocalUrl(String),
 
-    NoSuchFile,
+    NoSuchFile(Option<String>),
 
-    FileExists,
+    FileExists(Option<String>),
 
     TransportNotPossible,
-
-    NotImplemented,
-
-    InvalidPath,
 
     UrlError(url::ParseError),
 
     UrlutilsError(breezy_urlutils::Error),
 
-    PermissionDenied,
+    PermissionDenied(Option<String>),
 
     Io(std::io::Error),
 
@@ -39,9 +35,9 @@ pub type UrlFragment = str;
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         match err.kind() {
-            std::io::ErrorKind::NotFound => Error::NoSuchFile,
-            std::io::ErrorKind::AlreadyExists => Error::FileExists,
-            std::io::ErrorKind::PermissionDenied => Error::PermissionDenied,
+            std::io::ErrorKind::NotFound => Error::NoSuchFile(None),
+            std::io::ErrorKind::AlreadyExists => Error::FileExists(None),
+            std::io::ErrorKind::PermissionDenied => Error::PermissionDenied(None),
             _ => Error::Io(err),
         }
     }
@@ -103,11 +99,11 @@ pub trait Transport: 'static + Send + Sync {
     fn get_bytes(&self, relpath: &UrlFragment) -> Result<Vec<u8>> {
         let mut file = self.get(relpath)?;
         let mut result = Vec::new();
-        file.read_to_end(&mut result).map_err(Error::from)?;
+        file.read_to_end(&mut result)?;
         Ok(result)
     }
 
-    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read>>;
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read + Send + Sync>>;
 
     fn base(&self) -> Url;
 
@@ -118,8 +114,8 @@ pub trait Transport: 'static + Send + Sync {
     fn ensure_base(&self, permissions: Option<Permissions>) -> Result<bool> {
         if let Err(err) = self.mkdir(".", permissions) {
             match err {
-                Error::FileExists => Ok(false),
-                Error::PermissionDenied => Ok(false),
+                Error::FileExists(_) => Ok(false),
+                Error::PermissionDenied(_) => Ok(false),
                 Error::TransportNotPossible => {
                     if self.has(".")? {
                         Ok(false)
@@ -144,11 +140,11 @@ pub trait Transport: 'static + Send + Sync {
             }
             if let Err(err) = new_transport.mkdir(".", permissions.clone()) {
                 match err {
-                    Error::NoSuchFile => {
+                    Error::NoSuchFile(_) => {
                         needed.push(cur_transport);
                         cur_transport = new_transport;
                     }
-                    Error::FileExists => {
+                    Error::FileExists(_) => {
                         break;
                     }
                     _ => {
@@ -187,16 +183,16 @@ pub trait Transport: 'static + Send + Sync {
     fn put_file_non_atomic(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>, create_parent_dir: Option<bool>, dir_permissions: Option<Permissions>) -> Result<()> {
         match self.put_file(relpath, f, permissions.clone()) {
             Ok(_) => Ok(()),
-            Err(Error::NoSuchFile) => {
+            Err(Error::NoSuchFile(filename)) => {
                 if create_parent_dir.unwrap_or(false) {
                     if let Some(parent) = relpath.rsplitn(2, '/').nth(1) {
                         self.mkdir(parent, dir_permissions)?;
                         self.put_file(relpath, f, permissions.clone())
                     } else {
-                        Err(Error::NoSuchFile)
+                        Err(Error::NoSuchFile(filename))
                     }
                 } else {
-                    Err(Error::NoSuchFile)
+                    Err(Error::NoSuchFile(filename))
                 }
             }
             Err(err) => Err(err),
@@ -218,6 +214,17 @@ pub trait Transport: 'static + Send + Sync {
 
     fn get_segment_parameters(&self) -> Result<HashMap<String, String>>;
 
+    /// Return the recommended page size for this transport.
+    ///
+    /// This is potentially different for every path in a given namespace.
+    /// For example, local transports might use an operating system call to
+    /// get the block size for a given path, which can vary due to mount
+    /// points.
+    ///
+    /// Returns: The page size in bytes.
+    fn recommended_page_size(&self) -> usize {
+        4 * 1024
+    }
 }
 
 pub trait Lock {

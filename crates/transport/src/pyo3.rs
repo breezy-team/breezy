@@ -13,12 +13,9 @@ import_exception!(breezy.errors, TransportError);
 import_exception!(breezy.errors, NoSmartMedium);
 import_exception!(breezy.errors, InProcessTransport);
 import_exception!(breezy.errors, NotLocalUrl);
-import_exception!(breezy.errors, NotLocalTransport);
-import_exception!(breezy.errors, NoSuchFile);
+import_exception!(breezy.transport, NoSuchFile);
 import_exception!(breezy.errors, FileExists);
 import_exception!(breezy.errors, TransportNotPossible);
-import_exception!(breezy.errors, NotImplemented);
-import_exception!(breezy.errors, InvalidPath);
 import_exception!(breezy.errors, UrlError);
 import_exception!(breezy.errors, PermissionDenied);
 import_exception!(breezy.errors, PathNotChild);
@@ -48,19 +45,19 @@ impl From<PyErr> for Error {
             if e.is_instance_of::<InProcessTransport>(py) {
                 Error::InProcessTransport
             } else if e.is_instance_of::<NotLocalUrl>(py) {
-                Error::NotLocalUrl
+                let args = e.value(py).getattr("args").unwrap();
+                Error::NotLocalUrl(args.get_item(0).unwrap().extract::<String>().unwrap())
             } else if e.is_instance_of::<NoSuchFile>(py) {
-                Error::NoSuchFile
+                let args = e.value(py).getattr("args").unwrap();
+                Error::NoSuchFile(Some(args.get_item(0).unwrap().extract::<String>().unwrap()))
             } else if e.is_instance_of::<FileExists>(py) {
-                Error::FileExists
+                let args = e.value(py).getattr("args").unwrap();
+                Error::FileExists(Some(args.get_item(0).unwrap().extract::<String>().unwrap()))
             } else if e.is_instance_of::<TransportNotPossible>(py) {
                 Error::TransportNotPossible
-            } else if e.is_instance_of::<NotImplemented>(py) {
-                Error::NotImplemented
-            } else if e.is_instance_of::<InvalidPath>(py) {
-                Error::InvalidPath
             } else if e.is_instance_of::<PermissionDenied>(py) {
-                Error::PermissionDenied
+                let args = e.value(py).getattr("args").unwrap();
+                Error::PermissionDenied(Some(args.get_item(0).unwrap().extract::<String>().unwrap()))
             } else if e.is_instance_of::<PathNotChild>(py) {
                 Error::PathNotChild
             } else {
@@ -99,10 +96,10 @@ impl Transport for PyTransport {
         })
     }
 
-    fn get(&self, path: &str) -> Result<Box<dyn Read>> {
+    fn get(&self, path: &str) -> Result<Box<dyn Read + Send + Sync>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "get", (path,))?;
-            Ok(PyFileLikeObject::with_requirements(obj, true, false, false).map(|f| Box::new(f) as Box<dyn Read>)?)
+            Ok(PyFileLikeObject::with_requirements(obj, true, false, false).map(|f| Box::new(f) as Box<dyn Read + Send + Sync>)?)
         })
     }
 

@@ -1487,8 +1487,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         These trees get an initial random root id, if their repository supports
         rich root data, TREE_ROOT otherwise.
         """
-        if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+        a_controldir.transport.local_abspath('.')
         transport = a_controldir.get_workingtree_transport(self)
         control_files = self._open_control_files(a_controldir)
         control_files.create_lock()

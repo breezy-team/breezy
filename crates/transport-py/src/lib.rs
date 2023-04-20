@@ -14,18 +14,15 @@ use pyo3::import_exception;
 
 import_exception!(breezy.errors, TransportError);
 import_exception!(breezy.errors, NoSmartMedium);
+import_exception!(breezy.errors, NotLocalUrl);
+import_exception!(breezy.errors, InProcessTransport);
+import_exception!(breezy.transport, NoSuchFile);
+import_exception!(breezy.transport, FileExists);
+import_exception!(breezy.errors, PathNotChild);
+import_exception!(breezy.errors, PermissionDenied);
+import_exception!(breezy.errors, TransportNotPossible);
 
-create_exception!(_transport_rs, InProcessTransport, TransportError);
-create_exception!(_transport_rs, NotLocalUrl, TransportError);
-create_exception!(_transport_rs, NotLocalTransport, TransportError);
-create_exception!(_transport_rs, NoSuchFile, TransportError);
-create_exception!(_transport_rs, FileExists, TransportError);
-create_exception!(_transport_rs, TransportNotPossible, TransportError);
-create_exception!(_transport_rs, NotImplemented, TransportError);
-create_exception!(_transport_rs, InvalidPath, TransportError);
 create_exception!(_transport_rs, UrlError, TransportError);
-create_exception!(_transport_rs, PermissionDenied, TransportError);
-create_exception!(_transport_rs, PathNotChild, TransportError);
 
 #[pyclass(subclass)]
 struct Transport(Box<dyn breezy_transport::Transport>);
@@ -33,15 +30,13 @@ struct Transport(Box<dyn breezy_transport::Transport>);
 fn map_transport_err_to_py_err(e: Error) -> PyErr {
     match e {
         Error::InProcessTransport => InProcessTransport::new_err(()),
-        Error::NotLocalUrl => NotLocalUrl::new_err(()),
+        Error::NotLocalUrl(url) => NotLocalUrl::new_err((url, )),
         Error::NoSmartMedium => NoSmartMedium::new_err(()),
-        Error::NoSuchFile => NoSuchFile::new_err(()),
-        Error::FileExists => FileExists::new_err(()),
+        Error::NoSuchFile(name) => NoSuchFile::new_err((name, )),
+        Error::FileExists(name) => FileExists::new_err((name, )),
         Error::TransportNotPossible => TransportNotPossible::new_err(()),
-        Error::NotImplemented => NotImplemented::new_err(()),
-        Error::InvalidPath => InvalidPath::new_err(()),
         Error::UrlError(e) => UrlError::new_err(e.to_string()),
-        Error::PermissionDenied => PermissionDenied::new_err(()),
+        Error::PermissionDenied(name) => PermissionDenied::new_err((name, )),
         Error::PathNotChild => PathNotChild::new_err(()),
         Error::UrlutilsError(e) => UrlError::new_err(format!("{:?}", e)),
         Error::Io(e) => e.into(),
@@ -63,6 +58,18 @@ struct PyStat {
 
     #[pyo3(get)]
     st_size: usize
+}
+
+#[pyclass]
+struct PyRead(Box<dyn std::io::Read + Sync + Send>);
+
+#[pymethods]
+impl PyRead {
+    fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
+        let mut buf = vec![0; size.unwrap_or(4096)];
+        let ret = self.0.read(&mut buf)?;
+        Ok(PyBytes::new(py, &buf[..ret]).to_object(py).to_object(py))
+    }
 }
 
 #[pymethods]
@@ -97,8 +104,13 @@ impl Transport {
     fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
         let transport = &self.0 as &dyn Any;
         let local_transport = transport.downcast_ref::<&dyn breezy_transport::LocalTransport>()
-            .ok_or_else(|| NotLocalTransport::new_err(()))?;
+            .ok_or_else(|| NotLocalUrl::new_err((self.0.base().to_string(), )))?;
         local_transport.local_abspath(path).map_err(map_transport_err_to_py_err)
+    }
+
+    fn get(&self, py: Python, path: &str) -> PyResult<PyObject> {
+        let ret = self.0.get(path).map_err(map_transport_err_to_py_err)?;
+        Ok(PyRead(ret).into_py(py))
     }
 
     fn get_smart_medium(slf: PyRef<Self>, py: Python) -> PyResult<PyObject> {
