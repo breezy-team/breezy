@@ -150,6 +150,10 @@ impl Transport {
         }.map_err(map_transport_err_to_py_err)?;
         Ok(Transport { transport: inner })
     }
+
+    fn abspath(&self, path: &str) -> PyResult<String> {
+        Ok(self.transport.abspath(path).map_err(map_transport_err_to_py_err)?.to_string())
+    }
 }
 
 #[pyclass(extends=Transport)]
@@ -247,6 +251,14 @@ impl breezy_transport::Transport for PyTransport {
             let t: Box<dyn breezy_transport::Transport> = Box::new(PyTransport(obj));
             Ok(t)
         }).map_err(|e| map_py_err_to_transport_err(e))
+    }
+
+    fn abspath(&self, relpath: &UrlFragment) -> Result<Url> {
+        let s = Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "abspath", (relpath,))?;
+            obj.extract::<String>(py)
+        }).map_err(|e| map_py_err_to_transport_err(e))?;
+        Ok(Url::parse(&s).map_err(Error::from)?)
     }
 }
 

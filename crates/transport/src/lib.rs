@@ -122,6 +122,8 @@ pub trait Transport: 'static + Send {
     fn stat(&self, relpath: &UrlFragment) -> Result<Stat>;
 
     fn clone(&self, offset: Option<&UrlFragment>) -> Result<Box<dyn Transport>>;
+
+    fn abspath(&self, relpath: &UrlFragment) -> Result<Url>;
 }
 
 pub trait LocalTransport : Transport {

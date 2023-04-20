@@ -84,4 +84,8 @@ impl Transport for FileSystemTransport {
         };
         Ok(Box::new(FileSystemTransport::from(new_path.as_path())))
     }
+
+    fn abspath(&self, relpath: &UrlFragment) -> Result<Url> {
+        self.base.join(relpath).map_err(Error::from)
+    }
 }
