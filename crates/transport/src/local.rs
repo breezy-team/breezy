@@ -105,7 +105,12 @@ impl Transport for FileSystemTransport {
     }
 
     fn delete(&self, relpath: &UrlFragment) -> Result<()> {
-        let path = self.path.join(relpath);
+        let path = self.local_abspath(relpath)?;
         std::fs::remove_file(path).map_err(Error::from)
+    }
+
+    fn rmdir(&self, relpath: &UrlFragment) -> Result<()> {
+        let path = self.local_abspath(relpath)?;
+        std::fs::remove_dir(path).map_err(Error::from)
     }
 }

@@ -155,6 +155,11 @@ impl Transport {
         self.transport.delete(path).map_err(map_transport_err_to_py_err)?;
         Ok(())
     }
+
+    fn rmdir(&self, path: &str) -> PyResult<()> {
+        self.transport.rmdir(path).map_err(map_transport_err_to_py_err)?;
+        Ok(())
+    }
 }
 
 #[pyclass(extends=Transport)]

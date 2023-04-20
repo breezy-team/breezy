@@ -185,4 +185,11 @@ impl Transport for PyTransport {
             Ok(())
         })
     }
+
+    fn rmdir(&self, relpath: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "rmdir", (relpath,))?;
+            Ok(())
+        })
+    }
 }

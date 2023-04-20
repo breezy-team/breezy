@@ -167,6 +167,8 @@ pub trait Transport: 'static + Send {
     }
 
     fn delete(&self, relpath: &UrlFragment) -> Result<()>;
+
+    fn rmdir(&self, relpath: &UrlFragment) -> Result<()>;
 }
 
 pub trait LocalTransport : Transport {
