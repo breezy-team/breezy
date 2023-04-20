@@ -1,5 +1,6 @@
 use url::Url;
-use std::fs::Permissions;
+use std::fs::{Metadata, Permissions};
+use std::os::unix::fs::PermissionsExt;
 
 pub enum Error {
     InProcessTransport,
@@ -35,6 +36,7 @@ impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         match err.kind() {
             std::io::ErrorKind::NotFound => Error::NoSuchFile,
+            std::io::ErrorKind::AlreadyExists => Error::FileExists,
             std::io::ErrorKind::PermissionDenied => Error::PermissionDenied,
             _ => Error::Io(err),
         }
@@ -44,6 +46,17 @@ impl From<std::io::Error> for Error {
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::UrlError(err)
+    }
+}
+
+pub struct Stat {
+    pub size: usize,
+    pub mode: u32
+}
+
+impl From<Metadata> for Stat {
+    fn from(metadata: Metadata) -> Self {
+        Stat { size: metadata.len() as usize, mode: metadata.permissions().mode() }
     }
 }
 
@@ -105,6 +118,10 @@ pub trait Transport: 'static + Send {
     fn has(&self, relpath: &UrlFragment) -> Result<bool>;
 
     fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()>;
+
+    fn stat(&self, relpath: &UrlFragment) -> Result<Stat>;
+
+    fn clone(&self, offset: Option<&UrlFragment>) -> Result<Box<dyn Transport>>;
 }
 
 pub trait LocalTransport : Transport {

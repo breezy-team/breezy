@@ -1,7 +1,7 @@
 use std::path::{PathBuf,Path};
-use std::fs::Permissions;
+use std::fs::{Metadata, Permissions};
 use url::Url;
-use crate::{LocalTransport,Transport,UrlFragment,Error,Result};
+use crate::{LocalTransport,Transport,Stat,UrlFragment,Error,Result};
 
 pub struct FileSystemTransport {
     base: Url,
@@ -59,9 +59,9 @@ impl Transport for FileSystemTransport {
 
     fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()> {
         let path = self.local_abspath(relpath)?;
-        std::fs::create_dir(&path).map_err(Error::from);
+        std::fs::create_dir(&path).map_err(Error::from)?;
         if let Some(permissions) = permissions {
-            std::fs::set_permissions(&path, permissions).map_err(Error::from).map_err(Error::from);
+            std::fs::set_permissions(&path, permissions).map_err(Error::from).map_err(Error::from)?;
         }
         Ok(())
     }
@@ -72,4 +72,16 @@ impl Transport for FileSystemTransport {
         Ok(path.exists())
     }
 
+    fn stat(&self, relpath: &UrlFragment) -> Result<Stat> {
+        let path = self.local_abspath(relpath)?;
+        Ok(Stat::from(std::fs::symlink_metadata(path).map_err(Error::from)?))
+    }
+
+    fn clone(&self, offset: Option<&UrlFragment>) -> Result<Box<dyn Transport>> {
+        let new_path = match offset {
+            Some(offset) => self.local_abspath(offset)?,
+            None => self.path.to_path_buf(),
+        };
+        Ok(Box::new(FileSystemTransport::from(new_path.as_path())))
+    }
 }

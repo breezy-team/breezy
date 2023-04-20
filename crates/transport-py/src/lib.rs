@@ -3,15 +3,15 @@ use std::any::Any;
 use pyo3::exceptions::{PyValueError, PyException};
 use pyo3::types::{PyBytes, PyList};
 use url::Url;
-use std::fs::Permissions;
+use std::fs::{Metadata, Permissions};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
-use breezy_transport::{Result, UrlFragment};
+use breezy_transport::{Result, Stat, Error, UrlFragment};
 use pyo3_file::PyFileLikeObject;
 use pyo3::create_exception;
 use pyo3::import_exception;
 
-import_exception!(breezy.transport, TransportError);
+import_exception!(breezy.error, TransportError);
 import_exception!(breezy.errors, NoSmartMedium);
 
 create_exception!(_transport_rs, InProcessTransport, TransportError);
@@ -31,21 +31,47 @@ struct Transport {
     transport: Box<dyn breezy_transport::Transport>
 }
 
-fn map_transport_err_to_py_err(e: breezy_transport::Error) -> PyErr {
+fn map_transport_err_to_py_err(e: Error) -> PyErr {
     match e {
-        breezy_transport::Error::InProcessTransport => InProcessTransport::new_err(()),
-        breezy_transport::Error::NotLocalUrl => NotLocalUrl::new_err(()),
-        breezy_transport::Error::NoSmartMedium => NoSmartMedium::new_err(()),
-        breezy_transport::Error::NoSuchFile => NoSuchFile::new_err(()),
-        breezy_transport::Error::FileExists => FileExists::new_err(()),
-        breezy_transport::Error::TransportNotPossible => TransportNotPossible::new_err(()),
-        breezy_transport::Error::NotImplemented => NotImplemented::new_err(()),
-        breezy_transport::Error::InvalidPath => InvalidPath::new_err(()),
-        breezy_transport::Error::UrlError(e) => UrlError::new_err(e.to_string()),
-        breezy_transport::Error::PermissionDenied => PermissionDenied::new_err(()),
-        breezy_transport::Error::PathNotChild => PathNotChild::new_err(()),
-        breezy_transport::Error::Io(e) => e.into(),
+        Error::InProcessTransport => InProcessTransport::new_err(()),
+        Error::NotLocalUrl => NotLocalUrl::new_err(()),
+        Error::NoSmartMedium => NoSmartMedium::new_err(()),
+        Error::NoSuchFile => NoSuchFile::new_err(()),
+        Error::FileExists => FileExists::new_err(()),
+        Error::TransportNotPossible => TransportNotPossible::new_err(()),
+        Error::NotImplemented => NotImplemented::new_err(()),
+        Error::InvalidPath => InvalidPath::new_err(()),
+        Error::UrlError(e) => UrlError::new_err(e.to_string()),
+        Error::PermissionDenied => PermissionDenied::new_err(()),
+        Error::PathNotChild => PathNotChild::new_err(()),
+        Error::Io(e) => e.into(),
     }
+}
+
+fn map_py_err_to_transport_err(e: PyErr) -> Error {
+    Python::with_gil(|py| {
+        if e.is_instance_of::<InProcessTransport>(py) {
+            Error::InProcessTransport
+        } else if e.is_instance_of::<NotLocalUrl>(py) {
+            Error::NotLocalUrl
+        } else if e.is_instance_of::<NoSuchFile>(py) {
+            Error::NoSuchFile
+        } else if e.is_instance_of::<FileExists>(py) {
+            Error::FileExists
+        } else if e.is_instance_of::<TransportNotPossible>(py) {
+            Error::TransportNotPossible
+        } else if e.is_instance_of::<NotImplemented>(py) {
+            Error::NotImplemented
+        } else if e.is_instance_of::<InvalidPath>(py) {
+            Error::InvalidPath
+        } else if e.is_instance_of::<PermissionDenied>(py) {
+            Error::PermissionDenied
+        } else if e.is_instance_of::<PathNotChild>(py) {
+            Error::PathNotChild
+        } else {
+            panic!("{}", e.to_string())
+        }
+    })
 }
 
 #[cfg(unix)]
@@ -54,6 +80,15 @@ fn perms_from_py_object(obj: PyObject) -> Permissions {
         let mode = obj.extract::<u32>(py).unwrap();
         Permissions::from_mode(mode)
     })
+}
+
+#[pyclass]
+struct PyStat {
+    #[pyo3(get)]
+    st_mode: u32,
+
+    #[pyo3(get)]
+    st_size: usize
 }
 
 #[pymethods]
@@ -76,13 +111,13 @@ impl Transport {
         Ok(self.transport.has(path).map_err(map_transport_err_to_py_err)?)
     }
 
-    fn mkdir(&self, path: &str, perms: Option<PyObject>) -> PyResult<()> {
-        self.transport.mkdir(path, perms.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?;
+    fn mkdir(&self, path: &str, mode: Option<PyObject>) -> PyResult<()> {
+        self.transport.mkdir(path, mode.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?;
         Ok(())
     }
 
-    fn ensure_base(&self, perms: Option<PyObject>) -> PyResult<bool> {
-        Ok(self.transport.ensure_base(perms.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?)
+    fn ensure_base(&self, mode: Option<PyObject>) -> PyResult<bool> {
+        Ok(self.transport.ensure_base(mode.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?)
     }
 
     fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
@@ -99,6 +134,21 @@ impl Transport {
         } else {
             Err(NoSmartMedium::new_err((slf.into_py(py), )))
         }
+    }
+
+    fn stat(&self, py: Python, path: &str) -> PyResult<PyObject> {
+        let stat = self.transport.stat(path).map_err(map_transport_err_to_py_err)?;
+        Ok(PyStat { st_size: stat.size, st_mode: stat.mode }.into_py(py))
+    }
+
+    fn clone(&self, py: Python, offset: Option<PyObject>) -> PyResult<Self> {
+        let inner = if let Some(offset) = offset {
+            let offset = offset.extract::<&str>(py)?;
+            self.transport.clone(Some(offset))
+        } else {
+            self.transport.clone(None)
+        }.map_err(map_transport_err_to_py_err)?;
+        Ok(Transport { transport: inner })
     }
 }
 
@@ -128,25 +178,27 @@ impl IntoPy<PyObject> for PyTransport {
 impl breezy_transport::Transport for PyTransport {
     fn external_url(&self) -> Result<Url> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method0(py, "external_url").unwrap();
-            let s = obj.extract::<String>(py).unwrap();
-            Ok(Url::parse(&s).unwrap())
+            let obj = self.0.call_method0(py, "external_url")
+                .map_err(|e| map_py_err_to_transport_err(e))?;
+            let s = obj.extract::<String>(py)
+                .map_err(|e| map_py_err_to_transport_err(e))?;
+            Ok(Url::parse(&s).map_err(Error::from)?)
         })
     }
 
     fn get_bytes(&self, path: &str) -> Result<Vec<u8>> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method1(py, "get_bytes", (path,)).unwrap();
-            let bytes = obj.extract::<&PyBytes>(py).unwrap();
+            let obj = self.0.call_method1(py, "get_bytes", (path,))?;
+            let bytes = obj.extract::<&PyBytes>(py)?;
             Ok(bytes.as_bytes().to_vec())
-        })
+        }).map_err(|e| map_py_err_to_transport_err(e))
     }
 
     fn get(&self, path: &str) -> Result<Box<dyn std::io::Read>> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method1(py, "get", (path,)).unwrap();
-            Ok(PyFileLikeObject::with_requirements(obj, true, false, false).map(|f| Box::new(f) as Box<dyn std::io::Read>).unwrap())
-        })
+            let obj = self.0.call_method1(py, "get", (path,))?;
+            Ok(PyFileLikeObject::with_requirements(obj, true, false, false).map(|f| Box::new(f) as Box<dyn std::io::Read>)?)
+        }).map_err(|e| map_py_err_to_transport_err(e))
     }
 
     fn base(&self) -> Url {
@@ -159,23 +211,42 @@ impl breezy_transport::Transport for PyTransport {
 
     fn has(&self, path: &UrlFragment) -> Result<bool> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method1(py, "has", (path,)).unwrap();
-            Ok(obj.extract::<bool>(py).unwrap())
-        })
+            let obj = self.0.call_method1(py, "has", (path,))?;
+            Ok(obj.extract::<bool>(py)?)
+        }).map_err(|e| map_py_err_to_transport_err(e))
     }
 
     fn mkdir(&self, relpath: &UrlFragment, perms: Option<Permissions>) -> Result<()> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode()))).unwrap();
+            let obj = self.0.call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode())))?;
             Ok(())
-        })
+        }).map_err(|e| map_py_err_to_transport_err(e))
     }
 
     fn ensure_base(&self, perms: Option<Permissions>) -> Result<bool> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method1(py, "ensure_base", (perms.map(|p| p.mode()), )).unwrap();
-            Ok(obj.extract::<bool>(py).unwrap())
-        })
+            let obj = self.0.call_method1(py, "ensure_base", (perms.map(|p| p.mode()), ))?;
+            Ok(obj.extract::<bool>(py)?)
+        }).map_err(|e| map_py_err_to_transport_err(e))
+    }
+
+    fn stat(&self, path: &UrlFragment) -> Result<Stat> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "stat", (path,)).unwrap();
+            let stat_result = obj.extract::<PyObject>(py)?;
+            Ok(Stat {
+                mode: stat_result.getattr(py, "st_mode")?.extract::<u32>(py)?,
+                size: stat_result.getattr(py, "st_size")?.extract::<usize>(py)?,
+            })
+        }).map_err(map_py_err_to_transport_err)
+    }
+
+    fn clone(&self, path: Option<&UrlFragment>) -> Result<Box<dyn breezy_transport::Transport>> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "clone", (path,))?;
+            let t: Box<dyn breezy_transport::Transport> = Box::new(PyTransport(obj));
+            Ok(t)
+        }).map_err(|e| map_py_err_to_transport_err(e))
     }
 }
 
