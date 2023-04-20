@@ -16,6 +16,7 @@
 
 """Import upstream source into a branch"""
 
+import os
 import re
 import stat
 import tarfile

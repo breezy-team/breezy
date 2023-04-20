@@ -16,6 +16,7 @@
 
 """Lists of ignore files, etc."""
 
+import os
 from io import BytesIO
 from typing import Set
 
