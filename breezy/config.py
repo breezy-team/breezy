@@ -88,7 +88,6 @@ import breezy
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import errno
 import fnmatch
 import re
 

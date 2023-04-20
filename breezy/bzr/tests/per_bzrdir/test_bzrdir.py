@@ -16,7 +16,6 @@
 
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
-import errno
 from stat import S_ISDIR
 
 import breezy.branch

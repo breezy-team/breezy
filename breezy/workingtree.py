@@ -30,9 +30,7 @@ WorkingTree.open(dir).
 """
 
 import contextlib
-import errno
 import os
-import sys
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
@@ -60,6 +58,7 @@ from .i18n import gettext
 from .symbol_versioning import deprecated_in, deprecated_method
 from .trace import mutter, note
 from .transport import NoSuchFile
+from .transport.local import file_kind
 
 
 class SettingFileIdUnsupported(errors.BzrError):
@@ -471,7 +470,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 if kinds[pos] is None:
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
-                        kinds[pos] = osutils.file_kind(fullpath)
+                        kinds[pos] = file_kind(fullpath)
                     except FileNotFoundError:
                         raise NoSuchFile(fullpath)
 
@@ -707,7 +706,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         raise NotImplementedError(self.flush)
 
     def kind(self, relpath):
-        return osutils.file_kind(self.abspath(relpath))
+        return file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
                    recurse_nested=False):

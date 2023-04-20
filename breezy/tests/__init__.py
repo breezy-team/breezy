@@ -27,7 +27,6 @@ import contextlib
 import copy
 import difflib
 import doctest
-import errno
 import functools
 import itertools
 import logging

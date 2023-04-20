@@ -19,7 +19,6 @@
 
 """Quilt patch handling."""
 
-import errno
 import os
 import signal
 import subprocess

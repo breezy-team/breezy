@@ -1,8 +1,8 @@
+use libc::{S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFREG, S_IFSOCK};
 use log::debug;
 use std::fs::{set_permissions, Permissions};
 use std::io::Result;
-use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use walkdir::WalkDir;
 
 pub fn make_writable<P: AsRef<Path>>(path: P) -> Result<()> {
@@ -10,8 +10,8 @@ pub fn make_writable<P: AsRef<Path>>(path: P) -> Result<()> {
     let metadata = std::fs::symlink_metadata(path)?;
     let mut permissions = metadata.permissions();
     if !metadata.file_type().is_symlink() {
-        permissions.set_mode(permissions.mode() | 0o200);
-        chmod_if_possible(path, permissions)?;
+        permissions.set_readonly(false);
+        set_permissions(path, permissions)?;
     }
     Ok(())
 }
@@ -21,8 +21,8 @@ pub fn make_readonly<P: AsRef<Path>>(path: P) -> Result<()> {
     let metadata = std::fs::symlink_metadata(path)?;
     let mut permissions = metadata.permissions();
     if !metadata.file_type().is_symlink() {
-        permissions.set_mode(permissions.mode() & 0o777555);
-        chmod_if_possible(path, permissions)?;
+        permissions.set_readonly(true);
+        set_permissions(path, permissions)?;
     }
     Ok(())
 }
@@ -165,4 +165,58 @@ pub fn copy_tree<P: AsRef<Path>, Q: AsRef<Path>>(from_path: P, to_path: Q) -> st
         }
     }
     Ok(())
+}
+
+const DIRECTORY: &str = "directory";
+const CHARDEV: &str = "chardev";
+const BLOCK: &str = "block";
+const FILE: &str = "file";
+const FIFO: &str = "fifo";
+const SYMLINK: &str = "symlink";
+const SOCKET: &str = "socket";
+const UNKNOWN: &str = "unknown";
+
+const FORMATS: [(u32, &str); 7] = [
+    (S_IFDIR, DIRECTORY),
+    (S_IFCHR, CHARDEV),
+    (S_IFBLK, BLOCK),
+    (S_IFREG, FILE),
+    (S_IFIFO, FIFO),
+    (S_IFLNK, SYMLINK),
+    (S_IFSOCK, SOCKET),
+];
+
+pub fn kind_from_mode(mode: u32) -> &'static str {
+    for (format_mode, format_kind) in FORMATS.iter() {
+        if mode & 0o170000 == *format_mode {
+            return format_kind;
+        }
+    }
+    UNKNOWN
+}
+
+pub fn delete_any<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+    fn delete_file_or_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+        let path = path.as_ref();
+        if path.is_dir() {
+            std::fs::remove_dir(path)?;
+        } else {
+            std::fs::remove_file(path)?;
+        }
+        Ok(())
+    }
+
+    delete_file_or_dir(path.as_ref())?;
+
+    // handle errors due to read-only files/directories
+    match delete_file_or_dir(path.as_ref()) {
+        Ok(()) => Ok(()),
+        Err(ref e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            if let Err(e) = make_writable(path.as_ref()) {
+                debug!("Unable to make {:?} writable: {}", path.as_ref(), e);
+            }
+            delete_file_or_dir(path.as_ref())
+        }
+        Err(e) => Err(e),
+    }
 }

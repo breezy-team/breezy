@@ -20,12 +20,10 @@ See developers/testing.html for more explanations.
 """
 
 import doctest
-import errno
 import glob
 import logging
 import os
 import shlex
-import sys
 import textwrap
 
 from .. import osutils, tests, trace

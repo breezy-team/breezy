@@ -4663,7 +4663,7 @@ no_context_error_translators.register(b'UnknownFormat',
                                           err.error_args[0].decode('ascii'), err.error_args[0].decode('ascii')))
 no_context_error_translators.register(b'InvalidURL',
                                       lambda err: urlutils.InvalidURL(
-                                          err.error_args[0].decode('utf-8'), err.error_args[1].decode('ascii')))
+                                          err.error_args[0].decode('utf-8'), err.error_args[1].decode('utf-8')))
 
 
 def _translate_short_readv_error(err):

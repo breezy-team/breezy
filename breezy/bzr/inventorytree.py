@@ -20,15 +20,14 @@
 import os
 import re
 from collections import deque
-from typing import TYPE_CHECKING, Optional, Type
 
 from .. import branch as _mod_branch
 from .. import controldir, debug, errors, lazy_import, osutils, revision, trace
 from .. import transport as _mod_transport
 from ..controldir import ControlDir
 from ..mutabletree import MutableTree
-from ..repository import Repository
 from ..revisiontree import RevisionTree
+from ..transport.local import file_kind, file_stat
 
 lazy_import.lazy_import(globals(), """
 from breezy import (
@@ -805,7 +804,7 @@ class _SmartAddHelper:
                 raise errors.ForbiddenControlFileError(filename=filepath)
 
             abspath = self.tree.abspath(filepath)
-            kind = osutils.file_kind(abspath)
+            kind = file_kind(abspath)
             # ensure the named path is added, so that ignore rules in the later
             # directory walk dont skip it.
             # we dont have a parent ie known yet.: use the relatively slower
@@ -836,7 +835,7 @@ class _SmartAddHelper:
             # for reuse
             stat_value = None
             if this_ie is None:
-                stat_value = osutils.file_stat(abspath)
+                stat_value = file_stat(abspath)
                 kind = osutils.file_kind_from_stat_mode(stat_value.st_mode)
             else:
                 kind = this_ie.kind

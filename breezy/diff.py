@@ -24,7 +24,6 @@ from typing import List, Optional, Type, Union
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """
-import errno
 import patiencediff
 import subprocess
 

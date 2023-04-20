@@ -28,7 +28,7 @@ from ...bzr import transform as bzr_transform
 from ...bzr import xml5
 from ...bzr.workingtree_3 import PreDirStateWorkingTree
 from ...mutabletree import MutableTree
-from ...transport.local import LocalTransport
+from ...transport.local import LocalTransport, file_kind
 from ...workingtree import WorkingTreeFormat
 
 
@@ -205,14 +205,14 @@ class WorkingTree2(PreDirStateWorkingTree):
             for conflicted in self._iter_conflicts():
                 text = True
                 try:
-                    if osutils.file_kind(self.abspath(conflicted)) != "file":
+                    if file_kind(self.abspath(conflicted)) != "file":
                         text = False
                 except _mod_transport.NoSuchFile:
                     text = False
                 if text is True:
                     for suffix in ('.THIS', '.OTHER'):
                         try:
-                            kind = osutils.file_kind(
+                            kind = file_kind(
                                 self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False

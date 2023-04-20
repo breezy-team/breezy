@@ -21,7 +21,6 @@ implements the DAV specification parts used by the webdav plugin.
 """
 
 
-import errno
 import os
 import re
 import shutil  # FIXME: Can't we use breezy.osutils ?

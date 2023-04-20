@@ -117,6 +117,32 @@ pub fn kind_marker(kind: &str) -> &str {
     }
 }
 
+pub fn get_host_name() -> std::io::Result<String> {
+    hostname::get().map(|h| h.to_string_lossy().to_string())
+}
+
+pub fn local_concurrency(use_cache: bool) -> usize {
+    unsafe {
+        static mut _CACHED_LOCAL_CONCURRENCY: Option<usize> = None;
+
+        if use_cache {
+            if let Some(concurrency) = _CACHED_LOCAL_CONCURRENCY {
+                return concurrency;
+            }
+        }
+
+        let concurrency = std::env::var("BRZ_CONCURRENCY")
+            .map(|s| s.parse::<usize>().unwrap_or(1))
+            .unwrap_or_else(|_| num_cpus::get());
+
+        if use_cache {
+            _CACHED_LOCAL_CONCURRENCY = Some(concurrency);
+        }
+
+        concurrency
+    }
+}
+
 pub mod file;
 pub mod iterablefile;
 pub mod path;

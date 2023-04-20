@@ -16,8 +16,6 @@
 
 """Lists of ignore files, etc."""
 
-import errno
-import os
 from io import BytesIO
 from typing import Set
 

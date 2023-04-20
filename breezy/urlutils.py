@@ -59,11 +59,6 @@ unquote_to_bytes = urlparse.unquote_to_bytes
 unquote = urlparse.unquote
 
 
-def escape(relpath: Union[bytes, str], safe: str = '/~') -> str:
-    """Escape relpath to be a valid url."""
-    return quote(relpath, safe=safe)
-
-
 def file_relpath(base: str, path: str) -> str:
     """Compute just the relative sub-portion of a url
 
@@ -78,105 +73,33 @@ def file_relpath(base: str, path: str) -> str:
     return escape(osutils.relpath(base, path))
 
 
-from ._urlutils_rs import (_find_scheme_and_separator, basename, dirname,
-                           is_url, join, joinpath, split,
-                           split_segment_parameters,
+from ._urlutils_rs import (_find_scheme_and_separator, basename, combine_paths,
+                           derive_to_location, dirname, escape, is_url, join,
+                           join_segment_parameters,
+                           join_segment_parameters_raw, joinpath,
+                           local_path_from_url, local_path_to_url,
+                           normalize_url)
+from ._urlutils_rs import posix as posix_rs
+from ._urlutils_rs import (relative_url, split, split_segment_parameters,
                            split_segment_parameters_raw,
-                           strip_segment_parameters, strip_trailing_slash)
+                           strip_segment_parameters, strip_trailing_slash,
+                           unescape)
+from ._urlutils_rs import win32 as win32_rs
+
+_posix_local_path_to_url = posix_rs.local_path_to_url
+_win32_local_path_to_url = win32_rs.local_path_to_url
+_win32_local_path_from_url = win32_rs.local_path_from_url
+_posix_local_path_from_url = posix_rs.local_path_from_url
 
 
-# jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
-def _posix_local_path_from_url(url):
-    """Convert a url like file:///path/to/foo into /path/to/foo"""
-    url = strip_segment_parameters(url)
-    file_localhost_prefix = 'file://localhost/'
-    if url.startswith(file_localhost_prefix):
-        path = url[len(file_localhost_prefix) - 1:]
-    elif not url.startswith('file:///'):
-        raise InvalidURL(
-            url, 'local urls must start with file:/// or file://localhost/')
-    else:
-        path = url[len('file://'):]
-    # We only strip off 2 slashes
-    return unescape(path)
-
-
-def _posix_local_path_to_url(path):
-    """Convert a local path like ./foo into a URL like file:///path/to/foo
-
-    This also handles transforming escaping unicode characters, etc.
-    """
-    # importing directly from posixpath allows us to test this
-    # on non-posix platforms
-    return 'file://' + escape(posixpath.abspath(path))
-
-
-def _win32_local_path_from_url(url):
-    """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
-    if not url.startswith('file://'):
-        raise InvalidURL(url, 'local urls must start with file:///, '
-                         'UNC path urls must start with file://')
-    url = strip_segment_parameters(url)
-    # We strip off all 3 slashes
-    win32_url = url[len('file:'):]
-    # check for UNC path: //HOST/path
-    if not win32_url.startswith('///'):
-        if (win32_url[2] == '/'
-                or win32_url[3] in '|:'):
-            raise InvalidURL(url, 'Win32 UNC path urls'
-                             ' have form file://HOST/path')
-        return unescape(win32_url)
-
-    # allow empty paths so we can serve all roots
-    if win32_url == '///':
-        return '/'
-
-    # usual local path with drive letter
-    if (len(win32_url) < 6
-        or win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
-                                'ABCDEFGHIJKLMNOPQRSTUVWXYZ') or
-        win32_url[4] not in '|:'
-            or win32_url[5] != '/'):
-        raise InvalidURL(url, 'Win32 file urls start with'
-                         ' file:///x:/, where x is a valid drive letter')
-    return win32_url[3].upper() + ':' + unescape(win32_url[5:])
-
-
-def _win32_local_path_to_url(path):
-    """Convert a local path like ./foo into a URL like file:///C:/path/to/foo
-
-    This also handles transforming escaping unicode characters, etc.
-    """
-    # importing directly from ntpath allows us to test this
-    # on non-win32 platform
-    # FIXME: It turns out that on nt, ntpath.abspath uses nt._getfullpathname
-    #       which actually strips trailing space characters.
-    #       The worst part is that on linux ntpath.abspath has different
-    #       semantics, since 'nt' is not an available module.
-    if path == '/':
-        return 'file:///'
-
-    win32_path = osutils._win32_abspath(path)
-    # check for UNC path \\HOST\path
-    if win32_path.startswith('//'):
-        return 'file:' + escape(win32_path)
-    return ('file:///' + str(win32_path[0].upper()) + ':' +
-            escape(win32_path[2:]))
-
-
-local_path_to_url = _posix_local_path_to_url
-local_path_from_url = _posix_local_path_from_url
 MIN_ABS_FILEURL_LENGTH = len('file:///')
 WIN32_MIN_ABS_FILEURL_LENGTH = len('file:///C:/')
 
+local_path_from_url = _posix_local_path_from_url
 if sys.platform == 'win32':
-    local_path_to_url = _win32_local_path_to_url
-    local_path_from_url = _win32_local_path_from_url
-
     MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
 
 
-_url_scheme_re = re.compile('^(?P<scheme>[^:/]{2,}):(//)?(?P<path>.*)$')
 _url_hex_escapes_re = re.compile('(%[0-9a-fA-F]{2})')
 
 
@@ -193,103 +116,6 @@ def _unescape_safe_chars(matchobj):
         return matchobj.group(0).upper()
 
 
-def normalize_url(url):
-    """Make sure that a path string is in fully normalized URL form.
-
-    This handles URLs which have unicode characters, spaces,
-    special characters, etc.
-
-    It has two basic modes of operation, depending on whether the
-    supplied string starts with a url specifier (scheme://) or not.
-    If it does not have a specifier it is considered a local path,
-    and will be converted into a file:/// url. Non-ascii characters
-    will be encoded using utf-8.
-    If it does have a url specifier, it will be treated as a "hybrid"
-    URL. Basically, a URL that should have URL special characters already
-    escaped (like +?&# etc), but may have unicode characters, etc
-    which would not be valid in a real URL.
-
-    Args:
-      url: Either a hybrid URL or a local path
-    Returns: A normalized URL which only includes 7-bit ASCII characters.
-    """
-    scheme_end, path_start = _find_scheme_and_separator(url)
-    if scheme_end is None:
-        return local_path_to_url(url)
-    prefix = url[:path_start]
-    path = url[path_start:]
-    if not isinstance(url, str):
-        for c in url:
-            if c not in _url_safe_characters:
-                raise InvalidURL(url, 'URLs can only contain specific'
-                                 ' safe characters (not %r)' % c)
-        path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
-        return str(prefix + ''.join(path))
-
-    # We have a unicode (hybrid) url
-    path_chars = list(path)
-
-    for i in range(len(path_chars)):
-        if path_chars[i] not in _url_safe_characters:
-            path_chars[i] = ''.join(
-                ['%%%02X' % c for c in bytearray(path_chars[i].encode('utf-8'))])
-    path = ''.join(path_chars)
-    path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
-    return str(prefix + path)
-
-
-def relative_url(base, other):
-    """Return a path to other from base.
-
-    If other is unrelated to base, return other. Else return a relative path.
-    This assumes no symlinks as part of the url.
-    """
-    dummy, base_first_slash = _find_scheme_and_separator(base)
-    if base_first_slash is None:
-        return other
-
-    dummy, other_first_slash = _find_scheme_and_separator(other)
-    if other_first_slash is None:
-        return other
-
-    # this takes care of differing schemes or hosts
-    base_scheme = base[:base_first_slash]
-    other_scheme = other[:other_first_slash]
-    if base_scheme != other_scheme:
-        return other
-    elif sys.platform == 'win32' and base_scheme == 'file://':
-        base_drive = base[base_first_slash + 1:base_first_slash + 3]
-        other_drive = other[other_first_slash + 1:other_first_slash + 3]
-        if base_drive != other_drive:
-            return other
-
-    base_path = base[base_first_slash + 1:]
-    other_path = other[other_first_slash + 1:]
-
-    if base_path.endswith('/'):
-        base_path = base_path[:-1]
-
-    base_sections = base_path.split('/')
-    other_sections = other_path.split('/')
-
-    if base_sections == ['']:
-        base_sections = []
-    if other_sections == ['']:
-        other_sections = []
-
-    output_sections = []
-    for b, o in zip(base_sections, other_sections):
-        if b != o:
-            break
-        output_sections.append(b)
-
-    match_len = len(output_sections)
-    output_sections = ['..' for x in base_sections[match_len:]]
-    output_sections.extend(other_sections[match_len:])
-
-    return "/".join(output_sections) or "."
-
-
 def _win32_extract_drive_letter(url_base, path):
     """On win32 the drive letter needs to be added to the url base."""
     # Strip off the drive letter
@@ -302,80 +128,12 @@ def _win32_extract_drive_letter(url_base, path):
     return url_base, path
 
 
-def join_segment_parameters_raw(base, *subsegments):
-    """Create a new URL by adding subsegments to an existing one.
-
-    This adds the specified subsegments to the last path in the specified
-    base URL. The subsegments should be bytestrings.
-
-    :note: You probably want to use join_segment_parameters instead.
-    """
-    if not subsegments:
-        return base
-    for subsegment in subsegments:
-        if not isinstance(subsegment, str):
-            raise TypeError("Subsegment %r is not a bytestring" % subsegment)
-        if "," in subsegment:
-            raise InvalidURLJoin(", exists in subsegments",
-                                 base, subsegments)
-    return ",".join((base,) + subsegments)
-
-
-def join_segment_parameters(url, parameters):
-    """Create a new URL by adding segment parameters to an existing one.
-
-    The parameters of the last segment in the URL will be updated; if a
-    parameter with the same key already exists it will be overwritten.
-
-    Args:
-      url: A URL, as string
-      parameters: Dictionary of parameters, keys and values as bytestrings
-    """
-    (base, existing_parameters) = split_segment_parameters(url)
-    new_parameters = {}
-    new_parameters.update(existing_parameters)
-    for key, value in parameters.items():
-        if not isinstance(key, str):
-            raise TypeError("parameter key %r is not a str" % key)
-        if not isinstance(value, str):
-            raise TypeError("parameter value %r for %r is not a str" %
-                            (value, key))
-        if "=" in key:
-            raise InvalidURLJoin("= exists in parameter key", url,
-                                 parameters)
-        new_parameters[key] = value
-    return join_segment_parameters_raw(
-        base, *["%s=%s" % item for item in sorted(new_parameters.items())])
-
-
 def _win32_strip_local_trailing_slash(url):
     """Strip slashes after the drive letter"""
     if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
         return url[:-1]
     else:
         return url
-
-
-def unescape(url):
-    """Unescape relpath from url format.
-
-    This returns a Unicode path from a URL
-    """
-    # jam 20060427 URLs are supposed to be ASCII only strings
-    #       If they are passed in as unicode, unquote
-    #       will return a UNICODE string, which actually contains
-    #       utf-8 bytes. So we have to ensure that they are
-    #       plain ASCII strings, or the final .decode will
-    #       try to encode the UNICODE => ASCII, and then decode
-    #       it into utf-8.
-
-    if isinstance(url, str):
-        try:
-            url.encode("ascii")
-        except UnicodeError as e:
-            raise InvalidURL(
-                url, 'URL was not a plain ASCII url: {}'.format(e))
-    return urlparse.unquote(url)
 
 
 # These are characters that if escaped, should stay that way
@@ -397,17 +155,6 @@ _url_dont_escape_characters = set(
     "0123456789"  # Numbers
     "-._~"  # Unreserved characters
 )
-
-# These characters should not be escaped
-_url_safe_characters = set(
-    "abcdefghijklmnopqrstuvwxyz"  # Lowercase alpha
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"  # Uppercase alpha
-    "0123456789"  # Numbers
-    "_.-!~*'()"  # Unreserved characters
-    "/;?:@&=+$,"  # Reserved characters
-    "%#"         # Extra reserved characters
-)
-
 
 def _unescape_segment_for_display(segment, encoding):
     """Unescape a segment for display.
@@ -483,28 +230,6 @@ def unescape_for_display(url, encoding):
     for i in range(1, len(res)):
         res[i] = _unescape_segment_for_display(res[i], encoding)
     return '/'.join(res)
-
-
-def derive_to_location(from_location):
-    """Derive a TO_LOCATION given a FROM_LOCATION.
-
-    The normal case is a FROM_LOCATION of http://foo/bar => bar.
-    The Right Thing for some logical destinations may differ though
-    because no / may be present at all. In that case, the result is
-    the full name without the scheme indicator, e.g. lp:foo-bar => foo-bar.
-    This latter case also applies when a Windows drive
-    is used without a path, e.g. c:foo-bar => foo-bar.
-    If no /, path separator or : is found, the from_location is returned.
-    """
-    from_location = strip_segment_parameters(from_location)
-    if from_location.find("/") >= 0 or from_location.find(os.sep) >= 0:
-        return os.path.basename(from_location.rstrip("/\\"))
-    else:
-        sep = from_location.find(":")
-        if sep > 0:
-            return from_location[sep + 1:]
-        else:
-            return from_location
 
 
 def _is_absolute(url):
@@ -647,49 +372,7 @@ class URL:
 
     @staticmethod
     def _combine_paths(base_path: str, relpath: str) -> str:
-        """Transform a Transport-relative path to a remote absolute path.
-
-        This does not handle substitution of ~ but does handle '..' and '.'
-        components.
-
-        Examples::
-
-            t._combine_paths('/home/sarah', 'project/foo')
-                => '/home/sarah/project/foo'
-            t._combine_paths('/home/sarah', '../../etc')
-                => '/etc'
-            t._combine_paths('/home/sarah', '/etc')
-                => '/etc'
-
-        Args:
-          base_path: base path
-          relpath: relative url string for relative part of remote path.
-        Returns: urlencoded string for final path.
-        """
-        if not isinstance(relpath, str):
-            raise InvalidURL(relpath)
-        relpath = _url_hex_escapes_re.sub(_unescape_safe_chars, relpath)
-        if relpath.startswith('/'):
-            base_parts = []
-        else:
-            base_parts = base_path.split('/')
-        if len(base_parts) > 0 and base_parts[-1] == '':
-            base_parts = base_parts[:-1]
-        for p in relpath.split('/'):
-            if p == '..':
-                if len(base_parts) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                base_parts.pop()
-            elif p == '.':
-                continue  # No-op
-            elif p != '':
-                base_parts.append(p)
-        path = '/'.join(base_parts)
-        if not path.startswith('/'):
-            path = '/' + path
-        return path
+        return combine_paths(base_path, relpath)
 
     def clone(self, offset=None):
         """Return a new URL for a path relative to this URL.

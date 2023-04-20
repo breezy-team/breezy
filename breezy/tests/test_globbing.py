@@ -17,9 +17,40 @@
 import re
 
 from .. import errors, lazy_regex
-from ..globbing import (ExceptionGlobster, Globster, _OrderedGlobster,
-                        normalize_pattern)
+from ..globbing import (ExceptionGlobster, Globster, Replacer,
+                        _OrderedGlobster, normalize_pattern)
 from . import TestCase
+
+
+class TestReplacer(TestCase):
+
+    def test_simple(self):
+        r = Replacer()
+        r.add('a', 'b')
+        self.assertEqual('b', r('a'))
+
+    def test_simple_fn(self):
+        r = Replacer()
+        def sub(r):
+            self.assertEqual(r, 'a')
+            return 'c'
+        r.add('a', sub)
+        self.assertEqual('c', r('a'))
+
+    def test_multiple(self):
+        r = Replacer()
+        r.add('a', 'b')
+        r.add('c', 'd')
+        self.assertEqual('b', r('a'))
+
+    def test_none(self):
+        r = Replacer()
+        self.assertEqual('a', r('a'))
+
+    def test_partial(self):
+        r = Replacer()
+        r.add("a", "b")
+        self.assertEqual("bc", r("ac"))
 
 
 class TestGlobster(TestCase):

@@ -83,8 +83,14 @@ class build_man(Command):
         pass
 
     def run(self):
+        build_ext_cmd = self.get_finalized_command('build_ext')
+        build_lib_dir = build_ext_cmd.build_lib
+        sys.path.insert(0, os.path.abspath(build_lib_dir))
+        import importlib
+        importlib.invalidate_caches()
+        del sys.modules['breezy']
         from tools import generate_docs
-        generate_docs.main(argv=["brz", "man"])
+        generate_docs.main(['generate-docs', 'man'])
 
 
 ########################
@@ -231,7 +237,7 @@ rust_extensions = [
     RustExtension("breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._urlutils_rs", "crates/urlutils-py/Cargo.toml", binding=Binding.PyO3),
-    RustExtension("breezy.bzr._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3),
 ]
 entry_points = {}
 

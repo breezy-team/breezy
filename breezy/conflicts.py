@@ -17,9 +17,7 @@
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
-import errno
 import os
-import re
 
 from .lazy_import import lazy_import
 

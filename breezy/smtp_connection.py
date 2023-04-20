@@ -16,7 +16,6 @@
 
 """A convenience class around smtplib."""
 
-import errno
 import smtplib
 import socket
 from email.utils import getaddresses, parseaddr

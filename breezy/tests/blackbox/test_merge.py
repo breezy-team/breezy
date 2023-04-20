@@ -28,6 +28,7 @@ from breezy import (branch, controldir, merge_directive, osutils, tests,
                     urlutils, workingtree)
 from breezy.bzr import conflicts
 from breezy.tests import scenarios, script
+from breezy.transport.local import file_kind
 
 load_tests = scenarios.load_tests_apply_scenarios
 
@@ -409,9 +410,9 @@ class TestMerge(tests.TestCaseWithTransport):
         self.build_tree(['tree_a/file/'])
         tree_a.commit('changed file to directory')
         self.run_bzr('merge ../tree_a', working_dir='tree_b')
-        self.assertEqual('directory', osutils.file_kind('tree_b/file'))
+        self.assertEqual('directory', file_kind('tree_b/file'))
         tree_b.revert()
-        self.assertEqual('file', osutils.file_kind('tree_b/file'))
+        self.assertEqual('file', file_kind('tree_b/file'))
         self.build_tree_contents([('tree_b/file', b'content_2')])
         tree_b.commit('content change')
         self.run_bzr('merge ../tree_a', retcode=1, working_dir='tree_b')

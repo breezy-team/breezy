@@ -26,7 +26,6 @@ class NetrcCredentialStore(config.CredentialStore):
 
     def __init__(self):
         super().__init__()
-        import errno
         import netrc
         try:
             self._netrc = netrc.netrc()

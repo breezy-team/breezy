@@ -17,7 +17,6 @@
 """Export trees to tarballs, non-controlled directories, zipfiles, etc.
 """
 
-import errno
 import os
 import sys
 import time

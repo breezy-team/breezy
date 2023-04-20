@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import errno
-import os
 import sys
 from io import StringIO
 
@@ -43,9 +41,7 @@ def kidified_rest(rest_file, template_name):
 def safe_open(filename, mode):
     try:
         return open(filename, mode + 'b')
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
         sys.stderr.write('file not found: %s\n' % sys.argv[2])
         sys.exit(3)
 

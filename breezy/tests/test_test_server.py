@@ -69,7 +69,12 @@ class TCPClient:
         return self.sock.sendall(s)
 
     def read(self, bufsize=4096):
-        return self.sock.recv(bufsize)
+        try:
+            return self.sock.recv(bufsize)
+        except socket.error as e:
+            if e.errno == errno.ECONNRESET:
+                return b""
+            raise
 
 
 class TCPConnectionHandler(socketserver.BaseRequestHandler):

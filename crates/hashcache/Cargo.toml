@@ -9,7 +9,7 @@ license = "GPLv2+"
 
 [dependencies]
 libc = "0.2"
-sha1 = "0.6"
+sha1 = "0.10"
 breezy-osutils = { path = "../osutils" }
 bazaar = { path = "../bazaar" }
 tempfile = "3"

@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 use memchr;
 use pyo3::create_exception;
-use pyo3::exceptions::{
-    PyFileExistsError, PyFileNotFoundError, PyIOError, PyPermissionError, PyRuntimeError,
-    PyTypeError, PyValueError,
-};
+use pyo3::exceptions::{PyIOError, PyTypeError, PyValueError};
+use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
@@ -23,6 +21,8 @@ create_exception!(
     UnsupportedTimezoneFormat,
     pyo3::exceptions::PyException
 );
+
+import_exception!(breezy.errors, IllegalPath);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -58,7 +58,7 @@ impl PyChunksToLinesIterator {
                         return Ok(Some(bytes.to_object(py)));
                     }
                 } else {
-                    if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
+                    if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
                         if let Err(e) = next_chunk {
                             return Err(e);
                         }
@@ -74,7 +74,7 @@ impl PyChunksToLinesIterator {
                     }
                 }
             } else {
-                if let Some(next_chunk) = self.chunk_iter.downcast::<PyIterator>(py)?.next() {
+                if let Some(next_chunk) = self.chunk_iter.cast_as::<PyIterator>(py)?.next() {
                     if let Err(e) = next_chunk {
                         return Err(e);
                     }
@@ -82,7 +82,7 @@ impl PyChunksToLinesIterator {
                     let next_chunk = next_chunk_py.extract::<&[u8]>()?;
                     if let Some(newline) = memchr::memchr(b'\n', &next_chunk) {
                         if newline == next_chunk.len() - 1 {
-                            let line = next_chunk_py.downcast::<PyBytes>()?;
+                            let line = next_chunk_py.cast_as::<PyBytes>()?;
                             return Ok(Some(line.to_object(py)));
                         }
                     }
@@ -335,6 +335,16 @@ fn legal_path(path: &PyAny) -> PyResult<bool> {
 }
 
 #[pyfunction]
+fn check_legal_path(path: &PyAny) -> PyResult<()> {
+    let path = extract_path(path)?;
+    if !breezy_osutils::path::legal_path(path.as_path()) {
+        Err(IllegalPath::new_err((path,)))
+    } else {
+        Ok(())
+    }
+}
+
+#[pyfunction]
 fn local_time_offset(t: Option<&PyAny>) -> PyResult<i64> {
     if let Some(t) = t {
         let t = t.extract::<f64>()?;
@@ -474,7 +484,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
         let line_iter: Box<dyn Iterator<Item = std::io::Result<Vec<u8>>> + Send> = Box::new(
             std::iter::from_fn(move || -> Option<std::io::Result<Vec<u8>>> {
                 Python::with_gil(
-                    |py| match py_iter.downcast::<PyIterator>(py).unwrap().next() {
+                    |py| match py_iter.cast_as::<PyIterator>(py).unwrap().next() {
                         None => None,
                         Some(Err(err)) => {
                             PyErr::restore(err.clone_ref(py), py);
@@ -483,7 +493,7 @@ fn IterableFile(py_iterable: PyObject) -> PyResult<PyObject> {
                                 err.to_string(),
                             )))
                         }
-                        Some(Ok(obj)) => match obj.downcast::<PyBytes>() {
+                        Some(Ok(obj)) => match obj.cast_as::<PyBytes>() {
                             Err(err) => {
                                 PyErr::restore(
                                     PyTypeError::new_err("unable to convert to bytes"),
@@ -766,6 +776,47 @@ fn copy_tree(from_path: PathBuf, to_path: PathBuf) -> PyResult<()> {
     Ok(breezy_osutils::file::copy_tree(from_path, to_path)?)
 }
 
+#[pyfunction]
+fn abspath(path: PathBuf) -> PyResult<PathBuf> {
+    breezy_osutils::path::abspath(path.as_path())
+        .map_err(|e| e.into())
+        .map(|p| p.into())
+}
+
+#[pyfunction(name = "abspath")]
+fn posix_abspath(path: PathBuf) -> PyResult<PathBuf> {
+    breezy_osutils::path::posix::abspath(path.as_path())
+        .map_err(|e| e.into())
+        .map(|p| p.into())
+}
+
+#[pyfunction(name = "abspath")]
+fn win32_abspath(path: PathBuf) -> PyResult<PathBuf> {
+    breezy_osutils::path::win32::abspath(path.as_path())
+        .map_err(|e| e.into())
+        .map(|p| p.into())
+}
+
+#[pyfunction]
+fn kind_from_mode(mode: u32) -> &'static str {
+    breezy_osutils::file::kind_from_mode(mode)
+}
+
+#[pyfunction]
+fn delete_any(path: PathBuf) -> PyResult<()> {
+    Ok(breezy_osutils::file::delete_any(path)?)
+}
+
+#[pyfunction]
+fn get_host_name() -> PyResult<String> {
+    Ok(breezy_osutils::get_host_name()?)
+}
+
+#[pyfunction]
+fn local_concurrency(use_cache: Option<bool>) -> usize {
+    breezy_osutils::local_concurrency(use_cache.unwrap_or(true))
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -788,6 +839,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(available_backup_name))?;
     m.add_wrapped(wrap_pyfunction!(find_executable_on_path))?;
     m.add_wrapped(wrap_pyfunction!(legal_path))?;
+    m.add_wrapped(wrap_pyfunction!(check_legal_path))?;
     m.add_wrapped(wrap_pyfunction!(local_time_offset))?;
     m.add_wrapped(wrap_pyfunction!(format_local_date))?;
     m.add_wrapped(wrap_pyfunction!(rand_chars))?;
@@ -817,8 +869,19 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(read_mtab))?;
     m.add_wrapped(wrap_pyfunction!(get_fs_type))?;
     m.add_wrapped(wrap_pyfunction!(copy_tree))?;
+    m.add_wrapped(wrap_pyfunction!(abspath))?;
+    let win32m = PyModule::new(py, "win32")?;
+    win32m.add_wrapped(wrap_pyfunction!(win32_abspath))?;
+    m.add_submodule(win32m)?;
+    let posixm = PyModule::new(py, "posix")?;
+    posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;
+    m.add_submodule(posixm)?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
+    m.add_wrapped(wrap_pyfunction!(kind_from_mode))?;
+    m.add_wrapped(wrap_pyfunction!(delete_any))?;
+    m.add_wrapped(wrap_pyfunction!(get_host_name))?;
+    m.add_wrapped(wrap_pyfunction!(local_concurrency))?;
     m.add(
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),

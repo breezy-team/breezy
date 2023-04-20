@@ -16,8 +16,6 @@
 
 """Import upstream source into a branch"""
 
-import errno
-import os
 import re
 import stat
 import tarfile
@@ -28,11 +26,11 @@ from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
 from .errors import BzrError, CommandError, NotBranchError
-from .osutils import (basename, file_iterator, file_kind, isdir, pathjoin,
-                      splitpath)
+from .osutils import basename, file_iterator, isdir, pathjoin, splitpath
 from .trace import warning
 from .transform import resolve_conflicts
 from .transport import NoSuchFile, get_transport
+from .transport.local import file_kind
 from .workingtree import WorkingTree
 
 

@@ -38,6 +38,7 @@ from ..transform import (ROOT_PARENT, FinalPaths, ImmortalLimbo,
                          TreeTransform, _FileMover, _reparent_children,
                          _TransformResults, joinpath, new_by_entry,
                          resolve_conflicts, unique_add)
+from ..transport.local import file_kind
 from ..tree import find_previous_path
 from . import inventory, inventorytree
 from .conflicts import Conflict
@@ -1429,7 +1430,7 @@ class InventoryTreeTransform(DiskTreeTransform):
         if path is None:
             return None
         try:
-            return osutils.file_kind(self._tree.abspath(path))
+            return file_kind(self._tree.abspath(path))
         except _mod_transport.NoSuchFile:
             return None
 
@@ -2333,7 +2334,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     precomputed_delta.append((None, tree_path, file_id, entry))
                 if tree_path in existing_files:
                     target_path = wt.abspath(tree_path)
-                    kind = osutils.file_kind(target_path)
+                    kind = file_kind(target_path)
                     if kind == "directory":
                         try:
                             controldir.ControlDir.open(target_path)
