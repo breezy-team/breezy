@@ -213,4 +213,11 @@ impl Transport for PyTransport {
             Ok(self.0.call_method0(py, "get_segment_parameters")?.extract::<HashMap<String, String>>(py)?)
         })
     }
+
+    fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "create_prefix", (permissions.map(|p| p.mode()),))?;
+            Ok(())
+        })
+    }
 }

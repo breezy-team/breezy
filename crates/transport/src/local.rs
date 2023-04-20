@@ -6,6 +6,7 @@ use crate::{LocalTransport,Transport,Stat,UrlFragment,Error,Result};
 use atomicwrites::{AtomicFile, AllowOverwrite};
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
+use path_clean::{clean, PathClean};
 
 pub struct FileSystemTransport {
     base: Url,
@@ -15,7 +16,7 @@ pub struct FileSystemTransport {
 impl LocalTransport for FileSystemTransport {
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
         let path = self.path.join(relpath);
-        Ok(path)
+        Ok(path.clean())
     }
 }
 
@@ -56,7 +57,7 @@ impl Transport for FileSystemTransport {
     }
 
     fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read>> {
-        let path = self.path.join(relpath);
+        let path = self.local_abspath(relpath)?;
         let f = std::fs::File::open(path).map_err(Error::from)?;
         Ok(Box::new(f))
     }
@@ -94,7 +95,7 @@ impl Transport for FileSystemTransport {
     }
 
     fn put_file(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>) -> Result<()> {
-        let path = self.path.join(relpath);
+        let path = self.local_abspath(relpath)?;
         let af = AtomicFile::new(path, AllowOverwrite);
         af.write(|outf| {
             if let Some(permissions) = permissions {
@@ -116,8 +117,8 @@ impl Transport for FileSystemTransport {
     }
 
     fn rename(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
-        let abs_from = self.path.join(rel_from);
-        let abs_to = self.path.join(rel_to);
+        let abs_from = self.local_abspath(rel_from)?;
+        let abs_to = self.local_abspath(rel_to)?;
 
         std::fs::rename(abs_from, abs_to).map_err(Error::from)
     }

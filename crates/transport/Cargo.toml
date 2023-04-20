@@ -18,6 +18,7 @@ atomicwrites = "0.4"
 pyo3 = { version = ">= 0.17, <0.19", optional = true }
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file", optional = true }
 breezy-urlutils = { path = "../urlutils" }
+path-clean = "1"
 
 [features]
 default = ["pyo3"]

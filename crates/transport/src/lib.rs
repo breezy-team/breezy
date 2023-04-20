@@ -79,7 +79,7 @@ impl From<Metadata> for Stat {
     }
 }
 
-pub trait Transport: 'static + Send {
+pub trait Transport: 'static + Send + Sync {
     /// Return a URL for self that can be given to an external process.
     ///
     /// There is no guarantee that the URL can be accessed from a different
@@ -132,6 +132,39 @@ pub trait Transport: 'static + Send {
         } else {
             Ok(true)
         }
+    }
+
+    fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
+        let mut cur_transport = self.clone(None)?;
+        let mut needed = Vec::new();
+        loop {
+            let new_transport = Transport::clone(cur_transport.as_ref(), Some(".."))?;
+            if new_transport.base() == cur_transport.base() {
+                panic!("Failed to create path prefix for {}", cur_transport.base());
+            }
+            if let Err(err) = new_transport.mkdir(".", permissions.clone()) {
+                match err {
+                    Error::NoSuchFile => {
+                        needed.push(cur_transport);
+                        cur_transport = new_transport;
+                    }
+                    Error::FileExists => {
+                        break;
+                    }
+                    _ => {
+                        return Err(err);
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+
+        while let Some(transport) = needed.pop() {
+            transport.ensure_base(permissions.clone())?;
+        }
+
+        Ok(())
     }
 
     fn has(&self, relpath: &UrlFragment) -> Result<bool>;
