@@ -2,7 +2,9 @@ use pyo3::prelude::*;
 use pyo3::exceptions::{PyValueError, PyException};
 use pyo3::types::{PyBytes, PyList};
 use url::Url;
-use breezy_transport::Result;
+use std::fs::Permissions;
+use std::os::unix::fs::PermissionsExt;
+use breezy_transport::{Result, UrlFragment};
 use pyo3_file::PyFileLikeObject;
 use pyo3::create_exception;
 
@@ -41,6 +43,14 @@ fn map_transport_err_to_py_err(e: breezy_transport::Error) -> PyErr {
     }
 }
 
+#[cfg(unix)]
+fn perms_from_py_object(obj: PyObject) -> Permissions {
+    Python::with_gil(|py| {
+        let mode = obj.extract::<u32>(py).unwrap();
+        Permissions::from_mode(mode)
+    })
+}
+
 #[pymethods]
 impl Transport {
     fn external_url(&self) -> PyResult<String> {
@@ -55,6 +65,19 @@ impl Transport {
     #[getter]
     fn base(&self) -> PyResult<String> {
         Ok(self.transport.base().to_string())
+    }
+
+    fn has(&self, path: &str) -> PyResult<bool> {
+        Ok(self.transport.has(path).map_err(map_transport_err_to_py_err)?)
+    }
+
+    fn mkdir(&self, path: &str, perms: Option<PyObject>) -> PyResult<()> {
+        self.transport.mkdir(path, perms.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?;
+        Ok(())
+    }
+
+    fn ensure_base(&self, perms: Option<PyObject>) -> PyResult<bool> {
+        Ok(self.transport.ensure_base(perms.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)?)
     }
 }
 
@@ -100,6 +123,27 @@ impl breezy_transport::Transport for PyTransport {
             let obj = self.obj.getattr(py, "base").unwrap();
             let s = obj.extract::<String>(py).unwrap();
             Url::parse(&s).unwrap()
+        })
+    }
+
+    fn has(&self, path: &UrlFragment) -> Result<bool> {
+        Python::with_gil(|py| {
+            let obj = self.obj.call_method1(py, "has", (path,)).unwrap();
+            Ok(obj.extract::<bool>(py).unwrap())
+        })
+    }
+
+    fn mkdir(&self, relpath: &UrlFragment, perms: Option<Permissions>) -> Result<()> {
+        Python::with_gil(|py| {
+            let obj = self.obj.call_method1(py, "mkdir", (relpath, perms.map(|p| p.mode()))).unwrap();
+            Ok(())
+        })
+    }
+
+    fn ensure_base(&self, perms: Option<Permissions>) -> Result<bool> {
+        Python::with_gil(|py| {
+            let obj = self.obj.call_method1(py, "ensure_base", (perms.map(|p| p.mode()), )).unwrap();
+            Ok(obj.extract::<bool>(py).unwrap())
         })
     }
 }

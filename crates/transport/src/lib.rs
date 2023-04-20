@@ -1,4 +1,5 @@
 use url::Url;
+use std::fs::Permissions;
 
 pub enum Error {
     InProcessTransport,
@@ -77,6 +78,33 @@ pub trait Transport: 'static + Send {
     fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn std::io::Read>>;
 
     fn base(&self) -> Url;
+
+    /// Ensure that the directory this transport references exists.
+    ///
+    /// This will create a directory if it doesn't exist.
+    /// Returns: True if the directory was created, False otherwise.
+    fn ensure_base(&self, permissions: Option<Permissions>) -> Result<bool> {
+        if let Err(err) = self.mkdir(".", permissions) {
+            match err {
+                Error::FileExists => Ok(false),
+                Error::PermissionDenied => Ok(false),
+                Error::TransportNotPossible => {
+                    if self.has(".")? {
+                        Ok(false)
+                    } else {
+                        Err(err)
+                    }
+                }
+                _ => Err(err),
+            }
+        } else {
+            Ok(true)
+        }
+    }
+
+    fn has(&self, relpath: &UrlFragment) -> Result<bool>;
+
+    fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()>;
 }
 
 pub mod local;

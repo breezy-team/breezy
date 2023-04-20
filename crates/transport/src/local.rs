@@ -1,4 +1,5 @@
 use std::path::{PathBuf,Path};
+use std::fs::Permissions;
 use url::Url;
 use crate::{Transport,UrlFragment,Error,Result};
 
@@ -55,4 +56,20 @@ impl Transport for LocalTransport {
         let f = std::fs::File::open(path).map_err(Error::from)?;
         Ok(Box::new(f))
     }
+
+    fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()> {
+        let path = self.local_abspath(relpath)?;
+        std::fs::create_dir(&path).map_err(Error::from);
+        if let Some(permissions) = permissions {
+            std::fs::set_permissions(&path, permissions).map_err(Error::from).map_err(Error::from);
+        }
+        Ok(())
+    }
+
+    fn has(&self, path: &UrlFragment) -> Result<bool> {
+        let path = self.local_abspath(path)?;
+
+        Ok(path.exists())
+    }
+
 }
