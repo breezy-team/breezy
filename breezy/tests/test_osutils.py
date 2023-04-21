@@ -18,7 +18,6 @@
 
 import errno
 import os
-import select
 import socket
 import sys
 import tempfile
@@ -802,6 +801,9 @@ class TestWin32Funcs(tests.TestCase):
                          osutils._win32_pathjoin('C:\\path\\to\\', '\\foo'))
 
     def test_normpath(self):
+        if sys.platform != 'win32':
+            raise tests.TestNotApplicable(
+                "This test is only valid on win32")
         self.assertEqual('path/to/foo',
                          osutils._win32_normpath(r'path\\from\..\to\.\foo'))
         self.assertEqual('path/to/foo',
@@ -868,16 +870,16 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
         try:
             osutils._win32_rename('b', 'a')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
         self.assertFileEqual(b'foo\n', 'a')
 
     def test_rename_missing_dir(self):
         os.mkdir('a')
         try:
             osutils._win32_rename('b', 'a')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
 
     def test_rename_current_dir(self):
         os.mkdir('a')
@@ -888,8 +890,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
 
     def test_splitpath(self):
         def check(expected, path):

@@ -20,7 +20,6 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-import contextlib
 import errno
 import itertools
 import os

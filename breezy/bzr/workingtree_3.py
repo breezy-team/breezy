@@ -18,8 +18,6 @@
 
 """
 
-import errno
-
 from .. import errors, osutils
 from .. import revision as _mod_revision
 from .. import trace

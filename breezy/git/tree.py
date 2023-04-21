@@ -17,7 +17,6 @@
 
 """Git Trees."""
 
-import errno
 import os
 import posixpath
 import stat
@@ -1574,11 +1573,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
             if not after:
                 try:
                     self._rename_one(from_rel, to_rel)
-                except OSError as e:
-                    if e.errno == errno.ENOENT:
-                        raise errors.BzrMoveFailedError(
-                            from_rel, to_rel, _mod_transport.NoSuchFile(to_rel))
-                    raise
+                except FileNotFoundError:
+                    raise errors.BzrMoveFailedError(
+                        from_rel, to_rel, _mod_transport.NoSuchFile(to_rel))
             if kind != 'directory':
                 (index, from_index_path) = self._lookup_index(from_path)
                 try:
@@ -1607,12 +1604,9 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         """See Tree.path_content_summary."""
         try:
             stat_result = self._lstat(path)
-        except OSError as e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                # no file.
-                return ('missing', None, None, None)
-            # propagate other errors
-            raise
+        except FileNotFoundError:
+            # no file.
+            return ('missing', None, None, None)
         kind = mode_kind(stat_result.st_mode)
         if kind == 'file':
             size = stat_result.st_size
@@ -1720,12 +1714,9 @@ def snapshot_workingtree(target, want_unversioned=False):
     for path, index_entry in target._recurse_index_entries():
         try:
             live_entry = target._live_entry(path)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                # Entry was removed; keep it listed, but mark it as gone.
-                blobs[path] = (ZERO_SHA, 0)
-            else:
-                raise
+        except FileNotFoundError:
+            # Entry was removed; keep it listed, but mark it as gone.
+            blobs[path] = (ZERO_SHA, 0)
         else:
             if live_entry is None:
                 # Entry was turned into a directory.

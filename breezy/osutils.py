@@ -78,12 +78,11 @@ if lexists is None:
             stat = getattr(os, 'lstat', os.stat)
             stat(f)
             return True
+        except FileNotFoundError:
+            return False
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                return False
-            else:
-                raise errors.BzrError(
-                    gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
+            raise errors.BzrError(
+                gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -117,12 +116,13 @@ def fancy_rename(old, new, rename_func, unlink_func):
         rename_func(new, tmp_name)
     except NoSuchFile:
         pass
-    except OSError as e:
+    except (FileNotFoundError, NotADirectoryError):
+        pass
+    except OSError:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
         # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
-        if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
-            raise
+        raise
     except Exception as e:
         if (getattr(e, 'errno', None) is None
                 or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
@@ -136,12 +136,11 @@ def fancy_rename(old, new, rename_func, unlink_func):
         # not be set.
         rename_func(old, new)
         success = True
-    except OSError as e:
+    except FileNotFoundError as e:
         # source and target may be aliases of each other (e.g. on a
         # case-insensitive filesystem), so we may have accidentally renamed
         # source by when we tried to rename target
-        if (file_existed and e.errno in (None, errno.ENOENT)
-                and old.lower() == new.lower()):
+        if file_existed and old.lower() == new.lower():
             # source and target are the same file on a case-insensitive
             # filesystem, so we don't generate an exception
             pass
@@ -157,19 +156,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 rename_func(tmp_name, new)
 
 
-def _posix_normpath(path):
-    path = posixpath.normpath(path)
-    # Bug 861008: posixpath.normpath() returns a path normalized according to
-    # the POSIX standard, which stipulates (for compatibility reasons) that two
-    # leading slashes must not be simplified to one, and only if there are 3 or
-    # more should they be simplified as one. So we treat the leading 2 slashes
-    # as a special case here by simply removing the first slash, as we consider
-    # that breaking POSIX compatibility for this obscure feature is acceptable.
-    # This is not a paranoid precaution, as we notably get paths like this when
-    # the repo is hosted at the root of the filesystem, i.e. in "/".
-    if path.startswith('//'):
-        path = path[1:]
-    return path
+_posix_normpath = _osutils_rs.posix.normpath
+_win32_normpath = _osutils_rs.win32.normpath
 
 
 def _win32_fixdrive(path):
@@ -200,10 +188,6 @@ def _win32_realpath(path):
 
 def _win32_pathjoin(*args):
     return _win32_fix_separators(ntpath.join(*args))
-
-
-def _win32_normpath(path):
-    return _win32_fixdrive(_win32_fix_separators(ntpath.normpath(path)))
 
 
 def _win32_getcwd():
@@ -261,7 +245,7 @@ rename = _rename_wrap_exception(os.rename)
 abspath = _osutils_rs.abspath
 realpath = os.path.realpath
 pathjoin = os.path.join
-normpath = _posix_normpath
+normpath = _osutils_rs.normpath
 _get_home_dir = partial(os.path.expanduser, '~')
 
 def getuser_unicode():
@@ -283,9 +267,6 @@ def wrap_stat(st):
     return st
 
 
-MIN_ABS_PATHLENGTH = 1
-
-
 if sys.platform == 'win32':
     realpath = _win32_realpath
     pathjoin = _win32_pathjoin
@@ -300,8 +281,6 @@ if sys.platform == 'win32':
         lstat = _walkdirs_win32.lstat
         fstat = _walkdirs_win32.fstat
         wrap_stat = _walkdirs_win32.wrap_stat
-
-    MIN_ABS_PATHLENGTH = 3
 
     def _win32_delete_readonly(function, path, excinfo):
         """Error handler for shutil.rmtree function [for win32]
@@ -619,16 +598,13 @@ def delete_any(path):
             os.unlink(path)
     try:
         _delete_file_or_dir(path)
-    except OSError as e:
-        if e.errno in (errno.EPERM, errno.EACCES):
-            # make writable and try again
-            try:
-                make_writable(path)
-            except OSError:
-                pass
-            _delete_file_or_dir(path)
-        else:
-            raise
+    except PermissionError:
+        # make writable and try again
+        try:
+            make_writable(path)
+        except PermissionError:
+            pass
+        _delete_file_or_dir(path)
 
 
 def readlink(abspath):
@@ -645,71 +621,11 @@ def readlink(abspath):
     return target
 
 
-def contains_whitespace(s):
-    """True if there are any whitespace characters in s."""
-    # string.whitespace can include '\xa0' in certain locales, because it is
-    # considered "non-breaking-space" as part of ISO-8859-1. But it
-    # 1) Isn't a breaking whitespace
-    # 2) Isn't one of ' \t\r\n' which are characters we sometimes use as
-    #    separators
-    # 3) '\xa0' isn't unicode safe since it is >128.
-
-    if isinstance(s, str):
-        ws = ' \t\n\r\v\f'
-    else:
-        ws = (b' ', b'\t', b'\n', b'\r', b'\v', b'\f')
-    for ch in ws:
-        if ch in s:
-            return True
-    else:
-        return False
+contains_whitespace = _osutils_rs.contains_whitespace
+contains_linebreaks = _osutils_rs.contains_linebreaks
 
 
-def contains_linebreaks(s):
-    """True if there is any vertical whitespace in s."""
-    for ch in '\f\n\r':
-        if ch in s:
-            return True
-    else:
-        return False
-
-
-def relpath(base, path):
-    """Return path relative to base, or raise PathNotChild exception.
-
-    The path may be either an absolute path or a path relative to the
-    current working directory.
-
-    os.path.commonprefix (python2.4) has a bad bug that it works just
-    on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
-    avoids that problem.
-
-    NOTE: `base` should not have a trailing slash otherwise you'll get
-    PathNotChild exceptions regardless of `path`.
-    """
-
-    if len(base) < MIN_ABS_PATHLENGTH:
-        # must have space for e.g. a drive letter
-        raise ValueError(gettext('%r is too short to calculate a relative path')
-                         % (base,))
-
-    rp = abspath(path)
-
-    s = []
-    head = rp
-    while True:
-        if len(head) <= len(base) and head != base:
-            raise errors.PathNotChild(rp, base)
-        if head == base:
-            break
-        head, tail = split(head)
-        if tail:
-            s.append(tail)
-
-    if s:
-        return pathjoin(*reversed(s))
-    else:
-        return ''
+relpath = _osutils_rs.relpath
 
 
 def _cicp_canonical_relpath(base, path):
@@ -1404,6 +1320,9 @@ def resource_string(package, resource_name):
 
 
 file_kind_from_stat_mode = _osutils_rs.kind_from_mode
+
+
+MIN_ABS_PATHLENGTH = _osutils_rs.MIN_ABS_PATHLENGTH
 
 
 if sys.platform == "win32":

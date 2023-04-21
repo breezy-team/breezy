@@ -155,6 +155,35 @@ pub fn pumpfile(
     })
 }
 
+pub fn contains_whitespace(s: &str) -> bool {
+    let ws = " \t\n\r\u{000B}\u{000C}";
+    for ch in ws.chars() {
+        if s.contains(ch) {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn contains_whitespace_bytes(s: &[u8]) -> bool {
+    let ws = b" \t\n\r\x0C\x0B";
+    for ch in ws {
+        if s.contains(ch) {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn contains_linebreaks(s: &str) -> bool {
+    for ch in "\n\r\x0C".chars() {
+        if s.contains(ch) {
+            return true;
+        }
+    }
+    false
+}
+
 pub mod file;
 pub mod iterablefile;
 pub mod path;

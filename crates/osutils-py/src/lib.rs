@@ -23,6 +23,7 @@ create_exception!(
 );
 
 import_exception!(breezy.errors, IllegalPath);
+import_exception!(breezy.errors, PathNotChild);
 
 #[pyclass]
 struct PyChunksToLinesIterator {
@@ -829,6 +830,45 @@ fn pumpfile(from_file: PyObject, to_file: PyObject, read_size: Option<u64>) -> P
     )?)
 }
 
+#[pyfunction]
+fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
+    if let Ok(s) = text.extract::<&str>(py) {
+        return Ok(breezy_osutils::contains_whitespace(s));
+    } else if let Ok(s) = text.extract::<&[u8]>(py) {
+        return Ok(breezy_osutils::contains_whitespace_bytes(s));
+    } else {
+        return Err(PyTypeError::new_err("text must be str or bytes"));
+    }
+}
+
+#[pyfunction]
+fn relpath(path: PathBuf, start: PathBuf) -> PyResult<PathBuf> {
+    match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
+        None => Err(PathNotChild::new_err((start, path))),
+        Some(p) => Ok(p.into()),
+    }
+}
+
+#[pyfunction(name = "normpath")]
+fn posix_normpath(path: PathBuf) -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::posix::normpath(path.as_path()).into())
+}
+
+#[pyfunction(name = "normpath")]
+fn win32_normpath(path: PathBuf) -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::win32::normpath(path.as_path()).into())
+}
+
+#[pyfunction]
+fn contains_linebreaks(text: &str) -> bool {
+    breezy_osutils::contains_linebreaks(text)
+}
+
+#[pyfunction]
+fn normpath(path: PathBuf) -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::normpath(path.as_path()).into())
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -884,9 +924,11 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(abspath))?;
     let win32m = PyModule::new(py, "win32")?;
     win32m.add_wrapped(wrap_pyfunction!(win32_abspath))?;
+    win32m.add_wrapped(wrap_pyfunction!(win32_normpath))?;
     m.add_submodule(win32m)?;
     let posixm = PyModule::new(py, "posix")?;
     posixm.add_wrapped(wrap_pyfunction!(posix_abspath))?;
+    posixm.add_wrapped(wrap_pyfunction!(posix_normpath))?;
     m.add_submodule(posixm)?;
     #[cfg(unix)]
     m.add_wrapped(wrap_pyfunction!(get_umask))?;
@@ -895,6 +937,14 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
     m.add_wrapped(wrap_pyfunction!(local_concurrency))?;
     m.add_wrapped(wrap_pyfunction!(pumpfile))?;
+    m.add_wrapped(wrap_pyfunction!(contains_whitespace))?;
+    m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
+    m.add_wrapped(wrap_pyfunction!(relpath))?;
+    m.add_wrapped(wrap_pyfunction!(normpath))?;
+    m.add(
+        "MIN_ABS_PATHLENGTH",
+        breezy_osutils::path::MIN_ABS_PATHLENGTH,
+    )?;
     m.add(
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
