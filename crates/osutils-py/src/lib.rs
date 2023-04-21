@@ -11,7 +11,7 @@ use pyo3_file::PyFileLikeObject;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::Permissions;
-use std::io::{BufRead, Read};
+use std::io::{BufRead, Read, Write};
 use std::iter::Iterator;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
@@ -869,6 +869,16 @@ fn normpath(path: PathBuf) -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::normpath(path.as_path()).into())
 }
 
+#[pyfunction]
+fn pump_string_file(data: &[u8], file: PyObject, segment_size: Option<usize>) -> PyResult<()> {
+    let mut file = PyFileLikeObject::with_requirements(file, false, true, false)?;
+    Ok(breezy_osutils::pump_string_file(
+        data,
+        &mut file,
+        segment_size,
+    )?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -941,6 +951,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add_wrapped(wrap_pyfunction!(relpath))?;
     m.add_wrapped(wrap_pyfunction!(normpath))?;
+    m.add_wrapped(wrap_pyfunction!(pump_string_file))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,

@@ -682,6 +682,7 @@ class SFTPTransport(ConnectedTransport):
         handle = None
         try:
             handle = self._get_sftp().file(abspath, mode='wb')
+            _patch_write(handle)
             handle.set_pipelined(True)
         except (paramiko.SSHException, OSError) as e:
             self._translate_io_exception(e, abspath,

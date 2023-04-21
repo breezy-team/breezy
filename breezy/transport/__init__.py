@@ -302,6 +302,7 @@ class FileFileStream(FileStream):
 
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)
+        return len(bytes)
 
 
 class AppendBasedFileStream(FileStream):
@@ -312,6 +313,7 @@ class AppendBasedFileStream(FileStream):
 
     def write(self, bytes):
         self.transport.append_bytes(self.relpath, bytes)
+        return len(bytes)
 
 
 class TransportHooks(hooks.Hooks):
