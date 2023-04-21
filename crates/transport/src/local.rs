@@ -187,6 +187,36 @@ impl Transport for FileSystemTransport {
         }))
     }
 
+    fn append_file(&self, relpath: &UrlFragment, f: &mut dyn std::io::Read, permissions: Option<Permissions>) -> Result<()> {
+        let path = self.path.join(relpath);
+        let mut file = std::fs::OpenOptions::new().append(true).open(path).map_err(Error::from)?;
+        if let Some(permissions) = permissions {
+            file.set_permissions(permissions)?;
+        }
+        std::io::copy(f, &mut file).map_err(Error::from)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    fn readlink(&self, relpath: &UrlFragment) -> Result<String> {
+        use std::os::unix::ffi::OsStrExt;
+        let path = self.path.join(relpath);
+        let target = std::fs::read_link(path).map_err(Error::from)?;
+        Ok(breezy_urlutils::escape(target.as_os_str().as_bytes(), None))
+    }
+
+    fn hardlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
+        let from = self.path.join(rel_from);
+        let to = self.path.join(rel_to);
+        std::fs::hard_link(from, to).map_err(Error::from)
+    }
+
+    #[cfg(target_family = "unix")]
+    fn symlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
+        let from  = self.path.join(rel_from);
+        let to = self.path.join(rel_to);
+        std::os::unix::fs::symlink(from, to).map_err(Error::from)
+    }
 }
 
 impl ListableTransport for FileSystemTransport {

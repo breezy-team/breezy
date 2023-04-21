@@ -355,6 +355,49 @@ impl Transport for PyTransport {
             .into()
         }))
     }
+
+
+    fn append_bytes(&self, relpath: &UrlFragment, bytes: &[u8], permissions: Option<Permissions>) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "append_bytes", (relpath, bytes, permissions.map(|p| p.mode())))?;
+            Ok(())
+        })
+    }
+
+    fn append_file(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>) -> Result<()> {
+        let f = py_read(f)?;
+        Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "append_file", (relpath, f, permissions.map(|p| p.mode())))?;
+            Ok(())
+        })
+    }
+
+    fn readlink(&self, relpath: &UrlFragment) -> Result<String> {
+        Python::with_gil(|py| {
+            Ok(self
+                .0
+                .call_method1(py, "readlink", (relpath,))?
+                .extract::<String>(py)?)
+        })
+    }
+
+    fn hardlink(&self, relpath: &UrlFragment, new_relpath: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "hardlink", (relpath, new_relpath))?;
+            Ok(())
+        })
+    }
+
+    fn symlink(&self, relpath: &UrlFragment, new_relpath: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "symlink", (relpath, new_relpath))?;
+            Ok(())
+        })
+    }
 }
 
 impl LocalTransport for PyTransport {

@@ -126,13 +126,12 @@ impl Transport {
     }
 
     fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
-        let transport = &self.0 as &dyn Any;
-        let local_transport = transport
-            .downcast_ref::<&dyn breezy_transport::LocalTransport>()
-            .ok_or_else(|| NotLocalUrl::new_err((self.0.base().to_string(),)))?;
-        local_transport
-            .local_abspath(path)
-            .map_err(map_transport_err_to_py_err)
+        let any = &self.0 as &dyn Any;
+        if let Some(local_transport) = any.downcast_ref::<&dyn breezy_transport::LocalTransport>() {
+            Ok(local_transport.local_abspath(path).map_err(map_transport_err_to_py_err)?)
+        } else {
+            Err(NotLocalUrl::new_err((self.0.base().to_string(),)))
+        }
     }
 
     fn get(&self, py: Python, path: &str) -> PyResult<PyObject> {
@@ -336,8 +335,7 @@ impl Transport {
     fn listable(&self) -> bool {
         let transport = &self.0 as &dyn Any;
         transport
-            .downcast_ref::<&dyn breezy_transport::ListableTransport>()
-            .is_some()
+            .is::<&dyn breezy_transport::ListableTransport>()
     }
 
     fn list_dir(&self, path: &str) -> PyResult<Vec<String>> {
@@ -349,6 +347,15 @@ impl Transport {
         listable_transport.list_dir(path)
             .map(|r| r.map_err(map_transport_err_to_py_err))
             .collect::<PyResult<Vec<_>>>()
+    }
+
+    fn append_bytes(&self, path: &str, bytes: &[u8], mode: Option<PyObject>) -> PyResult<()> {
+        self.0.append_bytes(path, bytes, mode.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)
+    }
+
+    fn append_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<()> {
+        let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
+        self.0.append_file(path, &mut file, mode.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)
     }
 }
 
