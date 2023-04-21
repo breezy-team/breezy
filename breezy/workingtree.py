@@ -30,9 +30,7 @@ WorkingTree.open(dir).
 """
 
 import contextlib
-import errno
 import os
-import sys
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
@@ -367,10 +365,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             file_obj = open(abspath, 'rb')
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                raise NoSuchFile(path)
-            raise
+        except FileNotFoundError:
+            raise NoSuchFile(path)
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
@@ -464,11 +460,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         # canonical size
         try:
             return os.path.getsize(self.abspath(path))
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
-            else:
-                return None
+        except FileNotFoundError:
+            return None
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds."""
@@ -478,9 +471,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
                         kinds[pos] = file_kind(fullpath)
-                    except OSError as e:
-                        if e.errno == errno.ENOENT:
-                            raise NoSuchFile(fullpath)
+                    except FileNotFoundError:
+                        raise NoSuchFile(fullpath)
 
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
@@ -693,10 +685,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             return osutils.readlink(abspath)
-        except OSError as e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                raise NoSuchFile(path)
-            raise
+        except FileNotFoundError:
+            raise NoSuchFile(path)
 
     def subsume(self, other_tree):
         raise NotImplementedError(self.subsume)
@@ -897,13 +887,10 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         abspath = self.abspath(path)
         try:
             stat_value = os.lstat(abspath)
-        except OSError as e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                stat_value = None
-                kind = None
-                executable = False
-            else:
-                raise
+        except FileNotFoundError:
+            stat_value = None
+            kind = None
+            executable = False
         else:
             mode = stat_value.st_mode
             kind = osutils.file_kind_from_stat_mode(mode)

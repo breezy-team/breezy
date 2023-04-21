@@ -3901,13 +3901,9 @@ class ProcessEntryPython:
             root_abspath = self.tree.abspath(current_root_unicode)
             try:
                 root_stat = os.lstat(root_abspath)
-            except OSError as e:
-                if e.errno == errno.ENOENT:
-                    # the path does not exist: let _process_entry know that.
-                    root_dir_info = None
-                else:
-                    # some other random error: hand it up.
-                    raise
+            except FileNotFoundError:
+                # the path does not exist: let _process_entry know that.
+                root_dir_info = None
             else:
                 root_dir_info = (b'', current_root,
                                  osutils.file_kind_from_stat_mode(
@@ -3958,23 +3954,8 @@ class ProcessEntryPython:
                     root_abspath, prefix=current_root)
                 try:
                     current_dir_info = next(dir_iterator)
-                except OSError as e:
-                    # on win32, python2.4 has e.errno == ERROR_DIRECTORY, but
-                    # python 2.5 has e.errno == EINVAL,
-                    #            and e.winerror == ERROR_DIRECTORY
-                    e_winerror = getattr(e, 'winerror', None)
-                    win_errors = (ERROR_DIRECTORY, ERROR_PATH_NOT_FOUND)
-                    # there may be directories in the inventory even though
-                    # this path is not a file on disk: so mark it as end of
-                    # iterator
-                    if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
-                        current_dir_info = None
-                    elif (sys.platform == 'win32'
-                          and (e.errno in win_errors or
-                               e_winerror in win_errors)):
-                        current_dir_info = None
-                    else:
-                        raise
+                except (FileNotFoundError, NotADirectoryError, ValueError):
+                    current_dir_info = None
                 else:
                     if current_dir_info[0][0] == b'':
                         # remove .bzr from iteration
@@ -4298,12 +4279,9 @@ class ProcessEntryPython:
         abspath = self.tree.abspath(unicode_path)
         try:
             stat = os.lstat(abspath)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                # the path does not exist.
-                return None
-            else:
-                raise
+        except FileNotFoundError:
+            # the path does not exist.
+            return None
         utf8_basename = utf8_path.rsplit(b'/', 1)[-1]
         dir_info = (utf8_path, utf8_basename,
                     osutils.file_kind_from_stat_mode(stat.st_mode), stat,

@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import errno
 import os
 import shutil
 import sys
@@ -78,9 +77,7 @@ class TestCleanTree(TestCaseInTempDir):
                 # Simulate 'permission denied' error.
                 # This should show up as a warning for the
                 # user.
-                e = OSError()
-                e.errno = errno.EACCES
-                raise e
+                raise PermissionError()
 
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
             """Call user supplied error handler onerror.
@@ -90,9 +87,8 @@ class TestCleanTree(TestCaseInTempDir):
             # to the user as a warning. We raise OSError to construct
             # proper excinfo that needs to be passed to onerror
             try:
-                raise OSError
-            except OSError as e:
-                e.errno = errno.EACCES
+                raise PermissionError
+            except PermissionError as e:
                 excinfo = sys.exc_info()
                 function = os.remove
                 if 'subdir0' not in path:
@@ -119,5 +115,5 @@ class TestCleanTree(TestCaseInTempDir):
         # Ensure that error other than EACCES during os.remove are
         # not turned into warnings.
         self.build_tree(['subdir1/'])
-        self.assertRaises(OSError, clean_tree, '.',
+        self.assertRaises(PermissionError, clean_tree, '.',
                           unknown=True, no_prompt=True)

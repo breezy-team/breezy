@@ -1134,12 +1134,11 @@ class DiskTreeTransform(TreeTransformBase):
             for path in limbo_paths:
                 try:
                     osutils.delete_any(path)
-                except OSError as e:
-                    if e.errno != errno.ENOENT:
-                        raise
+                except FileNotFoundError:
                     # XXX: warn? perhaps we just got interrupted at an
                     # inconvenient moment, but perhaps files are disappearing
                     # from under us?
+                    pass
             try:
                 osutils.delete_any(self._limbodir)
             except OSError:
@@ -1264,9 +1263,7 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except OSError as e:
-            if e.errno != errno.EPERM:
-                raise
+        except PermissionError:
             raise errors.HardLinkNotSupported(path)
         try:
             unique_add(self._new_contents, trans_id, 'file')
@@ -1451,15 +1448,12 @@ class InventoryTreeTransform(DiskTreeTransform):
             return
         try:
             mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                # Either old_path doesn't exist, or the parent of the
-                # target is not a directory (but will be one eventually)
-                # Either way, we know it doesn't exist *right now*
-                # See also bug #248448
-                return
-            else:
-                raise
+        except (FileNotFoundError, NotADirectoryError):
+            # Either old_path doesn't exist, or the parent of the
+            # target is not a directory (but will be one eventually)
+            # Either way, we know it doesn't exist *right now*
+            # See also bug #248448
+            return
         if typefunc(mode):
             osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
 

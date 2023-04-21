@@ -21,8 +21,6 @@ import os
 import posixpath
 import random
 import re
-import socket
-import sys
 from urllib.parse import urlparse
 
 from .. import osutils, urlutils

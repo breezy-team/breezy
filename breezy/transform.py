@@ -34,7 +34,6 @@ from .filters import ContentFilterContext, filtered_output_bytes
 from .osutils import delete_any, pathjoin
 from .progress import ProgressPhase
 from .transport import FileExists, NoSuchFile
-from .transport.local import file_kind
 from .tree import InterTree
 
 ROOT_PARENT = "root-parent"
@@ -1188,10 +1187,8 @@ class PreviewTree:
         except KeyError:
             try:
                 return self._transform._tree.is_executable(path)
-            except OSError as e:
-                if e.errno == errno.ENOENT:
-                    return False
-                raise
+            except FileNotFoundError:
+                return False
             except NoSuchFile:
                 return False
 

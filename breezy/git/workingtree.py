@@ -17,7 +17,6 @@
 
 """An adapter between a Git index and a Bazaar Working Tree"""
 
-import errno
 import itertools
 import os
 import posixpath
@@ -643,9 +642,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     fullpath = osutils.normpath(self.abspath(f))
                     try:
                         kind = file_kind(fullpath)
-                    except OSError as e:
-                        if e.errno == errno.ENOENT:
-                            raise _mod_transport.NoSuchFile(fullpath)
+                    except FileNotFoundError:
+                        raise _mod_transport.NoSuchFile(fullpath)
                     if f != '' and self._directory_is_tree_reference(f):
                         kind = 'tree-reference'
                     kinds[pos] = kind
@@ -674,10 +672,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """See Tree.get_file_mtime."""
         try:
             return self._lstat(path).st_mtime
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                raise _mod_transport.NoSuchFile(path)
-            raise
+        except FileNotFoundError:
+            raise _mod_transport.NoSuchFile(path)
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -979,10 +975,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             current_disk = next(disk_iterator)
             disk_finished = False
-        except OSError as e:
-            if not (e.errno == errno.ENOENT
-                    or (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
-                raise
+        except FileNotFoundError:
             current_disk = None
             disk_finished = True
         try:
@@ -1386,11 +1379,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         path = self.abspath('.gitmodules')
         try:
             config = GitConfigFile.from_path(path)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                config = GitConfigFile()
-            else:
-                raise
+        except FileNotFoundError:
+            config = GitConfigFile()
         section = (b'submodule', encode_git_path(tree_path))
         if branch_location is None:
             try:
