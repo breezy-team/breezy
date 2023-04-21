@@ -305,6 +305,44 @@ pub mod win32 {
         Ok(fixdrive(&fix_separators(ap.as_path())))
     }
 
+    pub fn normpath(p: &Path) -> PathBuf {
+        let mut parts = Vec::new();
+
+        // Split the path into its components
+        let p = p.to_path_buf();
+        for component in p.components() {
+            match component {
+                // Ignore empty components and "."
+                std::path::Component::Normal(c) if c != "." => parts.push(c),
+                // Pop the last component if ".." is encountered
+                std::path::Component::Normal(c) if c == ".." => if let Some(_) = parts.pop() {},
+                // Ignore root components ("\" on Windows)
+                std::path::Component::RootDir => {}
+                // Ignore non-Unicode components
+                _ => {
+                    return PathBuf::from(p);
+                }
+            }
+        }
+
+        // If the path was empty or only contained root components, return the root component(s)
+        if parts.is_empty() {
+            return PathBuf::from(if p.to_str().unwrap().starts_with('\\') {
+                "\\"
+            } else {
+                ""
+            });
+        }
+
+        // Join the normalized components into a path string
+        let mut path = PathBuf::new();
+        for part in &parts {
+            path.push(part);
+        }
+
+        fixdrive(&fix_separators(&path))
+    }
+
     #[cfg(test)]
     mod test {
         #[test]
@@ -318,13 +356,51 @@ pub mod win32 {
 }
 
 pub mod posix {
-    use std::path::{Path, PathBuf};
+    use std::path::{Component, Path, PathBuf};
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
         use path_clean::{clean, PathClean};
         let cwd = std::env::current_dir()?;
         let ap = cwd.join(path).clean();
         Ok(ap.as_path().to_path_buf())
+    }
+
+    pub fn normpath(path: &Path) -> PathBuf {
+        let mut stack = Vec::new();
+
+        for component in path.components() {
+            match component {
+                Component::Prefix(_) => {
+                    // skip the prefix, if any
+                    stack.clear();
+                    stack.push(component.as_os_str());
+                }
+                Component::RootDir => {
+                    // keep the root
+                    stack.clear();
+                    stack.push(component.as_os_str());
+                }
+                Component::CurDir => {
+                    // skip the current directory
+                }
+                Component::ParentDir => {
+                    if stack.len() > 1 {
+                        // pop the previous component if not the root
+                        stack.pop();
+                    }
+                }
+                Component::Normal(c) => {
+                    stack.push(c);
+                }
+            }
+        }
+
+        // Join the path components back
+        let mut result = PathBuf::new();
+        for c in stack {
+            result.push(c);
+        }
+        result
     }
 }
 
@@ -334,4 +410,55 @@ pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
 
     #[cfg(not(windows))]
     return posix::abspath(path);
+}
+
+pub fn normpath(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    return win32::normpath(path);
+
+    #[cfg(not(windows))]
+    return posix::normpath(path);
+}
+
+#[cfg(not(windows))]
+pub const MIN_ABS_PATHLENGTH: usize = 1;
+
+#[cfg(windows)]
+pub const MIN_ABS_PATHLENGTH: usize = 3;
+
+/// Return path relative to base, or raise PathNotChild exception.
+///
+/// The path may be either an absolute path or a path relative to the
+/// current working directory.
+///
+/// os.path.commonprefix (python2.4) has a bad bug that it works just
+/// on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
+/// avoids that problem.
+///
+/// NOTE: `base` should not have a trailing slash otherwise you'll get
+/// PathNotChild exceptions regardless of `path`.
+pub fn relpath(base: &Path, path: &Path) -> Option<PathBuf> {
+    if base.to_str().unwrap().len() < MIN_ABS_PATHLENGTH {
+        return None;
+    }
+
+    let rp = abspath(path).unwrap();
+
+    let mut s = Vec::new();
+    let mut head = rp.as_path();
+    let mut tail;
+    loop {
+        if head.as_os_str().len() <= base.as_os_str().len() && head != base {
+            return None;
+        }
+        if head == base {
+            break;
+        }
+        (head, tail) = (head.parent().unwrap(), head.file_name().unwrap());
+        if !tail.is_empty() {
+            s.push(tail);
+        }
+    }
+
+    Some(s.into_iter().rev().collect::<PathBuf>())
 }
