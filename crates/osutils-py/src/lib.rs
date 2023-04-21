@@ -819,6 +819,17 @@ fn local_concurrency(use_cache: Option<bool>) -> usize {
 }
 
 #[pyfunction]
+fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
+    if let Ok(s) = text.extract::<&str>(py) {
+        return Ok(breezy_osutils::contains_whitespace(s));
+    } else if let Ok(s) = text.extract::<&[u8]>(py) {
+        return Ok(breezy_osutils::contains_whitespace_bytes(s));
+    } else {
+        return Err(PyTypeError::new_err("text must be str or bytes"));
+    }
+}
+
+#[pyfunction]
 fn relpath(path: PathBuf, start: PathBuf) -> PyResult<PathBuf> {
     match breezy_osutils::path::relpath(path.as_path(), start.as_path()) {
         None => Err(PathNotChild::new_err((start, path))),
@@ -834,6 +845,11 @@ fn posix_normpath(path: PathBuf) -> PyResult<PathBuf> {
 #[pyfunction(name = "normpath")]
 fn win32_normpath(path: PathBuf) -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::win32::normpath(path.as_path()).into())
+}
+
+#[pyfunction]
+fn contains_linebreaks(text: &str) -> bool {
+    breezy_osutils::contains_linebreaks(text)
 }
 
 #[pyfunction]
@@ -908,6 +924,8 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
     m.add_wrapped(wrap_pyfunction!(local_concurrency))?;
+    m.add_wrapped(wrap_pyfunction!(contains_whitespace))?;
+    m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add_wrapped(wrap_pyfunction!(relpath))?;
     m.add_wrapped(wrap_pyfunction!(normpath))?;
     m.add(
