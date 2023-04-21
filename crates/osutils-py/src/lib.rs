@@ -819,6 +819,18 @@ fn local_concurrency(use_cache: Option<bool>) -> usize {
 }
 
 #[pyfunction]
+fn pumpfile(from_file: PyObject, to_file: PyObject, read_size: Option<u64>) -> PyResult<u64> {
+    let mut from_file = PyFileLikeObject::with_requirements(from_file, true, false, false)?;
+    let mut to_file = PyFileLikeObject::with_requirements(to_file, false, true, false)?;
+
+    Ok(breezy_osutils::pumpfile(
+        &mut from_file,
+        &mut to_file,
+        read_size,
+    )?)
+}
+
+#[pyfunction]
 fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
     if let Ok(s) = text.extract::<&str>(py) {
         return Ok(breezy_osutils::contains_whitespace(s));
@@ -924,6 +936,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
     m.add_wrapped(wrap_pyfunction!(local_concurrency))?;
+    m.add_wrapped(wrap_pyfunction!(pumpfile))?;
     m.add_wrapped(wrap_pyfunction!(contains_whitespace))?;
     m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add_wrapped(wrap_pyfunction!(relpath))?;

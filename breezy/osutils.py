@@ -30,13 +30,11 @@ lazy_import(globals(), """
 import locale
 import ntpath
 import posixpath
-import select
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
 import shutil
 from shutil import rmtree
 import socket
-import subprocess
 import unicodedata
 
 from breezy import (
@@ -399,53 +397,7 @@ def islink(f):
 is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
-
-def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
-             report_activity=None, direction='read'):
-    """Copy contents of one file to another.
-
-    The read_length can either be -1 to read to end-of-file (EOF) or
-    it can specify the maximum number of bytes to read.
-
-    The buff_size represents the maximum size for each read operation
-    performed on from_file.
-
-    :param report_activity: Call this as bytes are read, see
-        Transport._report_activity
-    :param direction: Will be passed to report_activity
-
-    :return: The number of bytes copied.
-    """
-    length = 0
-    if read_length >= 0:
-        # read specified number of bytes
-
-        while read_length > 0:
-            num_bytes_to_read = min(read_length, buff_size)
-
-            block = from_file.read(num_bytes_to_read)
-            if not block:
-                # EOF reached
-                break
-            if report_activity is not None:
-                report_activity(len(block), direction)
-            to_file.write(block)
-
-            actual_bytes_read = len(block)
-            read_length -= actual_bytes_read
-            length += actual_bytes_read
-    else:
-        # read to EOF
-        while True:
-            block = from_file.read(buff_size)
-            if not block:
-                # EOF reached
-                break
-            if report_activity is not None:
-                report_activity(len(block), direction)
-            to_file.write(block)
-            length += len(block)
-    return length
+pumpfile = _osutils_rs.pumpfile
 
 
 def pump_string_file(bytes, file_handle, segment_size=None):

@@ -86,7 +86,7 @@ class AtomicFile:
 
     def write(self, data):
         """Write some data to the file. Like file.write()"""
-        os.write(self._fd, data)
+        return os.write(self._fd, data)
 
     def _close_tmpfile(self, func_name):
         """Close the local temp file in preparation for commit or abort"""

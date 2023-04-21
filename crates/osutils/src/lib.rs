@@ -143,6 +143,18 @@ pub fn local_concurrency(use_cache: bool) -> usize {
     }
 }
 
+pub fn pumpfile(
+    mut reader: impl std::io::Read,
+    mut writer: impl std::io::Write,
+    num_bytes: Option<u64>,
+) -> std::io::Result<u64> {
+    Ok(if let Some(num_bytes) = num_bytes {
+        std::io::copy(&mut reader.take(num_bytes), &mut writer)?
+    } else {
+        std::io::copy(&mut reader, &mut writer)?
+    })
+}
+
 pub fn contains_whitespace(s: &str) -> bool {
     let ws = " \t\n\r\u{000B}\u{000C}";
     for ch in ws.chars() {
