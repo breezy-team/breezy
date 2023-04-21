@@ -305,11 +305,11 @@ pub mod win32 {
         Ok(fixdrive(&fix_separators(ap.as_path())))
     }
 
-    pub fn normpath(p: &Path) -> PathBuf {
+    pub fn normpath<P: AsRef<Path>>(p: P) -> PathBuf {
         let mut parts = Vec::new();
 
         // Split the path into its components
-        let p = p.to_path_buf();
+        let p = p.as_ref().to_path_buf();
         for component in p.components() {
             match component {
                 // Ignore empty components and "."
@@ -412,12 +412,12 @@ pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
     return posix::abspath(path);
 }
 
-pub fn normpath(path: &Path) -> PathBuf {
+pub fn normpath<P: AsRef<Path>>(path: P) -> PathBuf {
     #[cfg(windows)]
-    return win32::normpath(path);
+    return win32::normpath(path.as_ref());
 
     #[cfg(not(windows))]
-    return posix::normpath(path);
+    return posix::normpath(path.as_ref());
 }
 
 #[cfg(not(windows))]

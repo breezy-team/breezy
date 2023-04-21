@@ -842,6 +842,9 @@ class TestWin32Funcs(tests.TestCase):
                          osutils._win32_pathjoin('C:\\path\\to\\', '\\foo'))
 
     def test_normpath(self):
+        if sys.platform != 'win32':
+            raise tests.TestNotApplicable(
+                "This test is only valid on win32")
         self.assertEqual('path/to/foo',
                          osutils._win32_normpath(r'path\\from\..\to\.\foo'))
         self.assertEqual('path/to/foo',
