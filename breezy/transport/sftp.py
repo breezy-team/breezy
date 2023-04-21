@@ -89,6 +89,14 @@ else:
     _bad_asbytes.__code__ = _asbytes_for_broken_paramiko.__code__
 
 
+def _patch_write(fout):
+    orig_write = fout.write
+    def write_with_len(data):
+        orig_write(data)
+        return len(data)
+    fout.write = write_with_len
+
+
 class SFTPLock:
     """This fakes a lock in a remote location.
 
@@ -486,6 +494,7 @@ class SFTPTransport(ConnectedTransport):
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                                              os.getpid(), random.randint(0, 0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
+        _patch_write(fout)
         closed = False
         try:
             try:
@@ -545,6 +554,8 @@ class SFTPTransport(ConnectedTransport):
             try:
                 try:
                     fout = self._get_sftp().file(abspath, mode='wb')
+                    _patch_write(fout)
+
                     fout.set_pipelined(True)
                     writer(fout)
                 except (paramiko.SSHException, OSError) as e:
@@ -728,6 +739,7 @@ class SFTPTransport(ConnectedTransport):
             fout = self._get_sftp().file(path, 'ab')
             if mode is not None:
                 self._get_sftp().chmod(path, mode)
+            _patch_write(fout)
             result = fout.tell()
             self._pump(f, fout)
             return result

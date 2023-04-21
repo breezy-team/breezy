@@ -817,6 +817,18 @@ fn local_concurrency(use_cache: Option<bool>) -> usize {
     breezy_osutils::local_concurrency(use_cache.unwrap_or(true))
 }
 
+#[pyfunction]
+fn pumpfile(from_file: PyObject, to_file: PyObject, read_size: Option<u64>) -> PyResult<u64> {
+    let mut from_file = PyFileLikeObject::with_requirements(from_file, true, false, false)?;
+    let mut to_file = PyFileLikeObject::with_requirements(to_file, false, true, false)?;
+
+    Ok(breezy_osutils::pumpfile(
+        &mut from_file,
+        &mut to_file,
+        read_size,
+    )?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -882,6 +894,7 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
     m.add_wrapped(wrap_pyfunction!(local_concurrency))?;
+    m.add_wrapped(wrap_pyfunction!(pumpfile))?;
     m.add(
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
