@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 lazy_static! {
@@ -20,6 +21,8 @@ pub enum Error {
     InvalidUNCUrl(String),
     UrlNotAscii(String),
     InvalidWin32LocalUrl(String),
+    UrlTooShort(String),
+    PathNotChild(String, String),
 }
 
 type Result<K> = std::result::Result<K, Error>;
@@ -732,4 +735,31 @@ pub fn derive_to_location(from_location: &str) -> String {
     } else {
         return from_location.to_string();
     }
+}
+
+#[cfg(win32)]
+pub const MIN_ABS_FILEURL_LENGTH: usize = "file:///C:".len();
+
+#[cfg(not(win32))]
+pub const MIN_ABS_FILEURL_LENGTH: usize = "file:///".len();
+
+/// Compute just the relative sub-portion of a url
+///
+/// This assumes that both paths are already fully specified file:// URLs.
+pub fn file_relpath(base: &str, path: &str) -> Result<String> {
+    if base.len() < MIN_ABS_FILEURL_LENGTH {
+        return Err(Error::UrlTooShort(base.to_string()));
+    }
+    let base: PathBuf = breezy_osutils::path::normpath(local_path_from_url(base)?);
+    let path: PathBuf = breezy_osutils::path::normpath(local_path_from_url(path)?);
+
+    let relpath = breezy_osutils::path::relpath(path.as_path(), base.as_path());
+    if relpath.is_none() {
+        return Err(Error::PathNotChild(
+            path.display().to_string(),
+            base.display().to_string(),
+        ));
+    }
+
+    Ok(escape(relpath.unwrap().as_os_str().as_bytes(), None))
 }
