@@ -693,33 +693,8 @@ def readlink(abspath):
     return target
 
 
-def contains_whitespace(s):
-    """True if there are any whitespace characters in s."""
-    # string.whitespace can include '\xa0' in certain locales, because it is
-    # considered "non-breaking-space" as part of ISO-8859-1. But it
-    # 1) Isn't a breaking whitespace
-    # 2) Isn't one of ' \t\r\n' which are characters we sometimes use as
-    #    separators
-    # 3) '\xa0' isn't unicode safe since it is >128.
-
-    if isinstance(s, str):
-        ws = ' \t\n\r\v\f'
-    else:
-        ws = (b' ', b'\t', b'\n', b'\r', b'\v', b'\f')
-    for ch in ws:
-        if ch in s:
-            return True
-    else:
-        return False
-
-
-def contains_linebreaks(s):
-    """True if there is any vertical whitespace in s."""
-    for ch in '\f\n\r':
-        if ch in s:
-            return True
-    else:
-        return False
+contains_whitespace = _osutils_rs.contains_whitespace
+contains_linebreaks = _osutils_rs.contains_linebreaks
 
 
 def relpath(base, path):

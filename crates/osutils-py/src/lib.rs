@@ -817,6 +817,22 @@ fn local_concurrency(use_cache: Option<bool>) -> usize {
     breezy_osutils::local_concurrency(use_cache.unwrap_or(true))
 }
 
+#[pyfunction]
+fn contains_whitespace(py: Python, text: PyObject) -> PyResult<bool> {
+    if let Ok(s) = text.extract::<&str>(py) {
+        return Ok(breezy_osutils::contains_whitespace(s));
+    } else if let Ok(s) = text.extract::<&[u8]>(py) {
+        return Ok(breezy_osutils::contains_whitespace_bytes(s));
+    } else {
+        return Err(PyTypeError::new_err("text must be str or bytes"));
+    }
+}
+
+#[pyfunction]
+fn contains_linebreaks(text: &str) -> bool {
+    breezy_osutils::contains_linebreaks(text)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -882,6 +898,8 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(delete_any))?;
     m.add_wrapped(wrap_pyfunction!(get_host_name))?;
     m.add_wrapped(wrap_pyfunction!(local_concurrency))?;
+    m.add_wrapped(wrap_pyfunction!(contains_whitespace))?;
+    m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add(
         "UnsupportedTimezoneFormat",
         py.get_type::<UnsupportedTimezoneFormat>(),
