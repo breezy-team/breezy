@@ -19,6 +19,8 @@ pyo3 = { version = ">= 0.17, <0.19", optional = true }
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file", optional = true }
 breezy-urlutils = { path = "../urlutils" }
 path-clean = "1"
+#[cfg(unix)]
+nix = { version = "0.22" }
 
 [features]
 default = ["pyo3"]

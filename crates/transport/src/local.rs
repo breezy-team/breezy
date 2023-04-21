@@ -1,4 +1,4 @@
-use crate::{Error, LocalTransport, Result, Stat, Transport, UrlFragment};
+use crate::{Error, LocalTransport, Result, Stat, Transport, UrlFragment, ListableTransport};
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use path_clean::{clean, PathClean};
 use std::collections::HashMap;
@@ -98,6 +98,11 @@ impl Transport for FileSystemTransport {
         self.base.join(relpath).map_err(Error::from)
     }
 
+    fn relpath(&self, abspath: &Url) -> Result<String> {
+        unimplemented!()
+        // Ok(breezy_urlutils::file_relpath(&self.base, abspath).map_err(Error::from))
+    }
+
     fn put_file(
         &self,
         relpath: &UrlFragment,
@@ -150,5 +155,54 @@ impl Transport for FileSystemTransport {
             .iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect())
+    }
+
+    #[cfg(unix)]
+    fn readv<'a>(
+        &'a self,
+        path: &UrlFragment,
+        offsets: &'a [(u64, usize)],
+    ) -> Box<dyn Iterator<Item = Result<Vec<u8>>> + '_> {
+        use nix::sys::uio::pread;
+        use nix::libc::off_t;
+        use std::os::unix::io::AsRawFd;
+        let abspath = match self.local_abspath(path) {
+
+            Ok(p) => p,
+            Err(err) => return Box::new(std::iter::once(Err(err)))
+        };
+        let file = match std::fs::File::open(abspath) {
+            Ok(f) => f,
+            Err(err) => return Box::new(std::iter::once(Err(err.into())))
+        };
+        let fd = file.as_raw_fd();
+
+        Box::new(offsets.iter().map(move |&(offset, len)| {
+            let mut buf = vec![0; len];
+            match pread(fd, &mut buf[..], offset as off_t) {
+                Ok(n) if n == len as usize => Ok(buf),
+                Ok(_) => Err(Error::UnexpectedEof),
+                Err(e) => Err(std::io::Error::from_raw_os_error(e as i32).into()),
+            }
+        }))
+    }
+
+}
+
+impl ListableTransport for FileSystemTransport {
+    fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
+        let path = match self.local_abspath(relpath) {
+            Ok(p) => p,
+            Err(err) => return Box::new(std::iter::once(Err(err))),
+        };
+        let entries = match std::fs::read_dir(path).map_err(Error::from) {
+            Ok(e) => e,
+            Err(err) => return Box::new(std::iter::once(Err(err))),
+        };
+        Box::new(
+            entries
+                .map(|entry| entry.map_err(Error::from))
+                .map(|entry| entry.map(|entry| entry.file_name().into_string().unwrap())),
+        )
     }
 }

@@ -40,6 +40,7 @@ fn map_transport_err_to_py_err(e: Error) -> PyErr {
         Error::PathNotChild => PathNotChild::new_err(()),
         Error::UrlutilsError(e) => UrlError::new_err(format!("{:?}", e)),
         Error::Io(e) => e.into(),
+        Error::UnexpectedEof => PyValueError::new_err("Unexpected EOF"),
     }
 }
 
@@ -69,6 +70,10 @@ impl PyRead {
         let mut buf = vec![0; size.unwrap_or(4096)];
         let ret = self.0.read(&mut buf)?;
         Ok(PyBytes::new(py, &buf[..ret]).to_object(py).to_object(py))
+    }
+
+    fn close(&mut self) -> PyResult<()> {
+        Ok(())
     }
 }
 
@@ -164,6 +169,14 @@ impl Transport {
         }
         .map_err(map_transport_err_to_py_err)?;
         Ok(Transport(inner))
+    }
+
+    fn relpath(&self, path: &str) -> PyResult<String> {
+        let url = Url::parse(path).map_err(|_| PyValueError::new_err((path.to_string(),)))?;
+        Ok(self
+            .0
+            .relpath(&url)
+            .map_err(map_transport_err_to_py_err)?)
     }
 
     fn abspath(&self, path: &str) -> PyResult<String> {
@@ -318,6 +331,24 @@ impl Transport {
                     .map_err(map_transport_err_to_py_err)
             })
             .collect()
+    }
+
+    fn listable(&self) -> bool {
+        let transport = &self.0 as &dyn Any;
+        transport
+            .downcast_ref::<&dyn breezy_transport::ListableTransport>()
+            .is_some()
+    }
+
+    fn list_dir(&self, path: &str) -> PyResult<Vec<String>> {
+        let transport = &self.0 as &dyn Any;
+        let listable_transport = transport
+            .downcast_ref::<&dyn breezy_transport::ListableTransport>()
+            .ok_or_else(|| TransportNotPossible::new_err(()))?;
+
+        listable_transport.list_dir(path)
+            .map(|r| r.map_err(map_transport_err_to_py_err))
+            .collect::<PyResult<Vec<_>>>()
     }
 }
 

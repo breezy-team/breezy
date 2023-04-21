@@ -1,5 +1,5 @@
 use crate::{
-    Error, LocalTransport, Lock, LockableTransport, Result, Stat, Transport, Url, UrlFragment,
+    Error, LocalTransport, Lock, LockableTransport, Result, Stat, Transport, Url, UrlFragment, ListableTransport,
 };
 use pyo3::import_exception;
 use pyo3::prelude::*;
@@ -162,6 +162,13 @@ impl Transport for PyTransport {
             let obj = self.0.call_method1(py, "clone", (path,))?;
             let transport: Box<dyn Transport> = Box::new(PyTransport(obj));
             Ok(transport)
+        })
+    }
+
+    fn relpath(&self, path: &Url) -> Result<String> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "relpath", (path.to_string(),))?;
+            Ok(obj.extract::<String>(py)?)
         })
     }
 
@@ -355,6 +362,47 @@ impl LocalTransport for PyTransport {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "local_abspath", (relpath,))?;
             Ok(obj.extract::<PathBuf>(py)?)
+        })
+    }
+}
+
+impl ListableTransport for PyTransport {
+    fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
+        let iter = Python::with_gil(|py| {
+            self.0
+                .call_method1(py, "list_dir", (relpath,))?
+                .extract::<PyObject>(py)
+        });
+
+        if let Err(e) = iter {
+            return Box::new(std::iter::once(Err(Error::from(e))));
+        }
+
+        Box::new(std::iter::from_fn(move || {
+            Python::with_gil(|py| -> Option<Result<String>> {
+                let iter = iter.as_ref().unwrap();
+                match iter.call_method0(py, "__next__") {
+                    Ok(obj) => {
+                        if obj.is_none(py) {
+                            return None;
+                        } else {
+                            return Some(obj.extract::<String>(py).map_err(|e| e.into()));
+                        }
+                    }
+                    Err(e) => Some(Err(e.into())),
+                }
+            })
+            .into()
+        }))
+    }
+
+    fn listable(&self) -> bool {
+        Python::with_gil(|py| {
+            self.0
+                .call_method0(py, "listable")
+                .unwrap()
+                .extract::<bool>(py)
+                .unwrap()
         })
     }
 }

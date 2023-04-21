@@ -26,6 +26,8 @@ pub enum Error {
     Io(std::io::Error),
 
     PathNotChild,
+
+    UnexpectedEof,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -185,6 +187,8 @@ pub trait Transport: 'static + Send + Sync {
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url>;
 
+    fn relpath(&self, abspath: &Url) -> Result<String>;
+
     fn put_file(
         &self,
         relpath: &UrlFragment,
@@ -292,6 +296,15 @@ pub trait Transport: 'static + Send + Sync {
                     Ok(buf)
                 }),
         )
+    }
+
+}
+
+pub trait ListableTransport: Transport {
+    fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>>;
+
+    fn listable(&self) -> bool {
+        true
     }
 }
 
