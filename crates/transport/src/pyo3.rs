@@ -1,5 +1,6 @@
 use crate::{
-    Error, LocalTransport, Lock, LockableTransport, Result, Stat, Transport, Url, UrlFragment, ListableTransport,
+    Error, ListableTransport, LocalTransport, Lock, LockableTransport, Result, Stat, Transport,
+    Url, UrlFragment,
 };
 use pyo3::import_exception;
 use pyo3::prelude::*;
@@ -7,7 +8,7 @@ use pyo3::types::PyBytes;
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 use std::fs::Permissions;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
@@ -356,20 +357,35 @@ impl Transport for PyTransport {
         }))
     }
 
-
-    fn append_bytes(&self, relpath: &UrlFragment, bytes: &[u8], permissions: Option<Permissions>) -> Result<()> {
+    fn append_bytes(
+        &self,
+        relpath: &UrlFragment,
+        bytes: &[u8],
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
         Python::with_gil(|py| {
-            self.0
-                .call_method1(py, "append_bytes", (relpath, bytes, permissions.map(|p| p.mode())))?;
+            self.0.call_method1(
+                py,
+                "append_bytes",
+                (relpath, bytes, permissions.map(|p| p.mode())),
+            )?;
             Ok(())
         })
     }
 
-    fn append_file(&self, relpath: &UrlFragment, f: &mut dyn Read, permissions: Option<Permissions>) -> Result<()> {
+    fn append_file(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn Read,
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
         let f = py_read(f)?;
         Python::with_gil(|py| {
-            self.0
-                .call_method1(py, "append_file", (relpath, f, permissions.map(|p| p.mode())))?;
+            self.0.call_method1(
+                py,
+                "append_file",
+                (relpath, f, permissions.map(|p| p.mode())),
+            )?;
             Ok(())
         })
     }
@@ -393,8 +409,67 @@ impl Transport for PyTransport {
 
     fn symlink(&self, relpath: &UrlFragment, new_relpath: &UrlFragment) -> Result<()> {
         Python::with_gil(|py| {
+            self.0.call_method1(py, "symlink", (relpath, new_relpath))?;
+            Ok(())
+        })
+    }
+
+    fn iter_files_recursive(&self) -> Box<dyn Iterator<Item = Result<String>>> {
+        let iter = Python::with_gil(|py| {
             self.0
-                .call_method1(py, "symlink", (relpath, new_relpath))?;
+                .call_method0(py, "iter_files_recursive")?
+                .extract::<PyObject>(py)
+        });
+
+        if let Err(e) = iter {
+            return Box::new(std::iter::once(Err(Error::from(e))));
+        }
+
+        Box::new(std::iter::from_fn(move || {
+            Python::with_gil(|py| -> Option<Result<String>> {
+                let iter = iter.as_ref().unwrap();
+                match iter.call_method0(py, "__next__") {
+                    Ok(obj) => {
+                        if obj.is_none(py) {
+                            return None;
+                        } else {
+                            let path = obj.extract::<String>(py).unwrap();
+                            Some(Ok(path))
+                        }
+                    }
+                    Err(e) => Some(Err(Error::from(e))),
+                }
+            })
+            .into()
+        }))
+    }
+
+    fn open_write_stream(
+        &self,
+        relpath: &UrlFragment,
+        permissions: Option<Permissions>,
+    ) -> Result<Box<dyn Write + Send + Sync>> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(
+                py,
+                "open_write_stream",
+                (relpath, permissions.map(|p| p.mode())),
+            )?;
+            let file = PyFileLikeObject::with_requirements(obj, false, true, false).unwrap();
+            Ok(Box::new(file) as Box<dyn Write + Send + Sync>)
+        })
+    }
+
+    fn delete_tree(&self, relpath: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "delete_tree", (relpath,))?;
+            Ok(())
+        })
+    }
+
+    fn move_(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "move", (src, dst))?;
             Ok(())
         })
     }

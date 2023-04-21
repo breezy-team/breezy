@@ -1,12 +1,14 @@
-use crate::{Error, LocalTransport, Result, Stat, Transport, UrlFragment, ListableTransport};
+use crate::{Error, ListableTransport, LocalTransport, Result, Stat, Transport, UrlFragment};
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use path_clean::{clean, PathClean};
 use std::collections::HashMap;
+use std::fs::OpenOptions;
 use std::fs::Permissions;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use url::Url;
+use walkdir;
 
 pub struct FileSystemTransport {
     base: Url,
@@ -163,17 +165,16 @@ impl Transport for FileSystemTransport {
         path: &UrlFragment,
         offsets: &'a [(u64, usize)],
     ) -> Box<dyn Iterator<Item = Result<Vec<u8>>> + '_> {
-        use nix::sys::uio::pread;
         use nix::libc::off_t;
+        use nix::sys::uio::pread;
         use std::os::unix::io::AsRawFd;
         let abspath = match self.local_abspath(path) {
-
             Ok(p) => p,
-            Err(err) => return Box::new(std::iter::once(Err(err)))
+            Err(err) => return Box::new(std::iter::once(Err(err))),
         };
         let file = match std::fs::File::open(abspath) {
             Ok(f) => f,
-            Err(err) => return Box::new(std::iter::once(Err(err.into())))
+            Err(err) => return Box::new(std::iter::once(Err(err.into()))),
         };
         let fd = file.as_raw_fd();
 
@@ -187,9 +188,17 @@ impl Transport for FileSystemTransport {
         }))
     }
 
-    fn append_file(&self, relpath: &UrlFragment, f: &mut dyn std::io::Read, permissions: Option<Permissions>) -> Result<()> {
+    fn append_file(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn std::io::Read,
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
         let path = self.path.join(relpath);
-        let mut file = std::fs::OpenOptions::new().append(true).open(path).map_err(Error::from)?;
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(path)
+            .map_err(Error::from)?;
         if let Some(permissions) = permissions {
             file.set_permissions(permissions)?;
         }
@@ -213,9 +222,50 @@ impl Transport for FileSystemTransport {
 
     #[cfg(target_family = "unix")]
     fn symlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
-        let from  = self.path.join(rel_from);
+        let from = self.path.join(rel_from);
         let to = self.path.join(rel_to);
         std::os::unix::fs::symlink(from, to).map_err(Error::from)
+    }
+
+    fn iter_files_recursive(&self) -> Box<dyn Iterator<Item = Result<String>>> {
+        let wd = walkdir::WalkDir::new(&self.path);
+
+        fn walkdir_err(e: walkdir::Error) -> Error {
+            let ioerr: std::io::Error = e.into();
+            Error::from(ioerr)
+        }
+
+        Box::new(wd.into_iter().map(|e| {
+            e.map_err(walkdir_err)
+                .map(|e| e.path().to_string_lossy().to_string())
+        }))
+    }
+
+    fn open_write_stream(
+        &self,
+        relpath: &UrlFragment,
+        permissions: Option<Permissions>,
+    ) -> Result<Box<dyn std::io::Write + Send + Sync>> {
+        let path = self.path.join(relpath);
+        let file = OpenOptions::new().open(path).map_err(Error::from)?;
+        file.set_len(0)?;
+        if let Some(permissions) = permissions {
+            file.set_permissions(permissions)?;
+        }
+        Ok(Box::new(file))
+    }
+
+    fn delete_tree(&self, relpath: &UrlFragment) -> Result<()> {
+        let path = self.local_abspath(relpath)?;
+        std::fs::remove_dir_all(path).map_err(Error::from)
+    }
+
+    fn move_(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
+        let from = self.path.join(rel_from);
+        let to = self.path.join(rel_to);
+
+        // TODO(jelmer): Should remove destination if necessary
+        std::fs::rename(from, to).map_err(Error::from)
     }
 }
 

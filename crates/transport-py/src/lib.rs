@@ -64,6 +64,20 @@ struct PyStat {
 #[pyclass]
 struct PyRead(Box<dyn std::io::Read + Sync + Send>);
 
+#[pyclass]
+struct PyWrite(Box<dyn std::io::Write + Sync + Send>);
+
+#[pymethods]
+impl PyWrite {
+    fn write(&mut self, py: Python, data: &PyBytes) -> PyResult<usize> {
+        self.0.write(data.as_bytes()).map_err(|e| e.into())
+    }
+
+    fn close(&mut self) -> PyResult<()> {
+        Ok(())
+    }
+}
+
 #[pymethods]
 impl PyRead {
     fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
@@ -128,7 +142,9 @@ impl Transport {
     fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
         let any = &self.0 as &dyn Any;
         if let Some(local_transport) = any.downcast_ref::<&dyn breezy_transport::LocalTransport>() {
-            Ok(local_transport.local_abspath(path).map_err(map_transport_err_to_py_err)?)
+            Ok(local_transport
+                .local_abspath(path)
+                .map_err(map_transport_err_to_py_err)?)
         } else {
             Err(NotLocalUrl::new_err((self.0.base().to_string(),)))
         }
@@ -172,10 +188,7 @@ impl Transport {
 
     fn relpath(&self, path: &str) -> PyResult<String> {
         let url = Url::parse(path).map_err(|_| PyValueError::new_err((path.to_string(),)))?;
-        Ok(self
-            .0
-            .relpath(&url)
-            .map_err(map_transport_err_to_py_err)?)
+        Ok(self.0.relpath(&url).map_err(map_transport_err_to_py_err)?)
     }
 
     fn abspath(&self, path: &str) -> PyResult<String> {
@@ -334,8 +347,7 @@ impl Transport {
 
     fn listable(&self) -> bool {
         let transport = &self.0 as &dyn Any;
-        transport
-            .is::<&dyn breezy_transport::ListableTransport>()
+        transport.is::<&dyn breezy_transport::ListableTransport>()
     }
 
     fn list_dir(&self, path: &str) -> PyResult<Vec<String>> {
@@ -344,18 +356,48 @@ impl Transport {
             .downcast_ref::<&dyn breezy_transport::ListableTransport>()
             .ok_or_else(|| TransportNotPossible::new_err(()))?;
 
-        listable_transport.list_dir(path)
+        listable_transport
+            .list_dir(path)
             .map(|r| r.map_err(map_transport_err_to_py_err))
             .collect::<PyResult<Vec<_>>>()
     }
 
     fn append_bytes(&self, path: &str, bytes: &[u8], mode: Option<PyObject>) -> PyResult<()> {
-        self.0.append_bytes(path, bytes, mode.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)
+        self.0
+            .append_bytes(path, bytes, mode.map(perms_from_py_object))
+            .map_err(map_transport_err_to_py_err)
     }
 
     fn append_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<()> {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
-        self.0.append_file(path, &mut file, mode.map(perms_from_py_object)).map_err(map_transport_err_to_py_err)
+        self.0
+            .append_file(path, &mut file, mode.map(perms_from_py_object))
+            .map_err(map_transport_err_to_py_err)
+    }
+
+    fn iter_files_recursive(&self, py: Python) -> PyResult<PyObject> {
+        let iter = self.0.iter_files_recursive().map(|r| {
+            r.map_err(map_transport_err_to_py_err)
+                .map(|o| o.to_object(py))
+        });
+        iter.collect::<PyResult<Vec<_>>>().map(|v| v.to_object(py))
+    }
+
+    fn open_write_stream(&self, path: &str, mode: Option<PyObject>) -> PyResult<PyWrite> {
+        self.0
+            .open_write_stream(path, mode.map(perms_from_py_object))
+            .map_err(map_transport_err_to_py_err)
+            .map(|w| PyWrite(w))
+    }
+
+    fn delete_tree(&self, path: &str) -> PyResult<()> {
+        self.0
+            .delete_tree(path)
+            .map_err(map_transport_err_to_py_err)
+    }
+
+    fn move_(&self, from: &str, to: &str) -> PyResult<()> {
+        self.0.move_(from, to).map_err(map_transport_err_to_py_err)
     }
 }
 

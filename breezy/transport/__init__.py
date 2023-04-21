@@ -1550,14 +1550,15 @@ def get_transport_from_url(url, possible_transports=None):
         possible_transports.
     """
     transport = None
-    if possible_transports is not None:
-        for t in possible_transports:
-            t_same_connection = t._reuse_for(url)
-            if t_same_connection is not None:
-                # Add only new transports
-                if t_same_connection not in possible_transports:
-                    possible_transports.append(t_same_connection)
-                return t_same_connection
+    if isinstance(transport, ConnectedTransport):
+        if possible_transports is not None:
+            for t in possible_transports:
+                t_same_connection = t._reuse_for(url)
+                if t_same_connection is not None:
+                    # Add only new transports
+                    if t_same_connection not in possible_transports:
+                        possible_transports.append(t_same_connection)
+                    return t_same_connection
 
     last_err = None
     for proto, factory_list in transport_list_registry.items():

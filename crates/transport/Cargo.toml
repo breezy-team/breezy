@@ -21,6 +21,7 @@ breezy-urlutils = { path = "../urlutils" }
 path-clean = "1"
 #[cfg(unix)]
 nix = { version = "0.22" }
+walkdir = "2.3"
 
 [features]
 default = ["pyo3"]

@@ -192,6 +192,7 @@ dependencies = [
  "pyo3",
  "pyo3-file",
  "url",
+ "walkdir",
 ]
 
 [[package]]

@@ -298,18 +298,40 @@ pub trait Transport: 'static + Send + Sync {
         )
     }
 
-    fn append_bytes(&self, relpath: &UrlFragment, data: &[u8], permissions: Option<Permissions>) -> Result<()> {
+    fn append_bytes(
+        &self,
+        relpath: &UrlFragment,
+        data: &[u8],
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
         let mut f = std::io::Cursor::new(data);
         self.append_file(relpath, &mut f, permissions)
     }
 
-    fn append_file(&self, relpath: &UrlFragment, f: &mut dyn std::io::Read, permissions: Option<Permissions>) -> Result<()>;
+    fn append_file(
+        &self,
+        relpath: &UrlFragment,
+        f: &mut dyn std::io::Read,
+        permissions: Option<Permissions>,
+    ) -> Result<()>;
 
     fn readlink(&self, relpath: &UrlFragment) -> Result<String>;
 
     fn hardlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
 
     fn symlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
+
+    fn iter_files_recursive(&self) -> Box<dyn Iterator<Item = Result<String>>>;
+
+    fn open_write_stream(
+        &self,
+        relpath: &UrlFragment,
+        permissions: Option<Permissions>,
+    ) -> Result<Box<dyn std::io::Write + Send + Sync>>;
+
+    fn delete_tree(&self, relpath: &UrlFragment) -> Result<()>;
+
+    fn move_(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
 }
 
 pub trait ListableTransport: Transport {
