@@ -22,7 +22,7 @@ import stat
 import sys
 import time
 from functools import partial
-from typing import Dict, Iterable, List
+from typing import List
 
 from .lazy_import import lazy_import
 
@@ -30,13 +30,11 @@ lazy_import(globals(), """
 import locale
 import ntpath
 import posixpath
-import select
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
 import shutil
 from shutil import rmtree
 import socket
-import subprocess
 import unicodedata
 
 from breezy import (
@@ -421,8 +419,7 @@ is_inside = _osutils_rs.is_inside
 is_inside_any = _osutils_rs.is_inside_any
 is_inside_or_parent_of_any = _osutils_rs.is_inside_or_parent_of_any
 
-def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
-             report_activity=None, direction='read'):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
     """Copy contents of one file to another.
 
     The read_length can either be -1 to read to end-of-file (EOF) or
@@ -448,8 +445,6 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
             if not block:
                 # EOF reached
                 break
-            if report_activity is not None:
-                report_activity(len(block), direction)
             to_file.write(block)
 
             actual_bytes_read = len(block)
@@ -462,8 +457,6 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
             if not block:
                 # EOF reached
                 break
-            if report_activity is not None:
-                report_activity(len(block), direction)
             to_file.write(block)
             length += len(block)
     return length
