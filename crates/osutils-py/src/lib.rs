@@ -861,6 +861,16 @@ fn normpath(path: PathBuf) -> PyResult<PathBuf> {
     Ok(breezy_osutils::path::normpath(path.as_path()))
 }
 
+#[pyfunction]
+fn realpath(path: PathBuf) -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::realpath(path.as_path())?)
+}
+
+#[pyfunction]
+fn normalizepath(path: PathBuf) -> PyResult<PathBuf> {
+    Ok(breezy_osutils::path::normalizepath(path.as_path())?)
+}
+
 #[pymodule]
 fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(chunks_to_lines))?;
@@ -933,6 +943,8 @@ fn _osutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(contains_linebreaks))?;
     m.add_wrapped(wrap_pyfunction!(relpath))?;
     m.add_wrapped(wrap_pyfunction!(normpath))?;
+    m.add_wrapped(wrap_pyfunction!(realpath))?;
+    m.add_wrapped(wrap_pyfunction!(normalizepath))?;
     m.add(
         "MIN_ABS_PATHLENGTH",
         breezy_osutils::path::MIN_ABS_PATHLENGTH,
