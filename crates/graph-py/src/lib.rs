@@ -211,14 +211,7 @@ impl TopoSorter {
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
-            .map(|k| {
-                k.map(|(k, vs)| {
-                    (
-                        PyNode::from(k),
-                        vs.into_iter().map(PyNode::from).collect(),
-                    )
-                })
-            })
+            .map(|k| k.map(|(k, vs)| (PyNode::from(k), vs.into_iter().map(PyNode::from).collect())))
             .collect::<PyResult<Vec<(PyNode, Vec<PyNode>)>>>()?;
 
         let sorter = breezy_graph::tsort::TopoSorter::<PyNode>::new(graph.into_iter());
@@ -286,14 +279,7 @@ impl MergeSorter {
         };
         let graph = iter
             .map(|k| k?.extract::<(PyObject, Vec<PyObject>)>())
-            .map(|k| {
-                k.map(|(k, vs)| {
-                    (
-                        PyNode::from(k),
-                        vs.into_iter().map(PyNode::from).collect(),
-                    )
-                })
-            })
+            .map(|k| k.map(|(k, vs)| (PyNode::from(k), vs.into_iter().map(PyNode::from).collect())))
             .collect::<PyResult<HashMap<PyNode, Vec<PyNode>>>>()?;
 
         let mainline_revisions = if let Some(mainline_revisions) = mainline_revisions {
@@ -302,12 +288,7 @@ impl MergeSorter {
                 .iter()?
                 .map(|k| k?.extract::<PyObject>())
                 .collect::<PyResult<Vec<PyObject>>>()?;
-            Some(
-                mainline_revisions
-                    .into_iter()
-                    .map(PyNode::from)
-                    .collect(),
-            )
+            Some(mainline_revisions.into_iter().map(PyNode::from).collect())
         } else {
             None
         };

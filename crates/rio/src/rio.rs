@@ -99,9 +99,7 @@ impl<'a, R: BufRead> Iterator for RioReaderIter<'a, R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.reader.read_stanza() {
-            Ok(stanza) => {
-                stanza.map(|s| Ok(Some(s)))
-            }
+            Ok(stanza) => stanza.map(|s| Ok(Some(s))),
             Err(e) => Some(Err(e)),
         }
     }
