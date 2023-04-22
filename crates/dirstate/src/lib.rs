@@ -1,4 +1,3 @@
-use base64;
 use breezy_osutils::sha::{sha_file, sha_file_by_name};
 use std::cmp::Ordering;
 use std::fs::File;
@@ -39,8 +38,8 @@ impl SHA1Provider for DefaultSHA1Provider {
 pub fn lt_by_dirs(path1: &Path, path2: &Path) -> bool {
     let path1_parts = path1.components();
     let path2_parts = path2.components();
-    let mut path1_parts_iter = path1_parts.into_iter();
-    let mut path2_parts_iter = path2_parts.into_iter();
+    let mut path1_parts_iter = path1_parts;
+    let mut path2_parts_iter = path2_parts;
 
     loop {
         match (path1_parts_iter.next(), path2_parts_iter.next()) {
@@ -122,7 +121,6 @@ pub fn pack_stat(size: u64, mtime: u64, ctime: u64, dev: u64, ino: u64, mode: u3
     let ctime = ctime & 0xFFFFFFFF;
     let dev = dev & 0xFFFFFFFF;
     let ino = ino & 0xFFFFFFFF;
-    let mode = mode & 0xFFFFFFFF;
 
     let packed_data = [
         (size >> 24) as u8,
@@ -151,7 +149,7 @@ pub fn pack_stat(size: u64, mtime: u64, ctime: u64, dev: u64, ino: u64, mode: u3
         mode as u8,
     ];
 
-    base64::encode(&packed_data)
+    base64::encode(packed_data)
 }
 
 pub fn stat_to_minikind(metadata: &Metadata) -> char {

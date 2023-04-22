@@ -21,7 +21,7 @@ pub fn search_key_255(key: &[&[u8]]) -> Vec<u8> {
     for bit in key {
         let crc = _crc32(bit);
         let crc_bytes = crc.to_be_bytes();
-        result.extend(&crc_bytes);
+        result.extend(crc_bytes);
         result.push(0x00);
     }
     result.pop();

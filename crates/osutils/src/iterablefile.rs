@@ -75,7 +75,7 @@ impl<I: Iterator<Item = io::Result<Vec<u8>>> + Seek + Send> Seek for IterableFil
                 self.buffer.clear();
             }
         }
-        Ok(self.iter.stream_position()?)
+        self.iter.stream_position()
     }
 }
 

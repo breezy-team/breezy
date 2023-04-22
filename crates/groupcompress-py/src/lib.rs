@@ -2,8 +2,6 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
 
-use bazaar_groupcompress;
-
 #[pyfunction]
 fn encode_base128_int(py: Python, value: u128) -> PyResult<&PyBytes> {
     let ret = bazaar_groupcompress::encode_base128_int(value);

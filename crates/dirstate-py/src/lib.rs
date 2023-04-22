@@ -9,8 +9,6 @@ use std::os::unix::ffi::OsStringExt;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
-use bazaar_dirstate;
-
 // TODO(jelmer): Shared pyo3 utils?
 fn extract_path(object: &PyAny) -> PyResult<PathBuf> {
     if let Ok(path) = object.extract::<Vec<u8>>() {
@@ -184,7 +182,7 @@ fn bisect_dirblock(
         let dirblock = dirblocks.get_item(mid)?.cast_as::<PyTuple>()?;
         let cur = dirblock.get_item(0)?;
 
-        let cur_split = match cache.get_item(&cur) {
+        let cur_split = match cache.get_item(cur) {
             Some(item) => item.extract::<Vec<PathBuf>>()?,
             None => {
                 let split = split_object(py, cur.into_py(py))?;
@@ -220,7 +218,7 @@ impl StatResult {
         let modified = self
             .metadata
             .modified()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+            .map_err(PyErr::new::<pyo3::exceptions::PyOSError, _>)?;
         let since_epoch = modified
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
@@ -232,7 +230,7 @@ impl StatResult {
         let created = self
             .metadata
             .created()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+            .map_err(PyErr::new::<pyo3::exceptions::PyOSError, _>)?;
         let since_epoch = created
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e.to_string()))?;
@@ -269,7 +267,7 @@ impl SHA1Provider {
         let sha1 = self
             .provider
             .sha1(&path)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyOSError, _>(e))?;
+            .map_err(PyErr::new::<pyo3::exceptions::PyOSError, _>)?;
         Ok(PyBytes::new(py, sha1.as_bytes()).to_object(py))
     }
 

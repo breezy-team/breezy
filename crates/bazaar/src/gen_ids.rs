@@ -89,7 +89,7 @@ fn get_identifier(s: &str) -> Vec<u8> {
     let mut identifier = s.to_string();
     if let Some(start) = s.find('<') {
         let end = s.rfind('>');
-        if !end.is_none()
+        if end.is_some()
             && start < end.unwrap()
             && end.unwrap() == s.len() - 1
             && s[start..].find('@').is_some()
@@ -117,7 +117,7 @@ pub fn gen_revision_id(username: &str, timestamp: Option<u64>) -> Vec<u8> {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs()
-    }) as u64;
+    });
     vec![
         user_or_email,
         breezy_osutils::time::compact_date(timestamp)

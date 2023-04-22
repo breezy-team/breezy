@@ -95,19 +95,19 @@ pub fn format_delta(delta: i64) -> String {
     }
 
     let hours = minutes / 60;
-    minutes = minutes % 60;
+    minutes %= 60;
     let plural_minutes = if minutes == 1 { "" } else { "s" };
 
     if hours == 1 {
-        return format!(
+        format!(
             "{} hour, {} minute{} {}",
             hours, minutes, plural_minutes, direction
-        );
+        )
     } else {
-        return format!(
+        format!(
             "{} hours, {} minute{} {}",
             hours, minutes, plural_minutes, direction
-        );
+        )
     }
 }
 
@@ -200,7 +200,7 @@ pub fn unpack_highres_date(date: &str) -> Result<(f64, i32), String> {
         ));
     }
     let weekday = &date[..space_loc.unwrap()];
-    if WEEKDAYS.iter().find(|&&d| d == weekday).is_none() {
+    if !WEEKDAYS.iter().any(|&d| d == weekday) {
         return Err(format!(
             "date string does not contain a valid day of week: {}",
             date

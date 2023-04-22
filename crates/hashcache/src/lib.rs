@@ -168,7 +168,7 @@ impl HashCache {
         by_inode.sort_by_key(|x| x.0);
         for (_inode, path, cache_val) in by_inode {
             let abspath = self.root.join(path);
-            let fp = self.fingerprint(&abspath.as_ref(), None);
+            let fp = self.fingerprint(abspath.as_ref(), None);
             self.stat_count += 1;
 
             if fp.is_none() || cache_val.1 != fp.unwrap() {
@@ -228,7 +228,7 @@ impl HashCache {
                         // again. If we didn't do this, then, for example, a very quick 1
                         // byte replacement in the file might go undetected.
                         self.danger_count += 1;
-                        if let Some(_) = self.cache.remove(path) {
+                        if self.cache.remove(path).is_some() {
                             self.removed_count += 1;
                             self.needs_write = true;
                         }
@@ -266,11 +266,11 @@ impl HashCache {
     ) -> io::Result<Option<String>> {
         let abspath = self.root.join(path);
         self.stat_count += 1;
-        let file_fp = self.fingerprint(&abspath.as_ref(), stat_value);
+        let file_fp = self.fingerprint(abspath.as_ref(), stat_value);
 
         if file_fp.is_none() {
             // not a regular file or not existing
-            if let Some(_) = self.cache.remove(path) {
+            if self.cache.remove(path).is_some() {
                 self.removed_count += 1;
                 self.needs_write = true;
             }
@@ -353,7 +353,7 @@ impl HashCache {
             self.needs_write = true;
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("error reading cache file header",),
+                "error reading cache file header".to_string(),
             ));
         }
         for line in lines {
