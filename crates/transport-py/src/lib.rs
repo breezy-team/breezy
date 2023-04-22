@@ -1,13 +1,14 @@
-use breezy_transport::{Error, Result, Stat, UrlFragment};
+use breezy_transport::{Error, ReadStream, Result, Stat, UrlFragment, WriteStream};
 use pyo3::create_exception;
 use pyo3::exceptions::{PyException, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
+use pyo3::types::PyIterator;
 use pyo3::types::{PyBytes, PyList, PyType};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
-use std::io::BufReader;
+use std::io::{BufRead, BufReader, Seek};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use url::Url;
@@ -21,6 +22,7 @@ import_exception!(breezy.transport, FileExists);
 import_exception!(breezy.errors, PathNotChild);
 import_exception!(breezy.errors, PermissionDenied);
 import_exception!(breezy.errors, TransportNotPossible);
+import_exception!(breezy.errors, ShortReadvError);
 
 create_exception!(_transport_rs, UrlError, TransportError);
 
@@ -41,6 +43,9 @@ fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFrag
         Error::UrlutilsError(e) => UrlError::new_err(format!("{:?}", e)),
         Error::Io(e) => e.into(),
         Error::UnexpectedEof => PyValueError::new_err("Unexpected EOF"),
+        Error::ShortReadvError(path, offset, expected, got) => {
+            ShortReadvError::new_err((path, offset, expected, got))
+        }
     }
 }
 
@@ -61,49 +66,62 @@ struct PyStat {
     st_size: usize,
 }
 
-#[pyclass]
-struct PyRead(Box<dyn std::io::BufRead + Sync + Send>);
+trait BufReadStream: BufRead + Seek {}
+
+impl BufReadStream for BufReader<Box<dyn ReadStream + Sync + Send>> {}
 
 #[pyclass]
-struct PyWrite(Box<dyn std::io::Write + Sync + Send>);
+struct PyBufReadStream(Box<dyn BufReadStream + Sync + Send>);
+
+#[pyclass]
+struct PyWriteStream(Box<dyn WriteStream + Sync + Send>);
 
 #[pymethods]
-impl PyWrite {
-    fn write(&mut self, py: Python, data: &PyBytes) -> PyResult<usize> {
+impl PyWriteStream {
+    fn write(&mut self, data: &PyBytes) -> PyResult<usize> {
         self.0.write(data.as_bytes()).map_err(|e| e.into())
     }
 
-    fn close(&mut self) -> PyResult<()> {
+    fn close(&mut self, want_fdatasync: Option<bool>) -> PyResult<()> {
+        if want_fdatasync.unwrap_or(false) {
+            self.fdatasync()?;
+        }
         Ok(())
+    }
+
+    fn fdatasync(&mut self) -> PyResult<()> {
+        self.0.sync_all().map_err(|e| e.into())
     }
 }
 
-impl PyRead {
-    fn new(read: Box<dyn std::io::Read + Sync + Send>) -> Self {
+impl PyBufReadStream {
+    fn new(read: Box<dyn ReadStream + Sync + Send>) -> Self {
         Self(Box::new(BufReader::new(read)))
     }
 }
 
 #[pymethods]
-impl PyRead {
+impl PyBufReadStream {
     fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
         let mut buf = vec![0; size.unwrap_or(4096)];
         let ret = self.0.read(&mut buf)?;
         Ok(PyBytes::new(py, &buf[..ret]).to_object(py).to_object(py))
     }
 
-    /*
-    fn seek(&self, offset: usize, whence: i8) -> PyResult<()> {
+    fn seek(&mut self, offset: i64, whence: i8) -> PyResult<u64> {
         let seekfrom = match whence {
             0 => std::io::SeekFrom::Start(offset as u64),
-            1 => std::io::SeekFrom::Current(offset as i64),
-            2 => std::io::SeekFrom::End(offset as i64),
+            1 => std::io::SeekFrom::Current(offset),
+            2 => std::io::SeekFrom::End(offset),
             _ => return Err(PyValueError::new_err("Invalid whence")),
         };
 
-        Ok(self.0.seek(0, seekfrom).map_err(|e| e.into()))
+        self.0.seek(seekfrom).map_err(|e| e.into())
     }
-    */
+
+    fn tell(&mut self) -> PyResult<u64> {
+        self.0.stream_position().map_err(|e| e.into())
+    }
 
     fn readline(&mut self, py: Python) -> PyResult<PyObject> {
         let mut buf = vec![];
@@ -143,7 +161,7 @@ impl PyRead {
 impl Transport {
     fn map_to_py_err(slf: &PyCell<Self>, py: Python, e: Error, p: Option<&str>) -> PyErr {
         let obj = slf.borrow().into_py(py);
-        map_transport_err_to_py_err(e, Some(obj), None)
+        map_transport_err_to_py_err(e, Some(obj), p)
     }
 }
 
@@ -206,7 +224,7 @@ impl Transport {
             .0
             .get(path)
             .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), None))?;
-        Ok(PyRead::new(ret).into_py(py))
+        Ok(PyBufReadStream::new(ret).into_py(py))
     }
 
     fn get_smart_medium(slf: &PyCell<Self>, py: Python) -> PyResult<PyObject> {
@@ -374,14 +392,29 @@ impl Transport {
         self.0.is_readonly()
     }
 
-    fn readv(&self, py: Python, path: &str, offsets: Vec<(u64, usize)>) -> PyResult<Vec<PyObject>> {
-        self.0
-            .readv(path, offsets.as_slice())
+    fn readv(
+        &self,
+        py: Python,
+        path: &str,
+        offsets: Vec<(u64, usize)>,
+        adjust_for_latency: Option<bool>,
+        upper_limit: Option<u64>,
+    ) -> PyResult<PyObject> {
+        let buffered = self
+            .0
+            .readv(
+                path,
+                offsets,
+                adjust_for_latency.unwrap_or(false),
+                upper_limit,
+            )
             .map(|r| {
-                r.map(|o| PyBytes::new(py, &o).to_object(py))
-                    .map_err(|e| map_transport_err_to_py_err(e, None, None))
+                r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
+                    .map(|(o, r)| (o, PyBytes::new(py, &r).into_py(py)))
             })
-            .collect()
+            .collect::<PyResult<Vec<(u64, PyObject)>>>()?;
+        let list = PyList::new(py, &buffered);
+        Ok(PyIterator::from_object(py, list)?.to_object(py))
     }
 
     fn listable(&self) -> bool {
@@ -421,12 +454,12 @@ impl Transport {
         py: Python,
         path: &str,
         mode: Option<PyObject>,
-    ) -> PyResult<PyWrite> {
+    ) -> PyResult<PyWriteStream> {
         slf.borrow()
             .0
             .open_write_stream(path, mode.map(perms_from_py_object))
             .map_err(|e| Transport::map_to_py_err(slf, py, e, None))
-            .map(|w| PyWrite(w))
+            .map(|w| PyWriteStream(w))
     }
 
     fn delete_tree(&self, path: &str) -> PyResult<()> {

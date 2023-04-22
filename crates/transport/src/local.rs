@@ -1,4 +1,7 @@
-use crate::{BogusLock, Error, Lock, Result, SmartMedium, Stat, Transport, UrlFragment};
+use crate::{
+    BogusLock, Error, Lock, ReadStream, Result, SmartMedium, Stat, Transport, UrlFragment,
+    WriteLock, WriteStream,
+};
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use path_clean::{clean, PathClean};
 use std::collections::HashMap;
@@ -42,6 +45,14 @@ impl Clone for LocalTransport {
     }
 }
 
+impl WriteStream for File {
+    fn sync_all(&self) -> std::io::Result<()> {
+        self.sync_all()
+    }
+}
+
+impl ReadStream for File {}
+
 impl Transport for LocalTransport {
     fn external_url(&self) -> Result<Url> {
         Ok(self.base.clone())
@@ -63,7 +74,7 @@ impl Transport for LocalTransport {
         return false;
     }
 
-    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read + Send + Sync>> {
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn ReadStream + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
         let mut f = std::fs::File::open(path).map_err(Error::from)?;
         Ok(Box::new(f))
@@ -167,10 +178,12 @@ impl Transport for LocalTransport {
 
     #[cfg(unix)]
     fn readv<'a>(
-        &'a self,
-        path: &UrlFragment,
-        offsets: &'a [(u64, usize)],
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>>> + '_> {
+        &self,
+        path: &'a UrlFragment,
+        offsets: Vec<(u64, usize)>,
+        _adjust_for_latency: bool,
+        _upper_limit: Option<u64>,
+    ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + 'a> {
         use nix::libc::off_t;
         use nix::sys::uio::pread;
         use std::os::unix::io::AsRawFd;
@@ -182,16 +195,24 @@ impl Transport for LocalTransport {
             Ok(f) => f,
             Err(err) => return Box::new(std::iter::once(Err(err.into()))),
         };
-        let fd = file.as_raw_fd();
 
-        Box::new(offsets.iter().map(move |&(offset, len)| {
-            let mut buf = vec![0; len];
-            match pread(fd, &mut buf[..], offset as off_t) {
-                Ok(n) if n == len as usize => Ok(buf),
-                Ok(_) => Err(Error::UnexpectedEof),
-                Err(e) => Err(std::io::Error::from_raw_os_error(e as i32).into()),
-            }
-        }))
+        Box::new(
+            offsets
+                .into_iter()
+                .map(move |(offset, len)| -> Result<(u64, Vec<u8>)> {
+                    let mut buf = vec![0; len];
+                    match pread(file.as_raw_fd(), &mut buf[..], offset as off_t) {
+                        Ok(n) if n == len => Ok((offset, buf)),
+                        Ok(n) => Err(Error::ShortReadvError(
+                            path.to_owned(),
+                            offset,
+                            len as u64,
+                            n as u64,
+                        )),
+                        Err(e) => Err(std::io::Error::from_raw_os_error(e as i32).into()),
+                    }
+                }),
+        )
     }
 
     fn append_file(
@@ -251,7 +272,7 @@ impl Transport for LocalTransport {
         &self,
         relpath: &UrlFragment,
         permissions: Option<Permissions>,
-    ) -> Result<Box<dyn std::io::Write + Send + Sync>> {
+    ) -> Result<Box<dyn WriteStream + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
         let file = File::create(path).map_err(Error::from)?;
         file.set_len(0)?;
@@ -309,7 +330,7 @@ impl Transport for LocalTransport {
     }
 
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
-        Err(Error::TransportNotPossible)
+        Ok(Box::new(FileWriteLock(self.local_abspath(relpath)?)))
     }
 
     fn copy_to(

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
-use std::io::{BufRead, Read, Seek};
+use std::io::{Read, Seek};
 use std::os::unix::fs::PermissionsExt;
 use url::Url;
 
@@ -28,6 +28,63 @@ pub enum Error {
     PathNotChild,
 
     UnexpectedEof,
+
+    ShortReadvError(String, u64, u64, u64),
+}
+
+fn sort_expand_and_combine(
+    offsets: Vec<(u64, usize)>,
+    upper_limit: Option<u64>,
+    recommended_page_size: usize,
+) -> Vec<(u64, usize)> {
+    // Sort the offsets by start address.
+    let mut sorted_offsets = offsets.to_vec();
+    sorted_offsets.sort_unstable_by_key(|&(offset, _)| offset);
+
+    // Short circuit empty requests.
+    if sorted_offsets.is_empty() {
+        return Vec::new();
+    }
+
+    // Expand the offsets by page size at either end.
+    let maximum_expansion = recommended_page_size;
+    let mut new_offsets = Vec::with_capacity(sorted_offsets.len());
+    for (offset, length) in sorted_offsets {
+        let expansion = maximum_expansion.saturating_sub(length);
+        let reduction = expansion / 2;
+        let new_offset = offset.saturating_sub(reduction as u64);
+        let new_length = length + expansion;
+        let new_length = if let Some(upper_limit) = upper_limit {
+            let new_end = new_offset.saturating_add(new_length as u64);
+            let new_length = std::cmp::min(upper_limit, new_end) - new_offset;
+            std::cmp::max(0, new_length as isize) as usize
+        } else {
+            new_length
+        };
+        if new_length > 0 {
+            new_offsets.push((new_offset, new_length));
+        }
+    }
+
+    // Combine the expanded offsets.
+    let mut result = Vec::with_capacity(new_offsets.len());
+    if let Some((mut current_offset, mut current_length)) = new_offsets.first().copied() {
+        let mut current_finish = current_offset + current_length as u64;
+        for (offset, length) in new_offsets.iter().skip(1) {
+            let finish = offset + *length as u64;
+            if *offset > current_finish {
+                result.push((current_offset, current_length));
+                current_offset = *offset;
+                current_length = *length;
+                current_finish = finish;
+            } else if finish > current_finish {
+                current_finish = finish;
+                current_length = (current_finish - current_offset) as usize;
+            }
+        }
+        result.push((current_offset, current_length));
+    }
+    result
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -90,6 +147,12 @@ impl Stat {
     }
 }
 
+pub trait WriteStream: std::io::Write {
+    fn sync_all(&self) -> std::io::Result<()>;
+}
+
+pub trait ReadStream: Read + Seek {}
+
 pub trait Transport: 'static + Send + Sync {
     /// Return a URL for self that can be given to an external process.
     ///
@@ -120,7 +183,7 @@ pub trait Transport: 'static + Send + Sync {
         Ok(result)
     }
 
-    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read + Send + Sync>>;
+    fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn ReadStream + Send + Sync>>;
 
     fn base(&self) -> Url;
 
@@ -285,23 +348,53 @@ pub trait Transport: 'static + Send + Sync {
     }
 
     fn readv<'a>(
-        &'a self,
-        relpath: &UrlFragment,
-        offsets: &'a [(u64, usize)],
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>>> + '_> {
+        &self,
+        relpath: &'a UrlFragment,
+        offsets: Vec<(u64, usize)>,
+        adjust_for_latency: bool,
+        upper_limit: Option<u64>,
+    ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + 'a> {
+        let offsets = if adjust_for_latency {
+            sort_expand_and_combine(offsets, upper_limit, self.recommended_page_size())
+        } else {
+            offsets
+        };
         let buf = match self.get_bytes(relpath) {
-            Err(err) => return Box::new(std::iter::once(Err(err.into()))),
+            Err(err) => return Box::new(std::iter::once(Err(err))),
             Ok(file) => file,
         };
         let mut file = std::io::Cursor::new(buf);
         Box::new(
             offsets
-                .iter()
-                .map(move |(offset, length)| -> Result<Vec<u8>> {
-                    let mut buf = vec![0; *length];
-                    file.seek(std::io::SeekFrom::Start(*offset))?;
-                    file.read_exact(&mut buf)?;
-                    Ok(buf)
+                .into_iter()
+                .map(move |(offset, length)| -> Result<(u64, Vec<u8>)> {
+                    let mut buf = vec![0; length];
+                    match file.seek(std::io::SeekFrom::Start(offset)) {
+                        Ok(_) => {}
+                        Err(err) => match err.kind() {
+                            std::io::ErrorKind::UnexpectedEof => {
+                                return Err(Error::ShortReadvError(
+                                    relpath.to_owned(),
+                                    offset,
+                                    length as u64,
+                                    file.position() - offset,
+                                ))
+                            }
+                            _ => return Err(Error::from(err)),
+                        },
+                    }
+                    match file.read_exact(&mut buf) {
+                        Ok(_) => Ok((offset, buf)),
+                        Err(err) => match err.kind() {
+                            std::io::ErrorKind::UnexpectedEof => Err(Error::ShortReadvError(
+                                relpath.to_owned(),
+                                offset,
+                                length as u64,
+                                file.position() - offset,
+                            )),
+                            _ => Err(Error::from(err)),
+                        },
+                    }
                 }),
         )
     }
@@ -335,7 +428,7 @@ pub trait Transport: 'static + Send + Sync {
         &self,
         relpath: &UrlFragment,
         permissions: Option<Permissions>,
-    ) -> Result<Box<dyn std::io::Write + Send + Sync>>;
+    ) -> Result<Box<dyn WriteStream + Send + Sync>>;
 
     fn delete_tree(&self, relpath: &UrlFragment) -> Result<()>;
 

@@ -1,4 +1,6 @@
-use crate::{Error, Lock, Result, SmartMedium, Stat, Transport, Url, UrlFragment};
+use crate::{
+    Error, Lock, ReadStream, Result, SmartMedium, Stat, Transport, Url, UrlFragment, WriteStream,
+};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -19,6 +21,7 @@ import_exception!(breezy.errors, TransportNotPossible);
 import_exception!(breezy.errors, UrlError);
 import_exception!(breezy.errors, PermissionDenied);
 import_exception!(breezy.errors, PathNotChild);
+import_exception!(breezy.errors, ShortReadvError);
 
 struct PySmartMedium(PyObject);
 
@@ -66,12 +69,22 @@ impl From<PyErr> for Error {
                 ))
             } else if e.is_instance_of::<PathNotChild>(py) {
                 Error::PathNotChild
+            } else if e.is_instance_of::<ShortReadvError>(py) {
+                let value = e.value(py);
+                Error::ShortReadvError(
+                    value.getattr("path").unwrap().extract::<String>().unwrap(),
+                    value.getattr("offset").unwrap().extract::<u64>().unwrap(),
+                    value.getattr("length").unwrap().extract::<u64>().unwrap(),
+                    value.getattr("actual").unwrap().extract::<u64>().unwrap(),
+                )
             } else {
                 panic!("{}", e.to_string())
             }
         })
     }
 }
+
+impl ReadStream for PyFileLikeObject {}
 
 // Bit of a hack - this reads the entire buffer, and then streams it
 fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
@@ -84,12 +97,39 @@ fn py_read(r: &mut dyn Read) -> PyResult<PyObject> {
     })
 }
 
+struct PyWriteStream(PyObject);
+
+impl Write for PyWriteStream {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        Python::with_gil(|py| {
+            let obj = self.0.call_method1(py, "write", (buf,))?;
+            Ok(obj.extract::<usize>(py)?)
+        })
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method0(py, "flush")?;
+            Ok(())
+        })
+    }
+}
+
+impl WriteStream for PyWriteStream {
+    fn sync_all(&self) -> std::io::Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method0(py, "fdatasync")?;
+            Ok(())
+        })
+    }
+}
+
 impl Transport for PyTransport {
     fn external_url(&self) -> Result<Url> {
         Python::with_gil(|py| {
             let obj = self.0.call_method0(py, "external_url")?;
             let s = obj.extract::<String>(py)?;
-            Ok(Url::parse(&s).map_err(Error::from)?)
+            Url::parse(&s).map_err(Error::from)
         })
     }
 
@@ -101,11 +141,11 @@ impl Transport for PyTransport {
         })
     }
 
-    fn get(&self, path: &str) -> Result<Box<dyn Read + Send + Sync>> {
+    fn get(&self, path: &str) -> Result<Box<dyn ReadStream + Send + Sync>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "get", (path,))?;
-            Ok(PyFileLikeObject::with_requirements(obj, true, false, false)
-                .map(|f| Box::new(f) as Box<dyn Read + Send + Sync>)?)
+            Ok(PyFileLikeObject::with_requirements(obj, true, false, true)
+                .map(|f| Box::new(f) as Box<dyn ReadStream + Send + Sync>)?)
         })
     }
 
@@ -179,7 +219,7 @@ impl Transport for PyTransport {
             let obj = self.0.call_method1(py, "abspath", (relpath,))?;
             obj.extract::<String>(py)
         })?;
-        Ok(Url::parse(&s).map_err(Error::from)?)
+        Url::parse(&s).map_err(Error::from)
     }
 
     fn put_file(
@@ -327,11 +367,17 @@ impl Transport for PyTransport {
     fn readv(
         &self,
         relpath: &UrlFragment,
-        offsets: &[(u64, usize)],
-    ) -> Box<dyn Iterator<Item = Result<Vec<u8>>>> {
+        offsets: Vec<(u64, usize)>,
+        adjust_for_latency: bool,
+        upper_limit: Option<u64>,
+    ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>>> {
         let iter = Python::with_gil(|py| {
             self.0
-                .call_method1(py, "readv", (relpath, offsets.to_vec()))?
+                .call_method1(
+                    py,
+                    "readv",
+                    (relpath, offsets, adjust_for_latency, upper_limit),
+                )?
                 .extract::<PyObject>(py)
         });
 
@@ -340,21 +386,20 @@ impl Transport for PyTransport {
         }
 
         Box::new(std::iter::from_fn(move || {
-            Python::with_gil(|py| -> Option<Result<Vec<u8>>> {
+            Python::with_gil(|py| -> Option<Result<(u64, Vec<u8>)>> {
                 let iter = iter.as_ref().unwrap();
                 match iter.call_method0(py, "__next__") {
                     Ok(obj) => {
                         if obj.is_none(py) {
-                            return None;
+                            None
                         } else {
-                            let bytes = obj.extract::<Vec<u8>>(py).unwrap();
-                            Some(Ok(bytes))
+                            let (offset, bytes) = obj.extract::<(u64, Vec<u8>)>(py).unwrap();
+                            Some(Ok((offset, bytes)))
                         }
                     }
                     Err(e) => Some(Err(Error::from(e))),
                 }
             })
-            .into()
         }))
     }
 
@@ -432,7 +477,7 @@ impl Transport for PyTransport {
                 match iter.call_method0(py, "__next__") {
                     Ok(obj) => {
                         if obj.is_none(py) {
-                            return None;
+                            None
                         } else {
                             let path = obj.extract::<String>(py).unwrap();
                             Some(Ok(path))
@@ -441,7 +486,6 @@ impl Transport for PyTransport {
                     Err(e) => Some(Err(Error::from(e))),
                 }
             })
-            .into()
         }))
     }
 
@@ -449,15 +493,15 @@ impl Transport for PyTransport {
         &self,
         relpath: &UrlFragment,
         permissions: Option<Permissions>,
-    ) -> Result<Box<dyn Write + Send + Sync>> {
+    ) -> Result<Box<dyn WriteStream + Send + Sync>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(
                 py,
                 "open_write_stream",
                 (relpath, permissions.map(|p| p.mode())),
             )?;
-            let file = PyFileLikeObject::with_requirements(obj, false, true, false).unwrap();
-            Ok(Box::new(file) as Box<dyn Write + Send + Sync>)
+            let file = PyWriteStream(obj);
+            Ok(Box::new(file) as Box<dyn WriteStream + Send + Sync>)
         })
     }
 
@@ -529,15 +573,14 @@ impl Transport for PyTransport {
                 match iter.call_method0(py, "__next__") {
                     Ok(obj) => {
                         if obj.is_none(py) {
-                            return None;
+                            None
                         } else {
-                            return Some(obj.extract::<String>(py).map_err(|e| e.into()));
+                            Some(obj.extract::<String>(py).map_err(|e| e.into()))
                         }
                     }
                     Err(e) => Some(Err(e.into())),
                 }
             })
-            .into()
         }))
     }
 
