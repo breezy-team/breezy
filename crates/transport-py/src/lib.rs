@@ -31,7 +31,7 @@ fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFrag
     match e {
         Error::InProcessTransport => InProcessTransport::new_err(()),
         Error::NotLocalUrl(url) => NotLocalUrl::new_err((url,)),
-        Error::NoSmartMedium => NoSmartMedium::new_err(()),
+        Error::NoSmartMedium => NoSmartMedium::new_err((t.unwrap(),)),
         Error::NoSuchFile(name) => NoSuchFile::new_err((name,)),
         Error::FileExists(name) => FileExists::new_err((name,)),
         Error::TransportNotPossible => TransportNotPossible::new_err(()),
@@ -112,6 +112,16 @@ impl PyRead {
         Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
     }
 
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        let mut buf = vec![];
+        let ret = self.0.read_until(b'\n', &mut buf)?;
+        if ret == 0 {
+            return Ok(None);
+        }
+        buf.truncate(ret);
+        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
+    }
+
     fn close(&mut self) -> PyResult<()> {
         Ok(())
     }
@@ -127,6 +137,13 @@ impl PyRead {
         _exc_tb: Option<&PyAny>,
     ) -> PyResult<bool> {
         Ok(true)
+    }
+}
+
+impl Transport {
+    fn map_to_py_err(slf: &PyCell<Self>, py: Python, e: Error, p: Option<&str>) -> PyErr {
+        let obj = slf.borrow().into_py(py);
+        map_transport_err_to_py_err(e, Some(obj), None)
     }
 }
 
@@ -154,17 +171,15 @@ impl Transport {
     }
 
     fn has(&self, path: &str) -> PyResult<bool> {
-        Ok(self
-            .0
+        self.0
             .has(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?)
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
     fn has_any(&self, paths: Vec<&str>) -> PyResult<bool> {
-        Ok(self
-            .0
+        self.0
             .has_any(paths.as_slice())
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?)
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
     fn mkdir(&self, path: &str, mode: Option<PyObject>) -> PyResult<()> {
@@ -175,10 +190,9 @@ impl Transport {
     }
 
     fn ensure_base(&self, mode: Option<PyObject>) -> PyResult<bool> {
-        Ok(self
-            .0
+        self.0
             .ensure_base(mode.map(perms_from_py_object))
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?)
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
     fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
@@ -195,11 +209,11 @@ impl Transport {
         Ok(PyRead::new(ret).into_py(py))
     }
 
-    fn get_smart_medium(&self, py: Python) -> PyResult<PyObject> {
-        let medium = self
+    fn get_smart_medium(slf: &PyCell<Self>, py: Python) -> PyResult<PyObject> {
+        slf.borrow()
             .0
             .get_smart_medium()
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| Transport::map_to_py_err(slf, py, e, None))?;
         // TODO(jelmer)
         Ok(py.None())
     }
@@ -229,10 +243,9 @@ impl Transport {
 
     fn relpath(&self, path: &str) -> PyResult<String> {
         let url = Url::parse(path).map_err(|_| PyValueError::new_err((path.to_string(),)))?;
-        Ok(self
-            .0
+        self.0
             .relpath(&url)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?)
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
     fn abspath(&self, path: &str) -> PyResult<String> {
@@ -328,10 +341,9 @@ impl Transport {
     }
 
     fn get_segment_parameters(&self) -> PyResult<HashMap<String, String>> {
-        Ok(self
-            .0
+        self.0
             .get_segment_parameters()
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?)
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
     fn create_prefix(&self, mode: Option<PyObject>) -> PyResult<()> {
@@ -404,10 +416,16 @@ impl Transport {
         iter.collect::<PyResult<Vec<_>>>().map(|v| v.to_object(py))
     }
 
-    fn open_write_stream(&self, path: &str, mode: Option<PyObject>) -> PyResult<PyWrite> {
-        self.0
+    fn open_write_stream(
+        slf: &PyCell<Self>,
+        py: Python,
+        path: &str,
+        mode: Option<PyObject>,
+    ) -> PyResult<PyWrite> {
+        slf.borrow()
+            .0
             .open_write_stream(path, mode.map(perms_from_py_object))
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| Transport::map_to_py_err(slf, py, e, None))
             .map(|w| PyWrite(w))
     }
 
@@ -426,6 +444,27 @@ impl Transport {
     fn copy_tree(&self, from: &str, to: &str) -> PyResult<()> {
         self.0
             .copy_tree(from, to)
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+    }
+
+    fn copy_tree_to_transport(&self, to_transport: &Transport) -> PyResult<()> {
+        self.0
+            .copy_tree_to_transport(to_transport.0.as_ref())
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+    }
+
+    fn copy_to(
+        &self,
+        relpaths: Vec<&str>,
+        to_transport: &Transport,
+        mode: Option<PyObject>,
+    ) -> PyResult<()> {
+        self.0
+            .copy_to(
+                relpaths.as_slice(),
+                to_transport.0.as_ref(),
+                mode.map(perms_from_py_object),
+            )
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 

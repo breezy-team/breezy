@@ -482,6 +482,19 @@ impl Transport for PyTransport {
         })
     }
 
+    fn copy_tree_to_transport(&self, to_transport: &dyn Transport) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn copy_to(
+        &self,
+        relpaths: &[&str],
+        to_transport: &dyn Transport,
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
+        unimplemented!()
+    }
+
     fn can_roundtrip_unix_modebits(&self) -> bool {
         Python::with_gil(|py| {
             self.0

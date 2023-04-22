@@ -2,7 +2,7 @@ use crate::{BogusLock, Error, Lock, Result, SmartMedium, Stat, Transport, UrlFra
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use path_clean::{clean, PathClean};
 use std::collections::HashMap;
-use std::fs::OpenOptions;
+use std::fs::File;
 use std::fs::Permissions;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
@@ -106,8 +106,9 @@ impl Transport for LocalTransport {
     }
 
     fn relpath(&self, abspath: &Url) -> Result<String> {
-        unimplemented!()
-        // Ok(breezy_urlutils::file_relpath(&self.base, abspath).map_err(Error::from))
+        let relpath = breezy_urlutils::file_relpath(self.base.as_str(), abspath.as_str())
+            .map_err(Error::from)?;
+        Ok(relpath)
     }
 
     fn put_file(
@@ -252,7 +253,7 @@ impl Transport for LocalTransport {
         permissions: Option<Permissions>,
     ) -> Result<Box<dyn std::io::Write + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
-        let file = OpenOptions::new().open(path).map_err(Error::from)?;
+        let file = File::create(path).map_err(Error::from)?;
         file.set_len(0)?;
         if let Some(permissions) = permissions {
             file.set_permissions(permissions)?;
@@ -310,4 +311,6 @@ impl Transport for LocalTransport {
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
         Err(Error::TransportNotPossible)
     }
+
+    // TODO(jelmer): Implement optimized version of copy_to()
 }

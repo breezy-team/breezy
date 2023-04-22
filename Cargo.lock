@@ -187,6 +187,7 @@ dependencies = [
  "atomicwrites",
  "breezy-osutils",
  "breezy-urlutils",
+ "libc",
  "nix",
  "path-clean",
  "pyo3",

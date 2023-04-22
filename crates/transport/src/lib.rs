@@ -80,6 +80,16 @@ impl From<Metadata> for Stat {
     }
 }
 
+impl Stat {
+    pub fn is_dir(&self) -> bool {
+        self.mode & libc::S_IFMT == libc::S_IFDIR
+    }
+
+    pub fn is_file(&self) -> bool {
+        self.mode & libc::S_IFMT == libc::S_IFREG
+    }
+}
+
 pub trait Transport: 'static + Send + Sync {
     /// Return a URL for self that can be given to an external process.
     ///
@@ -331,7 +341,60 @@ pub trait Transport: 'static + Send + Sync {
 
     fn r#move(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
 
-    fn copy_tree(&self, from_relpath: &UrlFragment, to_relpath: &UrlFragment) -> Result<()>;
+    fn copy_tree(&self, from_relpath: &UrlFragment, to_relpath: &UrlFragment) -> Result<()> {
+        let source = self.clone(Some(from_relpath))?;
+        let target = self.clone(Some(to_relpath))?;
+
+        // create target directory with the same rwx bits as source
+        // use umask to ensure bits other than rwx are ignored
+        let stat = self.stat(from_relpath)?;
+        target.mkdir(".", Some(Permissions::from_mode(stat.mode)))?;
+        source.copy_tree_to_transport(target.as_ref())?;
+        Ok(())
+    }
+
+    fn copy_tree_to_transport(&self, to_transport: &dyn Transport) -> Result<()> {
+        let mut files = Vec::new();
+        let mut directories = vec![".".to_string()];
+        while let Some(dir) = directories.pop() {
+            if dir != "." {
+                to_transport.mkdir(dir.as_str(), None)?;
+            }
+            for entry in self.list_dir(dir.as_str()) {
+                let entry = entry?;
+                let full_path = format!("{}/{}", dir, entry);
+                let stat = self.stat(&full_path)?;
+                if stat.is_dir() {
+                    directories.push(full_path);
+                } else {
+                    files.push(full_path);
+                }
+            }
+        }
+        self.copy_to(
+            files
+                .iter()
+                .map(|x| x.as_str())
+                .collect::<Vec<_>>()
+                .as_slice(),
+            to_transport,
+            None,
+        )?;
+        Ok(())
+    }
+
+    fn copy_to(
+        &self,
+        relpaths: &[&str],
+        to_transport: &dyn Transport,
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
+        relpaths.iter().try_for_each(|relpath| {
+            let mut f = self.get(relpath)?;
+            to_transport.put_file(relpath, &mut f, permissions.clone())
+        })?;
+        Ok(())
+    }
 
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>>;
 
