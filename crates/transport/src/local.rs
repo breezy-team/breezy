@@ -1,6 +1,6 @@
 use crate::{
     BogusLock, Error, Lock, ReadStream, Result, SmartMedium, Stat, Transport, UrlFragment,
-    WriteLock, WriteStream,
+    WriteStream,
 };
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use path_clean::{clean, PathClean};
@@ -330,7 +330,9 @@ impl Transport for LocalTransport {
     }
 
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
-        Ok(Box::new(FileWriteLock(self.local_abspath(relpath)?)))
+        Ok(Box::new(crate::locks::WriteLock(
+            self.local_abspath(relpath)?,
+        )))
     }
 
     fn copy_to(

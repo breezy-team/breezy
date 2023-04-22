@@ -188,6 +188,7 @@ dependencies = [
  "breezy-osutils",
  "breezy-urlutils",
  "libc",
+ "log",
  "nix",
  "path-clean",
  "pyo3",

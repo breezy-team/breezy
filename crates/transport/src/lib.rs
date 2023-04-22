@@ -510,6 +510,11 @@ pub trait Lock {
     fn unlock(&mut self) -> Result<()>;
 }
 
+enum LockError {
+    LockContention(PathBuf),
+    LockFailed(PathBuf, String),
+}
+
 struct BogusLock {}
 
 impl Lock for BogusLock {
@@ -524,3 +529,7 @@ pub mod local;
 
 #[cfg(feature = "pyo3")]
 pub mod pyo3;
+
+#[cfg(unix)]
+#[path = "fcntl-locks.rs"]
+pub mod locks;

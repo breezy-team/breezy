@@ -24,6 +24,7 @@ nix = { version = "0.22" }
 walkdir = "2.3"
 #[cfg(unix)]
 libc = "0.2"
+log = "0.4"
 
 [features]
 default = ["pyo3"]
