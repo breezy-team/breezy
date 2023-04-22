@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use unicode_normalization::{is_nfc, UnicodeNormalization};
@@ -356,6 +357,7 @@ pub mod win32 {
 }
 
 pub mod posix {
+    use std::collections::HashMap;
     use std::path::{Component, Path, PathBuf};
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
@@ -401,6 +403,74 @@ pub mod posix {
             result.push(c);
         }
         result
+    }
+
+    pub fn realpath<P: AsRef<Path>>(filename: P) -> std::io::Result<PathBuf> {
+        let filename = filename.as_ref().to_path_buf();
+        let (path, _) = join_realpath(Path::new(""), &filename, &mut HashMap::new())?;
+        abspath(path.as_path())
+    }
+
+    fn join_realpath(
+        path: &Path,
+        rest: &Path,
+        seen: &mut HashMap<PathBuf, Option<PathBuf>>,
+    ) -> std::io::Result<(PathBuf, bool)> {
+        let rest = rest.to_path_buf();
+        let mut path = path.to_path_buf();
+
+        let mut components = rest.components();
+        while let Some(component) = components.next() {
+            match component {
+                Component::RootDir => {
+                    // absolute path
+                    path = PathBuf::from("/");
+                }
+                Component::CurDir | Component::Prefix(_) => {}
+                Component::ParentDir => {
+                    // parent dir
+                    if path.components().next().is_none() {
+                        path = PathBuf::from("..");
+                    } else if path.file_name().unwrap() == ".." {
+                        path = path.join("..");
+                    } else {
+                        path = path.parent().unwrap().to_path_buf();
+                    }
+                }
+                Component::Normal(name) => {
+                    let mut newpath = path.join(name);
+                    let st = std::fs::symlink_metadata(&newpath);
+                    let is_link = st.is_ok() && st.unwrap().file_type().is_symlink();
+                    if !is_link {
+                        path = newpath;
+                    } else if let Some(cached) = seen.get(&newpath) {
+                        match cached {
+                            Some(target) => {
+                                path = target.clone();
+                            }
+                            None => {
+                                return Ok((newpath, false));
+                            }
+                        }
+                    } else {
+                        seen.insert(newpath.clone(), None);
+                        let ok;
+                        (path, ok) = join_realpath(
+                            path.as_path(),
+                            std::fs::read_link(&newpath)?.as_path(),
+                            seen,
+                        )?;
+                        if !ok {
+                            components.for_each(|c| newpath.push(c));
+                            return Ok((newpath, false));
+                        }
+                        seen.insert(newpath, Some(path.clone()));
+                    }
+                }
+            }
+        }
+
+        Ok((path.to_path_buf(), true))
     }
 }
 
@@ -461,4 +531,29 @@ pub fn relpath(base: &Path, path: &Path) -> Option<PathBuf> {
     }
 
     Some(s.into_iter().rev().collect::<PathBuf>())
+}
+
+pub fn normalizepath<P: AsRef<Path>>(f: P) -> std::io::Result<PathBuf> {
+    let p = f.as_ref().parent();
+    let e = f.as_ref().file_name();
+
+    // Broken filename
+    if e.is_none() || e == Some(OsStr::new(".")) || e == Some(OsStr::new("..")) {
+        realpath(f.as_ref())
+    // Base and filename present
+    } else if let Some(p) = p {
+        let p = realpath(p)?;
+        Ok(p.join(e.unwrap()))
+    } else {
+        // Just filename
+        Ok(PathBuf::from(e.unwrap()))
+    }
+}
+
+pub fn realpath(f: &Path) -> std::io::Result<PathBuf> {
+    #[cfg(windows)]
+    return win32::realpath(f);
+
+    #[cfg(not(windows))]
+    return posix::realpath(f);
 }
