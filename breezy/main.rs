@@ -43,7 +43,7 @@ fn setup_locale(py: Python<'_>) -> PyResult<()> {
 }
 
 // TODO: Does not actually work? Upstream has been messing around again.
-fn ensure_sane_fs_enc() -> () {
+fn ensure_sane_fs_enc() {
     let new_enc = std::ffi::CString::new("utf8").unwrap().into_raw();
     unsafe {
         pyo3::ffi::Py_FileSystemDefaultEncoding = new_enc;

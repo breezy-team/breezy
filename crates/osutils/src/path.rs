@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use unicode_normalization::{is_nfc, UnicodeNormalization};
 
 pub fn is_inside(dir: &Path, fname: &Path) -> bool {
-    fname.starts_with(&dir)
+    fname.starts_with(dir)
 }
 
 pub fn is_inside_any(dir_list: &[&Path], fname: &Path) -> bool {
@@ -29,7 +29,7 @@ pub fn is_inside_or_parent_of_any(dir_list: &[&Path], fname: &Path) -> bool {
 
 pub fn minimum_path_selection(paths: HashSet<&Path>) -> HashSet<&Path> {
     if paths.len() < 2 {
-        return paths.clone();
+        return paths;
     }
 
     let mut sorted_paths: Vec<&Path> = paths.iter().copied().collect();
@@ -118,9 +118,9 @@ pub fn parent_directories(path: &Path) -> impl Iterator<Item = &Path> {
     })
 }
 
-pub fn available_backup_name<'a, E>(
+pub fn available_backup_name<E>(
     path: &Path,
-    exists: &'a dyn Fn(&Path) -> Result<bool, E>,
+    exists: &dyn Fn(&Path) -> Result<bool, E>,
 ) -> Result<PathBuf, E> {
     let mut counter = 0;
     let mut next = || {
@@ -299,7 +299,7 @@ pub mod win32 {
         if ABS_WINDOWS_PATH_RE.is_match(path.to_str().unwrap()) {
             return Ok(path.to_path_buf());
         }
-        use path_clean::{clean, PathClean};
+        use path_clean::PathClean;
         let cwd = std::env::current_dir()?;
         let ap = cwd.join(path).clean();
         Ok(fixdrive(&fix_separators(ap.as_path())))
@@ -315,12 +315,12 @@ pub mod win32 {
                 // Ignore empty components and "."
                 std::path::Component::Normal(c) if c != "." => parts.push(c),
                 // Pop the last component if ".." is encountered
-                std::path::Component::Normal(c) if c == ".." => if let Some(_) = parts.pop() {},
+                std::path::Component::Normal(c) if c == ".." => if parts.pop().is_some() {},
                 // Ignore root components ("\" on Windows)
                 std::path::Component::RootDir => {}
                 // Ignore non-Unicode components
                 _ => {
-                    return PathBuf::from(p);
+                    return p;
                 }
             }
         }
@@ -348,7 +348,7 @@ pub mod win32 {
         #[test]
         fn test_abspath() {
             assert_eq!(
-                super::abspath(&std::path::Path::new("C:\\foo\\bar")).unwrap(),
+                super::abspath(std::path::Path::new("C:\\foo\\bar")).unwrap(),
                 std::path::Path::new("C:/foo/bar")
             );
         }
@@ -359,7 +359,7 @@ pub mod posix {
     use std::path::{Component, Path, PathBuf};
 
     pub fn abspath(path: &Path) -> Result<PathBuf, std::io::Error> {
-        use path_clean::{clean, PathClean};
+        use path_clean::PathClean;
         let cwd = std::env::current_dir()?;
         let ap = cwd.join(path).clean();
         Ok(ap.as_path().to_path_buf())

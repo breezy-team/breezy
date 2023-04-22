@@ -3,7 +3,7 @@
 use breezy_graph::RevnoVec;
 use pyo3::import_exception;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyIterator, PyList, PyTuple};
+use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
@@ -20,9 +20,9 @@ impl std::fmt::Debug for PyNode {
                 return Err(std::fmt::Error);
             }
             if let Ok(repr) = repr {
-                return write!(f, "{}", repr.to_string());
+                write!(f, "{}", repr)
             } else {
-                return write!(f, "???");
+                write!(f, "???")
             }
         })
     }
@@ -36,9 +36,9 @@ impl std::fmt::Display for PyNode {
                 return Err(std::fmt::Error);
             }
             if let Ok(repr) = repr {
-                return write!(f, "{}", repr.to_string());
+                write!(f, "{}", repr)
             } else {
-                return write!(f, "???");
+                write!(f, "???")
             }
         })
     }
@@ -104,11 +104,9 @@ fn extract_parent_map(parent_map: &PyDict) -> PyResult<HashMap<PyNode, Vec<PyNod
             let vs = v
                 .iter()?
                 .map(|v| Ok::<_, PyErr>(v?.into()))
-                .into_iter()
                 .collect::<Result<Vec<_>, _>>()?;
             Ok((k.into(), vs))
         })
-        .into_iter()
         .collect::<Result<HashMap<_, _>, _>>()
 }
 
@@ -181,7 +179,7 @@ impl PyParentsProvider {
         for (k, vs) in result {
             ret.set_item::<PyObject, &PyTuple>(
                 k.into_py(py),
-                PyTuple::new(py, vs.into_iter().map(|v| v.into_py(py))),
+                PyTuple::new(py, vs.iter().map(|v| v.into_py(py))),
             )?;
         }
         Ok(ret.to_object(py))
@@ -217,7 +215,7 @@ impl TopoSorter {
                 k.map(|(k, vs)| {
                     (
                         PyNode::from(k),
-                        vs.into_iter().map(|v| PyNode::from(v)).collect(),
+                        vs.into_iter().map(PyNode::from).collect(),
                     )
                 })
             })
@@ -292,7 +290,7 @@ impl MergeSorter {
                 k.map(|(k, vs)| {
                     (
                         PyNode::from(k),
-                        vs.into_iter().map(|v| PyNode::from(v)).collect(),
+                        vs.into_iter().map(PyNode::from).collect(),
                     )
                 })
             })
@@ -307,7 +305,7 @@ impl MergeSorter {
             Some(
                 mainline_revisions
                     .into_iter()
-                    .map(|k| PyNode::from(k))
+                    .map(PyNode::from)
                     .collect(),
             )
         } else {
@@ -326,7 +324,7 @@ impl MergeSorter {
 
         let sorter = breezy_graph::tsort::MergeSorter::<PyNode>::new(
             graph,
-            branch_tip.map(|k| PyNode::from(k)),
+            branch_tip.map(PyNode::from),
             mainline_revisions,
             generate_revno.unwrap_or(false),
         );
@@ -405,7 +403,7 @@ fn merge_sort(
     generate_revno: Option<bool>,
 ) -> PyResult<PyObject> {
     let mut sorter = MergeSorter::new(py, graph, branch_tip, mainline_revisions, generate_revno)?;
-    Ok(sorter.sorted(py)?)
+    sorter.sorted(py)
 }
 
 #[pymodule]

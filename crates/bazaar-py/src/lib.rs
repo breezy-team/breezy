@@ -43,9 +43,9 @@ fn gen_revision_id(py: Python, username: &str, timestamp: Option<PyObject>) -> P
             } else if let Ok(timestamp) = timestamp.extract::<u64>(py) {
                 Some(timestamp)
             } else {
-                return Err(PyTypeError::new_err(format!(
-                    "timestamp must be a float or an int",
-                )));
+                return Err(PyTypeError::new_err(
+                    "timestamp must be a float or an int".to_string(),
+                ));
             }
         }
         None => None,
@@ -81,22 +81,22 @@ impl Replacer {
     /// forbidden anyway.
     fn add(&mut self, py: Python, pattern: &str, func: PyObject) -> PyResult<()> {
         if let Ok(func) = func.extract::<String>(py) {
-            Ok(self
-                .replacer
-                .add(pattern, bazaar::globbing::Replacement::String(func)))
+            self.replacer
+                .add(pattern, bazaar::globbing::Replacement::String(func));
+            Ok(())
         } else {
             let callable = Box::new(move |t: String| -> String {
                 Python::with_gil(|py| match func.call1(py, (t,)) {
                     Ok(result) => result.extract::<String>(py).unwrap(),
                     Err(e) => {
-                        PyErr::from(e).restore(py);
+                        e.restore(py);
                         String::new()
                     }
                 })
             });
-            Ok(self
-                .replacer
-                .add(pattern, bazaar::globbing::Replacement::Closure(callable)))
+            self.replacer
+                .add(pattern, bazaar::globbing::Replacement::Closure(callable));
+            Ok(())
         }
     }
 

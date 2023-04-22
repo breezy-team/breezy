@@ -8,7 +8,7 @@ pub enum Error {
     MalformedPatchHeader(&'static str, Vec<u8>),
 }
 
-pub fn get_patch_names<'a, T: Iterator<Item = Vec<u8>>>(
+pub fn get_patch_names<T: Iterator<Item = Vec<u8>>>(
     mut iter_lines: T,
 ) -> Result<((Vec<u8>, Option<Vec<u8>>), (Vec<u8>, Option<Vec<u8>>)), Error> {
     lazy_static! {
@@ -72,7 +72,7 @@ where
 {
     let mut last_line: Option<Vec<u8>> = None;
     std::iter::from_fn(move || {
-        while let Some(line) = iter_lines.next() {
+        for line in iter_lines.by_ref() {
             if line == NO_NL {
                 if let Some(last) = last_line.as_mut() {
                     assert!(last.ends_with(b"\n"));
@@ -108,10 +108,5 @@ pub fn parse_range(textrange: &str) -> Result<(i32, i32), ParseIntError> {
 /// Find the index of the first character that differs between two texts
 pub fn difference_index(atext: &[u8], btext: &[u8]) -> Option<usize> {
     let length = atext.len().min(btext.len());
-    for i in 0..length {
-        if atext[i] != btext[i] {
-            return Some(i);
-        }
-    }
-    None
+    (0..length).find(|&i| atext[i] != btext[i])
 }

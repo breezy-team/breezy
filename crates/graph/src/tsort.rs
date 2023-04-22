@@ -263,7 +263,6 @@ pub struct MergeSorter<K> {
     left_subtree_pushed_stack: Vec<bool>,
     generate_revno: bool,
     graph: HashMap<K, Vec<K>>,
-    mainline_revisions: Vec<K>,
     stop_revision: Option<K>,
     original_graph: HashMap<K, Vec<K>>,
     revnos: HashMap<K, (Option<RevnoVec>, bool)>,
@@ -348,7 +347,6 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
         let mut sorter = MergeSorter {
             generate_revno,
             graph,
-            mainline_revisions: mainline_revisions.unwrap_or_default(),
             stop_revision,
             original_graph,
             revnos,
@@ -431,10 +429,12 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
         let mut parent_revno = None;
         if !parents.is_empty() {
             // node has parents, assign from the left most parent.
-            match self.revnos.get(&parents[0]) {
-                Some(entry) => parent_revno = entry.0.clone(),
-                None => (), // left-hand parent is a ghost, treat it as not existing
-            }
+            parent_revno = if let Some(entry) = self.revnos.get(&parents[0]) {
+                entry.0.clone()
+            } else {
+                // Left-hand parent is a ghost, consider it not to exist
+                None
+            };
         }
         let revno: RevnoVec = if let Some(parent_revno) = parent_revno {
             if first_child.is_none() || !first_child.unwrap() {
@@ -528,12 +528,8 @@ impl<K: Eq + Hash + Clone + std::fmt::Debug> MergeSorter<K> {
                             }
                         }
                     };
-                    let next_merge_depth = if is_left_subtree {
-                        // a new child branch from name_stack[-1]
-                        0
-                    } else {
-                        1
-                    } + self.node_merge_depth_stack.last().unwrap();
+                    let next_merge_depth =
+                        usize::from(!is_left_subtree) + self.node_merge_depth_stack.last().unwrap();
                     self.push_node(next_node_name, next_merge_depth, parents);
                     // and do not continue processing parents until this 'call'
                     // has recursed.
@@ -579,7 +575,7 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
             let result = if self.generate_revno {
                 (
                     self.sequence_number,
-                    node_name.to_owned(),
+                    node_name,
                     merge_depth,
                     Some(revno),
                     end_of_merge,
@@ -587,7 +583,7 @@ impl<K: Eq + Hash + std::fmt::Debug + Clone> Iterator for MergeSorter<K> {
             } else {
                 (
                     self.sequence_number,
-                    node_name.to_owned(),
+                    node_name,
                     merge_depth,
                     None,
                     end_of_merge,

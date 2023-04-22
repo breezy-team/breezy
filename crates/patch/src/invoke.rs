@@ -117,7 +117,7 @@ pub fn diff3(
             None,
         ));
     }
-    std::fs::write(out_file, &output)?;
+    std::fs::write(out_file, output)?;
     Ok(status)
 }
 

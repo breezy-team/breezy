@@ -20,7 +20,7 @@ pub fn size_sha_file(f: &mut dyn Read) -> Result<(usize, String), std::io::Error
             break;
         }
         s.update(&buffer[..bytes_read]);
-        size += bytes_read as usize;
+        size += bytes_read;
     }
     Ok((size, format!("{:x}", s.finalize())))
 }

@@ -12,7 +12,7 @@ where
     let mut buffer = [0u8; 1024];
     let mut offset = 0;
     for line in lines.into_iter() {
-        if line.iter().position(|&c| c == 0).is_some() {
+        if line.iter().any(|&c| c == 0) {
             return false;
         }
         if offset + line.len() > 1024 {

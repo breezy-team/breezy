@@ -28,7 +28,7 @@ fn patch(
     output_filename: Option<PathBuf>,
     reverse: Option<bool>,
 ) -> PyResult<i32> {
-    let output_path = output_filename.as_ref().map(|x| x.as_path());
+    let output_path = output_filename.as_deref();
     breezy_patch::invoke::patch(
         patch_contents.iter().map(|x| x.as_slice()),
         filename.as_path(),
@@ -126,7 +126,7 @@ fn parse_err_to_py_err(err: breezy_patch::parse::Error) -> PyErr {
             PathBuf::from(OsString::from_vec(path2)),
         )),
         breezy_patch::parse::Error::PatchSyntax(err, _line) => PatchSyntax::new_err(err),
-        breezy_patch::parse::Error::MalformedPatchHeader(err, line) => {
+        breezy_patch::parse::Error::MalformedPatchHeader(err, _line) => {
             MalformedPatchHeader::new_err(err)
         }
     }
@@ -194,7 +194,7 @@ fn parse_patch_date(date: &str) -> PyResult<(i64, i64)> {
 #[pyfunction]
 fn format_patch_date(py: Python, secs: PyObject, offset: Option<PyObject>) -> PyResult<String> {
     let secs = if let Ok(secs) = secs.extract::<i64>(py) {
-        secs as i64
+        secs
     } else if let Ok(secs) = secs.extract::<f64>(py) {
         secs as i64
     } else {
@@ -202,7 +202,7 @@ fn format_patch_date(py: Python, secs: PyObject, offset: Option<PyObject>) -> Py
     };
     let offset = if let Some(offset) = offset {
         if let Ok(offset) = offset.extract::<i64>(py) {
-            Some(offset as i64)
+            Some(offset)
         } else if let Ok(offset) = offset.extract::<f64>(py) {
             Some(offset as i64)
         } else {

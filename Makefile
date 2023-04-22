@@ -323,3 +323,6 @@ check-dist-tarball:
 reformat:
 	isort breezy
 	find breezy crates  -name '*.rs' | xargs rustfmt
+
+clippy:
+	cargo clippy --fix --all --allow-no-vcs
