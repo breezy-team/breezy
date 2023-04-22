@@ -23,6 +23,8 @@ import_exception!(breezy.errors, PathNotChild);
 import_exception!(breezy.errors, PermissionDenied);
 import_exception!(breezy.errors, TransportNotPossible);
 import_exception!(breezy.errors, ShortReadvError);
+import_exception!(breezy.errors, LockContention);
+import_exception!(breezy.errors, LockFailed);
 
 create_exception!(_transport_rs, UrlError, TransportError);
 
@@ -43,6 +45,8 @@ fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFrag
         Error::UrlutilsError(e) => UrlError::new_err(format!("{:?}", e)),
         Error::Io(e) => e.into(),
         Error::UnexpectedEof => PyValueError::new_err("Unexpected EOF"),
+        Error::LockContention(name) => LockContention::new_err((name,)),
+        Error::LockFailed(name, error) => LockFailed::new_err((name, error)),
         Error::ShortReadvError(path, offset, expected, got) => {
             ShortReadvError::new_err((path, offset, expected, got))
         }
@@ -91,6 +95,19 @@ impl PyWriteStream {
 
     fn fdatasync(&mut self) -> PyResult<()> {
         self.0.sync_all().map_err(|e| e.into())
+    }
+
+    fn __enter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __exit__(
+        &self,
+        _exc_type: Option<&PyType>,
+        _exc_val: Option<&PyAny>,
+        _exc_tb: Option<&PyAny>,
+    ) -> PyResult<bool> {
+        Ok(true)
     }
 }
 
@@ -191,7 +208,7 @@ impl Transport {
     fn has(&self, path: &str) -> PyResult<bool> {
         self.0
             .has(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn has_any(&self, paths: Vec<&str>) -> PyResult<bool> {
@@ -203,7 +220,7 @@ impl Transport {
     fn mkdir(&self, path: &str, mode: Option<PyObject>) -> PyResult<()> {
         self.0
             .mkdir(path, mode.map(perms_from_py_object))
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
@@ -216,14 +233,14 @@ impl Transport {
     fn local_abspath(&self, py: Python, path: &str) -> PyResult<PathBuf> {
         self.0
             .local_abspath(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn get(slf: PyRef<Self>, py: Python, path: &str) -> PyResult<PyObject> {
         let ret = slf
             .0
             .get(path)
-            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
         Ok(PyBufReadStream::new(ret).into_py(py))
     }
 
@@ -240,7 +257,7 @@ impl Transport {
         let stat = self
             .0
             .stat(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(PyStat {
             st_size: stat.size,
             st_mode: stat.mode,
@@ -259,25 +276,26 @@ impl Transport {
         Ok(Transport(inner))
     }
 
-    fn relpath(&self, path: &str) -> PyResult<String> {
+    fn relpath(&self, path: Option<&str>) -> PyResult<String> {
+        let path = path.unwrap_or(".");
         let url = Url::parse(path).map_err(|_| PyValueError::new_err((path.to_string(),)))?;
         self.0
             .relpath(&url)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn abspath(&self, path: &str) -> PyResult<String> {
         Ok(self
             .0
             .abspath(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?
             .to_string())
     }
 
     fn put_bytes(&self, path: &str, data: &[u8], mode: Option<PyObject>) -> PyResult<()> {
         self.0
             .put_bytes(path, data, mode.map(perms_from_py_object))
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
@@ -287,7 +305,7 @@ impl Transport {
         data: &[u8],
         mode: Option<PyObject>,
         create_parent_dir: Option<bool>,
-        dir_permissions: Option<PyObject>,
+        dir_mode: Option<PyObject>,
     ) -> PyResult<()> {
         self.0
             .put_bytes_non_atomic(
@@ -295,9 +313,9 @@ impl Transport {
                 data,
                 mode.map(perms_from_py_object),
                 create_parent_dir,
-                dir_permissions.map(perms_from_py_object),
+                dir_mode.map(perms_from_py_object),
             )
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
@@ -305,7 +323,7 @@ impl Transport {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         self.0
             .put_file(path, &mut file, mode.map(perms_from_py_object))
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
@@ -326,28 +344,28 @@ impl Transport {
                 create_parent_dir,
                 dir_permissions.map(perms_from_py_object),
             )
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
     fn delete(&self, path: &str) -> PyResult<()> {
         self.0
             .delete(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
     fn rmdir(&self, path: &str) -> PyResult<()> {
         self.0
             .rmdir(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
     }
 
     fn rename(&self, from: &str, to: &str) -> PyResult<()> {
         self.0
             .rename(from, to)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))?;
         Ok(())
     }
 
@@ -424,26 +442,26 @@ impl Transport {
     fn list_dir(&self, path: &str) -> PyResult<Vec<String>> {
         self.0
             .list_dir(path)
-            .map(|r| r.map_err(|e| map_transport_err_to_py_err(e, None, None)))
+            .map(|r| r.map_err(|e| map_transport_err_to_py_err(e, None, Some(path))))
             .collect::<PyResult<Vec<_>>>()
     }
 
     fn append_bytes(&self, path: &str, bytes: &[u8], mode: Option<PyObject>) -> PyResult<()> {
         self.0
             .append_bytes(path, bytes, mode.map(perms_from_py_object))
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn append_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<()> {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         self.0
             .append_file(path, &mut file, mode.map(perms_from_py_object))
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn iter_files_recursive(&self, py: Python) -> PyResult<PyObject> {
         let iter = self.0.iter_files_recursive().map(|r| {
-            r.map_err(|e| map_transport_err_to_py_err(e, None, None))
+            r.map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
                 .map(|o| o.to_object(py))
         });
         iter.collect::<PyResult<Vec<_>>>().map(|v| v.to_object(py))
@@ -458,32 +476,50 @@ impl Transport {
         slf.borrow()
             .0
             .open_write_stream(path, mode.map(perms_from_py_object))
-            .map_err(|e| Transport::map_to_py_err(slf, py, e, None))
+            .map_err(|e| Transport::map_to_py_err(slf, py, e, Some(path)))
             .map(|w| PyWriteStream(w))
     }
 
     fn delete_tree(&self, path: &str) -> PyResult<()> {
         self.0
             .delete_tree(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn r#move(&self, from: &str, to: &str) -> PyResult<()> {
         self.0
             .r#move(from, to)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 
     fn copy_tree(&self, from: &str, to: &str) -> PyResult<()> {
         self.0
             .copy_tree(from, to)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 
     fn copy_tree_to_transport(&self, to_transport: &Transport) -> PyResult<()> {
         self.0
             .copy_tree_to_transport(to_transport.0.as_ref())
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
+    }
+
+    fn hardlink(&self, from: &str, to: &str) -> PyResult<()> {
+        self.0
+            .hardlink(from, to)
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
+    }
+
+    fn symlink(&self, from: &str, to: &str) -> PyResult<()> {
+        self.0
+            .symlink(from, to)
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
+    }
+
+    fn readlink(&self, path: &str) -> PyResult<String> {
+        self.0
+            .readlink(path)
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
     fn copy_to(
@@ -525,17 +561,19 @@ impl Lock {
     }
 }
 
-#[pyclass(extends=Transport)]
+#[pyclass(extends=Transport,subclass)]
 struct LocalTransport {}
 
 #[pymethods]
 impl LocalTransport {
     #[new]
     fn new(url: &str) -> PyResult<(Self, Transport)> {
-        let url = Url::parse(url).map_err(|e| PyValueError::new_err(e.to_string()))?;
         Ok((
             LocalTransport {},
-            Transport(Box::new(breezy_transport::local::LocalTransport::from(url))),
+            Transport(Box::new(
+                breezy_transport::local::LocalTransport::new(url)
+                    .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
+            )),
         ))
     }
 }

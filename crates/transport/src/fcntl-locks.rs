@@ -1,4 +1,5 @@
-use crate::{Lock, LockError};
+use crate::{Error, Lock};
+use lazy_static::lazy_static;
 use log::debug;
 use nix::fcntl::{flock, FlockArg};
 use std::collections::{HashMap, HashSet};
@@ -6,27 +7,37 @@ use std::fs::{File, OpenOptions};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
-fn open(filename: &Path, options: &OpenOptions) -> std::result::Result<File, LockError> {
-    let filename = breezy_osutils::realpath(filename);
-    match options.open(filename) {
+// TODO(jelmer): make this a debug flag
+const STRICT_LOCKS: bool = false;
+
+fn open(filename: &Path, options: &OpenOptions) -> std::result::Result<(PathBuf, File), Error> {
+    let filename = breezy_osutils::path::realpath(filename)?;
+    match options.open(&filename) {
         Ok(f) => Ok((filename, f)),
         Err(e) => match e.kind() {
-            std::io::ErrorKind::PermissionDenied => Err(LockError::LockFailed(filename.to_owned())),
+            std::io::ErrorKind::PermissionDenied => Err(Error::LockFailed(filename, e.to_string())),
             std::io::ErrorKind::NotFound => {
-                debug!("trying to create missing lock {}", filename);
-                Ok((
-                    filename,
-                    OpenOptions::new().create(true).write(true).open(filename)?,
-                ))
+                debug!(
+                    "trying to create missing lock {}",
+                    filename.to_string_lossy()
+                );
+                let f = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(&filename)?;
+                Ok((filename, f))
             }
-            _ => LockError::IoError(e),
+            _ => Err(e.into()),
         },
     }
 }
 
-const OPEN_WRITE_LOCKS: std::sync::Mutex<HashSet<PathBuf>> = std::sync::Mutex::new(HashSet::new());
-const OPEN_READ_LOCKS: std::sync::Mutex<HashMap<PathBuf, usize>> =
-    std::sync::Mutex::new(HashMap::new());
+lazy_static! {
+    static ref OPEN_WRITE_LOCKS: std::sync::Mutex<HashSet<PathBuf>> =
+        std::sync::Mutex::new(HashSet::new());
+    static ref OPEN_READ_LOCKS: std::sync::Mutex<HashMap<PathBuf, usize>> =
+        std::sync::Mutex::new(HashMap::new());
+}
 
 pub struct WriteLock {
     filename: PathBuf,
@@ -34,22 +45,25 @@ pub struct WriteLock {
 }
 
 impl WriteLock {
-    pub fn new(filename: &Path) -> Result<WriteLock, LockError> {
-        let filename = breezy_osutils::path::realpath(filename);
+    pub fn new(filename: &Path) -> Result<WriteLock, Error> {
+        let filename = breezy_osutils::path::realpath(filename)?;
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
-            return Err(LockError::LockContention(filename));
+            return Err(Error::LockContention(filename));
         }
         if OPEN_READ_LOCKS.lock().unwrap().contains_key(&filename) {
-            if debug::debug_flags().contains("strict_locks") {
-                return Err(LockError::LockContention(filename));
+            if STRICT_LOCKS {
+                return Err(Error::LockContention(filename));
             } else {
-                debug!("Write lock taken w/ an open read lock on: {}", filename);
+                debug!(
+                    "Write lock taken w/ an open read lock on: {}",
+                    filename.to_string_lossy()
+                );
             }
         }
 
-        let (filename, f) = open(filename, OpenOptions::new().read(true))?;
+        let (filename, f) = open(filename.as_path(), OpenOptions::new().read(true))?;
         OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
-        match flock(f.unwrap().as_raw_fd(), FlockArg::LockExclusiveNonblock) {
+        match flock(f.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
             Ok(_) => Ok(WriteLock { filename, f }),
             Err(e) => {
                 if e == nix::errno::Errno::EAGAIN || e == nix::errno::Errno::EACCES {
@@ -57,14 +71,17 @@ impl WriteLock {
                 }
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
-                Err(LockError::LockContention(filename, e))
+                Err(Error::LockContention(filename))
             }
         }
     }
+}
 
-    pub fn unlock(&mut self) {
+impl Lock for WriteLock {
+    fn unlock(&mut self) -> Result<(), Error> {
         OPEN_WRITE_LOCKS.lock().unwrap().remove(&self.filename);
         flock(self.f.as_raw_fd(), FlockArg::Unlock);
+        Ok(())
     }
 }
 
@@ -74,13 +91,16 @@ pub struct ReadLock {
 }
 
 impl ReadLock {
-    fn new(filename: &str) -> std::result::Result<Self, LockError> {
-        let filename = breezy_osutils::path::realpath(filename);
+    pub fn new(filename: &Path) -> std::result::Result<Self, Error> {
+        let filename = breezy_osutils::path::realpath(filename)?;
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
-            if debug::debug_flags().contains("strict_locks") {
-                return Err(LockError::LockContention(filename));
+            if STRICT_LOCKS {
+                return Err(Error::LockContention(filename));
             } else {
-                debug!("Read lock taken w/ an open write lock on: {}", filename);
+                debug!(
+                    "Read lock taken w/ an open write lock on: {}",
+                    filename.to_string_lossy()
+                );
             }
         }
 
@@ -91,19 +111,36 @@ impl ReadLock {
             .and_modify(|count| *count += 1)
             .or_insert(1);
 
-        let f = open(filename, OpenOptions::new().read(true))?;
+        let (filename, f) = open(&filename, OpenOptions::new().read(true))?;
         match flock(f.as_raw_fd(), FlockArg::LockSharedNonblock) {
             Ok(_) => {}
-            Err(e) => {
+            Err(_) => {
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
-                return Err(LockError::LockContention(filename));
+                return Err(Error::LockContention(filename));
             }
         }
         Ok(ReadLock { filename, f })
     }
 
-    fn unlock(&mut self) {
+    /// Try to grab a write lock on the file.
+    ///
+    /// On platforms that support it, this will upgrade to a write lock
+    /// without unlocking the file.
+    /// Otherwise, this will release the read lock, and try to acquire a
+    /// write lock.
+    ///
+    /// Returns: A token which can be used to switch back to a read lock.
+    pub fn temporary_write_lock(self) -> std::result::Result<TemporaryWriteLock, Error> {
+        if OPEN_WRITE_LOCKS.lock().unwrap().contains(&self.filename) {
+            panic!("file already locked: {}", self.filename.to_string_lossy());
+        }
+        TemporaryWriteLock::new(self)
+    }
+}
+
+impl Lock for ReadLock {
+    fn unlock(&mut self) -> std::result::Result<(), Error> {
         match OPEN_READ_LOCKS.lock().unwrap().get(&self.filename) {
             Some(count) => {
                 if *count == 1 {
@@ -118,44 +155,28 @@ impl ReadLock {
             None => panic!("no read lock on {}", self.filename.to_string_lossy()),
         }
         flock(self.f.as_raw_fd(), FlockArg::Unlock);
-    }
-
-    /// Try to grab a write lock on the file.
-    ///
-    /// On platforms that support it, this will upgrade to a write lock
-    /// without unlocking the file.
-    /// Otherwise, this will release the read lock, and try to acquire a
-    /// write lock.
-    ///
-    /// Returns: A token which can be used to switch back to a read lock.
-    fn temporary_write_lock(mut self) -> std::result::Result<Self, LockError> {
-        if OPEN_WRITE_LOCKS.lock().unwrap().contains(&self.filename) {
-            panic!("file already locked: {}", self.filename.to_string_lossy());
-        }
-        match TemporaryWriteLock::new(self) {
-            Ok(wlock) => Ok(wlock),
-            Err(e) => return Err(LockError::LockFailed(self.filename, e)),
-        }
+        Ok(())
     }
 }
 
 /// A token used when grabbing a temporary_write_lock.
 ///
 /// Call restore_read_lock() when you are done with the write lock.
-struct TemporaryWriteLock {
+pub struct TemporaryWriteLock {
     read_lock: ReadLock,
     filename: PathBuf,
     f: File,
 }
 
 impl TemporaryWriteLock {
-    pub fn new(read_lock: ReadLock) -> std::result::Result<Self, LockError> {
-        let filename = read_lock.filename;
-        let count = OPEN_READ_LOCKS.lock().unwrap().get(&filename).unwrap_or(&0);
-        if *count > 1 {
-            // Something else also has a read-lock, so we cannot grab a
-            // write lock.
-            return Err(LockError::LockContention(filename));
+    pub fn new(read_lock: ReadLock) -> std::result::Result<Self, Error> {
+        let filename = read_lock.filename.clone();
+        if let Some(count) = OPEN_READ_LOCKS.lock().unwrap().get(&filename) {
+            if *count > 1 {
+                // Something else also has a read-lock, so we cannot grab a
+                // write lock.
+                return Err(Error::LockContention(filename.clone()));
+            }
         }
 
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
@@ -173,27 +194,27 @@ impl TemporaryWriteLock {
             .open(&filename)
         {
             Ok(f) => Ok(f),
-            Err(e) => Err(LockError::LockFailed(filename, e.to_string())),
+            Err(e) => Err(Error::LockFailed(filename.clone(), e.to_string())),
         }?;
 
         // LOCK_NB will cause IOError to be raised if we can't grab a
         // lock right away.
         match flock(f.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
             Ok(_) => Ok(()),
-            Err(e) => Err(LockError::LockContention(filename)),
+            Err(_) => Err(Error::LockContention(filename.clone())),
         };
 
-        OPEN_WRITE_LOCKS.lock().unwrap().insert(filename);
+        OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
 
         Ok(Self {
             read_lock,
-            filename,
+            filename: filename.clone(),
             f,
         })
     }
 
     /// Restore the original ReadLock.
-    pub fn restore_read_lock(mut self) -> ReadLock {
+    pub fn restore_read_lock(self) -> ReadLock {
         // For fcntl, since we never released the read lock, just release
         // the write lock, and return the original lock.
         flock(self.f.as_raw_fd(), FlockArg::Unlock);

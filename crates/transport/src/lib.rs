@@ -30,6 +30,10 @@ pub enum Error {
     UnexpectedEof,
 
     ShortReadvError(String, u64, u64, u64),
+
+    LockContention(std::path::PathBuf),
+
+    LockFailed(std::path::PathBuf, String),
 }
 
 fn sort_expand_and_combine(
@@ -508,11 +512,6 @@ pub trait Transport: 'static + Send + Sync {
 
 pub trait Lock {
     fn unlock(&mut self) -> Result<()>;
-}
-
-enum LockError {
-    LockContention(PathBuf),
-    LockFailed(PathBuf, String),
 }
 
 struct BogusLock {}

@@ -3,6 +3,7 @@ use crate::{
     WriteStream,
 };
 use atomicwrites::{AllowOverwrite, AtomicFile};
+use breezy_urlutils::{escape, unescape};
 use path_clean::{clean, PathClean};
 use std::collections::HashMap;
 use std::fs::File;
@@ -29,10 +30,8 @@ impl From<&Path> for LocalTransport {
 
 impl From<Url> for LocalTransport {
     fn from(url: Url) -> Self {
-        Self {
-            base: url.clone(),
-            path: url.to_file_path().unwrap(),
-        }
+        let path = breezy_urlutils::local_path_from_url(url.as_str()).unwrap();
+        Self { base: url, path }
     }
 }
 
@@ -53,6 +52,22 @@ impl WriteStream for File {
 
 impl ReadStream for File {}
 
+impl LocalTransport {
+    pub fn new(base: &str) -> Result<Self> {
+        let base = if base.ends_with('/') {
+            base.to_string()
+        } else {
+            format!("{}/", base)
+        };
+        let mut path = breezy_urlutils::local_path_from_url(&base)?;
+        if !path.to_string_lossy().ends_with('/') {
+            path.push("")
+        }
+        let base = Url::parse(&base)?;
+        Ok(LocalTransport { base, path })
+    }
+}
+
 impl Transport for LocalTransport {
     fn external_url(&self) -> Result<Url> {
         Ok(self.base.clone())
@@ -63,8 +78,8 @@ impl Transport for LocalTransport {
     }
 
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
-        let path = self.path.join(relpath);
-        Ok(path.clean())
+        let absurl = self.abspath(relpath)?;
+        breezy_urlutils::local_path_from_url(absurl.as_str()).map_err(Error::from)
     }
 
     fn can_roundtrip_unix_modebits(&self) -> bool {
@@ -76,7 +91,7 @@ impl Transport for LocalTransport {
 
     fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn ReadStream + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
-        let mut f = std::fs::File::open(path).map_err(Error::from)?;
+        let f = std::fs::File::open(path).map_err(Error::from)?;
         Ok(Box::new(f))
     }
 
@@ -113,7 +128,12 @@ impl Transport for LocalTransport {
     }
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url> {
-        self.base.join(relpath).map_err(Error::from)
+        let path = self.path.join(unescape(relpath)?);
+        let path = breezy_osutils::path::normpath(path);
+
+        breezy_urlutils::local_path_to_url(path.as_path())
+            .map_err(Error::from)
+            .map(|url| Url::parse(&url).unwrap())
     }
 
     fn relpath(&self, abspath: &Url) -> Result<String> {
@@ -238,7 +258,7 @@ impl Transport for LocalTransport {
         use std::os::unix::ffi::OsStrExt;
         let path = self.local_abspath(relpath)?;
         let target = std::fs::read_link(path).map_err(Error::from)?;
-        Ok(breezy_urlutils::escape(target.as_os_str().as_bytes(), None))
+        Ok(escape(target.as_os_str().as_bytes(), None))
     }
 
     fn hardlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
@@ -255,6 +275,7 @@ impl Transport for LocalTransport {
     }
 
     fn iter_files_recursive(&self) -> Box<dyn Iterator<Item = Result<String>>> {
+        use std::os::unix::ffi::OsStrExt;
         let wd = walkdir::WalkDir::new(&self.path);
 
         fn walkdir_err(e: walkdir::Error) -> Error {
@@ -264,7 +285,7 @@ impl Transport for LocalTransport {
 
         Box::new(wd.into_iter().map(|e| {
             e.map_err(walkdir_err)
-                .map(|e| e.path().to_string_lossy().to_string())
+                .map(|e| escape(e.path().as_os_str().as_bytes(), None))
         }))
     }
 
@@ -295,13 +316,8 @@ impl Transport for LocalTransport {
         std::fs::rename(from, to).map_err(Error::from)
     }
 
-    fn copy_tree(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
-        let from = self.local_abspath(rel_from)?;
-        let to = self.local_abspath(rel_to)?;
-        unimplemented!()
-    }
-
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
+        use std::os::unix::ffi::OsStrExt;
         let path = match self.local_abspath(relpath) {
             Ok(p) => p,
             Err(err) => return Box::new(std::iter::once(Err(err))),
@@ -313,7 +329,9 @@ impl Transport for LocalTransport {
         Box::new(
             entries
                 .map(|entry| entry.map_err(Error::from))
-                .map(|entry| entry.map(|entry| entry.file_name().into_string().unwrap())),
+                .map(|entry| {
+                    entry.map(|entry| escape(entry.file_name().as_os_str().as_bytes(), None))
+                }),
         )
     }
 
@@ -326,13 +344,15 @@ impl Transport for LocalTransport {
     }
 
     fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
-        Ok(Box::new(BogusLock {}))
+        let path = self.local_abspath(relpath)?;
+        let lock = crate::locks::ReadLock::new(path.as_path())?;
+        Ok(Box::new(lock))
     }
 
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
-        Ok(Box::new(crate::locks::WriteLock(
-            self.local_abspath(relpath)?,
-        )))
+        let path = self.local_abspath(relpath)?;
+        let lock = crate::locks::WriteLock::new(path.as_path())?;
+        Ok(Box::new(lock))
     }
 
     fn copy_to(

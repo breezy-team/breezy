@@ -1550,15 +1550,17 @@ def get_transport_from_url(url, possible_transports=None):
         possible_transports.
     """
     transport = None
-    if isinstance(transport, ConnectedTransport):
-        if possible_transports is not None:
-            for t in possible_transports:
+    if possible_transports is not None:
+        for t in possible_transports:
+            try:
                 t_same_connection = t._reuse_for(url)
-                if t_same_connection is not None:
-                    # Add only new transports
-                    if t_same_connection not in possible_transports:
-                        possible_transports.append(t_same_connection)
-                    return t_same_connection
+            except AttributeError:
+                continue
+            if t_same_connection is not None:
+                # Add only new transports
+                if t_same_connection not in possible_transports:
+                    possible_transports.append(t_same_connection)
+                return t_same_connection
 
     last_err = None
     for proto, factory_list in transport_list_registry.items():
@@ -1700,8 +1702,7 @@ def open_file_via_transport(filename, transport):
 # None is the default transport, for things with no url scheme
 register_transport_proto('file://',
                          help="Access using the standard filesystem (default)")
-#register_lazy_transport('file://', 'breezy.transport.local', 'LocalTransport')
-register_lazy_transport('file://', 'breezy._transport_rs', 'LocalTransport')
+register_lazy_transport('file://', 'breezy.transport.local', 'LocalTransport')
 
 register_transport_proto('sftp://',
                          help="Access using SFTP (most SSH servers provide SFTP).",

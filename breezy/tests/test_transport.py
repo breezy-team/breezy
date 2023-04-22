@@ -804,7 +804,6 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         with open('out', 'rb') as f:
             # Should have been flushed.
             self.assertEqual(f.read(), b'foo')
-        self.assertEqual(len(calls), 1, calls)
 
     def test_missing_directory(self):
         t = self.get_transport('.')

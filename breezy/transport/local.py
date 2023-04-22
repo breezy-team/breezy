@@ -24,7 +24,7 @@ import os
 import sys
 from stat import S_IMODE, S_ISDIR, ST_MODE
 
-from .. import osutils, transport, urlutils
+from .. import _transport_rs, osutils, transport, urlutils
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 _put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
@@ -44,7 +44,10 @@ def file_kind(f, _lstat=os.lstat):
     return osutils.file_kind_from_stat_mode(stat_value.st_mode)
 
 
-class LocalTransport(transport.Transport):
+LocalTransport = _transport_rs.LocalTransport
+
+
+class OldLocalTransport(transport.Transport):
     """This is the transport agent for local filesystem access."""
 
     def __init__(self, base):
