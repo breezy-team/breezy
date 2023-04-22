@@ -22,7 +22,7 @@ pub fn normalize_pattern(pattern: &str) -> String {
     if pattern.len() > 1 {
         pattern = pattern.trim_end_matches('/').to_string();
     }
-    return pattern;
+    pattern
 }
 
 pub enum Replacement {

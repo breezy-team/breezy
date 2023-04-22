@@ -1,4 +1,5 @@
 use pyo3::exceptions::PyTypeError;
+use pyo3::exceptions::PyValueError;
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyTuple;
@@ -7,6 +8,7 @@ use std::path::PathBuf;
 
 import_exception!(breezy.urlutils, InvalidURLJoin);
 import_exception!(breezy.urlutils, InvalidURL);
+import_exception!(breezy.errors, PathNotChild);
 
 #[pyfunction]
 fn is_url(url: &str) -> bool {
@@ -62,6 +64,8 @@ fn map_urlutils_error_to_pyerr(e: breezy_urlutils::Error) -> PyErr {
         breezy_urlutils::Error::InvalidWin32LocalUrl(url) => {
             InvalidURL::new_err(("Invalid Win32 local URL", url))
         }
+        breezy_urlutils::Error::PathNotChild(path, start) => PathNotChild::new_err((path, start)),
+        breezy_urlutils::Error::UrlTooShort(url) => PyValueError::new_err(("URL too short", url)),
     }
 }
 
@@ -196,6 +200,11 @@ fn unescape(text: &str) -> PyResult<String> {
 #[pyfunction]
 fn derive_to_location(base: &str) -> String {
     breezy_urlutils::derive_to_location(base)
+}
+
+#[pyfunction]
+fn file_relpath(base: &str, path: &str) -> PyResult<String> {
+    breezy_urlutils::file_relpath(base, path).map_err(map_urlutils_error_to_pyerr)
 }
 
 #[pymodule]

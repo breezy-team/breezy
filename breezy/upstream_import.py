@@ -16,7 +16,6 @@
 
 """Import upstream source into a branch"""
 
-import errno
 import os
 import re
 import stat
@@ -338,9 +337,8 @@ def do_import(source, tree_directory=None):
                     elif external_compressor == 'lzma':
                         import lzma
                         tar_input = BytesIO(lzma.decompress(tar_input.read()))
-                except OSError as e:
-                    if e.errno == errno.ENOENT:
-                        raise NoSuchFile(source)
+                except FileNotFoundError:
+                    raise NoSuchFile(source)
                 try:
                     import_tar(tree, tar_input)
                 finally:

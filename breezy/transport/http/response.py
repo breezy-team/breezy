@@ -134,9 +134,6 @@ class RangeFile(ResponseFile):
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
-    # maximum size of read requests -- used to avoid MemoryError issues in recv
-    _max_read_size = 512 * 1024
-
     def __init__(self, path, infile):
         """Constructor.
 
@@ -308,7 +305,7 @@ class RangeFile(ResponseFile):
             limited = self._start + self._size - self._pos
             if size >= 0:
                 limited = min(limited, size)
-        osutils.pumpfile(self._file, buf, limited, self._max_read_size)
+        osutils.pumpfile(self._file, buf, None if limited < 0 else limited)
         data = buf.getvalue()
 
         # Update _pos respecting the data effectively read

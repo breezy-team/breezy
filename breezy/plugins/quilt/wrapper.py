@@ -19,7 +19,6 @@
 
 """Quilt patch handling."""
 
-import errno
 import os
 import signal
 import subprocess
@@ -208,11 +207,9 @@ def quilt_applied(tree):
                 if patch.strip() != b""]
     except _mod_transport.NoSuchFile:
         return []
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            # File has already been removed
-            return []
-        raise
+    except FileNotFoundError:
+        # File has already been removed
+        return []
 
 
 def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
@@ -250,10 +247,8 @@ def quilt_series(tree, series_path):
         return [os.fsdecode(patch.rstrip(b"\n")) for patch in
                 tree.get_file_lines(series_path)
                 if patch.strip() != b""]
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            # File has already been removed
-            return []
-        raise
+    except FileNotFoundError:
+        # File has already been removed
+        return []
     except _mod_transport.NoSuchFile:
         return []

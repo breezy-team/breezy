@@ -183,12 +183,9 @@ class _OSLock:
         try:
             self.f = open(self.filename, filemode)
             return self.f
-        except OSError as e:
-            if e.errno in (errno.EACCES, errno.EPERM):
-                raise errors.LockFailed(self.filename, str(e))
-            if e.errno != errno.ENOENT:
-                raise
-
+        except PermissionError as e:
+            raise errors.LockFailed(self.filename, str(e))
+        except FileNotFoundError:
             # maybe this is an old branch (before may 2005)
             trace.mutter("trying to create missing lock %r", self.filename)
 
@@ -338,10 +335,8 @@ if have_fcntl:
             # done by _fcntl_ReadLock
             try:
                 new_f = open(self.filename, 'rb+')
-            except OSError as e:
-                if e.errno in (errno.EACCES, errno.EPERM):
-                    raise errors.LockFailed(self.filename, str(e))
-                raise
+            except PermissionError as e:
+                raise errors.LockFailed(self.filename, str(e))
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
                 # lock right away.

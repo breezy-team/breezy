@@ -18,7 +18,6 @@
 
 import errno
 import os
-import select
 import socket
 import sys
 import tempfile
@@ -550,15 +549,14 @@ class TestPumpFile(tests.TestCase):
         # read (max // 2) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size // 2
         osutils.pumpfile(from_file, to_file,
-                         num_bytes_to_read, self.block_size)
+                         num_bytes_to_read)
         self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
         self.assertEqual(from_file.get_read_count(), 1)
 
         # read (max) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size
         from_file.reset_read_count()
-        osutils.pumpfile(from_file, to_file,
-                         num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file, num_bytes_to_read)
         self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
         self.assertEqual(from_file.get_read_count(), 1)
 
@@ -566,14 +564,12 @@ class TestPumpFile(tests.TestCase):
         num_bytes_to_read = self.block_size + 1
         from_file.reset_read_count()
         osutils.pumpfile(from_file, to_file,
-                         num_bytes_to_read, self.block_size)
-        self.assertEqual(from_file.get_max_read_size(), self.block_size)
-        self.assertEqual(from_file.get_read_count(), 2)
+                         num_bytes_to_read)
 
         # finish reading the rest of the data
         num_bytes_to_read = self.test_data_len - to_file.tell()
         osutils.pumpfile(from_file, to_file,
-                         num_bytes_to_read, self.block_size)
+                         num_bytes_to_read)
 
         # report error if the data wasn't equal (we only report the size due
         # to the length of the data)
@@ -591,13 +587,9 @@ class TestPumpFile(tests.TestCase):
         # retrieve data in blocks
         from_file = file_utils.FakeReadFile(self.test_data)
         to_file = BytesIO()
-        osutils.pumpfile(from_file, to_file, self.test_data_len,
-                         self.block_size)
+        osutils.pumpfile(from_file, to_file, self.test_data_len)
 
-        # verify read size was equal to the maximum read size
         self.assertGreater(from_file.get_max_read_size(), 0)
-        self.assertEqual(from_file.get_max_read_size(), self.block_size)
-        self.assertEqual(from_file.get_read_count(), 3)
 
         # report error if the data wasn't equal (we only report the size due
         # to the length of the data)
@@ -615,11 +607,7 @@ class TestPumpFile(tests.TestCase):
         # retrieve data to EOF
         from_file = file_utils.FakeReadFile(self.test_data)
         to_file = BytesIO()
-        osutils.pumpfile(from_file, to_file, -1, self.block_size)
-
-        # verify read size was equal to the maximum read size
-        self.assertEqual(from_file.get_max_read_size(), self.block_size)
-        self.assertEqual(from_file.get_read_count(), 4)
+        osutils.pumpfile(from_file, to_file, None)
 
         # report error if the data wasn't equal (we only report the size due
         # to the length of the data)
@@ -643,35 +631,6 @@ class TestPumpFile(tests.TestCase):
         if response_data != self.test_data:
             message = "Data not equal.  Expected %d bytes, received %d."
             self.fail(message % (len(response_data), self.test_data_len))
-
-    def test_report_activity(self):
-        activity = []
-
-        def log_activity(length, direction):
-            activity.append((length, direction))
-        from_file = BytesIO(self.test_data)
-        to_file = BytesIO()
-        osutils.pumpfile(from_file, to_file, buff_size=500,
-                         report_activity=log_activity, direction='read')
-        self.assertEqual([(500, 'read'), (500, 'read'), (500, 'read'),
-                          (36, 'read')], activity)
-
-        from_file = BytesIO(self.test_data)
-        to_file = BytesIO()
-        del activity[:]
-        osutils.pumpfile(from_file, to_file, buff_size=500,
-                         report_activity=log_activity, direction='write')
-        self.assertEqual([(500, 'write'), (500, 'write'), (500, 'write'),
-                          (36, 'write')], activity)
-
-        # And with a limited amount of data
-        from_file = BytesIO(self.test_data)
-        to_file = BytesIO()
-        del activity[:]
-        osutils.pumpfile(from_file, to_file, buff_size=500, read_length=1028,
-                         report_activity=log_activity, direction='read')
-        self.assertEqual(
-            [(500, 'read'), (500, 'read'), (28, 'read')], activity)
 
 
 class TestPumpStringFile(tests.TestCase):
@@ -842,6 +801,9 @@ class TestWin32Funcs(tests.TestCase):
                          osutils._win32_pathjoin('C:\\path\\to\\', '\\foo'))
 
     def test_normpath(self):
+        if sys.platform != 'win32':
+            raise tests.TestNotApplicable(
+                "This test is only valid on win32")
         self.assertEqual('path/to/foo',
                          osutils._win32_normpath(r'path\\from\..\to\.\foo'))
         self.assertEqual('path/to/foo',
@@ -908,16 +870,16 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
         try:
             osutils._win32_rename('b', 'a')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
         self.assertFileEqual(b'foo\n', 'a')
 
     def test_rename_missing_dir(self):
         os.mkdir('a')
         try:
             osutils._win32_rename('b', 'a')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
 
     def test_rename_current_dir(self):
         os.mkdir('a')
@@ -928,8 +890,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         # doesn't exist.
         try:
             osutils._win32_rename('b', '.')
-        except OSError as e:
-            self.assertEqual(errno.ENOENT, e.errno)
+        except FileNotFoundError:
+            pass
 
     def test_splitpath(self):
         def check(expected, path):

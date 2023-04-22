@@ -17,9 +17,7 @@
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
-import errno
 import os
-import re
 
 from .lazy_import import lazy_import
 
@@ -200,21 +198,18 @@ def restore(filename):
     try:
         osutils.rename(filename + ".THIS", filename)
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     try:
         os.unlink(filename + ".BASE")
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     try:
         os.unlink(filename + ".OTHER")
         conflicted = True
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+    except FileNotFoundError:
+        pass
     if not conflicted:
         raise errors.NotConflicted(filename)
 
@@ -318,9 +313,8 @@ class Conflict:
         for fname in self.associated_filenames():
             try:
                 osutils.delete_any(tree.abspath(fname))
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
+            except FileNotFoundError:
+                pass
 
     def do(self, action, tree):
         """Apply the specified action to the conflict.

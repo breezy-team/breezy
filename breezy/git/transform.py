@@ -17,7 +17,6 @@
 
 import errno
 import os
-import posixpath
 import tempfile
 import time
 from stat import S_IEXEC, S_ISREG
@@ -806,12 +805,11 @@ class DiskTreeTransform(TreeTransformBase):
             for path in limbo_paths:
                 try:
                     osutils.delete_any(path)
-                except OSError as e:
-                    if e.errno != errno.ENOENT:
-                        raise
+                except FileNotFoundError:
                     # XXX: warn? perhaps we just got interrupted at an
                     # inconvenient moment, but perhaps files are disappearing
                     # from under us?
+                    pass
             try:
                 osutils.delete_any(self._limbodir)
             except OSError:
@@ -936,9 +934,7 @@ class DiskTreeTransform(TreeTransformBase):
         name = self._limbo_name(trans_id)
         try:
             os.link(path, name)
-        except OSError as e:
-            if e.errno != errno.EPERM:
-                raise
+        except PermissionError:
             raise errors.HardLinkNotSupported(path)
         try:
             unique_add(self._new_contents, trans_id, 'file')
@@ -1055,9 +1051,8 @@ class DiskTreeTransform(TreeTransformBase):
                     if self.tree_kind(trans_id) == 'directory':
                         return GitTreeDirectory(
                             file_id, self.final_name(trans_id), parent_id=parent_id), is_versioned
-                except OSError as e:
-                    if e.errno != errno.ENOTDIR:
-                        raise
+                except NotADirectoryError:
+                    pass
                 return None, None
 
     def final_git_entry(self, trans_id):
@@ -1229,15 +1224,12 @@ class GitTreeTransform(DiskTreeTransform):
             return
         try:
             mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                # Either old_path doesn't exist, or the parent of the
-                # target is not a directory (but will be one eventually)
-                # Either way, we know it doesn't exist *right now*
-                # See also bug #248448
-                return
-            else:
-                raise
+        except (FileNotFoundError, NotADirectoryError):
+            # Either old_path doesn't exist, or the parent of the
+            # target is not a directory (but will be one eventually)
+            # Either way, we know it doesn't exist *right now*
+            # See also bug #248448
+            return
         if typefunc(mode):
             osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
 
