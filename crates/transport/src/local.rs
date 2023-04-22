@@ -1,4 +1,4 @@
-use crate::{Error, ListableTransport, LocalTransport, Result, Stat, Transport, UrlFragment};
+use crate::{BogusLock, Error, Lock, Result, SmartMedium, Stat, Transport, UrlFragment};
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use path_clean::{clean, PathClean};
 use std::collections::HashMap;
@@ -10,19 +10,12 @@ use std::path::{Path, PathBuf};
 use url::Url;
 use walkdir;
 
-pub struct FileSystemTransport {
+pub struct LocalTransport {
     base: Url,
     path: PathBuf,
 }
 
-impl LocalTransport for FileSystemTransport {
-    fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
-        let path = self.path.join(relpath);
-        Ok(path.clean())
-    }
-}
-
-impl From<&Path> for FileSystemTransport {
+impl From<&Path> for LocalTransport {
     fn from(path: &Path) -> Self {
         Self {
             base: Url::from_file_path(path).unwrap(),
@@ -31,7 +24,7 @@ impl From<&Path> for FileSystemTransport {
     }
 }
 
-impl From<Url> for FileSystemTransport {
+impl From<Url> for LocalTransport {
     fn from(url: Url) -> Self {
         Self {
             base: url.clone(),
@@ -40,22 +33,34 @@ impl From<Url> for FileSystemTransport {
     }
 }
 
-impl Clone for FileSystemTransport {
+impl Clone for LocalTransport {
     fn clone(&self) -> Self {
-        FileSystemTransport {
+        LocalTransport {
             path: self.path.clone(),
             base: self.base.clone(),
         }
     }
 }
 
-impl Transport for FileSystemTransport {
+impl Transport for LocalTransport {
     fn external_url(&self) -> Result<Url> {
         Ok(self.base.clone())
     }
 
     fn base(&self) -> Url {
         self.base.clone()
+    }
+
+    fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
+        let path = self.path.join(relpath);
+        Ok(path.clean())
+    }
+
+    fn can_roundtrip_unix_modebits(&self) -> bool {
+        #[cfg(unix)]
+        return true;
+        #[cfg(not(unix))]
+        return false;
     }
 
     fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn Read + Send + Sync>> {
@@ -93,7 +98,7 @@ impl Transport for FileSystemTransport {
             Some(offset) => self.local_abspath(offset)?,
             None => self.path.to_path_buf(),
         };
-        Ok(Box::new(FileSystemTransport::from(new_path.as_path())))
+        Ok(Box::new(LocalTransport::from(new_path.as_path())))
     }
 
     fn abspath(&self, relpath: &UrlFragment) -> Result<Url> {
@@ -194,7 +199,7 @@ impl Transport for FileSystemTransport {
         f: &mut dyn std::io::Read,
         permissions: Option<Permissions>,
     ) -> Result<()> {
-        let path = self.path.join(relpath);
+        let path = self.local_abspath(relpath)?;
         let mut file = std::fs::OpenOptions::new()
             .append(true)
             .open(path)
@@ -209,21 +214,21 @@ impl Transport for FileSystemTransport {
     #[cfg(unix)]
     fn readlink(&self, relpath: &UrlFragment) -> Result<String> {
         use std::os::unix::ffi::OsStrExt;
-        let path = self.path.join(relpath);
+        let path = self.local_abspath(relpath)?;
         let target = std::fs::read_link(path).map_err(Error::from)?;
         Ok(breezy_urlutils::escape(target.as_os_str().as_bytes(), None))
     }
 
     fn hardlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
-        let from = self.path.join(rel_from);
-        let to = self.path.join(rel_to);
+        let from = self.local_abspath(rel_from)?;
+        let to = self.local_abspath(rel_to)?;
         std::fs::hard_link(from, to).map_err(Error::from)
     }
 
     #[cfg(target_family = "unix")]
     fn symlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
-        let from = self.path.join(rel_from);
-        let to = self.path.join(rel_to);
+        let from = self.local_abspath(rel_from)?;
+        let to = self.local_abspath(rel_to)?;
         std::os::unix::fs::symlink(from, to).map_err(Error::from)
     }
 
@@ -246,7 +251,7 @@ impl Transport for FileSystemTransport {
         relpath: &UrlFragment,
         permissions: Option<Permissions>,
     ) -> Result<Box<dyn std::io::Write + Send + Sync>> {
-        let path = self.path.join(relpath);
+        let path = self.local_abspath(relpath)?;
         let file = OpenOptions::new().open(path).map_err(Error::from)?;
         file.set_len(0)?;
         if let Some(permissions) = permissions {
@@ -260,16 +265,20 @@ impl Transport for FileSystemTransport {
         std::fs::remove_dir_all(path).map_err(Error::from)
     }
 
-    fn move_(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
-        let from = self.path.join(rel_from);
-        let to = self.path.join(rel_to);
+    fn r#move(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
+        let from = self.local_abspath(rel_from)?;
+        let to = self.local_abspath(rel_to)?;
 
         // TODO(jelmer): Should remove destination if necessary
         std::fs::rename(from, to).map_err(Error::from)
     }
-}
 
-impl ListableTransport for FileSystemTransport {
+    fn copy_tree(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
+        let from = self.local_abspath(rel_from)?;
+        let to = self.local_abspath(rel_to)?;
+        unimplemented!()
+    }
+
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
         let path = match self.local_abspath(relpath) {
             Ok(p) => p,
@@ -284,5 +293,21 @@ impl ListableTransport for FileSystemTransport {
                 .map(|entry| entry.map_err(Error::from))
                 .map(|entry| entry.map(|entry| entry.file_name().into_string().unwrap())),
         )
+    }
+
+    fn listable(&self) -> bool {
+        true
+    }
+
+    fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>> {
+        Err(Error::NoSmartMedium)
+    }
+
+    fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
+        Ok(Box::new(BogusLock {}))
+    }
+
+    fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
+        Err(Error::TransportNotPossible)
     }
 }

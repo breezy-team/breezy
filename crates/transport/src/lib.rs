@@ -101,6 +101,8 @@ pub trait Transport: 'static + Send + Sync {
     ///     then InProcessTransport is raised.
     fn external_url(&self) -> Result<Url>;
 
+    fn can_roundtrip_unix_modebits(&self) -> bool;
+
     fn get_bytes(&self, relpath: &UrlFragment) -> Result<Vec<u8>> {
         let mut file = self.get(relpath)?;
         let mut result = Vec::new();
@@ -137,27 +139,23 @@ pub trait Transport: 'static + Send + Sync {
 
     fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
         let mut cur_transport = self.clone(None)?;
-        let mut needed = Vec::new();
+        let mut needed = vec![cur_transport.clone(None)?];
         loop {
             let new_transport = Transport::clone(cur_transport.as_ref(), Some(".."))?;
             if new_transport.base() == cur_transport.base() {
                 panic!("Failed to create path prefix for {}", cur_transport.base());
             }
-            if let Err(err) = new_transport.mkdir(".", permissions.clone()) {
-                match err {
-                    Error::NoSuchFile(_) => {
-                        needed.push(cur_transport);
-                        cur_transport = new_transport;
-                    }
-                    Error::FileExists(_) => {
-                        break;
-                    }
-                    _ => {
-                        return Err(err);
-                    }
+            match new_transport.mkdir(".", permissions.clone()) {
+                Err(Error::NoSuchFile(_)) => {
+                    needed.push(cur_transport);
+                    cur_transport = new_transport;
                 }
-            } else {
-                break;
+                Err(Error::FileExists(_)) | Ok(()) => {
+                    break;
+                }
+                Err(err) => {
+                    return Err(err);
+                }
             }
         }
 
@@ -331,38 +329,38 @@ pub trait Transport: 'static + Send + Sync {
 
     fn delete_tree(&self, relpath: &UrlFragment) -> Result<()>;
 
-    fn move_(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
-}
+    fn r#move(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
 
-pub trait ListableTransport: Transport {
+    fn copy_tree(&self, from_relpath: &UrlFragment, to_relpath: &UrlFragment) -> Result<()>;
+
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>>;
 
     fn listable(&self) -> bool {
         true
     }
+
+    fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
+
+    fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
+
+    fn local_abspath(&self, relpath: &UrlFragment) -> Result<std::path::PathBuf>;
+
+    fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>>;
 }
 
 pub trait Lock {
     fn unlock(&mut self) -> Result<()>;
 }
 
-pub trait LockableTransport: Transport {
-    fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
+struct BogusLock {}
 
-    fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>>;
-
-    fn is_read_locked(&self, relpath: &UrlFragment) -> Result<bool>;
-}
-
-pub trait LocalTransport: Transport {
-    fn local_abspath(&self, relpath: &UrlFragment) -> Result<std::path::PathBuf>;
+impl Lock for BogusLock {
+    fn unlock(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 pub trait SmartMedium {}
-
-pub trait SmartTransport: Transport {
-    fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>>;
-}
 
 pub mod local;
 

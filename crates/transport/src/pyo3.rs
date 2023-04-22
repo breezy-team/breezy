@@ -1,7 +1,4 @@
-use crate::{
-    Error, ListableTransport, LocalTransport, Lock, LockableTransport, Result, Stat, Transport,
-    Url, UrlFragment,
-};
+use crate::{Error, Lock, Result, SmartMedium, Stat, Transport, Url, UrlFragment};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -22,6 +19,10 @@ import_exception!(breezy.errors, TransportNotPossible);
 import_exception!(breezy.errors, UrlError);
 import_exception!(breezy.errors, PermissionDenied);
 import_exception!(breezy.errors, PathNotChild);
+
+struct PySmartMedium(PyObject);
+
+impl SmartMedium for PySmartMedium {}
 
 struct PyTransport(PyObject);
 
@@ -467,24 +468,37 @@ impl Transport for PyTransport {
         })
     }
 
-    fn move_(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
+    fn r#move(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
         Python::with_gil(|py| {
             self.0.call_method1(py, "move", (src, dst))?;
             Ok(())
         })
     }
-}
 
-impl LocalTransport for PyTransport {
+    fn copy_tree(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "copy_tree", (src, dst))?;
+            Ok(())
+        })
+    }
+
+    fn can_roundtrip_unix_modebits(&self) -> bool {
+        Python::with_gil(|py| {
+            self.0
+                .getattr(py, "can_roundtrip_unix_modebits")
+                .unwrap()
+                .extract::<bool>(py)
+                .unwrap()
+        })
+    }
+
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<PathBuf> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "local_abspath", (relpath,))?;
             Ok(obj.extract::<PathBuf>(py)?)
         })
     }
-}
 
-impl ListableTransport for PyTransport {
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
         let iter = Python::with_gil(|py| {
             self.0
@@ -523,9 +537,7 @@ impl ListableTransport for PyTransport {
                 .unwrap()
         })
     }
-}
 
-impl LockableTransport for PyTransport {
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "lock_write", (relpath,))?;
@@ -542,10 +554,15 @@ impl LockableTransport for PyTransport {
         })
     }
 
-    fn is_read_locked(&self, relpath: &UrlFragment) -> Result<bool> {
+    fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>> {
         Python::with_gil(|py| {
-            let obj = self.0.call_method1(py, "is_read_locked", (relpath,))?;
-            Ok(obj.extract::<bool>(py)?)
+            let obj = self.0.call_method0(py, "get_smart_medium").unwrap();
+            if obj.is_none(py) {
+                return Err(Error::NoSmartMedium);
+            }
+            let obj = obj.extract::<PyObject>(py).unwrap();
+            let medium = PySmartMedium(obj);
+            Ok(Box::new(medium) as Box<dyn SmartMedium>)
         })
     }
 }
