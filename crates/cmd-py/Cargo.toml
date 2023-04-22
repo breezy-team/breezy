@@ -1,0 +1,12 @@
+[package]
+name = "cmd-py"
+version = "3.3.3"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
+breezy = { path = "../.." }
+gettext-rs = "0.7"

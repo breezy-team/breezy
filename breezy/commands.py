@@ -43,7 +43,6 @@ from breezy import (
 
 from . import errors, registry
 from .hooks import Hooks
-from .i18n import gettext
 from .plugin import disable_plugins, load_plugins, plugin_name
 
 
@@ -295,9 +294,9 @@ def get_cmd_object(
         candidate = guess_command(cmd_name)
         if candidate is not None:
             raise errors.CommandError(
-                gettext('unknown command "%s". Perhaps you meant "%s"')
+                i18n.gettext('unknown command "%s". Perhaps you meant "%s"')
                 % (cmd_name, candidate))
-        raise errors.CommandError(gettext('unknown command "%s"')
+        raise errors.CommandError(i18n.gettext('unknown command "%s"')
                                   % cmd_name)
 
 
@@ -568,7 +567,7 @@ class Command:
             # not be translated.
             doc = self.gettext(doc)
         else:
-            doc = gettext("No help for this command.")
+            doc = i18n.gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
         purpose, sections, order = self._get_help_parts(doc)
@@ -581,11 +580,11 @@ class Command:
 
         # The header is the purpose and usage
         result = ""
-        result += gettext(':Purpose: %s\n') % (purpose,)
+        result += i18n.gettext(':Purpose: %s\n') % (purpose,)
         if usage.find('\n') >= 0:
-            result += gettext(':Usage:\n%s\n') % (usage,)
+            result += i18n.gettext(':Usage:\n%s\n') % (usage,)
         else:
-            result += gettext(':Usage:   %s\n') % (usage,)
+            result += i18n.gettext(':Usage:   %s\n') % (usage,)
         result += '\n'
 
         # Add the options
@@ -605,7 +604,7 @@ class Command:
         if not plain and options.find('  --1.14  ') != -1:
             options = options.replace(' format:\n', ' format::\n\n', 1)
         if options.startswith('Options:'):
-            result += gettext(':Options:%s') % (options[len('options:'):],)
+            result += i18n.gettext(':Options:%s') % (options[len('options:'):],)
         else:
             result += options
         result += '\n'
@@ -616,7 +615,7 @@ class Command:
             if None in sections:
                 text = sections.pop(None)
                 text = '\n  '.join(text.splitlines())
-                result += gettext(':Description:\n  %s\n\n') % (text,)
+                result += i18n.gettext(':Description:\n  %s\n\n') % (text,)
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
@@ -626,16 +625,16 @@ class Command:
                         result += ':{}:\n{}\n'.format(label, sections[label])
                 result += '\n'
         else:
-            result += (gettext("See brz help %s for more details and examples.\n\n")
+            result += (i18n.gettext("See brz help %s for more details and examples.\n\n")
                        % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
-            result += gettext(':Aliases:  ')
+            result += i18n.gettext(':Aliases:  ')
             result += ', '.join(self.aliases) + '\n'
         plugin_name = self.plugin_name()
         if plugin_name is not None:
-            result += gettext(':From:     plugin "%s"\n') % plugin_name
+            result += i18n.gettext(':From:     plugin "%s"\n') % plugin_name
         see_also = self.get_see_also(additional_see_also)
         if see_also:
             if not plain and see_also_as_links:
@@ -647,11 +646,11 @@ class Command:
                         see_also_links.append(item)
                     else:
                         # Use a Sphinx link for this entry
-                        link_text = gettext(":doc:`{0} <{1}-help>`").format(
+                        link_text = i18n.gettext(":doc:`{0} <{1}-help>`").format(
                             item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
-            result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
+            result += i18n.gettext(':See also: %s') % ', '.join(see_also) + '\n'
 
         # If this will be rendered as plain text, convert it
         if plain:
@@ -928,7 +927,7 @@ def parse_args(command, argv, alias_argv=None):
         options, args = parser.parse_args(args)
     except UnicodeEncodeError:
         raise errors.CommandError(
-            gettext('Only ASCII permitted in option names'))
+            i18n.gettext('Only ASCII permitted in option names'))
 
     opts = {k: v for k, v in options.__dict__.items() if
                 v is not option.OptionParser.DEFAULT_VALUE}
@@ -952,7 +951,7 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise errors.CommandError(gettext(
+                raise errors.CommandError(i18n.gettext(
                     "command {0!r} needs one or more {1}").format(
                     cmd, argname.upper()))
             else:
@@ -961,7 +960,7 @@ def _match_argform(cmd, takes_args, args):
         elif ap[-1] == '$':  # all but one
             if len(args) < 2:
                 raise errors.CommandError(
-                    gettext("command {0!r} needs one or more {1}").format(
+                    i18n.gettext("command {0!r} needs one or more {1}").format(
                         cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
             args[:-1] = []
@@ -970,13 +969,13 @@ def _match_argform(cmd, takes_args, args):
             argname = ap
             if not args:
                 raise errors.CommandError(
-                    gettext("command {0!r} requires argument {1}").format(
+                    i18n.gettext("command {0!r} requires argument {1}").format(
                         cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.CommandError(gettext(
+        raise errors.CommandError(i18n.gettext(
             "extra argument to command {0}: {1}").format(
             cmd, args[0]))
 
@@ -1051,7 +1050,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
         stats.pprint()
     else:
         stats.save(filename)
-        trace.note(gettext('Profile data written to "%s".'), filename)
+        trace.note(i18n.gettext('Profile data written to "%s".'), filename)
     return ret
 
 
