@@ -488,7 +488,7 @@ impl Transport for PyTransport {
 
     fn copy_to(
         &self,
-        relpaths: &[&str],
+        relpaths: &[&UrlFragment],
         to_transport: &dyn Transport,
         permissions: Option<Permissions>,
     ) -> Result<()> {

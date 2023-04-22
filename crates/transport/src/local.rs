@@ -312,5 +312,32 @@ impl Transport for LocalTransport {
         Err(Error::TransportNotPossible)
     }
 
-    // TODO(jelmer): Implement optimized version of copy_to()
+    fn copy_to(
+        &self,
+        relpaths: &[&UrlFragment],
+        target: &dyn Transport,
+        permissions: Option<Permissions>,
+    ) -> Result<()> {
+        if relpaths.is_empty() {
+            return Ok(());
+        }
+        match target.local_abspath(relpaths[0]) {
+            // Fall back to default
+            Err(Error::NotLocalUrl(_)) => {
+                return Transport::copy_to(self, relpaths, target, permissions)
+            }
+            Err(e) => return Err(e),
+            _ => {}
+        }
+
+        relpaths.iter().try_for_each(|relpath| {
+            let path = self.local_abspath(relpath)?;
+            let target_path = target.local_abspath(relpath)?;
+            std::fs::copy(&path, &target_path).map_err(Error::from)?;
+            if let Some(permissions) = permissions.clone() {
+                std::fs::set_permissions(target_path, permissions).map_err(Error::from)?;
+            }
+            Ok(())
+        })
+    }
 }

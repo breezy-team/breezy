@@ -385,13 +385,15 @@ pub trait Transport: 'static + Send + Sync {
 
     fn copy_to(
         &self,
-        relpaths: &[&str],
+        relpaths: &[&UrlFragment],
         to_transport: &dyn Transport,
         permissions: Option<Permissions>,
     ) -> Result<()> {
-        relpaths.iter().try_for_each(|relpath| {
-            let mut f = self.get(relpath)?;
-            to_transport.put_file(relpath, &mut f, permissions.clone())
+        relpaths.iter().try_for_each(|relpath| -> Result<()> {
+            let mut src = self.get(relpath)?;
+            let mut target = to_transport.open_write_stream(relpath, permissions.clone())?;
+            std::io::copy(&mut src, &mut target)?;
+            Ok(())
         })?;
         Ok(())
     }
