@@ -1,4 +1,6 @@
-use breezy_transport::{Error, ReadStream, Result, Stat, UrlFragment, WriteStream};
+use breezy_transport::{
+    Error, ReadStream, Result, Stat, Transport as TransportTrait, UrlFragment, WriteStream,
+};
 use pyo3::create_exception;
 use pyo3::exceptions::{PyException, PyValueError};
 use pyo3::import_exception;
@@ -611,10 +613,17 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 
-    fn copy_tree_to_transport(&self, to_transport: &Transport) -> PyResult<()> {
-        self.0
-            .copy_tree_to_transport(to_transport.0.as_ref())
-            .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
+    fn copy_tree_to_transport(&self, py: Python, to_transport: PyObject) -> PyResult<()> {
+        if let Ok(t) = to_transport.clone_ref(py).extract::<PyRef<Transport>>(py) {
+            self.0
+                .copy_tree_to_transport(t.0.as_ref())
+                .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
+        } else {
+            let t = Box::new(breezy_transport::pyo3::PyTransport::from(to_transport));
+            self.0
+                .copy_tree_to_transport(t.as_ref())
+                .map_err(|e| map_transport_err_to_py_err(e, None, Some(".")))
+        }
     }
 
     fn hardlink(&self, from: &str, to: &str) -> PyResult<()> {
@@ -637,19 +646,29 @@ impl Transport {
 
     fn copy_to(
         &self,
+        py: Python,
         relpaths: Vec<&str>,
-        to_transport: &Transport,
+        to_transport: PyObject,
         mode: Option<PyObject>,
     ) -> PyResult<()> {
-        // &Box::new(breezy_transport::pyo3::PyTransport::from(to_transport))
-
-        self.0
-            .copy_to(
-                relpaths.as_slice(),
-                to_transport.0.as_ref(),
-                mode.map(perms_from_py_object),
-            )
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+        if let Ok(t) = to_transport.clone_ref(py).extract::<PyRef<Transport>>(py) {
+            self.0
+                .copy_to(
+                    relpaths.as_slice(),
+                    t.0.as_ref(),
+                    mode.map(perms_from_py_object),
+                )
+                .map_err(|e| map_transport_err_to_py_err(e, None, None))
+        } else {
+            let t = Box::new(breezy_transport::pyo3::PyTransport::from(to_transport));
+            self.0
+                .copy_to(
+                    relpaths.as_slice(),
+                    t.as_ref(),
+                    mode.map(perms_from_py_object),
+                )
+                .map_err(|e| map_transport_err_to_py_err(e, None, None))
+        }
     }
 
     fn _can_roundtrip_unix_modebits(&self) -> bool {

@@ -99,7 +99,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
     def _show_result(self, before, methodname, result):
         result_len = None
-        if isinstance(result, types.GeneratorType) or hasattr(result, '__next__'):
+        if isinstance(result, types.GeneratorType) or type(result).__name__ == 'list_iterator':
             # We now consume everything from the generator so that we can show
             # the results and the time it took to get them.  However, to keep
             # compatibility with callers that may specifically expect a result
