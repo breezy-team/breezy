@@ -27,7 +27,13 @@ struct PySmartMedium(PyObject);
 
 impl SmartMedium for PySmartMedium {}
 
-struct PyTransport(PyObject);
+pub struct PyTransport(PyObject);
+
+impl From<PyObject> for PyTransport {
+    fn from(obj: PyObject) -> Self {
+        PyTransport(obj)
+    }
+}
 
 struct PyLock(PyObject);
 
@@ -227,12 +233,13 @@ impl Transport for PyTransport {
         relpath: &UrlFragment,
         f: &mut dyn Read,
         mode: Option<Permissions>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let f = py_read(f)?;
         Python::with_gil(|py| {
-            self.0
+            let ret = self
+                .0
                 .call_method1(py, "put_file", (relpath, f, mode.map(|p| p.mode())))?;
-            Ok(())
+            Ok(ret.extract::<u64>(py)?)
         })
     }
 
@@ -408,14 +415,14 @@ impl Transport for PyTransport {
         relpath: &UrlFragment,
         bytes: &[u8],
         permissions: Option<Permissions>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         Python::with_gil(|py| {
-            self.0.call_method1(
+            let pos = self.0.call_method1(
                 py,
                 "append_bytes",
                 (relpath, bytes, permissions.map(|p| p.mode())),
             )?;
-            Ok(())
+            Ok(pos.extract::<u64>(py)?)
         })
     }
 
@@ -424,15 +431,15 @@ impl Transport for PyTransport {
         relpath: &UrlFragment,
         f: &mut dyn Read,
         permissions: Option<Permissions>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let f = py_read(f)?;
         Python::with_gil(|py| {
-            self.0.call_method1(
+            let pos = self.0.call_method1(
                 py,
                 "append_file",
                 (relpath, f, permissions.map(|p| p.mode())),
             )?;
-            Ok(())
+            Ok(pos.extract::<u64>(py)?)
         })
     }
 
@@ -619,6 +626,13 @@ impl Transport for PyTransport {
             let obj = obj.extract::<PyObject>(py).unwrap();
             let medium = PySmartMedium(obj);
             Ok(Box::new(medium) as Box<dyn SmartMedium>)
+        })
+    }
+
+    fn copy(&self, src: &UrlFragment, dst: &UrlFragment) -> Result<()> {
+        Python::with_gil(|py| {
+            self.0.call_method1(py, "copy", (src, dst))?;
+            Ok(())
         })
     }
 }

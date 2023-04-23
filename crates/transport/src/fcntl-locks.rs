@@ -2,6 +2,7 @@ use crate::{Error, Lock};
 use lazy_static::lazy_static;
 use log::debug;
 use nix::fcntl::{flock, FlockArg};
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::AsRawFd;
@@ -141,18 +142,16 @@ impl ReadLock {
 
 impl Lock for ReadLock {
     fn unlock(&mut self) -> std::result::Result<(), Error> {
-        match OPEN_READ_LOCKS.lock().unwrap().get(&self.filename) {
-            Some(count) => {
+        match OPEN_READ_LOCKS.lock().unwrap().entry(self.filename.clone()) {
+            Entry::Occupied(mut entry) => {
+                let count = entry.get_mut();
                 if *count == 1 {
-                    OPEN_READ_LOCKS.lock().unwrap().remove(&self.filename);
+                    entry.remove();
                 } else {
-                    OPEN_READ_LOCKS
-                        .lock()
-                        .unwrap()
-                        .insert(self.filename.clone(), count - 1);
+                    *count -= 1;
                 }
             }
-            None => panic!("no read lock on {}", self.filename.to_string_lossy()),
+            Entry::Vacant(_) => panic!("no read lock on {}", self.filename.to_string_lossy()),
         }
         flock(self.f.as_raw_fd(), FlockArg::Unlock);
         Ok(())
@@ -199,7 +198,7 @@ impl TemporaryWriteLock {
 
         // LOCK_NB will cause IOError to be raised if we can't grab a
         // lock right away.
-        match flock(f.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
+        match flock(f.as_raw_fd(), FlockArg::LockSharedNonblock) {
             Ok(_) => Ok(()),
             Err(_) => Err(Error::LockContention(filename.clone())),
         };

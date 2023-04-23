@@ -1579,8 +1579,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        if not isinstance(a_controldir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_controldir.transport.base)
+        a_controldir.transport.local_abspath('.')
         wt = self._open(a_controldir, self._open_control_files(a_controldir))
         return wt
 

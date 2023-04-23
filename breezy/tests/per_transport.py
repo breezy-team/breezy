@@ -964,8 +964,12 @@ class TransportTests(TestTransportImplementation):
             self.assertTrue(t.has(source_name))
             self.assertTrue(t.has(link_name))
 
-            st = t.stat(link_name)
-            self.assertEqual(st[ST_NLINK], 2)
+            try:
+                local_path = t.local_abspath(link_name)
+                st = os.stat(local_path)
+                self.assertEqual(st[ST_NLINK], 2)
+            except errors.NotLocalUrl:
+                pass
         except TransportNotPossible:
             raise TestSkipped("Transport %s does not support hardlinks." %
                               self._server.__class__)

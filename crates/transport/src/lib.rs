@@ -1,3 +1,4 @@
+use crate::lock::Lock;
 use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
 use std::io::{Read, Seek};
@@ -34,6 +35,10 @@ pub enum Error {
     LockContention(std::path::PathBuf),
 
     LockFailed(std::path::PathBuf, String),
+
+    PathError(Option<String>),
+
+    ReadError(Option<String>),
 }
 
 fn sort_expand_and_combine(
@@ -101,7 +106,17 @@ impl From<std::io::Error> for Error {
             std::io::ErrorKind::NotFound => Error::NoSuchFile(None),
             std::io::ErrorKind::AlreadyExists => Error::FileExists(None),
             std::io::ErrorKind::PermissionDenied => Error::PermissionDenied(None),
-            _ => Error::Io(err),
+            // use of unstable library feature 'io_error_more'
+            // https://github.com/rust-lang/rust/issues/86442
+            //
+            // std::io::ErrorKind::NotADirectoryError => Error::PathError(None),
+            // std::io::ErrorKind::IsADirectoryError => Error::ReadError(None),
+            _ => match err.raw_os_error() {
+                Some(libc::ENOTDIR) => Error::PathError(None),
+                Some(libc::EISDIR) => Error::ReadError(None),
+                Some(libc::ENOTEMPTY) => Error::PathError(None),
+                _ => Error::Io(err),
+            },
         }
     }
 }
@@ -269,7 +284,7 @@ pub trait Transport: 'static + Send + Sync {
         relpath: &UrlFragment,
         f: &mut dyn Read,
         permissions: Option<Permissions>,
-    ) -> Result<()>;
+    ) -> Result<u64>;
 
     fn put_bytes(
         &self,
@@ -278,7 +293,8 @@ pub trait Transport: 'static + Send + Sync {
         permissions: Option<Permissions>,
     ) -> Result<()> {
         let mut f = std::io::Cursor::new(data);
-        self.put_file(relpath, &mut f, permissions)
+        self.put_file(relpath, &mut f, permissions)?;
+        Ok(())
     }
 
     fn put_file_non_atomic(
@@ -295,7 +311,8 @@ pub trait Transport: 'static + Send + Sync {
                 if create_parent_dir.unwrap_or(false) {
                     if let Some(parent) = relpath.rsplitn(2, '/').nth(1) {
                         self.mkdir(parent, dir_permissions)?;
-                        self.put_file(relpath, f, permissions.clone())
+                        self.put_file(relpath, f, permissions.clone())?;
+                        Ok(())
                     } else {
                         Err(Error::NoSuchFile(filename))
                     }
@@ -408,7 +425,7 @@ pub trait Transport: 'static + Send + Sync {
         relpath: &UrlFragment,
         data: &[u8],
         permissions: Option<Permissions>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         let mut f = std::io::Cursor::new(data);
         self.append_file(relpath, &mut f, permissions)
     }
@@ -418,7 +435,7 @@ pub trait Transport: 'static + Send + Sync {
         relpath: &UrlFragment,
         f: &mut dyn std::io::Read,
         permissions: Option<Permissions>,
-    ) -> Result<()>;
+    ) -> Result<u64>;
 
     fn readlink(&self, relpath: &UrlFragment) -> Result<String>;
 
@@ -508,18 +525,8 @@ pub trait Transport: 'static + Send + Sync {
     fn local_abspath(&self, relpath: &UrlFragment) -> Result<std::path::PathBuf>;
 
     fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>>;
-}
 
-pub trait Lock {
-    fn unlock(&mut self) -> Result<()>;
-}
-
-struct BogusLock {}
-
-impl Lock for BogusLock {
-    fn unlock(&mut self) -> Result<()> {
-        Ok(())
-    }
+    fn copy(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
 }
 
 pub trait SmartMedium {}
@@ -532,3 +539,5 @@ pub mod pyo3;
 #[cfg(unix)]
 #[path = "fcntl-locks.rs"]
 pub mod locks;
+
+pub mod lock;

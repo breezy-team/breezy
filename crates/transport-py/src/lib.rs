@@ -25,8 +25,9 @@ import_exception!(breezy.errors, TransportNotPossible);
 import_exception!(breezy.errors, ShortReadvError);
 import_exception!(breezy.errors, LockContention);
 import_exception!(breezy.errors, LockFailed);
-
-create_exception!(_transport_rs, UrlError, TransportError);
+import_exception!(breezy.errors, ReadError);
+import_exception!(breezy.errors, PathError);
+import_exception!(breezy.urlutils, InvalidURL);
 
 #[pyclass(subclass)]
 struct Transport(Box<dyn breezy_transport::Transport>);
@@ -39,14 +40,16 @@ fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFrag
         Error::NoSuchFile(name) => NoSuchFile::new_err((name,)),
         Error::FileExists(name) => FileExists::new_err((name,)),
         Error::TransportNotPossible => TransportNotPossible::new_err(()),
-        Error::UrlError(e) => UrlError::new_err(e.to_string()),
+        Error::UrlError(e) => InvalidURL::new_err((p.map(|p| p.to_string()),)),
         Error::PermissionDenied(name) => PermissionDenied::new_err((name,)),
         Error::PathNotChild => PathNotChild::new_err(()),
-        Error::UrlutilsError(e) => UrlError::new_err(format!("{:?}", e)),
+        Error::UrlutilsError(e) => InvalidURL::new_err((p.map(|p| p.to_string()),)),
         Error::Io(e) => e.into(),
         Error::UnexpectedEof => PyValueError::new_err("Unexpected EOF"),
         Error::LockContention(name) => LockContention::new_err((name,)),
         Error::LockFailed(name, error) => LockFailed::new_err((name, error)),
+        Error::PathError(name) => PathError::new_err((name,)),
+        Error::ReadError(name) => ReadError::new_err((name,)),
         Error::ShortReadvError(path, offset, expected, got) => {
             ShortReadvError::new_err((path, offset, expected, got))
         }
@@ -319,12 +322,13 @@ impl Transport {
         Ok(())
     }
 
-    fn put_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<()> {
+    fn put_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<u64> {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
-        self.0
+        let ret = self
+            .0
             .put_file(path, &mut file, mode.map(perms_from_py_object))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
-        Ok(())
+        Ok(ret)
     }
 
     fn put_file_non_atomic(
@@ -333,7 +337,7 @@ impl Transport {
         file: PyObject,
         mode: Option<PyObject>,
         create_parent_dir: Option<bool>,
-        dir_permissions: Option<PyObject>,
+        dir_mode: Option<PyObject>,
     ) -> PyResult<()> {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         self.0
@@ -342,7 +346,7 @@ impl Transport {
                 &mut file,
                 mode.map(perms_from_py_object),
                 create_parent_dir,
-                dir_permissions.map(perms_from_py_object),
+                dir_mode.map(perms_from_py_object),
             )
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))?;
         Ok(())
@@ -446,13 +450,13 @@ impl Transport {
             .collect::<PyResult<Vec<_>>>()
     }
 
-    fn append_bytes(&self, path: &str, bytes: &[u8], mode: Option<PyObject>) -> PyResult<()> {
+    fn append_bytes(&self, path: &str, bytes: &[u8], mode: Option<PyObject>) -> PyResult<u64> {
         self.0
             .append_bytes(path, bytes, mode.map(perms_from_py_object))
             .map_err(|e| map_transport_err_to_py_err(e, None, Some(path)))
     }
 
-    fn append_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<()> {
+    fn append_file(&self, path: &str, file: PyObject, mode: Option<PyObject>) -> PyResult<u64> {
         let mut file = PyFileLikeObject::with_requirements(file, true, false, false)?;
         self.0
             .append_file(path, &mut file, mode.map(perms_from_py_object))
@@ -528,6 +532,8 @@ impl Transport {
         to_transport: &Transport,
         mode: Option<PyObject>,
     ) -> PyResult<()> {
+        // &Box::new(breezy_transport::pyo3::PyTransport::from(to_transport))
+
         self.0
             .copy_to(
                 relpaths.as_slice(),
@@ -537,17 +543,22 @@ impl Transport {
             .map_err(|e| map_transport_err_to_py_err(e, None, None))
     }
 
-    #[getter]
     fn _can_roundtrip_unix_modebits(&self) -> bool {
         self.0.can_roundtrip_unix_modebits()
+    }
+
+    fn copy(&self, from: &str, to: &str) -> PyResult<()> {
+        self.0
+            .copy(from, to)
+            .map_err(|e| map_transport_err_to_py_err(e, None, Some(from)))
     }
 }
 
 #[pyclass]
-struct Lock(Box<dyn breezy_transport::Lock + Send + Sync>);
+struct Lock(Box<dyn breezy_transport::lock::Lock + Send + Sync>);
 
-impl From<Box<dyn breezy_transport::Lock + Send + Sync>> for Lock {
-    fn from(lock: Box<dyn breezy_transport::Lock + Send + Sync>) -> Self {
+impl From<Box<dyn breezy_transport::lock::Lock + Send + Sync>> for Lock {
+    fn from(lock: Box<dyn breezy_transport::lock::Lock + Send + Sync>) -> Self {
         Lock(lock)
     }
 }
