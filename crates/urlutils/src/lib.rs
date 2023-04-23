@@ -748,7 +748,7 @@ pub fn file_relpath(base: &str, path: &str) -> Result<String> {
     let base: PathBuf = breezy_osutils::path::normpath(local_path_from_url(base)?);
     let path: PathBuf = breezy_osutils::path::normpath(local_path_from_url(path)?);
 
-    let relpath = breezy_osutils::path::relpath(path.as_path(), base.as_path());
+    let relpath = breezy_osutils::path::relpath(base.as_path(), path.as_path());
     if relpath.is_none() {
         return Err(Error::PathNotChild(
             path.display().to_string(),
