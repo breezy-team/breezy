@@ -230,6 +230,7 @@ fn _urlutils_rs(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(local_path_from_url, m)?)?;
     m.add_function(wrap_pyfunction!(unescape, m)?)?;
     m.add_function(wrap_pyfunction!(derive_to_location, m)?)?;
+    m.add_function(wrap_pyfunction!(file_relpath, m)?)?;
     let win32m = PyModule::new(py, "win32")?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_to_url, win32m)?)?;
     win32m.add_function(wrap_pyfunction!(win32_local_path_from_url, win32m)?)?;
