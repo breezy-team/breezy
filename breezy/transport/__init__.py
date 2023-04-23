@@ -32,7 +32,8 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, Dict, TypeVar
 
-from .. import errors, hooks, osutils, registry, ui, urlutils, _transport_rs
+from .. import _transport_rs  # type: ignore
+from .. import errors, hooks, osutils, registry, ui, urlutils
 from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
