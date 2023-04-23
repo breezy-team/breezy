@@ -36,9 +36,11 @@ pub enum Error {
 
     LockFailed(std::path::PathBuf, String),
 
-    PathError(Option<String>),
+    IsADirectoryError(Option<String>),
 
-    ReadError(Option<String>),
+    NotADirectoryError(Option<String>),
+
+    DirectoryNotEmptyError(Option<String>),
 }
 
 fn sort_expand_and_combine(
@@ -109,12 +111,12 @@ impl From<std::io::Error> for Error {
             // use of unstable library feature 'io_error_more'
             // https://github.com/rust-lang/rust/issues/86442
             //
-            // std::io::ErrorKind::NotADirectoryError => Error::PathError(None),
-            // std::io::ErrorKind::IsADirectoryError => Error::ReadError(None),
+            // std::io::ErrorKind::NotADirectoryError => Error::NotADirectoryError(None),
+            // std::io::ErrorKind::IsADirectoryError => Error::IsADirectoryError(None),
             _ => match err.raw_os_error() {
-                Some(libc::ENOTDIR) => Error::PathError(None),
-                Some(libc::EISDIR) => Error::ReadError(None),
-                Some(libc::ENOTEMPTY) => Error::PathError(None),
+                Some(libc::ENOTDIR) => Error::NotADirectoryError(None),
+                Some(libc::EISDIR) => Error::IsADirectoryError(None),
+                Some(libc::ENOTEMPTY) => Error::DirectoryNotEmptyError(None),
                 _ => Error::Io(err),
             },
         }

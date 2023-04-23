@@ -48,8 +48,9 @@ fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFrag
         Error::UnexpectedEof => PyValueError::new_err("Unexpected EOF"),
         Error::LockContention(name) => LockContention::new_err((name,)),
         Error::LockFailed(name, error) => LockFailed::new_err((name, error)),
-        Error::PathError(name) => PathError::new_err((name,)),
-        Error::ReadError(name) => ReadError::new_err((name,)),
+        Error::NotADirectoryError(name) => PathError::new_err((name, "not a directory")),
+        Error::IsADirectoryError(name) => ReadError::new_err((name, "is a directory")),
+        Error::DirectoryNotEmptyError(name) => PathError::new_err((name, "directory not empty")),
         Error::ShortReadvError(path, offset, expected, got) => {
             ShortReadvError::new_err((path, offset, expected, got))
         }
@@ -128,8 +129,8 @@ impl PyBufReadStream {
         Ok(PyBytes::new(py, &buf[..ret]).to_object(py).to_object(py))
     }
 
-    fn seek(&mut self, offset: i64, whence: i8) -> PyResult<u64> {
-        let seekfrom = match whence {
+    fn seek(&mut self, offset: i64, whence: Option<i8>) -> PyResult<u64> {
+        let seekfrom = match whence.unwrap_or(0) {
             0 => std::io::SeekFrom::Start(offset as u64),
             1 => std::io::SeekFrom::Current(offset),
             2 => std::io::SeekFrom::End(offset),
@@ -148,6 +149,10 @@ impl PyBufReadStream {
         let ret = self.0.read_until(b'\n', &mut buf)?;
         buf.truncate(ret);
         Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
     }
 
     fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
@@ -195,11 +200,17 @@ impl Transport {
             .to_string())
     }
 
-    fn get_bytes(&self, py: Python, path: &str) -> PyResult<PyObject> {
-        let ret = self
-            .0
-            .get_bytes(path)
-            .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+    fn get_bytes(slf: &PyCell<Self>, py: Python, path: &str) -> PyResult<PyObject> {
+        let ret = slf.borrow().0.get_bytes(path).map_err(|e| match e {
+            Error::IsADirectoryError(_) => {
+                ReadError::new_err((path.to_string(), "Is a directory".to_string()))
+            }
+            Error::NotADirectoryError(_) => {
+                ReadError::new_err((path.to_string(), "Not a directory".to_string()))
+            }
+            e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
+        })?;
+
         Ok(PyBytes::new(py, &ret).to_object(py).to_object(py))
     }
 
@@ -240,10 +251,15 @@ impl Transport {
     }
 
     fn get(slf: PyRef<Self>, py: Python, path: &str) -> PyResult<PyObject> {
-        let ret = slf
-            .0
-            .get(path)
-            .map_err(|e| map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)))?;
+        let ret = slf.0.get(path).map_err(|e| match e {
+            Error::IsADirectoryError(_) => {
+                ReadError::new_err((path.to_string(), "Is a directory".to_string()))
+            }
+            Error::NotADirectoryError(_) => {
+                ReadError::new_err((path.to_string(), "Not a directory".to_string()))
+            }
+            e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
+        })?;
         Ok(PyBufReadStream::new(ret).into_py(py))
     }
 
@@ -266,17 +282,6 @@ impl Transport {
             st_mode: stat.mode,
         }
         .into_py(py))
-    }
-
-    fn clone(&self, py: Python, offset: Option<PyObject>) -> PyResult<Self> {
-        let inner = if let Some(offset) = offset {
-            let offset = offset.extract::<&str>(py)?;
-            self.0.clone(Some(offset))
-        } else {
-            self.0.clone(None)
-        }
-        .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
-        Ok(Transport(inner))
     }
 
     fn relpath(&self, path: Option<&str>) -> PyResult<String> {
@@ -586,6 +591,21 @@ impl LocalTransport {
                     .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
             )),
         ))
+    }
+
+    fn clone(slf: PyRef<Self>, py: Python, offset: Option<PyObject>) -> PyResult<PyObject> {
+        let super_ = slf.as_ref();
+        let inner = if let Some(offset) = offset {
+            let offset = offset.extract::<&str>(py)?;
+            super_.0.clone(Some(offset))
+        } else {
+            super_.0.clone(None)
+        }
+        .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+
+        let init = PyClassInitializer::from(Transport(inner));
+        let init = init.add_subclass(Self {});
+        Ok(PyCell::new(py, init)?.to_object(py))
     }
 }
 

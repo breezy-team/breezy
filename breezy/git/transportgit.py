@@ -47,7 +47,6 @@ from ..errors import (AlreadyControlDirError, LockBroken, LockContention,
 from ..lock import LogicalLockResult
 from ..trace import warning
 from ..transport import FileExists, NoSuchFile
-from ..transport.local import LocalTransport
 
 
 class _RemoteGitFile(object):

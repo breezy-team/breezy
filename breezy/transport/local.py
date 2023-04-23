@@ -44,7 +44,7 @@ def file_kind(f, _lstat=os.lstat):
     return osutils.file_kind_from_stat_mode(stat_value.st_mode)
 
 
-LocalTransport = _transport_rs.LocalTransport
+from .._transport_rs import LocalTransport
 
 
 class OldLocalTransport(transport.Transport):
