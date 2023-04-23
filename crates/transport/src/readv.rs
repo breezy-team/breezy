@@ -201,3 +201,58 @@ pub fn seek_and_read<T: Read + Seek>(
 > {
     ReadvIter::new(fp, offsets, max_readv_combine, bytes_to_read_before_seek)
 }
+
+pub fn sort_expand_and_combine(
+    offsets: Vec<(u64, usize)>,
+    upper_limit: Option<u64>,
+    recommended_page_size: usize,
+) -> Vec<(u64, usize)> {
+    // Sort the offsets by start address.
+    let mut sorted_offsets = offsets.to_vec();
+    sorted_offsets.sort_unstable_by_key(|&(offset, _)| offset);
+
+    // Short circuit empty requests.
+    if sorted_offsets.is_empty() {
+        return Vec::new();
+    }
+
+    // Expand the offsets by page size at either end.
+    let maximum_expansion = recommended_page_size;
+    let mut new_offsets = Vec::with_capacity(sorted_offsets.len());
+    for (offset, length) in sorted_offsets {
+        let expansion = maximum_expansion.saturating_sub(length);
+        let reduction = expansion / 2;
+        let new_offset = offset.saturating_sub(reduction as u64);
+        let new_length = length + expansion;
+        let new_length = if let Some(upper_limit) = upper_limit {
+            let new_end = new_offset.saturating_add(new_length as u64);
+            let new_length = std::cmp::min(upper_limit, new_end) - new_offset;
+            std::cmp::max(0, new_length as isize) as usize
+        } else {
+            new_length
+        };
+        if new_length > 0 {
+            new_offsets.push((new_offset, new_length));
+        }
+    }
+
+    // Combine the expanded offsets.
+    let mut result = Vec::with_capacity(new_offsets.len());
+    if let Some((mut current_offset, mut current_length)) = new_offsets.first().copied() {
+        let mut current_finish = current_offset + current_length as u64;
+        for (offset, length) in new_offsets.iter().skip(1) {
+            let finish = offset + *length as u64;
+            if *offset > current_finish {
+                result.push((current_offset, current_length));
+                current_offset = *offset;
+                current_length = *length;
+                current_finish = finish;
+            } else if finish > current_finish {
+                current_finish = finish;
+                current_length = (current_finish - current_offset) as usize;
+            }
+        }
+        result.push((current_offset, current_length));
+    }
+    result
+}
