@@ -57,11 +57,11 @@ unquote = urlparse.unquote
 
 
 from ._urlutils_rs import (_find_scheme_and_separator, basename, combine_paths,
-                           derive_to_location, dirname, escape, is_url, join,
-                           join_segment_parameters,
+                           derive_to_location, dirname, escape, file_relpath,
+                           is_url, join, join_segment_parameters,
                            join_segment_parameters_raw, joinpath,
                            local_path_from_url, local_path_to_url,
-                           normalize_url, file_relpath)
+                           normalize_url)
 from ._urlutils_rs import posix as posix_rs
 from ._urlutils_rs import (relative_url, split, split_segment_parameters,
                            split_segment_parameters_raw,
