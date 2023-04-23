@@ -717,43 +717,11 @@ class Transport:
         :param offsets: A list of offsets to be read from the given file.
         :return: yield (pos, data) tuples for each request
         """
-        # We are going to iterate multiple times, we need a list
-        offsets = list(offsets)
-        sorted_offsets = sorted(offsets)
-
-        # turn the list of offsets into a stack
-        offset_stack = iter(offsets)
-        cur_offset_and_size = next(offset_stack)
-        coalesced = self._coalesce_offsets(sorted_offsets,
-                                           limit=self._max_readv_combine,
-                                           fudge_factor=self._bytes_to_read_before_seek)
-
-        # Cache the results, but only until they have been fulfilled
-        data_map = {}
         try:
-            for c_offset in coalesced:
-                # TODO: jam 20060724 it might be faster to not issue seek if
-                #       we are already at the right location. This should be
-                #       benchmarked.
-                fp.seek(c_offset.start)
-                data = fp.read(c_offset.length)
-                if len(data) < c_offset.length:
-                    raise errors.ShortReadvError(relpath, c_offset.start,
-                                                 c_offset.length, actual=len(data))
-                for suboffset, subsize in c_offset.ranges:
-                    key = (c_offset.start + suboffset, subsize)
-                    data_map[key] = data[suboffset:suboffset + subsize]
-
-                # Now that we've read some data, see if we can yield anything back
-                while cur_offset_and_size in data_map:
-                    this_data = data_map.pop(cur_offset_and_size)
-                    this_offset = cur_offset_and_size[0]
-                    try:
-                        cur_offset_and_size = next(offset_stack)
-                    except StopIteration:
-                        fp.close()
-                        cur_offset_and_size = None
-                    yield this_offset, this_data
+            for (pos, data) in _transport_rs.seek_and_read(fp, offsets,
+                                                           max_readv_combine=self._max_readv_combine,
+                                                           bytes_to_read_before_seek=self._bytes_to_read_before_seek, path=relpath):
+                yield (pos, data)
         finally:
             fp.close()
 

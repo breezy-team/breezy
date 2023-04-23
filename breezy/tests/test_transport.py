@@ -150,8 +150,7 @@ class TestCoalesceOffsets(tests.TestCase):
                     ], [(0, 10), (20, 10)])
 
     def test_coalesce_unsorted(self):
-        self.check([(20, 10, [(0, 10)]),
-                    (0, 10, [(0, 10)]),
+        self.check([ (0, 10, [(0, 10)]), (20, 10, [(0, 10)]),
                     ], [(20, 10), (0, 10)])
 
     def test_coalesce_nearby(self):

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::io::{Read, Seek, SeekFrom};
 
 pub struct OverlappingRange {
@@ -48,6 +50,9 @@ pub fn coalesce_offsets(
     fudge_factor: Option<usize>,
     max_size: Option<usize>,
 ) -> std::result::Result<Vec<(usize, usize, Vec<(usize, usize)>)>, OverlappingRange> {
+    let mut offsets = offsets.to_vec();
+    offsets.sort();
+
     struct CoalescedOffset {
         start: usize,
         length: usize,
@@ -101,6 +106,82 @@ pub fn coalesce_offsets(
     Ok(coalesced_offsets)
 }
 
+struct ReadvIter<T> {
+    fp: T,
+    offsets: VecDeque<(usize, usize)>,
+    coalesced: VecDeque<(usize, usize, Vec<(usize, usize)>)>,
+    data_map: HashMap<(usize, usize), Vec<u8>>,
+}
+
+impl<T: Read + Seek> ReadvIter<T> {
+    fn new(
+        fp: T,
+        offsets: Vec<(usize, usize)>,
+        max_readv_combine: usize,
+        bytes_to_read_before_seek: usize,
+    ) -> std::io::Result<Self> {
+        // Turn list of offsets into a stack
+        let coalesced = coalesce_offsets(
+            &offsets,
+            Some(max_readv_combine),
+            Some(bytes_to_read_before_seek),
+            None,
+        )
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+
+        Ok(Self {
+            fp,
+            offsets: VecDeque::from(offsets),
+            coalesced: coalesced.into_iter().collect(),
+            data_map: std::collections::HashMap::new(),
+        })
+    }
+
+    fn read_more(&mut self) -> Result<bool, (std::io::Error, usize, usize, usize)> {
+        // Cache the results, but only until they have been fulfilled
+        if let Some((start, length, ranges)) = self.coalesced.pop_front() {
+            self.fp
+                .seek(SeekFrom::Start(start as u64))
+                .map_err(|e| (e, start, length, 0))?;
+            let mut data = vec![0; length];
+            self.fp
+                .read_exact(&mut data)
+                .map_err(|e| (e, start, length, 0))?;
+            for (suboffset, subsize) in ranges {
+                self.data_map.insert(
+                    (start + suboffset, subsize),
+                    data[suboffset..suboffset + subsize].to_vec(),
+                );
+            }
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+}
+
+impl<T: Read + Seek> Iterator for ReadvIter<T> {
+    type Item = Result<(usize, Vec<u8>), (std::io::Error, usize, usize, usize)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(key) = self.offsets.pop_front() {
+            loop {
+                if let Some(data) = self.data_map.remove(&key) {
+                    break Some(Ok((key.0, data)));
+                } else {
+                    match self.read_more() {
+                        Ok(true) => continue,
+                        Ok(false) => break None,
+                        Err(e) => break Some(Err(e)),
+                    }
+                }
+            }
+        } else {
+            None
+        }
+    }
+}
+
 /// An implementation of readv that uses fp.seek and fp.read.
 ///
 /// This uses _coalesce_offsets to issue larger reads and fewer seeks.
@@ -111,38 +192,12 @@ pub fn coalesce_offsets(
 /// :param offsets: A list of offsets to be read from the given file.
 /// :return: yield (pos, data) tuples for each request
 pub fn seek_and_read<T: Read + Seek>(
-    mut fp: T,
-    offsets: &[(usize, usize)],
+    fp: T,
+    offsets: Vec<(usize, usize)>,
     max_readv_combine: usize,
     bytes_to_read_before_seek: usize,
-) -> std::io::Result<impl Iterator<Item = (usize, Vec<u8>)>> {
-    let mut offsets = offsets.to_vec();
-    offsets.sort();
-
-    // Turn list of offsets into a stack
-    let coalesced = coalesce_offsets(
-        &offsets,
-        Some(max_readv_combine),
-        Some(bytes_to_read_before_seek),
-        None,
-    )
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
-
-    // Cache the results, but only until they have been fulfilled
-    let mut data_map = std::collections::HashMap::new();
-    for (start, length, ranges) in coalesced {
-        fp.seek(SeekFrom::Start(start as u64))?;
-        let mut data = vec![0; length];
-        fp.read_exact(&mut data)?;
-        for (suboffset, subsize) in ranges {
-            let key = (start + suboffset, subsize);
-            data_map.insert(key, data[suboffset..suboffset + subsize].to_vec());
-        }
-    }
-
-    Ok(offsets.into_iter().map(move |(offset, size)| {
-        let key = (offset, size);
-        let data = data_map.remove(&key).unwrap();
-        (offset, data)
-    }))
+) -> std::io::Result<
+    impl Iterator<Item = Result<(usize, Vec<u8>), (std::io::Error, usize, usize, usize)>>,
+> {
+    ReadvIter::new(fp, offsets, max_readv_combine, bytes_to_read_before_seek)
 }
