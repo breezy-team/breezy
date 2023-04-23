@@ -32,6 +32,7 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, Dict, TypeVar
 
+from .. import _transport_rs  # type: ignore
 from .. import errors, hooks, osutils, registry, ui, urlutils
 from ..trace import mutter
 
@@ -717,43 +718,11 @@ class Transport:
         :param offsets: A list of offsets to be read from the given file.
         :return: yield (pos, data) tuples for each request
         """
-        # We are going to iterate multiple times, we need a list
-        offsets = list(offsets)
-        sorted_offsets = sorted(offsets)
-
-        # turn the list of offsets into a stack
-        offset_stack = iter(offsets)
-        cur_offset_and_size = next(offset_stack)
-        coalesced = self._coalesce_offsets(sorted_offsets,
-                                           limit=self._max_readv_combine,
-                                           fudge_factor=self._bytes_to_read_before_seek)
-
-        # Cache the results, but only until they have been fulfilled
-        data_map = {}
         try:
-            for c_offset in coalesced:
-                # TODO: jam 20060724 it might be faster to not issue seek if
-                #       we are already at the right location. This should be
-                #       benchmarked.
-                fp.seek(c_offset.start)
-                data = fp.read(c_offset.length)
-                if len(data) < c_offset.length:
-                    raise errors.ShortReadvError(relpath, c_offset.start,
-                                                 c_offset.length, actual=len(data))
-                for suboffset, subsize in c_offset.ranges:
-                    key = (c_offset.start + suboffset, subsize)
-                    data_map[key] = data[suboffset:suboffset + subsize]
-
-                # Now that we've read some data, see if we can yield anything back
-                while cur_offset_and_size in data_map:
-                    this_data = data_map.pop(cur_offset_and_size)
-                    this_offset = cur_offset_and_size[0]
-                    try:
-                        cur_offset_and_size = next(offset_stack)
-                    except StopIteration:
-                        fp.close()
-                        cur_offset_and_size = None
-                    yield this_offset, this_data
+            for (pos, data) in _transport_rs.seek_and_read(fp, offsets,
+                                                           max_readv_combine=self._max_readv_combine,
+                                                           bytes_to_read_before_seek=self._bytes_to_read_before_seek, path=relpath):
+                yield (pos, data)
         finally:
             fp.close()
 
@@ -817,7 +786,7 @@ class Transport:
         return offsets
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
+    def _coalesce_offsets(offsets, limit=None, fudge_factor=None, max_size=None):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
@@ -846,36 +815,7 @@ class Transport:
             for where to start, how much to read, and how to split those chunks
             back up
         """
-        last_end = None
-        cur = _CoalescedOffset(None, None, [])
-        coalesced_offsets = []
-
-        if max_size <= 0:
-            # 'unlimited', but we actually take this to mean 100MB buffer limit
-            max_size = 100 * 1024 * 1024
-
-        for start, size in offsets:
-            end = start + size
-            if (last_end is not None
-                and start <= last_end + fudge_factor
-                and start >= cur.start
-                and (limit <= 0 or len(cur.ranges) < limit)
-                    and (max_size <= 0 or end - cur.start <= max_size)):
-                if start < last_end:
-                    raise ValueError('Overlapping range not allowed:'
-                                     ' last range ended at %s, new one starts at %s'
-                                     % (last_end, start))
-                cur.length = end - cur.start
-                cur.ranges.append((start - cur.start, size))
-            else:
-                if cur.start is not None:
-                    coalesced_offsets.append(cur)
-                cur = _CoalescedOffset(start, size, [(0, size)])
-            last_end = end
-
-        if cur.start is not None:
-            coalesced_offsets.append(cur)
-        return coalesced_offsets
+        return [_CoalescedOffset(start, length, ranges) for start, length, ranges in _transport_rs.coalesce_offsets(offsets, limit, fudge_factor, max_size)]
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
