@@ -1,5 +1,20 @@
 use std::io::{Read, Seek, SeekFrom};
 
+pub struct OverlappingRange {
+    last_end: usize,
+    start: usize,
+}
+
+impl std::fmt::Display for OverlappingRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Overlapping range not allowed: last range ended at {}, new one starts at {}",
+            self.last_end, self.start
+        )
+    }
+}
+
 /// Yield coalesced offsets.
 ///
 /// With a long list of neighboring requests, combine them
@@ -32,19 +47,23 @@ pub fn coalesce_offsets(
     limit: Option<usize>,
     fudge_factor: Option<usize>,
     max_size: Option<usize>,
-) -> Vec<(usize, usize, Vec<(usize, usize)>)> {
+) -> std::result::Result<Vec<(usize, usize, Vec<(usize, usize)>)>, OverlappingRange> {
     struct CoalescedOffset {
-        start: Option<usize>,
-        length: Option<usize>,
+        start: usize,
+        length: usize,
         ranges: Vec<(usize, usize)>,
     }
 
-    let mut last_end: Option<usize> = None;
+    if offsets.is_empty() {
+        return Ok(vec![]);
+    }
+
     let mut cur = CoalescedOffset {
-        start: None,
-        length: None,
-        ranges: vec![],
+        start: offsets[0].0,
+        length: offsets[0].1,
+        ranges: vec![(0, offsets[0].1)],
     };
+    let mut last_end = cur.start + cur.length;
     let mut coalesced_offsets = Vec::new();
 
     let fudge_factor = fudge_factor.unwrap_or(0);
@@ -52,40 +71,34 @@ pub fn coalesce_offsets(
     // unlimited, but we actually take this to mean 100MB buffer limit
     let max_size = max_size.unwrap_or(100 * 1024 * 1024);
 
-    for (start, size) in offsets {
+    for (start, size) in &offsets[1..] {
         let end = start + size;
-        if last_end.is_some()
-            && *start <= last_end.unwrap() + fudge_factor
-            && *start >= cur.start.unwrap_or(*start)
+        if *start <= last_end + fudge_factor
+            && *start >= cur.start
             && (limit.is_none() || cur.ranges.len() < limit.unwrap())
-            && (end - cur.start.unwrap_or(*start) <= max_size)
+            && (end - cur.start <= max_size)
         {
-            if *start < last_end.unwrap() {
-                panic!(
-                    "Overlapping range not allowed: last range ended at {}, new one starts at {}",
-                    last_end.unwrap(),
-                    start
-                );
+            if *start < last_end {
+                return Err(OverlappingRange {
+                    last_end,
+                    start: *start,
+                });
             }
-            cur.length = Some(end - cur.start.unwrap());
-            cur.ranges.push((start - cur.start.unwrap(), *size));
+            cur.length = end - cur.start;
+            cur.ranges.push((start - cur.start, *size));
         } else {
-            if cur.start.is_some() {
-                coalesced_offsets.push((cur.start.unwrap(), cur.length.unwrap(), cur.ranges));
-            }
+            coalesced_offsets.push((cur.start, cur.length, cur.ranges));
             cur = CoalescedOffset {
-                start: Some(*start),
-                length: Some(*size),
+                start: *start,
+                length: *size,
                 ranges: vec![(0, *size)],
             };
         }
-        last_end = Some(end);
+        last_end = end;
     }
 
-    if cur.start.is_some() {
-        coalesced_offsets.push((cur.start.unwrap(), cur.length.unwrap(), cur.ranges));
-    }
-    coalesced_offsets
+    coalesced_offsets.push((cur.start, cur.length, cur.ranges));
+    Ok(coalesced_offsets)
 }
 
 /// An implementation of readv that uses fp.seek and fp.read.
@@ -112,7 +125,8 @@ pub fn seek_and_read<T: Read + Seek>(
         Some(max_readv_combine),
         Some(bytes_to_read_before_seek),
         None,
-    );
+    )
+    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
     // Cache the results, but only until they have been fulfilled
     let mut data_map = std::collections::HashMap::new();

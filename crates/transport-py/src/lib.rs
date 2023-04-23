@@ -1,3 +1,4 @@
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_file::PyFileLikeObject;
 use std::io::{Read, Seek};
@@ -5,11 +6,21 @@ use std::io::{Read, Seek};
 #[pyfunction]
 fn coalesce_offsets(
     offsets: Vec<(usize, usize)>,
-    limit: Option<usize>,
-    fudge_factor: Option<usize>,
-    max_size: Option<usize>,
-) -> Vec<(usize, usize, Vec<(usize, usize)>)> {
+    mut limit: Option<usize>,
+    mut fudge_factor: Option<usize>,
+    mut max_size: Option<usize>,
+) -> PyResult<Vec<(usize, usize, Vec<(usize, usize)>)>> {
+    if limit == Some(0) {
+        limit = None;
+    }
+    if fudge_factor == Some(0) {
+        fudge_factor = None;
+    }
+    if max_size == Some(0) {
+        max_size = None;
+    }
     breezy_transport::readv::coalesce_offsets(offsets.as_slice(), limit, fudge_factor, max_size)
+        .map_err(|e| PyValueError::new_err(format!("{}", e)))
 }
 
 #[pyfunction]

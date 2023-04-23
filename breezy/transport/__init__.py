@@ -32,7 +32,7 @@ from io import BytesIO
 from stat import S_ISDIR
 from typing import Any, Callable, Dict, TypeVar
 
-from .. import errors, hooks, osutils, registry, ui, urlutils
+from .. import errors, hooks, osutils, registry, ui, urlutils, _transport_rs
 from ..trace import mutter
 
 # a dictionary of open file streams. Keys are absolute paths, values are
@@ -817,7 +817,7 @@ class Transport:
         return offsets
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
+    def _coalesce_offsets(offsets, limit=None, fudge_factor=None, max_size=None):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
@@ -846,36 +846,7 @@ class Transport:
             for where to start, how much to read, and how to split those chunks
             back up
         """
-        last_end = None
-        cur = _CoalescedOffset(None, None, [])
-        coalesced_offsets = []
-
-        if max_size <= 0:
-            # 'unlimited', but we actually take this to mean 100MB buffer limit
-            max_size = 100 * 1024 * 1024
-
-        for start, size in offsets:
-            end = start + size
-            if (last_end is not None
-                and start <= last_end + fudge_factor
-                and start >= cur.start
-                and (limit <= 0 or len(cur.ranges) < limit)
-                    and (max_size <= 0 or end - cur.start <= max_size)):
-                if start < last_end:
-                    raise ValueError('Overlapping range not allowed:'
-                                     ' last range ended at %s, new one starts at %s'
-                                     % (last_end, start))
-                cur.length = end - cur.start
-                cur.ranges.append((start - cur.start, size))
-            else:
-                if cur.start is not None:
-                    coalesced_offsets.append(cur)
-                cur = _CoalescedOffset(start, size, [(0, size)])
-            last_end = end
-
-        if cur.start is not None:
-            coalesced_offsets.append(cur)
-        return coalesced_offsets
+        return [_CoalescedOffset(start, length, ranges) for start, length, ranges in _transport_rs.coalesce_offsets(offsets, limit, fudge_factor, max_size)]
 
     def put_bytes(self, relpath: str, raw_bytes: bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
