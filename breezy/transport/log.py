@@ -117,6 +117,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
             shown_result = "%s(%s) (%d bytes)" % (result.__class__.__name__,
                                                   self._shorten(val), result_len)
         elif methodname == 'readv':
+            result = list(result)
             num_hunks = len(result)
             total_bytes = sum((len(d) for o, d in result))
             shown_result = "readv response, %d hunks, %d total bytes" % (

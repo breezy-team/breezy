@@ -547,7 +547,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # which -may- point to an existing dir.
         self.assertIsInstance(
             dir.get_branch_transport(None),
-            transport.Transport
+            (transport.Transport, transport._transport_rs.Transport)
         )
         # with a given format, either the bzr dir supports identifiable
         # branches, or it supports anonymous branch formats, but not both.
@@ -560,7 +560,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                               identifiable_format)
         except errors.IncompatibleFormat:
             found_transport = dir.get_branch_transport(identifiable_format)
-        self.assertIsInstance(found_transport, transport.Transport)
+        self.assertIsInstance(found_transport, (transport.Transport, transport._transport_rs.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
 
@@ -570,7 +570,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # which -may- point to an existing dir.
         self.assertIsInstance(
             dir.get_repository_transport(None),
-            transport.Transport
+            (transport.Transport, transport._transport_rs.Transport)
         )
         # with a given format, either the bzr dir supports identifiable
         # repositories, or it supports anonymous repository formats, but not both.
@@ -583,7 +583,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                               identifiable_format)
         except errors.IncompatibleFormat:
             found_transport = dir.get_repository_transport(identifiable_format)
-        self.assertIsInstance(found_transport, transport.Transport)
+        self.assertIsInstance(found_transport, (transport.Transport, transport._transport_rs.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
 
@@ -593,7 +593,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # which -may- point to an existing dir.
         self.assertIsInstance(
             dir.get_workingtree_transport(None),
-            transport.Transport
+            (transport.Transport, transport._transport_rs.Transport),
         )
         # with a given format, either the bzr dir supports identifiable
         # trees, or it supports anonymous tree formats, but not both.
@@ -607,7 +607,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             found_transport = dir.get_workingtree_transport(
                 identifiable_format)
-        self.assertIsInstance(found_transport, transport.Transport)
+        self.assertIsInstance(found_transport, (transport.Transport, transport._transport_rs.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
 

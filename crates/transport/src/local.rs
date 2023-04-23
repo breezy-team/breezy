@@ -1,5 +1,6 @@
 use crate::{
-    Error, Lock, ReadStream, Result, SmartMedium, Stat, Transport, UrlFragment, WriteStream,
+    map_atomic_err_to_transport_err, map_io_err_to_transport_err, Error, Lock, ReadStream, Result,
+    SmartMedium, Stat, Transport, UrlFragment, WriteStream,
 };
 use atomicwrites::{AllowOverwrite, AtomicFile};
 use breezy_urlutils::{escape, unescape};
@@ -90,17 +91,17 @@ impl Transport for LocalTransport {
 
     fn get(&self, relpath: &UrlFragment) -> Result<Box<dyn ReadStream + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
-        let f = std::fs::File::open(path).map_err(Error::from)?;
+        let f =
+            std::fs::File::open(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         Ok(Box::new(f))
     }
 
     fn mkdir(&self, relpath: &UrlFragment, permissions: Option<Permissions>) -> Result<()> {
         let path = self.local_abspath(relpath)?;
-        std::fs::create_dir(&path).map_err(Error::from)?;
+        std::fs::create_dir(&path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         if let Some(permissions) = permissions {
             std::fs::set_permissions(&path, permissions)
-                .map_err(Error::from)
-                .map_err(Error::from)?;
+                .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         }
         Ok(())
     }
@@ -113,9 +114,9 @@ impl Transport for LocalTransport {
 
     fn stat(&self, relpath: &UrlFragment) -> Result<Stat> {
         let path = self.local_abspath(relpath)?;
-        Ok(Stat::from(
-            std::fs::symlink_metadata(path).map_err(Error::from)?,
-        ))
+        Ok(Stat::from(std::fs::symlink_metadata(path).map_err(
+            |e| map_io_err_to_transport_err(e, Some(relpath)),
+        )?))
     }
 
     fn clone(&self, offset: Option<&UrlFragment>) -> Result<Box<dyn Transport>> {
@@ -131,7 +132,7 @@ impl Transport for LocalTransport {
         let path = breezy_osutils::path::normpath(path);
 
         breezy_urlutils::local_path_to_url(path.as_path())
-            .map_err(Error::from)
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))
             .map(|url| Url::parse(&url).unwrap())
     }
 
@@ -156,25 +157,26 @@ impl Transport for LocalTransport {
                 }
                 std::io::copy(f, outf)
             })
-            .map_err(Error::from)?;
+            .map_err(|e| map_atomic_err_to_transport_err(e, Some(relpath)))?;
         Ok(n)
     }
 
     fn delete(&self, relpath: &UrlFragment) -> Result<()> {
         let path = self.local_abspath(relpath)?;
-        std::fs::remove_file(path).map_err(Error::from)
+        std::fs::remove_file(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))
     }
 
     fn rmdir(&self, relpath: &UrlFragment) -> Result<()> {
         let path = self.local_abspath(relpath)?;
-        std::fs::remove_dir(path).map_err(Error::from)
+        std::fs::remove_dir(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))
     }
 
     fn rename(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
         let abs_from = self.local_abspath(rel_from)?;
         let abs_to = self.local_abspath(rel_to)?;
 
-        std::fs::rename(abs_from, abs_to).map_err(Error::from)
+        std::fs::rename(abs_from, abs_to)
+            .map_err(|e| map_io_err_to_transport_err(e, Some(rel_from)))
     }
 
     fn set_segment_parameter(&mut self, key: &str, value: Option<&str>) -> Result<()> {
@@ -205,7 +207,11 @@ impl Transport for LocalTransport {
         upper_limit: Option<u64>,
     ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + 'a> {
         let offsets = if adjust_for_latency {
-            crate::sort_expand_and_combine(offsets, upper_limit, self.recommended_page_size())
+            crate::readv::sort_expand_and_combine(
+                offsets,
+                upper_limit,
+                self.recommended_page_size(),
+            )
         } else {
             offsets
         };
@@ -256,8 +262,10 @@ impl Transport for LocalTransport {
         if let Some(permissions) = permissions {
             file.set_permissions(permissions)?;
         }
-        let pos = file.seek(std::io::SeekFrom::End(0)).map_err(Error::from)?;
-        std::io::copy(f, &mut file).map_err(Error::from)?;
+        let pos = file
+            .seek(std::io::SeekFrom::End(0))
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
+        std::io::copy(f, &mut file).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         Ok(pos)
     }
 
@@ -265,14 +273,15 @@ impl Transport for LocalTransport {
     fn readlink(&self, relpath: &UrlFragment) -> Result<String> {
         use std::os::unix::ffi::OsStrExt;
         let path = self.local_abspath(relpath)?;
-        let target = std::fs::read_link(path).map_err(Error::from)?;
+        let target =
+            std::fs::read_link(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         Ok(escape(target.as_os_str().as_bytes(), None))
     }
 
     fn hardlink(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
         let from = self.local_abspath(rel_from)?;
         let to = self.local_abspath(rel_to)?;
-        std::fs::hard_link(from, to).map_err(Error::from)
+        std::fs::hard_link(from, to).map_err(|e| map_io_err_to_transport_err(e, Some(rel_from)))
     }
 
     #[cfg(target_family = "unix")]
@@ -284,7 +293,8 @@ impl Transport for LocalTransport {
             self.abspath(source)?.as_str(),
         )?;
 
-        std::os::unix::fs::symlink(source_rel, self.local_abspath(link_name)?).map_err(Error::from)
+        std::os::unix::fs::symlink(source_rel, self.local_abspath(link_name)?)
+            .map_err(|e| map_io_err_to_transport_err(e, Some(link_name)))
     }
 
     fn iter_files_recursive(&self) -> Box<dyn Iterator<Item = Result<String>>> {
@@ -293,7 +303,7 @@ impl Transport for LocalTransport {
 
         fn walkdir_err(e: walkdir::Error) -> Error {
             let ioerr: std::io::Error = e.into();
-            Error::from(ioerr)
+            map_io_err_to_transport_err(ioerr, None)
         }
 
         let base = self.path.clone();
@@ -323,7 +333,7 @@ impl Transport for LocalTransport {
         permissions: Option<Permissions>,
     ) -> Result<Box<dyn WriteStream + Send + Sync>> {
         let path = self.local_abspath(relpath)?;
-        let file = File::create(path).map_err(Error::from)?;
+        let file = File::create(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         file.set_len(0)?;
         if let Some(permissions) = permissions {
             file.set_permissions(permissions)?;
@@ -333,7 +343,7 @@ impl Transport for LocalTransport {
 
     fn delete_tree(&self, relpath: &UrlFragment) -> Result<()> {
         let path = self.local_abspath(relpath)?;
-        std::fs::remove_dir_all(path).map_err(Error::from)
+        std::fs::remove_dir_all(path).map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))
     }
 
     fn r#move(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
@@ -341,7 +351,7 @@ impl Transport for LocalTransport {
         let to = self.local_abspath(rel_to)?;
 
         // TODO(jelmer): Should remove destination if necessary
-        std::fs::rename(from, to).map_err(Error::from)
+        std::fs::rename(from, to).map_err(|e| map_io_err_to_transport_err(e, Some(rel_from)))
     }
 
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>> {
@@ -350,7 +360,9 @@ impl Transport for LocalTransport {
             Ok(p) => p,
             Err(err) => return Box::new(std::iter::once(Err(err))),
         };
-        let entries = match std::fs::read_dir(path).map_err(Error::from) {
+        let entries = match std::fs::read_dir(path)
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))
+        {
             Ok(e) => e,
             Err(err) => return Box::new(std::iter::once(Err(err))),
         };
@@ -404,9 +416,11 @@ impl Transport for LocalTransport {
         relpaths.iter().try_for_each(|relpath| {
             let path = self.local_abspath(relpath)?;
             let target_path = target.local_abspath(relpath)?;
-            std::fs::copy(&path, &target_path).map_err(Error::from)?;
+            std::fs::copy(path, &target_path)
+                .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
             if let Some(permissions) = permissions.clone() {
-                std::fs::set_permissions(target_path, permissions).map_err(Error::from)?;
+                std::fs::set_permissions(target_path, permissions)
+                    .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
             }
             Ok(())
         })

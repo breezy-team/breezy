@@ -18,5 +18,12 @@ members = ["crates/*"]
 name = "brz"
 path = "breezy/main.rs"
 
+[lib]
+
+[features]
+default = ["i18n"]
+i18n = ["dep:gettext-rs"]
+
 [dependencies]
 pyo3 = ">=0.17, <0.19"
+gettext-rs = { version = "0.7", optional = true }

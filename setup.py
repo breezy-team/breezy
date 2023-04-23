@@ -232,11 +232,13 @@ rust_extensions = [
     RustExtension("breezy.bzr.hashcache", "crates/hashcache-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._chk_map_rs", "crates/chk-map-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.bzr._groupcompress_rs", "crates/groupcompress-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._cmd_rs", "crates/cmd-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._osutils_rs", "crates/osutils-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._graph_rs", "crates/graph-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._patch_rs", "crates/patch-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy.zlib_util", "crates/zlib-util-py/Cargo.toml", binding=Binding.PyO3),
+    RustExtension("breezy._transport_rs", "crates/transport-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._urlutils_rs", "crates/urlutils-py/Cargo.toml", binding=Binding.PyO3),
     RustExtension("breezy._bzr_rs", "crates/bazaar-py/Cargo.toml", binding=Binding.PyO3),
 ]

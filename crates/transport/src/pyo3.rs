@@ -198,9 +198,17 @@ impl Transport for PyTransport {
         Python::with_gil(|py| {
             let obj = self.0.call_method1(py, "stat", (path,)).unwrap();
             let stat_result = obj.extract::<PyObject>(py)?;
+
+            let mtime = if let Ok(mtime) = stat_result.getattr(py, "mtime") {
+                Some(mtime.extract::<f64>(py)?)
+            } else {
+                None
+            };
+
             Ok(Stat {
                 mode: stat_result.getattr(py, "st_mode")?.extract::<u32>(py)?,
                 size: stat_result.getattr(py, "st_size")?.extract::<usize>(py)?,
+                mtime,
             })
         })
     }

@@ -163,7 +163,7 @@ fn sha_string(py: Python, string: &[u8]) -> PyResult<PyObject> {
 fn sha_strings(py: Python, strings: &PyAny) -> PyResult<PyObject> {
     let iter = strings.iter()?;
     let digest =
-        breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<Vec<u8>>().unwrap()));
+        breezy_osutils::sha::sha_chunks(iter.map(|x| x.unwrap().extract::<&[u8]>().unwrap()));
     Ok(PyBytes::new(py, digest.as_bytes()).into_py(py))
 }
 

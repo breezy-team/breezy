@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
 use std::io::{Read, Seek};
 use std::os::unix::fs::PermissionsExt;
+use std::time::UNIX_EPOCH;
 use url::Url;
 
 pub enum Error {
@@ -43,83 +44,44 @@ pub enum Error {
     DirectoryNotEmptyError(Option<String>),
 }
 
-fn sort_expand_and_combine(
-    offsets: Vec<(u64, usize)>,
-    upper_limit: Option<u64>,
-    recommended_page_size: usize,
-) -> Vec<(u64, usize)> {
-    // Sort the offsets by start address.
-    let mut sorted_offsets = offsets.to_vec();
-    sorted_offsets.sort_unstable_by_key(|&(offset, _)| offset);
-
-    // Short circuit empty requests.
-    if sorted_offsets.is_empty() {
-        return Vec::new();
-    }
-
-    // Expand the offsets by page size at either end.
-    let maximum_expansion = recommended_page_size;
-    let mut new_offsets = Vec::with_capacity(sorted_offsets.len());
-    for (offset, length) in sorted_offsets {
-        let expansion = maximum_expansion.saturating_sub(length);
-        let reduction = expansion / 2;
-        let new_offset = offset.saturating_sub(reduction as u64);
-        let new_length = length + expansion;
-        let new_length = if let Some(upper_limit) = upper_limit {
-            let new_end = new_offset.saturating_add(new_length as u64);
-            let new_length = std::cmp::min(upper_limit, new_end) - new_offset;
-            std::cmp::max(0, new_length as isize) as usize
-        } else {
-            new_length
-        };
-        if new_length > 0 {
-            new_offsets.push((new_offset, new_length));
-        }
-    }
-
-    // Combine the expanded offsets.
-    let mut result = Vec::with_capacity(new_offsets.len());
-    if let Some((mut current_offset, mut current_length)) = new_offsets.first().copied() {
-        let mut current_finish = current_offset + current_length as u64;
-        for (offset, length) in new_offsets.iter().skip(1) {
-            let finish = offset + *length as u64;
-            if *offset > current_finish {
-                result.push((current_offset, current_length));
-                current_offset = *offset;
-                current_length = *length;
-                current_finish = finish;
-            } else if finish > current_finish {
-                current_finish = finish;
-                current_length = (current_finish - current_offset) as usize;
-            }
-        }
-        result.push((current_offset, current_length));
-    }
-    result
-}
-
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub type UrlFragment = str;
 
+pub fn map_io_err_to_transport_err(err: std::io::Error, path: Option<&str>) -> Error {
+    match err.kind() {
+        std::io::ErrorKind::NotFound => Error::NoSuchFile(path.map(|p| p.to_string())),
+        std::io::ErrorKind::AlreadyExists => Error::FileExists(path.map(|p| p.to_string())),
+        std::io::ErrorKind::PermissionDenied => {
+            Error::PermissionDenied(path.map(|p| p.to_string()))
+        }
+        // use of unstable library feature 'io_error_more'
+        // https://github.com/rust-lang/rust/issues/86442
+        //
+        // std::io::ErrorKind::NotADirectoryError => Error::NotADirectoryError(None),
+        // std::io::ErrorKind::IsADirectoryError => Error::IsADirectoryError(None),
+        _ => match err.raw_os_error() {
+            Some(libc::ENOTDIR) => Error::NotADirectoryError(path.map(|p| p.to_string())),
+            Some(libc::EISDIR) => Error::IsADirectoryError(path.map(|p| p.to_string())),
+            Some(libc::ENOTEMPTY) => Error::DirectoryNotEmptyError(path.map(|p| p.to_string())),
+            _ => Error::Io(err),
+        },
+    }
+}
+
+fn map_atomic_err_to_transport_err(
+    err: atomicwrites::Error<std::io::Error>,
+    path: Option<&str>,
+) -> Error {
+    match err {
+        atomicwrites::Error::Internal(err) => map_io_err_to_transport_err(err, path),
+        atomicwrites::Error::User(err) => map_io_err_to_transport_err(err, path),
+    }
+}
+
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        match err.kind() {
-            std::io::ErrorKind::NotFound => Error::NoSuchFile(None),
-            std::io::ErrorKind::AlreadyExists => Error::FileExists(None),
-            std::io::ErrorKind::PermissionDenied => Error::PermissionDenied(None),
-            // use of unstable library feature 'io_error_more'
-            // https://github.com/rust-lang/rust/issues/86442
-            //
-            // std::io::ErrorKind::NotADirectoryError => Error::NotADirectoryError(None),
-            // std::io::ErrorKind::IsADirectoryError => Error::IsADirectoryError(None),
-            _ => match err.raw_os_error() {
-                Some(libc::ENOTDIR) => Error::NotADirectoryError(None),
-                Some(libc::EISDIR) => Error::IsADirectoryError(None),
-                Some(libc::ENOTEMPTY) => Error::DirectoryNotEmptyError(None),
-                _ => Error::Io(err),
-            },
-        }
+        map_io_err_to_transport_err(err, None)
     }
 }
 
@@ -137,16 +99,14 @@ impl From<breezy_urlutils::Error> for Error {
 
 impl From<atomicwrites::Error<std::io::Error>> for Error {
     fn from(err: atomicwrites::Error<std::io::Error>) -> Self {
-        match err {
-            atomicwrites::Error::Internal(err) => err.into(),
-            atomicwrites::Error::User(err) => err.into(),
-        }
+        map_atomic_err_to_transport_err(err, None)
     }
 }
 
 pub struct Stat {
     pub size: usize,
     pub mode: u32,
+    pub mtime: Option<f64>,
 }
 
 impl From<Metadata> for Stat {
@@ -154,6 +114,9 @@ impl From<Metadata> for Stat {
         Stat {
             size: metadata.len() as usize,
             mode: metadata.permissions().mode(),
+            mtime: metadata.modified().map_or(None, |t| {
+                Some(t.duration_since(UNIX_EPOCH).unwrap().as_secs_f64())
+            }),
         }
     }
 }
@@ -200,7 +163,8 @@ pub trait Transport: 'static + Send + Sync {
     fn get_bytes(&self, relpath: &UrlFragment) -> Result<Vec<u8>> {
         let mut file = self.get(relpath)?;
         let mut result = Vec::new();
-        file.read_to_end(&mut result)?;
+        file.read_to_end(&mut result)
+            .map_err(|err| map_io_err_to_transport_err(err, Some(relpath)))?;
         Ok(result)
     }
 
@@ -378,7 +342,11 @@ pub trait Transport: 'static + Send + Sync {
         upper_limit: Option<u64>,
     ) -> Box<dyn Iterator<Item = Result<(u64, Vec<u8>)>> + 'a> {
         let offsets = if adjust_for_latency {
-            sort_expand_and_combine(offsets, upper_limit, self.recommended_page_size())
+            crate::readv::sort_expand_and_combine(
+                offsets,
+                upper_limit,
+                self.recommended_page_size(),
+            )
         } else {
             offsets
         };
@@ -543,3 +511,5 @@ pub mod pyo3;
 pub mod locks;
 
 pub mod lock;
+
+pub mod readv;

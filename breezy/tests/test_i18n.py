@@ -27,22 +27,18 @@ class ZzzTranslations:
     This class can be used to confirm that the message is properly translated
     during black box tests.
     """
-    _null_translation = i18n._gettext.NullTranslations()
 
     def zzz(self, s):
         return 'zz\xe5{{%s}}' % s
 
     def gettext(self, s):
-        return self.zzz(self._null_translation.gettext(s))
+        return self.zzz(s)
 
-    def ngettext(self, s, p, n):
-        return self.zzz(self._null_translation.ngettext(s, p, n))
-
-    def ugettext(self, s):
-        return self.zzz(self._null_translation.ugettext(s))
-
-    def ungettext(self, s, p, n):
-        return self.zzz(self._null_translation.ungettext(s, p, n))
+    def ngettext(self, s1, s2, n):
+        if n == 1:
+            return self.zzz(s1)
+        else:
+            return self.zzz(s2)
 
 
 class TestZzzTranslation(tests.TestCase):
@@ -73,7 +69,7 @@ class TestGetText(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
 
     def test_oneline(self):
         self.assertEqual("zz\xe5{{spam ham eggs}}",
@@ -88,7 +84,8 @@ class TestGetTextPerParagraph(tests.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
+        self.overrideAttr(i18n, 'ngettext', ZzzTranslations().ngettext)
 
     def test_oneline(self):
         self.assertEqual("zz\xe5{{spam ham eggs}}",
@@ -99,44 +96,12 @@ class TestGetTextPerParagraph(tests.TestCase):
                          i18n.gettext_per_paragraph("spam\nham\n\neggs\n"))
 
 
-class TestInstall(tests.TestCase):
-
-    def setUp(self):
-        super().setUp()
-        # Restore a proper env to test translation installation
-        self.overrideAttr(i18n, '_translations', None)
-
-    def test_custom_languages(self):
-        i18n.install('nl:fy')
-        # Whether we found a valid tranlsation or not doesn't matter, we got
-        # one and _translations is not None anymore.
-        self.assertIsInstance(i18n._translations,
-                              i18n._gettext.NullTranslations)
-
-    def test_no_env_variables(self):
-        self.overrideEnv('LANGUAGE', None)
-        self.overrideEnv('LC_ALL', None)
-        self.overrideEnv('LC_MESSAGES', None)
-        self.overrideEnv('LANG', None)
-        i18n.install()
-        # Whether we found a valid tranlsation or not doesn't matter, we got
-        # one and _translations is not None anymore.
-        self.assertIsInstance(i18n._translations,
-                              i18n._gettext.NullTranslations)
-
-    def test_disable_i18n(self):
-        i18n.disable_i18n()
-        i18n.install()
-        # It's disabled, you can't install anything and we fallback to null
-        self.assertIsInstance(i18n._translations,
-                              i18n._gettext.NullTranslations)
-
-
 class TestTranslate(tests.TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
+        self.overrideAttr(i18n, 'ngettext', ZzzTranslations().ngettext)
 
     def test_error_message_translation(self):
         """do errors get translated?"""

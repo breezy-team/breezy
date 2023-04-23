@@ -180,7 +180,8 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
 
     def setUp(self):
         super().setUp()
-        self.overrideAttr(i18n, '_translations', ZzzTranslations())
+        self.overrideAttr(i18n, 'gettext', ZzzTranslations().gettext)
+        self.overrideAttr(i18n, 'ngettext', ZzzTranslations().ngettext)
 
     def test_help_command_utf8(self):
         out, err = self.run_bzr_raw(["help", "push"], encoding="utf-8")
