@@ -395,7 +395,7 @@ class UnstackableRepositoryFormat(BzrError):
 
 class ReadError(PathError):
 
-    _fmt = """Error reading from %(path)r."""
+    _fmt = """Error reading from %(path)r%(extra)r."""
 
 
 class ShortReadvError(PathError):

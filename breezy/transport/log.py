@@ -99,7 +99,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
     def _show_result(self, before, methodname, result):
         result_len = None
-        if isinstance(result, types.GeneratorType):
+        if isinstance(result, types.GeneratorType) or hasattr(result, '__next__'):
             # We now consume everything from the generator so that we can show
             # the results and the time it took to get them.  However, to keep
             # compatibility with callers that may specifically expect a result
@@ -117,7 +117,6 @@ class TransportLogDecorator(decorator.TransportDecorator):
             shown_result = "%s(%s) (%d bytes)" % (result.__class__.__name__,
                                                   self._shorten(val), result_len)
         elif methodname == 'readv':
-            result = list(result)
             num_hunks = len(result)
             total_bytes = sum((len(d) for o, d in result))
             shown_result = "readv response, %d hunks, %d total bytes" % (

@@ -1623,6 +1623,7 @@ class TransportTests(TestTransportImplementation):
             return
         with t.open_write_stream('foo') as handle:
             handle.write(b'bcd')
+            handle.flush()
             self.assertEqual([(0, b'b'), (2, b'd')], list(
                 t.readv('foo', ((0, 1), (2, 1)))))
 

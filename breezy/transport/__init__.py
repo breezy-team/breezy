@@ -304,6 +304,9 @@ class FileFileStream(FileStream):
     def write(self, bytes):
         osutils.pump_string_file(bytes, self.file_handle)
 
+    def flush(self):
+        self.file_handle.flush()
+
 
 class AppendBasedFileStream(FileStream):
     """A file stream object returned by open_write_stream.
@@ -313,6 +316,9 @@ class AppendBasedFileStream(FileStream):
 
     def write(self, bytes):
         self.transport.append_bytes(self.relpath, bytes)
+
+    def flush(self):
+        pass
 
 
 class TransportHooks(hooks.Hooks):

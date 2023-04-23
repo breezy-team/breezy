@@ -127,6 +127,10 @@ impl PyWriteStream {
     ) -> PyResult<bool> {
         Ok(false)
     }
+
+    fn flush(&mut self) -> PyResult<()> {
+        self.0.flush().map_err(|e| e.into())
+    }
 }
 
 impl PyBufReadStream {
@@ -304,7 +308,7 @@ impl Transport {
                 ReadError::new_err((path.to_string(), "Is a directory".to_string()))
             }
             Error::NotADirectoryError(_) => {
-                ReadError::new_err((path.to_string(), "Not a directory".to_string()))
+                NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
             }
             e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
         })?;

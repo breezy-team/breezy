@@ -134,8 +134,22 @@ impl Transport for LocalTransport {
         Ok(path.exists())
     }
 
+    #[cfg(unix)]
     fn stat(&self, relpath: &UrlFragment) -> Result<Stat> {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
         let path = self._abspath(relpath)?;
+
+        // Strip trailing slashes, so we can properly stat broken symlinks
+
+        let path = if path.as_path().as_os_str().as_bytes().ends_with(b"/") {
+            let b = path.as_path().as_os_str().as_bytes();
+            let b = b.strip_suffix(b"/").unwrap();
+            PathBuf::from(OsStr::from_bytes(b))
+        } else {
+            path
+        };
+
         Ok(Stat::from(std::fs::symlink_metadata(path).map_err(
             |e| map_io_err_to_transport_err(e, Some(relpath)),
         )?))
@@ -280,9 +294,10 @@ impl Transport for LocalTransport {
             .append(true)
             .create(true)
             .open(path)
-            .map_err(Error::from)?;
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         if let Some(permissions) = permissions {
-            file.set_permissions(permissions)?;
+            file.set_permissions(permissions)
+                .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
         }
         let pos = file
             .seek(std::io::SeekFrom::End(0))
