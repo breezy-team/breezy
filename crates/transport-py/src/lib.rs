@@ -56,7 +56,7 @@ fn map_transport_err_to_py_err(e: Error, t: Option<PyObject>, p: Option<&UrlFrag
         Error::UnexpectedEof => PyValueError::new_err("Unexpected EOF"),
         Error::LockContention(name) => LockContention::new_err((name,)),
         Error::LockFailed(name, error) => LockFailed::new_err((name, error)),
-        Error::NotADirectoryError(name) => NotADirectory::new_err((pick_path(name),)),
+        Error::NotADirectoryError(name) => NoSuchFile::new_err((pick_path(name),)),
         Error::IsADirectoryError(name) => ReadError::new_err((pick_path(name), "is a directory")),
         Error::DirectoryNotEmptyError(name) => DirectoryNotEmpty::new_err((pick_path(name),)),
         Error::ShortReadvError(path, offset, expected, got) => {
@@ -243,13 +243,17 @@ impl Transport {
             .to_string())
     }
 
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("{:?}", self.0))
+    }
+
     fn get_bytes(slf: &PyCell<Self>, py: Python, path: &str) -> PyResult<PyObject> {
         let ret = slf.borrow().0.get_bytes(path).map_err(|e| match e {
             Error::IsADirectoryError(_) => {
                 ReadError::new_err((path.to_string(), "Is a directory".to_string()))
             }
             Error::NotADirectoryError(_) => {
-                ReadError::new_err((path.to_string(), "Not a directory".to_string()))
+                NoSuchFile::new_err((path.to_string(), "Not a directory".to_string()))
             }
             e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
         })?;

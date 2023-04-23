@@ -2514,7 +2514,10 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
 
         def get_bytes(relpath):
             raise errors.PermissionDenied(relpath, "")
-        t.get_bytes = get_bytes
+        try:
+            t.get_bytes = get_bytes
+        except AttributeError:
+            raise tests.TestSkipped('unable to override Transport.get_bytes')
         store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(errors.PermissionDenied, store.load)
         self.assertEqual(

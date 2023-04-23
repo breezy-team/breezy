@@ -130,6 +130,12 @@ impl WriteStream for PyWriteStream {
     }
 }
 
+impl std::fmt::Debug for PyTransport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "PyTransport({:?})", self.0)
+    }
+}
+
 impl Transport for PyTransport {
     fn external_url(&self) -> Result<Url> {
         Python::with_gil(|py| {

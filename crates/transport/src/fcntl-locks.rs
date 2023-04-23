@@ -1,4 +1,4 @@
-use crate::{Error, Lock};
+use crate::{map_io_err_to_transport_err, Error, Lock};
 use lazy_static::lazy_static;
 use log::debug;
 use nix::fcntl::{flock, FlockArg};
@@ -10,6 +10,12 @@ use std::path::{Path, PathBuf};
 
 // TODO(jelmer): make this a debug flag
 const STRICT_LOCKS: bool = false;
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        map_io_err_to_transport_err(e, None)
+    }
+}
 
 fn open(filename: &Path, options: &OpenOptions) -> std::result::Result<(PathBuf, File), Error> {
     let filename = breezy_osutils::path::realpath(filename)?;
@@ -201,13 +207,13 @@ impl TemporaryWriteLock {
         match flock(f.as_raw_fd(), FlockArg::LockSharedNonblock) {
             Ok(_) => Ok(()),
             Err(_) => Err(Error::LockContention(filename.clone())),
-        };
+        }?;
 
         OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
 
         Ok(Self {
             read_lock,
-            filename: filename.clone(),
+            filename,
             f,
         })
     }

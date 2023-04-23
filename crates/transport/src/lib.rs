@@ -79,12 +79,6 @@ fn map_atomic_err_to_transport_err(
     }
 }
 
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        map_io_err_to_transport_err(err, None)
-    }
-}
-
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Self {
         Error::UrlError(err)
@@ -137,7 +131,7 @@ pub trait WriteStream: std::io::Write {
 
 pub trait ReadStream: Read + Seek {}
 
-pub trait Transport: 'static + Send + Sync {
+pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
     /// Return a URL for self that can be given to an external process.
     ///
     /// There is no guarantee that the URL can be accessed from a different
@@ -197,14 +191,17 @@ pub trait Transport: 'static + Send + Sync {
 
     fn create_prefix(&self, permissions: Option<Permissions>) -> Result<()> {
         let mut cur_transport = self.clone(None)?;
-        let mut needed = vec![cur_transport.clone(None)?];
+        let mut needed = vec![];
         loop {
-            let new_transport = Transport::clone(cur_transport.as_ref(), Some(".."))?;
-            if new_transport.base() == cur_transport.base() {
-                panic!("Failed to create path prefix for {}", cur_transport.base());
-            }
-            match new_transport.mkdir(".", permissions.clone()) {
+            match cur_transport.mkdir(".", permissions.clone()) {
                 Err(Error::NoSuchFile(_)) => {
+                    let new_transport = Transport::clone(cur_transport.as_ref(), Some(".."))?;
+                    assert_ne!(
+                        new_transport.base(),
+                        cur_transport.base(),
+                        "Failed to create path prefix for {}",
+                        cur_transport.base()
+                    );
                     needed.push(cur_transport);
                     cur_transport = new_transport;
                 }
@@ -371,7 +368,7 @@ pub trait Transport: 'static + Send + Sync {
                                     file.position() - offset,
                                 ))
                             }
-                            _ => return Err(Error::from(err)),
+                            _ => return Err(map_io_err_to_transport_err(err, Some(relpath))),
                         },
                     }
                     match file.read_exact(&mut buf) {
@@ -383,7 +380,7 @@ pub trait Transport: 'static + Send + Sync {
                                 length as u64,
                                 file.position() - offset,
                             )),
-                            _ => Err(Error::from(err)),
+                            _ => Err(map_io_err_to_transport_err(err, Some(relpath))),
                         },
                     }
                 }),
@@ -476,7 +473,8 @@ pub trait Transport: 'static + Send + Sync {
         relpaths.iter().try_for_each(|relpath| -> Result<()> {
             let mut src = self.get(relpath)?;
             let mut target = to_transport.open_write_stream(relpath, permissions.clone())?;
-            std::io::copy(&mut src, &mut target)?;
+            std::io::copy(&mut src, &mut target)
+                .map_err(|err| map_io_err_to_transport_err(err, Some(relpath)))?;
             Ok(())
         })?;
         Ok(())
