@@ -152,12 +152,19 @@ impl PyBufReadStream {
 #[pymethods]
 impl PyBufReadStream {
     fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
-        let mut buf = vec![0; size.unwrap_or(4096)];
-        let ret = self
-            .f
-            .read(&mut buf)
-            .map_err(|e| self.map_io_err_to_py_err(e))?;
-        Ok(PyBytes::new(py, &buf[..ret]).to_object(py).to_object(py))
+        if let Some(size) = size {
+            let mut buf = vec![0; size];
+            let ret = self
+                .f
+                .read(&mut buf)
+                .map_err(|e| self.map_io_err_to_py_err(e))?;
+            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
+        } else {
+            let mut buf = Vec::new();
+            self.f.read_to_end(&mut buf)
+                .map_err(|e| self.map_io_err_to_py_err(e))?;
+            Ok(PyBytes::new(py, &buf).to_object(py))
+        }
     }
 
     fn seek(&mut self, offset: i64, whence: Option<i8>) -> PyResult<u64> {
