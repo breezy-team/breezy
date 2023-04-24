@@ -316,6 +316,7 @@ class AppendBasedFileStream(FileStream):
 
     def write(self, bytes):
         self.transport.append_bytes(self.relpath, bytes)
+        return len(bytes)
 
     def flush(self):
         pass

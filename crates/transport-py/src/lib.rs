@@ -647,15 +647,17 @@ impl Transport {
     fn copy_to(
         &self,
         py: Python,
-        relpaths: Vec<&str>,
+        relpaths: PyObject,
         to_transport: PyObject,
         mode: Option<PyObject>,
-    ) -> PyResult<()> {
-        if let Ok(t) = to_transport.clone_ref(py).extract::<PyRef<Transport>>(py) {
+    ) -> PyResult<usize> {
+        let relpaths = relpaths.as_ref(py).iter()?.map(|o| o?.extract()).collect::<PyResult<Vec<_>>>()?;
+
+        if let Ok(t) = to_transport.clone_ref(py).downcast::<PyCell<Transport>>(py) {
             self.0
                 .copy_to(
                     relpaths.as_slice(),
-                    t.0.as_ref(),
+                    t.borrow().0.as_ref(),
                     mode.map(perms_from_py_object),
                 )
                 .map_err(|e| map_transport_err_to_py_err(e, None, None))

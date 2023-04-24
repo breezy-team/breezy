@@ -469,15 +469,8 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
         relpaths: &[&UrlFragment],
         to_transport: &dyn Transport,
         permissions: Option<Permissions>,
-    ) -> Result<()> {
-        relpaths.iter().try_for_each(|relpath| -> Result<()> {
-            let mut src = self.get(relpath)?;
-            let mut target = to_transport.open_write_stream(relpath, permissions.clone())?;
-            std::io::copy(&mut src, &mut target)
-                .map_err(|err| map_io_err_to_transport_err(err, Some(relpath)))?;
-            Ok(())
-        })?;
-        Ok(())
+    ) -> Result<usize> {
+        copy_to(self, to_transport, relpaths, permissions)
     }
 
     fn list_dir(&self, relpath: &UrlFragment) -> Box<dyn Iterator<Item = Result<String>>>;
@@ -495,6 +488,24 @@ pub trait Transport: std::fmt::Debug + 'static + Send + Sync {
     fn get_smart_medium(&self) -> Result<Box<dyn SmartMedium>>;
 
     fn copy(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()>;
+}
+
+pub fn copy_to<T: Transport + ?Sized>(
+    from_transport: &T,
+    to_transport: &dyn Transport,
+    relpaths: &[&UrlFragment],
+    permissions: Option<Permissions>,
+) -> Result<usize> {
+    let mut count = 0;
+    relpaths.iter().try_for_each(|relpath| -> Result<()> {
+        let mut src = from_transport.get(relpath)?;
+        let mut target = to_transport.open_write_stream(relpath, permissions.clone())?;
+        std::io::copy(&mut src, &mut target)
+            .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
+        count += 1;
+        Ok(())
+    })?;
+    Ok(count)
 }
 
 pub trait SmartMedium {}

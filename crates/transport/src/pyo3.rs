@@ -55,24 +55,26 @@ impl IntoPy<PyObject> for PyTransport {
 impl From<PyErr> for Error {
     fn from(e: PyErr) -> Self {
         Python::with_gil(|py| {
+            let arg = |i|  -> Option<String>{
+                let args = e.value(py).getattr("args").unwrap();
+                match args.get_item(0) {
+                    Ok(a) if a.is_none() => None,
+                    Ok(a) => Some(a.extract::<String>().unwrap()),
+                    Err(_) => None,
+                }
+            };
             if e.is_instance_of::<InProcessTransport>(py) {
                 Error::InProcessTransport
             } else if e.is_instance_of::<NotLocalUrl>(py) {
-                let args = e.value(py).getattr("args").unwrap();
-                Error::NotLocalUrl(args.get_item(0).unwrap().extract::<String>().unwrap())
+                Error::NotLocalUrl(arg(0).unwrap())
             } else if e.is_instance_of::<NoSuchFile>(py) {
-                let args = e.value(py).getattr("args").unwrap();
-                Error::NoSuchFile(Some(args.get_item(0).unwrap().extract::<String>().unwrap()))
+                Error::NoSuchFile(arg(0))
             } else if e.is_instance_of::<FileExists>(py) {
-                let args = e.value(py).getattr("args").unwrap();
-                Error::FileExists(Some(args.get_item(0).unwrap().extract::<String>().unwrap()))
+                Error::FileExists(arg(0))
             } else if e.is_instance_of::<TransportNotPossible>(py) {
                 Error::TransportNotPossible
             } else if e.is_instance_of::<PermissionDenied>(py) {
-                let args = e.value(py).getattr("args").unwrap();
-                Error::PermissionDenied(Some(
-                    args.get_item(0).unwrap().extract::<String>().unwrap(),
-                ))
+                Error::PermissionDenied(arg(0))
             } else if e.is_instance_of::<PathNotChild>(py) {
                 Error::PathNotChild
             } else if e.is_instance_of::<ShortReadvError>(py) {
@@ -556,7 +558,7 @@ impl Transport for PyTransport {
         relpaths: &[&UrlFragment],
         to_transport: &dyn Transport,
         permissions: Option<Permissions>,
-    ) -> Result<()> {
+    ) -> Result<usize> {
         unimplemented!()
     }
 

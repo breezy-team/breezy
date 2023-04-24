@@ -437,20 +437,21 @@ impl Transport for LocalTransport {
         relpaths: &[&UrlFragment],
         target: &dyn Transport,
         permissions: Option<Permissions>,
-    ) -> Result<()> {
+    ) -> Result<usize> {
         if relpaths.is_empty() {
-            return Ok(());
+            return Ok(0);
         }
         match target.local_abspath(relpaths[0]) {
             // Fall back to default
             Err(Error::NotLocalUrl(_)) => {
-                return Transport::copy_to(self, relpaths, target, permissions)
+                return super::copy_to(self, target, relpaths, permissions)
             }
             Err(e) => return Err(e),
             _ => {}
         }
 
-        relpaths.iter().try_for_each(|relpath| {
+        let mut count = 0;
+        let z = relpaths.iter().try_for_each(|relpath| {
             let path = self._abspath(relpath)?;
             let target_path = target.local_abspath(relpath)?;
             std::fs::copy(path, &target_path)
@@ -459,8 +460,10 @@ impl Transport for LocalTransport {
                 std::fs::set_permissions(target_path, permissions)
                     .map_err(|e| map_io_err_to_transport_err(e, Some(relpath)))?;
             }
-            Ok(())
-        })
+            count += 1;
+            Ok::<(), Error>(())
+        })?;
+        Ok(count)
     }
 
     fn copy(&self, rel_from: &UrlFragment, rel_to: &UrlFragment) -> Result<()> {
