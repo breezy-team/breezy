@@ -17,7 +17,7 @@
 """Tests for OS Locks."""
 
 
-from .. import debug, errors, lock, tests
+from .. import debug, errors, lock, tests, _transport_rs
 from .scenarios import load_tests_apply_scenarios
 
 load_tests = load_tests_apply_scenarios
@@ -29,7 +29,7 @@ class TestOSLock(tests.TestCaseInTempDir):
         name, {
             'write_lock': write_lock,
             'read_lock': read_lock})
-        for name, write_lock, read_lock in lock._lock_classes]
+        for name, write_lock, read_lock in _transport_rs._lock_classes]
 
     read_lock = None
     write_lock = None

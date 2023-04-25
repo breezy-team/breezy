@@ -1,3 +1,4 @@
+use crate::lock::FileLock;
 use crate::{map_io_err_to_transport_err, Error, Lock};
 use lazy_static::lazy_static;
 use log::debug;
@@ -115,6 +116,16 @@ impl Lock for WriteLock {
     }
 }
 
+impl FileLock for WriteLock {
+    fn file(&self) -> &File {
+        &self.f
+    }
+
+    fn path(&self) -> &Path {
+        &self.filename
+    }
+}
+
 pub struct ReadLock {
     filename: PathBuf,
     f: File,
@@ -202,6 +213,15 @@ impl Lock for ReadLock {
     }
 }
 
+impl FileLock for ReadLock {
+    fn file(&self) -> &File {
+        &self.f
+    }
+
+    fn path(&self) -> &Path {
+        &self.filename
+    }
+}
 /// A token used when grabbing a temporary_write_lock.
 ///
 /// Call restore_read_lock() when you are done with the write lock.
@@ -275,8 +295,27 @@ impl TemporaryWriteLock {
             l_len: 0,
             l_pid: 0,
         };
-        fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
+        match fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock)) {
+            Ok(_) => {}
+            Err(e) => {
+                debug!(
+                    "error unlocking file {}: {}",
+                    &self.filename.to_string_lossy(),
+                    e
+                );
+            }
+        }
         OPEN_WRITE_LOCKS.lock().unwrap().remove(&self.filename);
         self.read_lock
+    }
+}
+
+impl FileLock for TemporaryWriteLock {
+    fn file(&self) -> &File {
+        &self.f
+    }
+
+    fn path(&self) -> &Path {
+        &self.filename
     }
 }

@@ -1,17 +1,19 @@
+use breezy_transport::lock::FileLock;
+use breezy_transport::lock::Lock as LockTrait;
 use breezy_transport::{
     Error, ReadStream, Result, Stat, Transport as TransportTrait, UrlFragment, WriteStream,
 };
 use pyo3::create_exception;
-use pyo3::exceptions::{PyException, PyValueError};
+use pyo3::exceptions::{PyException, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyIterator, PyList, PyType};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
-use std::io::{BufRead, BufReader, Read, Seek};
+use std::io::{BufRead, BufReader, Read, Seek, Write};
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use url::Url;
 
 import_exception!(breezy.errors, TransportError);
@@ -94,7 +96,7 @@ impl BufReadStream for BufReader<Box<dyn ReadStream + Sync + Send>> {}
 #[pyclass]
 struct PyBufReadStream {
     f: Box<dyn BufReadStream + Sync + Send>,
-    path: String,
+    path: PathBuf,
 }
 
 #[pyclass]
@@ -136,16 +138,23 @@ impl PyWriteStream {
 }
 
 impl PyBufReadStream {
-    fn new(read: Box<dyn ReadStream + Sync + Send>, path: &str) -> Self {
+    fn new(read: Box<dyn ReadStream + Sync + Send>, path: &Path) -> Self {
         Self {
             f: Box::new(BufReader::new(read)),
-            path: path.to_string(),
+            path: path.to_path_buf(),
         }
     }
 
     fn map_io_err_to_py_err(&self, e: std::io::Error) -> PyErr {
-        let transport_err = breezy_transport::map_io_err_to_transport_err(e, Some(&self.path));
-        map_transport_err_to_py_err(transport_err, None, Some(self.path.as_str()))
+        let transport_err = breezy_transport::map_io_err_to_transport_err(
+            e,
+            Some(&self.path.as_path().to_string_lossy()),
+        );
+        map_transport_err_to_py_err(
+            transport_err,
+            None,
+            Some(self.path.as_path().to_string_lossy().as_ref()),
+        )
     }
 }
 
@@ -322,7 +331,7 @@ impl Transport {
             }
             e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
         })?;
-        Ok(PyBufReadStream::new(ret, path).into_py(py))
+        Ok(PyBufReadStream::new(ret, Path::new(path)).into_py(py))
     }
 
     fn get_smart_medium(slf: &PyCell<Self>, py: Python) -> PyResult<PyObject> {
@@ -520,7 +529,7 @@ impl Transport {
             }
             e => map_transport_err_to_py_err(e, Some(slf.into_py(py)), Some(path)),
         })?;
-        let f = PyBufReadStream::new(ret, path).into_py(py);
+        let f = PyBufReadStream::new(ret, Path::new(path)).into_py(py);
         let buffered = seek_and_read(
             py,
             f,
@@ -815,10 +824,85 @@ fn seek_and_read(
         .collect::<PyResult<Vec<_>>>()
 }
 
+#[pyclass]
+struct ReadLock(Option<breezy_transport::filelock::ReadLock>);
+
+#[pyclass]
+struct WriteLock(breezy_transport::filelock::WriteLock);
+
+#[pymethods]
+impl ReadLock {
+    fn unlock(&mut self) -> PyResult<()> {
+        if let Some(mut read_lock) = self.0.take() {
+            read_lock
+                .unlock()
+                .map_err(|e| map_transport_err_to_py_err(e, None, None))
+        } else {
+            Err(PyRuntimeError::new_err("ReadLock already unlocked"))
+        }
+    }
+
+    #[new]
+    fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
+        Ok(Self(Some(
+            breezy_transport::filelock::ReadLock::new(&filename, strict_locks.unwrap_or(false))
+                .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
+        )))
+    }
+
+    fn temporary_write_lock(&mut self) -> PyResult<TemporaryWriteLock> {
+        if let Some(read_lock) = self.0.take() {
+            let twl = read_lock
+                .temporary_write_lock()
+                .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
+            Ok(TemporaryWriteLock(Some(twl)))
+        } else {
+            Err(PyRuntimeError::new_err("ReadLock already unlocked"))
+        }
+    }
+}
+
+#[pyclass]
+struct TemporaryWriteLock(Option<breezy_transport::filelock::TemporaryWriteLock>);
+
+#[pymethods]
+impl TemporaryWriteLock {
+    fn restore_read_lock(&mut self) -> PyResult<ReadLock> {
+        if let Some(lock) = self.0.take() {
+            let rl = lock.restore_read_lock();
+            Ok(ReadLock(Some(rl)))
+        } else {
+            Err(PyRuntimeError::new_err(
+                "TemporaryWriteLock already unlocked",
+            ))
+        }
+    }
+}
+
+#[pymethods]
+impl WriteLock {
+    fn unlock(&mut self) -> PyResult<()> {
+        self.0
+            .unlock()
+            .map_err(|e| map_transport_err_to_py_err(e, None, None))
+    }
+
+    #[new]
+    fn new(filename: PathBuf, strict_locks: Option<bool>) -> PyResult<Self> {
+        Ok(Self(
+            breezy_transport::filelock::WriteLock::new(&filename, strict_locks.unwrap_or(false))
+                .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
+        ))
+    }
+}
+
 #[pymodule]
 fn _transport_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Transport>()?;
     m.add_class::<LocalTransport>()?;
+    m.add_class::<ReadLock>()?;
+    m.add_class::<WriteLock>()?;
+    m.add_class::<TemporaryWriteLock>()?;
     m.add_function(wrap_pyfunction!(get_test_permutations, m)?)?;
     m.add_wrapped(wrap_pyfunction!(seek_and_read))?;
     m.add_wrapped(wrap_pyfunction!(coalesce_offsets))?;

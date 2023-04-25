@@ -221,7 +221,6 @@ desired.
 import bisect
 import codecs
 import contextlib
-import errno
 import operator
 import os
 import stat
@@ -231,7 +230,7 @@ import zlib
 from stat import S_IEXEC
 
 from .. import (cache_utf8, config, debug, errors, lock, osutils, trace,
-                urlutils)
+                urlutils, _transport_rs)
 from . import inventory, static_tuple
 from .inventorytree import InventoryTreeChange
 
@@ -3375,7 +3374,7 @@ class DirState:
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = lock.WriteLock(self._filename)
+        self._lock_token = _transport_rs.WriteLock(self._filename)
         self._lock_state = 'w'
         self._state_file = self._lock_token.f
         self._wipe_state()

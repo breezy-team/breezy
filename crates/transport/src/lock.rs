@@ -11,3 +11,9 @@ impl Lock for BogusLock {
         Ok(())
     }
 }
+
+pub trait FileLock {
+    fn file(&self) -> &std::fs::File;
+
+    fn path(&self) -> &std::path::Path;
+}

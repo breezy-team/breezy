@@ -422,13 +422,13 @@ impl Transport for LocalTransport {
 
     fn lock_read(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
         let path = self._abspath(relpath)?;
-        let lock = crate::locks::ReadLock::new(path.as_path(), false)?;
+        let lock = crate::filelock::ReadLock::new(path.as_path(), false)?;
         Ok(Box::new(lock))
     }
 
     fn lock_write(&self, relpath: &UrlFragment) -> Result<Box<dyn Lock + Send + Sync>> {
         let path = self._abspath(relpath)?;
-        let lock = crate::locks::WriteLock::new(path.as_path(), false)?;
+        let lock = crate::filelock::WriteLock::new(path.as_path(), false)?;
         Ok(Box::new(lock))
     }
 
