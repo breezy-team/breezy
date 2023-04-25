@@ -8,9 +8,6 @@ use std::fs::{File, OpenOptions};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
-// TODO(jelmer): make this a debug flag
-const STRICT_LOCKS: bool = false;
-
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         map_io_err_to_transport_err(e, None)
@@ -24,6 +21,7 @@ fn open(filename: &Path, options: &OpenOptions) -> std::result::Result<(PathBuf,
         Err(e) => match e.kind() {
             std::io::ErrorKind::PermissionDenied => Err(Error::LockFailed(filename, e.to_string())),
             std::io::ErrorKind::NotFound => {
+                // Maybe this is an old branch (before 2005)?
                 debug!(
                     "trying to create missing lock {}",
                     filename.to_string_lossy()
@@ -31,6 +29,7 @@ fn open(filename: &Path, options: &OpenOptions) -> std::result::Result<(PathBuf,
                 let f = OpenOptions::new()
                     .create(true)
                     .write(true)
+                    .read(true)
                     .open(&filename)?;
                 Ok((filename, f))
             }
@@ -52,13 +51,13 @@ pub struct WriteLock {
 }
 
 impl WriteLock {
-    pub fn new(filename: &Path) -> Result<WriteLock, Error> {
+    pub fn new(filename: &Path, strict_locks: bool) -> Result<WriteLock, Error> {
         let filename = breezy_osutils::path::realpath(filename)?;
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
             return Err(Error::LockContention(filename));
         }
         if OPEN_READ_LOCKS.lock().unwrap().contains_key(&filename) {
-            if STRICT_LOCKS {
+            if strict_locks {
                 return Err(Error::LockContention(filename));
             } else {
                 debug!(
@@ -68,7 +67,7 @@ impl WriteLock {
             }
         }
 
-        let (filename, f) = open(filename.as_path(), OpenOptions::new().read(true))?;
+        let (filename, f) = open(filename.as_path(), OpenOptions::new().read(true).write(true))?;
         OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
         match flock(f.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
             Ok(_) => Ok(WriteLock { filename, f }),
@@ -98,10 +97,10 @@ pub struct ReadLock {
 }
 
 impl ReadLock {
-    pub fn new(filename: &Path) -> std::result::Result<Self, Error> {
+    pub fn new(filename: &Path, strict_locks: bool) -> std::result::Result<Self, Error> {
         let filename = breezy_osutils::path::realpath(filename)?;
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&filename) {
-            if STRICT_LOCKS {
+            if strict_locks {
                 return Err(Error::LockContention(filename));
             } else {
                 debug!(
@@ -121,7 +120,7 @@ impl ReadLock {
         let (filename, f) = open(&filename, OpenOptions::new().read(true))?;
         match flock(f.as_raw_fd(), FlockArg::LockSharedNonblock) {
             Ok(_) => {}
-            Err(_) => {
+            Err(e) => {
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
                 return Err(Error::LockContention(filename));
