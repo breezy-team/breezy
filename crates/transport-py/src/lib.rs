@@ -156,6 +156,10 @@ impl PyFile {
 
 #[pymethods]
 impl PyFile {
+    fn seekable(&self) -> bool {
+        true
+    }
+
     fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
         if let Some(size) = size {
             let mut buf = vec![0; size];
@@ -298,6 +302,10 @@ impl PyBufReadStream {
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
             Ok(PyBytes::new(py, &buf).to_object(py))
         }
+    }
+
+    fn seekable(&self) -> bool {
+        true
     }
 
     fn seek(&mut self, offset: i64, whence: Option<i8>) -> PyResult<u64> {
