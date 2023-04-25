@@ -1280,6 +1280,7 @@ name = "transport-py"
 version = "3.3.3"
 dependencies = [
  "breezy-transport",
+ "log",
  "pyo3",
  "pyo3-file",
  "url",

@@ -9,5 +9,6 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { version = ">=0.17, <0.19", features = ["extension-module"]}
 breezy-transport = { path = "../transport", features = ["pyo3"] }
-url = "2.2.2"
+url = "2.2"
 pyo3-file = { git = "https://github.com/omerbenamram/pyo3-file" }
+log = "0.4"

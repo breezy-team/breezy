@@ -3,6 +3,7 @@ use breezy_transport::lock::Lock as LockTrait;
 use breezy_transport::{
     Error, ReadStream, Result, Stat, Transport as TransportTrait, UrlFragment, WriteStream,
 };
+use log::debug;
 use pyo3::create_exception;
 use pyo3::exceptions::{PyException, PyRuntimeError, PyValueError};
 use pyo3::import_exception;
@@ -11,7 +12,7 @@ use pyo3::types::{PyBytes, PyIterator, PyList, PyType};
 use pyo3_file::PyFileLikeObject;
 use std::collections::HashMap;
 use std::fs::{Metadata, Permissions};
-use std::io::{BufRead, BufReader, Read, Seek, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Seek, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use url::Url;
@@ -134,6 +135,128 @@ impl PyWriteStream {
 
     fn flush(&mut self) -> PyResult<()> {
         self.0.flush().map_err(|e| e.into())
+    }
+
+    fn writelines(&mut self, lines: &PyList) -> PyResult<()> {
+        for line in lines.iter() {
+            self.write(line.downcast::<PyBytes>().unwrap())?;
+        }
+        Ok(())
+    }
+}
+
+#[pyclass]
+struct PyFile(BufReader<Box<std::fs::File>>, PathBuf);
+
+impl PyFile {
+    fn new(f: Box<std::fs::File>, path: &Path) -> Self {
+        Self(BufReader::new(f), path.to_path_buf())
+    }
+}
+
+#[pymethods]
+impl PyFile {
+    fn read(&mut self, py: Python, size: Option<usize>) -> PyResult<PyObject> {
+        if let Some(size) = size {
+            let mut buf = vec![0; size];
+            let ret = self.0.read(&mut buf).map_err(|e| -> PyErr { e.into() })?;
+            Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
+        } else {
+            let mut buf = Vec::new();
+            self.0
+                .read_to_end(&mut buf)
+                .map_err(|e| -> PyErr { e.into() })?;
+            Ok(PyBytes::new(py, &buf).to_object(py))
+        }
+    }
+
+    fn write(&mut self, data: &PyBytes) -> PyResult<usize> {
+        self.0
+            .get_mut()
+            .write(data.as_bytes())
+            .map_err(|e| e.into())
+    }
+
+    fn readline(&mut self, py: Python) -> PyResult<PyObject> {
+        let mut buf = vec![];
+        let ret = self.0.read_until(b'\n', &mut buf)?;
+        buf.truncate(ret);
+        Ok(PyBytes::new(py, &buf).to_object(py).to_object(py))
+    }
+
+    fn __iter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __next__(&mut self, py: Python) -> PyResult<Option<PyObject>> {
+        let mut buf = vec![];
+        let ret = self
+            .0
+            .read_until(b'\n', &mut buf)
+            .map_err(|e| -> PyErr { e.into() })?;
+        if ret == 0 {
+            return Ok(None);
+        }
+        buf.truncate(ret);
+        Ok(Some(PyBytes::new(py, &buf).to_object(py).to_object(py)))
+    }
+
+    fn readlines(&mut self, py: Python) -> PyResult<PyObject> {
+        let ret = PyList::empty(py);
+        while let Some(line) = self.__next__(py)? {
+            ret.append(line)?;
+        }
+        Ok(ret.to_object(py))
+    }
+
+    fn seek(&mut self, offset: i64, whence: Option<i8>) -> PyResult<u64> {
+        let seekfrom = match whence.unwrap_or(0) {
+            0 => std::io::SeekFrom::Start(offset as u64),
+            1 => std::io::SeekFrom::Current(offset),
+            2 => std::io::SeekFrom::End(offset),
+            _ => return Err(PyValueError::new_err("Invalid whence")),
+        };
+
+        self.0.seek(seekfrom).map_err(|e| e.into())
+    }
+
+    fn tell(&mut self) -> PyResult<u64> {
+        self.0.stream_position().map_err(|e| e.into())
+    }
+
+    fn __enter__(slf: PyRef<Self>) -> Py<Self> {
+        slf.into()
+    }
+
+    fn __exit__(
+        &self,
+        _exc_type: Option<&PyType>,
+        _exc_val: Option<&PyAny>,
+        _exc_tb: Option<&PyAny>,
+    ) -> PyResult<bool> {
+        Ok(false)
+    }
+
+    fn flush(&mut self) -> PyResult<()> {
+        self.0.get_mut().flush().map_err(|e| e.into())
+    }
+
+    fn writelines(&mut self, lines: &PyList) -> PyResult<()> {
+        for line in lines.iter() {
+            self.write(line.downcast::<PyBytes>().unwrap())?;
+        }
+        Ok(())
+    }
+
+    fn truncate(&mut self, size: Option<u64>) -> PyResult<()> {
+        let size = size.map_or_else(|| self.tell().map(|s| s), Ok)?;
+        self.0.get_mut().set_len(size).map_err(|e| e.into())
+    }
+
+    #[cfg(unix)]
+    fn fileno(&self) -> PyResult<i32> {
+        use std::os::unix::io::AsRawFd;
+        Ok(self.0.get_ref().as_raw_fd())
     }
 }
 
@@ -838,7 +961,8 @@ impl ReadLock {
                 .unlock()
                 .map_err(|e| map_transport_err_to_py_err(e, None, None))
         } else {
-            Err(PyRuntimeError::new_err("ReadLock already unlocked"))
+            debug!("ReadLock already unlocked");
+            Ok(())
         }
     }
 
@@ -850,12 +974,26 @@ impl ReadLock {
         )))
     }
 
-    fn temporary_write_lock(&mut self) -> PyResult<TemporaryWriteLock> {
-        if let Some(read_lock) = self.0.take() {
-            let twl = read_lock
-                .temporary_write_lock()
-                .map_err(|e| map_transport_err_to_py_err(e, None, None))?;
-            Ok(TemporaryWriteLock(Some(twl)))
+    fn temporary_write_lock(slf: &PyCell<Self>, py: Python) -> PyResult<(bool, PyObject)> {
+        let mut m = slf.borrow_mut();
+        if let Some(read_lock) = m.0.take() {
+            match read_lock.temporary_write_lock() {
+                Ok(twl) => Ok((true, TemporaryWriteLock(Some(twl)).into_py(py))),
+                Err((rl, Error::LockFailed(_, _))) | Err((rl, Error::LockContention(_))) => {
+                    m.0 = Some(rl);
+                    Ok((false, slf.to_object(slf.py())))
+                }
+                Err((rl, e)) => Err(map_transport_err_to_py_err(e, None, None)),
+            }
+        } else {
+            Err(PyRuntimeError::new_err("ReadLock already unlocked"))
+        }
+    }
+
+    #[getter]
+    fn f(&self) -> PyResult<PyFile> {
+        if let Some(read_lock) = &self.0 {
+            Ok(PyFile::new(read_lock.file()?, read_lock.path()))
         } else {
             Err(PyRuntimeError::new_err("ReadLock already unlocked"))
         }
@@ -871,6 +1009,17 @@ impl TemporaryWriteLock {
         if let Some(lock) = self.0.take() {
             let rl = lock.restore_read_lock();
             Ok(ReadLock(Some(rl)))
+        } else {
+            Err(PyRuntimeError::new_err(
+                "TemporaryWriteLock already unlocked",
+            ))
+        }
+    }
+
+    #[getter]
+    fn f(&self) -> PyResult<PyFile> {
+        if let Some(lock) = &self.0 {
+            Ok(PyFile::new(lock.file()?, lock.path()))
         } else {
             Err(PyRuntimeError::new_err(
                 "TemporaryWriteLock already unlocked",
@@ -893,6 +1042,11 @@ impl WriteLock {
             breezy_transport::filelock::WriteLock::new(&filename, strict_locks.unwrap_or(false))
                 .map_err(|e| map_transport_err_to_py_err(e, None, None))?,
         ))
+    }
+
+    #[getter]
+    fn f(&self) -> PyResult<PyFile> {
+        Ok(PyFile::new(self.0.file()?, self.0.path()))
     }
 }
 

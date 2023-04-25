@@ -21,18 +21,17 @@ These test the conformance of all the lock variations to the expected API.
 
 from copy import deepcopy
 
-from breezy import lock, tests
+from breezy import lock, tests, _transport_rs
 
 
 class TestCaseWithLock(tests.TestCaseWithTransport):
     pass
 
 
-def make_scenarios(lock_classes):
+def make_scenarios():
     result = []
-    for name, write_lock, read_lock in lock_classes:
-        result.append(
-            (name, {'write_lock': write_lock, 'read_lock': read_lock}))
+    result.append(
+        ("default", {'write_lock': _transport_rs.WriteLock, 'read_lock': _transport_rs.ReadLock}))
     return result
 
 
@@ -41,7 +40,7 @@ def load_tests(loader, standard_tests, pattern):
         'breezy.tests.per_lock.test_lock',
         'breezy.tests.per_lock.test_temporary_write_lock',
         ])
-    scenarios = make_scenarios(lock._lock_classes)
+    scenarios = make_scenarios()
     # add the tests for the sub modules
     return tests.multiply_tests(submod_tests, scenarios,
                                 standard_tests)

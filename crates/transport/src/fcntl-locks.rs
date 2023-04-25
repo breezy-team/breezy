@@ -117,8 +117,8 @@ impl Lock for WriteLock {
 }
 
 impl FileLock for WriteLock {
-    fn file(&self) -> &File {
-        &self.f
+    fn file(&self) -> std::io::Result<Box<File>> {
+        Ok(Box::new(self.f.try_clone()?))
     }
 
     fn path(&self) -> &Path {
@@ -179,7 +179,7 @@ impl ReadLock {
     /// write lock.
     ///
     /// Returns: A token which can be used to switch back to a read lock.
-    pub fn temporary_write_lock(self) -> std::result::Result<TemporaryWriteLock, Error> {
+    pub fn temporary_write_lock(self) -> std::result::Result<TemporaryWriteLock, (Self, Error)> {
         if OPEN_WRITE_LOCKS.lock().unwrap().contains(&self.filename) {
             panic!("file already locked: {}", self.filename.to_string_lossy());
         }
@@ -214,8 +214,8 @@ impl Lock for ReadLock {
 }
 
 impl FileLock for ReadLock {
-    fn file(&self) -> &File {
-        &self.f
+    fn file(&self) -> std::io::Result<Box<File>> {
+        Ok(Box::new(self.f.try_clone()?))
     }
 
     fn path(&self) -> &Path {
@@ -232,13 +232,13 @@ pub struct TemporaryWriteLock {
 }
 
 impl TemporaryWriteLock {
-    pub fn new(read_lock: ReadLock) -> std::result::Result<Self, Error> {
+    pub fn new(read_lock: ReadLock) -> std::result::Result<Self, (ReadLock, Error)> {
         let filename = read_lock.filename.clone();
         if let Some(count) = OPEN_READ_LOCKS.lock().unwrap().get(&filename) {
             if *count > 1 {
                 // Something else also has a read-lock, so we cannot grab a
                 // write lock.
-                return Err(Error::LockContention(filename.clone()));
+                return Err((read_lock, Error::LockContention(filename.clone())));
             }
         }
 
@@ -257,7 +257,9 @@ impl TemporaryWriteLock {
             .open(&filename)
         {
             Ok(f) => Ok(f),
-            Err(e) => Err(Error::LockFailed(filename.clone(), e.to_string())),
+            Err(e) => {
+                return Err((read_lock, Error::LockFailed(filename, e.to_string())));
+            }
         }?;
 
         // LOCK_NB will cause IOError to be raised if we can't grab a
@@ -272,7 +274,9 @@ impl TemporaryWriteLock {
 
         match fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock)) {
             Ok(_) => Ok(()),
-            Err(_) => Err(Error::LockContention(filename.clone())),
+            Err(_) => {
+                return Err((read_lock, Error::LockContention(filename)));
+            }
         }?;
 
         OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
@@ -311,8 +315,8 @@ impl TemporaryWriteLock {
 }
 
 impl FileLock for TemporaryWriteLock {
-    fn file(&self) -> &File {
-        &self.f
+    fn file(&self) -> std::io::Result<Box<File>> {
+        Ok(Box::new(self.f.try_clone()?))
     }
 
     fn path(&self) -> &Path {

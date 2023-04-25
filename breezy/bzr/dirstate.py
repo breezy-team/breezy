@@ -3360,7 +3360,7 @@ class DirState:
         #       already in memory, we could read just the header and check for
         #       any modification. If not modified, we can just leave things
         #       alone
-        self._lock_token = lock.ReadLock(self._filename)
+        self._lock_token = _transport_rs.ReadLock(self._filename)
         self._lock_state = 'r'
         self._state_file = self._lock_token.f
         self._wipe_state()
