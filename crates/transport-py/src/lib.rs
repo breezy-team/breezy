@@ -161,7 +161,8 @@ impl PyBufReadStream {
             Ok(PyBytes::new(py, &buf[..ret]).to_object(py))
         } else {
             let mut buf = Vec::new();
-            self.f.read_to_end(&mut buf)
+            self.f
+                .read_to_end(&mut buf)
                 .map_err(|e| self.map_io_err_to_py_err(e))?;
             Ok(PyBytes::new(py, &buf).to_object(py))
         }
@@ -658,7 +659,11 @@ impl Transport {
         to_transport: PyObject,
         mode: Option<PyObject>,
     ) -> PyResult<usize> {
-        let relpaths = relpaths.as_ref(py).iter()?.map(|o| o?.extract()).collect::<PyResult<Vec<_>>>()?;
+        let relpaths = relpaths
+            .as_ref(py)
+            .iter()?
+            .map(|o| o?.extract())
+            .collect::<PyResult<Vec<_>>>()?;
 
         if let Ok(t) = to_transport.clone_ref(py).downcast::<PyCell<Transport>>(py) {
             self.0

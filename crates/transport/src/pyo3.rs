@@ -55,7 +55,7 @@ impl IntoPy<PyObject> for PyTransport {
 impl From<PyErr> for Error {
     fn from(e: PyErr) -> Self {
         Python::with_gil(|py| {
-            let arg = |i|  -> Option<String>{
+            let arg = |i| -> Option<String> {
                 let args = e.value(py).getattr("args").unwrap();
                 match args.get_item(0) {
                     Ok(a) if a.is_none() => None,

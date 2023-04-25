@@ -519,6 +519,10 @@ pub mod pyo3;
 #[path = "fcntl-locks.rs"]
 pub mod locks;
 
+#[cfg(win32)]
+#[path = "win32-locks.rs"]
+pub mod locks;
+
 pub mod lock;
 
 pub mod readv;
