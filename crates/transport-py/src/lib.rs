@@ -947,6 +947,19 @@ fn seek_and_read(
         .collect::<PyResult<Vec<_>>>()
 }
 
+#[pyfunction]
+fn sort_expand_and_combine(
+    offsets: Vec<(u64, usize)>,
+    upper_limit: Option<u64>,
+    recommended_page_size: Option<usize>,
+) -> Vec<(u64, usize)> {
+    breezy_transport::readv::sort_expand_and_combine(
+        offsets,
+        upper_limit,
+        recommended_page_size.unwrap_or(4 * 1024),
+    )
+}
+
 #[pyclass]
 struct ReadLock(Option<breezy_transport::filelock::ReadLock>);
 
@@ -1060,6 +1073,7 @@ fn _transport_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_test_permutations, m)?)?;
     m.add_wrapped(wrap_pyfunction!(seek_and_read))?;
     m.add_wrapped(wrap_pyfunction!(coalesce_offsets))?;
+    m.add_wrapped(wrap_pyfunction!(sort_expand_and_combine))?;
 
     Ok(())
 }

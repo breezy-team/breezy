@@ -742,55 +742,7 @@ class Transport:
             offsets, in start-to-end order, with no duplicated regions,
             expanded by the transports recommended page size.
         """
-        offsets = sorted(offsets)
-        # short circuit empty requests
-        if len(offsets) == 0:
-            def empty_yielder():
-                # Quick thunk to stop this function becoming a generator
-                # itself, rather we return a generator that has nothing to
-                # yield.
-                if False:
-                    yield None
-            return empty_yielder()
-        # expand by page size at either end
-        maximum_expansion = self.recommended_page_size()
-        new_offsets = []
-        for offset, length in offsets:
-            expansion = maximum_expansion - length
-            if expansion < 0:
-                # we're asking for more than the minimum read anyway.
-                expansion = 0
-            reduction = expansion // 2
-            new_offset = offset - reduction
-            new_length = length + expansion
-            if new_offset < 0:
-                # don't ask for anything < 0
-                new_offset = 0
-            if (upper_limit is not None and
-                    new_offset + new_length > upper_limit):
-                new_length = upper_limit - new_offset
-            new_offsets.append((new_offset, new_length))
-        # combine the expanded offsets
-        offsets = []
-        current_offset, current_length = new_offsets[0]
-        current_finish = current_length + current_offset
-        for offset, length in new_offsets[1:]:
-            finish = offset + length
-            if offset > current_finish:
-                # there is a gap, output the current accumulator and start
-                # a new one for the region we're examining.
-                offsets.append((current_offset, current_length))
-                current_offset = offset
-                current_length = length
-                current_finish = finish
-                continue
-            if finish > current_finish:
-                # extend the current accumulator to the end of the region
-                # we're examining.
-                current_finish = finish
-                current_length = finish - current_offset
-        offsets.append((current_offset, current_length))
-        return offsets
+        return _transport_rs.sort_expand_and_combine(offsets, upper_limit, self.recommended_page_size())
 
     @staticmethod
     def _coalesce_offsets(offsets, limit=None, fudge_factor=None, max_size=None):
