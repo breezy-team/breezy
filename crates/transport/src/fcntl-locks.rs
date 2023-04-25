@@ -1,7 +1,7 @@
 use crate::{map_io_err_to_transport_err, Error, Lock};
 use lazy_static::lazy_static;
 use log::debug;
-use nix::fcntl::{flock, FlockArg};
+use nix::fcntl::{fcntl, FcntlArg};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fs::{File, OpenOptions};
@@ -67,13 +67,30 @@ impl WriteLock {
             }
         }
 
-        let (filename, f) = open(filename.as_path(), OpenOptions::new().read(true).write(true))?;
+        let (filename, f) = open(
+            filename.as_path(),
+            OpenOptions::new().read(true).write(true),
+        )?;
         OPEN_WRITE_LOCKS.lock().unwrap().insert(filename.clone());
-        match flock(f.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
+        let flock = libc::flock {
+            l_type: libc::F_WRLCK as i16,
+            l_whence: libc::SEEK_SET as i16,
+            l_start: 0,
+            l_len: 0,
+            l_pid: 0,
+        };
+        match fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock)) {
             Ok(_) => Ok(WriteLock { filename, f }),
             Err(e) => {
                 if e == nix::errno::Errno::EAGAIN || e == nix::errno::Errno::EACCES {
-                    flock(f.as_raw_fd(), FlockArg::Unlock);
+                    let flock = libc::flock {
+                        l_type: libc::F_UNLCK as i16,
+                        l_whence: libc::SEEK_SET as i16,
+                        l_start: 0,
+                        l_len: 0,
+                        l_pid: 0,
+                    };
+                    fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
                 }
                 // we should be more precise about whats a locking
                 // error and whats a random-other error
@@ -86,7 +103,14 @@ impl WriteLock {
 impl Lock for WriteLock {
     fn unlock(&mut self) -> Result<(), Error> {
         OPEN_WRITE_LOCKS.lock().unwrap().remove(&self.filename);
-        flock(self.f.as_raw_fd(), FlockArg::Unlock);
+        let flock = libc::flock {
+            l_type: libc::F_UNLCK as i16,
+            l_whence: libc::SEEK_SET as i16,
+            l_start: 0,
+            l_len: 0,
+            l_pid: 0,
+        };
+        fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
         Ok(())
     }
 }
@@ -118,7 +142,14 @@ impl ReadLock {
             .or_insert(1);
 
         let (filename, f) = open(&filename, OpenOptions::new().read(true))?;
-        match flock(f.as_raw_fd(), FlockArg::LockSharedNonblock) {
+        let flock = libc::flock {
+            l_type: libc::F_RDLCK as i16,
+            l_whence: libc::SEEK_SET as i16,
+            l_start: 0,
+            l_len: 0,
+            l_pid: 0,
+        };
+        match fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock)) {
             Ok(_) => {}
             Err(e) => {
                 // we should be more precise about whats a locking
@@ -158,7 +189,15 @@ impl Lock for ReadLock {
             }
             Entry::Vacant(_) => panic!("no read lock on {}", self.filename.to_string_lossy()),
         }
-        flock(self.f.as_raw_fd(), FlockArg::Unlock);
+        let flock = libc::flock {
+            l_type: libc::F_UNLCK as i16,
+            l_whence: libc::SEEK_SET as i16,
+            l_start: 0,
+            l_len: 0,
+            l_pid: 0,
+        };
+        fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
+
         Ok(())
     }
 }
@@ -203,7 +242,15 @@ impl TemporaryWriteLock {
 
         // LOCK_NB will cause IOError to be raised if we can't grab a
         // lock right away.
-        match flock(f.as_raw_fd(), FlockArg::LockSharedNonblock) {
+        let flock = libc::flock {
+            l_type: libc::F_RDLCK as i16,
+            l_whence: libc::SEEK_SET as i16,
+            l_start: 0,
+            l_len: 0,
+            l_pid: 0,
+        };
+
+        match fcntl(f.as_raw_fd(), FcntlArg::F_SETLK(&flock)) {
             Ok(_) => Ok(()),
             Err(_) => Err(Error::LockContention(filename.clone())),
         }?;
@@ -221,7 +268,14 @@ impl TemporaryWriteLock {
     pub fn restore_read_lock(self) -> ReadLock {
         // For fcntl, since we never released the read lock, just release
         // the write lock, and return the original lock.
-        flock(self.f.as_raw_fd(), FlockArg::Unlock);
+        let flock = libc::flock {
+            l_type: libc::F_UNLCK as i16,
+            l_whence: libc::SEEK_SET as i16,
+            l_start: 0,
+            l_len: 0,
+            l_pid: 0,
+        };
+        fcntl(self.f.as_raw_fd(), FcntlArg::F_SETLK(&flock));
         OPEN_WRITE_LOCKS.lock().unwrap().remove(&self.filename);
         self.read_lock
     }
