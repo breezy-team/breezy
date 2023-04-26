@@ -21,8 +21,6 @@ This is a fairly thin wrapper on regular file IO.
 
 import errno
 import os
-import sys
-from stat import S_IMODE, S_ISDIR, ST_MODE
 
 from .. import _transport_rs, osutils, transport, urlutils
 
@@ -44,10 +42,12 @@ def file_kind(f, _lstat=os.lstat):
     return osutils.file_kind_from_stat_mode(stat_value.st_mode)
 
 
-from .._transport_rs import LocalTransport
+from .._transport_rs import local as _local_rs
+
+LocalTransport = _local_rs.LocalTransport
 
 
-class EmulatedWin32LocalTransport(LocalTransport):
+class EmulatedWin32LocalTransport(_local_rs.LocalTransport):
     """Special transport for testing Win32 [UNC] paths on non-windows"""
 
     def __init__(self, base):

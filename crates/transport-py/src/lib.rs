@@ -1074,7 +1074,9 @@ impl WriteLock {
 #[pymodule]
 fn _transport_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Transport>()?;
-    m.add_class::<LocalTransport>()?;
+    let localm = PyModule::new(_py, "local")?;
+    localm.add_class::<LocalTransport>()?;
+    m.add_submodule(localm)?;
     m.add_class::<ReadLock>()?;
     m.add_class::<WriteLock>()?;
     m.add_class::<TemporaryWriteLock>()?;
