@@ -62,7 +62,6 @@ dependencies = [
  "base64",
  "breezy-osutils",
  "lazy_static",
- "libc",
  "maplit",
 ]
 
@@ -76,8 +75,8 @@ version = "3.3.3"
 dependencies = [
  "bazaar",
  "breezy-osutils",
- "libc",
  "log",
+ "nix",
  "sha1",
  "tempfile",
 ]

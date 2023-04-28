@@ -8,9 +8,11 @@ license = "GPLv2+"
 [lib]
 
 [dependencies]
-libc = "0.2"
 sha1 = "0.10"
 breezy-osutils = { path = "../osutils" }
 bazaar = { path = "../bazaar" }
 tempfile = "3"
 log = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+nix = ">= 0.26"
