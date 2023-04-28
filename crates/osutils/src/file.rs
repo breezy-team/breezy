@@ -1,6 +1,7 @@
+use core::ops::BitAnd;
 use log::debug;
 #[cfg(unix)]
-use nix::sys::stat::{mode_t, Mode, SFlag};
+use nix::sys::stat::SFlag;
 use std::fs::{set_permissions, Permissions};
 use std::io::Result;
 use std::path::Path;
@@ -166,32 +167,23 @@ pub fn copy_tree<P: AsRef<Path>, Q: AsRef<Path>>(from_path: P, to_path: Q) -> st
     Ok(())
 }
 
-const DIRECTORY: &str = "directory";
-const CHARDEV: &str = "chardev";
-const BLOCK: &str = "block";
-const FILE: &str = "file";
-const FIFO: &str = "fifo";
-const SYMLINK: &str = "symlink";
-const SOCKET: &str = "socket";
-const UNKNOWN: &str = "unknown";
-
 const FORMATS: [(SFlag, &str); 7] = [
-    (SFlag::S_IFDIR, DIRECTORY),
-    (SFlag::S_IFCHR, CHARDEV),
-    (SFlag::S_IFBLK, BLOCK),
-    (SFlag::S_IFREG, FILE),
-    (SFlag::S_IFIFO, FIFO),
-    (SFlag::S_IFLNK, SYMLINK),
-    (SFlag::S_IFSOCK, SOCKET),
+    (SFlag::S_IFDIR, "directory"),
+    (SFlag::S_IFCHR, "chardev"),
+    (SFlag::S_IFBLK, "block"),
+    (SFlag::S_IFREG, "file"),
+    (SFlag::S_IFIFO, "fifo"),
+    (SFlag::S_IFLNK, "symlink"),
+    (SFlag::S_IFSOCK, "socket"),
 ];
 
 pub fn kind_from_mode(mode: SFlag) -> &'static str {
     for (format_mode, format_kind) in FORMATS.iter() {
-        if mode.contains(*format_mode) {
+        if mode.bitand(SFlag::S_IFMT) == *format_mode {
             return format_kind;
         }
     }
-    UNKNOWN
+    "unknown"
 }
 
 pub fn delete_any<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
