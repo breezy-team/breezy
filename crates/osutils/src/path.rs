@@ -267,19 +267,19 @@ pub mod win32 {
     /// so we force it to uppercase
     /// running python.exe under cmd.exe return capital C:\\
     /// running win32 python inside a cygwin shell returns lowercase c:\\
-    fn fixdrive(path: &Path) -> PathBuf {
-        let mut path_buf = PathBuf::from(path);
-        if let Some(drive) = path_buf.as_os_str().to_str().unwrap().get(..2) {
-            path_buf.push(drive.to_uppercase());
-            path_buf.push(path.to_str().unwrap().get(2..).unwrap());
-            path_buf
+    pub fn fixdrive(path: &Path) -> PathBuf {
+        if path.as_os_str().len() < 2 || path.to_str().unwrap().chars().nth(1).unwrap() != ':' {
+            return path.into();
+        }
+        if let Some(drive) = path.as_os_str().to_str().unwrap().get(..2) {
+            PathBuf::from(drive.to_uppercase() + path.to_str().unwrap().get(2..).unwrap())
         } else {
             path.into()
         }
     }
 
     /// Return path with directory separators changed to forward slashes
-    fn fix_separators(path: &Path) -> PathBuf {
+    pub fn fix_separators(path: &Path) -> PathBuf {
         if path.to_path_buf().to_str().unwrap().contains('\\') {
             path.to_path_buf()
                 .to_str()
